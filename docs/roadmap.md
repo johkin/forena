@@ -5,8 +5,10 @@
 - [x] Next.js, TypeScript och PWA-manifest
 - [x] Första domänobjekten och domäntester
 - [x] Interaktiv vy för aktivitet och kallelsesvar
-- [ ] Supabase-projekt och databasmigrationer
-- [ ] Autentisering och RLS
+- [x] Lokal Supabase-konfiguration och initial databasmigration
+- [x] Grundläggande Row Level Security
+- [ ] Inloggningsflöde och sessionsuppdatering
+- [ ] Databastester för RLS-policyer
 
 ## 2. Första kompletta föreningsflödet
 

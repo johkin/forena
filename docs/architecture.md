@@ -19,11 +19,21 @@ kommandon; AI:n får aldrig direkt databasåtkomst.
 - Ett första svar får inte skrivas över utan ett separat ändringskommando.
 - Bred kommunikation förhandsgranskas innan den skickas.
 
-## Planerad persistens
+## Persistens
 
-PostgreSQL med Row Level Security. En kommande migration inför tabellerna
-`organizations`, `teams`, `people`, `memberships`, `activities`,
-`invitations`, `push_subscriptions`, `notification_outbox` och `audit_log`.
+PostgreSQL körs genom Supabase. Lokalt startar Supabase CLI en containerbaserad
+stack med databas, Auth, Storage och Studio. Schemat hanteras med SQL-migrationer
+i `supabase/migrations` och kan återskapas deterministiskt med `npm run db:reset`.
+
+Den första migrationen innehåller `organizations`, `profiles`,
+`organization_members`, `teams`, `people`, `person_guardians`, `memberships`,
+`activities`, `invitations`, `push_subscriptions`, `notification_outbox` och
+`audit_log`. Samtliga tabeller har Row Level Security. Hjälpfunktionerna
+`is_organization_member` och `has_organization_role` används av policyerna för
+att isolera föreningar och skilja vanliga medlemmar från ledare och administratörer.
+
+Serverkod och webbläsarkod har separata Supabase-klienter. Service role-nyckeln
+ska aldrig exponeras som en `NEXT_PUBLIC_`-variabel eller skickas till PWA:n.
 
 ## Assistenten
 

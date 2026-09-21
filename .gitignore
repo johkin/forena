@@ -4,6 +4,11 @@ out
 coverage
 .env
 .env.local
+.env.*.local
 *.log
 *.tsbuildinfo
 .DS_Store
+
+# Supabase local runtime files
+supabase/.branches
+supabase/.temp
