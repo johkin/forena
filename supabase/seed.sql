@@ -1,10 +1,20 @@
 insert into public.organizations (id, slug, name, assistant_name)
 values ('10000000-0000-0000-0000-000000000001', 'ursvik-ik', 'Ursvik IK', 'Urre');
 
-insert into public.teams (id, organization_id, name, season)
+insert into public.sections (id, organization_id, slug, name)
+values (
+  '15000000-0000-0000-0000-000000000001',
+  '10000000-0000-0000-0000-000000000001',
+  'fotboll',
+  'Fotboll'
+);
+
+insert into public.teams (id, organization_id, section_id, slug, name, season)
 values (
   '20000000-0000-0000-0000-000000000001',
   '10000000-0000-0000-0000-000000000001',
+  '15000000-0000-0000-0000-000000000001',
+  'f2016',
   'F2016',
   '2026/2027'
 );

@@ -2,15 +2,34 @@ export type EntityId = string;
 
 export type Organization = {
   id: EntityId;
+  slug: string;
   name: string;
   assistantName: string;
+};
+
+export type Section = {
+  id: EntityId;
+  organizationId: EntityId;
+  slug: string;
+  name: string;
 };
 
 export type Team = {
   id: EntityId;
   organizationId: EntityId;
+  sectionId: EntityId;
+  slug: string;
   name: string;
   season: string;
+};
+
+export type Workspace = {
+  id: EntityId;
+  kind: "organization" | "section" | "team";
+  name: string;
+  description: string;
+  href: string;
+  active: boolean;
 };
 
 export type Member = {

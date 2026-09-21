@@ -27,9 +27,21 @@ export interface Database {
         Timestamped & OrganizationScoped & { user_id: string; role: "owner" | "admin" | "leader" | "member" },
         OrganizationScoped & { user_id: string; role: "owner" | "admin" | "leader" | "member"; created_at?: string }
       >;
+      sections: Table<
+        Timestamped & OrganizationScoped & { id: string; slug: string; name: string; updated_at: string },
+        OrganizationScoped & { id?: string; slug: string; name: string; created_at?: string; updated_at?: string }
+      >;
       teams: Table<
-        Timestamped & OrganizationScoped & { id: string; name: string; season: string; updated_at: string },
-        OrganizationScoped & { id?: string; name: string; season?: string; created_at?: string; updated_at?: string }
+        Timestamped & OrganizationScoped & { id: string; section_id: string; slug: string; name: string; season: string; updated_at: string },
+        OrganizationScoped & { id?: string; section_id: string; slug: string; name: string; season?: string; created_at?: string; updated_at?: string }
+      >;
+      section_staff: Table<
+        Timestamped & OrganizationScoped & { section_id: string; user_id: string; role: "section_admin" | "editor" },
+        OrganizationScoped & { section_id: string; user_id: string; role: "section_admin" | "editor"; created_at?: string }
+      >;
+      team_staff: Table<
+        Timestamped & OrganizationScoped & { team_id: string; user_id: string; role: "team_manager" | "coach" | "editor" },
+        OrganizationScoped & { team_id: string; user_id: string; role: "team_manager" | "coach" | "editor"; created_at?: string }
       >;
       people: Table<
         Timestamped & OrganizationScoped & { id: string; user_id: string | null; display_name: string; updated_at: string },
@@ -68,6 +80,9 @@ export interface Database {
     Functions: {
       is_organization_member: { Args: { target_organization_id: string; target_user_id?: string }; Returns: boolean };
       has_organization_role: { Args: { target_organization_id: string; allowed_roles: string[]; target_user_id?: string }; Returns: boolean };
+      has_section_role: { Args: { target_section_id: string; allowed_roles: string[]; target_user_id?: string }; Returns: boolean };
+      has_team_role: { Args: { target_team_id: string; allowed_roles: string[]; target_user_id?: string }; Returns: boolean };
+      can_manage_team: { Args: { target_team_id: string; target_user_id?: string }; Returns: boolean };
     };
     Enums: Record<never, never>;
     CompositeTypes: Record<never, never>;

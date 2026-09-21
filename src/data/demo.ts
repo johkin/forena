@@ -1,17 +1,46 @@
-import type { Activity, Invitation, Member, Organization, Team } from "@/domain/club";
+import type { Activity, Invitation, Member, Organization, Section, Team, Workspace } from "@/domain/club";
 
 export const organization: Organization = {
   id: "ursvik-ik",
+  slug: "ursvik-ik",
   name: "Ursvik IK",
   assistantName: "Urre",
+};
+
+export const section: Section = {
+  id: "football",
+  organizationId: organization.id,
+  slug: "fotboll",
+  name: "Fotboll",
 };
 
 export const team: Team = {
   id: "f2016",
   organizationId: organization.id,
+  sectionId: section.id,
+  slug: "f2016",
   name: "F2016",
   season: "2026/2027",
 };
+
+export const workspaces: Workspace[] = [
+  {
+    id: organization.id,
+    kind: "organization",
+    name: organization.name,
+    description: "Föreningsnivå",
+    href: `/o/${organization.slug}`,
+    active: false,
+  },
+  {
+    id: team.id,
+    kind: "team",
+    name: team.name,
+    description: "Mitt lag",
+    href: `/o/${organization.slug}/t/${team.slug}`,
+    active: true,
+  },
+];
 
 export const activity: Activity = {
   id: "training-2026-09-24",

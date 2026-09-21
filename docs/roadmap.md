@@ -9,6 +9,9 @@
 - [x] Grundläggande Row Level Security
 - [ ] Inloggningsflöde och sessionsuppdatering
 - [ ] Databastester för RLS-policyer
+- [x] Sektioner och roller på sektions- och lagnivå
+- [x] Aktiv arbetsyta och lagcentrerad routing
+- [x] Databasdriven lagdashboard med demo-fallback
 
 ## 2. Första kompletta föreningsflödet
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import {
   respondToInvitation,
   summarizeInvitations,
@@ -8,15 +9,20 @@ import {
   type Invitation,
   type Member,
   type Organization,
+  type Section,
   type Team,
+  type Workspace,
 } from "@/domain/club";
 
 type Props = {
   organization: Organization;
+  sections: Section[];
   team: Team;
   activity: Activity;
   members: Member[];
   initialInvitations: Invitation[];
+  workspaces: Workspace[];
+  source: "database" | "demo";
 };
 
 const responseLabels = {
@@ -26,7 +32,7 @@ const responseLabels = {
   pending: "Ej svarat",
 } as const;
 
-export function ClubDashboard({ organization, team, activity, members, initialInvitations }: Props) {
+export function ClubDashboard({ organization, sections, team, activity, members, initialInvitations, workspaces, source }: Props) {
   const [invitations, setInvitations] = useState(initialInvitations);
   const [notice, setNotice] = useState<string>();
   const summary = useMemo(() => summarizeInvitations(invitations), [invitations]);
@@ -40,10 +46,23 @@ export function ClubDashboard({ organization, team, activity, members, initialIn
     timeZone: "Europe/Stockholm",
   }).format(new Date(activity.startsAt));
 
-  function answer(invitation: Invitation, response: "accepted" | "declined" | "maybe") {
-    setInvitations((current) =>
-      current.map((item) => (item.id === invitation.id ? respondToInvitation(item, response) : item)),
-    );
+  async function answer(invitation: Invitation, response: "accepted" | "declined" | "maybe") {
+    const updated = respondToInvitation(invitation, response);
+
+    if (source === "database") {
+      const result = await fetch(`/api/invitations/${invitation.id}/respond`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ response }),
+      });
+
+      if (!result.ok) {
+        setNotice("Svaret kunde inte sparas. Kontrollera din behörighet och försök igen.");
+        return;
+      }
+    }
+
+    setInvitations((current) => current.map((item) => (item.id === invitation.id ? updated : item)));
     setNotice(`${memberById.get(invitation.memberId)?.displayName} är registrerad som ”${responseLabels[response]}”.`);
   }
 
@@ -54,21 +73,17 @@ export function ClubDashboard({ organization, team, activity, members, initialIn
           <span className="brand-mark">F</span>
           <span>Förena</span>
         </a>
-        <button className="organization-switcher" type="button">
-          <span className="organization-avatar">UI</span>
-          <span><strong>{organization.name}</strong><small>{team.name}</small></span>
-          <span aria-hidden>⌄</span>
-        </button>
+        <WorkspaceSwitcher organization={organization} team={team} workspaces={workspaces} />
       </header>
 
       <div className="shell">
         <aside className="sidebar" aria-label="Huvudmeny">
-          <p className="eyebrow">Föreningen</p>
+          <p className="eyebrow">{team.name}</p>
           <nav>
             <a className="active" href="#overview">Översikt</a>
             <a href="#calendar">Kalender</a>
-            <a href="#members">Medlemmar</a>
-            <a href="#teams">Lag och grupper</a>
+            <a href="#members">Spelare och ledare</a>
+            <a href="#attendance">Närvaro</a>
             <a href="#tasks">Uppgifter <span className="badge">2</span></a>
           </nav>
           <p className="eyebrow">Publicering</p>
@@ -81,14 +96,15 @@ export function ClubDashboard({ organization, team, activity, members, initialIn
         <section className="content" id="overview">
           <div className="welcome">
             <div>
-              <p className="eyebrow">Söndag 20 september</p>
-              <h1>God kväll, Johan</h1>
-              <p>Här är det viktigaste i {organization.name} just nu.</p>
+              <p className="eyebrow">{sections.length > 1 ? `${sections.find((item) => item.id === team.sectionId)?.name ?? "Sektion"} · ` : ""}{organization.name}</p>
+              <h1>{team.name}</h1>
+              <p>Här är det viktigaste för laget just nu.</p>
             </div>
             <button className="primary" type="button">+ Ny aktivitet</button>
           </div>
 
           {notice && <div className="toast" role="status">✓ {notice}</div>}
+          {source === "demo" && <div className="demo-notice">Demoläge · anslut och logga in mot Supabase för sparad data</div>}
 
           <div className="grid">
             <article className="card activity-card">
@@ -134,9 +150,9 @@ export function ClubDashboard({ organization, team, activity, members, initialIn
               <article className="card assistant-card">
                 <div className="assistant-header">
                   <span className="assistant-avatar">✦</span>
-                  <div><p className="eyebrow">Föreningsassistent</p><h2>{organization.assistantName}</h2></div>
+                  <div><p className="eyebrow">{organization.assistantName} · {team.name}</p><h2>Lagassistent</h2></div>
                 </div>
-                <p>Jag kan hjälpa dig med aktiviteter, kallelser och föreningens vardag.</p>
+                <p>Jag arbetar nu i {team.name} och kan hjälpa till med aktiviteter, kallelser och lagets vardag.</p>
                 <button className="prompt" type="button">Vilka har inte svarat på torsdagens kallelse?</button>
                 <button className="prompt" type="button">Skapa ett utkast till nästa träning</button>
                 <label className="assistant-input">

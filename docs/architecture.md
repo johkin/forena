@@ -32,6 +32,16 @@ Den första migrationen innehåller `organizations`, `profiles`,
 `is_organization_member` och `has_organization_role` används av policyerna för
 att isolera föreningar och skilja vanliga medlemmar från ledare och administratörer.
 
+Sektioner finns i datamodellen även när föreningen bara har en. Gränssnittet
+döljer automatiskt sektionsnivån när det finns exakt en sektion, medan lagen
+behåller kopplingen för behörighet, sidor och framtida rapportering. Roller kan
+tilldelas på förenings-, sektions- och lagnivå genom `organization_members`,
+`section_staff` och `team_staff`.
+
+Den inloggade applikationen använder kanoniska arbetsyterutter som
+`/o/ursvik-ik/t/f2016`. Framtida egna publika domäner kan peka ut samma förening
+utan att ändra interna identiteter eller appens routing.
+
 Serverkod och webbläsarkod har separata Supabase-klienter. Service role-nyckeln
 ska aldrig exponeras som en `NEXT_PUBLIC_`-variabel eller skickas till PWA:n.
 
