@@ -16,7 +16,9 @@
 ## 2. Första kompletta föreningsflödet
 
 - [x] Skapa förening och lag
-- [x] Bjud in ledare och vårdnadshavare
+- [x] Bjud in ledare direkt
+- [x] Publik medlemsansökan med val av sektion och lag
+- [x] Kansligodkännande före e-postverifiering och aktivering
 - [ ] Skapa återkommande aktiviteter
 - [ ] Skicka kallelser via Web Push och mejl
 - [ ] Svara som vårdnadshavare

@@ -190,3 +190,43 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .auth-divider::before, .auth-divider::after { content: ""; height: 1px; flex: 1; background: var(--line); }
 .auth-muted { color: var(--ink-soft); font-size: 14px; }
 .link-button { padding: 8px; border: 0; background: transparent; color: var(--ink-soft); cursor: pointer; text-decoration: underline; }
+
+.application-page { min-height: 100vh; padding: clamp(24px, 5vw, 64px); }
+.application-card { width: min(820px, 100%); margin: 0 auto; padding: clamp(24px, 5vw, 48px); border: 1px solid var(--line); border-radius: 20px; background: var(--paper); box-shadow: var(--shadow); }
+.application-card > h1, .application-page-heading h1 { margin: 8px 0 10px; font-family: Georgia, serif; font-size: clamp(34px, 6vw, 52px); font-weight: 500; letter-spacing: -1.5px; }
+.application-card > p, .application-page-heading p { color: var(--ink-soft); line-height: 1.55; }
+.application-form { display: grid; gap: 24px; margin-top: 32px; }
+.form-section { display: grid; gap: 15px; padding-top: 24px; border-top: 1px solid var(--line); }
+.form-section:first-child { padding-top: 0; border-top: 0; }
+.form-section h2 { margin: 0 0 3px; font-size: 22px; }
+.form-section h2 small { color: var(--ink-soft); font-size: 13px; font-weight: 500; }
+.form-section label { display: grid; gap: 7px; color: var(--ink-soft); font-size: 12px; font-weight: 800; }
+.form-section input, .form-section select, .form-section textarea { width: 100%; padding: 12px 13px; border: 1px solid var(--line); border-radius: 10px; background: white; color: var(--ink); outline: none; resize: vertical; }
+.form-section input:focus, .form-section select:focus, .form-section textarea:focus { border-color: var(--ink); box-shadow: 0 0 0 3px var(--mint); }
+.application-submit { justify-self: end; }
+.application-confirmation { min-height: 360px; display: grid; align-content: center; justify-items: start; }
+.review-card { width: min(980px, 100%); }
+.application-page-heading { display: flex; align-items: start; justify-content: space-between; gap: 24px; margin-bottom: 30px; }
+.application-page-heading .secondary { flex: 0 0 auto; text-decoration: none; }
+.application-queue { display: grid; gap: 16px; }
+.application-item { padding: 22px; border: 1px solid var(--line); border-radius: 14px; background: white; }
+.application-item-heading { display: flex; justify-content: space-between; gap: 18px; }
+.application-item h2 { margin: 0 0 4px; }
+.application-item-heading p:last-child { margin: 0; color: var(--ink-soft); font-size: 13px; }
+.review-status { height: fit-content; padding: 6px 10px; border-radius: 20px; background: var(--cream); font-size: 11px; font-weight: 800; }
+.review-status.approved { background: var(--mint); }
+.review-status.rejected { background: #f9e5de; }
+.application-item dl { display: grid; gap: 12px; margin: 20px 0; }
+.application-item dl div { display: grid; grid-template-columns: 140px 1fr; gap: 12px; }
+.application-item dt { color: var(--ink-soft); font-size: 12px; font-weight: 800; }
+.application-item dd { display: grid; gap: 4px; margin: 0; font-size: 14px; }
+.review-actions, .organization-actions { display: flex; flex-wrap: wrap; gap: 9px; }
+.organization-actions a { text-decoration: none; }
+
+@media (max-width: 560px) {
+  .application-page { padding: 16px; }
+  .application-card { padding: 22px 18px; border-radius: 15px; }
+  .application-page-heading { display: grid; }
+  .application-item dl div { grid-template-columns: 1fr; gap: 4px; }
+  .review-actions { display: grid; }
+}
