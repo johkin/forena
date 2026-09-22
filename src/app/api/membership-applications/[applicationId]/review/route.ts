@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { sendMembershipInvitationEmail } from "@/lib/email/membership-invitation";
+import { getSiteUrl } from "@/lib/site-url";
 import { createClient } from "@/lib/supabase/server";
 
 type Props = { params: Promise<{ applicationId: string }> };
@@ -41,7 +42,7 @@ export async function POST(request: Request, { params }: Props) {
   }).eq("id", applicationId);
   if (approvalError) return NextResponse.json({ error: "Ansökan kunde inte godkännas." }, { status: 400 });
 
-  const origin = (process.env.NEXT_PUBLIC_SITE_URL ?? new URL(request.url).origin).replace(/\/$/, "");
+  const origin = getSiteUrl(new URL(request.url).origin);
   for (const guardian of guardians) {
     const token = randomBytes(32).toString("base64url");
     const tokenHash = createHash("sha256").update(token).digest("hex");

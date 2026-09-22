@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { getSiteUrl } from "@/lib/site-url";
 import { createClient } from "@/lib/supabase/server";
 
 export async function requestMagicLink(formData: FormData) {
@@ -14,10 +15,7 @@ export async function requestMagicLink(formData: FormData) {
   }
 
   const requestHeaders = await headers();
-  const origin =
-    requestHeaders.get("origin") ??
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    "http://localhost:3000";
+  const origin = getSiteUrl(requestHeaders.get("origin") ?? undefined);
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithOtp({

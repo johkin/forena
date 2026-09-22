@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { getSiteUrl } from "@/lib/site-url";
 import { createClient } from "@/lib/supabase/server";
 
 type RequestBody = {
@@ -57,7 +58,7 @@ export async function POST(request: Request) {
   }
 
   const requestHeaders = await headers();
-  const origin = requestHeaders.get("origin") ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const origin = getSiteUrl(requestHeaders.get("origin") ?? undefined);
   const next = `/invite/${token}`;
   const { error: emailError } = await supabase.auth.signInWithOtp({
     email,
