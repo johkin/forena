@@ -21,6 +21,8 @@ export default async function TeamWorkspacePage({ params }: Props) {
       sections={data.sections}
       source={data.source}
       team={data.team}
+      tasks={data.tasks}
+      defaultView={data.defaultView}
       workspaces={data.workspaces}
     />
   );

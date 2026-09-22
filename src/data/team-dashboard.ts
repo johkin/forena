@@ -5,9 +5,10 @@ import {
   organization as demoOrganization,
   section as demoSection,
   team as demoTeam,
+  tasks as demoTasks,
   workspaces as demoWorkspaces,
 } from "@/data/demo";
-import type { Activity, Invitation, Member, Organization, Section, Team, Workspace } from "@/domain/club";
+import type { Activity, DashboardView, Invitation, Member, Organization, Section, Team, TeamTask, Workspace } from "@/domain/club";
 import { createClient } from "@/lib/supabase/server";
 
 export type TeamDashboardData = {
@@ -18,6 +19,8 @@ export type TeamDashboardData = {
   members: Member[];
   invitations: Invitation[];
   workspaces: Workspace[];
+  tasks: TeamTask[];
+  defaultView: DashboardView;
   source: "database" | "demo";
 };
 
@@ -30,6 +33,8 @@ function demoDashboard(): TeamDashboardData {
     members: demoMembers,
     invitations: demoInvitations,
     workspaces: demoWorkspaces,
+    tasks: demoTasks,
+    defaultView: "leader",
     source: "demo",
   };
 }
@@ -79,6 +84,7 @@ export async function getTeamDashboard(
     .eq("user_id", authData.user.id)
     .maybeSingle();
   const hasOrganizationWideAccess = ["owner", "admin", "leader"].includes(organizationMembership?.role ?? "");
+  let canManageCurrentTeam = hasOrganizationWideAccess;
   let accessibleTeams = teams ?? [];
 
   if (!hasOrganizationWideAccess) {
@@ -96,6 +102,7 @@ export async function getTeamDashboard(
       ...(teamRoles ?? []).map((item) => item.team_id),
       ...(participantMemberships ?? []).flatMap((item) => (item.team_id ? [item.team_id] : [])),
     ]);
+    canManageCurrentTeam = (teamRoles ?? []).some((item) => item.team_id === teamRow.id);
     const managedSectionIds = new Set((sectionRoles ?? []).map((item) => item.section_id));
     accessibleTeams = accessibleTeams.filter(
       (item) => directTeamIds.has(item.id) || managedSectionIds.has(item.section_id),
@@ -121,10 +128,20 @@ export async function getTeamDashboard(
     .from("invitations")
     .select("id, organization_id, activity_id, person_id, response, responded_at")
     .eq("activity_id", activityRow.id);
+  const { data: taskRows } = await supabase
+    .from("team_tasks")
+    .select("id, organization_id, team_id, title, description, due_at, status")
+    .eq("team_id", teamRow.id)
+    .eq("status", "open")
+    .order("due_at");
   const personIds = (invitationRows ?? []).map((invitation) => invitation.person_id);
   const { data: peopleRows } = personIds.length
     ? await supabase.from("people").select("id, organization_id, display_name").in("id", personIds)
     : { data: [] };
+  const { data: guardianRows } = personIds.length
+    ? await supabase.from("person_guardians").select("person_id, contact_name, contact_phone").in("person_id", personIds)
+    : { data: [] };
+  const guardianByPersonId = new Map((guardianRows ?? []).map((guardian) => [guardian.person_id, guardian]));
 
   const organization: Organization = {
     id: organizationRow.id,
@@ -159,6 +176,8 @@ export async function getTeamDashboard(
     id: person.id,
     organizationId: person.organization_id,
     displayName: person.display_name,
+    guardianName: guardianByPersonId.get(person.id)?.contact_name ?? undefined,
+    guardianPhone: guardianByPersonId.get(person.id)?.contact_phone ?? undefined,
   }));
   const invitations: Invitation[] = (invitationRows ?? []).map((invitation) => ({
     id: invitation.id,
@@ -167,6 +186,16 @@ export async function getTeamDashboard(
     memberId: invitation.person_id,
     response: invitation.response,
     respondedAt: invitation.responded_at ?? undefined,
+  }));
+  const tasks: TeamTask[] = (taskRows ?? []).map((task) => ({
+    id: task.id,
+    organizationId: task.organization_id,
+    teamId: task.team_id,
+    title: task.title,
+    description: task.description,
+    dueAt: task.due_at,
+    status: task.status,
+    createdByLabel: "Kansliet",
   }));
   const sectionById = new Map(sectionList.map((item) => [item.id, item]));
   const showSections = sectionList.length > 1;
@@ -199,5 +228,5 @@ export async function getTeamDashboard(
     })),
   ];
 
-  return { organization, sections: sectionList, team, activity, members, invitations, workspaces, source: "database" };
+  return { organization, sections: sectionList, team, activity, members, invitations, workspaces, tasks, defaultView: canManageCurrentTeam ? "leader" : "family", source: "database" };
 }

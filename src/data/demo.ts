@@ -1,4 +1,4 @@
-import type { Activity, Invitation, Member, Organization, Section, Team, Workspace } from "@/domain/club";
+import type { Activity, Invitation, Member, Organization, Section, Team, TeamTask, Workspace } from "@/domain/club";
 
 export const organization: Organization = {
   id: "ursvik-ik",
@@ -46,18 +46,19 @@ export const activity: Activity = {
   id: "training-2026-09-24",
   organizationId: organization.id,
   teamId: team.id,
-  title: "Utomhusträning",
+  title: "Match mot Sundbybergs IK",
   startsAt: "2026-09-24T16:30:00.000Z",
-  endsAt: "2026-09-24T18:00:00.000Z",
-  location: "Ursviks IP · Plan 2",
+  endsAt: "2026-09-24T18:15:00.000Z",
+  gatheringAt: "2026-09-24T15:45:00.000Z",
+  location: "Ursviks IP · Plan 1",
 };
 
 export const members: Member[] = [
-  { id: "elsa", organizationId: organization.id, displayName: "Elsa" },
-  { id: "tilda", organizationId: organization.id, displayName: "Tilda" },
-  { id: "amal", organizationId: organization.id, displayName: "Amal" },
-  { id: "nora", organizationId: organization.id, displayName: "Nora" },
-  { id: "pavit", organizationId: organization.id, displayName: "Pavit" },
+  { id: "elsa", organizationId: organization.id, displayName: "Elsa", guardianName: "Målsman" },
+  { id: "tilda", organizationId: organization.id, displayName: "Tilda", guardianName: "Målsman" },
+  { id: "amal", organizationId: organization.id, displayName: "Amal", guardianName: "Målsman" },
+  { id: "nora", organizationId: organization.id, displayName: "Nora", guardianName: "Målsman" },
+  { id: "pavit", organizationId: organization.id, displayName: "Pavit", guardianName: "Målsman" },
 ];
 
 export const invitations: Invitation[] = members.map((member, index) => ({
@@ -67,3 +68,26 @@ export const invitations: Invitation[] = members.map((member, index) => ({
   memberId: member.id,
   response: index < 2 ? "accepted" : index === 2 ? "declined" : "pending",
 }));
+
+export const tasks: TeamTask[] = [
+  {
+    id: "task-seriespel",
+    organizationId: organization.id,
+    teamId: team.id,
+    title: "Anmäl antal lag till seriespel",
+    description: "Ange hur många lag F2016 vill anmäla till seriespelet 2027.",
+    dueAt: "2026-10-02T21:59:00.000Z",
+    status: "open",
+    createdByLabel: "Kansliet",
+  },
+  {
+    id: "task-halltider",
+    organizationId: organization.id,
+    teamId: team.id,
+    title: "Bekräfta önskade halltider",
+    description: "Kontrollera och bekräfta lagets önskemål för vintern.",
+    dueAt: "2026-10-09T21:59:00.000Z",
+    status: "open",
+    createdByLabel: "Kansliet",
+  },
+];

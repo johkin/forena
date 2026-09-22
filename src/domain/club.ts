@@ -36,6 +36,8 @@ export type Member = {
   id: EntityId;
   organizationId: EntityId;
   displayName: string;
+  guardianName?: string;
+  guardianPhone?: string;
 };
 
 export type Activity = {
@@ -46,6 +48,20 @@ export type Activity = {
   startsAt: string;
   endsAt: string;
   location: string;
+  gatheringAt?: string;
+};
+
+export type DashboardView = "leader" | "family";
+
+export type TeamTask = {
+  id: EntityId;
+  organizationId: EntityId;
+  teamId: EntityId;
+  title: string;
+  description: string;
+  dueAt: string;
+  status: "open" | "completed";
+  createdByLabel: string;
 };
 
 export type InvitationResponse = "pending" | "accepted" | "declined" | "maybe";
