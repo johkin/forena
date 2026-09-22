@@ -22,6 +22,7 @@ export type TeamDashboardData = {
   workspaces: Workspace[];
   tasks: TeamTask[];
   defaultView: DashboardView;
+  canManageTeam: boolean;
   source: "database" | "demo";
 };
 
@@ -36,6 +37,7 @@ function demoDashboard(): TeamDashboardData {
     workspaces: demoWorkspaces,
     tasks: demoTasks,
     defaultView: "leader",
+    canManageTeam: true,
     source: "demo",
   };
 }
@@ -230,5 +232,5 @@ export async function getTeamDashboard(
     })),
   ];
 
-  return { organization, sections: sectionList, team, activity, members, invitations, workspaces, tasks, defaultView: canManageCurrentTeam ? "leader" : "family", source: "database" };
+  return { organization, sections: sectionList, team, activity, members, invitations, workspaces, tasks, defaultView: canManageCurrentTeam ? "leader" : "family", canManageTeam: canManageCurrentTeam, source: "database" };
 }

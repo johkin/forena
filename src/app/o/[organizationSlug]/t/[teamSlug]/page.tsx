@@ -40,6 +40,7 @@ export default async function TeamWorkspacePage({ params }: Props) {
       team={data.team}
       tasks={data.tasks}
       defaultView={data.defaultView}
+      canManageTeam={data.canManageTeam}
       workspaces={data.workspaces}
     />
   );

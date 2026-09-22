@@ -7,7 +7,7 @@
 - [x] Interaktiv vy för aktivitet och kallelsesvar
 - [x] Lokal Supabase-konfiguration och initial databasmigration
 - [x] Grundläggande Row Level Security
-- [ ] Inloggningsflöde och sessionsuppdatering
+- [x] Inloggningsflöde, passkey och sessionsuppdatering
 - [ ] Databastester för RLS-policyer
 - [x] Sektioner och roller på sektions- och lagnivå
 - [x] Aktiv arbetsyta och lagcentrerad routing
@@ -15,8 +15,8 @@
 
 ## 2. Första kompletta föreningsflödet
 
-- [ ] Skapa förening och lag
-- [ ] Bjud in ledare och vårdnadshavare
+- [x] Skapa förening och lag
+- [x] Bjud in ledare och vårdnadshavare
 - [ ] Skapa återkommande aktiviteter
 - [ ] Skicka kallelser via Web Push och mejl
 - [ ] Svara som vårdnadshavare

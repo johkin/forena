@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function requestMagicLink(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const requestedNext = String(formData.get("next") ?? "");
+  const next = requestedNext.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : "/passkey/setup";
 
   if (!email || !email.includes("@")) {
     redirect("/login?error=Ange+en+giltig+e-postadress");
@@ -21,7 +23,7 @@ export async function requestMagicLink(formData: FormData) {
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${origin}/auth/callback?next=/passkey/setup`,
+      emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
       shouldCreateUser: true,
     },
   });

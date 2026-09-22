@@ -43,6 +43,10 @@ export interface Database {
         Timestamped & OrganizationScoped & { team_id: string; user_id: string; role: "team_manager" | "coach" | "editor" },
         OrganizationScoped & { team_id: string; user_id: string; role: "team_manager" | "coach" | "editor"; created_at?: string }
       >;
+      team_member_invitations: Table<
+        Timestamped & OrganizationScoped & { id: string; team_id: string; email: string; role: "leader" | "guardian"; person_display_name: string | null; token_hash: string; invited_by: string; expires_at: string; accepted_at: string | null; accepted_by: string | null },
+        OrganizationScoped & { id?: string; team_id: string; email: string; role: "leader" | "guardian"; person_display_name?: string | null; token_hash: string; invited_by: string; expires_at?: string; accepted_at?: string | null; accepted_by?: string | null; created_at?: string }
+      >;
       people: Table<
         Timestamped & OrganizationScoped & { id: string; user_id: string | null; display_name: string; updated_at: string },
         OrganizationScoped & { id?: string; user_id?: string | null; display_name: string; created_at?: string; updated_at?: string }
@@ -87,6 +91,7 @@ export interface Database {
       has_section_role: { Args: { target_section_id: string; allowed_roles: string[]; target_user_id?: string }; Returns: boolean };
       has_team_role: { Args: { target_team_id: string; allowed_roles: string[]; target_user_id?: string }; Returns: boolean };
       can_manage_team: { Args: { target_team_id: string; target_user_id?: string }; Returns: boolean };
+      accept_team_member_invitation: { Args: { invitation_token_hash: string }; Returns: { organization_slug: string; team_slug: string; invitation_role: string }[] };
     };
     Enums: Record<never, never>;
     CompositeTypes: Record<never, never>;
