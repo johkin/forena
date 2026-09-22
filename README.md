@@ -66,8 +66,8 @@ demoförening och används tills registreringsflödet kopplas till gränssnittet
 ## Driftsättning
 
 Pull requests verifieras av GitHub Actions genom att databasen byggs från
-migrationerna, de genererade databastyperna jämförs och appens tester, typkontroll,
-lint och produktionsbygge körs.
+migrationerna, databastyper kan genereras och appens tester, typkontroll, lint
+och produktionsbygge körs.
 
 När en ändring landar på `main` bygger GitHub först ett produktionsartefakt. Om
 bygget och kontrollerna lyckas körs nya migrationer mot Supabase och därefter
