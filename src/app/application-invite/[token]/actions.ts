@@ -15,6 +15,10 @@ export async function activateApprovedMembership(formData: FormData) {
   const { data, error } = await supabase.rpc("accept_membership_application_invitation", { invitation_token_hash: tokenHash });
   const destination = data?.[0];
   if (error || !destination) {
+    console.error("[membership-application] activation failed", {
+      code: error?.code,
+      message: error?.message ?? "Aktiveringen returnerade inget mål",
+    });
     const message = error?.message?.includes("annan e-postadress") ? "Logga in med den e-postadress som länken skickades till" : error?.message?.includes("gått ut") ? "Aktiveringslänken har gått ut. Kontakta kansliet" : "Medlemskapet kunde inte aktiveras eller länken har redan använts";
     redirect(`/application-invite/${token}?error=${encodeURIComponent(message)}`);
   }
