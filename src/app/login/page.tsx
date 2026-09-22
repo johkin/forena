@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { PasskeySignIn } from "@/components/passkey-sign-in";
 import { requestMagicLink } from "./actions";
 
 type Props = {
@@ -20,6 +21,9 @@ export default async function LoginPage({ searchParams }: Props) {
         <p className="eyebrow">Förena</p>
         <h1>Logga in</h1>
         <p>Vi skickar en säker engångslänk till din e-postadress.</p>
+
+        <PasskeySignIn />
+        <div className="auth-divider"><span>eller</span></div>
 
         {sent === "1" ? (
           <div className="auth-message success">
