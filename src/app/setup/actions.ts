@@ -150,6 +150,32 @@ export async function createWorkspace(formData: FormData) {
     .maybeSingle();
 
   if (!existingActivity) {
+    let { data: activityType } = await supabase
+      .from("activity_types")
+      .select("id")
+      .eq("organization_id", organizationId)
+      .eq("slug", "ovrigt")
+      .maybeSingle();
+    if (!activityType) {
+      const { error: typeError } = await supabase.from("activity_types").insert([
+        { organization_id: organizationId, name: "Träning", slug: "traning", system_category: "session" },
+        { organization_id: organizationId, name: "Match eller tävling", slug: "match-tavling", system_category: "competition" },
+        { organization_id: organizationId, name: "Arbetspass", slug: "arbetspass", system_category: "work" },
+        { organization_id: organizationId, name: "Möte", slug: "mote", system_category: "meeting" },
+        { organization_id: organizationId, name: "Utbildning", slug: "utbildning", system_category: "education" },
+        { organization_id: organizationId, name: "Övrigt", slug: "ovrigt", system_category: "other" },
+      ]);
+      if (typeError) fail("Aktivitetstyperna kunde inte skapas");
+      const result = await supabase
+        .from("activity_types")
+        .select("id")
+        .eq("organization_id", organizationId)
+        .eq("slug", "ovrigt")
+        .single();
+      activityType = result.data;
+    }
+    if (!activityType) fail("Aktivitetstypen kunde inte hittas");
+
     const startsAt = stockholmDateInDays(7, 17, 30);
     const gatheringAt = new Date(startsAt.getTime() - 30 * 60 * 1000);
     const endsAt = new Date(startsAt.getTime() + 90 * 60 * 1000);
@@ -157,6 +183,7 @@ export async function createWorkspace(formData: FormData) {
     const { error } = await supabase.from("activities").insert({
       organization_id: organizationId,
       team_id: teamId,
+      activity_type_id: activityType.id,
       title: "Första lagaktiviteten",
       gathering_at: gatheringAt.toISOString(),
       starts_at: startsAt.toISOString(),

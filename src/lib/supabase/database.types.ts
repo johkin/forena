@@ -72,8 +72,16 @@ export interface Database {
         OrganizationScoped & { id?: string; person_id: string; team_id?: string | null; role: "participant" | "leader" | "volunteer"; starts_on?: string; ends_on?: string | null; created_at?: string }
       >;
       activities: Table<
-        Timestamped & OrganizationScoped & { id: string; team_id: string | null; title: string; gathering_at: string | null; starts_at: string; ends_at: string; location: string; created_by: string | null; updated_at: string },
-        OrganizationScoped & { id?: string; team_id?: string | null; title: string; gathering_at?: string | null; starts_at: string; ends_at: string; location?: string; created_by?: string | null; created_at?: string; updated_at?: string }
+        Timestamped & OrganizationScoped & { id: string; team_id: string | null; activity_type_id: string; series_id: string | null; title: string; description_markdown: string; gathering_at: string | null; starts_at: string; ends_at: string; location: string; source_kind: "manual" | "imported"; external_source: string | null; external_id: string | null; created_by: string | null; updated_at: string },
+        OrganizationScoped & { id?: string; team_id?: string | null; activity_type_id: string; series_id?: string | null; title: string; description_markdown?: string; gathering_at?: string | null; starts_at: string; ends_at: string; location?: string; source_kind?: "manual" | "imported"; external_source?: string | null; external_id?: string | null; created_by?: string | null; created_at?: string; updated_at?: string }
+      >;
+      activity_types: Table<
+        Timestamped & OrganizationScoped & { id: string; name: string; slug: string; system_category: "session" | "competition" | "work" | "meeting" | "education" | "other"; color: string | null; icon: string | null; active: boolean; updated_at: string },
+        OrganizationScoped & { id?: string; name: string; slug: string; system_category: "session" | "competition" | "work" | "meeting" | "education" | "other"; color?: string | null; icon?: string | null; active?: boolean; created_at?: string; updated_at?: string }
+      >;
+      activity_series: Table<
+        Timestamped & OrganizationScoped & { id: string; team_id: string; activity_type_id: string; title: string; location: string; recurrence_rule: Json; starts_on: string; ends_on: string | null; updated_at: string },
+        OrganizationScoped & { id?: string; team_id: string; activity_type_id: string; title: string; location?: string; recurrence_rule: Json; starts_on: string; ends_on?: string | null; created_at?: string; updated_at?: string }
       >;
       invitations: Table<
         Timestamped & OrganizationScoped & { id: string; activity_id: string; person_id: string; response: "pending" | "accepted" | "declined" | "maybe"; responded_at: string | null },
@@ -84,16 +92,24 @@ export interface Database {
         OrganizationScoped & { id?: string; team_id: string; title: string; description?: string; due_at: string; status?: "open" | "completed"; created_by?: string | null; completed_by?: string | null; completed_at?: string | null; created_at?: string; updated_at?: string }
       >;
       contextual_documents: Table<
-        Timestamped & OrganizationScoped & { id: string; title: string; category: "cafe" | "match_host" | "travel" | "equipment" | "other"; summary: string; content_markdown: string; audience: string[]; created_by: string | null; updated_at: string },
-        OrganizationScoped & { id?: string; title: string; category: "cafe" | "match_host" | "travel" | "equipment" | "other"; summary: string; content_markdown?: string; audience?: string[]; created_by?: string | null; created_at?: string; updated_at?: string }
+        Timestamped & OrganizationScoped & { id: string; title: string; summary: string; content_markdown: string; audience: string[]; created_by: string | null; updated_at: string },
+        OrganizationScoped & { id?: string; title: string; summary: string; content_markdown?: string; audience?: string[]; created_by?: string | null; created_at?: string; updated_at?: string }
       >;
       contextual_document_secrets: Table<
         OrganizationScoped & { document_id: string; values: Json; updated_at: string },
         OrganizationScoped & { document_id: string; values?: Json; updated_at?: string }
       >;
-      team_duties: Table<
-        Timestamped & OrganizationScoped & { id: string; team_id: string; document_id: string | null; duty_type: "cafe" | "match_host" | "travel" | "equipment" | "other"; title: string; starts_at: string; ends_at: string; updated_at: string },
-        OrganizationScoped & { id?: string; team_id: string; document_id?: string | null; duty_type: "cafe" | "match_host" | "travel" | "equipment" | "other"; title: string; starts_at: string; ends_at: string; created_at?: string; updated_at?: string }
+      activity_type_documents: Table<
+        Timestamped & OrganizationScoped & { activity_type_id: string; document_id: string; visible_from_offset: string; visible_until_offset: string },
+        OrganizationScoped & { activity_type_id: string; document_id: string; visible_from_offset?: string; visible_until_offset?: string; created_at?: string }
+      >;
+      responsibility_types: Table<
+        Timestamped & OrganizationScoped & { id: string; name: string; slug: string; capabilities: string[]; updated_at: string },
+        OrganizationScoped & { id?: string; name: string; slug: string; capabilities?: string[]; created_at?: string; updated_at?: string }
+      >;
+      team_responsibilities: Table<
+        Timestamped & OrganizationScoped & { id: string; team_id: string; user_id: string; responsibility_type_id: string; starts_on: string; ends_on: string | null },
+        OrganizationScoped & { id?: string; team_id: string; user_id: string; responsibility_type_id: string; starts_on?: string; ends_on?: string | null; created_at?: string }
       >;
       ai_generation_runs: Table<
         Timestamped & OrganizationScoped & { id: string; team_id: string; requested_by: string | null; feature: "team_briefing"; model: string; status: "success" | "fallback"; input_tokens: number | null; output_tokens: number | null; latency_ms: number; signal_count: number; error_code: string | null },

@@ -3,7 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 
 type CreateActivityBody = {
   teamId?: string;
+  activityTypeId?: string;
   title?: string;
+  description?: string;
   gatheringAt?: string;
   startsAt?: string;
   endsAt?: string;
@@ -15,6 +17,7 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as CreateActivityBody | null;
   const title = body?.title?.trim();
   const location = body?.location?.trim() ?? "";
+  const description = body?.description?.trim() ?? "";
   const gatheringAt = body?.gatheringAt ? new Date(body.gatheringAt) : null;
   const startsAt = body?.startsAt ? new Date(body.startsAt) : null;
   const endsAt = body?.endsAt ? new Date(body.endsAt) : null;
@@ -41,6 +44,16 @@ export async function POST(request: Request) {
     .maybeSingle();
   if (!team) return NextResponse.json({ error: "Laget kunde inte hittas" }, { status: 404 });
 
+  const typeQuery = supabase
+    .from("activity_types")
+    .select("id")
+    .eq("organization_id", team.organization_id)
+    .eq("active", true);
+  const { data: activityType } = body.activityTypeId
+    ? await typeQuery.eq("id", body.activityTypeId).maybeSingle()
+    : await typeQuery.eq("slug", "ovrigt").maybeSingle();
+  if (!activityType) return NextResponse.json({ error: "Aktivitetstypen kunde inte hittas" }, { status: 400 });
+
   const { data: allowed } = await supabase.rpc("can_manage_team", { target_team_id: team.id });
   if (!allowed) return NextResponse.json({ error: "Du saknar behörighet för laget" }, { status: 403 });
 
@@ -64,7 +77,9 @@ export async function POST(request: Request) {
     .insert({
       organization_id: team.organization_id,
       team_id: team.id,
+      activity_type_id: activityType.id,
       title,
+      description_markdown: description,
       gathering_at: gatheringAt?.toISOString() ?? null,
       starts_at: startsAt.toISOString(),
       ends_at: endsAt.toISOString(),
