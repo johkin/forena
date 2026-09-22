@@ -11,7 +11,7 @@ flödet förening → lag → aktivitet → kallelse → svar.
 
 Förutsättningar:
 
-- Node.js 20 eller senare
+- Node.js 22 eller senare
 - Docker Desktop, Rancher Desktop, Podman eller annan Docker-kompatibel runtime
 
 ```bash
@@ -62,6 +62,31 @@ kallelser, push-prenumerationer, notifieringsutkö och revisionslogg.
 Row Level Security är aktiverat för samtliga tabeller. Läsning och skrivning
 avgränsas till användarens föreningar och roll. Seedfilen innehåller en fristående
 demoförening och används tills registreringsflödet kopplas till gränssnittet.
+
+## Driftsättning
+
+Pull requests verifieras av GitHub Actions genom att databasen byggs från
+migrationerna, databastyper kan genereras och appens tester, typkontroll, lint
+och produktionsbygge körs.
+
+När en ändring landar på `main` bygger GitHub först ett produktionsartefakt. Om
+bygget och kontrollerna lyckas körs nya migrationer mot Supabase och därefter
+publiceras samma artefakt till Vercel. Vercels automatiska Git-deploy är avstängd
+i `vercel.json` för att databasmigreringen alltid ska ske före publiceringen.
+
+Lägg följande secrets i GitHub-miljön `production`:
+
+- `SUPABASE_ACCESS_TOKEN`
+- `SUPABASE_DB_PASSWORD`
+- `SUPABASE_PROJECT_ID`
+- `VERCEL_TOKEN`
+- `VERCEL_ORG_ID`
+- `VERCEL_PROJECT_ID`
+
+Vercel-projektet ska dessutom ha `NEXT_PUBLIC_SUPABASE_URL` och
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` konfigurerade för Production. Endast den
+publika Supabase-nyckeln får exponeras i webbläsaren; lägg aldrig in en secret-
+eller service-role-nyckel som `NEXT_PUBLIC_*`.
 
 ## Principer
 
