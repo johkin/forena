@@ -7,6 +7,24 @@ import { createClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 
 const DEFAULT_MODEL = "google/gemini-2.5-flash-lite";
+const PRIVATE_CACHE_HEADERS = {
+  "Cache-Control": "private, max-age=300",
+  Vary: "Cookie",
+};
+
+type BriefingContext = {
+  teamId: string;
+  organizationId: string;
+  activity: { id: string; title: string; dueAt: string; pendingInvitations: number } | null;
+  tasks: { id: string; title: string; dueAt: string }[];
+};
+
+function isBriefingContext(value: Json): value is BriefingContext {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  return typeof value.teamId === "string"
+    && typeof value.organizationId === "string"
+    && Array.isArray(value.tasks);
+}
 
 function safeErrorCode(error: unknown) {
   if (error instanceof Error) {
@@ -16,55 +34,29 @@ function safeErrorCode(error: unknown) {
   return "gateway_error";
 }
 
-export async function POST(request: Request) {
+export async function GET(request: Request) {
   const startedAt = Date.now();
   const supabase = await createClient();
-  const { data: authData } = await supabase.auth.getUser();
-  if (!authData.user) return NextResponse.json({ error: "Du behöver vara inloggad." }, { status: 401 });
+  const { data: authData, error: authError } = await supabase.auth.getClaims();
+  const userId = authData?.claims.sub;
+  if (authError || typeof userId !== "string") {
+    return NextResponse.json({ error: "Du behöver vara inloggad." }, { status: 401 });
+  }
 
-  const body = await request.json().catch(() => null) as { teamId?: unknown } | null;
-  if (!body || typeof body.teamId !== "string") {
+  const teamId = new URL(request.url).searchParams.get("teamId");
+  if (!teamId) {
     return NextResponse.json({ error: "Lag saknas." }, { status: 400 });
   }
 
-  const { data: canManage, error: accessError } = await supabase.rpc("can_manage_team", { target_team_id: body.teamId });
-  if (accessError || !canManage) {
+  const { data: contextData, error: contextError } = await supabase.rpc("get_team_briefing_context", {
+    target_team_id: teamId,
+  });
+  if (contextError || !contextData || !isBriefingContext(contextData)) {
     return NextResponse.json({ error: "Du saknar behörighet att skapa lagöversikten." }, { status: 403 });
   }
-
-  const { data: team } = await supabase
-    .from("teams")
-    .select("id, organization_id")
-    .eq("id", body.teamId)
-    .maybeSingle();
-  if (!team) return NextResponse.json({ error: "Laget hittades inte." }, { status: 404 });
-
-  const now = new Date().toISOString();
-  const [{ data: activity }, { data: tasks }] = await Promise.all([
-    supabase
-      .from("activities")
-      .select("id, title, gathering_at, starts_at")
-      .eq("team_id", team.id)
-      .gte("ends_at", now)
-      .order("starts_at")
-      .limit(1)
-      .maybeSingle(),
-    supabase
-      .from("team_tasks")
-      .select("id, title, due_at")
-      .eq("team_id", team.id)
-      .eq("status", "open")
-      .order("due_at")
-      .limit(8),
-  ]);
-
-  const { count: pendingInvitations } = activity
-    ? await supabase
-        .from("invitations")
-        .select("id", { count: "exact", head: true })
-        .eq("activity_id", activity.id)
-        .eq("response", "pending")
-    : { count: 0 };
+  const team = { id: contextData.teamId, organization_id: contextData.organizationId };
+  const activity = contextData.activity;
+  const tasks = contextData.tasks;
 
   const signals: TeamSignal[] = [];
   if (activity) {
@@ -73,27 +65,27 @@ export async function POST(request: Request) {
       kind: "activity",
       title: activity.title,
       detail: "Nästa aktivitet för laget",
-      dueAt: activity.gathering_at ?? activity.starts_at,
+      dueAt: activity.dueAt,
       importance: "normal",
     });
-    if ((pendingInvitations ?? 0) > 0) {
+    if (activity.pendingInvitations > 0) {
       signals.push({
         id: `invitations:${activity.id}`,
         kind: "invitation",
-        title: `${pendingInvitations} obesvarade kallelser`,
+        title: `${activity.pendingInvitations} obesvarade kallelser`,
         detail: `Behöver följas upp före ${activity.title}`,
-        dueAt: activity.gathering_at ?? activity.starts_at,
+        dueAt: activity.dueAt,
         importance: "high",
       });
     }
   }
-  for (const task of tasks ?? []) {
+  for (const task of tasks) {
     signals.push({
       id: `task:${task.id}`,
       kind: "task",
       title: task.title,
       detail: "Öppen uppgift från kansliet",
-      dueAt: task.due_at,
+      dueAt: task.dueAt,
       importance: "high",
     });
   }
@@ -125,7 +117,7 @@ export async function POST(request: Request) {
       model: cached.model,
       usage: {},
       latencyMs,
-    });
+    }, { headers: PRIVATE_CACHE_HEADERS });
   }
 
   let source: "ai" | "fallback" = "fallback";
@@ -138,7 +130,7 @@ export async function POST(request: Request) {
       const generated = await generateTeamBriefing({
         signals,
         model,
-        userReference: createHash("sha256").update(authData.user.id).digest("hex").slice(0, 24),
+        userReference: createHash("sha256").update(userId).digest("hex").slice(0, 24),
       });
       briefing = generated.briefing;
       usage = generated.usage;
@@ -169,7 +161,7 @@ export async function POST(request: Request) {
   const { error: logError } = await supabase.from("ai_generation_runs").insert({
     organization_id: team.organization_id,
     team_id: team.id,
-    requested_by: authData.user.id,
+    requested_by: userId,
     feature: "team_briefing",
     model,
     status: source === "ai" ? "success" : "fallback",
@@ -203,5 +195,5 @@ export async function POST(request: Request) {
     model,
     usage,
     latencyMs,
-  });
+  }, { headers: PRIVATE_CACHE_HEADERS });
 }

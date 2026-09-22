@@ -13,6 +13,7 @@ type BriefingResponse = {
   model: string;
   usage: { inputTokens?: number; outputTokens?: number };
   latencyMs: number;
+  fetchMs?: number;
 };
 
 function formatDueAt(value: string) {
@@ -31,18 +32,17 @@ export function TeamBriefingCard({ teamId, assistantName, demo }: { teamId: stri
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
 
-  async function generate() {
+  async function generate(refresh = false) {
     setLoading(true);
     setError(undefined);
+    const startedAt = performance.now();
     try {
-      const response = await fetch("/api/ai/team-briefing", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ teamId }),
+      const response = await fetch(`/api/ai/team-briefing?teamId=${encodeURIComponent(teamId)}`, {
+        cache: refresh ? "reload" : "default",
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Översikten kunde inte skapas.");
-      setResult(body);
+      setResult({ ...body, fetchMs: Math.round(performance.now() - startedAt) });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Översikten kunde inte skapas.");
     } finally {
@@ -69,9 +69,9 @@ export function TeamBriefingCard({ teamId, assistantName, demo }: { teamId: stri
           <ol>{result.briefing.items.map(({ signalId, reason, signal }) => <li key={signalId}><strong>{signal.title}</strong><small>{reason}</small><em>{formatDueAt(signal.dueAt)}</em></li>)}</ol>
         </div>
         <div className="briefing-meta">
-          <span>{result.latencyMs} ms</span>
+          <span>{result.fetchMs ?? result.latencyMs} ms</span>
           <span>{(result.usage.inputTokens ?? 0) + (result.usage.outputTokens ?? 0)} tokens</span>
-          <button onClick={() => void generate()} disabled={loading} type="button">{loading ? "Uppdaterar…" : "Uppdatera"}</button>
+          <button onClick={() => void generate(true)} disabled={loading} type="button">{loading ? "Uppdaterar…" : "Uppdatera"}</button>
         </div>
       </>}
     </article>

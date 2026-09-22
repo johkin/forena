@@ -111,6 +111,7 @@ export interface Database {
       has_section_role: { Args: { target_section_id: string; allowed_roles: string[]; target_user_id?: string }; Returns: boolean };
       has_team_role: { Args: { target_team_id: string; allowed_roles: string[]; target_user_id?: string }; Returns: boolean };
       can_manage_team: { Args: { target_team_id: string; target_user_id?: string }; Returns: boolean };
+      get_team_briefing_context: { Args: { target_team_id: string }; Returns: Json };
       accept_team_member_invitation: { Args: { invitation_token_hash: string }; Returns: { organization_slug: string; team_slug: string; invitation_role: string }[] };
       get_join_options: { Args: { requested_organization_slug: string }; Returns: { organization_id: string; organization_name: string; organization_slug: string; section_id: string; section_name: string; section_slug: string; team_id: string; team_name: string; team_slug: string }[] };
       submit_membership_application: { Args: { payload: Json }; Returns: string };
