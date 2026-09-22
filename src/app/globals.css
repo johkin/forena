@@ -177,3 +177,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .auth-message, .auth-error { margin: 0 0 18px; padding: 11px 13px; border-radius: 10px; font-size: 13px; }
 .auth-message { border: 1px solid #b9d8c7; background: #eaf7ef; }
 .auth-error { border: 1px solid #e7b9aa; background: #fbe9e2; color: #7f3821; }
+.passkey-action { display: grid; gap: 12px; }
+.passkey-button { width: 100%; }
+.auth-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; color: var(--ink-soft); font-size: 12px; }
+.auth-divider::before, .auth-divider::after { content: ""; height: 1px; flex: 1; background: var(--line); }
+.auth-muted { color: var(--ink-soft); font-size: 14px; }
+.link-button { padding: 8px; border: 0; background: transparent; color: var(--ink-soft); cursor: pointer; text-decoration: underline; }
