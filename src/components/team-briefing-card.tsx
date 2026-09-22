@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { TeamSignal } from "@/lib/ai/team-briefing";
 
 type BriefingResponse = {
@@ -31,8 +31,9 @@ export function TeamBriefingCard({ teamId, assistantName, demo }: { teamId: stri
   const [result, setResult] = useState<BriefingResponse>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
+  const initialLoadStarted = useRef(false);
 
-  async function generate(refresh = false) {
+  const generate = useCallback(async (refresh = false) => {
     setLoading(true);
     setError(undefined);
     const startedAt = performance.now();
@@ -48,7 +49,13 @@ export function TeamBriefingCard({ teamId, assistantName, demo }: { teamId: stri
     } finally {
       setLoading(false);
     }
-  }
+  }, [teamId]);
+
+  useEffect(() => {
+    if (demo || initialLoadStarted.current) return;
+    initialLoadStarted.current = true;
+    void generate();
+  }, [demo, generate]);
 
   return (
     <article className="card assistant-card briefing-card">
@@ -58,9 +65,11 @@ export function TeamBriefingCard({ teamId, assistantName, demo }: { teamId: stri
       </div>
       {!result ? <>
         <p>Prioriterar aktiviteter, obesvarade kallelser och uppgifter. Modellen får inga kontaktuppgifter.</p>
-        <button className="briefing-generate" disabled={loading || demo} onClick={() => void generate()} type="button">
-          {demo ? "Kräver databasläge" : loading ? "Prioriterar…" : "Skapa lagöversikt"}
-        </button>
+        {loading
+          ? <p className="briefing-loading" role="status">Prioriterar lagets viktigaste information…</p>
+          : <button className="briefing-generate" disabled={demo} onClick={() => void generate()} type="button">
+              {demo ? "Kräver databasläge" : error ? "Försök igen" : "Ladda lagöversikt"}
+            </button>}
         {error && <p className="briefing-error" role="alert">{error}</p>}
       </> : <>
         <div className="briefing-result">
