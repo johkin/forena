@@ -6,12 +6,12 @@ import { LogoutButton } from "@/components/logout-button";
 import { TeamBriefingCard } from "@/components/team-briefing-card";
 import {
   respondToInvitation, summarizeInvitations, type Activity, type DashboardView, type Invitation,
-  type Member, type Organization, type Section, type Team, type TeamTask, type Workspace,
+  type FamilyActivity, type Member, type Organization, type Section, type Team, type TeamTask, type Workspace,
 } from "@/domain/club";
 
 type Props = {
   organization: Organization; sections: Section[]; team: Team; activity: Activity; members: Member[];
-  initialInvitations: Invitation[]; workspaces: Workspace[]; tasks: TeamTask[]; defaultView: DashboardView;
+  initialInvitations: Invitation[]; initialFamilyActivities: FamilyActivity[]; workspaces: Workspace[]; tasks: TeamTask[];
   canManageTeam: boolean;
   source: "database" | "demo";
 };
@@ -29,10 +29,11 @@ function timeUntil(value: string) {
   return hours > 0 ? `${hours} timmar` : "Snart dags";
 }
 
-export function ClubDashboard({ organization, sections, team, activity, members, initialInvitations, workspaces, tasks, defaultView, canManageTeam, source }: Props) {
+export function ClubDashboard({ organization, sections, team, activity, members, initialInvitations, initialFamilyActivities, workspaces, tasks, canManageTeam, source }: Props) {
   const [currentActivity, setCurrentActivity] = useState(activity);
   const [invitations, setInvitations] = useState(initialInvitations);
-  const [view, setView] = useState<DashboardView>(defaultView);
+  const view: DashboardView = canManageTeam ? "leader" : "family";
+  const [familyActivities, setFamilyActivities] = useState(initialFamilyActivities);
   const [notice, setNotice] = useState<string>();
   const [showActivityForm, setShowActivityForm] = useState(false);
   const [savingActivity, setSavingActivity] = useState(false);
@@ -54,6 +55,17 @@ export function ClubDashboard({ organization, sections, team, activity, members,
     }
     setInvitations((current) => current.map((item) => (item.id === invitation.id ? updated : item)));
     setNotice(`${memberById.get(invitation.memberId)?.displayName} är registrerad som ”${responseLabels[response]}”.`);
+  }
+
+  async function answerFamily(item: FamilyActivity, response: "accepted" | "declined" | "maybe") {
+    if (!item.invitation) return;
+    const updated = respondToInvitation(item.invitation, response);
+    if (source === "database") {
+      const result = await fetch(`/api/invitations/${item.invitation.id}/respond`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ response }) });
+      if (!result.ok) { setNotice("Svaret kunde inte sparas. Kontrollera din behörighet och försök igen."); return; }
+    }
+    setFamilyActivities((current) => current.map((candidate) => candidate.invitation?.id === item.invitation?.id ? { ...candidate, invitation: updated } : candidate));
+    setNotice(`${item.member.displayName} är registrerad som ”${responseLabels[response]}”.`);
   }
 
   async function createActivity(form: HTMLFormElement) {
@@ -148,9 +160,24 @@ export function ClubDashboard({ organization, sections, team, activity, members,
         </aside>
         <section className="content" id="overview">
           <div className="welcome"><div><p className="eyebrow">{sections.length > 1 ? `${sections.find((item) => item.id === team.sectionId)?.name ?? "Sektion"} · ` : ""}{organization.name}</p><h1>{team.name}</h1><p>{view === "leader" ? "Det laget behöver från dig just nu." : `Det viktigaste för ${familyMember?.displayName ?? "spelaren"} just nu.`}</p></div>{view === "leader" && canManageTeam && <div className="welcome-actions"><button className="secondary" onClick={() => setShowInvitationForm(true)} type="button">Bjud in ledare</button><button className="primary" onClick={() => setShowActivityForm(true)} type="button">+ Ny aktivitet</button></div>}</div>
-          <div className="view-switch" aria-label="Förhandsvisa dashboard som"><span>Visa som</span><button className={view === "leader" ? "selected" : ""} onClick={() => setView("leader")} type="button">Ledare</button><button className={view === "family" ? "selected" : ""} onClick={() => setView("family")} type="button">Spelare / målsman</button></div>
           {notice && <div className="toast" role="status">✓ {notice}</div>}
-          {source === "demo" && <div className="demo-notice">Demoläge · växla roll ovan för att jämföra vyerna</div>}
+          {source === "demo" && <div className="demo-notice">Demoläge</div>}
+          {familyActivities.length > 0 && <section className="family-overview" aria-labelledby="family-overview-title">
+            <div className="card-heading"><div><p className="eyebrow">Familjen</p><h2 id="family-overview-title">Barnens nästa aktiviteter</h2></div></div>
+            <div className="family-activity-grid">{familyActivities.map((item) => {
+              const dueAt = item.activity.gatheringAt ?? item.activity.startsAt;
+              return <article className="card family-activity-card" key={`${item.member.id}:${item.activity.id}`}>
+                <p className="eyebrow">{item.member.displayName} · {item.team.name}</p>
+                <h3>{item.activity.title}</h3>
+                <strong>{item.activity.gatheringAt ? `Samling om ${timeUntil(dueAt)}` : `Start om ${timeUntil(dueAt)}`}</strong>
+                <small>{formatDate(dueAt)} · {item.activity.location}</small>
+                {item.invitation ? item.invitation.response === "pending"
+                  ? <div className="response-actions"><button onClick={() => void answerFamily(item, "accepted")} type="button">Kommer</button><button onClick={() => void answerFamily(item, "declined")} type="button">Kan inte</button></div>
+                  : <span className={`status ${item.invitation.response}`}>{responseLabels[item.invitation.response]}</span>
+                  : <small>Ingen kallelse skickad ännu</small>}
+              </article>;
+            })}</div>
+          </section>}
           <div className="grid">
             <div className="main-column">
               <article className="card activity-card">

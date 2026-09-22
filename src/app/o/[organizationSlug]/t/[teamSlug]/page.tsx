@@ -39,7 +39,7 @@ export default async function TeamWorkspacePage({ params }: Props) {
       source={data.source}
       team={data.team}
       tasks={data.tasks}
-      defaultView={data.defaultView}
+      initialFamilyActivities={data.familyActivities}
       canManageTeam={data.canManageTeam}
       workspaces={data.workspaces}
     />

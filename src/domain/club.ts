@@ -53,6 +53,13 @@ export type Activity = {
 
 export type DashboardView = "leader" | "family";
 
+export type FamilyActivity = {
+  member: Member;
+  team: Team;
+  activity: Activity;
+  invitation?: Invitation;
+};
+
 export type TeamTask = {
   id: EntityId;
   organizationId: EntityId;

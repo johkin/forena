@@ -8,7 +8,7 @@ import {
   tasks as demoTasks,
   workspaces as demoWorkspaces,
 } from "@/data/demo";
-import type { Activity, DashboardView, Invitation, Member, Organization, Section, Team, TeamTask, Workspace } from "@/domain/club";
+import type { Activity, FamilyActivity, Invitation, Member, Organization, Section, Team, TeamTask, Workspace } from "@/domain/club";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 
@@ -21,7 +21,7 @@ export type TeamDashboardData = {
   invitations: Invitation[];
   workspaces: Workspace[];
   tasks: TeamTask[];
-  defaultView: DashboardView;
+  familyActivities: FamilyActivity[];
   canManageTeam: boolean;
   source: "database" | "demo";
 };
@@ -36,7 +36,7 @@ function demoDashboard(): TeamDashboardData {
     invitations: demoInvitations,
     workspaces: demoWorkspaces,
     tasks: demoTasks,
-    defaultView: "leader",
+    familyActivities: [],
     canManageTeam: true,
     source: "demo",
   };
@@ -105,6 +105,32 @@ export async function getTeamDashboard(
   }
 
   if (!accessibleTeams.some((item) => item.id === teamRow.id)) return null;
+
+  const [{ data: guardianLinksForUser }, { data: ownPeopleForUser }] = await Promise.all([
+    supabase.from("person_guardians").select("person_id").eq("organization_id", organizationRow.id).eq("guardian_user_id", authData.user.id),
+    supabase.from("people").select("id").eq("organization_id", organizationRow.id).eq("user_id", authData.user.id),
+  ]);
+  const familyPersonIds = [...new Set([
+    ...(guardianLinksForUser ?? []).map((item) => item.person_id),
+    ...(ownPeopleForUser ?? []).map((item) => item.id),
+  ])];
+  const { data: familyMembershipRows } = familyPersonIds.length
+    ? await supabase.from("memberships").select("person_id, team_id").in("person_id", familyPersonIds).eq("role", "participant").is("ends_on", null)
+    : { data: [] };
+  const familyTeamIds = [...new Set((familyMembershipRows ?? []).flatMap((item) => item.team_id ? [item.team_id] : []))];
+  const [{ data: familyPeopleRows }, { data: familyTeamRows }, { data: familyActivityRows }] = await Promise.all([
+    familyPersonIds.length ? supabase.from("people").select("id, organization_id, display_name").in("id", familyPersonIds) : Promise.resolve({ data: [] }),
+    familyTeamIds.length ? supabase.from("teams").select("id, organization_id, section_id, slug, name, season").in("id", familyTeamIds) : Promise.resolve({ data: [] }),
+    familyTeamIds.length ? supabase.from("activities").select("id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location").in("team_id", familyTeamIds).gte("ends_at", new Date().toISOString()).order("starts_at") : Promise.resolve({ data: [] }),
+  ]);
+  const nextActivityByTeam = new Map<string, NonNullable<typeof familyActivityRows>[number]>();
+  for (const item of familyActivityRows ?? []) {
+    if (item.team_id && !nextActivityByTeam.has(item.team_id)) nextActivityByTeam.set(item.team_id, item);
+  }
+  const familyActivityIds = [...nextActivityByTeam.values()].map((item) => item.id);
+  const { data: familyInvitationRows } = familyActivityIds.length && familyPersonIds.length
+    ? await supabase.from("invitations").select("id, organization_id, activity_id, person_id, response, responded_at").in("activity_id", familyActivityIds).in("person_id", familyPersonIds)
+    : { data: [] };
 
   const { data: activityRow } = await supabase
     .from("activities")
@@ -233,5 +259,23 @@ export async function getTeamDashboard(
     })),
   ];
 
-  return { organization, sections: sectionList, team, activity, members, invitations, workspaces, tasks, defaultView: canManageCurrentTeam ? "leader" : "family", canManageTeam: canManageCurrentTeam, source: "database" };
+  const familyPeopleById = new Map((familyPeopleRows ?? []).map((item) => [item.id, item]));
+  const familyTeamsById = new Map((familyTeamRows ?? []).map((item) => [item.id, item]));
+  const familyInvitationByKey = new Map((familyInvitationRows ?? []).map((item) => [`${item.person_id}:${item.activity_id}`, item]));
+  const familyActivities: FamilyActivity[] = (familyMembershipRows ?? []).flatMap((membership) => {
+    if (!membership.team_id) return [];
+    const person = familyPeopleById.get(membership.person_id);
+    const teamItem = familyTeamsById.get(membership.team_id);
+    const activityItem = nextActivityByTeam.get(membership.team_id);
+    if (!person || !teamItem || !activityItem) return [];
+    const invitationItem = familyInvitationByKey.get(`${person.id}:${activityItem.id}`);
+    return [{
+      member: { id: person.id, organizationId: person.organization_id, displayName: person.display_name },
+      team: { id: teamItem.id, organizationId: teamItem.organization_id, sectionId: teamItem.section_id, slug: teamItem.slug, name: teamItem.name, season: teamItem.season },
+      activity: { id: activityItem.id, organizationId: activityItem.organization_id, teamId: activityItem.team_id ?? teamItem.id, title: activityItem.title, gatheringAt: activityItem.gathering_at ?? undefined, startsAt: activityItem.starts_at, endsAt: activityItem.ends_at, location: activityItem.location },
+      invitation: invitationItem ? { id: invitationItem.id, organizationId: invitationItem.organization_id, activityId: invitationItem.activity_id, memberId: invitationItem.person_id, response: invitationItem.response, respondedAt: invitationItem.responded_at ?? undefined } : undefined,
+    }];
+  });
+
+  return { organization, sections: sectionList, team, activity, members, invitations, workspaces, tasks, familyActivities, canManageTeam: canManageCurrentTeam, source: "database" };
 }

@@ -49,6 +49,16 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .view-switch span { padding: 0 8px; color: var(--ink-soft); font-size: 12px; font-weight: 700; }
 .view-switch button { padding: 8px 11px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-soft); font-size: 12px; font-weight: 700; cursor: pointer; }
 .view-switch button.selected { background: var(--ink); color: white; }
+.family-overview { display: grid; gap: 14px; margin-bottom: 24px; }
+.family-overview > .card-heading { align-items: end; }
+.family-activity-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.family-activity-card { display: grid; gap: 9px; box-shadow: none; }
+.family-activity-card .eyebrow { margin-bottom: 0; }
+.family-activity-card h3 { margin: 0; font-size: 18px; }
+.family-activity-card > strong { margin-top: 5px; font-family: Georgia, serif; font-size: 22px; font-weight: 500; }
+.family-activity-card > small { color: var(--ink-soft); line-height: 1.4; }
+.family-activity-card .response-actions { margin-top: 8px; }
+.family-activity-card .status { width: fit-content; margin-top: 8px; }
 .grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(280px, .75fr); gap: 22px; align-items: start; }
 .main-column { display: grid; gap: 22px; }
 .right-column { display: grid; gap: 22px; }
