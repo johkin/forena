@@ -11,7 +11,15 @@ export default async function JoinPage({ params, searchParams }: Props) {
   const { organizationSlug } = await params;
   const query = await searchParams;
   const supabase = await createClient();
-  const { data } = await supabase.rpc("get_join_options", { requested_organization_slug: organizationSlug });
+  const { data, error } = await supabase.rpc("get_join_options", { requested_organization_slug: organizationSlug });
+  if (error) {
+    console.error("[membership-application] join options failed", {
+      organizationSlug,
+      code: error.code,
+      message: error.message,
+    });
+    throw new Error("Medlemsansökan kunde inte laddas.");
+  }
   if (!data?.length) notFound();
 
   if (query.sent === "1") {
