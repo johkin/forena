@@ -99,6 +99,7 @@ eller service-role-nyckel som `NEXT_PUBLIC_*`.
 Se [docs/architecture.md](docs/architecture.md) för den första arkitekturen och
 [docs/roadmap.md](docs/roadmap.md) för föreslagen ordning framåt.
 
+
 ## Licens
 
 GNU Affero General Public License v3.0. Se [LICENSE](LICENSE).
