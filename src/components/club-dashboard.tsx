@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
+import { LogoutButton } from "@/components/logout-button";
 import {
   respondToInvitation, summarizeInvitations, type Activity, type DashboardView, type Invitation,
   type Member, type Organization, type Section, type Team, type TeamTask, type Workspace,
@@ -103,7 +104,10 @@ export function ClubDashboard({ organization, sections, team, activity, members,
     <main>
       <header className="topbar">
         <a className="brand" href="#" aria-label="Förena startsida"><span className="brand-mark">F</span><span>Förena</span></a>
-        <WorkspaceSwitcher organization={organization} team={team} workspaces={workspaces} />
+        <div className="topbar-actions">
+          <WorkspaceSwitcher organization={organization} team={team} workspaces={workspaces} />
+          <LogoutButton />
+        </div>
       </header>
       <div className="shell">
         <aside className="sidebar" aria-label="Huvudmeny">
