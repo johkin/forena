@@ -220,14 +220,55 @@ Driften bör ha:
 - regelbunden återställningstest av backup,
 - säkerhetsgranskning och penetrationstest före bred lansering.
 
-## Dataminimering
+## Personnummer, LOK-stöd och dataminimering
 
-Varje personfält ska kunna motiveras utifrån en produktfunktion. Förena ska
-aktivt ifrågasätta behovet av exempelvis fullständigt personnummer, bostadsadress,
-historiska kontaktuppgifter och annan information som inte krävs för den
-aktuella verksamheten.
+Förena behöver kunna hantera fullständigt personnummer när det finns ett
+konkret verksamhetskrav, särskilt för underlag och rapportering av LOK-stöd.
+Dataminimering innebär därför inte att personnummer alltid kan undvikas, utan
+att uppgiften isoleras och endast används av de funktioner som behöver den.
 
-Information som inte lagras kan inte läcka från Förena.
+Personnummer ska behandlas som identitetsdata i Identity Vault och inte vara en
+vanlig egenskap som sprids genom domänmodellen. Aktiviteter, kallelser,
+närvarolistor, cafépass, den personliga feeden och AI-funktioner ska normalt
+arbeta med opaka `person_id` och inte läsa personnummer.
+
+Ett LOK-flöde kan däremot ges en särskild, snäv behörighet:
+
+```text
+LOK-underlag / rapportering
+        |
+authorized application service
+        |
+Identity Vault ---- personnummer
+        |
+attendance / activity data
+        |
+LOK-underlag
+```
+
+Vanliga användare behöver inte få se personnumret bara för att Förena behöver
+lagra det. UI:t bör där det är möjligt visa exempelvis att en persons identitet
+är verifierad eller att nödvändiga LOK-uppgifter finns, utan att exponera själva
+personnumret.
+
+Personnummer bör skyddas med applikations- eller fältnivåkryptering så att ett
+rent databasläckage inte automatiskt exponerar klartextvärden. Krypteringsnyckeln
+ska hållas separat från databasen och åtkomst till dekryptering ska vara
+begränsad till uttryckligen behöriga tjänster och operationer. Exakt
+nyckelhantering och krypteringslösning ska beslutas innan verkliga personnummer
+lagras.
+
+För personer med skyddade personuppgifter ska vanliga användare inte heller
+behöva se skyddsstatus eller orsaken till att vissa uppgifter är begränsade.
+LOK-funktioner och andra uttryckligen behöriga processer kan hantera nödvändig
+identitetsinformation utan att den exponeras i den normala användarupplevelsen.
+
+Varje personfält ska fortfarande kunna motiveras utifrån en produktfunktion.
+Bostadsadress, historiska kontaktuppgifter och andra uppgifter ska inte samlas in
+enbart för att de kan vara användbara senare.
+
+Information som inte lagras kan inte läcka från Förena, och information som
+måste lagras ska hållas inom minsta möjliga säkerhets- och behörighetsgräns.
 
 ## Säkerhet före pilot
 
@@ -236,6 +277,8 @@ medlemsuppgifter:
 
 - [ ] Definiera dataklassningen PUBLIC/MEMBER/TEAM/PERSONAL/RESTRICTED
 - [ ] Definiera Identity Vault och separationen mellan identitet och domändata
+- [ ] Definiera kryptering och separat nyckelhantering för personnummer
+- [ ] Begränsa personnummer till särskilt behöriga identitets- och LOK-flöden
 - [ ] Definiera särskild modell för personer med skyddade personuppgifter
 - [ ] Implementera och testa tenant-isolering och RLS med negativa tester
 - [ ] Inför central applikationsbehörighet ovanpå RLS
