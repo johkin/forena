@@ -75,7 +75,7 @@ export function TeamBriefingCard({ teamId, assistantName, demo }: { teamId: stri
         <div className="briefing-result">
           <div className="briefing-title"><strong>{result.briefing.headline}</strong><span>{result.source === "ai" ? "AI" : result.source === "cache" ? "Cache" : "Reservläge"}</span></div>
           <p>{result.briefing.summary}</p>
-          <ol>{result.briefing.items.map(({ signalId, reason, signal }) => <li key={signalId}><strong>{signal.title}</strong><small>{reason}</small><em>{formatDueAt(signal.dueAt)}</em></li>)}</ol>
+          <ol>{result.briefing.items.map(({ signalId, reason, signal }) => <li key={signalId}><strong>{signal.title}</strong><small>{signal.detail}</small><small>{reason}</small><em>{formatDueAt(signal.dueAt)}</em></li>)}</ol>
         </div>
         <div className="briefing-meta">
           <span>{result.fetchMs ?? result.latencyMs} ms</span>

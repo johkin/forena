@@ -17,13 +17,15 @@ type BriefingContext = {
   organizationId: string;
   activity: { id: string; title: string; dueAt: string; pendingInvitations: number } | null;
   tasks: { id: string; title: string; dueAt: string }[];
+  instructions: { id: string; title: string; dueAt: string; documentTitle: string; summary: string }[];
 };
 
 function isBriefingContext(value: Json): value is BriefingContext {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   return typeof value.teamId === "string"
     && typeof value.organizationId === "string"
-    && Array.isArray(value.tasks);
+    && Array.isArray(value.tasks)
+    && Array.isArray(value.instructions);
 }
 
 function safeErrorCode(error: unknown) {
@@ -86,6 +88,16 @@ export async function GET(request: Request) {
       title: task.title,
       detail: "Öppen uppgift från kansliet",
       dueAt: task.dueAt,
+      importance: "high",
+    });
+  }
+  for (const instruction of contextData.instructions) {
+    signals.push({
+      id: `instruction:${instruction.id}`,
+      kind: "instruction",
+      title: instruction.title,
+      detail: `${instruction.documentTitle}: ${instruction.summary}`,
+      dueAt: instruction.dueAt,
       importance: "high",
     });
   }

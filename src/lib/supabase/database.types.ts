@@ -83,6 +83,18 @@ export interface Database {
         Timestamped & OrganizationScoped & { id: string; team_id: string; title: string; description: string; due_at: string; status: "open" | "completed"; created_by: string | null; completed_by: string | null; completed_at: string | null; updated_at: string },
         OrganizationScoped & { id?: string; team_id: string; title: string; description?: string; due_at: string; status?: "open" | "completed"; created_by?: string | null; completed_by?: string | null; completed_at?: string | null; created_at?: string; updated_at?: string }
       >;
+      contextual_documents: Table<
+        Timestamped & OrganizationScoped & { id: string; title: string; category: "cafe" | "match_host" | "travel" | "equipment" | "other"; summary: string; content_markdown: string; audience: string[]; created_by: string | null; updated_at: string },
+        OrganizationScoped & { id?: string; title: string; category: "cafe" | "match_host" | "travel" | "equipment" | "other"; summary: string; content_markdown?: string; audience?: string[]; created_by?: string | null; created_at?: string; updated_at?: string }
+      >;
+      contextual_document_secrets: Table<
+        OrganizationScoped & { document_id: string; values: Json; updated_at: string },
+        OrganizationScoped & { document_id: string; values?: Json; updated_at?: string }
+      >;
+      team_duties: Table<
+        Timestamped & OrganizationScoped & { id: string; team_id: string; document_id: string | null; duty_type: "cafe" | "match_host" | "travel" | "equipment" | "other"; title: string; starts_at: string; ends_at: string; updated_at: string },
+        OrganizationScoped & { id?: string; team_id: string; document_id?: string | null; duty_type: "cafe" | "match_host" | "travel" | "equipment" | "other"; title: string; starts_at: string; ends_at: string; created_at?: string; updated_at?: string }
+      >;
       ai_generation_runs: Table<
         Timestamped & OrganizationScoped & { id: string; team_id: string; requested_by: string | null; feature: "team_briefing"; model: string; status: "success" | "fallback"; input_tokens: number | null; output_tokens: number | null; latency_ms: number; signal_count: number; error_code: string | null },
         OrganizationScoped & { id?: string; team_id: string; requested_by?: string | null; feature: "team_briefing"; model: string; status: "success" | "fallback"; input_tokens?: number; output_tokens?: number; latency_ms: number; signal_count: number; error_code?: string | null; created_at?: string }

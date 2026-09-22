@@ -2,7 +2,7 @@ import { generateText, jsonSchema, Output, type LanguageModel } from "ai";
 
 export type TeamSignal = {
   id: string;
-  kind: "activity" | "invitation" | "task";
+  kind: "activity" | "invitation" | "task" | "instruction";
   title: string;
   detail: string;
   dueAt: string;
