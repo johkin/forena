@@ -41,6 +41,15 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@59.25.0
 
+      - name: Link Vercel project
+        run: |
+          rm -rf .vercel
+          vercel link \
+            --yes \
+            --project="$VERCEL_PROJECT_ID" \
+            --scope="$VERCEL_ORG_ID" \
+            --token="${{ secrets.VERCEL_TOKEN }}"
+
       - name: Pull Vercel production settings
         run: vercel pull --yes --environment=production --token="${{ secrets.VERCEL_TOKEN }}"
 
