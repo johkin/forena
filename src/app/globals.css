@@ -106,6 +106,20 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .assistant-input { display: flex; align-items: center; gap: 8px; margin-top: 16px; padding: 6px 6px 6px 13px; border-radius: 12px; background: white; }
 .assistant-input input { width: 100%; border: 0; outline: 0; color: var(--ink); }
 .assistant-input button { width: 30px; height: 30px; border: 0; border-radius: 8px; background: var(--lime); color: var(--ink); font-weight: 800; cursor: pointer; }
+.briefing-generate { width: 100%; margin-top: 14px; border-color: var(--lime); background: var(--lime); color: var(--ink); font-weight: 800; }
+.briefing-generate:disabled { opacity: .55; cursor: not-allowed; }
+.briefing-error { color: #ffc5b5 !important; }
+.briefing-result { display: grid; gap: 10px; margin-top: 18px; }
+.briefing-title { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+.briefing-title > strong { font-size: 18px; }
+.briefing-title > span { padding: 4px 7px; border-radius: 999px; background: var(--lime); color: var(--ink); font-size: 10px; font-weight: 900; text-transform: uppercase; }
+.briefing-result > p { margin: 0; color: #c5d4cf; font-size: 13px; line-height: 1.5; }
+.briefing-result ol { display: grid; gap: 8px; margin: 2px 0 0; padding: 0; list-style: none; }
+.briefing-result li { display: grid; gap: 3px; padding: 11px; border-radius: 10px; background: rgba(255,255,255,.08); }
+.briefing-result li small { color: #dce6e2; line-height: 1.4; }
+.briefing-result li em { color: #9fb5ae; font-size: 11px; font-style: normal; }
+.briefing-meta { display: flex; align-items: center; gap: 8px; margin-top: 14px; color: #9fb5ae; font-size: 10px; }
+.briefing-meta button { margin-left: auto; padding: 6px 8px; border-color: rgba(255,255,255,.18); background: transparent; color: white; font-size: 11px; }
 .attention-card ul { list-style: none; padding: 0; margin: 12px 0 0; }
 .attention-card li { display: flex; gap: 11px; padding: 13px 0; border-top: 1px solid var(--line); }
 .attention-card li div { display: grid; gap: 4px; }

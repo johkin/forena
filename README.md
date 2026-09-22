@@ -94,6 +94,23 @@ override används då för samtliga användarlänkar. Endast den publika
 Supabase-nyckeln får exponeras i webbläsaren; lägg aldrig in en secret- eller
 service-role-nyckel som `NEXT_PUBLIC_*`.
 
+### AI Gateway
+
+Lagöversiktens första AI-funktion använder Vercel AI Gateway via Vercels OIDC,
+så någon providerspecifik API-nyckel ska inte läggas i applikationen. Aktivera
+AI Gateway för Vercel-projektet. I produktion sköter Vercel OIDC-token
+automatiskt. För lokal utveckling hämtas en kortlivad token med:
+
+```bash
+vercel link
+vercel env pull .env.local
+```
+
+Kör kommandot igen när den lokala token har gått ut. `AI_FEED_MODEL` kan användas
+för att byta Gateway-modell och `AI_ENABLED=false` stänger av modellanropen utan
+att ta bort den deterministiska reservprioriteringen. Tokenmängd och svarstid
+sparas i `ai_generation_runs`; promptar och modellsvar lagras inte där.
+
 ## Principer
 
 - Föreningens data är strukturerad; AI producerar validerade kommandon.

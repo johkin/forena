@@ -54,11 +54,11 @@ godtyckligt UI och får inte direkt databasåtkomst.
 
 - [ ] Definiera ett strukturerat användar- och arbetsytekontext för AI
 - [ ] Inför en Signal Engine med de första 5-10 signaltyperna
-- [ ] Definiera schema för AI-rankad personlig feed
-- [ ] Kombinera deterministiska prioritetsregler med AI-rankning
-- [ ] Låt lagdashboarden bli första PoC för den personliga feeden
-- [ ] Visa varför en signal prioriterats och vilken underliggande data den bygger på
-- [ ] Säkerställ att kritiska uppgifter och deadlines visas oberoende av modellens ranking
+- [x] Definiera schema för AI-rankad personlig feed
+- [x] Kombinera deterministiska prioritetsregler med AI-rankning
+- [x] Låt lagdashboarden bli första PoC för den personliga feeden
+- [x] Visa varför en signal prioriterats och vilken underliggande data den bygger på
+- [x] Säkerställ att kritiska uppgifter och deadlines visas oberoende av modellens ranking
 
 ### Kontextuella dokument och instruktioner
 
@@ -124,12 +124,12 @@ för att sprida providerspecifika modellnamn i koden.
 Automatiserade tester ska använda en deterministisk mock-provider och inte göra
 riktiga LLM-anrop.
 
-- [ ] Lägg till Vercel AI SDK
-- [ ] Konfigurera Vercel AI Gateway för lokal utveckling och produktion
-- [ ] Skapa provideroberoende modellkonfiguration
-- [ ] Lägg till mock-LLM för automatiserade tester
-- [ ] Mät tokenanvändning, latens och kostnad per AI-funktion
-- [ ] Minimera och strukturera kontext innan data skickas till extern LLM
+- [x] Lägg till Vercel AI SDK
+- [x] Konfigurera Vercel AI Gateway för lokal utveckling och produktion
+- [x] Skapa provideroberoende modellkonfiguration
+- [x] Lägg till mock-LLM för automatiserade tester
+- [x] Mät tokenanvändning och latens per AI-funktion samt kostnad via Gateway
+- [x] Minimera och strukturera kontext innan data skickas till extern LLM
 
 ## 4. Föreningsassistent
 
