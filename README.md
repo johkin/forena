@@ -83,10 +83,12 @@ Lägg följande secrets i GitHub-miljön `production`:
 - `VERCEL_ORG_ID`
 - `VERCEL_PROJECT_ID`
 
-Vercel-projektet ska dessutom ha `NEXT_PUBLIC_SUPABASE_URL` och
-`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` konfigurerade för Production. Endast den
-publika Supabase-nyckeln får exponeras i webbläsaren; lägg aldrig in en secret-
-eller service-role-nyckel som `NEXT_PUBLIC_*`.
+Vercel-projektet ska dessutom ha `NEXT_PUBLIC_SUPABASE_URL`,
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SITE_URL`, `RESEND_API_KEY`
+och `RESEND_FROM_EMAIL` konfigurerade för Production. `RESEND_FROM_EMAIL` ska
+vara en avsändare på en domän som verifierats i Resend. Endast den publika
+Supabase-nyckeln får exponeras i webbläsaren; lägg aldrig in en secret- eller
+service-role-nyckel som `NEXT_PUBLIC_*`.
 
 ## Principer
 

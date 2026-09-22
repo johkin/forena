@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
-import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { sendMembershipInvitationEmail } from "@/lib/email/membership-invitation";
 import { createClient } from "@/lib/supabase/server";
 
 type Props = { params: Promise<{ applicationId: string }> };
@@ -41,25 +41,30 @@ export async function POST(request: Request, { params }: Props) {
   }).eq("id", applicationId);
   if (approvalError) return NextResponse.json({ error: "Ansökan kunde inte godkännas." }, { status: 400 });
 
-  const requestHeaders = await headers();
-  const origin = requestHeaders.get("origin") ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const origin = (process.env.NEXT_PUBLIC_SITE_URL ?? new URL(request.url).origin).replace(/\/$/, "");
   for (const guardian of guardians) {
     const token = randomBytes(32).toString("base64url");
     const tokenHash = createHash("sha256").update(token).digest("hex");
+    const invitationId = randomUUID();
     const { error: tokenError } = await supabase.from("membership_application_tokens").upsert({
-      id: randomUUID(), application_id: applicationId, guardian_id: guardian.id,
+      id: invitationId, application_id: applicationId, guardian_id: guardian.id,
       organization_id: guardian.organization_id, token_hash: tokenHash,
       expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(), accepted_at: null, accepted_by: null,
     }, { onConflict: "application_id,guardian_id" });
     if (tokenError) return NextResponse.json({ error: "Aktiveringslänken kunde inte skapas." }, { status: 400 });
 
-    const next = `/application-invite/${token}`;
-    const { error: emailError } = await supabase.auth.signInWithOtp({
-      email: guardian.email,
-      options: { emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`, shouldCreateUser: true },
-    });
-    if (emailError) {
-      console.error("[membership-application] activation email failed", { guardian: guardian.position, message: emailError.message });
+    try {
+      await sendMembershipInvitationEmail({
+        to: guardian.email,
+        playerName: `${application.player_first_name} ${application.player_last_name}`,
+        invitationUrl: `${origin}/application-invite/${token}`,
+        idempotencyKey: `membership-application-${invitationId}`,
+      });
+    } catch (error) {
+      console.error("[membership-application] activation email failed", {
+        guardian: guardian.position,
+        message: error instanceof Error ? error.message : "Okänt fel",
+      });
       return NextResponse.json({ error: "Ansökan godkändes, men alla aktiveringslänkar kunde inte skickas. Försök godkänna igen." }, { status: 502 });
     }
   }
