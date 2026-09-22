@@ -109,7 +109,9 @@ vercel env pull .env.local
 Kör kommandot igen när den lokala token har gått ut. `AI_FEED_MODEL` kan användas
 för att byta Gateway-modell och `AI_ENABLED=false` stänger av modellanropen utan
 att ta bort den deterministiska reservprioriteringen. Tokenmängd och svarstid
-sparas i `ai_generation_runs`; promptar och modellsvar lagras inte där.
+sparas i `ai_generation_runs`; promptar lagras inte. Ett validerat och
+personuppgiftsminimerat resultat mellanlagras i fem minuter per lag när de
+underliggande signalerna är oförändrade.
 
 ## Principer
 

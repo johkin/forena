@@ -72,8 +72,8 @@ export interface Database {
         OrganizationScoped & { id?: string; person_id: string; team_id?: string | null; role: "participant" | "leader" | "volunteer"; starts_on?: string; ends_on?: string | null; created_at?: string }
       >;
       activities: Table<
-        Timestamped & OrganizationScoped & { id: string; team_id: string | null; title: string; starts_at: string; ends_at: string; location: string; created_by: string | null; updated_at: string },
-        OrganizationScoped & { id?: string; team_id?: string | null; title: string; starts_at: string; ends_at: string; location?: string; created_by?: string | null; created_at?: string; updated_at?: string }
+        Timestamped & OrganizationScoped & { id: string; team_id: string | null; title: string; gathering_at: string | null; starts_at: string; ends_at: string; location: string; created_by: string | null; updated_at: string },
+        OrganizationScoped & { id?: string; team_id?: string | null; title: string; gathering_at?: string | null; starts_at: string; ends_at: string; location?: string; created_by?: string | null; created_at?: string; updated_at?: string }
       >;
       invitations: Table<
         Timestamped & OrganizationScoped & { id: string; activity_id: string; person_id: string; response: "pending" | "accepted" | "declined" | "maybe"; responded_at: string | null },
@@ -86,6 +86,10 @@ export interface Database {
       ai_generation_runs: Table<
         Timestamped & OrganizationScoped & { id: string; team_id: string; requested_by: string | null; feature: "team_briefing"; model: string; status: "success" | "fallback"; input_tokens: number | null; output_tokens: number | null; latency_ms: number; signal_count: number; error_code: string | null },
         OrganizationScoped & { id?: string; team_id: string; requested_by?: string | null; feature: "team_briefing"; model: string; status: "success" | "fallback"; input_tokens?: number; output_tokens?: number; latency_ms: number; signal_count: number; error_code?: string | null; created_at?: string }
+      >;
+      ai_team_briefing_cache: Table<
+        OrganizationScoped & { team_id: string; signal_hash: string; briefing: Json; model: string; input_tokens: number | null; output_tokens: number | null; generated_at: string; expires_at: string },
+        OrganizationScoped & { team_id: string; signal_hash: string; briefing: Json; model: string; input_tokens?: number | null; output_tokens?: number | null; generated_at?: string; expires_at: string }
       >;
       push_subscriptions: Table<
         Timestamped & OrganizationScoped & { id: string; user_id: string; endpoint: string; p256dh_key: string; auth_key: string; device_name: string | null; last_used_at: string | null; disabled_at: string | null },

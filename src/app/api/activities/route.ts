@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 type CreateActivityBody = {
   teamId?: string;
   title?: string;
+  gatheringAt?: string;
   startsAt?: string;
   endsAt?: string;
   location?: string;
@@ -14,15 +15,19 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as CreateActivityBody | null;
   const title = body?.title?.trim();
   const location = body?.location?.trim() ?? "";
+  const gatheringAt = body?.gatheringAt ? new Date(body.gatheringAt) : null;
   const startsAt = body?.startsAt ? new Date(body.startsAt) : null;
   const endsAt = body?.endsAt ? new Date(body.endsAt) : null;
   const personIds = [...new Set(body?.personIds ?? [])];
 
-  if (!body?.teamId || !title || !startsAt || !endsAt || Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
+  if (!body?.teamId || !title || !startsAt || !endsAt || Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime()) || (gatheringAt && Number.isNaN(gatheringAt.getTime()))) {
     return NextResponse.json({ error: "Ogiltiga aktivitetsuppgifter" }, { status: 400 });
   }
   if (endsAt <= startsAt) {
     return NextResponse.json({ error: "Sluttiden måste vara efter starttiden" }, { status: 400 });
+  }
+  if (gatheringAt && gatheringAt > startsAt) {
+    return NextResponse.json({ error: "Samlingstiden måste vara före eller samma som starttiden" }, { status: 400 });
   }
 
   const supabase = await createClient();
@@ -60,12 +65,13 @@ export async function POST(request: Request) {
       organization_id: team.organization_id,
       team_id: team.id,
       title,
+      gathering_at: gatheringAt?.toISOString() ?? null,
       starts_at: startsAt.toISOString(),
       ends_at: endsAt.toISOString(),
       location,
       created_by: authData.user.id,
     })
-    .select("id, organization_id, team_id, title, starts_at, ends_at, location")
+    .select("id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location")
     .single();
 
   if (activityError || !activity) {

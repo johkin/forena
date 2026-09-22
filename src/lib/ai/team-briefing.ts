@@ -49,7 +49,7 @@ export function createFallbackBriefing(signals: TeamSignal[], now = new Date()):
   };
 }
 
-function validateBriefing(value: unknown, signalIds: Set<string>): TeamBriefing | null {
+export function validateTeamBriefing(value: unknown, signalIds: Set<string>): TeamBriefing | null {
   if (!value || typeof value !== "object") return null;
   const candidate = value as Partial<TeamBriefing>;
   if (typeof candidate.headline !== "string" || typeof candidate.summary !== "string" || !Array.isArray(candidate.items)) return null;
@@ -113,7 +113,7 @@ export async function generateTeamBriefing(options: {
     } : undefined,
   });
 
-  const briefing = validateBriefing(result.output, signalIds);
+  const briefing = validateTeamBriefing(result.output, signalIds);
   if (!briefing) throw new Error("invalid_model_output");
 
   return {

@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { stockholmDateInDays } from "@/lib/date-time";
 import { createClient } from "@/lib/supabase/server";
 
 function slugify(value: string) {
@@ -149,15 +150,15 @@ export async function createWorkspace(formData: FormData) {
     .maybeSingle();
 
   if (!existingActivity) {
-    const startsAt = new Date();
-    startsAt.setUTCDate(startsAt.getUTCDate() + 7);
-    startsAt.setUTCHours(17, 30, 0, 0);
+    const startsAt = stockholmDateInDays(7, 17, 30);
+    const gatheringAt = new Date(startsAt.getTime() - 30 * 60 * 1000);
     const endsAt = new Date(startsAt.getTime() + 90 * 60 * 1000);
 
     const { error } = await supabase.from("activities").insert({
       organization_id: organizationId,
       team_id: teamId,
       title: "Första lagaktiviteten",
+      gathering_at: gatheringAt.toISOString(),
       starts_at: startsAt.toISOString(),
       ends_at: endsAt.toISOString(),
       location: "Plats anges senare",

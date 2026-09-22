@@ -36,12 +36,13 @@ select
 from public.people
 where organization_id = '10000000-0000-0000-0000-000000000001';
 
-insert into public.activities (id, organization_id, team_id, title, starts_at, ends_at, location)
+insert into public.activities (id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location)
 values (
   '40000000-0000-0000-0000-000000000001',
   '10000000-0000-0000-0000-000000000001',
   '20000000-0000-0000-0000-000000000001',
   'Utomhusträning',
+  '2026-09-24 18:00:00+02',
   '2026-09-24 18:30:00+02',
   '2026-09-24 20:00:00+02',
   'Ursviks IP · Plan 2'

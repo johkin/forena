@@ -9,7 +9,7 @@ type BriefingResponse = {
     summary: string;
     items: Array<{ signalId: string; reason: string; signal: TeamSignal }>;
   };
-  source: "ai" | "fallback";
+  source: "ai" | "cache" | "fallback";
   model: string;
   usage: { inputTokens?: number; outputTokens?: number };
   latencyMs: number;
@@ -64,7 +64,7 @@ export function TeamBriefingCard({ teamId, assistantName, demo }: { teamId: stri
         {error && <p className="briefing-error" role="alert">{error}</p>}
       </> : <>
         <div className="briefing-result">
-          <div className="briefing-title"><strong>{result.briefing.headline}</strong><span>{result.source === "ai" ? "AI" : "Reservläge"}</span></div>
+          <div className="briefing-title"><strong>{result.briefing.headline}</strong><span>{result.source === "ai" ? "AI" : result.source === "cache" ? "Cache" : "Reservläge"}</span></div>
           <p>{result.briefing.summary}</p>
           <ol>{result.briefing.items.map(({ signalId, reason, signal }) => <li key={signalId}><strong>{signal.title}</strong><small>{reason}</small><em>{formatDueAt(signal.dueAt)}</em></li>)}</ol>
         </div>

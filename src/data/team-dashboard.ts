@@ -108,7 +108,7 @@ export async function getTeamDashboard(
 
   const { data: activityRow } = await supabase
     .from("activities")
-    .select("id, organization_id, team_id, title, starts_at, ends_at, location")
+    .select("id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location")
     .eq("team_id", teamRow.id)
     .gte("ends_at", new Date().toISOString())
     .order("starts_at")
@@ -172,6 +172,7 @@ export async function getTeamDashboard(
     organizationId: activityRow.organization_id,
     teamId: activityRow.team_id ?? team.id,
     title: activityRow.title,
+    gatheringAt: activityRow.gathering_at ?? undefined,
     startsAt: activityRow.starts_at,
     endsAt: activityRow.ends_at,
     location: activityRow.location,

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
-import { createFallbackBriefing, generateTeamBriefing, type TeamSignal } from "@/lib/ai/team-briefing";
+import { createFallbackBriefing, generateTeamBriefing, validateTeamBriefing, type TeamSignal } from "@/lib/ai/team-briefing";
+import type { Json } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
   const [{ data: activity }, { data: tasks }] = await Promise.all([
     supabase
       .from("activities")
-      .select("id, title, starts_at")
+      .select("id, title, gathering_at, starts_at")
       .eq("team_id", team.id)
       .gte("ends_at", now)
       .order("starts_at")
@@ -72,7 +73,7 @@ export async function POST(request: Request) {
       kind: "activity",
       title: activity.title,
       detail: "Nästa aktivitet för laget",
-      dueAt: activity.starts_at,
+      dueAt: activity.gathering_at ?? activity.starts_at,
       importance: "normal",
     });
     if ((pendingInvitations ?? 0) > 0) {
@@ -81,7 +82,7 @@ export async function POST(request: Request) {
         kind: "invitation",
         title: `${pendingInvitations} obesvarade kallelser`,
         detail: `Behöver följas upp före ${activity.title}`,
-        dueAt: activity.starts_at,
+        dueAt: activity.gathering_at ?? activity.starts_at,
         importance: "high",
       });
     }
@@ -98,6 +99,35 @@ export async function POST(request: Request) {
   }
 
   const model = process.env.AI_FEED_MODEL?.trim() || DEFAULT_MODEL;
+  const signalHash = createHash("sha256").update(JSON.stringify({ model, signals })).digest("hex");
+  const signalIds = new Set(signals.map((signal) => signal.id));
+  const { data: cached } = await supabase
+    .from("ai_team_briefing_cache")
+    .select("briefing, model")
+    .eq("team_id", team.id)
+    .eq("signal_hash", signalHash)
+    .gt("expires_at", new Date().toISOString())
+    .maybeSingle();
+  const cachedBriefing = cached ? validateTeamBriefing(cached.briefing, signalIds) : null;
+  if (cachedBriefing && cached) {
+    const latencyMs = Date.now() - startedAt;
+    console.info("team_briefing_cache_hit", { teamId: team.id, model: cached.model, latencyMs, signalCount: signals.length });
+    const signalById = new Map(signals.map((signal) => [signal.id, signal]));
+    return NextResponse.json({
+      briefing: {
+        ...cachedBriefing,
+        items: cachedBriefing.items.flatMap((item) => {
+          const signal = signalById.get(item.signalId);
+          return signal ? [{ ...item, signal }] : [];
+        }),
+      },
+      source: "cache",
+      model: cached.model,
+      usage: {},
+      latencyMs,
+    });
+  }
+
   let source: "ai" | "fallback" = "fallback";
   let briefing = createFallbackBriefing(signals);
   let usage: { inputTokens?: number; outputTokens?: number } = {};
@@ -113,6 +143,20 @@ export async function POST(request: Request) {
       briefing = generated.briefing;
       usage = generated.usage;
       source = "ai";
+
+      const expiresAt = new Date(Date.now() + 5 * 60_000).toISOString();
+      const { error: cacheError } = await supabase.from("ai_team_briefing_cache").upsert({
+        team_id: team.id,
+        organization_id: team.organization_id,
+        signal_hash: signalHash,
+        briefing: briefing as unknown as Json,
+        model,
+        input_tokens: usage.inputTokens ?? null,
+        output_tokens: usage.outputTokens ?? null,
+        generated_at: new Date().toISOString(),
+        expires_at: expiresAt,
+      });
+      if (cacheError) console.warn("team_briefing_cache_write_failed", { teamId: team.id, code: cacheError.code });
     } catch (error) {
       errorCode = safeErrorCode(error);
       console.warn("team_briefing_fallback", { teamId: team.id, model, errorCode });
