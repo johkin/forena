@@ -127,9 +127,8 @@ export async function getTeamDashboard(
   for (const item of familyActivityRows ?? []) {
     if (item.team_id && !nextActivityByTeam.has(item.team_id)) nextActivityByTeam.set(item.team_id, item);
   }
-  const familyActivityIds = [...nextActivityByTeam.values()].map((item) => item.id);
-  const { data: familyInvitationRows } = familyActivityIds.length && familyPersonIds.length
-    ? await supabase.from("invitations").select("id, organization_id, activity_id, person_id, response, responded_at").in("activity_id", familyActivityIds).in("person_id", familyPersonIds)
+  const { data: familyInvitationRows } = familyPersonIds.length
+    ? await supabase.from("invitations").select("id, organization_id, activity_id, person_id, response, responded_at").in("person_id", familyPersonIds)
     : { data: [] };
 
   const { data: activityRow } = await supabase
@@ -266,7 +265,10 @@ export async function getTeamDashboard(
     if (!membership.team_id) return [];
     const person = familyPeopleById.get(membership.person_id);
     const teamItem = familyTeamsById.get(membership.team_id);
-    const activityItem = nextActivityByTeam.get(membership.team_id);
+    const activityItem = (familyActivityRows ?? []).find((candidate) =>
+      candidate.team_id === membership.team_id
+      && familyInvitationByKey.has(`${person?.id}:${candidate.id}`),
+    ) ?? nextActivityByTeam.get(membership.team_id);
     if (!person || !teamItem || !activityItem) return [];
     const invitationItem = familyInvitationByKey.get(`${person.id}:${activityItem.id}`);
     return [{
