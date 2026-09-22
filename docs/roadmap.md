@@ -58,6 +58,54 @@ godtyckligt UI och får inte direkt databasåtkomst.
 - [ ] Visa varför en signal prioriterats och vilken underliggande data den bygger på
 - [ ] Säkerställ att kritiska uppgifter och deadlines visas oberoende av modellens ranking
 
+### Kontextuella dokument och instruktioner
+
+Dokument ska inte bara ligga i ett dokumentarkiv som användaren själv måste leta
+i. Instruktioner och annat innehåll ska kunna kopplas till ett sammanhang och
+automatiskt bli relevant för de personer som berörs vid rätt tidpunkt.
+
+Ett dokument kan till exempel beskriva hur ett café öppnas, var varor hämtas,
+hur städning görs och hur lokalen låses. I stället för att koppla dokumentet
+direkt till enskilda personer kopplas det till exempelvis förening, sektion,
+lag, aktivitetstyp och målgrupp. När ett barn schemaläggs på ett cafépass kan
+Förena därmed deterministiskt avgöra att barnet och dess vårdnadshavare berörs.
+
+Kopplingen behöver mer än fria taggar. Metadata bör kunna beskriva både
+tillämpning, målgrupp och tid, exempelvis:
+
+```text
+document: Caféinstruktion
+scope: Fotboll
+tags: cafe, opening, cleaning
+activityType: cafe_shift
+audience: assigned_player, guardians
+visibleFrom: T-24h
+visibleUntil: activity_end
+```
+
+Signal Engine kan utifrån detta skapa `DOCUMENT_RELEVANT_NOW` och låta
+informationen ingå i den personliga feeden. Samma dokument kan då presenteras
+olika beroende på tid: en översikt dagen före passet, öppningsinstruktioner nära
+start och städ-/låsinstruktioner mot slutet.
+
+AI kan användas när ett dokument läggs in för att föreslå klassificering,
+taggar, aktivitetstyp, målgrupp och lämplig visningstid. En administratör
+godkänner kopplingen. Därefter ska själva matchningen mellan dokument,
+aktiviteter och mottagare vara strukturerad och deterministisk.
+
+Denna modell bör kunna återanvändas för exempelvis matchvärd, kiosk,
+sekretariat, cuper, fotbollsskola, materialförråd, nyckelhantering,
+domarvärd, tvätt av matchställ och reseinstruktioner.
+
+- [ ] Inför dokument med scope och strukturerad metadata
+- [ ] Definiera taggar och dokumentkopplingar till aktivitetstyper
+- [ ] Definiera målgruppsregler, exempelvis schemalagd spelare och vårdnadshavare
+- [ ] Stöd tidsregler som T-24h, T-60m och aktivitetens slut
+- [ ] Generera `DOCUMENT_RELEVANT_NOW` i Signal Engine
+- [ ] Visa kontextuella dokument och checklistor i den personliga feeden
+- [ ] Låt AI föreslå metadata och kopplingar när dokument läggs in
+- [ ] Kräv administratörens godkännande innan AI-föreslagna kopplingar aktiveras
+
 ### LLM-infrastruktur
 
 LLM ska behandlas som utbytbar infrastruktur, inte byggas in direkt i
