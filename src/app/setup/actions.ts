@@ -142,6 +142,47 @@ export async function createWorkspace(formData: FormData) {
     resolvedTeamSlug = team.slug;
   }
 
+  let { data: managerType } = await supabase
+    .from("responsibility_types")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("slug", "lagledare")
+    .maybeSingle();
+  if (!managerType) {
+    const { error: responsibilityTypeError } = await supabase.from("responsibility_types").insert([
+      { organization_id: organizationId, name: "Lagledare", slug: "lagledare", capabilities: ["manage_team", "manage_activities", "manage_members"] },
+      { organization_id: organizationId, name: "Tränare", slug: "tranare", capabilities: ["manage_activities"] },
+      { organization_id: organizationId, name: "Redaktör", slug: "redaktor", capabilities: ["edit_content"] },
+    ]);
+    if (responsibilityTypeError) fail("Ansvarstyperna kunde inte skapas");
+    const result = await supabase
+      .from("responsibility_types")
+      .select("id")
+      .eq("organization_id", organizationId)
+      .eq("slug", "lagledare")
+      .single();
+    managerType = result.data;
+  }
+  if (!managerType) fail("Lagledaransvaret kunde inte hittas");
+
+  const { data: existingManagerResponsibility } = await supabase
+    .from("team_responsibilities")
+    .select("id")
+    .eq("team_id", teamId)
+    .eq("user_id", user.id)
+    .eq("responsibility_type_id", managerType.id)
+    .is("ends_on", null)
+    .maybeSingle();
+  if (!existingManagerResponsibility) {
+    const { error: responsibilityError } = await supabase.from("team_responsibilities").insert({
+      organization_id: organizationId,
+      team_id: teamId,
+      user_id: user.id,
+      responsibility_type_id: managerType.id,
+    });
+    if (responsibilityError) fail("Lagledaransvaret kunde inte sparas");
+  }
+
   const { data: existingActivity } = await supabase
     .from("activities")
     .select("id")
