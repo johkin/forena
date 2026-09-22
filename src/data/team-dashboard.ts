@@ -9,6 +9,7 @@ import {
   workspaces as demoWorkspaces,
 } from "@/data/demo";
 import type { Activity, DashboardView, Invitation, Member, Organization, Section, Team, TeamTask, Workspace } from "@/domain/club";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 
 export type TeamDashboardData = {
@@ -39,19 +40,11 @@ function demoDashboard(): TeamDashboardData {
   };
 }
 
-function isConfigured() {
-  return Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY &&
-      !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.startsWith("replace-"),
-  );
-}
-
 export async function getTeamDashboard(
   organizationSlug: string,
   teamSlug: string,
 ): Promise<TeamDashboardData | null> {
-  if (!isConfigured()) {
+  if (!isSupabaseConfigured()) {
     return organizationSlug === demoOrganization.slug && teamSlug === demoTeam.slug ? demoDashboard() : null;
   }
 
@@ -63,7 +56,7 @@ export async function getTeamDashboard(
     .maybeSingle();
 
   if (!organizationRow) {
-    return organizationSlug === demoOrganization.slug && teamSlug === demoTeam.slug ? demoDashboard() : null;
+    return null;
   }
 
   const { data: authData } = await supabase.auth.getUser();
@@ -121,7 +114,7 @@ export async function getTeamDashboard(
     .maybeSingle();
 
   if (!activityRow) {
-    return organizationSlug === demoOrganization.slug && teamSlug === demoTeam.slug ? demoDashboard() : null;
+    return null;
   }
 
   const { data: invitationRows } = await supabase
