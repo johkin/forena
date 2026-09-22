@@ -14,6 +14,7 @@
 html { background: var(--cream); }
 body { margin: 0; color: var(--ink); background: var(--cream); font-family: Arial, Helvetica, sans-serif; }
 button, input, select { font: inherit; }
+button:disabled { cursor: wait; opacity: .65; }
 button, a { -webkit-tap-highlight-color: transparent; }
 
 .topbar { height: 76px; padding: 0 32px; display: flex; align-items: center; justify-content: space-between; background: var(--paper); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 10; }
@@ -121,6 +122,19 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .empty-workspace h1 { max-width: 620px; margin: 0; font-family: Georgia, serif; font-size: clamp(36px, 6vw, 64px); font-weight: 500; letter-spacing: -2px; }
 .empty-workspace p { max-width: 520px; margin: 0 0 14px; color: var(--ink-soft); }
 .empty-workspace .primary { text-decoration: none; }
+.modal-backdrop { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 20px; background: rgba(14, 38, 32, .55); }
+.modal { width: min(620px, 100%); max-height: calc(100vh - 40px); overflow: auto; padding: 26px; border-radius: 18px; background: var(--paper); box-shadow: 0 28px 80px rgba(14, 38, 32, .3); }
+.modal form { display: grid; gap: 17px; margin-top: 24px; }
+.modal form > label, .form-row label { display: grid; gap: 7px; color: var(--ink-soft); font-size: 12px; font-weight: 800; }
+.modal input, .modal select { width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 9px; background: white; color: var(--ink); outline: none; }
+.modal input:focus, .modal select:focus { border-color: var(--ink); box-shadow: 0 0 0 3px var(--mint); }
+.form-row { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
+.modal fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.modal legend { margin-bottom: 9px; color: var(--ink-soft); font-size: 12px; font-weight: 800; }
+.member-options { max-height: 190px; overflow: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.member-options label { display: flex; align-items: center; gap: 9px; padding: 8px; border: 1px solid var(--line); border-radius: 9px; font-size: 13px; cursor: pointer; }
+.member-options input { width: auto; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 9px; padding-top: 4px; }
 
 @media (max-width: 900px) {
   .shell { grid-template-columns: 1fr; }
@@ -146,4 +160,6 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .summary span { font-size: 9px; }
   .invitation { grid-template-columns: auto 1fr; padding: 10px 0; }
   .invitation > :last-child { grid-column: 2; justify-self: start; }
+  .modal { padding: 20px; }
+  .form-row, .member-options { grid-template-columns: 1fr; }
 }

@@ -128,13 +128,22 @@ export async function getTeamDashboard(
     .from("invitations")
     .select("id, organization_id, activity_id, person_id, response, responded_at")
     .eq("activity_id", activityRow.id);
+  const { data: rosterRows } = await supabase
+    .from("memberships")
+    .select("person_id")
+    .eq("team_id", teamRow.id)
+    .eq("role", "participant")
+    .is("ends_on", null);
   const { data: taskRows } = await supabase
     .from("team_tasks")
     .select("id, organization_id, team_id, title, description, due_at, status")
     .eq("team_id", teamRow.id)
     .eq("status", "open")
     .order("due_at");
-  const personIds = (invitationRows ?? []).map((invitation) => invitation.person_id);
+  const personIds = [...new Set([
+    ...(rosterRows ?? []).map((membership) => membership.person_id),
+    ...(invitationRows ?? []).map((invitation) => invitation.person_id),
+  ])];
   const { data: peopleRows } = personIds.length
     ? await supabase.from("people").select("id, organization_id, display_name").in("id", personIds)
     : { data: [] };
