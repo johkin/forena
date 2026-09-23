@@ -19,10 +19,45 @@
 - [x] Bjud in ledare direkt
 - [x] Publik medlemsansökan med val av sektion och lag
 - [x] Kansligodkännande före e-postverifiering och aktivering
-- [ ] Skapa återkommande aktiviteter
-- [ ] Skicka kallelser via Web Push och mejl
-- [ ] Svara som vårdnadshavare
+- [ ] Skapa och redigera en aktivitet som utkast
+- [ ] Skapa en aktivitetsserie med återkommande aktiviteter
+- [ ] Förhandsgranska en serie och dess genererade tillfällen före publicering
+- [ ] Uppdatera ett tillfälle eller hela den återstående serien
+- [ ] Skicka kallelser via mejl och därefter Web Push
+- [ ] Svara som vårdnadshavare för ett eller flera barn
+- [ ] Lista obesvarade kallelser och skicka en förhandsgranskad påminnelse
 - [ ] Registrera närvaro som ledare
+
+### Nästa leverans: aktivitet till närvaro
+
+Nästa vertikala leverans ska göra lagets återkommande vardagsarbete komplett i
+följande ordning:
+
+```text
+Aktivitetsserie
+  -> aktiviteter
+  -> kallelser
+  -> svar från spelare eller vårdnadshavare
+  -> påminnelse till dem som inte svarat
+  -> närvaroregistrering
+```
+
+Första steget är ett enkelt ledargränssnitt för att skapa och redigera en
+aktivitet eller serie. Serien ska kunna beskriva exempelvis träning varje onsdag
+klockan 16:30 under en vald period. Förena genererar konkreta tillfällen som
+alltid går att förhandsgranska innan de publiceras. Ett enskilt tillfälle ska
+kunna ändras utan att serien påverkas, medan en serieändring ska kunna begränsas
+till framtida tillfällen.
+
+När detta deterministiska flöde fungerar kan assistenten återanvända samma
+typade applikationskommando. En formulering som "lägg in träning onsdagar 16:30
+under oktober" ska skapa ett utkast och en förhandsgranskning, aldrig publicera
+eller skicka kallelser direkt.
+
+Databastester för RLS-policyerna utvecklas parallellt med leveransen. Testerna
+ska minst bevisa att ledare kan administrera rätt lag, att vårdnadshavare kan
+svara för sina kopplade barn och att spelare eller vårdnadshavare inte kan läsa
+eller ändra andra lags skyddade data.
 
 ## 3. AI-native arbetsyta
 
@@ -138,7 +173,7 @@ personliga arbetsytan. Skillnaden är att användaren själv uttrycker sin inten
 i naturligt språk. AI:n får föreslå typade kommandon, men behörighetskontroll,
 validering och krav på förhandsgranskning ligger alltid i applikationslagret.
 
-- [ ] Behörighetskontrollerade läsverktyg
+- [x] Behörighetskontrollerade läsverktyg för laglista och anmälda deltagare
 - [ ] Skapa aktivitet som utkast
 - [ ] Lista obesvarade kallelser
 - [ ] Förhandsgranska och skicka påminnelse
