@@ -28,8 +28,7 @@ export async function PUT(request: Request, { params }: Props) {
   const { error } = await supabase
     .from("invitations")
     .update({ response: response as "accepted" | "declined" | "maybe", responded_at: new Date().toISOString() })
-    .eq("id", invitationId)
-    .eq("response", "pending");
+    .eq("id", invitationId);
 
   if (error) {
     return NextResponse.json({ error: "Kallelsesvaret kunde inte sparas" }, { status: 403 });

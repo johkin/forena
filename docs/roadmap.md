@@ -19,45 +19,58 @@
 - [x] Bjud in ledare direkt
 - [x] Publik medlemsansökan med val av sektion och lag
 - [x] Kansligodkännande före e-postverifiering och aktivering
-- [ ] Skapa och redigera en aktivitet som utkast
-- [ ] Skapa en aktivitetsserie med återkommande aktiviteter
-- [ ] Förhandsgranska en serie och dess genererade tillfällen före publicering
+- [x] Skapa och redigera en aktivitet
+- [x] Skapa en aktivitetsserie med återkommande aktiviteter
+- [x] Förhandsgranska en serie och dess genererade tillfällen före publicering
+- [ ] Stöd utkast/publicering som separat livscykel
 - [ ] Uppdatera ett tillfälle eller hela den återstående serien
-- [ ] Skicka kallelser via mejl och därefter Web Push
-- [ ] Svara som vårdnadshavare för ett eller flera barn
-- [ ] Lista obesvarade kallelser och skicka en förhandsgranskad påminnelse
+- [x] Schemalägg kallelse, svarstid och påminnelsetid per aktivitet
+- [x] Svara som vårdnadshavare för ett eller flera barn
+- [x] Ändra ett tidigare kallelsesvar
+- [x] Lista obesvarade kallelser och köa manuell påminnelse
+- [x] Logga kallelse-, påminnelse- och svarshändelser i aktivitetshistoriken
+- [ ] Leverera kallelser/påminnelser via mejl och Web Push från notification outbox
+- [ ] Visa leveransstatus per kanal och mottagare
 - [ ] Registrera närvaro som ledare
 
-### Nästa leverans: aktivitet till närvaro
+### Nästa leverans: smart kallelseflöde
 
-Nästa vertikala leverans ska göra lagets återkommande vardagsarbete komplett i
-följande ordning:
+Aktivitets- och kallelsegrunden finns nu på plats. Nästa vertikala leverans ska
+göra kallelser operativa hela vägen från schemaläggning till leverans och
+uppföljning:
 
 ```text
-Aktivitetsserie
-  -> aktiviteter
-  -> kallelser
-  -> svar från spelare eller vårdnadshavare
-  -> påminnelse till dem som inte svarat
+Aktivitet / serie
+  -> schemalagd kallelse
+  -> notification outbox
+  -> mejl / Web Push
+  -> svar eller ändrat svar
+  -> aktivitets-events
+  -> bedömning av lagets läge
+  -> föreslagen eller manuell påminnelse
+  -> leveransstatus och historik
   -> närvaroregistrering
 ```
 
-Första steget är ett enkelt ledargränssnitt för att skapa och redigera en
-aktivitet eller serie. Serien ska kunna beskriva exempelvis träning varje onsdag
-klockan 16:30 under en vald period. Förena genererar konkreta tillfällen som
-alltid går att förhandsgranska innan de publiceras. Ett enskilt tillfälle ska
-kunna ändras utan att serien påverkas, medan en serieändring ska kunna begränsas
-till framtida tillfällen.
+`activity_events` är den gemensamma historiken för kallelser, påminnelser,
+svar och aktivitetsändringar. UI:t visar historiken i aktivitetsvyn. Ett ändrat
+svar är en normal del av flödet och ska inte kräva att en ledare återställer
+kallelsen.
 
-När detta deterministiska flöde fungerar kan assistenten återanvända samma
-typade applikationskommando. En formulering som "lägg in träning onsdagar 16:30
-under oktober" ska skapa ett utkast och en förhandsgranskning, aldrig publicera
-eller skicka kallelser direkt.
+Manuella påminnelser köas endast för obesvarade kallelser och endast efter
+behörighetskontroll för laget. Nästa steg är en faktisk transport-worker som
+behandlar `notification_outbox`, skickar via mejl/Web Push och skriver
+`invitation_sent` respektive `reminder_sent` med leveransresultat.
 
-Databastester för RLS-policyerna utvecklas parallellt med leveransen. Testerna
-ska minst bevisa att ledare kan administrera rätt lag, att vårdnadshavare kan
-svara för sina kopplade barn och att spelare eller vårdnadshavare inte kan läsa
-eller ändra andra lags skyddade data.
+Prioriteringen i **För laget** ska därefter bli kontextkänslig. Antalet
+obesvarade är inte i sig ett problem: systemet ska väga in exempelvis antal
+ja-svar, tid kvar, aktivitetstyp/spelform och redan skickade påminnelser.
+Deterministiska regler tar fram signalerna; AI kan rangordna dem, formulera
+orsaken och föreslå en tillåten action som `Skicka påminnelse`.
+
+Databastester för RLS-policyerna utvecklas parallellt. Testerna ska minst bevisa
+att ledare kan administrera rätt lag, att vårdnadshavare kan svara och ändra
+svar för sina kopplade barn, samt att påminnelser inte kan köas för andra lag.
 
 ## 3. AI-native arbetsyta
 
@@ -88,7 +101,7 @@ UI:t renderar fördefinierade komponenter och actions. Modellen genererar inte
 godtyckligt UI och får inte direkt databasåtkomst.
 
 - [ ] Definiera ett strukturerat användar- och arbetsytekontext för AI
-- [ ] Inför en Signal Engine med de första 5-10 signaltyperna
+- [ ] Inför en Signal Engine med de första 5-10 signaltyperna, inklusive trupp-/kallelseläge
 - [x] Definiera schema för AI-rankad personlig feed
 - [x] Kombinera deterministiska prioritetsregler med AI-rankning
 - [x] Låt lagdashboarden bli första PoC för den personliga feeden
@@ -175,8 +188,8 @@ validering och krav på förhandsgranskning ligger alltid i applikationslagret.
 
 - [x] Behörighetskontrollerade läsverktyg för laglista och anmälda deltagare
 - [ ] Skapa aktivitet som utkast
-- [ ] Lista obesvarade kallelser
-- [ ] Förhandsgranska och skicka påminnelse
+- [ ] Lista obesvarade kallelser via gemensamt applikationskommando
+- [ ] Föreslå, förhandsgranska och köa påminnelse via gemensamt applikationskommando
 - [ ] Anpassningsbart namn och visuell identitet
 - [ ] Återanvänd Signal Engine och arbetsytekontext i assistenten
 - [ ] Låt UI och assistent anropa samma typade applikationskommandon
@@ -184,7 +197,8 @@ validering och krav på förhandsgranskning ligger alltid i applikationslagret.
 ## 5. Pilot
 
 - [ ] Import av medlemmar
-- [ ] Revisionslogg och GDPR-funktioner
+- [x] Aktivitetsspecifik eventhistorik för kallelser och svar
+- [ ] Full revisionslogg och GDPR-funktioner
 - [ ] Leveransstatus för notiser
 - [ ] Mobil tillgänglighetsgranskning
 - [ ] Pilot med ett lag

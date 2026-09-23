@@ -105,9 +105,5 @@ export function respondToInvitation(
   response: Exclude<InvitationResponse, "pending">,
   respondedAt = new Date().toISOString(),
 ): Invitation {
-  if (invitation.response !== "pending") {
-    throw new Error("Kallelsen är redan besvarad");
-  }
-
   return { ...invitation, response, respondedAt };
 }

@@ -2,7 +2,11 @@
 
 import type { FamilyActivity } from "@/domain/club";
 
-const responseLabels = { accepted: "Kommer", declined: "Kan inte", maybe: "Kanske", pending: "Ej svarat" } as const;
+const responses = [
+  ["accepted", "Kommer"],
+  ["maybe", "Kanske"],
+  ["declined", "Kan inte"],
+] as const;
 
 type Props = {
   activities: FamilyActivity[];
@@ -41,10 +45,14 @@ export function PersonalOverview({ activities, timeZone, onAnswer, onOpenActivit
             </span>
             <b aria-hidden="true">→</b>
           </button>
-          {item.invitation ? <div className="personal-response">
-            {item.invitation.response === "pending"
-              ? <><button type="button" onClick={() => onAnswer(item, "accepted")}>Kommer</button><button type="button" onClick={() => onAnswer(item, "declined")}>Kan inte</button></>
-              : <span className={`status ${item.invitation.response}`}>{responseLabels[item.invitation.response]}</span>}
+          {item.invitation ? <div className="personal-response" aria-label={`Svar för ${item.member.displayName}`}>
+            {responses.map(([value, label]) => <button
+              className={item.invitation?.response === value ? "selected" : ""}
+              disabled={item.invitation?.response === value}
+              key={value}
+              type="button"
+              onClick={() => onAnswer(item, value)}
+            >{label}</button>)}
           </div> : <span className="personal-no-invitation">Ingen kallelse ännu</span>}
         </div>;
       })}

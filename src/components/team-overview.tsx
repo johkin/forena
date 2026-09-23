@@ -9,7 +9,9 @@ type Props = {
   upcomingActivities: Activity[];
   tasks: TeamTask[];
   timeZone: string;
+  reminderPending: boolean;
   onOpenActivity: (activity: Activity) => void;
+  onSendReminder: (activity: Activity) => void;
 };
 
 type TeamItem = {
@@ -20,7 +22,7 @@ type TeamItem = {
   onClick?: () => void;
 };
 
-export function TeamOverview({ teamName, activity, summary, upcomingActivities, tasks, timeZone, onOpenActivity }: Props) {
+export function TeamOverview({ teamName, activity, summary, upcomingActivities, tasks, timeZone, reminderPending, onOpenActivity, onSendReminder }: Props) {
   const start = new Intl.DateTimeFormat("sv-SE", { timeZone, weekday: "long", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(activity.gatheringAt ?? activity.startsAt));
   const weekLimit = Date.now() + 7 * 24 * 60 * 60 * 1000;
   const nextSevenDays = upcomingActivities.filter((item) => new Date(item.startsAt).getTime() <= weekLimit).length;
@@ -65,11 +67,14 @@ export function TeamOverview({ teamName, activity, summary, upcomingActivities, 
     </div>
 
     {items.length ? <div className="team-action-list">
-      {items.map((item) => <button className="priority-item" data-kind={item.kind} key={item.id} onClick={item.onClick} type="button">
-        <span className="priority-marker" aria-hidden="true" />
-        <span className="priority-copy"><small>{item.kind === "invitation" ? "Kallelse" : "Uppgift"}</small><strong>{item.title}</strong><span>{item.meta}</span></span>
-        {item.onClick ? <b aria-hidden="true">→</b> : null}
-      </button>)}
+      {items.map((item) => <div className="team-action-row" key={item.id}>
+        <button className="priority-item" data-kind={item.kind} onClick={item.onClick} type="button">
+          <span className="priority-marker" aria-hidden="true" />
+          <span className="priority-copy"><small>{item.kind === "invitation" ? "Kallelse" : "Uppgift"}</small><strong>{item.title}</strong><span>{item.meta}</span></span>
+          {item.onClick ? <b aria-hidden="true">→</b> : null}
+        </button>
+        {item.kind === "invitation" ? <button className="secondary reminder-action" disabled={reminderPending} onClick={() => onSendReminder(activity)} type="button">{reminderPending ? "Köar…" : "Skicka påminnelse"}</button> : null}
+      </div>)}
     </div> : <p className="overview-empty">Inget särskilt behöver hanteras för laget just nu.</p>}
   </section>;
 }

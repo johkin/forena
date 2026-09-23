@@ -37,6 +37,7 @@ export function ClubDashboard({ organization, sections, team, activity, members,
   const [editingActivity, setEditingActivity] = useState<Activity>();
   const [showInvitationForm, setShowInvitationForm] = useState(false);
   const [savingInvitation, setSavingInvitation] = useState(false);
+  const [sendingReminder, setSendingReminder] = useState(false);
   const summary = useMemo(() => summarizeInvitations(invitations), [invitations]);
   const memberById = useMemo(() => new Map(members.map((member) => [member.id, member])), [members]);
   const familyInvitation = invitations.find((item) => respondablePersonIds.includes(item.memberId));
@@ -50,7 +51,22 @@ export function ClubDashboard({ organization, sections, team, activity, members,
       if (!result.ok) { setNotice("Svaret kunde inte sparas. Kontrollera din behörighet och försök igen."); return; }
     }
     setFamilyActivities((current) => current.map((candidate) => candidate.invitation?.id === item.invitation?.id ? { ...candidate, invitation: updated } : candidate));
+    setInvitations((current) => current.map((candidate) => candidate.id === item.invitation?.id ? updated : candidate));
     setNotice(`${item.member.displayName} är registrerad som ”${responseLabels[response]}”.`);
+  }
+
+  async function sendReminder(activity: Activity) {
+    setSendingReminder(true);
+    const response = await fetch(`/api/activities/${activity.id}/remind`, { method: "POST" });
+    const result = await response.json();
+    setSendingReminder(false);
+    if (!response.ok) {
+      setNotice(result.error ?? "Påminnelsen kunde inte köas.");
+      return;
+    }
+    setNotice(result.queuedRecipients > 0
+      ? `Påminnelsen köades till ${result.queuedRecipients} mottagare.`
+      : "Det finns inga nåbara mottagare för de obesvarade kallelserna.");
   }
 
   async function inviteTeamMember(form: HTMLFormElement) {
@@ -120,7 +136,9 @@ export function ClubDashboard({ organization, sections, team, activity, members,
                       upcomingActivities={upcomingActivities}
                       tasks={tasks}
                       timeZone={organization.timeZone ?? "Europe/Stockholm"}
+                      reminderPending={sendingReminder}
                       onOpenActivity={setSelectedActivity}
+                      onSendReminder={(item) => void sendReminder(item)}
                     /> : null}
                   </div>
                   <aside className="overview-assistant">

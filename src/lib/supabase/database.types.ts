@@ -172,6 +172,7 @@ export interface Database {
       submit_membership_application: { Args: { payload: Json }; Returns: string };
       accept_membership_application_invitation: { Args: { invitation_token_hash: string }; Returns: { organization_slug: string; team_slug: string }[] };
       claim_person_account: { Args: Record<never, never>; Returns: number };
+      queue_activity_reminder: { Args: { target_activity_id: string }; Returns: number };
     };
     Enums: Record<never, never>;
     CompositeTypes: Record<never, never>;
