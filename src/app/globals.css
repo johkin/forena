@@ -26,6 +26,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .workspace-copy select { max-width: 180px; appearance: none; border: 0; outline: 0; background: transparent; color: var(--ink); font-size: 14px; font-weight: 800; cursor: pointer; }
 .organization-avatar { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; background: var(--mint); font-size: 12px; font-weight: 800; }
 .topbar-actions { display: flex; align-items: center; gap: 10px; }
+.account-identity { max-width: 230px; overflow: hidden; color: var(--ink-soft); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.account-identity strong { color: var(--ink); }
 .logout-button { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: var(--ink-soft); font-size: 13px; font-weight: 700; cursor: pointer; }
 .logout-button:hover { border-color: var(--ink); color: var(--ink); }
 
@@ -180,6 +182,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .workspace-copy select { max-width: 100px; }
   .logout-button { width: 38px; height: 38px; overflow: hidden; padding: 0; font-size: 0; }
   .logout-button::after { content: "↪"; font-size: 18px; }
+  .account-identity { display: none; }
   .content { padding: 28px 16px 60px; }
   .welcome { align-items: start; }
   .welcome h1 { font-size: 36px; }
@@ -255,6 +258,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .member-admin-row input { width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 9px; background: white; color: var(--ink); outline: none; }
 .member-admin-row input:focus { border-color: var(--ink); box-shadow: 0 0 0 3px var(--mint); }
 .member-account-state { min-width: 128px; display: grid; justify-items: end; gap: 9px; }
+.member-admin-actions { display: flex; gap: 8px; }
+.member-admin-actions button { white-space: nowrap; }
 .status.pending { background: var(--cream); }
 .member-admin-help { margin-top: 20px; }
 

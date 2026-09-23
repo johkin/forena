@@ -13,6 +13,8 @@ type Props = {
   organization: Organization; sections: Section[]; team: Team; activity: Activity; members: Member[];
   initialInvitations: Invitation[]; initialFamilyActivities: FamilyActivity[]; workspaces: Workspace[]; tasks: TeamTask[];
   canManageTeam: boolean;
+  accountEmail?: string;
+  respondablePersonIds: string[];
   source: "database" | "demo";
 };
 
@@ -29,7 +31,7 @@ function timeUntil(value: string) {
   return hours > 0 ? `${hours} timmar` : "Snart dags";
 }
 
-export function ClubDashboard({ organization, sections, team, activity, members, initialInvitations, initialFamilyActivities, workspaces, tasks, canManageTeam, source }: Props) {
+export function ClubDashboard({ organization, sections, team, activity, members, initialInvitations, initialFamilyActivities, workspaces, tasks, canManageTeam, accountEmail, respondablePersonIds, source }: Props) {
   const [currentActivity, setCurrentActivity] = useState(activity);
   const [invitations, setInvitations] = useState(initialInvitations);
   const view: DashboardView = canManageTeam ? "leader" : "family";
@@ -44,7 +46,7 @@ export function ClubDashboard({ organization, sections, team, activity, members,
   const gatheringAt = currentActivity.gatheringAt ?? currentActivity.startsAt;
   const accepted = invitations.filter((item) => item.response === "accepted");
   const missing = invitations.filter((item) => item.response === "pending");
-  const familyInvitation = invitations[0];
+  const familyInvitation = invitations.find((item) => respondablePersonIds.includes(item.memberId));
   const familyMember = familyInvitation ? memberById.get(familyInvitation.memberId) : undefined;
 
   async function answer(invitation: Invitation, response: "accepted" | "declined" | "maybe") {
@@ -148,6 +150,7 @@ export function ClubDashboard({ organization, sections, team, activity, members,
       <header className="topbar">
         <a className="brand" href="#" aria-label="Förena startsida"><span className="brand-mark">F</span><span>Förena</span></a>
         <div className="topbar-actions">
+          {accountEmail ? <span className="account-identity" title={accountEmail}>Inloggad som <strong>{accountEmail}</strong></span> : null}
           <WorkspaceSwitcher organization={organization} team={team} workspaces={workspaces} />
           <LogoutButton />
         </div>

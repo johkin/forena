@@ -2,7 +2,11 @@ import { redirect } from "next/navigation";
 import { PasskeyEnrollment } from "@/components/passkey-enrollment";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function PasskeySetupPage() {
+type Props = { searchParams: Promise<{ next?: string }> };
+
+export default async function PasskeySetupPage({ searchParams }: Props) {
+  const { next } = await searchParams;
+  const safeNext = next?.startsWith("/") && !next.startsWith("//") ? next : "/setup";
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
 
@@ -17,7 +21,7 @@ export default async function PasskeySetupPage() {
         <p>
           Använd Face ID, Touch ID, enhetens PIN-kod eller din lösenordshanterare nästa gång du loggar in.
         </p>
-        <PasskeyEnrollment />
+        <PasskeyEnrollment next={safeNext} />
       </section>
     </main>
   );

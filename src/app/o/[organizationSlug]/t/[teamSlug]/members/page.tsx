@@ -1,16 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { updatePlayer } from "./actions";
+import { sendPlayerInvitation, updatePlayer } from "./actions";
 
 type Props = {
   params: Promise<{ organizationSlug: string; teamSlug: string }>;
-  searchParams: Promise<{ error?: string; saved?: string }>;
+  searchParams: Promise<{ error?: string; saved?: string; invited?: string }>;
 };
 
 export default async function TeamMembersPage({ params, searchParams }: Props) {
   const { organizationSlug, teamSlug } = await params;
-  const { error, saved } = await searchParams;
+  const { error, saved, invited } = await searchParams;
   const destination = `/o/${organizationSlug}/t/${teamSlug}/members`;
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getUser();
@@ -41,6 +41,7 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
           <Link className="secondary" href={`/o/${organizationSlug}/t/${teamSlug}`}>Till översikten</Link>
         </div>
         {saved ? <div className="auth-message">{saved} har uppdaterats.</div> : null}
+        {invited ? <div className="auth-message">Inbjudan har skickats till {invited}.</div> : null}
         {error ? <div className="auth-error">{error}</div> : null}
         <div className="member-admin-list">
           {(people ?? []).map((person) => (
@@ -49,12 +50,12 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
               <input name="teamSlug" type="hidden" value={teamSlug} />
               <input name="personId" type="hidden" value={person.id} />
               <label>Namn<input name="displayName" defaultValue={person.display_name} required /></label>
-              <label>E-post för egen inloggning<input name="email" type="email" defaultValue={emailByPerson.get(person.id) ?? ""} placeholder="namn+spelare@example.se" /></label>
-              <div className="member-account-state"><span className={`status ${person.user_id ? "accepted" : "pending"}`}>{person.user_id ? "Konto kopplat" : "Inte aktiverat"}</span><button className="primary" type="submit">Spara</button></div>
+              <label>E-post för egen inloggning<input name="email" type="email" defaultValue={emailByPerson.get(person.id) ?? ""} placeholder="namn+spelare@example.se" readOnly={Boolean(person.user_id)} /></label>
+              <div className="member-account-state"><span className={`status ${person.user_id ? "accepted" : "pending"}`}>{person.user_id ? "Konto kopplat" : "Inte aktiverat"}</span><div className="member-admin-actions"><button className="secondary" formAction={sendPlayerInvitation} type="submit">{person.user_id ? "Skicka inloggningslänk" : "Skicka inbjudan"}</button><button className="primary" type="submit">Spara</button></div></div>
             </form>
           ))}
         </div>
-        <p className="form-help member-admin-help">När adressen sparats kan spelaren välja ”Skapa ett konto med lösenord” på inloggningssidan. Med e-postverifiering aktiverad behöver adressen verifieras en gång; därefter fungerar lösenord direkt.</p>
+        <p className="form-help member-admin-help">En ny e-postadress får automatiskt en inbjudan. Länken verifierar adressen, kopplar kontot till spelaren och erbjuder en passkey. Lösenord finns kvar som ett valfritt alternativ.</p>
       </section>
     </main>
   );

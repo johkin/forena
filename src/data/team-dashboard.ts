@@ -23,6 +23,8 @@ export type TeamDashboardData = {
   tasks: TeamTask[];
   familyActivities: FamilyActivity[];
   canManageTeam: boolean;
+  accountEmail?: string;
+  respondablePersonIds: string[];
   source: "database" | "demo";
 };
 
@@ -38,6 +40,7 @@ function demoDashboard(): TeamDashboardData {
     tasks: demoTasks,
     familyActivities: [],
     canManageTeam: true,
+    respondablePersonIds: demoMembers.map((item) => item.id),
     source: "demo",
   };
 }
@@ -279,5 +282,5 @@ export async function getTeamDashboard(
     }];
   });
 
-  return { organization, sections: sectionList, team, activity, members, invitations, workspaces, tasks, familyActivities, canManageTeam: canManageCurrentTeam, source: "database" };
+  return { organization, sections: sectionList, team, activity, members, invitations, workspaces, tasks, familyActivities, canManageTeam: canManageCurrentTeam, accountEmail: authData.user.email, respondablePersonIds: familyPersonIds, source: "database" };
 }
