@@ -349,3 +349,21 @@ button, a { -webkit-tap-highlight-color: transparent; }
 @media(max-width:700px){
   .activity-detail-body p { grid-template-columns:1fr; gap:4px; }
 }
+
+.overview-dual { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:22px; align-items:start; }
+.personal-feed { margin-bottom:0; }
+.overview-empty { margin:18px 0 0; color:var(--ink-soft); font-size:13px; }
+.team-status-card { display:grid; gap:18px; }
+.team-next-activity { width:100%; display:grid; grid-template-columns:1fr auto; align-items:center; gap:12px; padding:16px; border:1px solid var(--line); border-radius:12px; background:var(--cream); color:var(--ink); text-align:left; cursor:pointer; }
+.team-next-activity>span { display:grid; gap:4px; }
+.team-next-activity small { color:var(--ink-soft); font-size:10px; font-weight:900; letter-spacing:.7px; text-transform:uppercase; }
+.team-next-activity strong { font-size:16px; }
+.team-next-activity span span { color:var(--ink-soft); font-size:12px; }
+.team-status-metrics { display:grid; grid-template-columns:repeat(3,1fr); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+.team-status-metrics div { display:grid; gap:3px; padding:14px; text-align:center; border-right:1px solid var(--line); }
+.team-status-metrics div:last-child { border-right:0; }
+.team-status-metrics strong { font-size:22px; }
+.team-status-metrics span { color:var(--ink-soft); font-size:11px; }
+.team-status-footer { display:grid; gap:8px; color:var(--ink-soft); font-size:12px; }
+.team-status-footer strong { color:var(--ink); }
+@media(max-width:900px){ .overview-dual{grid-template-columns:1fr;} }

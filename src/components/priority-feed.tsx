@@ -11,24 +11,19 @@ type Props = {
 
 type FeedItem = {
   id: string;
-  kind: "activity" | "invitation" | "task";
+  kind: "invitation" | "task";
   title: string;
   meta: string;
   dueAt: number;
   onClick?: () => void;
 };
 
-const labels = {
-  activity: "Aktivitet",
-  invitation: "Kallelse",
-  task: "Uppgift",
-} as const;
+const labels = { invitation: "Kallelse", task: "Uppgift" } as const;
 
 export function PriorityFeed({ activity, pendingInvitations, tasks, onOpenActivity }: Props) {
   const items: FeedItem[] = [];
 
   if (pendingInvitations > 0) {
-    const dueAt = activity.responseDueAt ? new Date(activity.responseDueAt).getTime() : new Date(activity.startsAt).getTime();
     items.push({
       id: `invitation:${activity.id}`,
       kind: "invitation",
@@ -36,19 +31,10 @@ export function PriorityFeed({ activity, pendingInvitations, tasks, onOpenActivi
       meta: activity.responseDueAt
         ? `Svara senast ${new Intl.DateTimeFormat("sv-SE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(activity.responseDueAt))}`
         : "Svar saknas",
-      dueAt,
+      dueAt: activity.responseDueAt ? new Date(activity.responseDueAt).getTime() : new Date(activity.startsAt).getTime(),
       onClick: () => onOpenActivity(activity),
     });
   }
-
-  items.push({
-    id: `activity:${activity.id}`,
-    kind: "activity",
-    title: activity.title,
-    meta: `${new Intl.DateTimeFormat("sv-SE", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(activity.gatheringAt ?? activity.startsAt))} · ${activity.location}`,
-    dueAt: new Date(activity.gatheringAt ?? activity.startsAt).getTime(),
-    onClick: () => onOpenActivity(activity),
-  });
 
   for (const task of tasks) {
     items.push({
@@ -62,14 +48,17 @@ export function PriorityFeed({ activity, pendingInvitations, tasks, onOpenActivi
 
   items.sort((a, b) => a.dueAt - b.dueAt);
 
-  return <section className="card priority-feed" aria-labelledby="priority-feed-title">
-    <div className="card-heading"><div><p className="eyebrow">Prioriterat</p><h2 id="priority-feed-title">Aktuellt för dig</h2></div><span className="badge">{items.length}</span></div>
-    <div className="priority-list">
-      {items.map((item) => <button className="priority-item" data-kind={item.kind} key={item.id} onClick={item.onClick} type="button">
-        <span className="priority-marker" aria-hidden="true" />
-        <span className="priority-copy"><small>{labels[item.kind]}</small><strong>{item.title}</strong><span>{item.meta}</span></span>
-        {item.onClick ? <b aria-hidden="true">→</b> : null}
-      </button>)}
+  return <section className="card priority-feed personal-feed" aria-labelledby="personal-feed-title">
+    <div className="card-heading">
+      <div><p className="eyebrow">Jaget</p><h2 id="personal-feed-title">För mig</h2></div>
+      {items.length ? <span className="badge">{items.length}</span> : null}
     </div>
+    {items.length
+      ? <div className="priority-list">{items.map((item) => <button className="priority-item" data-kind={item.kind} key={item.id} onClick={item.onClick} type="button">
+          <span className="priority-marker" aria-hidden="true" />
+          <span className="priority-copy"><small>{labels[item.kind]}</small><strong>{item.title}</strong><span>{item.meta}</span></span>
+          {item.onClick ? <b aria-hidden="true">→</b> : null}
+        </button>)}</div>
+      : <p className="overview-empty">Inget kräver din uppmärksamhet just nu.</p>}
   </section>;
 }
