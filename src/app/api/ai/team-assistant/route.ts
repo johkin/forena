@@ -6,7 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-const DEFAULT_MODEL = "google/gemini-3.5-flash-lite";
+// This model is already exercised successfully by the production team briefing.
+// Newer catalogue entries can exist before they are reliable for every Gateway route.
+const DEFAULT_MODEL = "google/gemini-2.5-flash-lite";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -76,7 +78,9 @@ export async function POST(request: Request) {
     documentIds.length ? supabase.from("contextual_documents").select("id, title, summary, content_markdown, audience").in("id", documentIds) : Promise.resolve({ data: [] }),
   ]);
   const acceptedNameById = new Map((acceptedPeople ?? []).map((item) => [item.id, item.display_name]));
-  const allowedAudiences = canManage ? new Set(["leaders"]) : new Set(["players", "guardians"]);
+  const allowedAudiences = canManage
+    ? new Set(["leaders"])
+    : new Set([...(ownPeople?.length ? ["players"] : []), ...(guardianLinks?.length ? ["guardians"] : [])]);
   const visibleDocuments = (documents ?? []).filter((document) => document.audience.some((audience) => allowedAudiences.has(audience)));
   const invitationsByActivity = new Map<string, typeof personalInvitations>();
   for (const invitation of personalInvitations ?? []) {
@@ -134,7 +138,16 @@ export async function POST(request: Request) {
     console.info("team_assistant_completed", { teamId, model, latencyMs: Date.now() - startedAt, inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens });
     return NextResponse.json({ answer: result.text, source: "ai", model });
   } catch (error) {
-    console.warn("team_assistant_fallback", { teamId, model, latencyMs: Date.now() - startedAt, error: error instanceof Error ? error.name : "unknown" });
+    const gatewayError = error as Error & { statusCode?: number; cause?: { name?: string; message?: string } };
+    console.warn("team_assistant_fallback", {
+      teamId,
+      model,
+      latencyMs: Date.now() - startedAt,
+      error: gatewayError.name || "unknown",
+      statusCode: gatewayError.statusCode,
+      cause: gatewayError.cause?.name,
+      message: gatewayError.message.slice(0, 240),
+    });
     const nextActivity = activities?.[0];
     const answer = nextActivity
       ? `Jag kan inte formulera ett AI-svar just nu. Nästa aktivitet är ${nextActivity.title} på ${nextActivity.location || "plats som ännu inte angetts"}.`
