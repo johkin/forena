@@ -214,6 +214,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .auth-divider::before, .auth-divider::after { content: ""; height: 1px; flex: 1; background: var(--line); }
 .auth-muted { color: var(--ink-soft); font-size: 14px; }
 .link-button { padding: 8px; border: 0; background: transparent; color: var(--ink-soft); cursor: pointer; text-decoration: underline; }
+.auth-mode-links { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; margin-top: 18px; }
+.auth-mode-links a { color: var(--ink-soft); font-size: 13px; }
 
 .application-page { min-height: 100vh; padding: clamp(24px, 5vw, 64px); }
 .application-card { width: min(820px, 100%); margin: 0 auto; padding: clamp(24px, 5vw, 48px); border: 1px solid var(--line); border-radius: 20px; background: var(--paper); box-shadow: var(--shadow); }
@@ -246,6 +248,15 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .application-item dd { display: grid; gap: 4px; margin: 0; font-size: 14px; }
 .review-actions, .organization-actions { display: flex; flex-wrap: wrap; gap: 9px; }
 .organization-actions a { text-decoration: none; }
+.members-admin-card { width: min(980px, 100%); }
+.member-admin-list { display: grid; gap: 12px; }
+.member-admin-row { display: grid; grid-template-columns: minmax(180px, .8fr) minmax(240px, 1.2fr) auto; align-items: end; gap: 14px; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: white; }
+.member-admin-row label { display: grid; gap: 7px; color: var(--ink-soft); font-size: 12px; font-weight: 800; }
+.member-admin-row input { width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 9px; background: white; color: var(--ink); outline: none; }
+.member-admin-row input:focus { border-color: var(--ink); box-shadow: 0 0 0 3px var(--mint); }
+.member-account-state { min-width: 128px; display: grid; justify-items: end; gap: 9px; }
+.status.pending { background: var(--cream); }
+.member-admin-help { margin-top: 20px; }
 
 @media (max-width: 560px) {
   .application-page { padding: 16px; }
@@ -253,4 +264,6 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .application-page-heading { display: grid; }
   .application-item dl div { grid-template-columns: 1fr; gap: 4px; }
   .review-actions { display: grid; }
+  .member-admin-row { grid-template-columns: 1fr; }
+  .member-account-state { grid-template-columns: 1fr auto; align-items: center; justify-items: start; }
 }

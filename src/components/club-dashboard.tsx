@@ -155,7 +155,7 @@ export function ClubDashboard({ organization, sections, team, activity, members,
       <div className="shell">
         <aside className="sidebar" aria-label="Huvudmeny">
           <p className="eyebrow">{team.name}</p>
-          <nav><a className="active" href="#overview">Översikt</a><a href="#calendar">Kalender</a><a href="#members">Spelare och ledare</a><a href="#attendance">Närvaro</a><a href="#tasks">Uppgifter <span className="badge">{tasks.length}</span></a></nav>
+          <nav><a className="active" href="#overview">Översikt</a><a href="#calendar">Kalender</a><a href={canManageTeam ? `/o/${organization.slug}/t/${team.slug}/members` : "#members"}>Spelare och ledare</a><a href="#attendance">Närvaro</a><a href="#tasks">Uppgifter <span className="badge">{tasks.length}</span></a></nav>
           {view === "leader" && <><p className="eyebrow">Publicering</p><nav><a href="#news">Nyheter</a><a href="#pages">Sidor</a></nav></>}
         </aside>
         <section className="content" id="overview">
@@ -163,7 +163,7 @@ export function ClubDashboard({ organization, sections, team, activity, members,
           {notice && <div className="toast" role="status">✓ {notice}</div>}
           {source === "demo" && <div className="demo-notice">Demoläge</div>}
           {familyActivities.length > 0 && <section className="family-overview" aria-labelledby="family-overview-title">
-            <div className="card-heading"><div><p className="eyebrow">Familjen</p><h2 id="family-overview-title">Barnens nästa aktiviteter</h2></div></div>
+            <div className="card-heading"><div><p className="eyebrow">För dig</p><h2 id="family-overview-title">Aktuellt just nu</h2></div></div>
             <div className="family-activity-grid">{familyActivities.map((item) => {
               const dueAt = item.activity.gatheringAt ?? item.activity.startsAt;
               return <article className="card family-activity-card" key={`${item.member.id}:${item.activity.id}`}>

@@ -63,6 +63,10 @@ export interface Database {
         Timestamped & OrganizationScoped & { id: string; user_id: string | null; display_name: string; updated_at: string },
         OrganizationScoped & { id?: string; user_id?: string | null; display_name: string; created_at?: string; updated_at?: string }
       >;
+      person_login_emails: Table<
+        Timestamped & OrganizationScoped & { person_id: string; email: string; updated_at: string },
+        OrganizationScoped & { person_id: string; email: string; created_at?: string; updated_at?: string }
+      >;
       person_guardians: Table<
         Timestamped & OrganizationScoped & { person_id: string; guardian_user_id: string; contact_name: string | null; contact_phone: string | null },
         OrganizationScoped & { person_id: string; guardian_user_id: string; contact_name?: string | null; contact_phone?: string | null; created_at?: string }
@@ -144,6 +148,7 @@ export interface Database {
       get_join_options: { Args: { requested_organization_slug: string }; Returns: { organization_id: string; organization_name: string; organization_slug: string; section_id: string; section_name: string; section_slug: string; team_id: string; team_name: string; team_slug: string }[] };
       submit_membership_application: { Args: { payload: Json }; Returns: string };
       accept_membership_application_invitation: { Args: { invitation_token_hash: string }; Returns: { organization_slug: string; team_slug: string }[] };
+      claim_person_account: { Args: Record<never, never>; Returns: number };
     };
     Enums: Record<never, never>;
     CompositeTypes: Record<never, never>;
