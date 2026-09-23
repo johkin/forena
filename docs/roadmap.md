@@ -65,6 +65,7 @@ Manuella påminnelser köas endast för obesvarade kallelser och endast efter
 behörighetskontroll för laget. Transport-workern behandlar nu `notification_outbox`, skickar e-post via Resend,
 gör retries med backoff och skriver `invitation_sent` respektive
 `reminder_sent`. Leveransstatus visas i aktivitetsvyn per kanal och mottagare.
+Workern körs via Vercel Cron.
 Web Push använder samma leveransmodell men själva push-transporten återstår.
 
 Prioriteringen i **För laget** ska därefter bli kontextkänslig. Kallelsesvar är binära (ja/nej) och kan kompletteras med en frivillig kommentar; inget svar betyder att läget fortfarande är osäkert och kan påminnas. Kommentarer kan ge AI-lagret extra kontext, exempelvis önskemål om en annan matchdag. Antalet
