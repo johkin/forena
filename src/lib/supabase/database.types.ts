@@ -91,6 +91,29 @@ export interface Database {
         Timestamped & OrganizationScoped & { id: string; activity_id: string; person_id: string; response: "pending" | "accepted" | "declined" | "maybe"; responded_at: string | null },
         OrganizationScoped & { id?: string; activity_id: string; person_id: string; response?: "pending" | "accepted" | "declined" | "maybe"; responded_at?: string | null; created_at?: string }
       >;
+      activity_events: Table<
+        Timestamped & OrganizationScoped & {
+          id: string;
+          activity_id: string;
+          invitation_id: string | null;
+          event_type: "invitation_scheduled" | "invitation_sent" | "reminder_scheduled" | "reminder_sent" | "invitation_response_changed" | "activity_updated" | "activity_cancelled";
+          channel: "push" | "email" | "sms" | "in_app" | null;
+          recipient_count: number | null;
+          metadata: Json;
+          created_by: string | null;
+        },
+        OrganizationScoped & {
+          id?: string;
+          activity_id: string;
+          invitation_id?: string | null;
+          event_type: "invitation_scheduled" | "invitation_sent" | "reminder_scheduled" | "reminder_sent" | "invitation_response_changed" | "activity_updated" | "activity_cancelled";
+          channel?: "push" | "email" | "sms" | "in_app" | null;
+          recipient_count?: number | null;
+          metadata?: Json;
+          created_by?: string | null;
+          created_at?: string;
+        }
+      >;
       team_tasks: Table<
         Timestamped & OrganizationScoped & { id: string; team_id: string; title: string; description: string; due_at: string; status: "open" | "completed"; created_by: string | null; completed_by: string | null; completed_at: string | null; updated_at: string },
         OrganizationScoped & { id?: string; team_id: string; title: string; description?: string; due_at: string; status?: "open" | "completed"; created_by?: string | null; completed_by?: string | null; completed_at?: string | null; created_at?: string; updated_at?: string }

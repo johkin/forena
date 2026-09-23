@@ -1,6 +1,15 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { Activity, Organization, Team } from "@/domain/club";
+
+type EventRow = {
+  id: string;
+  event_type: "invitation_scheduled" | "invitation_sent" | "reminder_scheduled" | "reminder_sent" | "invitation_response_changed" | "activity_updated" | "activity_cancelled";
+  channel: "push" | "email" | "sms" | "in_app" | null;
+  recipient_count: number | null;
+  created_at: string;
+};
 
 type Props = {
   activity: Activity;
@@ -11,10 +20,35 @@ type Props = {
   onEdit: (activity: Activity) => void;
 };
 
+const eventLabels: Record<EventRow["event_type"], string> = {
+  invitation_scheduled: "Kallelse schemalagd",
+  invitation_sent: "Kallelse skickad",
+  reminder_scheduled: "Påminnelse schemalagd",
+  reminder_sent: "Påminnelse skickad",
+  invitation_response_changed: "Kallelsesvar registrerat",
+  activity_updated: "Aktiviteten uppdaterad",
+  activity_cancelled: "Aktiviteten inställd",
+};
+
 export function ActivityDetailModal({ activity, organization, team, canEdit, onClose, onEdit }: Props) {
   const timeZone = organization.timeZone ?? "Europe/Stockholm";
+  const [events, setEvents] = useState<EventRow[]>([]);
+  const [historyError, setHistoryError] = useState(false);
   const date = new Intl.DateTimeFormat("sv-SE", { timeZone, weekday: "long", day: "numeric", month: "long" }).format(new Date(activity.startsAt));
   const time = new Intl.DateTimeFormat("sv-SE", { timeZone, hour: "2-digit", minute: "2-digit" });
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/activities/${activity.id}/events`)
+      .then(async (response) => {
+        if (!response.ok) throw new Error();
+        return response.json();
+      })
+      .then((body) => { if (!cancelled) setEvents(body.events ?? []); })
+      .catch(() => { if (!cancelled) setHistoryError(true); });
+    return () => { cancelled = true; };
+  }, [activity.id]);
+
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <section className="modal activity-detail-modal" role="dialog" aria-modal="true" aria-labelledby="activity-detail-title">
       <div className="card-heading"><div><p className="eyebrow">{team.name}</p><h2 id="activity-detail-title">{activity.title}</h2></div><button className="icon-button" onClick={onClose} aria-label="Stäng" type="button">✕</button></div>
@@ -26,6 +60,13 @@ export function ActivityDetailModal({ activity, organization, team, canEdit, onC
         {activity.responseDueAt ? <p><span>Svara senast</span><strong>{new Intl.DateTimeFormat("sv-SE", { timeZone, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(activity.responseDueAt))}</strong></p> : null}
         {activity.seriesId ? <p><span>Serie</span><strong>Ingår i en aktivitetsserie</strong></p> : null}
       </div>
+      {(events.length > 0 || historyError) ? <section className="activity-history" aria-labelledby="activity-history-title">
+        <div className="card-heading"><div><p className="eyebrow">Historik</p><h3 id="activity-history-title">Kallelser och ändringar</h3></div></div>
+        {historyError ? <p className="overview-empty">Historiken kunde inte hämtas.</p> : <ol>{events.map((event) => <li key={event.id}>
+          <span className="history-dot" />
+          <span><strong>{eventLabels[event.event_type]}</strong><small>{new Intl.DateTimeFormat("sv-SE", { timeZone, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(event.created_at))}{event.recipient_count ? ` · ${event.recipient_count} mottagare` : ""}{event.channel ? ` · ${event.channel}` : ""}</small></span>
+        </li>)}</ol>}
+      </section> : null}
       <div className="modal-actions"><button className="secondary" onClick={onClose} type="button">Stäng</button>{canEdit ? <button className="primary" onClick={() => onEdit(activity)} type="button">Redigera aktivitet</button> : null}</div>
     </section>
   </div>;

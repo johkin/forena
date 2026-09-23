@@ -6,8 +6,8 @@ import { LogoutButton } from "@/components/logout-button";
 import { TeamAssistantCard } from "@/components/team-assistant-card";
 import { ActivityEditorModal } from "@/components/activity-editor-modal";
 import { TeamCalendar } from "@/components/team-calendar";
-import { PriorityFeed } from "@/components/priority-feed";
-import { TeamStatusCard } from "@/components/team-status-card";
+import { PersonalOverview } from "@/components/personal-overview";
+import { TeamOverview } from "@/components/team-overview";
 import { ActivityDetailModal } from "@/components/activity-detail-modal";
 import {
   respondToInvitation, summarizeInvitations, type Activity, type DashboardView, type Invitation,
@@ -25,17 +25,6 @@ type Props = {
 
 const responseLabels = { accepted: "Kommer", declined: "Kan inte", maybe: "Kanske", pending: "Ej svarat" } as const;
 
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("sv-SE", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Stockholm" }).format(new Date(value));
-}
-
-function timeUntil(value: string) {
-  const hours = Math.max(0, Math.round((new Date(value).getTime() - Date.now()) / 3_600_000));
-  const days = Math.floor(hours / 24);
-  if (days > 0) return `${days} dagar och ${hours % 24} timmar`;
-  return hours > 0 ? `${hours} timmar` : "Snart dags";
-}
-
 export function ClubDashboard({ organization, sections, team, activity, members, rosterMembers, upcomingActivities, initialInvitations, initialFamilyActivities, workspaces, tasks, canManageTeam, accountEmail, respondablePersonIds, source }: Props) {
   const currentActivity = activity;
   const [invitations, setInvitations] = useState(initialInvitations);
@@ -50,20 +39,8 @@ export function ClubDashboard({ organization, sections, team, activity, members,
   const [savingInvitation, setSavingInvitation] = useState(false);
   const summary = useMemo(() => summarizeInvitations(invitations), [invitations]);
   const memberById = useMemo(() => new Map(members.map((member) => [member.id, member])), [members]);
-  const gatheringAt = currentActivity.gatheringAt ?? currentActivity.startsAt;
-  const missing = invitations.filter((item) => item.response === "pending");
   const familyInvitation = invitations.find((item) => respondablePersonIds.includes(item.memberId));
   const familyMember = familyInvitation ? memberById.get(familyInvitation.memberId) : undefined;
-
-  async function answer(invitation: Invitation, response: "accepted" | "declined" | "maybe") {
-    const updated = respondToInvitation(invitation, response);
-    if (source === "database") {
-      const result = await fetch(`/api/invitations/${invitation.id}/respond`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ response }) });
-      if (!result.ok) { setNotice("Svaret kunde inte sparas. Kontrollera din behörighet och försök igen."); return; }
-    }
-    setInvitations((current) => current.map((item) => (item.id === invitation.id ? updated : item)));
-    setNotice(`${memberById.get(invitation.memberId)?.displayName} är registrerad som ”${responseLabels[response]}”.`);
-  }
 
   async function answerFamily(item: FamilyActivity, response: "accepted" | "declined" | "maybe") {
     if (!item.invitation) return;
@@ -128,38 +105,28 @@ export function ClubDashboard({ organization, sections, team, activity, members,
           {activePage === "calendar"
             ? <TeamCalendar activities={upcomingActivities} timeZone={organization.timeZone ?? "Europe/Stockholm"} onSelectActivity={setSelectedActivity} />
             : <>
-                {familyActivities.length > 0 && <section className="family-overview" aria-labelledby="family-overview-title">
-                  <div className="card-heading"><div><p className="eyebrow">För dig</p><h2 id="family-overview-title">Aktuellt just nu</h2></div></div>
-                  <div className="family-activity-grid">{familyActivities.map((item) => {
-                    const dueAt = item.activity.gatheringAt ?? item.activity.startsAt;
-                    return <article className="card family-activity-card" key={`${item.member.id}:${item.activity.id}`}>
-                      <p className="eyebrow">{item.member.displayName} · {item.team.name}</p>
-                      <h3>{item.activity.title}</h3>
-                      <strong>{item.activity.gatheringAt ? `Samling om ${timeUntil(dueAt)}` : `Start om ${timeUntil(dueAt)}`}</strong>
-                      <small>{formatDate(dueAt)} · {item.activity.location}</small>
-                      {item.invitation ? item.invitation.response === "pending"
-                        ? <div className="response-actions"><button onClick={() => void answerFamily(item, "accepted")} type="button">Kommer</button><button onClick={() => void answerFamily(item, "declined")} type="button">Kan inte</button></div>
-                        : <span className={`status ${item.invitation.response}`}>{responseLabels[item.invitation.response]}</span>
-                        : <small>Ingen kallelse skickad ännu</small>}
-                    </article>;
-                  })}</div>
-                </section>}
-
-                {view === "leader"
-                  ? <div className="overview-dual">
-                      <PriorityFeed activity={currentActivity} pendingInvitations={missing.length} tasks={tasks} onOpenActivity={setSelectedActivity} />
-                      <TeamStatusCard teamName={team.name} activity={currentActivity} summary={summary} upcomingActivities={upcomingActivities} openTasks={tasks.length} timeZone={organization.timeZone ?? "Europe/Stockholm"} onOpenActivity={setSelectedActivity} />
-                    </div>
-                  : <div className="grid">
-                      <div className="main-column">
-                        <article className="card activity-card">
-                          <div className="card-heading"><div><p className="eyebrow">Nästa aktivitet · {team.name}</p><h2>{currentActivity.title}</h2></div><button className="icon-button" aria-label="Visa detaljer" onClick={() => setSelectedActivity(currentActivity)} type="button">•••</button></div>
-                          <div className="countdown"><span>{currentActivity.gatheringAt ? "Samling om" : "Start om"}</span><strong>{timeUntil(gatheringAt)}</strong><small>{formatDate(gatheringAt)} · {currentActivity.location}</small></div>
-                          {familyInvitation && <div className="family-response"><div><span className="member-avatar">{familyMember?.displayName.slice(0, 1)}</span><div><strong>{familyMember?.displayName}</strong><small>Kallelse till aktiviteten</small></div></div>{familyInvitation.response === "pending" ? <div className="response-actions"><button onClick={() => answer(familyInvitation, "accepted")} type="button">Kommer</button><button onClick={() => answer(familyInvitation, "declined")} type="button">Kan inte</button></div> : <span className={`status ${familyInvitation.response}`}>{responseLabels[familyInvitation.response]}</span>}</div>}
-                        </article>
-                      </div>
-                      <div className="right-column"><TeamAssistantCard teamId={team.id} teamName={team.name} assistantName={organization.assistantName} demo={source === "demo"} /></div>
-                    </div>}
+                <div className="overview-layout">
+                  <div className="overview-main">
+                    <PersonalOverview
+                      activities={familyActivities}
+                      timeZone={organization.timeZone ?? "Europe/Stockholm"}
+                      onAnswer={(item, response) => void answerFamily(item, response)}
+                      onOpenActivity={(item) => setSelectedActivity(item.activity)}
+                    />
+                    {view === "leader" ? <TeamOverview
+                      teamName={team.name}
+                      activity={currentActivity}
+                      summary={summary}
+                      upcomingActivities={upcomingActivities}
+                      tasks={tasks}
+                      timeZone={organization.timeZone ?? "Europe/Stockholm"}
+                      onOpenActivity={setSelectedActivity}
+                    /> : null}
+                  </div>
+                  <aside className="overview-assistant">
+                    <TeamAssistantCard teamId={team.id} teamName={team.name} assistantName={organization.assistantName} demo={source === "demo"} />
+                  </aside>
+                </div>
               </>}
         </section>
       </div>

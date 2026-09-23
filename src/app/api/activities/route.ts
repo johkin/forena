@@ -100,5 +100,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Kallelserna kunde inte sparas" }, { status: 500 });
   }
 
+  if (schedule && invitedPersonIds.length) {
+    const events = [
+      {
+        organization_id: team.organization_id,
+        activity_id: activity.id,
+        event_type: "invitation_scheduled" as const,
+        recipient_count: invitedPersonIds.length,
+        metadata: { scheduledAt: schedule.invitationSendAt },
+        created_by: authData.user.id,
+      },
+      ...(schedule.reminderSendAt ? [{
+        organization_id: team.organization_id,
+        activity_id: activity.id,
+        event_type: "reminder_scheduled" as const,
+        recipient_count: invitedPersonIds.length,
+        metadata: { scheduledAt: schedule.reminderSendAt },
+        created_by: authData.user.id,
+      }] : []),
+    ];
+    await supabase.from("activity_events").insert(events);
+  }
+
   return NextResponse.json({ activity, invitations }, { status: 201 });
 }
