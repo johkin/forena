@@ -5,6 +5,7 @@ export type Organization = {
   slug: string;
   name: string;
   assistantName: string;
+  timeZone?: string;
 };
 
 export type Section = {
@@ -49,6 +50,8 @@ export type Activity = {
   endsAt: string;
   location: string;
   gatheringAt?: string;
+  seriesId?: string;
+  status?: "draft" | "published" | "cancelled";
 };
 
 export type DashboardView = "leader" | "family";

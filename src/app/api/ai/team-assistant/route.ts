@@ -62,7 +62,7 @@ export async function POST(request: Request) {
 
   const [{ data: organization }, { data: activities }] = await Promise.all([
     supabase.from("organizations").select("name, assistant_name, time_zone").eq("id", team.organization_id).single(),
-    supabase.from("activities").select("id, activity_type_id, title, description_markdown, gathering_at, starts_at, ends_at, location").eq("team_id", teamId).gte("ends_at", new Date().toISOString()).order("starts_at").limit(5),
+    supabase.from("activities").select("id, activity_type_id, title, description_markdown, gathering_at, starts_at, ends_at, location").eq("team_id", teamId).neq("status", "cancelled").gte("ends_at", new Date().toISOString()).order("starts_at").limit(5),
   ]);
   const activityIds = (activities ?? []).map((item) => item.id);
   const activityTypeIds = [...new Set((activities ?? []).map((item) => item.activity_type_id))];

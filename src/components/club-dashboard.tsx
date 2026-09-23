@@ -5,6 +5,7 @@ import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { LogoutButton } from "@/components/logout-button";
 import { TeamBriefingCard } from "@/components/team-briefing-card";
 import { TeamAssistantCard } from "@/components/team-assistant-card";
+import { ActivityEditorModal } from "@/components/activity-editor-modal";
 import {
   respondToInvitation, summarizeInvitations, type Activity, type DashboardView, type Invitation,
   type FamilyActivity, type Member, type Organization, type Section, type Team, type TeamTask, type Workspace,
@@ -33,13 +34,12 @@ function timeUntil(value: string) {
 }
 
 export function ClubDashboard({ organization, sections, team, activity, members, initialInvitations, initialFamilyActivities, workspaces, tasks, canManageTeam, accountEmail, respondablePersonIds, source }: Props) {
-  const [currentActivity, setCurrentActivity] = useState(activity);
+  const currentActivity = activity;
   const [invitations, setInvitations] = useState(initialInvitations);
   const view: DashboardView = canManageTeam ? "leader" : "family";
   const [familyActivities, setFamilyActivities] = useState(initialFamilyActivities);
   const [notice, setNotice] = useState<string>();
-  const [showActivityForm, setShowActivityForm] = useState(false);
-  const [savingActivity, setSavingActivity] = useState(false);
+  const [activityEditorMode, setActivityEditorMode] = useState<"create" | "edit" | null>(null);
   const [showInvitationForm, setShowInvitationForm] = useState(false);
   const [savingInvitation, setSavingInvitation] = useState(false);
   const summary = useMemo(() => summarizeInvitations(invitations), [invitations]);
@@ -69,58 +69,6 @@ export function ClubDashboard({ organization, sections, team, activity, members,
     }
     setFamilyActivities((current) => current.map((candidate) => candidate.invitation?.id === item.invitation?.id ? { ...candidate, invitation: updated } : candidate));
     setNotice(`${item.member.displayName} är registrerad som ”${responseLabels[response]}”.`);
-  }
-
-  async function createActivity(form: HTMLFormElement) {
-    setSavingActivity(true);
-    const data = new FormData(form);
-    const selectedPersonIds = data.getAll("personIds").map(String);
-    const startsAt = new Date(String(data.get("startsAt")));
-    const gatheringValue = String(data.get("gatheringAt") ?? "").trim();
-    const gatheringAt = gatheringValue ? new Date(gatheringValue) : undefined;
-    const durationMinutes = Number(data.get("durationMinutes"));
-    const nextActivity: Activity = {
-      id: `demo-activity-${Date.now()}`,
-      organizationId: organization.id,
-      teamId: team.id,
-      title: String(data.get("title")),
-      gatheringAt: gatheringAt?.toISOString(),
-      startsAt: startsAt.toISOString(),
-      endsAt: new Date(startsAt.getTime() + durationMinutes * 60_000).toISOString(),
-      location: String(data.get("location")),
-    };
-    let nextInvitations: Invitation[] = selectedPersonIds.map((memberId, index) => ({
-      id: `demo-invitation-${Date.now()}-${index}`,
-      organizationId: organization.id,
-      activityId: nextActivity.id,
-      memberId,
-      response: "pending",
-    }));
-
-    if (source === "database") {
-      const response = await fetch("/api/activities", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ teamId: team.id, title: nextActivity.title, gatheringAt: nextActivity.gatheringAt, startsAt: nextActivity.startsAt, endsAt: nextActivity.endsAt, location: nextActivity.location, personIds: selectedPersonIds }),
-      });
-      const result = await response.json();
-      if (!response.ok) {
-        setNotice(result.error ?? "Aktiviteten kunde inte sparas.");
-        setSavingActivity(false);
-        return;
-      }
-      nextActivity.id = result.activity.id;
-      nextActivity.gatheringAt = result.activity.gathering_at ?? undefined;
-      nextInvitations = result.invitations.map((invitation: { id: string; organization_id: string; activity_id: string; person_id: string }) => ({
-        id: invitation.id, organizationId: invitation.organization_id, activityId: invitation.activity_id, memberId: invitation.person_id, response: "pending",
-      }));
-    }
-
-    setCurrentActivity(nextActivity);
-    setInvitations(nextInvitations);
-    setShowActivityForm(false);
-    setSavingActivity(false);
-    setNotice(`${nextActivity.title} skapades och ${nextInvitations.length} kallelser förbereddes.`);
   }
 
   async function inviteTeamMember(form: HTMLFormElement) {
@@ -163,7 +111,7 @@ export function ClubDashboard({ organization, sections, team, activity, members,
           {view === "leader" && <><p className="eyebrow">Publicering</p><nav><a href="#news">Nyheter</a><a href="#pages">Sidor</a></nav></>}
         </aside>
         <section className="content" id="overview">
-          <div className="welcome"><div><p className="eyebrow">{sections.length > 1 ? `${sections.find((item) => item.id === team.sectionId)?.name ?? "Sektion"} · ` : ""}{organization.name}</p><h1>{team.name}</h1><p>{view === "leader" ? "Det laget behöver från dig just nu." : `Det viktigaste för ${familyMember?.displayName ?? "spelaren"} just nu.`}</p></div>{view === "leader" && canManageTeam && <div className="welcome-actions"><button className="secondary" onClick={() => setShowInvitationForm(true)} type="button">Bjud in ledare</button><button className="primary" onClick={() => setShowActivityForm(true)} type="button">+ Ny aktivitet</button></div>}</div>
+          <div className="welcome"><div><p className="eyebrow">{sections.length > 1 ? `${sections.find((item) => item.id === team.sectionId)?.name ?? "Sektion"} · ` : ""}{organization.name}</p><h1>{team.name}</h1><p>{view === "leader" ? "Det laget behöver från dig just nu." : `Det viktigaste för ${familyMember?.displayName ?? "spelaren"} just nu.`}</p></div>{view === "leader" && canManageTeam && <div className="welcome-actions"><button className="secondary" onClick={() => setShowInvitationForm(true)} type="button">Bjud in ledare</button><button className="primary" onClick={() => setActivityEditorMode("create")} type="button">+ Ny aktivitet</button></div>}</div>
           {notice && <div className="toast" role="status">✓ {notice}</div>}
           {source === "demo" && <div className="demo-notice">Demoläge</div>}
           {familyActivities.length > 0 && <section className="family-overview" aria-labelledby="family-overview-title">
@@ -193,7 +141,7 @@ export function ClubDashboard({ organization, sections, team, activity, members,
                 </> : <>
                   <div className="activity-details">{currentActivity.gatheringAt && <p><span>◷</span><strong>Samling {formatDate(currentActivity.gatheringAt)}</strong></p>}<p><span>⚽</span>{currentActivity.gatheringAt ? "Start" : "Start " + formatDate(currentActivity.startsAt)}{currentActivity.gatheringAt && ` ${new Intl.DateTimeFormat("sv-SE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Stockholm" }).format(new Date(currentActivity.startsAt))}`}</p><p><span>⌖</span>{currentActivity.location}</p></div>
                   <div className="summary" aria-label="Svar på kallelsen"><div><strong>{summary.accepted}</strong><span>Kommer</span></div><div><strong>{summary.declined}</strong><span>Kan inte</span></div><div><strong>{summary.maybe}</strong><span>Kanske</span></div><div><strong>{summary.pending}</strong><span>Ej svarat</span></div></div>
-                  <div className="activity-actions"><button className="primary" type="button">Rapportera närvaro</button><button className="secondary" type="button">Redigera match</button></div>
+                  <div className="activity-actions"><button className="primary" type="button">Rapportera närvaro</button><button className="secondary" onClick={() => setActivityEditorMode("edit")} type="button">Redigera aktivitet</button></div>
                   {missing.length > 0 && <div className="missing-list"><p className="eyebrow">Saknar svar · kontakta målsman</p>{missing.map((invitation) => { const member = memberById.get(invitation.memberId); return <div className="missing-person" key={invitation.id}><span className="member-avatar">{member?.displayName.slice(0, 1)}</span><span><strong>{member?.displayName}</strong>{member?.guardianName && <small>{member.guardianName}</small>}</span><a href={member?.guardianPhone ? `tel:${member.guardianPhone.replace(/\s/g, "")}` : "#members"}>{member?.guardianPhone ?? "Visa kontakt"}</a></div>; })}</div>}
                 </>}
               </article>
@@ -206,7 +154,7 @@ export function ClubDashboard({ organization, sections, team, activity, members,
           </div>
         </section>
       </div>
-      {showActivityForm && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowActivityForm(false); }}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="activity-form-title"><div className="card-heading"><div><p className="eyebrow">{team.name}</p><h2 id="activity-form-title">Skapa aktivitet och kallelse</h2></div><button className="icon-button" onClick={() => setShowActivityForm(false)} aria-label="Stäng" type="button">✕</button></div><form onSubmit={(event) => { event.preventDefault(); void createActivity(event.currentTarget); }}><label>Titel<input name="title" required placeholder="Träning eller match" /></label><div className="form-row"><label>Samling (valfritt)<input name="gatheringAt" type="datetime-local" /></label><label>Start<input name="startsAt" type="datetime-local" required /></label></div><label>Längd<select name="durationMinutes" defaultValue="90"><option value="60">1 timme</option><option value="90">1,5 timmar</option><option value="120">2 timmar</option><option value="180">3 timmar</option></select></label><label>Plats<input name="location" required placeholder="Plan eller hall" /></label><fieldset><legend>Kalla deltagare</legend><div className="member-options">{members.map((member) => <label key={member.id}><input type="checkbox" name="personIds" value={member.id} defaultChecked /><span className="member-avatar">{member.displayName.slice(0, 1)}</span>{member.displayName}</label>)}</div></fieldset><div className="modal-actions"><button className="secondary" onClick={() => setShowActivityForm(false)} type="button">Avbryt</button><button className="primary" disabled={savingActivity} type="submit">{savingActivity ? "Sparar…" : "Skapa och kalla"}</button></div></form></section></div>}
+      {activityEditorMode ? <ActivityEditorModal mode={activityEditorMode} organization={organization} team={team} members={members} activity={activityEditorMode === "edit" ? currentActivity : undefined} source={source} onClose={() => setActivityEditorMode(null)} onNotice={setNotice} /> : null}
       {showInvitationForm && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowInvitationForm(false); }}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="invitation-form-title"><div className="card-heading"><div><p className="eyebrow">{team.name}</p><h2 id="invitation-form-title">Bjud in ledare</h2></div><button className="icon-button" onClick={() => setShowInvitationForm(false)} aria-label="Stäng" type="button">✕</button></div><form onSubmit={(event) => { event.preventDefault(); void inviteTeamMember(event.currentTarget); }}><label>E-postadress<input name="email" type="email" required autoComplete="email" placeholder="namn@example.se" /></label><p className="form-help">Nya spelare och målsmän kommer in genom föreningens medlemsansökan. Den här länken ger en godkänd ledare åtkomst till laget.</p><div className="modal-actions"><button className="secondary" onClick={() => setShowInvitationForm(false)} type="button">Avbryt</button><button className="primary" disabled={savingInvitation} type="submit">{savingInvitation ? "Skickar…" : "Skicka inbjudan"}</button></div></form></section></div>}
     </main>
   );

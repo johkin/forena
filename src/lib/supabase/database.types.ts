@@ -76,16 +76,16 @@ export interface Database {
         OrganizationScoped & { id?: string; person_id: string; team_id?: string | null; role: "participant" | "leader" | "volunteer"; starts_on?: string; ends_on?: string | null; created_at?: string }
       >;
       activities: Table<
-        Timestamped & OrganizationScoped & { id: string; team_id: string | null; activity_type_id: string; series_id: string | null; title: string; description_markdown: string; gathering_at: string | null; starts_at: string; ends_at: string; location: string; source_kind: "manual" | "imported"; external_source: string | null; external_id: string | null; created_by: string | null; updated_at: string },
-        OrganizationScoped & { id?: string; team_id?: string | null; activity_type_id: string; series_id?: string | null; title: string; description_markdown?: string; gathering_at?: string | null; starts_at: string; ends_at: string; location?: string; source_kind?: "manual" | "imported"; external_source?: string | null; external_id?: string | null; created_by?: string | null; created_at?: string; updated_at?: string }
+        Timestamped & OrganizationScoped & { id: string; team_id: string | null; activity_type_id: string; series_id: string | null; title: string; description_markdown: string; gathering_at: string | null; starts_at: string; ends_at: string; location: string; status: "draft" | "published" | "cancelled"; cancelled_at: string | null; cancellation_reason: string | null; source_kind: "manual" | "imported"; external_source: string | null; external_id: string | null; created_by: string | null; updated_at: string },
+        OrganizationScoped & { id?: string; team_id?: string | null; activity_type_id: string; series_id?: string | null; title: string; description_markdown?: string; gathering_at?: string | null; starts_at: string; ends_at: string; location?: string; status?: "draft" | "published" | "cancelled"; cancelled_at?: string | null; cancellation_reason?: string | null; source_kind?: "manual" | "imported"; external_source?: string | null; external_id?: string | null; created_by?: string | null; created_at?: string; updated_at?: string }
       >;
       activity_types: Table<
         Timestamped & OrganizationScoped & { id: string; name: string; slug: string; system_category: "session" | "competition" | "work" | "meeting" | "education" | "other"; color: string | null; icon: string | null; active: boolean; updated_at: string },
         OrganizationScoped & { id?: string; name: string; slug: string; system_category: "session" | "competition" | "work" | "meeting" | "education" | "other"; color?: string | null; icon?: string | null; active?: boolean; created_at?: string; updated_at?: string }
       >;
       activity_series: Table<
-        Timestamped & OrganizationScoped & { id: string; team_id: string; activity_type_id: string; title: string; location: string; recurrence_rule: Json; starts_on: string; ends_on: string | null; updated_at: string },
-        OrganizationScoped & { id?: string; team_id: string; activity_type_id: string; title: string; location?: string; recurrence_rule: Json; starts_on: string; ends_on?: string | null; created_at?: string; updated_at?: string }
+        Timestamped & OrganizationScoped & { id: string; team_id: string; activity_type_id: string; title: string; location: string; recurrence_rule: Json; starts_on: string; ends_on: string | null; status: "draft" | "published" | "ended" | "cancelled"; created_by: string | null; updated_at: string },
+        OrganizationScoped & { id?: string; team_id: string; activity_type_id: string; title: string; location?: string; recurrence_rule: Json; starts_on: string; ends_on?: string | null; status?: "draft" | "published" | "ended" | "cancelled"; created_by?: string | null; created_at?: string; updated_at?: string }
       >;
       invitations: Table<
         Timestamped & OrganizationScoped & { id: string; activity_id: string; person_id: string; response: "pending" | "accepted" | "declined" | "maybe"; responded_at: string | null },

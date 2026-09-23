@@ -86,7 +86,7 @@ export async function POST(request: Request) {
       location,
       created_by: authData.user.id,
     })
-    .select("id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location")
+    .select("id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location, series_id, status")
     .single();
 
   if (activityError || !activity) {
