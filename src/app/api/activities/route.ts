@@ -40,7 +40,8 @@ export async function POST(request: Request) {
   const { data: team } = await supabase.from("teams").select("id, organization_id").eq("id", body.teamId).maybeSingle();
   if (!team) return NextResponse.json({ error: "Laget kunde inte hittas" }, { status: 404 });
   const { data: organization } = await supabase.from("organizations").select("time_zone").eq("id", team.organization_id).single();
-  if (!organization) return NextResponse.json({ error: "Föreningen kunde inte hittas" }, { status: 404 });
+  const timeZone = organization?.time_zone;
+  if (!timeZone) return NextResponse.json({ error: "Föreningen kunde inte hittas" }, { status: 404 });
 
   const typeQuery = supabase.from("activity_types").select("id").eq("organization_id", team.organization_id).eq("active", true);
   const { data: activityType } = body.activityTypeId
@@ -61,7 +62,7 @@ export async function POST(request: Request) {
   let schedule: { invitationSendAt: string; responseDueAt: string; reminderSendAt: string | null } | undefined;
   if (invitedPersonIds.length) {
     try {
-      schedule = invitationScheduleForOccurrence(startsAt.toISOString(), organization.time_zone, {
+      schedule = invitationScheduleForOccurrence(startsAt.toISOString(), timeZone, {
         invitationSendMinutesBefore: body.invitationSendMinutesBefore ?? 10080,
         responseDueRule: body.responseDueRule ?? "6h",
         reminderMinutesBeforeDue: body.reminderMinutesBeforeDue ?? 1440,

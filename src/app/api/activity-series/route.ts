@@ -27,13 +27,14 @@ export async function POST(request: Request) {
   const { data: team } = await supabase.from("teams").select("id, organization_id").eq("id", body.teamId).maybeSingle();
   if (!team) return NextResponse.json({ error: "Laget kunde inte hittas" }, { status: 404 });
   const { data: organization } = await supabase.from("organizations").select("time_zone").eq("id", team.organization_id).single();
-  if (!organization) return NextResponse.json({ error: "Föreningen kunde inte hittas" }, { status: 404 });
+  const timeZone = organization?.time_zone;
+  if (!timeZone) return NextResponse.json({ error: "Föreningen kunde inte hittas" }, { status: 404 });
   const { data: allowed } = await supabase.rpc("can_manage_team", { target_team_id: team.id });
   if (!allowed) return NextResponse.json({ error: "Du saknar behörighet för laget" }, { status: 403 });
 
   let occurrences;
   try {
-    occurrences = previewWeeklySeries({ ...body, timeZone: organization.time_zone });
+    occurrences = previewWeeklySeries({ ...body, timeZone: timeZone });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Serien kunde inte beräknas" }, { status: 400 });
   }
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
   let schedules: ReturnType<typeof invitationScheduleForOccurrence>[] = [];
   if (personIds.length) {
     try {
-      schedules = occurrences.map((item) => invitationScheduleForOccurrence(item.startsAt, organization.time_zone, {
+      schedules = occurrences.map((item) => invitationScheduleForOccurrence(item.startsAt, timeZone, {
         invitationSendMinutesBefore: body.invitationSendMinutesBefore ?? 10080,
         responseDueRule: body.responseDueRule ?? "6h",
         reminderMinutesBeforeDue: body.reminderMinutesBeforeDue ?? 1440,
@@ -69,7 +70,7 @@ export async function POST(request: Request) {
     startTime: body.startTime,
     durationMinutes: body.durationMinutes,
     gatheringMinutesBefore: body.gatheringMinutesBefore,
-    timeZone: organization.time_zone,
+    timeZone: timeZone,
     invitationSendMinutesBefore: body.invitationSendMinutesBefore ?? 10080,
     responseDueRule: body.responseDueRule ?? "6h",
     reminderMinutesBeforeDue: body.reminderMinutesBeforeDue ?? 1440,
