@@ -27,6 +27,7 @@ export async function POST(request: Request) {
   const { data: team } = await supabase.from("teams").select("id, organization_id").eq("id", body.teamId).maybeSingle();
   if (!team) return NextResponse.json({ error: "Laget kunde inte hittas" }, { status: 404 });
   const { data: organization } = await supabase.from("organizations").select("time_zone").eq("id", team.organization_id).single();
+  if (!organization) return NextResponse.json({ error: "Föreningen kunde inte hittas" }, { status: 404 });
   const { data: allowed } = await supabase.rpc("can_manage_team", { target_team_id: team.id });
   if (!allowed) return NextResponse.json({ error: "Du saknar behörighet för laget" }, { status: 403 });
 
