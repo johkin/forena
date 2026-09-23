@@ -7,6 +7,8 @@ import { TeamBriefingCard } from "@/components/team-briefing-card";
 import { TeamAssistantCard } from "@/components/team-assistant-card";
 import { ActivityEditorModal } from "@/components/activity-editor-modal";
 import { TeamCalendar } from "@/components/team-calendar";
+import { PriorityFeed } from "@/components/priority-feed";
+import { ActivityDetailModal } from "@/components/activity-detail-modal";
 import {
   respondToInvitation, summarizeInvitations, type Activity, type DashboardView, type Invitation,
   type FamilyActivity, type Member, type Organization, type Section, type Team, type TeamTask, type Workspace,
@@ -41,6 +43,9 @@ export function ClubDashboard({ organization, sections, team, activity, members,
   const [familyActivities, setFamilyActivities] = useState(initialFamilyActivities);
   const [notice, setNotice] = useState<string>();
   const [activityEditorMode, setActivityEditorMode] = useState<"create" | "edit" | null>(null);
+  const [activePage, setActivePage] = useState<"overview" | "calendar">("overview");
+  const [selectedActivity, setSelectedActivity] = useState<Activity>();
+  const [editingActivity, setEditingActivity] = useState<Activity>();
   const [showInvitationForm, setShowInvitationForm] = useState(false);
   const [savingInvitation, setSavingInvitation] = useState(false);
   const summary = useMemo(() => summarizeInvitations(invitations), [invitations]);
@@ -111,55 +116,64 @@ export function ClubDashboard({ organization, sections, team, activity, members,
       <div className="shell">
         <aside className="sidebar" aria-label="Huvudmeny">
           <p className="eyebrow">{team.name}</p>
-          <nav><a className="active" href="#overview">Översikt</a><a href="#calendar">Kalender</a><a href={canManageTeam ? `/o/${organization.slug}/t/${team.slug}/members` : "#members"}>Spelare och ledare</a><a href="#attendance">Närvaro</a><a href="#tasks">Uppgifter <span className="badge">{tasks.length}</span></a></nav>
+          <nav>
+            <button className={activePage === "overview" ? "active" : ""} onClick={() => setActivePage("overview")} type="button">Översikt</button>
+            <button className={activePage === "calendar" ? "active" : ""} onClick={() => setActivePage("calendar")} type="button">Kalender</button>
+            <a href={canManageTeam ? `/o/${organization.slug}/t/${team.slug}/members` : "#members"}>Spelare och ledare</a>
+            <a href="#attendance">Närvaro</a>
+          </nav>
           {view === "leader" && <><p className="eyebrow">Publicering</p><nav><a href="#news">Nyheter</a><a href="#pages">Sidor</a></nav></>}
         </aside>
-        <section className="content" id="overview">
-          <div className="welcome"><div><p className="eyebrow">{sections.length > 1 ? `${sections.find((item) => item.id === team.sectionId)?.name ?? "Sektion"} · ` : ""}{organization.name}</p><h1>{team.name}</h1><p>{view === "leader" ? "Det laget behöver från dig just nu." : `Det viktigaste för ${familyMember?.displayName ?? "spelaren"} just nu.`}</p></div>{view === "leader" && canManageTeam && <div className="welcome-actions"><button className="secondary" onClick={() => setShowInvitationForm(true)} type="button">Bjud in ledare</button><button className="primary" onClick={() => setActivityEditorMode("create")} type="button">+ Ny aktivitet</button></div>}</div>
+        <section className="content" id={activePage}>
+          <div className="welcome"><div><p className="eyebrow">{sections.length > 1 ? `${sections.find((item) => item.id === team.sectionId)?.name ?? "Sektion"} · ` : ""}{organization.name}</p><h1>{team.name}</h1><p>{activePage === "calendar" ? "Alla aktiviteter för laget." : view === "leader" ? "Det laget behöver från dig just nu." : `Det viktigaste för ${familyMember?.displayName ?? "spelaren"} just nu.`}</p></div>{view === "leader" && canManageTeam && <div className="welcome-actions"><button className="secondary" onClick={() => setShowInvitationForm(true)} type="button">Bjud in ledare</button><button className="primary" onClick={() => setActivityEditorMode("create")} type="button">+ Ny aktivitet</button></div>}</div>
           {notice && <div className="toast" role="status">✓ {notice}</div>}
           {source === "demo" && <div className="demo-notice">Demoläge</div>}
-          {familyActivities.length > 0 && <section className="family-overview" aria-labelledby="family-overview-title">
-            <div className="card-heading"><div><p className="eyebrow">För dig</p><h2 id="family-overview-title">Aktuellt just nu</h2></div></div>
-            <div className="family-activity-grid">{familyActivities.map((item) => {
-              const dueAt = item.activity.gatheringAt ?? item.activity.startsAt;
-              return <article className="card family-activity-card" key={`${item.member.id}:${item.activity.id}`}>
-                <p className="eyebrow">{item.member.displayName} · {item.team.name}</p>
-                <h3>{item.activity.title}</h3>
-                <strong>{item.activity.gatheringAt ? `Samling om ${timeUntil(dueAt)}` : `Start om ${timeUntil(dueAt)}`}</strong>
-                <small>{formatDate(dueAt)} · {item.activity.location}</small>
-                {item.invitation ? item.invitation.response === "pending"
-                  ? <div className="response-actions"><button onClick={() => void answerFamily(item, "accepted")} type="button">Kommer</button><button onClick={() => void answerFamily(item, "declined")} type="button">Kan inte</button></div>
-                  : <span className={`status ${item.invitation.response}`}>{responseLabels[item.invitation.response]}</span>
-                  : <small>Ingen kallelse skickad ännu</small>}
-              </article>;
-            })}</div>
-          </section>}
-          {view === "leader" ? <TeamCalendar activities={upcomingActivities} timeZone={organization.timeZone ?? "Europe/Stockholm"} /> : null}
-          <div className="grid">
-            <div className="main-column">
-              <article className="card activity-card">
-                <div className="card-heading"><div><p className="eyebrow">Nästa aktivitet · {team.name}</p><h2>{currentActivity.title}</h2></div><button className="icon-button" aria-label="Fler alternativ" type="button">•••</button></div>
-                {view === "family" ? <>
-                  <div className="countdown"><span>{currentActivity.gatheringAt ? "Samling om" : "Start om"}</span><strong>{timeUntil(gatheringAt)}</strong><small>{formatDate(gatheringAt)} · {currentActivity.location}</small></div>
-                  {familyInvitation && <div className="family-response"><div><span className="member-avatar">{familyMember?.displayName.slice(0, 1)}</span><div><strong>{familyMember?.displayName}</strong><small>Kallelse till matchen</small></div></div>{familyInvitation.response === "pending" ? <div className="response-actions"><button onClick={() => answer(familyInvitation, "accepted")} type="button">Kommer</button><button onClick={() => answer(familyInvitation, "declined")} type="button">Kan inte</button></div> : <span className={`status ${familyInvitation.response}`}>{responseLabels[familyInvitation.response]}</span>}</div>}
-                  <div className="friends"><p className="eyebrow">Kompisar som kommer · {accepted.length}</p><div className="friend-list">{accepted.map((item) => { const member = memberById.get(item.memberId); return <span key={item.id}><i>{member?.displayName.slice(0, 1)}</i>{member?.displayName}</span>; })}</div></div>
-                </> : <>
-                  <div className="activity-details">{currentActivity.gatheringAt && <p><span>◷</span><strong>Samling {formatDate(currentActivity.gatheringAt)}</strong></p>}<p><span>⚽</span>{currentActivity.gatheringAt ? "Start" : "Start " + formatDate(currentActivity.startsAt)}{currentActivity.gatheringAt && ` ${new Intl.DateTimeFormat("sv-SE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Stockholm" }).format(new Date(currentActivity.startsAt))}`}</p><p><span>⌖</span>{currentActivity.location}</p></div>
-                  <div className="summary" aria-label="Svar på kallelsen"><div><strong>{summary.accepted}</strong><span>Kommer</span></div><div><strong>{summary.declined}</strong><span>Kan inte</span></div><div><strong>{summary.maybe}</strong><span>Kanske</span></div><div><strong>{summary.pending}</strong><span>Ej svarat</span></div></div>
-                  <div className="activity-actions"><button className="primary" type="button">Rapportera närvaro</button><button className="secondary" onClick={() => setActivityEditorMode("edit")} type="button">Redigera aktivitet</button></div>
-                  {missing.length > 0 && <div className="missing-list"><p className="eyebrow">Saknar svar · kontakta målsman</p>{missing.map((invitation) => { const member = memberById.get(invitation.memberId); return <div className="missing-person" key={invitation.id}><span className="member-avatar">{member?.displayName.slice(0, 1)}</span><span><strong>{member?.displayName}</strong>{member?.guardianName && <small>{member.guardianName}</small>}</span><a href={member?.guardianPhone ? `tel:${member.guardianPhone.replace(/\s/g, "")}` : "#members"}>{member?.guardianPhone ?? "Visa kontakt"}</a></div>; })}</div>}
-                </>}
-              </article>
-              {view === "leader" && <article className="card tasks-card" id="tasks"><div className="card-heading"><div><p className="eyebrow">Från kansliet</p><h2>Uppgifter till {team.name}</h2></div><span className="badge">{tasks.length}</span></div><div className="task-list">{tasks.map((task) => <button className="task" key={task.id} type="button"><span className="task-date"><strong>{new Intl.DateTimeFormat("sv-SE", { day: "numeric" }).format(new Date(task.dueAt))}</strong><small>{new Intl.DateTimeFormat("sv-SE", { month: "short" }).format(new Date(task.dueAt))}</small></span><span><strong>{task.title}</strong><small>{task.description}</small><em>{task.createdByLabel} · klart senast {new Intl.DateTimeFormat("sv-SE", { day: "numeric", month: "long" }).format(new Date(task.dueAt))}</em></span><b>→</b></button>)}</div></article>}
-            </div>
-            <div className="right-column">
-              {view === "leader" ? <TeamBriefingCard teamId={team.id} assistantName={organization.assistantName} demo={source === "demo"} /> : <TeamAssistantCard teamId={team.id} teamName={team.name} assistantName={organization.assistantName} demo={source === "demo"} />}
-              {view === "leader" && <article className="card attention-card"><div className="card-heading"><h2>Behöver din uppmärksamhet</h2><span className="badge">{(showPendingPriority ? 1 : 0) + 2}</span></div><ul>{showPendingPriority ? <li><span className="attention-icon">!</span><div><strong>{missing.length} obesvarade kallelser</strong><small>{responseDueAt ? `Svara senast ${formatDate(responseDueAt.toISOString())}` : team.name}</small></div></li> : null}<li><span className="attention-icon">↗</span><div><strong>Anmäl lag till seriespel</strong><small>Kansliet · senast 2 oktober</small></div></li><li><span className="attention-icon">✓</span><div><strong>Närvaro behöver registreras</strong><small>Föregående träning</small></div></li></ul></article>}
-            </div>
-          </div>
+
+          {activePage === "calendar"
+            ? <TeamCalendar activities={upcomingActivities} timeZone={organization.timeZone ?? "Europe/Stockholm"} onSelectActivity={setSelectedActivity} />
+            : <>
+                {familyActivities.length > 0 && <section className="family-overview" aria-labelledby="family-overview-title">
+                  <div className="card-heading"><div><p className="eyebrow">För dig</p><h2 id="family-overview-title">Aktuellt just nu</h2></div></div>
+                  <div className="family-activity-grid">{familyActivities.map((item) => {
+                    const dueAt = item.activity.gatheringAt ?? item.activity.startsAt;
+                    return <article className="card family-activity-card" key={`${item.member.id}:${item.activity.id}`}>
+                      <p className="eyebrow">{item.member.displayName} · {item.team.name}</p>
+                      <h3>{item.activity.title}</h3>
+                      <strong>{item.activity.gatheringAt ? `Samling om ${timeUntil(dueAt)}` : `Start om ${timeUntil(dueAt)}`}</strong>
+                      <small>{formatDate(dueAt)} · {item.activity.location}</small>
+                      {item.invitation ? item.invitation.response === "pending"
+                        ? <div className="response-actions"><button onClick={() => void answerFamily(item, "accepted")} type="button">Kommer</button><button onClick={() => void answerFamily(item, "declined")} type="button">Kan inte</button></div>
+                        : <span className={`status ${item.invitation.response}`}>{responseLabels[item.invitation.response]}</span>
+                        : <small>Ingen kallelse skickad ännu</small>}
+                    </article>;
+                  })}</div>
+                </section>}
+
+                {view === "leader" ? <PriorityFeed activity={currentActivity} pendingInvitations={missing.length} tasks={tasks} onOpenActivity={setSelectedActivity} /> : null}
+
+                <div className="grid">
+                  <div className="main-column">
+                    <article className="card activity-card">
+                      <div className="card-heading"><div><p className="eyebrow">Nästa aktivitet · {team.name}</p><h2>{currentActivity.title}</h2></div><button className="icon-button" aria-label="Visa detaljer" onClick={() => setSelectedActivity(currentActivity)} type="button">•••</button></div>
+                      {view === "family" ? <>
+                        <div className="countdown"><span>{currentActivity.gatheringAt ? "Samling om" : "Start om"}</span><strong>{timeUntil(gatheringAt)}</strong><small>{formatDate(gatheringAt)} · {currentActivity.location}</small></div>
+                        {familyInvitation && <div className="family-response"><div><span className="member-avatar">{familyMember?.displayName.slice(0, 1)}</span><div><strong>{familyMember?.displayName}</strong><small>Kallelse till aktiviteten</small></div></div>{familyInvitation.response === "pending" ? <div className="response-actions"><button onClick={() => answer(familyInvitation, "accepted")} type="button">Kommer</button><button onClick={() => answer(familyInvitation, "declined")} type="button">Kan inte</button></div> : <span className={`status ${familyInvitation.response}`}>{responseLabels[familyInvitation.response]}</span>}</div>}
+                      </> : <>
+                        <div className="activity-details">{currentActivity.gatheringAt && <p><span>◷</span><strong>Samling {formatDate(currentActivity.gatheringAt)}</strong></p>}<p><span>⚽</span>Start {new Intl.DateTimeFormat("sv-SE", { hour: "2-digit", minute: "2-digit", timeZone: organization.timeZone ?? "Europe/Stockholm" }).format(new Date(currentActivity.startsAt))}</p><p><span>⌖</span>{currentActivity.location}</p></div>
+                        <div className="summary" aria-label="Svar på kallelsen"><div><strong>{summary.accepted}</strong><span>Kommer</span></div><div><strong>{summary.declined}</strong><span>Kan inte</span></div><div><strong>{summary.maybe}</strong><span>Kanske</span></div><div><strong>{summary.pending}</strong><span>Ej svarat</span></div></div>
+                        <div className="activity-actions"><button className="primary" type="button">Rapportera närvaro</button><button className="secondary" onClick={() => { setEditingActivity(currentActivity); setActivityEditorMode("edit"); }} type="button">Redigera aktivitet</button></div>
+                      </>}
+                    </article>
+                  </div>
+                  <div className="right-column">
+                    {view === "leader" ? <TeamBriefingCard teamId={team.id} assistantName={organization.assistantName} demo={source === "demo"} /> : <TeamAssistantCard teamId={team.id} teamName={team.name} assistantName={organization.assistantName} demo={source === "demo"} />}
+                  </div>
+                </div>
+              </>}
         </section>
       </div>
-      {activityEditorMode ? <ActivityEditorModal mode={activityEditorMode} organization={organization} team={team} members={rosterMembers} activity={activityEditorMode === "edit" ? currentActivity : undefined} source={source} onClose={() => setActivityEditorMode(null)} onNotice={setNotice} /> : null}
+      {activityEditorMode ? <ActivityEditorModal mode={activityEditorMode} organization={organization} team={team} members={rosterMembers} activity={activityEditorMode === "edit" ? (editingActivity ?? currentActivity) : undefined} source={source} onClose={() => setActivityEditorMode(null)} onNotice={setNotice} /> : null}
+      {selectedActivity ? <ActivityDetailModal activity={selectedActivity} organization={organization} team={team} canEdit={canManageTeam} onClose={() => setSelectedActivity(undefined)} onEdit={(item) => { setEditingActivity(item); setSelectedActivity(undefined); setActivityEditorMode("edit"); }} /> : null}
       {showInvitationForm && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowInvitationForm(false); }}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="invitation-form-title"><div className="card-heading"><div><p className="eyebrow">{team.name}</p><h2 id="invitation-form-title">Bjud in ledare</h2></div><button className="icon-button" onClick={() => setShowInvitationForm(false)} aria-label="Stäng" type="button">✕</button></div><form onSubmit={(event) => { event.preventDefault(); void inviteTeamMember(event.currentTarget); }}><label>E-postadress<input name="email" type="email" required autoComplete="email" placeholder="namn@example.se" /></label><p className="form-help">Nya spelare och målsmän kommer in genom föreningens medlemsansökan. Den här länken ger en godkänd ledare åtkomst till laget.</p><div className="modal-actions"><button className="secondary" onClick={() => setShowInvitationForm(false)} type="button">Avbryt</button><button className="primary" disabled={savingInvitation} type="submit">{savingInvitation ? "Skickar…" : "Skicka inbjudan"}</button></div></form></section></div>}
     </main>
   );
