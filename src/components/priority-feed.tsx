@@ -11,7 +11,7 @@ type Props = {
 
 type FeedItem = {
   id: string;
-  kind: "activity" | "invitation" | "attendance" | "task";
+  kind: "activity" | "invitation" | "task";
   title: string;
   meta: string;
   dueAt: number;
@@ -21,12 +21,10 @@ type FeedItem = {
 const labels = {
   activity: "Aktivitet",
   invitation: "Kallelse",
-  attendance: "Närvaro",
   task: "Uppgift",
 } as const;
 
 export function PriorityFeed({ activity, pendingInvitations, tasks, onOpenActivity }: Props) {
-  const now = Date.now();
   const items: FeedItem[] = [];
 
   if (pendingInvitations > 0) {
@@ -61,14 +59,6 @@ export function PriorityFeed({ activity, pendingInvitations, tasks, onOpenActivi
       dueAt: new Date(task.dueAt).getTime(),
     });
   }
-
-  items.push({
-    id: "attendance:previous",
-    kind: "attendance",
-    title: "Kontrollera om närvaro behöver registreras",
-    meta: "Efter genomförd aktivitet",
-    dueAt: now + 72 * 60 * 60 * 1000,
-  });
 
   items.sort((a, b) => a.dueAt - b.dueAt);
 

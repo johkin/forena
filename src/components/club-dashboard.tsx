@@ -51,13 +51,9 @@ export function ClubDashboard({ organization, sections, team, activity, members,
   const summary = useMemo(() => summarizeInvitations(invitations), [invitations]);
   const memberById = useMemo(() => new Map(members.map((member) => [member.id, member])), [members]);
   const gatheringAt = currentActivity.gatheringAt ?? currentActivity.startsAt;
-  const accepted = invitations.filter((item) => item.response === "accepted");
   const missing = invitations.filter((item) => item.response === "pending");
   const familyInvitation = invitations.find((item) => respondablePersonIds.includes(item.memberId));
   const familyMember = familyInvitation ? memberById.get(familyInvitation.memberId) : undefined;
-  const responseDueAt = currentActivity.responseDueAt ? new Date(currentActivity.responseDueAt) : undefined;
-  const responseDueSoon = responseDueAt ? responseDueAt.getTime() - Date.now() <= 48 * 3_600_000 : false;
-  const showPendingPriority = missing.length > 0 && (!responseDueAt || responseDueSoon);
 
   async function answer(invitation: Invitation, response: "accepted" | "declined" | "maybe") {
     const updated = respondToInvitation(invitation, response);
