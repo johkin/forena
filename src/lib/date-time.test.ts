@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatStockholmDateTime, stockholmDateInDays } from "./date-time";
+import { formatDateTimeInZone, formatStockholmDateTime, stockholmDateInDays } from "./date-time";
 
 describe("formatStockholmDateTime", () => {
   it("converts UTC to Swedish summer time", () => {
@@ -8,6 +8,10 @@ describe("formatStockholmDateTime", () => {
 
   it("converts UTC to Swedish standard time", () => {
     expect(formatStockholmDateTime("2026-12-08T16:30:00Z")).toBe("tisdag 8 december 2026 kl. 17:30");
+  });
+
+  it("can represent the same instant in the viewer's time zone", () => {
+    expect(formatDateTimeInZone("2026-09-23T14:30:00Z", "Asia/Bangkok")).toBe("onsdag 23 september 2026 kl. 21:30");
   });
 });
 

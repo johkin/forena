@@ -22,7 +22,7 @@ export function TeamAssistantCard({ teamId, teamName, assistantName, demo }: { t
       const response = await fetch("/api/ai/team-assistant", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ teamId, question: trimmed, messages: previous }),
+        body: JSON.stringify({ teamId, question: trimmed, messages: previous, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Assistenten kunde inte svara.");

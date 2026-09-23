@@ -16,8 +16,8 @@ export interface Database {
   public: {
     Tables: {
       organizations: Table<
-        Timestamped & { id: string; slug: string; name: string; assistant_name: string; created_by: string | null; updated_at: string },
-        { id?: string; slug: string; name: string; assistant_name?: string; created_by?: string | null; created_at?: string; updated_at?: string }
+        Timestamped & { id: string; slug: string; name: string; assistant_name: string; time_zone: string; created_by: string | null; updated_at: string },
+        { id?: string; slug: string; name: string; assistant_name?: string; time_zone?: string; created_by?: string | null; created_at?: string; updated_at?: string }
       >;
       profiles: Table<
         Timestamped & { id: string; display_name: string; updated_at: string },

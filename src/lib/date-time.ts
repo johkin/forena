@@ -1,9 +1,9 @@
 const STOCKHOLM_TIME_ZONE = "Europe/Stockholm";
 
-export function formatStockholmDateTime(value: string | Date | null) {
+export function formatDateTimeInZone(value: string | Date | null, timeZone: string) {
   if (!value) return null;
   return new Intl.DateTimeFormat("sv-SE", {
-    timeZone: STOCKHOLM_TIME_ZONE,
+    timeZone,
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -12,6 +12,10 @@ export function formatStockholmDateTime(value: string | Date | null) {
     minute: "2-digit",
     hourCycle: "h23",
   }).format(typeof value === "string" ? new Date(value) : value);
+}
+
+export function formatStockholmDateTime(value: string | Date | null) {
+  return formatDateTimeInZone(value, STOCKHOLM_TIME_ZONE);
 }
 
 function partsInStockholm(value: Date) {
