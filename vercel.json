@@ -3,11 +3,5 @@
   "framework": "nextjs",
   "git": {
     "deploymentEnabled": true
-  },
-  "crons": [
-    {
-      "path": "/api/cron/notifications",
-      "schedule": "* * * * *"
-    }
-  ]
+  }
 }

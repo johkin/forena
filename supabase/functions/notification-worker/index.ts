@@ -1,8 +1,5 @@
-import { NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/supabase/service";
-
-export const runtime = "nodejs";
-export const maxDuration = 60;
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 type OutboxPayload = {
   activityId?: string;
@@ -12,10 +9,11 @@ type OutboxPayload = {
   location?: string;
 };
 
-function authorized(request: Request) {
-  const secret = process.env.CRON_SECRET?.trim();
-  if (!secret) return false;
-  return request.headers.get("authorization") === `Bearer ${secret}`;
+function adminClient() {
+  const url = Deno.env.get("SUPABASE_URL");
+  const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !serviceRole) throw new Error("supabase_admin_configuration_missing");
+  return createClient(url, serviceRole, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
 function emailContent(type: string, payload: OutboxPayload) {
@@ -24,12 +22,14 @@ function emailContent(type: string, payload: OutboxPayload) {
     ? new Intl.DateTimeFormat("sv-SE", { dateStyle: "full", timeStyle: "short", timeZone: "Europe/Stockholm" }).format(new Date(payload.startsAt))
     : "";
   const location = payload.location ? ` på ${payload.location}` : "";
+
   if (type === "invitation_reminder") {
     return {
       subject: `Påminnelse: svara på kallelsen till ${title}`,
       text: `Du har en obesvarad kallelse till ${title}${when ? ` ${when}` : ""}${location}. Logga in i Förena för att svara.`,
     };
   }
+
   return {
     subject: `Kallelse: ${title}`,
     text: `Du är kallad till ${title}${when ? ` ${when}` : ""}${location}. Logga in i Förena för att svara.`,
@@ -37,14 +37,17 @@ function emailContent(type: string, payload: OutboxPayload) {
 }
 
 async function sendEmail(to: string, type: string, payload: OutboxPayload) {
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  const from = process.env.RESEND_FROM_EMAIL?.trim();
+  const apiKey = Deno.env.get("RESEND_API_KEY")?.trim();
+  const from = Deno.env.get("RESEND_FROM_EMAIL")?.trim();
   if (!apiKey || !from) throw new Error("email_transport_not_configured");
 
   const content = emailContent(type, payload);
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
-    headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      "content-type": "application/json",
+    },
     body: JSON.stringify({ from, to: [to], subject: content.subject, text: content.text }),
   });
   const body = await response.json().catch(() => null) as { id?: string; message?: string } | null;
@@ -52,12 +55,22 @@ async function sendEmail(to: string, type: string, payload: OutboxPayload) {
   return body?.id ?? null;
 }
 
-export async function GET(request: Request) {
-  if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+Deno.serve(async (request: Request) => {
+  const supabase = adminClient();
+  const token = request.headers.get("x-forena-cron-token") ?? "";
+  const { data: authorized, error: authError } = await supabase.rpc("authorize_notification_worker", {
+    provided_token: token,
+  });
 
-  const supabase = createServiceClient();
+  if (authError || authorized !== true) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { data: rows, error: claimError } = await supabase.rpc("claim_notification_outbox", { batch_size: 25 });
-  if (claimError) return NextResponse.json({ error: "Kunde inte hämta notifieringar." }, { status: 500 });
+  if (claimError) {
+    console.error("notification_claim_failed", claimError);
+    return Response.json({ error: "Kunde inte hämta notifieringar." }, { status: 500 });
+  }
 
   let sent = 0;
   let failed = 0;
@@ -153,5 +166,5 @@ export async function GET(request: Request) {
     });
   }
 
-  return NextResponse.json({ claimed: rows?.length ?? 0, sent, failed });
-}
+  return Response.json({ claimed: rows?.length ?? 0, sent, failed });
+});
