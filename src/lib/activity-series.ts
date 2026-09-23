@@ -8,6 +8,14 @@ export type SeriesPreviewInput = {
   timeZone: string;
 };
 
+export type ResponseDueRule = "0h" | "1h" | "2h" | "6h" | "previous-midnight" | "1d" | "2d" | "3d";
+
+export type InvitationScheduleInput = {
+  invitationSendMinutesBefore: number;
+  responseDueRule: ResponseDueRule;
+  reminderMinutesBeforeDue: number;
+};
+
 export type ActivityOccurrence = {
   date: string;
   gatheringAt: string | null;
@@ -30,6 +38,49 @@ function localDateTimeToUtc(date: string, time: string, timeZone: string) {
     result += desired - represented;
   }
   return new Date(result);
+}
+
+function localDateForInstant(value: string, timeZone: string) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
+    timeZone, year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(new Date(value)).map((part) => [part.type, part.value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+export function invitationScheduleForOccurrence(
+  startsAt: string,
+  timeZone: string,
+  input: InvitationScheduleInput,
+) {
+  if (!Number.isFinite(input.invitationSendMinutesBefore) || input.invitationSendMinutesBefore < 0) throw new Error("Ogiltig tid för kallelse");
+  if (!Number.isFinite(input.reminderMinutesBeforeDue) || input.reminderMinutesBeforeDue < 0) throw new Error("Ogiltig tid för påminnelse");
+  const start = new Date(startsAt);
+  if (Number.isNaN(start.getTime())) throw new Error("Ogiltig aktivitetstid");
+
+  const dueMinutes: Record<Exclude<ResponseDueRule, "previous-midnight">, number> = {
+    "0h": 0, "1h": 60, "2h": 120, "6h": 360, "1d": 1440, "2d": 2880, "3d": 4320,
+  };
+  const responseDueAt = input.responseDueRule === "previous-midnight"
+    ? (() => {
+        const localDate = new Date(`${localDateForInstant(startsAt, timeZone)}T00:00:00Z`);
+        localDate.setUTCDate(localDate.getUTCDate() - 1);
+        return localDateTimeToUtc(localDate.toISOString().slice(0, 10), "00:00", timeZone);
+      })()
+    : new Date(start.getTime() - dueMinutes[input.responseDueRule] * 60_000);
+
+  const invitationSendAt = new Date(start.getTime() - input.invitationSendMinutesBefore * 60_000);
+  if (invitationSendAt > responseDueAt) throw new Error("Kallelsen måste skickas innan svarstiden går ut");
+
+  const reminderSendAt = input.reminderMinutesBeforeDue
+    ? new Date(responseDueAt.getTime() - input.reminderMinutesBeforeDue * 60_000)
+    : null;
+  if (reminderSendAt && reminderSendAt < invitationSendAt) throw new Error("Påminnelsen hamnar före kallelsen");
+
+  return {
+    invitationSendAt: invitationSendAt.toISOString(),
+    responseDueAt: responseDueAt.toISOString(),
+    reminderSendAt: reminderSendAt?.toISOString() ?? null,
+  };
 }
 
 export function previewWeeklySeries(input: SeriesPreviewInput): ActivityOccurrence[] {

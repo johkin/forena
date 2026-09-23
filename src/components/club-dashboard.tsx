@@ -6,13 +6,14 @@ import { LogoutButton } from "@/components/logout-button";
 import { TeamBriefingCard } from "@/components/team-briefing-card";
 import { TeamAssistantCard } from "@/components/team-assistant-card";
 import { ActivityEditorModal } from "@/components/activity-editor-modal";
+import { TeamCalendar } from "@/components/team-calendar";
 import {
   respondToInvitation, summarizeInvitations, type Activity, type DashboardView, type Invitation,
   type FamilyActivity, type Member, type Organization, type Section, type Team, type TeamTask, type Workspace,
 } from "@/domain/club";
 
 type Props = {
-  organization: Organization; sections: Section[]; team: Team; activity: Activity; members: Member[];
+  organization: Organization; sections: Section[]; team: Team; activity: Activity; members: Member[]; rosterMembers: Member[]; upcomingActivities: Activity[];
   initialInvitations: Invitation[]; initialFamilyActivities: FamilyActivity[]; workspaces: Workspace[]; tasks: TeamTask[];
   canManageTeam: boolean;
   accountEmail?: string;
@@ -33,7 +34,7 @@ function timeUntil(value: string) {
   return hours > 0 ? `${hours} timmar` : "Snart dags";
 }
 
-export function ClubDashboard({ organization, sections, team, activity, members, initialInvitations, initialFamilyActivities, workspaces, tasks, canManageTeam, accountEmail, respondablePersonIds, source }: Props) {
+export function ClubDashboard({ organization, sections, team, activity, members, rosterMembers, upcomingActivities, initialInvitations, initialFamilyActivities, workspaces, tasks, canManageTeam, accountEmail, respondablePersonIds, source }: Props) {
   const currentActivity = activity;
   const [invitations, setInvitations] = useState(initialInvitations);
   const view: DashboardView = canManageTeam ? "leader" : "family";
@@ -49,6 +50,9 @@ export function ClubDashboard({ organization, sections, team, activity, members,
   const missing = invitations.filter((item) => item.response === "pending");
   const familyInvitation = invitations.find((item) => respondablePersonIds.includes(item.memberId));
   const familyMember = familyInvitation ? memberById.get(familyInvitation.memberId) : undefined;
+  const responseDueAt = currentActivity.responseDueAt ? new Date(currentActivity.responseDueAt) : undefined;
+  const responseDueSoon = responseDueAt ? responseDueAt.getTime() - Date.now() <= 48 * 3_600_000 : false;
+  const showPendingPriority = missing.length > 0 && (!responseDueAt || responseDueSoon);
 
   async function answer(invitation: Invitation, response: "accepted" | "declined" | "maybe") {
     const updated = respondToInvitation(invitation, response);
@@ -130,6 +134,7 @@ export function ClubDashboard({ organization, sections, team, activity, members,
               </article>;
             })}</div>
           </section>}
+          {view === "leader" ? <TeamCalendar activities={upcomingActivities} timeZone={organization.timeZone ?? "Europe/Stockholm"} /> : null}
           <div className="grid">
             <div className="main-column">
               <article className="card activity-card">
@@ -149,12 +154,12 @@ export function ClubDashboard({ organization, sections, team, activity, members,
             </div>
             <div className="right-column">
               {view === "leader" ? <TeamBriefingCard teamId={team.id} assistantName={organization.assistantName} demo={source === "demo"} /> : <TeamAssistantCard teamId={team.id} teamName={team.name} assistantName={organization.assistantName} demo={source === "demo"} />}
-              {view === "leader" && <article className="card attention-card"><div className="card-heading"><h2>Behöver din uppmärksamhet</h2><span className="badge">3</span></div><ul><li><span className="attention-icon">!</span><div><strong>{missing.length} obesvarade kallelser</strong><small>{team.name} · torsdag</small></div></li><li><span className="attention-icon">↗</span><div><strong>Anmäl lag till seriespel</strong><small>Kansliet · senast 2 oktober</small></div></li><li><span className="attention-icon">✓</span><div><strong>Närvaro behöver registreras</strong><small>Föregående träning</small></div></li></ul></article>}
+              {view === "leader" && <article className="card attention-card"><div className="card-heading"><h2>Behöver din uppmärksamhet</h2><span className="badge">{(showPendingPriority ? 1 : 0) + 2}</span></div><ul>{showPendingPriority ? <li><span className="attention-icon">!</span><div><strong>{missing.length} obesvarade kallelser</strong><small>{responseDueAt ? `Svara senast ${formatDate(responseDueAt.toISOString())}` : team.name}</small></div></li> : null}<li><span className="attention-icon">↗</span><div><strong>Anmäl lag till seriespel</strong><small>Kansliet · senast 2 oktober</small></div></li><li><span className="attention-icon">✓</span><div><strong>Närvaro behöver registreras</strong><small>Föregående träning</small></div></li></ul></article>}
             </div>
           </div>
         </section>
       </div>
-      {activityEditorMode ? <ActivityEditorModal mode={activityEditorMode} organization={organization} team={team} members={members} activity={activityEditorMode === "edit" ? currentActivity : undefined} source={source} onClose={() => setActivityEditorMode(null)} onNotice={setNotice} /> : null}
+      {activityEditorMode ? <ActivityEditorModal mode={activityEditorMode} organization={organization} team={team} members={rosterMembers} activity={activityEditorMode === "edit" ? currentActivity : undefined} source={source} onClose={() => setActivityEditorMode(null)} onNotice={setNotice} /> : null}
       {showInvitationForm && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowInvitationForm(false); }}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="invitation-form-title"><div className="card-heading"><div><p className="eyebrow">{team.name}</p><h2 id="invitation-form-title">Bjud in ledare</h2></div><button className="icon-button" onClick={() => setShowInvitationForm(false)} aria-label="Stäng" type="button">✕</button></div><form onSubmit={(event) => { event.preventDefault(); void inviteTeamMember(event.currentTarget); }}><label>E-postadress<input name="email" type="email" required autoComplete="email" placeholder="namn@example.se" /></label><p className="form-help">Nya spelare och målsmän kommer in genom föreningens medlemsansökan. Den här länken ger en godkänd ledare åtkomst till laget.</p><div className="modal-actions"><button className="secondary" onClick={() => setShowInvitationForm(false)} type="button">Avbryt</button><button className="primary" disabled={savingInvitation} type="submit">{savingInvitation ? "Skickar…" : "Skicka inbjudan"}</button></div></form></section></div>}
     </main>
   );

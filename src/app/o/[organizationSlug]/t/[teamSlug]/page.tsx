@@ -34,6 +34,8 @@ export default async function TeamWorkspacePage({ params }: Props) {
       activity={data.activity}
       initialInvitations={data.invitations}
       members={data.members}
+      rosterMembers={data.rosterMembers}
+      upcomingActivities={data.upcomingActivities}
       organization={data.organization}
       sections={data.sections}
       source={data.source}

@@ -18,6 +18,8 @@ export type TeamDashboardData = {
   team: Team;
   activity: Activity;
   members: Member[];
+  rosterMembers: Member[];
+  upcomingActivities: Activity[];
   invitations: Invitation[];
   workspaces: Workspace[];
   tasks: TeamTask[];
@@ -35,6 +37,8 @@ function demoDashboard(): TeamDashboardData {
     team: demoTeam,
     activity: demoActivity,
     members: demoMembers,
+    rosterMembers: demoMembers,
+    upcomingActivities: [demoActivity],
     invitations: demoInvitations,
     workspaces: demoWorkspaces,
     tasks: demoTasks,
@@ -124,7 +128,7 @@ export async function getTeamDashboard(
   const [{ data: familyPeopleRows }, { data: familyTeamRows }, { data: familyActivityRows }] = await Promise.all([
     familyPersonIds.length ? supabase.from("people").select("id, organization_id, display_name").in("id", familyPersonIds) : Promise.resolve({ data: [] }),
     familyTeamIds.length ? supabase.from("teams").select("id, organization_id, section_id, slug, name, season").in("id", familyTeamIds) : Promise.resolve({ data: [] }),
-    familyTeamIds.length ? supabase.from("activities").select("id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location, series_id, status").in("team_id", familyTeamIds).neq("status", "cancelled").gte("ends_at", new Date().toISOString()).order("starts_at") : Promise.resolve({ data: [] }),
+    familyTeamIds.length ? supabase.from("activities").select("id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location, series_id, status, invitation_send_at, response_due_at, reminder_send_at").in("team_id", familyTeamIds).neq("status", "cancelled").gte("ends_at", new Date().toISOString()).order("starts_at") : Promise.resolve({ data: [] }),
   ]);
   const nextActivityByTeam = new Map<string, NonNullable<typeof familyActivityRows>[number]>();
   for (const item of familyActivityRows ?? []) {
@@ -134,15 +138,15 @@ export async function getTeamDashboard(
     ? await supabase.from("invitations").select("id, organization_id, activity_id, person_id, response, responded_at").in("person_id", familyPersonIds)
     : { data: [] };
 
-  const { data: activityRow } = await supabase
+  const { data: upcomingActivityRows } = await supabase
     .from("activities")
-    .select("id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location, series_id, status")
+    .select("id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location, series_id, status, invitation_send_at, response_due_at, reminder_send_at")
     .eq("team_id", teamRow.id)
     .neq("status", "cancelled")
     .gte("ends_at", new Date().toISOString())
     .order("starts_at")
-    .limit(1)
-    .maybeSingle();
+    .limit(200);
+  const activityRow = upcomingActivityRows?.[0];
 
   if (!activityRow) {
     return null;
@@ -208,6 +212,9 @@ export async function getTeamDashboard(
     location: activityRow.location,
     seriesId: activityRow.series_id ?? undefined,
     status: activityRow.status,
+    invitationSendAt: activityRow.invitation_send_at ?? undefined,
+    responseDueAt: activityRow.response_due_at ?? undefined,
+    reminderSendAt: activityRow.reminder_send_at ?? undefined,
   };
   const members: Member[] = (peopleRows ?? []).map((person) => ({
     id: person.id,
@@ -215,6 +222,14 @@ export async function getTeamDashboard(
     displayName: person.display_name,
     guardianName: guardianByPersonId.get(person.id)?.contact_name ?? undefined,
     guardianPhone: guardianByPersonId.get(person.id)?.contact_phone ?? undefined,
+  }));
+  const rosterMemberIds = new Set((rosterRows ?? []).map((membership) => membership.person_id));
+  const rosterMembers = members.filter((member) => rosterMemberIds.has(member.id));
+  const upcomingActivities: Activity[] = (upcomingActivityRows ?? []).map((item) => ({
+    id: item.id, organizationId: item.organization_id, teamId: item.team_id ?? team.id, title: item.title,
+    gatheringAt: item.gathering_at ?? undefined, startsAt: item.starts_at, endsAt: item.ends_at, location: item.location,
+    seriesId: item.series_id ?? undefined, status: item.status, invitationSendAt: item.invitation_send_at ?? undefined,
+    responseDueAt: item.response_due_at ?? undefined, reminderSendAt: item.reminder_send_at ?? undefined,
   }));
   const invitations: Invitation[] = (invitationRows ?? []).map((invitation) => ({
     id: invitation.id,
@@ -281,10 +296,10 @@ export async function getTeamDashboard(
     return [{
       member: { id: person.id, organizationId: person.organization_id, displayName: person.display_name },
       team: { id: teamItem.id, organizationId: teamItem.organization_id, sectionId: teamItem.section_id, slug: teamItem.slug, name: teamItem.name, season: teamItem.season },
-      activity: { id: activityItem.id, organizationId: activityItem.organization_id, teamId: activityItem.team_id ?? teamItem.id, title: activityItem.title, gatheringAt: activityItem.gathering_at ?? undefined, startsAt: activityItem.starts_at, endsAt: activityItem.ends_at, location: activityItem.location, seriesId: activityItem.series_id ?? undefined, status: activityItem.status },
-      invitation: invitationItem ? { id: invitationItem.id, organizationId: invitationItem.organization_id, activityId: invitationItem.activity_id, memberId: invitationItem.person_id, response: invitationItem.response, respondedAt: invitationItem.responded_at ?? undefined } : undefined,
+      activity: { id: activityItem.id, organizationId: activityItem.organization_id, teamId: activityItem.team_id ?? teamItem.id, title: activityItem.title, gatheringAt: activityItem.gathering_at ?? undefined, startsAt: activityItem.starts_at, endsAt: activityItem.ends_at, location: activityItem.location, seriesId: activityItem.series_id ?? undefined, status: activityItem.status, invitationSendAt: activityItem.invitation_send_at ?? undefined, responseDueAt: activityItem.response_due_at ?? undefined, reminderSendAt: activityItem.reminder_send_at ?? undefined },
+      invitation: invitationItem && (!activityItem.invitation_send_at || new Date(activityItem.invitation_send_at) <= new Date()) ? { id: invitationItem.id, organizationId: invitationItem.organization_id, activityId: invitationItem.activity_id, memberId: invitationItem.person_id, response: invitationItem.response, respondedAt: invitationItem.responded_at ?? undefined } : undefined,
     }];
   });
 
-  return { organization, sections: sectionList, team, activity, members, invitations, workspaces, tasks, familyActivities, canManageTeam: canManageCurrentTeam, accountEmail: authData.user.email, respondablePersonIds: familyPersonIds, source: "database" };
+  return { organization, sections: sectionList, team, activity, members, rosterMembers, upcomingActivities, invitations, workspaces, tasks, familyActivities, canManageTeam: canManageCurrentTeam, accountEmail: authData.user.email, respondablePersonIds: familyPersonIds, source: "database" };
 }

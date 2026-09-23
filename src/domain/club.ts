@@ -52,6 +52,9 @@ export type Activity = {
   gatheringAt?: string;
   seriesId?: string;
   status?: "draft" | "published" | "cancelled";
+  invitationSendAt?: string;
+  responseDueAt?: string;
+  reminderSendAt?: string;
 };
 
 export type DashboardView = "leader" | "family";

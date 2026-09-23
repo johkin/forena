@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { invitationScheduleForOccurrence, type ResponseDueRule } from "@/lib/activity-series";
 import { createClient } from "@/lib/supabase/server";
 
 type CreateActivityBody = {
@@ -11,6 +12,9 @@ type CreateActivityBody = {
   endsAt?: string;
   location?: string;
   personIds?: string[];
+  invitationSendMinutesBefore?: number;
+  responseDueRule?: ResponseDueRule;
+  reminderMinutesBeforeDue?: number;
 };
 
 export async function POST(request: Request) {
@@ -26,29 +30,18 @@ export async function POST(request: Request) {
   if (!body?.teamId || !title || !startsAt || !endsAt || Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime()) || (gatheringAt && Number.isNaN(gatheringAt.getTime()))) {
     return NextResponse.json({ error: "Ogiltiga aktivitetsuppgifter" }, { status: 400 });
   }
-  if (endsAt <= startsAt) {
-    return NextResponse.json({ error: "Sluttiden måste vara efter starttiden" }, { status: 400 });
-  }
-  if (gatheringAt && gatheringAt > startsAt) {
-    return NextResponse.json({ error: "Samlingstiden måste vara före eller samma som starttiden" }, { status: 400 });
-  }
+  if (endsAt <= startsAt) return NextResponse.json({ error: "Sluttiden måste vara efter starttiden" }, { status: 400 });
+  if (gatheringAt && gatheringAt > startsAt) return NextResponse.json({ error: "Samlingstiden måste vara före eller samma som starttiden" }, { status: 400 });
 
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getUser();
   if (!authData.user) return NextResponse.json({ error: "Du måste logga in" }, { status: 401 });
 
-  const { data: team } = await supabase
-    .from("teams")
-    .select("id, organization_id")
-    .eq("id", body.teamId)
-    .maybeSingle();
+  const { data: team } = await supabase.from("teams").select("id, organization_id").eq("id", body.teamId).maybeSingle();
   if (!team) return NextResponse.json({ error: "Laget kunde inte hittas" }, { status: 404 });
+  const { data: organization } = await supabase.from("organizations").select("time_zone").eq("id", team.organization_id).single();
 
-  const typeQuery = supabase
-    .from("activity_types")
-    .select("id")
-    .eq("organization_id", team.organization_id)
-    .eq("active", true);
+  const typeQuery = supabase.from("activity_types").select("id").eq("organization_id", team.organization_id).eq("active", true);
   const { data: activityType } = body.activityTypeId
     ? await typeQuery.eq("id", body.activityTypeId).maybeSingle()
     : await typeQuery.eq("slug", "ovrigt").maybeSingle();
@@ -59,45 +52,43 @@ export async function POST(request: Request) {
 
   let invitedPersonIds: string[] = [];
   if (personIds.length) {
-    const { data: memberships } = await supabase
-      .from("memberships")
-      .select("person_id")
-      .eq("team_id", team.id)
-      .eq("role", "participant")
-      .is("ends_on", null)
-      .in("person_id", personIds);
+    const { data: memberships } = await supabase.from("memberships").select("person_id").eq("team_id", team.id).eq("role", "participant").is("ends_on", null).in("person_id", personIds);
     invitedPersonIds = (memberships ?? []).map((membership) => membership.person_id);
-    if (invitedPersonIds.length !== personIds.length) {
-      return NextResponse.json({ error: "En eller flera valda deltagare tillhör inte laget" }, { status: 400 });
+    if (invitedPersonIds.length !== personIds.length) return NextResponse.json({ error: "En eller flera valda deltagare tillhör inte laget" }, { status: 400 });
+  }
+
+  let schedule: { invitationSendAt: string; responseDueAt: string; reminderSendAt: string | null } | undefined;
+  if (invitedPersonIds.length) {
+    try {
+      schedule = invitationScheduleForOccurrence(startsAt.toISOString(), organization.time_zone, {
+        invitationSendMinutesBefore: body.invitationSendMinutesBefore ?? 10080,
+        responseDueRule: body.responseDueRule ?? "6h",
+        reminderMinutesBeforeDue: body.reminderMinutesBeforeDue ?? 1440,
+      });
+    } catch (error) {
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Kallelseschemat är ogiltigt" }, { status: 400 });
     }
   }
 
-  const { data: activity, error: activityError } = await supabase
-    .from("activities")
-    .insert({
-      organization_id: team.organization_id,
-      team_id: team.id,
-      activity_type_id: activityType.id,
-      title,
-      description_markdown: description,
-      gathering_at: gatheringAt?.toISOString() ?? null,
-      starts_at: startsAt.toISOString(),
-      ends_at: endsAt.toISOString(),
-      location,
-      created_by: authData.user.id,
-    })
-    .select("id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location, series_id, status")
-    .single();
-
-  if (activityError || !activity) {
-    return NextResponse.json({ error: "Aktiviteten kunde inte sparas" }, { status: 500 });
-  }
-
-  const invitationRows = invitedPersonIds.map((personId) => ({
+  const { data: activity, error: activityError } = await supabase.from("activities").insert({
     organization_id: team.organization_id,
-    activity_id: activity.id,
-    person_id: personId,
-  }));
+    team_id: team.id,
+    activity_type_id: activityType.id,
+    title,
+    description_markdown: description,
+    gathering_at: gatheringAt?.toISOString() ?? null,
+    starts_at: startsAt.toISOString(),
+    ends_at: endsAt.toISOString(),
+    location,
+    invitation_send_at: schedule?.invitationSendAt ?? null,
+    response_due_at: schedule?.responseDueAt ?? null,
+    reminder_send_at: schedule?.reminderSendAt ?? null,
+    created_by: authData.user.id,
+  }).select("id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location, series_id, status, invitation_send_at, response_due_at, reminder_send_at").single();
+
+  if (activityError || !activity) return NextResponse.json({ error: "Aktiviteten kunde inte sparas" }, { status: 500 });
+
+  const invitationRows = invitedPersonIds.map((personId) => ({ organization_id: team.organization_id, activity_id: activity.id, person_id: personId }));
   const { data: invitations, error: invitationError } = invitationRows.length
     ? await supabase.from("invitations").insert(invitationRows).select("id, organization_id, activity_id, person_id, response, responded_at")
     : { data: [], error: null };

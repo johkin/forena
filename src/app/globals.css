@@ -293,3 +293,24 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .member-admin-row { grid-template-columns: 1fr; }
   .member-account-state { grid-template-columns: 1fr auto; align-items: center; justify-items: start; }
 }
+
+.activity-kind-switch { display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:5px; border-radius:12px; background:var(--cream); }
+.activity-kind-switch button { padding:10px 12px; border:0; border-radius:9px; background:transparent; color:var(--ink-soft); font-weight:800; cursor:pointer; }
+.activity-kind-switch button.selected { background:var(--paper); color:var(--ink); box-shadow:0 1px 4px rgba(14,38,32,.12); }
+.invitation-schedule { display:grid; gap:12px; padding:14px !important; border:1px solid var(--line) !important; border-radius:12px; background:var(--cream); }
+.response-deadline { margin:-6px 0 18px; color:var(--ink-soft); font-size:12px; }
+.team-calendar { margin-bottom:22px; }
+.calendar-heading { display:flex; justify-content:space-between; align-items:start; gap:12px; }
+.calendar-heading h2 { margin:0; font-size:24px; text-transform:capitalize; }
+.calendar-heading>div:last-child { display:flex; gap:6px; }
+.calendar-heading .secondary { padding:7px 10px; }
+.calendar-weekdays,.calendar-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); }
+.calendar-weekdays { margin-top:18px; color:var(--ink-soft); font-size:10px; font-weight:800; text-transform:uppercase; }
+.calendar-weekdays span { padding:0 7px 7px; }
+.calendar-grid { border-top:1px solid var(--line); border-left:1px solid var(--line); }
+.calendar-day { min-height:92px; display:grid; align-content:start; gap:4px; padding:7px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); background:white; }
+.calendar-day.empty { background:var(--cream); }
+.calendar-day>strong { font-size:12px; }
+.calendar-day>span { overflow:hidden; padding:4px 5px; border-radius:6px; background:var(--mint); font-size:10px; line-height:1.25; text-overflow:ellipsis; white-space:nowrap; }
+.calendar-day small { color:var(--ink-soft); font-size:9px; }
+@media(max-width:700px){.calendar-day{min-height:58px;padding:4px}.calendar-day>span{font-size:0}.calendar-day>span b{font-size:9px}}
