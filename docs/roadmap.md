@@ -31,8 +31,10 @@
 - [x] Modellera "inget svar" som det enda osäkra läget; obesvarade kan påminnas
 - [x] Lista obesvarade kallelser och köa manuell påminnelse
 - [x] Logga kallelse-, påminnelse- och svarshändelser i aktivitetshistoriken
-- [ ] Leverera kallelser/påminnelser via mejl och Web Push från notification outbox
-- [ ] Visa leveransstatus per kanal och mottagare
+- [x] Worker för notification outbox med claim, retries och backoff
+- [x] Leverera kallelser/påminnelser via mejl med Resend
+- [ ] Leverera även via Web Push när aktiv subscription finns
+- [x] Visa leveransstatus per kanal och mottagare i aktivitetsvyn
 - [ ] Registrera närvaro som ledare
 
 ### Nästa leverans: smart kallelseflöde
@@ -60,9 +62,10 @@ svar är en normal del av flödet och ska inte kräva att en ledare återställe
 kallelsen.
 
 Manuella påminnelser köas endast för obesvarade kallelser och endast efter
-behörighetskontroll för laget. Nästa steg är en faktisk transport-worker som
-behandlar `notification_outbox`, skickar via mejl/Web Push och skriver
-`invitation_sent` respektive `reminder_sent` med leveransresultat.
+behörighetskontroll för laget. Transport-workern behandlar nu `notification_outbox`, skickar e-post via Resend,
+gör retries med backoff och skriver `invitation_sent` respektive
+`reminder_sent`. Leveransstatus visas i aktivitetsvyn per kanal och mottagare.
+Web Push använder samma leveransmodell men själva push-transporten återstår.
 
 Prioriteringen i **För laget** ska därefter bli kontextkänslig. Kallelsesvar är binära (ja/nej) och kan kompletteras med en frivillig kommentar; inget svar betyder att läget fortfarande är osäkert och kan påminnas. Kommentarer kan ge AI-lagret extra kontext, exempelvis önskemål om en annan matchdag. Antalet
 obesvarade är inte i sig ett problem: systemet ska väga in exempelvis antal
@@ -201,6 +204,7 @@ validering och krav på förhandsgranskning ligger alltid i applikationslagret.
 - [ ] Import av medlemmar
 - [x] Aktivitetsspecifik eventhistorik för kallelser och svar
 - [ ] Full revisionslogg och GDPR-funktioner
-- [ ] Leveransstatus för notiser
+- [x] Leveransstatus för e-postnotiser
+- [ ] Web Push-transport och push-leveransstatus
 - [ ] Mobil tillgänglighetsgranskning
 - [ ] Pilot med ett lag

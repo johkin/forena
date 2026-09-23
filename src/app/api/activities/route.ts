@@ -100,6 +100,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Kallelserna kunde inte sparas" }, { status: 500 });
   }
 
+  if (invitedPersonIds.length) {
+    const { error: queueError } = await supabase.rpc("queue_activity_invitation", { target_activity_id: activity.id });
+    if (queueError) console.warn("activity_invitation_queue_failed", { activityId: activity.id, code: queueError.code });
+  }
+
   if (schedule && invitedPersonIds.length) {
     const events = [
       {

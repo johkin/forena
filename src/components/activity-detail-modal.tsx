@@ -11,6 +11,33 @@ type EventRow = {
   created_at: string;
 };
 
+type DeliveryChannel = {
+  channel: "email" | "push";
+  status: "pending" | "sent" | "failed" | "skipped";
+  provider: string | null;
+  attempts: number;
+  sentAt: string | null;
+  lastError: string | null;
+};
+
+type DeliveryItem = {
+  outboxId: string;
+  type: string;
+  status: "pending" | "processing" | "sent" | "failed" | "cancelled";
+  scheduledAt: string;
+  sentAt: string | null;
+  attempts: number;
+  lastError: string | null;
+  channels: DeliveryChannel[];
+};
+
+type DeliveryStatus = {
+  queued: number;
+  sent: number;
+  failed: number;
+  deliveries: DeliveryItem[];
+};
+
 type Props = {
   activity: Activity;
   organization: Organization;
@@ -30,9 +57,17 @@ const eventLabels: Record<EventRow["event_type"], string> = {
   activity_cancelled: "Aktiviteten inställd",
 };
 
+const statusLabels: Record<DeliveryChannel["status"], string> = {
+  pending: "Väntar",
+  sent: "Skickad",
+  failed: "Misslyckad",
+  skipped: "Ej använd",
+};
+
 export function ActivityDetailModal({ activity, organization, team, canEdit, onClose, onEdit }: Props) {
   const timeZone = organization.timeZone ?? "Europe/Stockholm";
   const [events, setEvents] = useState<EventRow[]>([]);
+  const [deliveryStatus, setDeliveryStatus] = useState<DeliveryStatus | null>(null);
   const [historyError, setHistoryError] = useState(false);
   const date = new Intl.DateTimeFormat("sv-SE", { timeZone, weekday: "long", day: "numeric", month: "long" }).format(new Date(activity.startsAt));
   const time = new Intl.DateTimeFormat("sv-SE", { timeZone, hour: "2-digit", minute: "2-digit" });
@@ -44,7 +79,12 @@ export function ActivityDetailModal({ activity, organization, team, canEdit, onC
         if (!response.ok) throw new Error();
         return response.json();
       })
-      .then((body) => { if (!cancelled) setEvents(body.events ?? []); })
+      .then((body) => {
+        if (!cancelled) {
+          setEvents(body.events ?? []);
+          setDeliveryStatus(body.deliveryStatus ?? null);
+        }
+      })
       .catch(() => { if (!cancelled) setHistoryError(true); });
     return () => { cancelled = true; };
   }, [activity.id]);
@@ -60,6 +100,20 @@ export function ActivityDetailModal({ activity, organization, team, canEdit, onC
         {activity.responseDueAt ? <p><span>Svara senast</span><strong>{new Intl.DateTimeFormat("sv-SE", { timeZone, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(activity.responseDueAt))}</strong></p> : null}
         {activity.seriesId ? <p><span>Serie</span><strong>Ingår i en aktivitetsserie</strong></p> : null}
       </div>
+
+      {canEdit && deliveryStatus ? <section className="delivery-status" aria-labelledby="delivery-status-title">
+        <div className="card-heading"><div><p className="eyebrow">Notifieringar</p><h3 id="delivery-status-title">Leveransstatus</h3></div></div>
+        <div className="delivery-summary">
+          <span><strong>{deliveryStatus.sent}</strong> skickade</span>
+          <span><strong>{deliveryStatus.queued}</strong> väntar</span>
+          <span><strong>{deliveryStatus.failed}</strong> misslyckade</span>
+        </div>
+        {deliveryStatus.deliveries.length ? <ol className="delivery-list">{deliveryStatus.deliveries.slice(0, 20).map((delivery) => <li key={delivery.outboxId}>
+          <div><strong>{delivery.type === "invitation_reminder" ? "Påminnelse" : "Kallelse"}</strong><small>{new Intl.DateTimeFormat("sv-SE", { timeZone, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(delivery.scheduledAt))} · försök {delivery.attempts}</small></div>
+          <div className="delivery-channels">{delivery.channels.map((channel) => <span className={`delivery-channel ${channel.status}`} key={channel.channel}>{channel.channel === "email" ? "E-post" : "Push"}: {statusLabels[channel.status]}</span>)}</div>
+        </li>)}</ol> : <p className="overview-empty">Inga notifieringar har köats för aktiviteten ännu.</p>}
+      </section> : null}
+
       {(events.length > 0 || historyError) ? <section className="activity-history" aria-labelledby="activity-history-title">
         <div className="card-heading"><div><p className="eyebrow">Historik</p><h3 id="activity-history-title">Kallelser och ändringar</h3></div></div>
         {historyError ? <p className="overview-empty">Historiken kunde inte hämtas.</p> : <ol>{events.map((event) => <li key={event.id}>

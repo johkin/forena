@@ -105,6 +105,13 @@ export async function POST(request: Request) {
   }
 
   if (personIds.length) {
+    const queueResults = await Promise.all(activities.map((activity) =>
+      supabase.rpc("queue_activity_invitation", { target_activity_id: activity.id })
+    ));
+    queueResults.forEach((result, index) => {
+      if (result.error) console.warn("series_invitation_queue_failed", { activityId: activities[index]?.id, code: result.error.code });
+    });
+
     const events = activities.flatMap((activity, index) => {
       const schedule = schedules[index];
       if (!schedule) return [];

@@ -154,6 +154,10 @@ export interface Database {
         Timestamped & OrganizationScoped & { id: string; user_id: string; type: string; payload: Json; scheduled_at: string; sent_at: string | null; status: "pending" | "processing" | "sent" | "failed" | "cancelled"; attempts: number; last_error: string | null },
         OrganizationScoped & { id?: string; user_id: string; type: string; payload?: Json; scheduled_at?: string; sent_at?: string | null; status?: "pending" | "processing" | "sent" | "failed" | "cancelled"; attempts?: number; last_error?: string | null; created_at?: string }
       >;
+      notification_deliveries: Table<
+        Timestamped & OrganizationScoped & { id: string; outbox_id: string; user_id: string; channel: "email" | "push"; status: "pending" | "sent" | "failed" | "skipped"; provider: string | null; provider_message_id: string | null; attempts: number; last_error: string | null; attempted_at: string | null; sent_at: string | null },
+        OrganizationScoped & { id?: string; outbox_id: string; user_id: string; channel: "email" | "push"; status?: "pending" | "sent" | "failed" | "skipped"; provider?: string | null; provider_message_id?: string | null; attempts?: number; last_error?: string | null; attempted_at?: string | null; sent_at?: string | null; created_at?: string }
+      >;
       audit_log: Table<
         Timestamped & OrganizationScoped & { id: number; actor_user_id: string | null; action: string; entity_type: string; entity_id: string; details: Json },
         OrganizationScoped & { actor_user_id?: string | null; action: string; entity_type: string; entity_id: string; details?: Json; created_at?: string }
@@ -173,6 +177,9 @@ export interface Database {
       accept_membership_application_invitation: { Args: { invitation_token_hash: string }; Returns: { organization_slug: string; team_slug: string }[] };
       claim_person_account: { Args: Record<never, never>; Returns: number };
       queue_activity_reminder: { Args: { target_activity_id: string }; Returns: number };
+      queue_activity_invitation: { Args: { target_activity_id: string }; Returns: number };
+      claim_notification_outbox: { Args: { batch_size?: number }; Returns: Database["public"]["Tables"]["notification_outbox"]["Row"][] };
+      get_activity_delivery_status: { Args: { target_activity_id: string }; Returns: Json };
     };
     Enums: Record<never, never>;
     CompositeTypes: Record<never, never>;
