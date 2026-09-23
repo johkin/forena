@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { LogoutButton } from "@/components/logout-button";
 import { TeamBriefingCard } from "@/components/team-briefing-card";
+import { TeamAssistantCard } from "@/components/team-assistant-card";
 import {
   respondToInvitation, summarizeInvitations, type Activity, type DashboardView, type Invitation,
   type FamilyActivity, type Member, type Organization, type Section, type Team, type TeamTask, type Workspace,
@@ -199,7 +200,7 @@ export function ClubDashboard({ organization, sections, team, activity, members,
               {view === "leader" && <article className="card tasks-card" id="tasks"><div className="card-heading"><div><p className="eyebrow">Från kansliet</p><h2>Uppgifter till {team.name}</h2></div><span className="badge">{tasks.length}</span></div><div className="task-list">{tasks.map((task) => <button className="task" key={task.id} type="button"><span className="task-date"><strong>{new Intl.DateTimeFormat("sv-SE", { day: "numeric" }).format(new Date(task.dueAt))}</strong><small>{new Intl.DateTimeFormat("sv-SE", { month: "short" }).format(new Date(task.dueAt))}</small></span><span><strong>{task.title}</strong><small>{task.description}</small><em>{task.createdByLabel} · klart senast {new Intl.DateTimeFormat("sv-SE", { day: "numeric", month: "long" }).format(new Date(task.dueAt))}</em></span><b>→</b></button>)}</div></article>}
             </div>
             <div className="right-column">
-              {view === "leader" ? <TeamBriefingCard teamId={team.id} assistantName={organization.assistantName} demo={source === "demo"} /> : <article className="card assistant-card"><div className="assistant-header"><span className="assistant-avatar">✦</span><div><p className="eyebrow">{organization.assistantName} · {team.name}</p><h2>Lagassistent</h2></div></div><p>Jag kan svara på praktiska frågor om {team.name} och nästa aktivitet.</p><button className="prompt" type="button">Vad behöver vi ta med till matchen?</button><button className="prompt" type="button">Vilka kompisar kommer på torsdag?</button><label className="assistant-input"><span className="sr-only">Fråga {organization.assistantName}</span><input placeholder={`Fråga ${organization.assistantName}…`} /><button type="button" aria-label="Skicka">↑</button></label></article>}
+              {view === "leader" ? <TeamBriefingCard teamId={team.id} assistantName={organization.assistantName} demo={source === "demo"} /> : <TeamAssistantCard teamId={team.id} teamName={team.name} assistantName={organization.assistantName} demo={source === "demo"} />}
               {view === "leader" && <article className="card attention-card"><div className="card-heading"><h2>Behöver din uppmärksamhet</h2><span className="badge">3</span></div><ul><li><span className="attention-icon">!</span><div><strong>{missing.length} obesvarade kallelser</strong><small>{team.name} · torsdag</small></div></li><li><span className="attention-icon">↗</span><div><strong>Anmäl lag till seriespel</strong><small>Kansliet · senast 2 oktober</small></div></li><li><span className="attention-icon">✓</span><div><strong>Närvaro behöver registreras</strong><small>Föregående träning</small></div></li></ul></article>}
             </div>
           </div>

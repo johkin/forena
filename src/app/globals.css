@@ -118,6 +118,15 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .assistant-input { display: flex; align-items: center; gap: 8px; margin-top: 16px; padding: 6px 6px 6px 13px; border-radius: 12px; background: white; }
 .assistant-input input { width: 100%; border: 0; outline: 0; color: var(--ink); }
 .assistant-input button { width: 30px; height: 30px; border: 0; border-radius: 8px; background: var(--lime); color: var(--ink); font-weight: 800; cursor: pointer; }
+.assistant-input button:disabled { cursor: wait; opacity: .55; }
+.assistant-messages { max-height: 360px; margin-top: 18px; display: grid; gap: 11px; overflow-y: auto; }
+.assistant-message { max-width: 92%; }
+.assistant-message.user { justify-self: end; }
+.assistant-message > span { display: block; margin-bottom: 4px; color: #a8c0b9; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .7px; }
+.assistant-message p { margin: 0; padding: 10px 12px; border-radius: 12px 12px 12px 3px; background: rgba(255,255,255,.1); color: #f5f8f7; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
+.assistant-message.user p { border-radius: 12px 12px 3px 12px; background: var(--lime); color: var(--ink); }
+.assistant-thinking { margin: 13px 0 0; color: #c5d4cf; font-size: 12px; }
+.assistant-disclaimer { display: block; margin-top: 10px; color: #93aaa3; font-size: 10px; line-height: 1.4; }
 .briefing-generate { width: 100%; margin-top: 14px; border-color: var(--lime); background: var(--lime); color: var(--ink); font-weight: 800; }
 .briefing-generate:disabled { opacity: .55; cursor: not-allowed; }
 .briefing-error { color: #ffc5b5 !important; }
