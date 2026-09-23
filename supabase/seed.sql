@@ -36,17 +36,32 @@ select
 from public.people
 where organization_id = '10000000-0000-0000-0000-000000000001';
 
-insert into public.activities (id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location)
-values (
+insert into public.activities (
+  id,
+  organization_id,
+  team_id,
+  activity_type_id,
+  title,
+  gathering_at,
+  starts_at,
+  ends_at,
+  location
+)
+select
   '40000000-0000-0000-0000-000000000001',
-  '10000000-0000-0000-0000-000000000001',
-  '20000000-0000-0000-0000-000000000001',
+  team.organization_id,
+  team.id,
+  activity_type.id,
   'Utomhusträning',
   '2026-09-24 18:00:00+02',
   '2026-09-24 18:30:00+02',
   '2026-09-24 20:00:00+02',
   'Ursviks IP · Plan 2'
-);
+from public.teams team
+join public.activity_types activity_type
+  on activity_type.organization_id = team.organization_id
+ and activity_type.slug = 'traning'
+where team.id = '20000000-0000-0000-0000-000000000001';
 
 insert into public.invitations (organization_id, activity_id, person_id, response, responded_at)
 select
