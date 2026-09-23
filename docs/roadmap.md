@@ -26,7 +26,9 @@
 - [ ] Uppdatera ett tillfälle eller hela den återstående serien
 - [x] Schemalägg kallelse, svarstid och påminnelsetid per aktivitet
 - [x] Svara som vårdnadshavare för ett eller flera barn
-- [x] Ändra ett tidigare kallelsesvar
+- [x] Ändra eller ta bort ett tidigare kallelsesvar
+- [x] Valfri kommentar till ja/nej-svar och kommentar i AI-konteksten
+- [x] Modellera "inget svar" som det enda osäkra läget; obesvarade kan påminnas
 - [x] Lista obesvarade kallelser och köa manuell påminnelse
 - [x] Logga kallelse-, påminnelse- och svarshändelser i aktivitetshistoriken
 - [ ] Leverera kallelser/påminnelser via mejl och Web Push från notification outbox
@@ -62,7 +64,7 @@ behörighetskontroll för laget. Nästa steg är en faktisk transport-worker som
 behandlar `notification_outbox`, skickar via mejl/Web Push och skriver
 `invitation_sent` respektive `reminder_sent` med leveransresultat.
 
-Prioriteringen i **För laget** ska därefter bli kontextkänslig. Antalet
+Prioriteringen i **För laget** ska därefter bli kontextkänslig. Kallelsesvar är binära (ja/nej) och kan kompletteras med en frivillig kommentar; inget svar betyder att läget fortfarande är osäkert och kan påminnas. Kommentarer kan ge AI-lagret extra kontext, exempelvis önskemål om en annan matchdag. Antalet
 obesvarade är inte i sig ett problem: systemet ska väga in exempelvis antal
 ja-svar, tid kvar, aktivitetstyp/spelform och redan skickade påminnelser.
 Deterministiska regler tar fram signalerna; AI kan rangordna dem, formulera

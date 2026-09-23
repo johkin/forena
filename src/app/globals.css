@@ -416,3 +416,12 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .team-action-row { grid-template-columns:1fr; gap:0; padding-bottom:10px; }
   .reminder-action { justify-self:start; margin-left:20px; }
 }
+
+.personal-invitation-response { display:grid; gap:7px; min-width:250px; }
+.personal-invitation-response input { width:100%; min-width:0; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:white; color:var(--ink); font-size:11px; outline:none; }
+.personal-invitation-response input:focus { border-color:var(--ink); box-shadow:0 0 0 2px var(--mint); }
+.personal-response { flex-wrap:wrap; align-items:center; }
+.personal-response .link-button { font-size:11px; }
+@media(max-width:620px){
+  .personal-invitation-response { padding-left:42px; min-width:0; }
+}

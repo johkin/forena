@@ -15,7 +15,7 @@ const PRIVATE_CACHE_HEADERS = {
 type BriefingContext = {
   teamId: string;
   organizationId: string;
-  activity: { id: string; title: string; dueAt: string; pendingInvitations: number } | null;
+  activity: { id: string; title: string; dueAt: string; pendingInvitations: number; acceptedInvitations: number; declinedInvitations: number; responseComments: string[] } | null;
   tasks: { id: string; title: string; dueAt: string }[];
   instructions: { id: string; title: string; dueAt: string; documentTitle: string; summary: string }[];
 };
@@ -75,7 +75,7 @@ export async function GET(request: Request) {
         id: `invitations:${activity.id}`,
         kind: "invitation",
         title: `${activity.pendingInvitations} obesvarade kallelser`,
-        detail: `Behöver följas upp före ${activity.title}`,
+        detail: `${activity.acceptedInvitations} kommer, ${activity.declinedInvitations} kan inte, ${activity.pendingInvitations} har inte svarat.${activity.responseComments.length ? ` Kommentarer: ${activity.responseComments.slice(0, 4).join(" | ")}` : ""}`,
         dueAt: activity.dueAt,
         importance: "high",
       });

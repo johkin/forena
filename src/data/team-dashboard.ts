@@ -135,7 +135,7 @@ export async function getTeamDashboard(
     if (item.team_id && !nextActivityByTeam.has(item.team_id)) nextActivityByTeam.set(item.team_id, item);
   }
   const { data: familyInvitationRows } = familyPersonIds.length
-    ? await supabase.from("invitations").select("id, organization_id, activity_id, person_id, response, responded_at").in("person_id", familyPersonIds)
+    ? await supabase.from("invitations").select("id, organization_id, activity_id, person_id, response, responded_at, response_comment").in("person_id", familyPersonIds)
     : { data: [] };
 
   const { data: upcomingActivityRows } = await supabase
@@ -154,7 +154,7 @@ export async function getTeamDashboard(
 
   const { data: invitationRows } = await supabase
     .from("invitations")
-    .select("id, organization_id, activity_id, person_id, response, responded_at")
+    .select("id, organization_id, activity_id, person_id, response, responded_at, response_comment")
     .eq("activity_id", activityRow.id);
   const { data: rosterRows } = await supabase
     .from("memberships")
@@ -238,6 +238,7 @@ export async function getTeamDashboard(
     memberId: invitation.person_id,
     response: invitation.response,
     respondedAt: invitation.responded_at ?? undefined,
+    responseComment: invitation.response_comment ?? undefined,
   }));
   const tasks: TeamTask[] = (taskRows ?? []).map((task) => ({
     id: task.id,
@@ -297,7 +298,7 @@ export async function getTeamDashboard(
       member: { id: person.id, organizationId: person.organization_id, displayName: person.display_name },
       team: { id: teamItem.id, organizationId: teamItem.organization_id, sectionId: teamItem.section_id, slug: teamItem.slug, name: teamItem.name, season: teamItem.season },
       activity: { id: activityItem.id, organizationId: activityItem.organization_id, teamId: activityItem.team_id ?? teamItem.id, title: activityItem.title, gatheringAt: activityItem.gathering_at ?? undefined, startsAt: activityItem.starts_at, endsAt: activityItem.ends_at, location: activityItem.location, seriesId: activityItem.series_id ?? undefined, status: activityItem.status, invitationSendAt: activityItem.invitation_send_at ?? undefined, responseDueAt: activityItem.response_due_at ?? undefined, reminderSendAt: activityItem.reminder_send_at ?? undefined },
-      invitation: invitationItem && (!activityItem.invitation_send_at || new Date(activityItem.invitation_send_at) <= new Date()) ? { id: invitationItem.id, organizationId: invitationItem.organization_id, activityId: invitationItem.activity_id, memberId: invitationItem.person_id, response: invitationItem.response, respondedAt: invitationItem.responded_at ?? undefined } : undefined,
+      invitation: invitationItem && (!activityItem.invitation_send_at || new Date(activityItem.invitation_send_at) <= new Date()) ? { id: invitationItem.id, organizationId: invitationItem.organization_id, activityId: invitationItem.activity_id, memberId: invitationItem.person_id, response: invitationItem.response, respondedAt: invitationItem.responded_at ?? undefined, responseComment: invitationItem.response_comment ?? undefined } : undefined,
     }];
   });
 

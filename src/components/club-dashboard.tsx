@@ -11,7 +11,7 @@ import { TeamOverview } from "@/components/team-overview";
 import { ActivityDetailModal } from "@/components/activity-detail-modal";
 import {
   respondToInvitation, summarizeInvitations, type Activity, type DashboardView, type Invitation,
-  type FamilyActivity, type Member, type Organization, type Section, type Team, type TeamTask, type Workspace,
+  type FamilyActivity, type InvitationResponse, type Member, type Organization, type Section, type Team, type TeamTask, type Workspace,
 } from "@/domain/club";
 
 type Props = {
@@ -23,7 +23,7 @@ type Props = {
   source: "database" | "demo";
 };
 
-const responseLabels = { accepted: "Kommer", declined: "Kan inte", maybe: "Kanske", pending: "Ej svarat" } as const;
+const responseLabels = { accepted: "Kommer", declined: "Kan inte", pending: "Ej svarat" } as const;
 
 export function ClubDashboard({ organization, sections, team, activity, members, rosterMembers, upcomingActivities, initialInvitations, initialFamilyActivities, workspaces, tasks, canManageTeam, accountEmail, respondablePersonIds, source }: Props) {
   const currentActivity = activity;
@@ -43,16 +43,16 @@ export function ClubDashboard({ organization, sections, team, activity, members,
   const familyInvitation = invitations.find((item) => respondablePersonIds.includes(item.memberId));
   const familyMember = familyInvitation ? memberById.get(familyInvitation.memberId) : undefined;
 
-  async function answerFamily(item: FamilyActivity, response: "accepted" | "declined" | "maybe") {
+  async function answerFamily(item: FamilyActivity, response: InvitationResponse, comment?: string) {
     if (!item.invitation) return;
-    const updated = respondToInvitation(item.invitation, response);
+    const updated = respondToInvitation(item.invitation, response, comment);
     if (source === "database") {
-      const result = await fetch(`/api/invitations/${item.invitation.id}/respond`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ response }) });
+      const result = await fetch(`/api/invitations/${item.invitation.id}/respond`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ response, comment }) });
       if (!result.ok) { setNotice("Svaret kunde inte sparas. Kontrollera din behörighet och försök igen."); return; }
     }
     setFamilyActivities((current) => current.map((candidate) => candidate.invitation?.id === item.invitation?.id ? { ...candidate, invitation: updated } : candidate));
     setInvitations((current) => current.map((candidate) => candidate.id === item.invitation?.id ? updated : candidate));
-    setNotice(`${item.member.displayName} är registrerad som ”${responseLabels[response]}”.`);
+    setNotice(response === "pending" ? `${item.member.displayName}s svar togs bort.` : `${item.member.displayName} är registrerad som ”${responseLabels[response]}”.`);
   }
 
   async function sendReminder(activity: Activity) {
@@ -126,7 +126,7 @@ export function ClubDashboard({ organization, sections, team, activity, members,
                     <PersonalOverview
                       activities={familyActivities}
                       timeZone={organization.timeZone ?? "Europe/Stockholm"}
-                      onAnswer={(item, response) => void answerFamily(item, response)}
+                      onAnswer={(item, response, comment) => void answerFamily(item, response, comment)}
                       onOpenActivity={(item) => setSelectedActivity(item.activity)}
                     />
                     {view === "leader" ? <TeamOverview

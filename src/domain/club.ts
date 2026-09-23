@@ -77,7 +77,7 @@ export type TeamTask = {
   createdByLabel: string;
 };
 
-export type InvitationResponse = "pending" | "accepted" | "declined" | "maybe";
+export type InvitationResponse = "pending" | "accepted" | "declined";
 
 export type Invitation = {
   id: EntityId;
@@ -86,6 +86,7 @@ export type Invitation = {
   memberId: EntityId;
   response: InvitationResponse;
   respondedAt?: string;
+  responseComment?: string;
 };
 
 export type InvitationSummary = Record<InvitationResponse, number>;
@@ -96,14 +97,19 @@ export function summarizeInvitations(invitations: Invitation[]): InvitationSumma
       summary[invitation.response] += 1;
       return summary;
     },
-    { pending: 0, accepted: 0, declined: 0, maybe: 0 },
+    { pending: 0, accepted: 0, declined: 0 },
   );
 }
 
 export function respondToInvitation(
   invitation: Invitation,
-  response: Exclude<InvitationResponse, "pending">,
+  response: InvitationResponse,
+  responseComment?: string,
   respondedAt = new Date().toISOString(),
 ): Invitation {
-  return { ...invitation, response, respondedAt };
+  if (response === "pending") {
+    return { ...invitation, response, respondedAt: undefined, responseComment: undefined };
+  }
+  const comment = responseComment?.trim();
+  return { ...invitation, response, respondedAt, responseComment: comment || undefined };
 }
