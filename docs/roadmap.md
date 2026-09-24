@@ -32,9 +32,17 @@
 - [x] Lista obesvarade kallelser och köa manuell påminnelse
 - [x] Logga kallelse-, påminnelse- och svarshändelser i aktivitetshistoriken
 - [x] Worker för notification outbox med claim, retries och backoff
+- [x] Kör notification worker i Supabase Edge Function
+- [x] Schemalägg notification worker med Supabase pg_cron + pg_net
 - [x] Leverera kallelser/påminnelser via mejl med Resend
-- [ ] Leverera även via Web Push när aktiv subscription finns
 - [x] Visa leveransstatus per kanal och mottagare i aktivitetsvyn
+- [ ] Skapa och lagra Web Push-subscriptions per användare och enhet
+- [ ] UI för att aktivera/inaktivera pushnotiser
+- [ ] VAPID-konfiguration för Web Push
+- [ ] Skicka Web Push från notification workern
+- [ ] Hantera ogiltiga/utgångna push-subscriptions (404/410)
+- [ ] notificationclick öppnar rätt aktivitet i Förena
+- [ ] Visa push-leveransstatus i aktivitetsvyn
 - [ ] Registrera närvaro som ledare
 
 ### Nästa leverans: smart kallelseflöde
@@ -62,11 +70,18 @@ svar är en normal del av flödet och ska inte kräva att en ledare återställe
 kallelsen.
 
 Manuella påminnelser köas endast för obesvarade kallelser och endast efter
-behörighetskontroll för laget. Transport-workern behandlar nu `notification_outbox`, skickar e-post via Resend,
-gör retries med backoff och skriver `invitation_sent` respektive
-`reminder_sent`. Leveransstatus visas i aktivitetsvyn per kanal och mottagare.
-Workern körs via Vercel Cron.
-Web Push använder samma leveransmodell men själva push-transporten återstår.
+behörighetskontroll för laget. Transport-workern körs som en Supabase Edge
+Function och triggas varje minut via `pg_cron` + `pg_net`. Den behandlar
+`notification_outbox`, skickar e-post via Resend, gör retries med backoff och
+skriver `invitation_sent` respektive `reminder_sent`. Leveransstatus visas i
+aktivitetsvyn per kanal och mottagare.
+
+Web Push ska använda samma leveransmodell. Varje användare kan ha flera aktiva
+subscriptions, till exempel en iPhone PWA, en Android-enhet och en desktop-
+webbläsare. Förena ska lagra subscriptions per användare/enhet och workern ska
+skicka till samtliga aktiva subscriptions. Ogiltiga endpoints ska inaktiveras
+automatiskt vid exempelvis HTTP 404/410. E-post fungerar som fallback när push
+inte är aktiverat eller kan levereras.
 
 Prioriteringen i **För laget** ska därefter bli kontextkänslig. Kallelsesvar är binära (ja/nej) och kan kompletteras med en frivillig kommentar; inget svar betyder att läget fortfarande är osäkert och kan påminnas. Kommentarer kan ge AI-lagret extra kontext, exempelvis önskemål om en annan matchdag. Antalet
 obesvarade är inte i sig ett problem: systemet ska väga in exempelvis antal
@@ -207,5 +222,7 @@ validering och krav på förhandsgranskning ligger alltid i applikationslagret.
 - [ ] Full revisionslogg och GDPR-funktioner
 - [x] Leveransstatus för e-postnotiser
 - [ ] Web Push-transport och push-leveransstatus
+- [ ] Testa Web Push på iPhone PWA, Android och desktop
+- [ ] Verifiera e-postfallback när push saknas eller misslyckas
 - [ ] Mobil tillgänglighetsgranskning
 - [ ] Pilot med ett lag
