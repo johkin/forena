@@ -9,6 +9,7 @@ type Props = {
   upcomingActivities: Activity[];
   tasks: TeamTask[];
   timeZone: string;
+  referenceTime: string;
   reminderPending: boolean;
   onOpenActivity: (activity: Activity) => void;
   onSendReminder: (activity: Activity) => void;
@@ -22,9 +23,9 @@ type TeamItem = {
   onClick?: () => void;
 };
 
-export function TeamOverview({ teamName, activity, summary, upcomingActivities, tasks, timeZone, reminderPending, onOpenActivity, onSendReminder }: Props) {
+export function TeamOverview({ teamName, activity, summary, upcomingActivities, tasks, timeZone, referenceTime, reminderPending, onOpenActivity, onSendReminder }: Props) {
   const start = new Intl.DateTimeFormat("sv-SE", { timeZone, weekday: "long", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(activity.gatheringAt ?? activity.startsAt));
-  const weekLimit = Date.now() + 7 * 24 * 60 * 60 * 1000;
+  const weekLimit = new Date(referenceTime).getTime() + 7 * 24 * 60 * 60 * 1000;
   const nextSevenDays = upcomingActivities.filter((item) => new Date(item.startsAt).getTime() <= weekLimit).length;
   const items: TeamItem[] = [];
 

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { LogoutButton } from "@/components/logout-button";
+import { NotificationSettings } from "@/components/notification-settings";
 import { TeamAssistantCard } from "@/components/team-assistant-card";
 import { ActivityEditorModal } from "@/components/activity-editor-modal";
 import { TeamCalendar } from "@/components/team-calendar";
@@ -20,12 +21,13 @@ type Props = {
   canManageTeam: boolean;
   accountEmail?: string;
   respondablePersonIds: string[];
+  referenceTime: string;
   source: "database" | "demo";
 };
 
 const responseLabels = { accepted: "Kommer", declined: "Kan inte", pending: "Ej svarat" } as const;
 
-export function ClubDashboard({ organization, sections, team, activity, members, rosterMembers, upcomingActivities, initialInvitations, initialFamilyActivities, workspaces, tasks, canManageTeam, accountEmail, respondablePersonIds, source }: Props) {
+export function ClubDashboard({ organization, sections, team, activity, members, rosterMembers, upcomingActivities, initialInvitations, initialFamilyActivities, workspaces, tasks, canManageTeam, accountEmail, respondablePersonIds, referenceTime, source }: Props) {
   const currentActivity = activity;
   const [invitations, setInvitations] = useState(initialInvitations);
   const view: DashboardView = canManageTeam ? "leader" : "family";
@@ -98,6 +100,7 @@ export function ClubDashboard({ organization, sections, team, activity, members,
         <a className="brand" href="#" aria-label="Förena startsida"><span className="brand-mark">F</span><span>Förena</span></a>
         <div className="topbar-actions">
           {accountEmail ? <span className="account-identity" title={accountEmail}>Inloggad som <strong>{accountEmail}</strong></span> : null}
+          {accountEmail ? <NotificationSettings /> : null}
           <WorkspaceSwitcher organization={organization} team={team} workspaces={workspaces} />
           <LogoutButton />
         </div>
@@ -136,6 +139,7 @@ export function ClubDashboard({ organization, sections, team, activity, members,
                       upcomingActivities={upcomingActivities}
                       tasks={tasks}
                       timeZone={organization.timeZone ?? "Europe/Stockholm"}
+                      referenceTime={referenceTime}
                       reminderPending={sendingReminder}
                       onOpenActivity={setSelectedActivity}
                       onSendReminder={(item) => void sendReminder(item)}

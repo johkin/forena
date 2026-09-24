@@ -4,8 +4,8 @@ import { useEffect } from "react";
 
 export function PwaRegistration() {
   useEffect(() => {
-    if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
-      void navigator.serviceWorker.register("/sw.js");
+    if ("serviceWorker" in navigator) {
+      void navigator.serviceWorker.register("/sw.js", { scope: "/" });
     }
   }, []);
 

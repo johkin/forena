@@ -147,8 +147,8 @@ export interface Database {
         OrganizationScoped & { team_id: string; signal_hash: string; briefing: Json; model: string; input_tokens?: number | null; output_tokens?: number | null; generated_at?: string; expires_at: string }
       >;
       push_subscriptions: Table<
-        Timestamped & OrganizationScoped & { id: string; user_id: string; endpoint: string; p256dh_key: string; auth_key: string; device_name: string | null; last_used_at: string | null; disabled_at: string | null },
-        OrganizationScoped & { id?: string; user_id: string; endpoint: string; p256dh_key: string; auth_key: string; device_name?: string | null; created_at?: string; last_used_at?: string | null; disabled_at?: string | null }
+        Timestamped & { id: string; user_id: string; endpoint: string; p256dh: string; auth: string; user_agent: string | null; last_used_at: string | null; disabled_at: string | null },
+        { id?: string; user_id: string; endpoint: string; p256dh: string; auth: string; user_agent?: string | null; created_at?: string; last_used_at?: string | null; disabled_at?: string | null }
       >;
       notification_outbox: Table<
         Timestamped & OrganizationScoped & { id: string; user_id: string; type: string; payload: Json; scheduled_at: string; sent_at: string | null; status: "pending" | "processing" | "sent" | "failed" | "cancelled"; attempts: number; last_error: string | null },

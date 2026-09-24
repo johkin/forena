@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { FamilyActivity, InvitationResponse } from "@/domain/club";
 
 type Props = {
@@ -23,18 +23,6 @@ function when(value: string, timeZone: string) {
 
 export function PersonalOverview({ activities, timeZone, onAnswer, onOpenActivity }: Props) {
   const [comments, setComments] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    setComments((current) => {
-      const next = { ...current };
-      for (const item of activities) {
-        if (item.invitation && next[item.invitation.id] === undefined) {
-          next[item.invitation.id] = item.invitation.responseComment ?? "";
-        }
-      }
-      return next;
-    });
-  }, [activities]);
 
   return <section className="card personal-overview" aria-labelledby="personal-overview-title">
     <div className="card-heading">

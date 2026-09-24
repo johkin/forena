@@ -76,7 +76,7 @@ Function och triggas varje minut via `pg_cron` + `pg_net`. Den behandlar
 skriver `invitation_sent` respektive `reminder_sent`. Leveransstatus visas i
 aktivitetsvyn per kanal och mottagare.
 
-Web Push ska använda samma leveransmodell. Varje användare kan ha flera aktiva
+Web Push använder samma leveransmodell. Varje användare kan ha flera aktiva
 subscriptions, till exempel en iPhone PWA, en Android-enhet och en desktop-
 webbläsare. Förena ska lagra subscriptions per användare/enhet och workern ska
 skicka till samtliga aktiva subscriptions. Ogiltiga endpoints ska inaktiveras

@@ -29,6 +29,19 @@ npm run dev
 normalt på <http://localhost:54323> och den lokala mejltestservern på
 <http://localhost:54324>.
 
+### Pushnotiser
+
+Skapa ett VAPID-nyckelpar, till exempel med `npx web-push generate-vapid-keys`.
+Lägg den publika nyckeln i `NEXT_PUBLIC_VAPID_PUBLIC_KEY` i webbappen. Workern
+behöver samma nyckel som `VAPID_PUBLIC_KEY`, den privata nyckeln som
+`VAPID_PRIVATE_KEY` och en kontaktadress som `VAPID_SUBJECT`. Lokalt kan
+worker-värdena läggas i `supabase/functions/.env`; i produktion sätts de som
+Supabase Edge Function-secrets. Den privata nyckeln får aldrig ha prefixet
+`NEXT_PUBLIC_`.
+
+Efter inloggning finns **Notiser → Aktivera pushnotiser** i sidhuvudet. Web Push
+kräver HTTPS, men webbläsare tillåter även `localhost` för lokal utveckling.
+
 Återskapa databasen och läs in `supabase/seed.sql` igen med:
 
 ```bash
@@ -37,6 +50,15 @@ npm run db:reset
 
 Den lokala Supabase-stacken körs i containrar men hanteras av Supabase CLI;
 projektet behöver därför ingen egen `docker-compose.yml`.
+
+### Lokala testkonton
+
+Efter `npm run db:reset` kan den seedade Ursvik-föreningen öppnas med:
+
+- Lagledare: `ledare@forena.test` / `Forena-test-2026!`
+- Målsman för Elsa: `malsman@forena.test` / `Forena-test-2026!`
+
+Kontona är endast avsedda för lokal utveckling och får inte skapas i produktion.
 
 ## Kommandon
 
@@ -79,20 +101,25 @@ Lägg följande secrets i GitHub-miljön `production`:
 - `SUPABASE_ACCESS_TOKEN`
 - `SUPABASE_DB_PASSWORD`
 - `SUPABASE_PROJECT_ID`
+- `RESEND_API_KEY`
+- `RESEND_FROM_EMAIL`
+- `VAPID_PUBLIC_KEY`
+- `VAPID_PRIVATE_KEY`
+- `VAPID_SUBJECT`
 - `VERCEL_TOKEN`
 - `VERCEL_ORG_ID`
 - `VERCEL_PROJECT_ID`
 
 Vercel-projektet ska dessutom ha `NEXT_PUBLIC_SUPABASE_URL`,
-`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `RESEND_API_KEY` och
-`RESEND_FROM_EMAIL` konfigurerade för Production. `RESEND_FROM_EMAIL` ska vara
-en avsändare på en domän som verifierats i Resend. Applikationen använder
-requestens origin för länkar i e-post och använder Vercels
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` och `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
+konfigurerade för Production. `RESEND_FROM_EMAIL` ska vara en avsändare på en
+domän som verifierats i Resend. Applikationen använder requestens origin för
+länkar i e-post och använder Vercels
 `VERCEL_PROJECT_PRODUCTION_URL` som reserv. Sätt `SITE_URL` till den canonical
 produktionsadressen om projektet har flera domäner eller Vercel-alias; denna
-override används då för samtliga användarlänkar. Endast den publika
-Supabase-nyckeln får exponeras i webbläsaren; lägg aldrig in en secret- eller
-service-role-nyckel som `NEXT_PUBLIC_*`.
+override används då för samtliga användarlänkar. Endast publika nycklar får
+exponeras i webbläsaren; lägg aldrig in en secret-, service-role- eller privat
+VAPID-nyckel som `NEXT_PUBLIC_*`.
 
 ### AI Gateway
 

@@ -13,7 +13,8 @@ kommandon; AI:n får aldrig direkt databasåtkomst.
 
 ## Domänregler i första milstolpen
 
-- Alla poster tillhör explicit en förening.
+- Föreningsdata tillhör explicit en förening; profiler och push-prenumerationer
+  tillhör i stället användaren.
 - Ett lag tillhör exakt en förening.
 - En kallelse avser en aktivitet och en medlem.
 - Ett första svar får inte skrivas över utan ett separat ändringskommando.
@@ -25,7 +26,7 @@ PostgreSQL körs genom Supabase. Lokalt startar Supabase CLI en containerbaserad
 stack med databas, Auth, Storage och Studio. Schemat hanteras med SQL-migrationer
 i `supabase/migrations` och kan återskapas deterministiskt med `npm run db:reset`.
 
-Den första migrationen innehåller `organizations`, `profiles`,
+Databasen innehåller `organizations`, `profiles`,
 `organization_members`, `teams`, `people`, `person_guardians`, `memberships`,
 `activities`, `invitations`, `push_subscriptions`, `notification_outbox` och
 `audit_log`. Samtliga tabeller har Row Level Security. Hjälpfunktionerna

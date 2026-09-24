@@ -1,4 +1,4 @@
-name: Migrate production database
+name: Deploy production backend
 
 on:
   push:
@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "supabase/migrations/**"
+      - "supabase/functions/**"
       - ".github/workflows/deploy-production.yml"
   workflow_dispatch:
 
@@ -25,6 +26,11 @@ jobs:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
+      VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+      VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+      VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
 
     steps:
       - name: Check out repository
@@ -37,7 +43,12 @@ jobs:
           for name in \
             SUPABASE_ACCESS_TOKEN \
             SUPABASE_DB_PASSWORD \
-            SUPABASE_PROJECT_ID
+            SUPABASE_PROJECT_ID \
+            RESEND_API_KEY \
+            RESEND_FROM_EMAIL \
+            VAPID_PUBLIC_KEY \
+            VAPID_PRIVATE_KEY \
+            VAPID_SUBJECT
           do
             if [[ -z "${!name:-}" ]]; then
               echo "::error::Missing required secret: $name"
@@ -56,3 +67,15 @@ jobs:
 
       - name: Apply database migrations
         run: supabase db push --linked --yes --include-all
+
+      - name: Configure notification worker secrets
+        run: |
+          supabase secrets set \
+            RESEND_API_KEY="$RESEND_API_KEY" \
+            RESEND_FROM_EMAIL="$RESEND_FROM_EMAIL" \
+            VAPID_PUBLIC_KEY="$VAPID_PUBLIC_KEY" \
+            VAPID_PRIVATE_KEY="$VAPID_PRIVATE_KEY" \
+            VAPID_SUBJECT="$VAPID_SUBJECT"
+
+      - name: Deploy notification worker
+        run: supabase functions deploy notification-worker --no-verify-jwt

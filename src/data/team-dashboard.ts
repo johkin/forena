@@ -27,6 +27,7 @@ export type TeamDashboardData = {
   canManageTeam: boolean;
   accountEmail?: string;
   respondablePersonIds: string[];
+  referenceTime: string;
   source: "database" | "demo";
 };
 
@@ -45,6 +46,7 @@ function demoDashboard(): TeamDashboardData {
     familyActivities: [],
     canManageTeam: true,
     respondablePersonIds: demoMembers.map((item) => item.id),
+    referenceTime: new Date().toISOString(),
     source: "demo",
   };
 }
@@ -53,6 +55,7 @@ export async function getTeamDashboard(
   organizationSlug: string,
   teamSlug: string,
 ): Promise<TeamDashboardData | null> {
+  const referenceTime = new Date().toISOString();
   if (!isSupabaseConfigured()) {
     return organizationSlug === demoOrganization.slug && teamSlug === demoTeam.slug ? demoDashboard() : null;
   }
@@ -128,7 +131,7 @@ export async function getTeamDashboard(
   const [{ data: familyPeopleRows }, { data: familyTeamRows }, { data: familyActivityRows }] = await Promise.all([
     familyPersonIds.length ? supabase.from("people").select("id, organization_id, display_name").in("id", familyPersonIds) : Promise.resolve({ data: [] }),
     familyTeamIds.length ? supabase.from("teams").select("id, organization_id, section_id, slug, name, season").in("id", familyTeamIds) : Promise.resolve({ data: [] }),
-    familyTeamIds.length ? supabase.from("activities").select("id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location, series_id, status, invitation_send_at, response_due_at, reminder_send_at").in("team_id", familyTeamIds).neq("status", "cancelled").gte("ends_at", new Date().toISOString()).order("starts_at") : Promise.resolve({ data: [] }),
+    familyTeamIds.length ? supabase.from("activities").select("id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location, series_id, status, invitation_send_at, response_due_at, reminder_send_at").in("team_id", familyTeamIds).neq("status", "cancelled").gte("ends_at", referenceTime).order("starts_at") : Promise.resolve({ data: [] }),
   ]);
   const nextActivityByTeam = new Map<string, NonNullable<typeof familyActivityRows>[number]>();
   for (const item of familyActivityRows ?? []) {
@@ -143,7 +146,7 @@ export async function getTeamDashboard(
     .select("id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location, series_id, status, invitation_send_at, response_due_at, reminder_send_at")
     .eq("team_id", teamRow.id)
     .neq("status", "cancelled")
-    .gte("ends_at", new Date().toISOString())
+    .gte("ends_at", referenceTime)
     .order("starts_at")
     .limit(200);
   const activityRow = upcomingActivityRows?.[0];
@@ -302,5 +305,5 @@ export async function getTeamDashboard(
     }];
   });
 
-  return { organization, sections: sectionList, team, activity, members, rosterMembers, upcomingActivities, invitations, workspaces, tasks, familyActivities, canManageTeam: canManageCurrentTeam, accountEmail: authData.user.email, respondablePersonIds: familyPersonIds, source: "database" };
+  return { organization, sections: sectionList, team, activity, members, rosterMembers, upcomingActivities, invitations, workspaces, tasks, familyActivities, canManageTeam: canManageCurrentTeam, accountEmail: authData.user.email, respondablePersonIds: familyPersonIds, referenceTime, source: "database" };
 }

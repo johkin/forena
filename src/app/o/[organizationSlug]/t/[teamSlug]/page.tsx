@@ -45,6 +45,7 @@ export default async function TeamWorkspacePage({ params }: Props) {
       canManageTeam={data.canManageTeam}
       accountEmail={data.accountEmail}
       respondablePersonIds={data.respondablePersonIds}
+      referenceTime={data.referenceTime}
       workspaces={data.workspaces}
     />
   );

@@ -1,4 +1,4 @@
-const CACHE = "forena-v1";
+const CACHE = "forena-v2";
 const APP_SHELL = ["/", "/icon.svg"];
 
 self.addEventListener("install", (event) => {
@@ -19,12 +19,18 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("push", (event) => {
-  const message = event.data?.json() ?? {};
+  let message = {};
+  try {
+    message = event.data?.json() ?? {};
+  } catch {
+    message = { body: event.data?.text() };
+  }
   event.waitUntil(
     self.registration.showNotification(message.title ?? "Förena", {
       body: message.body ?? "Du har en ny händelse i föreningen.",
       icon: "/icon.svg",
       badge: "/icon.svg",
+      tag: message.tag,
       data: { url: message.url ?? "/" },
     }),
   );
@@ -32,5 +38,16 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  event.waitUntil(self.clients.openWindow(event.notification.data?.url ?? "/"));
+  const requestedUrl = new URL(event.notification.data?.url ?? "/", self.location.origin);
+  const targetUrl = requestedUrl.origin === self.location.origin ? requestedUrl.href : self.location.origin;
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (clients) => {
+      const existing = clients.find((client) => new URL(client.url).origin === self.location.origin);
+      if (existing) {
+        await existing.navigate(targetUrl);
+        return existing.focus();
+      }
+      return self.clients.openWindow(targetUrl);
+    }),
+  );
 });

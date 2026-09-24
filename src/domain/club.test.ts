@@ -13,18 +13,31 @@ describe("invitations", () => {
       pending: 1,
       accepted: 2,
       declined: 0,
-      maybe: 0,
     });
   });
 
-  it("records the first response", () => {
-    expect(respondToInvitation(invitations[2], "declined", "2026-09-20T10:00:00Z")).toMatchObject({
+  it("records a response with its optional comment", () => {
+    expect(respondToInvitation(invitations[2], "declined", "  Sjuk  ", "2026-09-20T10:00:00Z")).toMatchObject({
       response: "declined",
       respondedAt: "2026-09-20T10:00:00Z",
+      responseComment: "Sjuk",
     });
   });
 
-  it("does not silently overwrite a response", () => {
-    expect(() => respondToInvitation(invitations[0], "declined")).toThrow("redan besvarad");
+  it("allows a response to be changed", () => {
+    expect(respondToInvitation(invitations[0], "declined", undefined, "2026-09-21T10:00:00Z")).toMatchObject({
+      response: "declined",
+      respondedAt: "2026-09-21T10:00:00Z",
+    });
+  });
+
+  it("clears time and comment when a response is removed", () => {
+    const answered = { ...invitations[0], respondedAt: "2026-09-20T10:00:00Z", responseComment: "Kommer sent" };
+    expect(respondToInvitation(answered, "pending")).toEqual({
+      ...invitations[0],
+      response: "pending",
+      respondedAt: undefined,
+      responseComment: undefined,
+    });
   });
 });
