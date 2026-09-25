@@ -91,24 +91,25 @@ Pull requests verifieras av GitHub Actions genom att databasen byggs från
 migrationerna, databastyper kan genereras och appens tester, typkontroll, lint
 och produktionsbygge körs.
 
-När en ändring landar på `main` bygger GitHub först ett produktionsartefakt. Om
-bygget och kontrollerna lyckas körs nya migrationer mot Supabase och därefter
-publiceras samma artefakt till Vercel. Vercels automatiska Git-deploy är avstängd
-i `vercel.json` för att databasmigreringen alltid ska ske före publiceringen.
+När en ändring landar på `main` kör GitHub Actions databasmigrationer om filer i
+`supabase/migrations` har ändrats. Ändringar i `supabase/functions/notification-worker`
+driftsätter workern i ett separat workflow. Båda kan också startas manuellt via
+`workflow_dispatch`. Vercels Git-integration driftsätter webbappen automatiskt
+från `main`; den väntar inte på att databasmigrationerna ska bli klara. Håll därför
+ändringar i webbappen kompatibla med både den gamla och den nya databasschemat
+under driftsättning.
 
 Lägg följande secrets i GitHub-miljön `production`:
 
 - `SUPABASE_ACCESS_TOKEN`
 - `SUPABASE_DB_PASSWORD`
 - `SUPABASE_PROJECT_ID`
-- `RESEND_API_KEY`
-- `RESEND_FROM_EMAIL`
-- `VAPID_PUBLIC_KEY`
-- `VAPID_PRIVATE_KEY`
-- `VAPID_SUBJECT`
-- `VERCEL_TOKEN`
-- `VERCEL_ORG_ID`
-- `VERCEL_PROJECT_ID`
+
+De två Supabase-workflowen använder den officiella `supabase/setup-cli`-actionen.
+Migrationerna behöver alla tre värdena ovan; worker-workflowet behöver endast
+access token och projekt-id. Konfigurera `RESEND_API_KEY`, `RESEND_FROM_EMAIL`,
+`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` och `VAPID_SUBJECT` som Edge Function
+secrets direkt i Supabase. De behöver inte kopieras till GitHub för en deploy.
 
 Vercel-projektet ska dessutom ha `NEXT_PUBLIC_SUPABASE_URL`,
 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` och `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
