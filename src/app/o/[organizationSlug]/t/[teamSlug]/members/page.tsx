@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { TeamMenu } from "@/components/team-menu";
 import { createTeamGroup, deleteTeamGroup, sendPlayerInvitation, updatePlayer, updateTeamGroup } from "./actions";
 
 type Props = {
@@ -39,11 +39,19 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
   const emailByPerson = new Map((loginEmails ?? []).map((item) => [item.person_id, item.email]));
 
   return (
-    <main className="application-page">
-      <section className="application-card members-admin-card">
+    <main>
+      <header className="topbar">
+        <div className="topbar-brand-row">
+          <TeamMenu organizationSlug={organizationSlug} teamSlug={teamSlug} teamName={team.name} canManageTeam={Boolean(canManage)} leaderView activeItem="members" />
+          <a className="brand" href={`/o/${organizationSlug}/t/${teamSlug}`} aria-label="Förena startsida"><span className="brand-mark">F</span><span>Förena</span></a>
+        </div>
+      </header>
+      <div className="shell">
+        <TeamMenu organizationSlug={organizationSlug} teamSlug={teamSlug} teamName={team.name} canManageTeam={Boolean(canManage)} leaderView activeItem="members" />
+        <section className="content">
+          <section className="application-card members-admin-card">
         <div className="application-page-heading">
           <div><p className="eyebrow">{organization.name} · {team.name}</p><h1>Trupp och grupper</h1><p>Hantera spelare, ledare och undergrupper som kan användas som målgrupper för kallelser.</p></div>
-          <Link className="secondary" href={`/o/${organizationSlug}/t/${teamSlug}`}>Till översikten</Link>
         </div>
         {saved ? <div className="auth-message">{saved} har uppdaterats.</div> : null}
         {invited ? <div className="auth-message">Inbjudan har skickats till {invited}.</div> : null}
@@ -77,7 +85,9 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
           ))}
         </div>
         <p className="form-help member-admin-help">En ny e-postadress får automatiskt en inbjudan. Länken verifierar adressen, kopplar kontot till spelaren och erbjuder en passkey. Lösenord finns kvar som ett valfritt alternativ.</p>
-      </section>
+          </section>
+        </section>
+      </div>
     </main>
   );
 }
