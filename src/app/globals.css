@@ -367,6 +367,16 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .team-directory { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:14px; }
 .team-directory a { display:grid; gap:3px; padding:12px; border:1px solid var(--line); border-radius:10px; background:white; color:var(--ink); text-decoration:none; }
 .general-calendar .calendar-event { text-decoration:none; }
+.login-link { display:inline-flex; align-items:center; min-height:38px; padding:0 14px; border:1px solid var(--line); border-radius:9px; color:var(--ink); font-size:14px; font-weight:800; text-decoration:none; background:white; }
+.member-group-label { margin:12px 0 8px; color:var(--ink-soft); font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; }
+.activity-staffing { margin-top:18px; padding-top:18px; border-top:1px solid var(--line); }
+.invitee-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:10px; }
+.invitee-list>div { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; border:1px solid var(--line); border-radius:9px; }
+.invitee-list span { color:var(--ink-soft); font-size:12px; font-weight:800; }
+.invitee-list span[data-response="accepted"] { color:#357a55; }
+.invitee-list span[data-response="declined"] { color:#a94f3d; }
+.player-invitations { margin-top:14px; }
+.player-invitations summary { cursor:pointer; color:var(--ink-soft); font-size:13px; font-weight:800; }
 
 @media(max-width:900px){.general-summary{grid-template-columns:1fr}}
 

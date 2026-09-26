@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { ClubDashboard } from "@/components/club-dashboard";
 import { GeneralWorkspace } from "@/components/general-workspace";
 import { getGeneralWorkspace } from "@/data/general-workspace";
@@ -14,16 +14,14 @@ export default async function TeamWorkspacePage({ params }: Props) {
   const { organizationSlug, teamSlug } = await params;
   const databaseConfigured = isSupabaseConfigured();
 
+  let signedIn = false;
   if (databaseConfigured) {
     const supabase = await createClient();
     const { data } = await supabase.auth.getUser();
-
-    if (!data.user) {
-      redirect("/login");
-    }
+    signedIn = Boolean(data.user);
   }
 
-  const data = await getTeamDashboard(organizationSlug, teamSlug);
+  const data = signedIn || !databaseConfigured ? await getTeamDashboard(organizationSlug, teamSlug) : null;
 
   if (!data && databaseConfigured) {
     const generalData = await getGeneralWorkspace(organizationSlug);
@@ -31,7 +29,7 @@ export default async function TeamWorkspacePage({ params }: Props) {
     if (generalData && publicTeam) {
       return <GeneralWorkspace data={{ ...generalData, workspaces: generalData.workspaces.map((workspace) => ({ ...workspace, active: workspace.kind === "team" && workspace.id === publicTeam.id })) }} focusTeam={publicTeam} />;
     }
-    redirect("/setup");
+    notFound();
   }
 
   if (!data) notFound();

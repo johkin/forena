@@ -37,6 +37,7 @@ export type Member = {
   id: EntityId;
   organizationId: EntityId;
   displayName: string;
+  teamRole?: "participant" | "leader" | "volunteer";
   guardianName?: string;
   guardianPhone?: string;
 };

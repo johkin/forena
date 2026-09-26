@@ -102,7 +102,7 @@ export function ClubDashboard({ organization, sections, team, activity, members,
           {accountEmail ? <span className="account-identity" title={accountEmail}>Inloggad som <strong>{accountEmail}</strong></span> : null}
           {accountEmail ? <NotificationSettings /> : null}
           <WorkspaceSwitcher organization={organization} team={team} workspaces={workspaces} />
-          <LogoutButton />
+          <LogoutButton destination={`/o/${organization.slug}/t/${team.slug}`} />
         </div>
       </header>
       <div className="shell">

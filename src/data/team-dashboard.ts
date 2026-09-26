@@ -125,7 +125,7 @@ export async function getTeamDashboard(
     ...(ownPeopleForUser ?? []).map((item) => item.id),
   ])];
   const { data: familyMembershipRows } = familyPersonIds.length
-    ? await supabase.from("memberships").select("person_id, team_id").in("person_id", familyPersonIds).eq("role", "participant").is("ends_on", null)
+    ? await supabase.from("memberships").select("person_id, team_id").in("person_id", familyPersonIds).in("role", ["participant", "leader"]).is("ends_on", null)
     : { data: [] };
   const familyTeamIds = [...new Set((familyMembershipRows ?? []).flatMap((item) => item.team_id ? [item.team_id] : []))];
   const [{ data: familyPeopleRows }, { data: familyTeamRows }, { data: familyActivityRows }] = await Promise.all([
@@ -161,9 +161,9 @@ export async function getTeamDashboard(
     .eq("activity_id", activityRow.id);
   const { data: rosterRows } = await supabase
     .from("memberships")
-    .select("person_id")
+    .select("person_id, role")
     .eq("team_id", teamRow.id)
-    .eq("role", "participant")
+    .in("role", ["participant", "leader"])
     .is("ends_on", null);
   const { data: taskRows } = await supabase
     .from("team_tasks")
@@ -226,8 +226,10 @@ export async function getTeamDashboard(
     guardianName: guardianByPersonId.get(person.id)?.contact_name ?? undefined,
     guardianPhone: guardianByPersonId.get(person.id)?.contact_phone ?? undefined,
   }));
-  const rosterMemberIds = new Set((rosterRows ?? []).map((membership) => membership.person_id));
-  const rosterMembers = members.filter((member) => rosterMemberIds.has(member.id));
+  const rosterRoleByMemberId = new Map((rosterRows ?? []).map((membership) => [membership.person_id, membership.role]));
+  const rosterMembers = members
+    .filter((member) => rosterRoleByMemberId.has(member.id))
+    .map((member) => ({ ...member, teamRole: rosterRoleByMemberId.get(member.id) }));
   const upcomingActivities: Activity[] = (upcomingActivityRows ?? []).map((item) => ({
     id: item.id, organizationId: item.organization_id, teamId: item.team_id ?? team.id, title: item.title,
     gatheringAt: item.gathering_at ?? undefined, startsAt: item.starts_at, endsAt: item.ends_at, location: item.location,

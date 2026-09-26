@@ -54,9 +54,9 @@ export async function POST(request: Request) {
 
   let invitedPersonIds: string[] = [];
   if (personIds.length) {
-    const { data: memberships } = await supabase.from("memberships").select("person_id").eq("team_id", team.id).eq("role", "participant").is("ends_on", null).in("person_id", personIds);
+    const { data: memberships } = await supabase.from("memberships").select("person_id").eq("team_id", team.id).in("role", ["participant", "leader"]).is("ends_on", null).in("person_id", personIds);
     invitedPersonIds = (memberships ?? []).map((membership) => membership.person_id);
-    if (invitedPersonIds.length !== personIds.length) return NextResponse.json({ error: "En eller flera valda deltagare tillhör inte laget" }, { status: 400 });
+    if (invitedPersonIds.length !== personIds.length) return NextResponse.json({ error: "En eller flera valda personer tillhör inte laget" }, { status: 400 });
   }
 
   let schedule: { invitationSendAt: string; responseDueAt: string; reminderSendAt: string | null } | undefined;

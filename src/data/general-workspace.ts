@@ -42,7 +42,6 @@ export async function getGeneralWorkspace(organizationSlug: string, sectionSlug?
 
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getUser();
-  if (!authData.user) return null;
   const { data: organizationRow } = await supabase.from("organizations").select("id, slug, name, assistant_name, time_zone").eq("slug", organizationSlug).maybeSingle();
   if (!organizationRow) return null;
 
@@ -74,5 +73,5 @@ export async function getGeneralWorkspace(organizationSlug: string, sectionSlug?
     ...(showSections ? sections.map((item) => ({ id: item.id, kind: "section" as const, name: item.name, description: "Sektion", href: `/o/${organization.slug}/s/${item.slug}`, active: item.id === section?.id })) : []),
     ...(teamRows ?? []).map((row) => ({ id: row.id, kind: "team" as const, name: row.name, description: showSections ? sections.find((item) => item.id === row.section_id)?.name ?? "Lag" : "Lag", href: `/o/${organization.slug}/t/${row.slug}`, active: false })),
   ];
-  return { organization, section, sections, teams, activities, workspaces, accountEmail: authData.user.email, source: "database" };
+  return { organization, section, sections, teams, activities, workspaces, accountEmail: authData.user?.email, source: "database" };
 }

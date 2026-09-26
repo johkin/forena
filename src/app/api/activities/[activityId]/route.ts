@@ -3,6 +3,35 @@ import { createClient } from "@/lib/supabase/server";
 
 type Props = { params: Promise<{ activityId: string }> };
 
+export async function GET(_request: Request, { params }: Props) {
+  const { activityId } = await params;
+  const supabase = await createClient();
+  const { data: authData } = await supabase.auth.getUser();
+  if (!authData.user) return NextResponse.json({ error: "Du måste logga in" }, { status: 401 });
+
+  const { data: activity } = await supabase.from("activities").select("id, team_id").eq("id", activityId).maybeSingle();
+  if (!activity?.team_id) return NextResponse.json({ error: "Aktiviteten kunde inte hittas" }, { status: 404 });
+  const { data: allowed } = await supabase.rpc("can_manage_team", { target_team_id: activity.team_id });
+  if (!allowed) return NextResponse.json({ error: "Du saknar behörighet för laget" }, { status: 403 });
+
+  const [{ data: invitationRows }, { data: membershipRows }] = await Promise.all([
+    supabase.from("invitations").select("person_id, response").eq("activity_id", activityId),
+    supabase.from("memberships").select("person_id, role").eq("team_id", activity.team_id).in("role", ["participant", "leader"]).is("ends_on", null),
+  ]);
+  const personIds = [...new Set((invitationRows ?? []).map((item) => item.person_id))];
+  const { data: peopleRows } = personIds.length
+    ? await supabase.from("people").select("id, display_name").in("id", personIds)
+    : { data: [] };
+  const personById = new Map((peopleRows ?? []).map((item) => [item.id, item]));
+  const roleByPersonId = new Map((membershipRows ?? []).map((item) => [item.person_id, item.role]));
+  const invitees = (invitationRows ?? []).flatMap((item) => {
+    const person = personById.get(item.person_id);
+    if (!person) return [];
+    return [{ personId: person.id, displayName: person.display_name, role: roleByPersonId.get(person.id) ?? "participant", response: item.response }];
+  });
+  return NextResponse.json({ invitees });
+}
+
 export async function PUT(request: Request, { params }: Props) {
   const { activityId } = await params;
   const body = await request.json().catch(() => null) as { title?: string; description?: string; gatheringAt?: string | null; startsAt?: string; endsAt?: string; location?: string } | null;

@@ -38,6 +38,13 @@ type DeliveryStatus = {
   deliveries: DeliveryItem[];
 };
 
+type ActivityInvitee = {
+  personId: string;
+  displayName: string;
+  role: "participant" | "leader" | "volunteer";
+  response: "pending" | "accepted" | "declined";
+};
+
 type Props = {
   activity: Activity;
   organization: Organization;
@@ -68,6 +75,7 @@ export function ActivityDetailModal({ activity, organization, team, canEdit, onC
   const timeZone = organization.timeZone ?? "Europe/Stockholm";
   const [events, setEvents] = useState<EventRow[]>([]);
   const [deliveryStatus, setDeliveryStatus] = useState<DeliveryStatus | null>(null);
+  const [invitees, setInvitees] = useState<ActivityInvitee[]>([]);
   const [historyError, setHistoryError] = useState(false);
   const date = new Intl.DateTimeFormat("sv-SE", { timeZone, weekday: "long", day: "numeric", month: "long" }).format(new Date(activity.startsAt));
   const time = new Intl.DateTimeFormat("sv-SE", { timeZone, hour: "2-digit", minute: "2-digit" });
@@ -89,6 +97,23 @@ export function ActivityDetailModal({ activity, organization, team, canEdit, onC
     return () => { cancelled = true; };
   }, [activity.id]);
 
+  useEffect(() => {
+    if (!canEdit) return;
+    let cancelled = false;
+    fetch(`/api/activities/${activity.id}`)
+      .then(async (response) => {
+        if (!response.ok) throw new Error();
+        return response.json();
+      })
+      .then((body) => { if (!cancelled) setInvitees(body.invitees ?? []); })
+      .catch(() => { if (!cancelled) setInvitees([]); });
+    return () => { cancelled = true; };
+  }, [activity.id, canEdit]);
+
+  const leaders = invitees.filter((item) => item.role === "leader");
+  const players = invitees.filter((item) => item.role === "participant");
+  const responseText = { accepted: "Kommer", declined: "Kan inte", pending: "Ej svarat" } as const;
+
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <section className="modal activity-detail-modal" role="dialog" aria-modal="true" aria-labelledby="activity-detail-title">
       <div className="card-heading"><div><p className="eyebrow">{team.name}</p><h2 id="activity-detail-title">{activity.title}</h2></div><button className="icon-button" onClick={onClose} aria-label="Stäng" type="button">✕</button></div>
@@ -100,6 +125,12 @@ export function ActivityDetailModal({ activity, organization, team, canEdit, onC
         {activity.responseDueAt ? <p><span>Svara senast</span><strong>{new Intl.DateTimeFormat("sv-SE", { timeZone, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(activity.responseDueAt))}</strong></p> : null}
         {activity.seriesId ? <p><span>Serie</span><strong>Ingår i en aktivitetsserie</strong></p> : null}
       </div>
+
+      {canEdit ? <section className="activity-staffing" aria-labelledby="activity-staffing-title">
+        <div className="card-heading"><div><p className="eyebrow">Kallelser</p><h3 id="activity-staffing-title">Bemanning</h3></div></div>
+        {leaders.length ? <div className="invitee-list">{leaders.map((leader) => <div key={leader.personId}><strong>{leader.displayName}</strong><span data-response={leader.response}>{responseText[leader.response]}</span></div>)}</div> : <p className="overview-empty">Inga ledare är kallade till aktiviteten.</p>}
+        {players.length ? <details className="player-invitations"><summary>Spelare · {players.filter((item) => item.response === "accepted").length} kommer av {players.length} kallade</summary><div className="invitee-list">{players.map((player) => <div key={player.personId}><strong>{player.displayName}</strong><span data-response={player.response}>{responseText[player.response]}</span></div>)}</div></details> : null}
+      </section> : null}
 
       {canEdit && deliveryStatus ? <section className="delivery-status" aria-labelledby="delivery-status-title">
         <div className="card-heading"><div><p className="eyebrow">Notifieringar</p><h3 id="delivery-status-title">Leveransstatus</h3></div></div>

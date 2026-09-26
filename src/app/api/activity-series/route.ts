@@ -47,9 +47,9 @@ export async function POST(request: Request) {
 
   const personIds = [...new Set(body.personIds ?? [])];
   const { data: memberships } = personIds.length
-    ? await supabase.from("memberships").select("person_id").eq("team_id", team.id).eq("role", "participant").is("ends_on", null).in("person_id", personIds)
+    ? await supabase.from("memberships").select("person_id").eq("team_id", team.id).in("role", ["participant", "leader"]).is("ends_on", null).in("person_id", personIds)
     : { data: [] };
-  if ((memberships ?? []).length !== personIds.length) return NextResponse.json({ error: "En eller flera deltagare tillhör inte laget" }, { status: 400 });
+  if ((memberships ?? []).length !== personIds.length) return NextResponse.json({ error: "En eller flera personer tillhör inte laget" }, { status: 400 });
 
   let schedules: ReturnType<typeof invitationScheduleForOccurrence>[] = [];
   if (personIds.length) {

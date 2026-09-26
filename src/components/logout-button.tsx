@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export function LogoutButton() {
+export function LogoutButton({ destination = "/" }: { destination?: string }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -22,7 +22,7 @@ export function LogoutButton() {
       return;
     }
 
-    router.replace("/login");
+    router.replace(destination);
     router.refresh();
   }
 
