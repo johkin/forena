@@ -13,6 +13,7 @@ type Props = {
   activeItem?: TeamMenuItem;
   onSelectView?: (view: "overview" | "calendar") => void;
   triggerOnly?: boolean;
+  hideTrigger?: boolean;
 };
 
 export function TeamMenu({
@@ -24,6 +25,7 @@ export function TeamMenu({
   activeItem,
   onSelectView,
   triggerOnly = false,
+  hideTrigger = false,
 }: Props) {
   const [open, setOpen] = useState(false);
   const teamHref = `/o/${organizationSlug}/t/${teamSlug}`;
@@ -35,7 +37,7 @@ export function TeamMenu({
 
   return (
     <>
-      <button
+      {!hideTrigger ? <button
         className={`mobile-menu-button ${triggerOnly ? "" : "team-menu-desktop-trigger"}`}
         type="button"
         aria-label={open ? "Stäng meny" : "Öppna meny"}
@@ -44,7 +46,7 @@ export function TeamMenu({
         onClick={() => setOpen((current) => !current)}
       >
         {open ? "✕" : "☰"}
-      </button>
+      </button> : null}
 
       {open ? <button className="mobile-menu-backdrop" aria-label="Stäng meny" type="button" onClick={() => setOpen(false)} /> : null}
 
@@ -67,7 +69,7 @@ export function TeamMenu({
             onClick={() => setOpen(false)}
             href={canManageTeam ? `${teamHref}/members` : "#members"}
           >
-            Spelare och ledare
+            Truppen
           </a>
           <a onClick={() => setOpen(false)} href="#attendance">Närvaro</a>
         </nav>
