@@ -51,6 +51,7 @@ export default async function TeamWorkspacePage({ params }: Props) {
       accountEmail={data.accountEmail}
       respondablePersonIds={data.respondablePersonIds}
       referenceTime={data.referenceTime}
+      missingAttendanceActivities={data.missingAttendanceActivities}
       workspaces={data.workspaces}
     />
   );
