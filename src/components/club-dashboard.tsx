@@ -24,12 +24,13 @@ type Props = {
   accountEmail?: string;
   respondablePersonIds: string[];
   referenceTime: string;
+  missingAttendanceActivities: Activity[];
   source: "database" | "demo";
 };
 
 const responseLabels = { accepted: "Kommer", declined: "Kan inte", pending: "Ej svarat" } as const;
 
-export function ClubDashboard({ organization, sections, team, activity, members, rosterMembers, upcomingActivities, initialInvitations, initialFamilyActivities, workspaces, tasks, canManageTeam, accountEmail, respondablePersonIds, referenceTime, source }: Props) {
+export function ClubDashboard({ organization, sections, team, activity, members, rosterMembers, upcomingActivities, initialInvitations, initialFamilyActivities, workspaces, tasks, canManageTeam, accountEmail, respondablePersonIds, referenceTime, missingAttendanceActivities, source }: Props) {
   const currentActivity = activity;
   const [invitations, setInvitations] = useState(initialInvitations);
   const view: DashboardView = canManageTeam ? "leader" : "family";
@@ -132,6 +133,7 @@ export function ClubDashboard({ organization, sections, team, activity, members,
                       reminderPending={sendingReminder}
                       onOpenActivity={setSelectedActivity}
                       onSendReminder={(item) => void sendReminder(item)}
+                      missingAttendanceActivities={missingAttendanceActivities}
                     /> : null}
                   </div>
                   <aside className="overview-assistant">
