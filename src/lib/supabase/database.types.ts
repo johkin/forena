@@ -72,8 +72,8 @@ export interface Database {
         OrganizationScoped & { person_id: string; guardian_user_id: string; contact_name?: string | null; contact_phone?: string | null; created_at?: string }
       >;
       memberships: Table<
-        Timestamped & OrganizationScoped & { id: string; person_id: string; team_id: string | null; role: "participant" | "leader" | "volunteer"; starts_on: string; ends_on: string | null },
-        OrganizationScoped & { id?: string; person_id: string; team_id?: string | null; role: "participant" | "leader" | "volunteer"; starts_on?: string; ends_on?: string | null; created_at?: string }
+        Timestamped & OrganizationScoped & { id: string; person_id: string; team_id: string | null; role: "participant" | "leader" | "volunteer"; leader_title: string | null; is_primary_contact: boolean; starts_on: string; ends_on: string | null },
+        OrganizationScoped & { id?: string; person_id: string; team_id?: string | null; role: "participant" | "leader" | "volunteer"; leader_title?: string | null; is_primary_contact?: boolean; starts_on?: string; ends_on?: string | null; created_at?: string }
       >;
       team_groups: Table<
         Timestamped & OrganizationScoped & { id: string; team_id: string; name: string; updated_at: string },
