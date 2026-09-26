@@ -1,5 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { ClubDashboard } from "@/components/club-dashboard";
+import { GeneralWorkspace } from "@/components/general-workspace";
+import { getGeneralWorkspace } from "@/data/general-workspace";
 import { getTeamDashboard } from "@/data/team-dashboard";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
@@ -24,6 +26,11 @@ export default async function TeamWorkspacePage({ params }: Props) {
   const data = await getTeamDashboard(organizationSlug, teamSlug);
 
   if (!data && databaseConfigured) {
+    const generalData = await getGeneralWorkspace(organizationSlug);
+    const publicTeam = generalData?.teams.find((team) => team.slug === teamSlug);
+    if (generalData && publicTeam) {
+      return <GeneralWorkspace data={{ ...generalData, workspaces: generalData.workspaces.map((workspace) => ({ ...workspace, active: workspace.kind === "team" && workspace.id === publicTeam.id })) }} focusTeam={publicTeam} />;
+    }
     redirect("/setup");
   }
 
