@@ -99,6 +99,14 @@ export interface Database {
         Timestamped & OrganizationScoped & { id: string; activity_id: string; person_id: string; response: "pending" | "accepted" | "declined"; responded_at: string | null; response_comment: string | null },
         OrganizationScoped & { id?: string; activity_id: string; person_id: string; response?: "pending" | "accepted" | "declined"; responded_at?: string | null; response_comment?: string | null; created_at?: string }
       >;
+      activity_attendance_reports: Table<
+        Timestamped & OrganizationScoped & { id: string; activity_id: string; reported_by: string; reported_at: string; updated_at: string },
+        OrganizationScoped & { id?: string; activity_id: string; reported_by: string; reported_at?: string; updated_at?: string; created_at?: string }
+      >;
+      activity_attendance_records: Table<
+        Timestamped & OrganizationScoped & { report_id: string; person_id: string },
+        OrganizationScoped & { report_id: string; person_id: string; created_at?: string }
+      >;
       activity_events: Table<
         Timestamped & OrganizationScoped & {
           id: string;
