@@ -138,7 +138,7 @@ export async function updateTeamGroup(formData: FormData) {
   const { data: group } = await supabase.from("team_groups").select("id").eq("id", groupId).eq("team_id", team.id).maybeSingle();
   if (!group) redirect(`${destination}?error=${encodeURIComponent("Gruppen kunde inte hittas")}`);
   if (personIds.length) {
-    const { data: memberships } = await supabase.from("memberships").select("person_id").eq("team_id", team.id).in("role", ["participant", "leader"]).is("ends_on", null).in("person_id", personIds);
+    const { data: memberships } = await supabase.from("memberships").select("person_id").eq("team_id", team.id).is("ends_on", null).in("person_id", personIds);
     if ((memberships ?? []).length !== personIds.length) redirect(`${destination}?error=${encodeURIComponent("En vald person tillhör inte truppen")}`);
   }
   const { error: nameError } = await supabase.from("team_groups").update({ name }).eq("id", groupId);
