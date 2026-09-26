@@ -487,3 +487,17 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .delivery-list li { grid-template-columns:1fr; }
   .delivery-channels { justify-content:flex-start; }
 }
+
+
+.roster-sections { display:grid; gap:24px; margin-bottom:36px; }
+.roster-section { display:grid; gap:12px; }
+.roster-section-heading { display:flex; align-items:center; gap:9px; }
+.roster-section-heading h3 { margin:0; font-size:18px; }
+.roster-section-heading span { min-width:24px; height:24px; display:grid; place-items:center; padding:0 7px; border-radius:999px; background:var(--cream); color:var(--ink-soft); font-size:11px; font-weight:800; }
+.roster-card-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:9px; }
+.roster-person-card { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px; padding:12px 14px; border:1px solid var(--line); border-radius:11px; background:white; }
+.roster-person-card>div { min-width:0; display:grid; gap:2px; }
+.roster-person-card strong { overflow:hidden; font-size:14px; text-overflow:ellipsis; white-space:nowrap; }
+.roster-person-card small { color:var(--ink-soft); font-size:11px; }
+.group-admin-heading,.player-admin-heading { margin-top:36px; }
+@media(max-width:560px){.roster-card-grid{grid-template-columns:1fr}.roster-person-card{grid-template-columns:auto minmax(0,1fr)}.roster-person-card>.status{grid-column:2;width:fit-content}}
