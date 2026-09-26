@@ -8,7 +8,8 @@ type CreateSeriesBody = SeriesPreviewInput & {
   title?: string;
   description?: string;
   location?: string;
-  personIds?: string[];
+  invitationAudience?: "players" | "leaders" | "group";
+  invitationGroupId?: string;
   invitationSendMinutesBefore?: number;
   responseDueRule?: ResponseDueRule;
   reminderMinutesBeforeDue?: number;
@@ -45,14 +46,18 @@ export async function POST(request: Request) {
     : await typeQuery.eq("slug", "ovrigt").maybeSingle();
   if (!activityType) return NextResponse.json({ error: "Aktivitetstypen kunde inte hittas" }, { status: 400 });
 
-  const personIds = [...new Set(body.personIds ?? [])];
-  const { data: memberships } = personIds.length
-    ? await supabase.from("memberships").select("person_id").eq("team_id", team.id).in("role", ["participant", "leader"]).is("ends_on", null).in("person_id", personIds)
-    : { data: [] };
-  if ((memberships ?? []).length !== personIds.length) return NextResponse.json({ error: "En eller flera personer tillhör inte laget" }, { status: 400 });
+  const invitationAudience = body.invitationAudience;
+  const invitationGroupId = body.invitationGroupId;
+  if (invitationAudience === "group") {
+    if (!invitationGroupId) return NextResponse.json({ error: "Välj en undergrupp" }, { status: 400 });
+    const { data: group } = await supabase.from("team_groups").select("id").eq("id", invitationGroupId).eq("team_id", team.id).maybeSingle();
+    if (!group) return NextResponse.json({ error: "Undergruppen kunde inte hittas" }, { status: 400 });
+  } else if (invitationGroupId) {
+    return NextResponse.json({ error: "Undergrupp kan bara användas som målgrupp" }, { status: 400 });
+  }
 
   let schedules: ReturnType<typeof invitationScheduleForOccurrence>[] = [];
-  if (personIds.length) {
+  if (invitationAudience) {
     try {
       schedules = occurrences.map((item) => invitationScheduleForOccurrence(item.startsAt, timeZone, {
         invitationSendMinutesBefore: body.invitationSendMinutesBefore ?? 10080,
@@ -89,6 +94,8 @@ export async function POST(request: Request) {
     invitation_send_at: schedules[index]?.invitationSendAt ?? null,
     response_due_at: schedules[index]?.responseDueAt ?? null,
     reminder_send_at: schedules[index]?.reminderSendAt ?? null,
+    invitation_audience_kind: invitationAudience ?? null,
+    invitation_group_id: invitationAudience === "group" ? invitationGroupId ?? null : null,
     created_by: authData.user.id,
   }))).select("id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location, series_id, status, invitation_send_at, response_due_at, reminder_send_at");
   if (activitiesError || !activities) {
@@ -96,12 +103,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Seriens aktiviteter kunde inte sparas" }, { status: 500 });
   }
 
-  const invitationRows = activities.flatMap((activity) => personIds.map((personId) => ({ organization_id: team.organization_id, activity_id: activity.id, person_id: personId })));
-  const { error: invitationError } = invitationRows.length ? await supabase.from("invitations").insert(invitationRows) : { error: null };
-  if (invitationError) {
-    await supabase.from("activities").delete().eq("series_id", series.id);
-    await supabase.from("activity_series").delete().eq("id", series.id);
-    return NextResponse.json({ error: "Serien skapades inte eftersom kallelserna inte kunde sparas" }, { status: 500 });
+  if (invitationAudience) {
+    const events = activities.flatMap((activity, index) => {
+      const schedule = schedules[index];
+      if (!schedule) return [];
+      return [
+        {
+          organization_id: team.organization_id,
+          activity_id: activity.id,
+          event_type: "invitation_scheduled" as const,
+          recipient_count: null,
+          metadata: { scheduledAt: schedule.invitationSendAt, audience: invitationAudience, groupId: invitationGroupId ?? null },
+          created_by: authData.user.id,
+        },
+        ...(schedule.reminderSendAt ? [{
+          organization_id: team.organization_id,
+          activity_id: activity.id,
+          event_type: "reminder_scheduled" as const,
+          recipient_count: null,
+          metadata: { scheduledAt: schedule.reminderSendAt },
+          created_by: authData.user.id,
+        }] : []),
+      ];
+    });
+    if (events.length) await supabase.from("activity_events").insert(events);
+  }
+
+  return NextResponse.json({ error: "Serien skapades inte eftersom kallelserna inte kunde sparas" }, { status: 500 });
   }
 
   if (personIds.length) {
@@ -137,5 +165,5 @@ export async function POST(request: Request) {
     if (events.length) await supabase.from("activity_events").insert(events);
   }
 
-  return NextResponse.json({ seriesId: series.id, activities, invitedCount: personIds.length }, { status: 201 });
+  return NextResponse.json({ seriesId: series.id, activities }, { status: 201 });
 }
