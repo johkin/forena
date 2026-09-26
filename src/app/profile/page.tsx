@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { AppHeader } from "@/components/app-header";
+import { LogoutButton } from "@/components/logout-button";
 import { updateProfile } from "./actions";
 
 type Props = { searchParams: Promise<{ saved?: string; error?: string }> };
@@ -18,8 +20,9 @@ export default async function ProfilePage({ searchParams }: Props) {
     : { data: [] };
 
   return (
-    <main className="application-page profile-page">
-      <section className="application-card profile-card">
+    <main>
+      <AppHeader homeHref={organizations?.[0] ? `/o/${organizations[0].slug}` : "/"} accountEmail={authData.user.email} actions={<LogoutButton destination="/" />} />
+      <div className="application-page profile-page"><section className="application-card profile-card">
         <div className="application-page-heading">
           <div><p className="eyebrow">Konto</p><h1>Min profil</h1><p>Uppgifterna används när du visas som medlem eller ledare i en förening.</p></div>
           <a className="secondary" href={organizations?.[0] ? `/o/${organizations[0].slug}` : "/"}>Tillbaka</a>
@@ -36,7 +39,7 @@ export default async function ProfilePage({ searchParams }: Props) {
           {organizations?.length ? <div className="form-section"><h2>Föreningar</h2><div className="profile-organizations">{organizations.map((organization) => <a key={organization.id} href={`/o/${organization.slug}`}>{organization.name}<span>›</span></a>)}</div></div> : null}
           <button className="primary application-submit" type="submit">Spara profil</button>
         </form>
-      </section>
+      </section></div>
     </main>
   );
 }
