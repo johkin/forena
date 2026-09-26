@@ -42,7 +42,7 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
     <main>
       <header className="topbar">
         <div className="topbar-brand-row">
-          <TeamMenu organizationSlug={organizationSlug} teamSlug={teamSlug} teamName={team.name} canManageTeam={Boolean(canManage)} leaderView activeItem="members" />
+          <TeamMenu organizationSlug={organizationSlug} teamSlug={teamSlug} teamName={team.name} canManageTeam={Boolean(canManage)} leaderView activeItem="members" triggerOnly />
           <a className="brand" href={`/o/${organizationSlug}/t/${teamSlug}`} aria-label="Förena startsida"><span className="brand-mark">F</span><span>Förena</span></a>
         </div>
       </header>
