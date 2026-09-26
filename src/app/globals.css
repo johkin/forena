@@ -501,3 +501,13 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .roster-person-card small { color:var(--ink-soft); font-size:11px; }
 .group-admin-heading,.player-admin-heading { margin-top:36px; }
 @media(max-width:560px){.roster-card-grid{grid-template-columns:1fr}.roster-person-card{grid-template-columns:auto minmax(0,1fr)}.roster-person-card>.status{grid-column:2;width:fit-content}}
+
+
+.profile-button { width:38px; height:38px; display:grid; place-items:center; flex:0 0 auto; border:1px solid var(--line); border-radius:50%; background:white; color:var(--ink); text-decoration:none; transition:background .15s ease,border-color .15s ease; }
+.profile-button:hover { background:var(--cream); border-color:var(--ink-soft); }
+.profile-button svg { display:block; }
+.profile-card { width:min(680px,100%); }
+.profile-organizations { display:grid; gap:8px; }
+.profile-organizations a { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; border:1px solid var(--line); border-radius:10px; background:white; color:var(--ink); font-size:14px; font-weight:700; text-decoration:none; }
+.profile-organizations a:hover { background:var(--cream); }
+.profile-organizations span { font-size:20px; font-weight:400; }
