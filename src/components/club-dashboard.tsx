@@ -11,7 +11,7 @@ import { PersonalOverview } from "@/components/personal-overview";
 import { TeamOverview } from "@/components/team-overview";
 import { ActivityDetailModal } from "@/components/activity-detail-modal";
 import { TeamMenu } from "@/components/team-menu";
-import { ProfileButton } from "@/components/profile-button";
+import { AppHeader } from "@/components/app-header";
 import {
   respondToInvitation, summarizeInvitations, type Activity, type DashboardView, type Invitation,
   type FamilyActivity, type InvitationResponse, type Member, type Organization, type Section, type Team, type TeamTask, type Workspace,
@@ -98,16 +98,12 @@ export function ClubDashboard({ organization, sections, team, activity, members,
 
   return (
     <main>
-      <header className="topbar">
-        <div className="topbar-brand-row"><TeamMenu organizationSlug={organization.slug} teamSlug={team.slug} teamName={team.name} canManageTeam={canManageTeam} leaderView={view === "leader"} activeItem={activePage} onSelectView={setActivePage} /><a className="brand" href="#" aria-label="Förena startsida"><span className="brand-mark">F</span><span>Förena</span></a></div>
-        <div className="topbar-actions">
-          {accountEmail ? <span className="account-identity" title={accountEmail}>Inloggad som <strong>{accountEmail}</strong></span> : null}
-          {accountEmail ? <ProfileButton /> : null}
-          {accountEmail ? <NotificationSettings /> : null}
-          <WorkspaceSwitcher organization={organization} team={team} workspaces={workspaces} />
-          <LogoutButton destination={`/o/${organization.slug}/t/${team.slug}`} />
-        </div>
-      </header>
+      <AppHeader
+        homeHref={`/o/${organization.slug}/t/${team.slug}`}
+        menu={<TeamMenu organizationSlug={organization.slug} teamSlug={team.slug} teamName={team.name} canManageTeam={canManageTeam} leaderView={view === "leader"} activeItem={activePage} onSelectView={setActivePage} />}
+        accountEmail={accountEmail}
+        actions={<><NotificationSettings /><WorkspaceSwitcher organization={organization} team={team} workspaces={workspaces} /><LogoutButton destination={`/o/${organization.slug}/t/${team.slug}`} /></>}
+      />
       <div className="shell">
         <section className="content" id={activePage}>
           <div className="welcome"><div><p className="eyebrow">{sections.length > 1 ? `${sections.find((item) => item.id === team.sectionId)?.name ?? "Sektion"} · ` : ""}{organization.name}</p><h1>{team.name}</h1><p>{activePage === "calendar" ? "Alla aktiviteter för laget." : view === "leader" ? "Det laget behöver från dig just nu." : `Det viktigaste för ${familyMember?.displayName ?? "spelaren"} just nu.`}</p></div>{view === "leader" && canManageTeam && <div className="welcome-actions"><button className="secondary" onClick={() => setShowInvitationForm(true)} type="button">Bjud in ledare</button><button className="primary" onClick={() => setActivityEditorMode("create")} type="button">+ Ny aktivitet</button></div>}</div>
