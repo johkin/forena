@@ -1,16 +1,16 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { TeamMenu } from "@/components/team-menu";
-import { createTeamGroup, deleteTeamGroup, sendPlayerInvitation, updatePlayer, updateTeamGroup } from "./actions";
+import { createTeamGroup, deleteTeamGroup, sendPlayerInvitation, updateLeader, updatePlayer, updateTeamGroup } from "./actions";
 
 type Props = {
   params: Promise<{ organizationSlug: string; teamSlug: string }>;
-  searchParams: Promise<{ error?: string; saved?: string; invited?: string; groupSaved?: string; groupDeleted?: string }>;
+  searchParams: Promise<{ error?: string; saved?: string; leaderSaved?: string; invited?: string; groupSaved?: string; groupDeleted?: string }>;
 };
 
 export default async function TeamMembersPage({ params, searchParams }: Props) {
   const { organizationSlug, teamSlug } = await params;
-  const { error, saved, invited, groupSaved, groupDeleted } = await searchParams;
+  const { error, saved, leaderSaved, invited, groupSaved, groupDeleted } = await searchParams;
   const destination = `/o/${organizationSlug}/t/${teamSlug}/members`;
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getUser();
@@ -25,9 +25,10 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
   const { data: canManage } = await supabase.rpc("can_manage_team", { target_team_id: team.id });
   if (!canManage) redirect(`/o/${organizationSlug}/t/${teamSlug}`);
 
-  const { data: memberships } = await supabase.from("memberships").select("person_id, role").eq("team_id", team.id).is("ends_on", null);
+  const { data: memberships } = await supabase.from("memberships").select("person_id, role, leader_title, is_primary_contact").eq("team_id", team.id).is("ends_on", null);
   const personIds = [...new Set((memberships ?? []).map((item) => item.person_id))];
   const roleByPerson = new Map((memberships ?? []).map((item) => [item.person_id, item.role]));
+  const membershipByPerson = new Map((memberships ?? []).map((item) => [item.person_id, item]));
   const roleLabel = (role: string | undefined) => role === "participant" ? "Spelare" : role === "leader" ? "Ledare" : role === "volunteer" ? "Övrig" : "Medlem";
   const [{ data: people }, { data: loginEmails }, { data: groups }, { data: groupMembers }] = await Promise.all([
     personIds.length ? supabase.from("people").select("id, display_name, user_id").in("id", personIds).order("display_name") : Promise.resolve({ data: [] }),
@@ -55,6 +56,7 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
           <div><p className="eyebrow">{organization.name} · {team.name}</p><h1>Truppen</h1><p>Hantera spelare, ledare och undergrupper som kan användas som målgrupper för kallelser.</p></div>
         </div>
         {saved ? <div className="auth-message">{saved} har uppdaterats.</div> : null}
+        {leaderSaved ? <div className="auth-message">{leaderSaved} har uppdaterats.</div> : null}
         {invited ? <div className="auth-message">Inbjudan har skickats till {invited}.</div> : null}
         {groupSaved ? <div className="auth-message">Gruppen {groupSaved} har sparats.</div> : null}
         {groupDeleted ? <div className="auth-message">Gruppen {groupDeleted} har tagits bort.</div> : null}
@@ -69,7 +71,7 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
               <div className="roster-card-grid">
                 {rolePeople.map((person) => <article className="roster-person-card" key={person.id}>
                   <span className="member-avatar">{person.display_name.slice(0,1)}</span>
-                  <div><strong>{person.display_name}</strong><small>{roleLabel(roleByPerson.get(person.id))}</small></div>
+                  <div><strong>{person.display_name}</strong><small>{role === "leader" ? [membershipByPerson.get(person.id)?.leader_title ?? "Ledare", membershipByPerson.get(person.id)?.is_primary_contact ? "Primär kontakt" : null].filter(Boolean).join(" · ") : roleLabel(roleByPerson.get(person.id))}</small></div>
                   {person.user_id ? <span className="status accepted">Konto kopplat</span> : null}
                 </article>)}
               </div>
@@ -88,6 +90,18 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
             <fieldset><legend>Medlemmar</legend><div className="member-options">{(people ?? []).map((person) => <label key={person.id}><input type="checkbox" name="personIds" value={person.id} defaultChecked={groupPersonIds.get(group.id)?.has(person.id) ?? false} /><span className="member-avatar">{person.display_name.slice(0,1)}</span>{person.display_name} <small>{roleLabel(roleByPerson.get(person.id))}</small></label>)}</div></fieldset>
             <div className="member-account-state"><div className="member-admin-actions"><button className="secondary" formAction={deleteTeamGroup} type="submit">Ta bort</button><button className="primary" type="submit">Spara grupp</button></div></div>
           </form>)}
+        </div>
+        <div className="application-page-heading player-admin-heading"><div><p className="eyebrow">Administration</p><h2>Ledare</h2><p>Alla ledare har samma rättigheter i laget. Benämningen beskriver funktionen och primär kontakt visar vem målsmän i första hand ska vända sig till.</p></div></div>
+        <div className="member-admin-list">
+          {(people ?? []).filter((person) => roleByPerson.get(person.id) === "leader").map((person) => {
+            const membership = membershipByPerson.get(person.id);
+            return <form action={updateLeader} className="member-admin-row" key={person.id}>
+              <input name="organizationSlug" type="hidden" value={organizationSlug} /><input name="teamSlug" type="hidden" value={teamSlug} /><input name="personId" type="hidden" value={person.id} />
+              <label>Benämning<input name="leaderTitle" defaultValue={membership?.leader_title ?? ""} maxLength={80} placeholder="Till exempel Lagledare, Tränare eller Sportchef" /></label>
+              <label className="member-option"><input type="checkbox" name="primaryContact" defaultChecked={membership?.is_primary_contact ?? false} /> Primär kontakt för laget</label>
+              <div className="member-account-state"><button className="primary" type="submit">Spara ledare</button></div>
+            </form>;
+          })}
         </div>
         <div className="application-page-heading player-admin-heading"><div><p className="eyebrow">Administration</p><h2>Spelaruppgifter</h2><p>Uppdatera spelaruppgifter och lägg till e-post för den som ska kunna logga in själv.</p></div></div>
         <div className="member-admin-list">
