@@ -11,6 +11,7 @@ import { PersonalOverview } from "@/components/personal-overview";
 import { TeamOverview } from "@/components/team-overview";
 import { ActivityDetailModal } from "@/components/activity-detail-modal";
 import { TeamMenu } from "@/components/team-menu";
+import { ProfileButton } from "@/components/profile-button";
 import {
   respondToInvitation, summarizeInvitations, type Activity, type DashboardView, type Invitation,
   type FamilyActivity, type InvitationResponse, type Member, type Organization, type Section, type Team, type TeamTask, type Workspace,
@@ -101,6 +102,7 @@ export function ClubDashboard({ organization, sections, team, activity, members,
         <div className="topbar-brand-row"><TeamMenu organizationSlug={organization.slug} teamSlug={team.slug} teamName={team.name} canManageTeam={canManageTeam} leaderView={view === "leader"} activeItem={activePage} onSelectView={setActivePage} /><a className="brand" href="#" aria-label="Förena startsida"><span className="brand-mark">F</span><span>Förena</span></a></div>
         <div className="topbar-actions">
           {accountEmail ? <span className="account-identity" title={accountEmail}>Inloggad som <strong>{accountEmail}</strong></span> : null}
+          {accountEmail ? <ProfileButton /> : null}
           {accountEmail ? <NotificationSettings /> : null}
           <WorkspaceSwitcher organization={organization} team={team} workspaces={workspaces} />
           <LogoutButton destination={`/o/${organization.slug}/t/${team.slug}`} />
