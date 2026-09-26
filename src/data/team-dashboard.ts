@@ -28,6 +28,7 @@ export type TeamDashboardData = {
   accountEmail?: string;
   respondablePersonIds: string[];
   referenceTime: string;
+  missingAttendanceActivities: Activity[];
   source: "database" | "demo";
 };
 
@@ -47,6 +48,7 @@ function demoDashboard(): TeamDashboardData {
     canManageTeam: true,
     respondablePersonIds: demoMembers.map((item) => item.id),
     referenceTime: new Date().toISOString(),
+    missingAttendanceActivities: [],
     source: "demo",
   };
 }
@@ -245,6 +247,26 @@ export async function getTeamDashboard(
     respondedAt: invitation.responded_at ?? undefined,
     responseComment: invitation.response_comment ?? undefined,
   }));
+  const startedActivityRows = await supabase
+    .from("activities")
+    .select("id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location, series_id, status, invitation_send_at, response_due_at, reminder_send_at")
+    .eq("team_id", teamRow.id)
+    .neq("status", "cancelled")
+    .lte("starts_at", referenceTime)
+    .order("starts_at", { ascending: false })
+    .limit(20);
+  const startedIds = (startedActivityRows.data ?? []).map((item) => item.id);
+  const { data: attendanceReportRows } = startedIds.length
+    ? await supabase.from("activity_attendance_reports").select("activity_id").in("activity_id", startedIds)
+    : { data: [] };
+  const reportedActivityIds = new Set((attendanceReportRows ?? []).map((item) => item.activity_id));
+  const missingAttendanceActivities: Activity[] = (startedActivityRows.data ?? []).filter((item) => !reportedActivityIds.has(item.id)).map((item) => ({
+    id: item.id, organizationId: item.organization_id, teamId: item.team_id ?? team.id, title: item.title,
+    gatheringAt: item.gathering_at ?? undefined, startsAt: item.starts_at, endsAt: item.ends_at, location: item.location,
+    seriesId: item.series_id ?? undefined, status: item.status, invitationSendAt: item.invitation_send_at ?? undefined,
+    responseDueAt: item.response_due_at ?? undefined, reminderSendAt: item.reminder_send_at ?? undefined,
+  }));
+
   const tasks: TeamTask[] = (taskRows ?? []).map((task) => ({
     id: task.id,
     organizationId: task.organization_id,
