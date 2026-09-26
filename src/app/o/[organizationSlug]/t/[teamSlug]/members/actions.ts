@@ -102,3 +102,64 @@ export async function sendPlayerInvitation(formData: FormData) {
   }
   redirect(`${destination}?invited=${encodeURIComponent(displayName)}`);
 }
+
+
+async function getManagedTeam(formData: FormData) {
+  const organizationSlug = String(formData.get("organizationSlug") ?? "");
+  const teamSlug = String(formData.get("teamSlug") ?? "");
+  const destination = memberDestination(organizationSlug, teamSlug);
+  const supabase = await createClient();
+  const { data: authData } = await supabase.auth.getUser();
+  if (!authData.user) redirect(`/login?next=${encodeURIComponent(destination)}`);
+  const { data: organization } = await supabase.from("organizations").select("id").eq("slug", organizationSlug).maybeSingle();
+  const { data: team } = organization ? await supabase.from("teams").select("id, organization_id").eq("organization_id", organization.id).eq("slug", teamSlug).maybeSingle() : { data: null };
+  if (!team) redirect(`${destination}?error=${encodeURIComponent("Laget kunde inte hittas")}`);
+  const { data: canManage } = await supabase.rpc("can_manage_team", { target_team_id: team.id });
+  if (!canManage) redirect(`${destination}?error=${encodeURIComponent("Du saknar behörighet att hantera grupper")}`);
+  return { supabase, team, destination, organizationSlug, teamSlug };
+}
+
+export async function createTeamGroup(formData: FormData) {
+  const name = String(formData.get("name") ?? "").trim();
+  const { supabase, team, destination } = await getManagedTeam(formData);
+  if (!name) redirect(`${destination}?error=${encodeURIComponent("Ange ett namn på gruppen")}`);
+  const { error } = await supabase.from("team_groups").insert({ organization_id: team.organization_id, team_id: team.id, name });
+  if (error) redirect(`${destination}?error=${encodeURIComponent(error.code === "23505" ? "Det finns redan en grupp med det namnet" : "Gruppen kunde inte skapas")}`);
+  revalidatePath(destination);
+  redirect(`${destination}?groupSaved=${encodeURIComponent(name)}`);
+}
+
+export async function updateTeamGroup(formData: FormData) {
+  const groupId = String(formData.get("groupId") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const personIds = [...new Set(formData.getAll("personIds").map(String))];
+  const { supabase, team, destination } = await getManagedTeam(formData);
+  if (!groupId || !name) redirect(`${destination}?error=${encodeURIComponent("Gruppen är ogiltig")}`);
+  const { data: group } = await supabase.from("team_groups").select("id").eq("id", groupId).eq("team_id", team.id).maybeSingle();
+  if (!group) redirect(`${destination}?error=${encodeURIComponent("Gruppen kunde inte hittas")}`);
+  if (personIds.length) {
+    const { data: memberships } = await supabase.from("memberships").select("person_id").eq("team_id", team.id).in("role", ["participant", "leader"]).is("ends_on", null).in("person_id", personIds);
+    if ((memberships ?? []).length !== personIds.length) redirect(`${destination}?error=${encodeURIComponent("En vald person tillhör inte truppen")}`);
+  }
+  const { error: nameError } = await supabase.from("team_groups").update({ name }).eq("id", groupId);
+  if (nameError) redirect(`${destination}?error=${encodeURIComponent(nameError.code === "23505" ? "Det finns redan en grupp med det namnet" : "Gruppen kunde inte sparas")}`);
+  const { error: deleteError } = await supabase.from("team_group_members").delete().eq("group_id", groupId);
+  if (deleteError) redirect(`${destination}?error=${encodeURIComponent("Gruppmedlemmarna kunde inte sparas")}`);
+  if (personIds.length) {
+    const { error: insertError } = await supabase.from("team_group_members").insert(personIds.map((personId) => ({ organization_id: team.organization_id, group_id: groupId, person_id: personId })));
+    if (insertError) redirect(`${destination}?error=${encodeURIComponent("Gruppmedlemmarna kunde inte sparas")}`);
+  }
+  revalidatePath(destination);
+  redirect(`${destination}?groupSaved=${encodeURIComponent(name)}`);
+}
+
+export async function deleteTeamGroup(formData: FormData) {
+  const groupId = String(formData.get("groupId") ?? "");
+  const { supabase, team, destination } = await getManagedTeam(formData);
+  const { data: group } = await supabase.from("team_groups").select("name").eq("id", groupId).eq("team_id", team.id).maybeSingle();
+  if (!group) redirect(`${destination}?error=${encodeURIComponent("Gruppen kunde inte hittas")}`);
+  const { error } = await supabase.from("team_groups").delete().eq("id", groupId);
+  if (error) redirect(`${destination}?error=${encodeURIComponent("Gruppen kunde inte tas bort")}`);
+  revalidatePath(destination);
+  redirect(`${destination}?groupDeleted=${encodeURIComponent(group.name)}`);
+}
