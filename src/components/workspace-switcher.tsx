@@ -5,7 +5,7 @@ import type { Organization, Team, Workspace } from "@/domain/club";
 
 type Props = {
   organization: Organization;
-  team: Team;
+  team?: Team;
   workspaces: Workspace[];
 };
 
@@ -25,7 +25,7 @@ export function WorkspaceSwitcher({ organization, team, workspaces }: Props) {
         >
           {workspaces.map((workspace) => (
             <option key={`${workspace.kind}-${workspace.id}`} value={workspace.href}>
-              {workspace.name}{workspace.kind === "team" && workspace.id === team.id ? " · aktiv" : ""}
+              {workspace.name}{workspace.kind === "team" && workspace.id === team?.id ? " · aktiv" : ""}
             </option>
           ))}
         </select>
