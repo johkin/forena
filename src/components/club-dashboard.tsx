@@ -10,6 +10,7 @@ import { TeamCalendar } from "@/components/team-calendar";
 import { PersonalOverview } from "@/components/personal-overview";
 import { TeamOverview } from "@/components/team-overview";
 import { ActivityDetailModal } from "@/components/activity-detail-modal";
+import { TeamMenu } from "@/components/team-menu";
 import {
   respondToInvitation, summarizeInvitations, type Activity, type DashboardView, type Invitation,
   type FamilyActivity, type InvitationResponse, type Member, type Organization, type Section, type Team, type TeamTask, type Workspace,
@@ -40,7 +41,6 @@ export function ClubDashboard({ organization, sections, team, activity, members,
   const [showInvitationForm, setShowInvitationForm] = useState(false);
   const [savingInvitation, setSavingInvitation] = useState(false);
   const [sendingReminder, setSendingReminder] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const summary = useMemo(() => summarizeInvitations(invitations), [invitations]);
   const memberById = useMemo(() => new Map(members.map((member) => [member.id, member])), [members]);
   const familyInvitation = invitations.find((item) => respondablePersonIds.includes(item.memberId));
@@ -98,7 +98,7 @@ export function ClubDashboard({ organization, sections, team, activity, members,
   return (
     <main>
       <header className="topbar">
-        <div className="topbar-brand-row"><button className="mobile-menu-button" type="button" aria-label="Öppna meny" aria-expanded={mobileMenuOpen} aria-controls="main-navigation" onClick={() => setMobileMenuOpen((open) => !open)}>☰</button><a className="brand" href="#" aria-label="Förena startsida"><span className="brand-mark">F</span><span>Förena</span></a></div>
+        <div className="topbar-brand-row"><TeamMenu organizationSlug={organization.slug} teamSlug={team.slug} teamName={team.name} canManageTeam={canManageTeam} leaderView={view === "leader"} activeItem={activePage} onSelectView={setActivePage} /><a className="brand" href="#" aria-label="Förena startsida"><span className="brand-mark">F</span><span>Förena</span></a></div>
         <div className="topbar-actions">
           {accountEmail ? <span className="account-identity" title={accountEmail}>Inloggad som <strong>{accountEmail}</strong></span> : null}
           {accountEmail ? <NotificationSettings /> : null}
@@ -107,17 +107,6 @@ export function ClubDashboard({ organization, sections, team, activity, members,
         </div>
       </header>
       <div className="shell">
-        {mobileMenuOpen ? <button className="mobile-menu-backdrop" aria-label="Stäng meny" type="button" onClick={() => setMobileMenuOpen(false)} /> : null}
-        <aside id="main-navigation" className={`sidebar ${mobileMenuOpen ? "mobile-open" : ""}`} aria-label="Huvudmeny">
-          <p className="eyebrow">{team.name}</p>
-          <nav>
-            <button className={activePage === "overview" ? "active" : ""} onClick={() => { setActivePage("overview"); setMobileMenuOpen(false); }} type="button">Översikt</button>
-            <button className={activePage === "calendar" ? "active" : ""} onClick={() => { setActivePage("calendar"); setMobileMenuOpen(false); }} type="button">Kalender</button>
-            <a onClick={() => setMobileMenuOpen(false)} href={canManageTeam ? `/o/${organization.slug}/t/${team.slug}/members` : "#members"}>Spelare och ledare</a>
-            <a onClick={() => setMobileMenuOpen(false)} href="#attendance">Närvaro</a>
-          </nav>
-          {view === "leader" && <><p className="eyebrow">Publicering</p><nav><a href="#news">Nyheter</a><a href="#pages">Sidor</a></nav></>}
-        </aside>
         <section className="content" id={activePage}>
           <div className="welcome"><div><p className="eyebrow">{sections.length > 1 ? `${sections.find((item) => item.id === team.sectionId)?.name ?? "Sektion"} · ` : ""}{organization.name}</p><h1>{team.name}</h1><p>{activePage === "calendar" ? "Alla aktiviteter för laget." : view === "leader" ? "Det laget behöver från dig just nu." : `Det viktigaste för ${familyMember?.displayName ?? "spelaren"} just nu.`}</p></div>{view === "leader" && canManageTeam && <div className="welcome-actions"><button className="secondary" onClick={() => setShowInvitationForm(true)} type="button">Bjud in ledare</button><button className="primary" onClick={() => setActivityEditorMode("create")} type="button">+ Ny aktivitet</button></div>}</div>
           {notice && <div className="toast" role="status">✓ {notice}</div>}
