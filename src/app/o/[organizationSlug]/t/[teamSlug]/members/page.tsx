@@ -48,11 +48,11 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
         </div>
       </header>
       <div className="shell">
-        <TeamMenu organizationSlug={organizationSlug} teamSlug={teamSlug} teamName={team.name} canManageTeam={Boolean(canManage)} leaderView activeItem="members" />
+        <TeamMenu organizationSlug={organizationSlug} teamSlug={teamSlug} teamName={team.name} canManageTeam={Boolean(canManage)} leaderView activeItem="members" hideTrigger />
         <section className="content">
           <section className="application-card members-admin-card">
         <div className="application-page-heading">
-          <div><p className="eyebrow">{organization.name} · {team.name}</p><h1>Trupp och grupper</h1><p>Hantera spelare, ledare och undergrupper som kan användas som målgrupper för kallelser.</p></div>
+          <div><p className="eyebrow">{organization.name} · {team.name}</p><h1>Truppen</h1><p>Hantera spelare, ledare och undergrupper som kan användas som målgrupper för kallelser.</p></div>
         </div>
         {saved ? <div className="auth-message">{saved} har uppdaterats.</div> : null}
         {invited ? <div className="auth-message">Inbjudan har skickats till {invited}.</div> : null}
