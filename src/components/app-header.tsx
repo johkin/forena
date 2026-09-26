@@ -6,9 +6,10 @@ type Props = {
   menu?: ReactNode;
   actions?: ReactNode;
   showProfile?: boolean;
+  accountEmail?: string;
 };
 
-export function AppHeader({ homeHref = "/", menu, actions, showProfile = true }: Props) {
+export function AppHeader({ homeHref = "/", menu, actions, showProfile = true, accountEmail }: Props) {
   return (
     <header className="topbar">
       <div className="topbar-brand-row">
@@ -19,6 +20,7 @@ export function AppHeader({ homeHref = "/", menu, actions, showProfile = true }:
         </a>
       </div>
       <div className="topbar-actions">
+        {accountEmail ? <span className="account-identity" title={accountEmail}>Inloggad som <strong>{accountEmail}</strong></span> : null}
         {showProfile ? <ProfileButton /> : null}
         {actions}
       </div>
