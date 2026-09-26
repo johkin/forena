@@ -25,9 +25,10 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
   const { data: canManage } = await supabase.rpc("can_manage_team", { target_team_id: team.id });
   if (!canManage) redirect(`/o/${organizationSlug}/t/${teamSlug}`);
 
-  const { data: memberships } = await supabase.from("memberships").select("person_id, role").eq("team_id", team.id).in("role", ["participant", "leader"]).is("ends_on", null);
+  const { data: memberships } = await supabase.from("memberships").select("person_id, role").eq("team_id", team.id).is("ends_on", null);
   const personIds = [...new Set((memberships ?? []).map((item) => item.person_id))];
   const roleByPerson = new Map((memberships ?? []).map((item) => [item.person_id, item.role]));
+  const roleLabel = (role: string | undefined) => role === "participant" ? "Spelare" : role === "leader" ? "Ledare" : role === "volunteer" ? "Övrig" : "Medlem";
   const [{ data: people }, { data: loginEmails }, { data: groups }, { data: groupMembers }] = await Promise.all([
     personIds.length ? supabase.from("people").select("id, display_name, user_id").in("id", personIds).order("display_name") : Promise.resolve({ data: [] }),
     personIds.length ? supabase.from("person_login_emails").select("person_id, email").in("person_id", personIds) : Promise.resolve({ data: [] }),
@@ -58,7 +59,24 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
         {groupSaved ? <div className="auth-message">Gruppen {groupSaved} har sparats.</div> : null}
         {groupDeleted ? <div className="auth-message">Gruppen {groupDeleted} har tagits bort.</div> : null}
         {error ? <div className="auth-error">{error}</div> : null}
-        <div className="application-page-heading"><div><p className="eyebrow">Kallelser</p><h2>Undergrupper</h2><p>En grupp kan innehålla både spelare och ledare. Medlemskapet läses när en schemalagd kallelse skickas.</p></div></div>
+        <div className="application-page-heading"><div><p className="eyebrow">Trupp</p><h2>Alla i laget</h2><p>Spelare, ledare och andra personer som är knutna till laget.</p></div></div>
+        <div className="roster-sections">
+          {(["participant","leader","volunteer"] as const).map((role) => {
+            const rolePeople = (people ?? []).filter((person) => roleByPerson.get(person.id) === role);
+            if (!rolePeople.length) return null;
+            return <section className="roster-section" key={role}>
+              <div className="roster-section-heading"><h3>{role === "participant" ? "Spelare" : role === "leader" ? "Ledare" : "Övriga"}</h3><span>{rolePeople.length}</span></div>
+              <div className="roster-card-grid">
+                {rolePeople.map((person) => <article className="roster-person-card" key={person.id}>
+                  <span className="member-avatar">{person.display_name.slice(0,1)}</span>
+                  <div><strong>{person.display_name}</strong><small>{roleLabel(roleByPerson.get(person.id))}</small></div>
+                  {person.user_id ? <span className="status accepted">Konto kopplat</span> : null}
+                </article>)}
+              </div>
+            </section>;
+          })}
+        </div>
+        <div className="application-page-heading group-admin-heading"><div><p className="eyebrow">Grupper</p><h2>Egna grupper</h2><p>Klubben kan sätta upp valfria grupper ovanpå truppen. En grupp kan innehålla spelare, ledare och övriga lagmedlemmar och kan användas som målgrupp för kallelser.</p></div></div>
         <form action={createTeamGroup} className="member-admin-row">
           <input name="organizationSlug" type="hidden" value={organizationSlug} /><input name="teamSlug" type="hidden" value={teamSlug} />
           <label>Namn på ny grupp<input name="name" required maxLength={80} placeholder="Till exempel Matchtrupp" /></label><div className="member-account-state"><button className="primary" type="submit">Skapa grupp</button></div>
@@ -67,11 +85,11 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
           {(groups ?? []).map((group) => <form action={updateTeamGroup} className="member-admin-row" key={group.id}>
             <input name="organizationSlug" type="hidden" value={organizationSlug} /><input name="teamSlug" type="hidden" value={teamSlug} /><input name="groupId" type="hidden" value={group.id} />
             <label>Gruppnamn<input name="name" defaultValue={group.name} required maxLength={80} /></label>
-            <fieldset><legend>Medlemmar</legend><div className="member-options">{(people ?? []).map((person) => <label key={person.id}><input type="checkbox" name="personIds" value={person.id} defaultChecked={groupPersonIds.get(group.id)?.has(person.id) ?? false} /><span className="member-avatar">{person.display_name.slice(0,1)}</span>{person.display_name} <small>{roleByPerson.get(person.id)==="leader"?"Ledare":"Spelare"}</small></label>)}</div></fieldset>
+            <fieldset><legend>Medlemmar</legend><div className="member-options">{(people ?? []).map((person) => <label key={person.id}><input type="checkbox" name="personIds" value={person.id} defaultChecked={groupPersonIds.get(group.id)?.has(person.id) ?? false} /><span className="member-avatar">{person.display_name.slice(0,1)}</span>{person.display_name} <small>{roleLabel(roleByPerson.get(person.id))}</small></label>)}</div></fieldset>
             <div className="member-account-state"><div className="member-admin-actions"><button className="secondary" formAction={deleteTeamGroup} type="submit">Ta bort</button><button className="primary" type="submit">Spara grupp</button></div></div>
           </form>)}
         </div>
-        <div className="application-page-heading"><div><p className="eyebrow">Trupp</p><h2>Spelare</h2><p>Uppdatera spelaruppgifter och lägg till e-post för den som ska kunna logga in själv.</p></div></div>
+        <div className="application-page-heading player-admin-heading"><div><p className="eyebrow">Administration</p><h2>Spelaruppgifter</h2><p>Uppdatera spelaruppgifter och lägg till e-post för den som ska kunna logga in själv.</p></div></div>
         <div className="member-admin-list">
           {(people ?? []).filter((person) => roleByPerson.get(person.id) === "participant").map((person) => (
             <form action={updatePlayer} className="member-admin-row" key={person.id}>
