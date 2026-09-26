@@ -119,6 +119,48 @@ async function getManagedTeam(formData: FormData) {
   return { supabase, team, destination, organizationSlug, teamSlug };
 }
 
+
+export async function updateLeader(formData: FormData) {
+  const personId = String(formData.get("personId") ?? "");
+  const leaderTitle = String(formData.get("leaderTitle") ?? "").trim();
+  const primaryContact = formData.get("primaryContact") === "on";
+  const { supabase, team, destination, organizationSlug, teamSlug } = await getManagedTeam(formData);
+
+  if (!personId || leaderTitle.length > 80) redirect(`${destination}?error=${encodeURIComponent("Kontrollera ledarens uppgifter")}`);
+
+  const { data: membership } = await supabase
+    .from("memberships")
+    .select("id")
+    .eq("team_id", team.id)
+    .eq("person_id", personId)
+    .eq("role", "leader")
+    .is("ends_on", null)
+    .maybeSingle();
+  if (!membership) redirect(`${destination}?error=${encodeURIComponent("Ledaren tillhör inte laget")}`);
+
+  if (primaryContact) {
+    const { error: clearError } = await supabase
+      .from("memberships")
+      .update({ is_primary_contact: false })
+      .eq("team_id", team.id)
+      .eq("role", "leader")
+      .is("ends_on", null)
+      .neq("person_id", personId);
+    if (clearError) redirect(`${destination}?error=${encodeURIComponent("Primär kontakt kunde inte uppdateras")}`);
+  }
+
+  const { error } = await supabase
+    .from("memberships")
+    .update({ leader_title: leaderTitle || null, is_primary_contact: primaryContact })
+    .eq("id", membership.id);
+  if (error) redirect(`${destination}?error=${encodeURIComponent("Ledaren kunde inte sparas")}`);
+
+  const { data: person } = await supabase.from("people").select("display_name").eq("id", personId).maybeSingle();
+  revalidatePath(destination);
+  revalidatePath(`/o/${organizationSlug}/t/${teamSlug}`);
+  redirect(`${destination}?leaderSaved=${encodeURIComponent(person?.display_name ?? "Ledaren")}`);
+}
+
 export async function createTeamGroup(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const { supabase, team, destination } = await getManagedTeam(formData);
