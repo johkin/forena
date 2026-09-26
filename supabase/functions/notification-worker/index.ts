@@ -141,6 +141,12 @@ Deno.serve(async (request: Request) => {
   const { data: authorized, error: authError } = await supabase.rpc("authorize_notification_worker", { provided_token: token });
   if (authError || authorized !== true) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
+  const { error: queueError } = await supabase.rpc("queue_due_activity_invitations", { batch_size: 100 });
+  if (queueError) {
+    console.error("activity_invitation_materialization_failed", queueError);
+    return Response.json({ error: "Kunde inte materialisera schemalagda kallelser." }, { status: 500 });
+  }
+
   const { data: rows, error: claimError } = await supabase.rpc("claim_notification_outbox", { batch_size: 25 });
   if (claimError) {
     console.error("notification_claim_failed", claimError);
