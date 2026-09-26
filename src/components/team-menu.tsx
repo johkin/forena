@@ -48,7 +48,7 @@ export function TeamMenu({
 
       {open ? <button className="mobile-menu-backdrop" aria-label="Stäng meny" type="button" onClick={() => setOpen(false)} /> : null}
 
-      {!triggerOnly || open ? <aside id={triggerOnly ? "mobile-main-navigation" : "main-navigation"} className={`sidebar ${triggerOnly && open ? "mobile-open" : ""}`} aria-label="Huvudmeny">
+      {!triggerOnly || open ? <aside id={triggerOnly ? "mobile-main-navigation" : "main-navigation"} className={`sidebar ${open ? "mobile-open" : ""}`} aria-label="Huvudmeny">
         <p className="eyebrow">{teamName}</p>
         <nav>
           {onSelectView ? (
