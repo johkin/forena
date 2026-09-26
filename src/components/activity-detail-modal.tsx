@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Activity, Organization, Team } from "@/domain/club";
+import { AttendanceModal } from "@/components/attendance-modal";
 
 type EventRow = {
   id: string;
@@ -77,6 +78,8 @@ export function ActivityDetailModal({ activity, organization, team, canEdit, onC
   const [deliveryStatus, setDeliveryStatus] = useState<DeliveryStatus | null>(null);
   const [invitees, setInvitees] = useState<ActivityInvitee[]>([]);
   const [historyError, setHistoryError] = useState(false);
+  const [attendanceOpen, setAttendanceOpen] = useState(false);
+  const activityStarted = new Date(activity.startsAt).getTime() <= Date.now();
   const date = new Intl.DateTimeFormat("sv-SE", { timeZone, weekday: "long", day: "numeric", month: "long" }).format(new Date(activity.startsAt));
   const time = new Intl.DateTimeFormat("sv-SE", { timeZone, hour: "2-digit", minute: "2-digit" });
 
@@ -152,7 +155,8 @@ export function ActivityDetailModal({ activity, organization, team, canEdit, onC
           <span><strong>{eventLabels[event.event_type]}</strong><small>{new Intl.DateTimeFormat("sv-SE", { timeZone, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(event.created_at))}{event.recipient_count ? ` · ${event.recipient_count} mottagare` : ""}{event.channel ? ` · ${event.channel}` : ""}</small></span>
         </li>)}</ol>}
       </section> : null}
-      <div className="modal-actions"><button className="secondary" onClick={onClose} type="button">Stäng</button>{canEdit ? <button className="primary" onClick={() => onEdit(activity)} type="button">Redigera aktivitet</button> : null}</div>
+      <div className="modal-actions"><button className="secondary" onClick={onClose} type="button">Stäng</button>{canEdit && activityStarted ? <button className="primary" onClick={() => setAttendanceOpen(true)} type="button">Rapportera närvaro</button> : null}{canEdit ? <button className="secondary" onClick={() => onEdit(activity)} type="button">Redigera aktivitet</button> : null}</div>
     </section>
+    {attendanceOpen ? <AttendanceModal activityId={activity.id} onClose={() => setAttendanceOpen(false)} /> : null}
   </div>;
 }
