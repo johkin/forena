@@ -75,9 +75,17 @@ export interface Database {
         Timestamped & OrganizationScoped & { id: string; person_id: string; team_id: string | null; role: "participant" | "leader" | "volunteer"; starts_on: string; ends_on: string | null },
         OrganizationScoped & { id?: string; person_id: string; team_id?: string | null; role: "participant" | "leader" | "volunteer"; starts_on?: string; ends_on?: string | null; created_at?: string }
       >;
+      team_groups: Table<
+        Timestamped & OrganizationScoped & { id: string; team_id: string; name: string; updated_at: string },
+        OrganizationScoped & { id?: string; team_id: string; name: string; created_at?: string; updated_at?: string }
+      >;
+      team_group_members: Table<
+        Timestamped & OrganizationScoped & { group_id: string; person_id: string },
+        OrganizationScoped & { group_id: string; person_id: string; created_at?: string }
+      >;
       activities: Table<
-        Timestamped & OrganizationScoped & { id: string; team_id: string | null; activity_type_id: string; series_id: string | null; title: string; description_markdown: string; gathering_at: string | null; starts_at: string; ends_at: string; location: string; status: "draft" | "published" | "cancelled"; cancelled_at: string | null; cancellation_reason: string | null; invitation_send_at: string | null; response_due_at: string | null; reminder_send_at: string | null; source_kind: "manual" | "imported"; external_source: string | null; external_id: string | null; created_by: string | null; updated_at: string },
-        OrganizationScoped & { id?: string; team_id?: string | null; activity_type_id: string; series_id?: string | null; title: string; description_markdown?: string; gathering_at?: string | null; starts_at: string; ends_at: string; location?: string; status?: "draft" | "published" | "cancelled"; cancelled_at?: string | null; cancellation_reason?: string | null; invitation_send_at?: string | null; response_due_at?: string | null; reminder_send_at?: string | null; source_kind?: "manual" | "imported"; external_source?: string | null; external_id?: string | null; created_by?: string | null; created_at?: string; updated_at?: string }
+        Timestamped & OrganizationScoped & { id: string; team_id: string | null; activity_type_id: string; series_id: string | null; title: string; description_markdown: string; gathering_at: string | null; starts_at: string; ends_at: string; location: string; status: "draft" | "published" | "cancelled"; cancelled_at: string | null; cancellation_reason: string | null; invitation_send_at: string | null; response_due_at: string | null; reminder_send_at: string | null; invitation_audience_kind: "players" | "leaders" | "group" | null; invitation_group_id: string | null; source_kind: "manual" | "imported"; external_source: string | null; external_id: string | null; created_by: string | null; updated_at: string },
+        OrganizationScoped & { id?: string; team_id?: string | null; activity_type_id: string; series_id?: string | null; title: string; description_markdown?: string; gathering_at?: string | null; starts_at: string; ends_at: string; location?: string; status?: "draft" | "published" | "cancelled"; cancelled_at?: string | null; cancellation_reason?: string | null; invitation_send_at?: string | null; response_due_at?: string | null; reminder_send_at?: string | null; invitation_audience_kind?: "players" | "leaders" | "group" | null; invitation_group_id?: string | null; source_kind?: "manual" | "imported"; external_source?: string | null; external_id?: string | null; created_by?: string | null; created_at?: string; updated_at?: string }
       >;
       activity_types: Table<
         Timestamped & OrganizationScoped & { id: string; name: string; slug: string; system_category: "session" | "competition" | "work" | "meeting" | "education" | "other"; color: string | null; icon: string | null; active: boolean; updated_at: string },
@@ -178,6 +186,8 @@ export interface Database {
       claim_person_account: { Args: Record<never, never>; Returns: number };
       queue_activity_reminder: { Args: { target_activity_id: string }; Returns: number };
       queue_activity_invitation: { Args: { target_activity_id: string }; Returns: number };
+      materialize_due_activity_invitations: { Args: { batch_size?: number }; Returns: number };
+      queue_due_activity_invitations: { Args: { batch_size?: number }; Returns: number };
       claim_notification_outbox: { Args: { batch_size?: number }; Returns: Database["public"]["Tables"]["notification_outbox"]["Row"][] };
       get_activity_delivery_status: { Args: { target_activity_id: string }; Returns: Json };
     };
