@@ -12,6 +12,7 @@ type Props = {
   leaderView: boolean;
   activeItem?: TeamMenuItem;
   onSelectView?: (view: "overview" | "calendar") => void;
+  triggerOnly?: boolean;
 };
 
 export function TeamMenu({
@@ -22,6 +23,7 @@ export function TeamMenu({
   leaderView,
   activeItem,
   onSelectView,
+  triggerOnly = false,
 }: Props) {
   const [open, setOpen] = useState(false);
   const teamHref = `/o/${organizationSlug}/t/${teamSlug}`;
@@ -34,11 +36,11 @@ export function TeamMenu({
   return (
     <>
       <button
-        className="mobile-menu-button"
+        className={`mobile-menu-button ${triggerOnly ? "" : "team-menu-desktop-trigger"}`}
         type="button"
         aria-label={open ? "Stäng meny" : "Öppna meny"}
         aria-expanded={open}
-        aria-controls="main-navigation"
+        aria-controls={triggerOnly ? "mobile-main-navigation" : "main-navigation"}
         onClick={() => setOpen((current) => !current)}
       >
         {open ? "✕" : "☰"}
@@ -46,7 +48,7 @@ export function TeamMenu({
 
       {open ? <button className="mobile-menu-backdrop" aria-label="Stäng meny" type="button" onClick={() => setOpen(false)} /> : null}
 
-      <aside id="main-navigation" className={`sidebar ${open ? "mobile-open" : ""}`} aria-label="Huvudmeny">
+      {!triggerOnly || open ? <aside id={triggerOnly ? "mobile-main-navigation" : "main-navigation"} className={`sidebar ${triggerOnly && open ? "mobile-open" : ""}`} aria-label="Huvudmeny">
         <p className="eyebrow">{teamName}</p>
         <nav>
           {onSelectView ? (
@@ -78,7 +80,7 @@ export function TeamMenu({
             </nav>
           </>
         ) : null}
-      </aside>
+      </aside> : null}
     </>
   );
 }
