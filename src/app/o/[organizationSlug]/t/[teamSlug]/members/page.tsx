@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { TeamMenu } from "@/components/team-menu";
+import { ProfileButton } from "@/components/profile-button";
 import { createTeamGroup, deleteTeamGroup, sendPlayerInvitation, updateLeader, updatePlayer, updateTeamGroup } from "./actions";
 
 type Props = {
@@ -47,6 +48,7 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
           <TeamMenu organizationSlug={organizationSlug} teamSlug={teamSlug} teamName={team.name} canManageTeam={Boolean(canManage)} leaderView activeItem="members" triggerOnly />
           <a className="brand" href={`/o/${organizationSlug}/t/${teamSlug}`} aria-label="Förena startsida"><span className="brand-mark">F</span><span>Förena</span></a>
         </div>
+        <div className="topbar-actions"><ProfileButton /></div>
       </header>
       <div className="shell">
         <TeamMenu organizationSlug={organizationSlug} teamSlug={teamSlug} teamName={team.name} canManageTeam={Boolean(canManage)} leaderView activeItem="members" hideTrigger />
