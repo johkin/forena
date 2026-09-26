@@ -511,3 +511,14 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .profile-organizations a { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; border:1px solid var(--line); border-radius:10px; background:white; color:var(--ink); font-size:14px; font-weight:700; text-decoration:none; }
 .profile-organizations a:hover { background:var(--cream); }
 .profile-organizations span { font-size:20px; font-weight:400; }
+
+
+.attendance-modal { width:min(620px,calc(100vw - 24px)); }
+.attendance-actions { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:14px 0; }
+.attendance-actions span { font-size:13px; font-weight:700; color:var(--ink-soft); }
+.attendance-roster { display:grid; gap:6px; max-height:52vh; overflow:auto; padding:2px; }
+.attendance-row { display:flex; align-items:center; gap:12px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:white; cursor:pointer; }
+.attendance-row input { width:20px; height:20px; flex:0 0 auto; }
+.attendance-row span { display:grid; gap:2px; }
+.attendance-row strong { font-size:14px; }
+.attendance-row small { color:var(--ink-soft); }
