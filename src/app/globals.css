@@ -357,6 +357,19 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .activity-detail-body span { color:var(--ink-soft); font-size:12px; font-weight:800; }
 .activity-detail-body strong { font-size:14px; }
 
+.general-summary { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(260px,.65fr); gap:22px; margin-bottom:22px; }
+.public-match-list { display:grid; margin-top:12px; }
+.public-match-list>a { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 0; border-top:1px solid var(--line); color:var(--ink); text-decoration:none; }
+.public-match-list>a>span { display:grid; gap:3px; }
+.public-match-list small,.public-match-list span span,.team-directory span { color:var(--ink-soft); font-size:12px; }
+.public-match-list b { font-size:18px; }
+.privacy-note { margin:16px 0 0; padding-top:14px; border-top:1px solid var(--line); color:var(--ink-soft); font-size:12px; line-height:1.5; }
+.team-directory { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:14px; }
+.team-directory a { display:grid; gap:3px; padding:12px; border:1px solid var(--line); border-radius:10px; background:white; color:var(--ink); text-decoration:none; }
+.general-calendar .calendar-event { text-decoration:none; }
+
+@media(max-width:900px){.general-summary{grid-template-columns:1fr}}
+
 @media(max-width:700px){
   .activity-detail-body p { grid-template-columns:1fr; gap:4px; }
 }
