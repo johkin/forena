@@ -13,21 +13,31 @@ type Props = {
   reminderPending: boolean;
   onOpenActivity: (activity: Activity) => void;
   onSendReminder: (activity: Activity) => void;
+  missingAttendanceActivities?: Activity[];
 };
 
 type TeamItem = {
   id: string;
-  kind: "invitation" | "task";
+  kind: "attendance" | "invitation" | "task";
   title: string;
   meta: string;
   onClick?: () => void;
 };
 
-export function TeamOverview({ teamName, activity, summary, upcomingActivities, tasks, timeZone, referenceTime, reminderPending, onOpenActivity, onSendReminder }: Props) {
+export function TeamOverview({ teamName, activity, summary, upcomingActivities, tasks, timeZone, referenceTime, reminderPending, onOpenActivity, onSendReminder, missingAttendanceActivities = [] }: Props) {
   const start = new Intl.DateTimeFormat("sv-SE", { timeZone, weekday: "long", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(activity.gatheringAt ?? activity.startsAt));
   const weekLimit = new Date(referenceTime).getTime() + 7 * 24 * 60 * 60 * 1000;
   const nextSevenDays = upcomingActivities.filter((item) => new Date(item.startsAt).getTime() <= weekLimit).length;
   const items: TeamItem[] = [];
+  for (const missing of missingAttendanceActivities) {
+    items.push({
+      id: `attendance:${missing.id}`,
+      kind: "attendance",
+      title: `Rapportera närvaro: ${missing.title}`,
+      meta: `Aktiviteten startade ${new Intl.DateTimeFormat("sv-SE", { timeZone, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(missing.startsAt))}`,
+      onClick: () => onOpenActivity(missing),
+    });
+  }
 
   if (summary.pending > 0) {
     items.push({
@@ -71,7 +81,7 @@ export function TeamOverview({ teamName, activity, summary, upcomingActivities, 
       {items.map((item) => <div className="team-action-row" key={item.id}>
         <button className="priority-item" data-kind={item.kind} onClick={item.onClick} type="button">
           <span className="priority-marker" aria-hidden="true" />
-          <span className="priority-copy"><small>{item.kind === "invitation" ? "Kallelse" : "Uppgift"}</small><strong>{item.title}</strong><span>{item.meta}</span></span>
+          <span className="priority-copy"><small>{item.kind === "attendance" ? "Närvaro · högsta prioritet" : item.kind === "invitation" ? "Kallelse" : "Uppgift"}</small><strong>{item.title}</strong><span>{item.meta}</span></span>
           {item.onClick ? <b aria-hidden="true">→</b> : null}
         </button>
         {item.kind === "invitation" ? <button className="secondary reminder-action" disabled={reminderPending} onClick={() => onSendReminder(activity)} type="button">{reminderPending ? "Köar…" : "Skicka påminnelse"}</button> : null}
