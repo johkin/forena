@@ -522,3 +522,10 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .attendance-row span { display:grid; gap:2px; }
 .attendance-row strong { font-size:14px; }
 .attendance-row small { color:var(--ink-soft); }
+
+
+.invitation-person-picker { display:grid; gap:6px; max-height:240px; overflow:auto; margin-top:10px; padding:2px; }
+.invitation-person-picker > label { display:flex; flex-direction:row; align-items:center; gap:10px; padding:9px 10px; border:1px solid var(--line); border-radius:10px; background:white; cursor:pointer; }
+.invitation-person-picker input { width:18px; height:18px; flex:0 0 auto; }
+.invitation-person-picker span { display:flex; align-items:baseline; justify-content:space-between; gap:12px; width:100%; }
+.invitation-person-picker small { color:var(--ink-soft); font-weight:500; }
