@@ -147,6 +147,12 @@ Deno.serve(async (request: Request) => {
     return Response.json({ error: "Kunde inte materialisera schemalagda kallelser." }, { status: 500 });
   }
 
+  const { error: reminderQueueError } = await supabase.rpc("queue_due_activity_reminders", { batch_size: 100 });
+  if (reminderQueueError) {
+    console.error("activity_reminder_materialization_failed", reminderQueueError);
+    return Response.json({ error: "Kunde inte materialisera schemalagda påminnelser." }, { status: 500 });
+  }
+
   const { data: rows, error: claimError } = await supabase.rpc("claim_notification_outbox", { batch_size: 25 });
   if (claimError) {
     console.error("notification_claim_failed", claimError);
