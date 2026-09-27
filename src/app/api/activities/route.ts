@@ -11,6 +11,8 @@ type CreateActivityBody = {
   startsAt?: string;
   endsAt?: string;
   location?: string;
+  invitationMode?: "none" | "now" | "schedule";
+  personIds?: string[];
   invitationAudience?: "players" | "leaders" | "group";
   invitationGroupId?: string;
   invitationSendMinutesBefore?: number;
@@ -26,7 +28,8 @@ export async function POST(request: Request) {
   const gatheringAt = body?.gatheringAt ? new Date(body.gatheringAt) : null;
   const startsAt = body?.startsAt ? new Date(body.startsAt) : null;
   const endsAt = body?.endsAt ? new Date(body.endsAt) : null;
-  const invitationAudience = body?.invitationAudience;
+  const invitationMode = body?.invitationMode ?? (body?.invitationAudience ? "schedule" : "none");
+  const invitationAudience = invitationMode === "schedule" ? body?.invitationAudience : undefined;
   const invitationGroupId = body?.invitationGroupId;
 
   if (!body?.teamId || !title || !startsAt || !endsAt || Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime()) || (gatheringAt && Number.isNaN(gatheringAt.getTime()))) {
@@ -115,6 +118,19 @@ export async function POST(request: Request) {
       }] : []),
     ];
     await supabase.from("activity_events").insert(events);
+  }
+
+  if (invitationMode === "now") {
+    const personIds = [...new Set((body?.personIds ?? []).filter(Boolean))];
+    if (!personIds.length) return NextResponse.json({ error: "Aktiviteten skapades, men välj minst en person att kalla" }, { status: 400 });
+    const { data: memberships } = await supabase.from("memberships").select("person_id").eq("team_id", team.id).in("person_id", personIds).in("role", ["participant", "leader"]).is("ends_on", null);
+    const valid = new Set((memberships ?? []).map((item) => item.person_id));
+    if (personIds.some((id) => !valid.has(id))) return NextResponse.json({ error: "Aktiviteten skapades, men någon vald person tillhör inte laget" }, { status: 400 });
+    const { error: invitationError } = await supabase.from("invitations").upsert(personIds.map((personId) => ({ organization_id: team.organization_id, activity_id: activity.id, person_id: personId })), { onConflict: "activity_id,person_id", ignoreDuplicates: true });
+    if (invitationError) return NextResponse.json({ error: "Aktiviteten skapades, men kallelsen kunde inte skapas" }, { status: 500 });
+    const { error: queueError } = await supabase.rpc("queue_activity_invitation", { target_activity_id: activity.id });
+    if (queueError) return NextResponse.json({ error: "Aktiviteten skapades, men kallelsen kunde inte köas" }, { status: 500 });
+    await supabase.from("activity_events").insert({ organization_id: team.organization_id, activity_id: activity.id, event_type: "invitation_sent", recipient_count: personIds.length, metadata: { mode: "now", personIds }, created_by: authData.user.id });
   }
 
   return NextResponse.json({ activity }, { status: 201 });
