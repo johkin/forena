@@ -99,6 +99,10 @@ export interface Database {
         Timestamped & OrganizationScoped & { id: string; activity_id: string; person_id: string; response: "pending" | "accepted" | "declined"; responded_at: string | null; response_comment: string | null },
         OrganizationScoped & { id?: string; activity_id: string; person_id: string; response?: "pending" | "accepted" | "declined"; responded_at?: string | null; response_comment?: string | null; created_at?: string }
       >;
+      activity_reminder_schedules: Table<
+        Timestamped & OrganizationScoped & { id: string; activity_id: string; send_at: string; materialized_at: string | null; created_by: string | null },
+        OrganizationScoped & { id?: string; activity_id: string; send_at: string; materialized_at?: string | null; created_by?: string | null; created_at?: string }
+      >;
       activity_attendance_reports: Table<
         Timestamped & OrganizationScoped & { id: string; activity_id: string; reported_by: string; reported_at: string; updated_at: string },
         OrganizationScoped & { id?: string; activity_id: string; reported_by: string; reported_at?: string; updated_at?: string; created_at?: string }
