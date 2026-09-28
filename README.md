@@ -141,6 +141,13 @@ sparas i `ai_generation_runs`; promptar lagras inte. Ett validerat och
 personuppgiftsminimerat resultat mellanlagras i fem minuter per lag när de
 underliggande signalerna är oförändrade.
 
+Lagassistenten kan också skapa aktivitetsutkast åt ledare. Vid namngivna externa
+evenemang använder den AI Gateways Perplexity-sökverktyg för att kontrollera
+aktuella offentliga fakta. Sökningen kräver ingen extra API-nyckel, men debiteras
+som webbsökning i AI Gateway. Förslaget öppnas i aktivitetsdialogen tillsammans
+med källorna och måste granskas och sparas av ledaren; assistenten skriver aldrig
+direkt till databasen.
+
 ## Principer
 
 - Föreningens data är strukturerad; AI producerar validerade kommandon.

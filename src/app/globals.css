@@ -175,8 +175,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .modal { width: min(620px, 100%); max-height: calc(100vh - 40px); overflow: auto; padding: 26px; border-radius: 18px; background: var(--paper); box-shadow: 0 28px 80px rgba(14, 38, 32, .3); }
 .modal form { display: grid; gap: 17px; margin-top: 24px; }
 .modal form > label, .form-row label { display: grid; gap: 7px; color: var(--ink-soft); font-size: 12px; font-weight: 800; }
-.modal input, .modal select { width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 9px; background: white; color: var(--ink); outline: none; }
-.modal input:focus, .modal select:focus { border-color: var(--ink); box-shadow: 0 0 0 3px var(--mint); }
+.modal input, .modal select, .modal textarea { width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 9px; background: white; color: var(--ink); outline: none; font: inherit; }
+.modal input:focus, .modal select:focus, .modal textarea:focus { border-color: var(--ink); box-shadow: 0 0 0 3px var(--mint); }
 .form-row { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
 .modal fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
 .modal legend { margin-bottom: 9px; color: var(--ink-soft); font-size: 12px; font-weight: 800; }
@@ -186,6 +186,10 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 9px; padding-top: 4px; }
 .activity-editor-modal { width: min(720px, 100%); }
 .activity-editor-modal textarea { resize: vertical; }
+.ai-draft-notice { display: grid; gap: 5px; margin-top: 18px; padding: 13px 14px; border: 1px solid #cadb8b; border-radius: 12px; background: #f4f8df; color: var(--ink-soft); font-size: 12px; line-height: 1.45; }
+.ai-draft-notice strong { color: var(--ink); font-size: 13px; }
+.ai-draft-notice div { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 3px; }
+.ai-draft-notice a { color: var(--ink); font-weight: 700; }
 .toggle-row { flex-direction: row !important; align-items: center; gap: 9px; font-weight: 700; }
 .toggle-row input, .weekday-options input { width: auto; }
 .weekday-options { display: flex; flex-wrap: wrap; gap: 7px; }

@@ -79,7 +79,8 @@ export function ActivityDetailModal({ activity, organization, team, canEdit, onC
   const [invitees, setInvitees] = useState<ActivityInvitee[]>([]);
   const [historyError, setHistoryError] = useState(false);
   const [attendanceOpen, setAttendanceOpen] = useState(false);
-  const activityStarted = new Date(activity.startsAt).getTime() <= Date.now();
+  const [openedAt] = useState(() => Date.now());
+  const activityStarted = new Date(activity.startsAt).getTime() <= openedAt;
   const date = new Intl.DateTimeFormat("sv-SE", { timeZone, weekday: "long", day: "numeric", month: "long" }).format(new Date(activity.startsAt));
   const time = new Intl.DateTimeFormat("sv-SE", { timeZone, hour: "2-digit", minute: "2-digit" });
 

@@ -208,7 +208,7 @@ i naturligt språk. AI:n får föreslå typade kommandon, men behörighetskontro
 validering och krav på förhandsgranskning ligger alltid i applikationslagret.
 
 - [x] Behörighetskontrollerade läsverktyg för laglista och anmälda deltagare
-- [ ] Skapa aktivitet som utkast
+- [x] Skapa aktivitet som utkast, med webbsökning för externa evenemang
 - [ ] Lista obesvarade kallelser via gemensamt applikationskommando
 - [ ] Föreslå, förhandsgranska och köa påminnelse via gemensamt applikationskommando
 - [ ] Anpassningsbart namn och visuell identitet

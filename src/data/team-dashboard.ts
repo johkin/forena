@@ -329,5 +329,5 @@ export async function getTeamDashboard(
     }];
   });
 
-  return { organization, sections: sectionList, team, activity, members, rosterMembers, upcomingActivities, invitations, workspaces, tasks, familyActivities, canManageTeam: canManageCurrentTeam, accountEmail: authData.user.email, respondablePersonIds: familyPersonIds, referenceTime, source: "database" };
+  return { organization, sections: sectionList, team, activity, members, rosterMembers, upcomingActivities, invitations, workspaces, tasks, familyActivities, canManageTeam: canManageCurrentTeam, accountEmail: authData.user.email, respondablePersonIds: familyPersonIds, referenceTime, missingAttendanceActivities, source: "database" };
 }

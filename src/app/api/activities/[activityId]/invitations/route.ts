@@ -36,14 +36,7 @@ export async function POST(request: Request, { params }: Props) {
     const { data: queued, error: queueError } = await supabase.rpc("queue_activity_invitation", { target_activity_id: activity.id });
     if (queueError) return NextResponse.json({ error: "Kallelsen skapades men kunde inte köas" }, { status: 500 });
     await supabase.from("activity_reminder_schedules").delete().eq("activity_id", activity.id).is("materialized_at", null);
-  if (reminderSchedules.length) {
-    const { error: reminderError } = await supabase.from("activity_reminder_schedules").insert(reminderSchedules.map((item) => ({
-      organization_id: activity.organization_id, activity_id: activity.id, send_at: item.sendAt, created_by: authData.user.id,
-    })));
-    if (reminderError) return NextResponse.json({ error: "Kallelsen sparades, men påminnelserna kunde inte schemaläggas" }, { status: 500 });
-  }
-
-  await supabase.from("activity_events").insert({
+    await supabase.from("activity_events").insert({
       organization_id: activity.organization_id, activity_id: activity.id, event_type: "invitation_sent",
       recipient_count: personIds.length, metadata: { mode: "now", personIds }, created_by: authData.user.id,
     });
@@ -85,6 +78,14 @@ export async function POST(request: Request, { params }: Props) {
     invitation_materialized_at: null,
   }).eq("id", activity.id);
   if (error) return NextResponse.json({ error: "Kallelsen kunde inte schemaläggas" }, { status: 500 });
+
+  await supabase.from("activity_reminder_schedules").delete().eq("activity_id", activity.id).is("materialized_at", null);
+  if (reminderSchedules.length) {
+    const { error: reminderError } = await supabase.from("activity_reminder_schedules").insert(reminderSchedules.map((item) => ({
+      organization_id: activity.organization_id, activity_id: activity.id, send_at: item.sendAt, created_by: authData.user.id,
+    })));
+    if (reminderError) return NextResponse.json({ error: "Kallelsen sparades, men påminnelserna kunde inte schemaläggas" }, { status: 500 });
+  }
 
   await supabase.from("activity_events").insert({
     organization_id: activity.organization_id, activity_id: activity.id, event_type: "invitation_scheduled",

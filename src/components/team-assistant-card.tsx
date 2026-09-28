@@ -1,10 +1,19 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import type { ActivityDraft } from "@/lib/ai/activity-draft";
 
 type Message = { role: "user" | "assistant"; content: string };
+type Props = {
+  teamId: string;
+  teamName: string;
+  assistantName: string;
+  demo: boolean;
+  canCreateActivity: boolean;
+  onActivityDraft: (draft: ActivityDraft) => void;
+};
 
-export function TeamAssistantCard({ teamId, teamName, assistantName, demo }: { teamId: string; teamName: string; assistantName: string; demo: boolean }) {
+export function TeamAssistantCard({ teamId, teamName, assistantName, demo, canCreateActivity, onActivityDraft }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [question, setQuestion] = useState("");
   const [pending, setPending] = useState(false);
@@ -27,6 +36,7 @@ export function TeamAssistantCard({ teamId, teamName, assistantName, demo }: { t
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Assistenten kunde inte svara.");
       setMessages((current) => [...current, { role: "assistant", content: body.answer }]);
+      if (body.activityDraft) onActivityDraft(body.activityDraft as ActivityDraft);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Assistenten kunde inte svara.");
     } finally {
@@ -46,6 +56,7 @@ export function TeamAssistantCard({ teamId, teamName, assistantName, demo }: { t
         <p>Fråga om nästa aktivitet, samling, vilka som kommer eller praktiska instruktioner.</p>
         <button className="prompt" disabled={demo} onClick={() => void ask("Vad händer härnäst för mig?")} type="button">Vad händer härnäst för mig?</button>
         <button className="prompt" disabled={demo} onClick={() => void ask("Vilka kompisar kommer på nästa aktivitet?")} type="button">Vilka kompisar kommer nästa gång?</button>
+        {canCreateActivity ? <button className="prompt" disabled={demo} onClick={() => void ask("Skapa en intresseanmälan för att vara med på Aroscupen")} type="button">Skapa en intresseanmälan till Aroscupen</button> : null}
       </> : <div className="assistant-messages" aria-live="polite">{messages.map((message, index) => <div className={`assistant-message ${message.role}`} key={`${message.role}-${index}`}><span>{message.role === "assistant" ? assistantName : "Du"}</span><p>{message.content}</p></div>)}</div>}
       {pending ? <p className="assistant-thinking" role="status">{assistantName} tänker…</p> : null}
       {error ? <p className="briefing-error" role="alert">{error}</p> : null}

@@ -3,8 +3,9 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { Activity, Member, Organization, Team } from "@/domain/club";
 import { invitationScheduleForOccurrence, previewSingleActivity, previewWeeklySeries, type ActivityOccurrence, type ResponseDueRule } from "@/lib/activity-series";
+import type { ActivityDraft } from "@/lib/ai/activity-draft";
 
-type Props = { mode: "create" | "edit"; organization: Organization; team: Team; members: Member[]; activity?: Activity; source: "database" | "demo"; onClose: () => void; onNotice: (notice: string) => void; };
+type Props = { mode: "create" | "edit"; organization: Organization; team: Team; members: Member[]; activity?: Activity; draft?: ActivityDraft; source: "database" | "demo"; onClose: () => void; onNotice: (notice: string) => void; };
 const weekdayOptions = [[1,"Mån"],[2,"Tis"],[3,"Ons"],[4,"Tor"],[5,"Fre"],[6,"Lör"],[7,"Sön"]] as const;
 
 function localParts(value:string|undefined,timeZone:string) {
@@ -13,11 +14,11 @@ function localParts(value:string|undefined,timeZone:string) {
   return {date:`${parts.year}-${parts.month}-${parts.day}`,time:`${parts.hour}:${parts.minute}`};
 }
 
-export function ActivityEditorModal({mode,organization,team,members,activity,source,onClose,onNotice}:Props) {
+export function ActivityEditorModal({mode,organization,team,members,activity,draft,source,onClose,onNotice}:Props) {
   const timeZone=organization.timeZone??"Europe/Stockholm";
-  const initial=localParts(activity?.startsAt,timeZone);
-  const initialDuration=activity?Math.round((new Date(activity.endsAt).getTime()-new Date(activity.startsAt).getTime())/60000):90;
-  const initialGathering=activity?.gatheringAt?Math.max(0,Math.round((new Date(activity.startsAt).getTime()-new Date(activity.gatheringAt).getTime())/60000)):0;
+  const initial=draft?{date:draft.startsOn,time:draft.startTime}:localParts(activity?.startsAt,timeZone);
+  const initialDuration=draft?.durationMinutes??(activity?Math.round((new Date(activity.endsAt).getTime()-new Date(activity.startsAt).getTime())/60000):90);
+  const initialGathering=draft?.gatheringMinutesBefore??(activity?.gatheringAt?Math.max(0,Math.round((new Date(activity.startsAt).getTime()-new Date(activity.gatheringAt).getTime())/60000)):0);
   const [kind,setKind]=useState<"single"|"series">("single");
   const [preview,setPreview]=useState<ActivityOccurrence[]>();
   const [payload,setPayload]=useState<Record<string,unknown>>();
@@ -25,8 +26,8 @@ export function ActivityEditorModal({mode,organization,team,members,activity,sou
   const [error,setError]=useState<string>();
   const [groups,setGroups]=useState<{id:string;name:string}[]>([]);
   const [audience,setAudience]=useState<"players"|"leaders"|"group">("players");
-  const [invitationMode,setInvitationMode]=useState<"none"|"now"|"schedule">(mode==="create"?"schedule":"none");
-  const [selectedPeople,setSelectedPeople]=useState<Set<string>>(new Set());
+  const [invitationMode,setInvitationMode]=useState<"none"|"now"|"schedule">(draft?"now":mode==="create"?"schedule":"none");
+  const [selectedPeople,setSelectedPeople]=useState<Set<string>>(new Set(draft?members.filter(member=>member.teamRole==="participant").map(member=>member.id):[]));
   const [reminderOffsets,setReminderOffsets]=useState<number[]>([1440]);
   const formatter=useMemo(()=>new Intl.DateTimeFormat("sv-SE",{timeZone,weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}),[timeZone]);
   const recurring=mode==="create"&&kind==="series";
@@ -66,7 +67,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,sou
     if(!response.ok){setError(result.error??"Aktiviteten kunde inte sparas");return;}
     const savedActivityId=activity?.id??result.activity?.id;
     if(savedActivityId&&invitationMode!=="none"&&mode==="edit"){
-      const invitationResponse=await fetch(`/api/activities/${savedActivityId}/invitations`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(invitationMode==="now"?{mode:"now",personIds:[...selectedPeople]}:{mode:"schedule",audience:invitationAudience,groupId:invitationAudience==="group"?String(payload.invitationGroupId||""):undefined,invitationSendMinutesBefore:payload.invitationSendMinutesBefore,responseDueRule:payload.responseDueRule,reminderMinutesBeforeDue:payload.reminderMinutesBeforeDue,reminderMinutesBeforeDueList:payload.reminderMinutesBeforeDueList})});
+      const invitationResponse=await fetch(`/api/activities/${savedActivityId}/invitations`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(invitationMode==="now"?{mode:"now",personIds:[...selectedPeople]}:{mode:"schedule",audience,groupId:audience==="group"?String(payload.invitationGroupId||""):undefined,invitationSendMinutesBefore:payload.invitationSendMinutesBefore,responseDueRule:payload.responseDueRule,reminderMinutesBeforeDue:payload.reminderMinutesBeforeDue,reminderMinutesBeforeDueList:payload.reminderMinutesBeforeDueList})});
       const invitationResult=await invitationResponse.json();
       if(!invitationResponse.ok){setError(invitationResult.error??"Aktiviteten sparades, men kallelsen kunde inte läggas till");return;}
     }
@@ -85,13 +86,14 @@ export function ActivityEditorModal({mode,organization,team,members,activity,sou
   return <div className="modal-backdrop" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget)onClose();}}>
     <section className="modal activity-editor-modal" role="dialog" aria-modal="true" aria-labelledby="activity-editor-title">
       <div className="card-heading"><div><p className="eyebrow">{team.name}</p><h2 id="activity-editor-title">{mode==="edit"?"Redigera aktivitet":"Ny aktivitet"}</h2></div><button className="icon-button" onClick={onClose} aria-label="Stäng" type="button">✕</button></div>
+      {draft?<div className="ai-draft-notice"><strong>AI-utkast för granskning</strong><span>Kontrollera särskilt datum, plats och text innan aktiviteten skapas.</span>{draft.sources.length?<div>{draft.sources.map(source=><a href={source.url} key={source.url} target="_blank" rel="noreferrer">{source.title}</a>)}</div>:<small>Inga webbkällor följde med utkastet.</small>}</div>:null}
       <form onSubmit={prepare} onChange={()=>{setPreview(undefined);setPayload(undefined);}}>
         {mode==="create"?<div className="activity-kind-switch"><button className={kind==="single"?"selected":""} onClick={()=>setKind("single")} type="button">En aktivitet</button><button className={kind==="series"?"selected":""} onClick={()=>setKind("series")} type="button">Aktivitetsserie</button></div>:null}
-        <label>Titel<input name="title" required defaultValue={activity?.title??""} placeholder="Träning eller match"/></label>
-        <label>Beskrivning<textarea name="description" rows={3} placeholder="Praktisk information till deltagarna"/></label>
-        <label>Plats<input name="location" required defaultValue={activity?.location??""} placeholder="Plan eller hall"/></label>
+        <label>Titel<input name="title" required defaultValue={draft?.title??activity?.title??""} placeholder="Träning eller match"/></label>
+        <label>Beskrivning<textarea name="description" rows={5} defaultValue={draft?.description??""} placeholder="Praktisk information till deltagarna"/></label>
+        <label>Plats<input name="location" required defaultValue={draft?.location??activity?.location??""} placeholder="Plan eller hall"/></label>
         {recurring?<><fieldset><legend>Veckodagar</legend><div className="weekday-options">{weekdayOptions.map(([value,label])=><label key={value}><input type="checkbox" name="weekdays" value={value} defaultChecked={value===(new Date(`${initial.date}T00:00:00Z`).getUTCDay()||7)}/>{label}</label>)}</div></fieldset><div className="form-row"><label>Startdatum<input name="startsOn" type="date" required defaultValue={initial.date}/></label><label>Slutdatum<input name="endsOn" type="date" required defaultValue={initial.date}/></label></div><label>Tid<input name="startTime" type="time" step={300} required defaultValue={initial.time}/></label></>:<div className="form-row"><label>Datum<input name="startsOn" type="date" required defaultValue={initial.date}/></label><label>Tid<input name="startTime" type="time" step={300} required defaultValue={initial.time}/></label></div>}
-        <div className="form-row"><label>Längd<select name="durationMinutes" defaultValue={String(initialDuration)}><option value="30">30 minuter</option><option value="45">45 minuter</option><option value="60">1 timme</option><option value="75">1 tim 15 min</option><option value="90">1,5 timmar</option><option value="120">2 timmar</option><option value="180">3 timmar</option></select></label><label>Samling före start<select name="gatheringMinutesBefore" defaultValue={String(initialGathering)}><option value="0">Ingen särskild samling</option><option value="15">15 minuter</option><option value="30">30 minuter</option><option value="45">45 minuter</option><option value="60">60 minuter</option></select></label></div>
+        <div className="form-row"><label>Längd<select name="durationMinutes" defaultValue={String(initialDuration)}><option value="30">30 minuter</option><option value="45">45 minuter</option><option value="60">1 timme</option><option value="75">1 tim 15 min</option><option value="90">1,5 timmar</option><option value="120">2 timmar</option><option value="180">3 timmar</option><option value="480">Heldag (8 timmar)</option></select></label><label>Samling före start<select name="gatheringMinutesBefore" defaultValue={String(initialGathering)}><option value="0">Ingen särskild samling</option><option value="15">15 minuter</option><option value="30">30 minuter</option><option value="45">45 minuter</option><option value="60">60 minuter</option></select></label></div>
         <fieldset className="invitation-schedule"><legend>Kallelse</legend>
           <div className="activity-kind-switch"><button className={invitationMode==="none"?"selected":""} onClick={()=>setInvitationMode("none")} type="button">Ingen</button><button className={invitationMode==="now"?"selected":""} onClick={()=>setInvitationMode("now")} type="button">Skicka nu</button><button className={invitationMode==="schedule"?"selected":""} onClick={()=>setInvitationMode("schedule")} type="button">Schemalägg</button></div>
           {invitationMode==="now"?<><p className="member-group-label">Välj exakt vilka personer som ska få kallelsen nu.</p><div className="invitation-person-picker">{members.filter(member=>member.teamRole==="participant"||member.teamRole==="leader").map(member=><label key={member.id}><input type="checkbox" checked={selectedPeople.has(member.id)} onChange={()=>setSelectedPeople(current=>{const next=new Set(current);if(next.has(member.id))next.delete(member.id);else next.add(member.id);return next;})}/><span>{member.displayName}<small>{member.teamRole==="leader"?"Ledare":"Spelare"}</small></span></label>)}</div></>:null}
