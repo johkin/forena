@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { gateway, isStepCount, jsonSchema, tool, ToolLoopAgent } from "ai";
 import { NextResponse } from "next/server";
-import { normalizeActivityDraft, searchSourcesFromToolResults, type ActivityDraft, type ActivityDraftInput } from "@/lib/ai/activity-draft";
+import { activityDraftNeedsWebResearch, isActivityDraftRequest, normalizeActivityDraft, searchSourcesFromToolResults, type ActivityDraft, type ActivityDraftInput } from "@/lib/ai/activity-draft";
 import { formatDateTimeInZone } from "@/lib/date-time";
 import { createClient } from "@/lib/supabase/server";
 
@@ -143,6 +143,8 @@ export async function POST(request: Request) {
     })),
     tasks: (tasks ?? []).map((task) => ({ title: task.title, description: task.description, dueAt: { instantUtc: task.due_at, organizationLocal: localTime(task.due_at, organizationTimeZone), viewerLocal: localTime(task.due_at, viewerTimeZone) } })),
   };
+  const requiresActivityDraft = Boolean(canManage) && isActivityDraftRequest(question);
+  const requiresWebResearch = requiresActivityDraft && activityDraftNeedsWebResearch(question);
 
   try {
     let activityDraft: ActivityDraft | undefined;
@@ -232,6 +234,15 @@ export async function POST(request: Request) {
       },
       maxOutputTokens: 500,
       stopWhen: isStepCount(5),
+      prepareStep: requiresActivityDraft ? ({ stepNumber }) => {
+        if (requiresWebResearch && stepNumber === 0) {
+          return { toolChoice: { type: "tool" as const, toolName: "perplexity_search" as const } };
+        }
+        if (!activityDraft) {
+          return { toolChoice: { type: "tool" as const, toolName: "proposeActivityDraft" as const } };
+        }
+        return { toolChoice: "none" as const };
+      } : undefined,
       providerOptions: { gateway: { user: createHash("sha256").update(userId).digest("hex").slice(0, 24), tags: ["feature:team-assistant"] } },
     });
     const result = await assistant.generate({
@@ -239,6 +250,9 @@ export async function POST(request: Request) {
       abortSignal: AbortSignal.timeout(30_000),
     });
     if (activityDraft) activityDraft.sources = searchSourcesFromToolResults(result.toolResults);
+    if (requiresActivityDraft && !activityDraft) {
+      return NextResponse.json({ error: "Assistenten kunde inte skapa ett giltigt aktivitetsutkast. Försök igen eller fyll i aktiviteten manuellt." }, { status: 502 });
+    }
     console.info("team_assistant_completed", { teamId, model, latencyMs: Date.now() - startedAt, inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens });
     return NextResponse.json({ answer: result.text || (activityDraft ? "Jag har öppnat ett aktivitetsutkast som du kan granska och justera innan det sparas." : "Jag kunde inte formulera ett svar."), activityDraft, source: "ai", model });
   } catch (error) {
@@ -252,6 +266,9 @@ export async function POST(request: Request) {
       cause: gatewayError.cause?.name,
       message: gatewayError.message.slice(0, 240),
     });
+    if (requiresActivityDraft) {
+      return NextResponse.json({ error: "Aktivitetsutkastet kunde inte tas fram just nu. Kontrollera AI Gateway och försök igen." }, { status: 502 });
+    }
     const nextActivity = activities?.[0];
     const answer = nextActivity
       ? `Jag kan inte formulera ett AI-svar just nu. Nästa aktivitet är ${nextActivity.title} på ${nextActivity.location || "plats som ännu inte angetts"}.`

@@ -19,6 +19,17 @@ export type ActivityDraft = {
 
 export type ActivityDraftInput = Omit<ActivityDraft, "sources">;
 
+export function isActivityDraftRequest(question: string) {
+  const normalized = question.trim().toLocaleLowerCase("sv-SE");
+  const action = /\b(skapa|gör|förbered|lägg till|skriv)\b/.test(normalized);
+  const activity = /\b(aktivitet|träning|match|turnering|läger|intresseanmälan|kallelse)\b/.test(normalized) || /cup(?:en)?\b/.test(normalized);
+  return action && activity;
+}
+
+export function activityDraftNeedsWebResearch(question: string) {
+  return /cup(?:en)?\b|\b(turnering|läger|evenemang)\b/i.test(question);
+}
+
 function requiredText(value: unknown, label: string, maxLength: number) {
   if (typeof value !== "string" || !value.trim()) throw new Error(`${label} saknas i aktivitetsutkastet.`);
   return value.trim().slice(0, maxLength);

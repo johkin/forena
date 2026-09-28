@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { normalizeActivityDraft, searchSourcesFromToolResults } from "./activity-draft";
+import { activityDraftNeedsWebResearch, isActivityDraftRequest, normalizeActivityDraft, searchSourcesFromToolResults } from "./activity-draft";
+
+describe("activity draft intent", () => {
+  it("recognizes explicit creation requests and external events", () => {
+    expect(isActivityDraftRequest("Skapa en intresseanmälan för att vara med på Aroscupen")).toBe(true);
+    expect(activityDraftNeedsWebResearch("Skapa en intresseanmälan för Aroscupen")).toBe(true);
+    expect(isActivityDraftRequest("Vad händer på nästa träning?")).toBe(false);
+    expect(activityDraftNeedsWebResearch("Skapa en träning på torsdag")).toBe(false);
+  });
+});
 
 describe("normalizeActivityDraft", () => {
   it("validates and normalizes a proposed activity", () => {
