@@ -103,11 +103,12 @@ export function ClubDashboard({ organization, sections, team, activity, members,
     <main>
       <AppHeader
         homeHref={`/o/${organization.slug}/t/${team.slug}`}
-        menu={<TeamMenu organizationSlug={organization.slug} teamSlug={team.slug} teamName={team.name} canManageTeam={canManageTeam} leaderView={view === "leader"} activeItem={activePage} onSelectView={setActivePage} />}
+        menu={<TeamMenu organizationSlug={organization.slug} teamSlug={team.slug} teamName={team.name} canManageTeam={canManageTeam} leaderView={view === "leader"} activeItem={activePage} onSelectView={setActivePage} triggerOnly />}
         accountEmail={accountEmail}
         actions={<><NotificationSettings /><WorkspaceSwitcher organization={organization} team={team} workspaces={workspaces} /><LogoutButton destination={`/o/${organization.slug}/t/${team.slug}`} /></>}
       />
       <div className="shell">
+        <TeamMenu organizationSlug={organization.slug} teamSlug={team.slug} teamName={team.name} canManageTeam={canManageTeam} leaderView={view === "leader"} activeItem={activePage} onSelectView={setActivePage} hideTrigger />
         <section className="content" id={activePage}>
           <div className="welcome"><div><p className="eyebrow">{sections.length > 1 ? `${sections.find((item) => item.id === team.sectionId)?.name ?? "Sektion"} · ` : ""}{organization.name}</p><h1>{team.name}</h1><p>{activePage === "calendar" ? "Alla aktiviteter för laget." : view === "leader" ? "Det laget behöver från dig just nu." : `Det viktigaste för ${familyMember?.displayName ?? "spelaren"} just nu.`}</p></div>{view === "leader" && canManageTeam && <div className="welcome-actions"><button className="secondary" onClick={() => setShowInvitationForm(true)} type="button">Bjud in ledare</button><button className="primary" onClick={() => { setActivityDraft(undefined); setActivityEditorMode("create"); }} type="button">+ Ny aktivitet</button></div>}</div>
           {notice && <div className="toast" role="status">✓ {notice}</div>}
