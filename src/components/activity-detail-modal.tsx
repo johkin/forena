@@ -141,13 +141,21 @@ export function ActivityDetailModal({ activity, organization, team, canEdit, ros
     if (!selectedPeople.size) return;
     setInvitationPending(true);
     setInvitationNotice(undefined);
-    const response = await fetch(`/api/activities/${activity.id}/invitations`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ mode: "now", personIds: [...selectedPeople] }),
-    });
-    const body = await response.json();
-    setInvitationPending(false);
+    let response: Response;
+    let body: { error?: string; queuedRecipients?: number };
+    try {
+      response = await fetch(`/api/activities/${activity.id}/invitations`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ mode: "now", personIds: [...selectedPeople] }),
+      });
+      body = await response.json();
+    } catch {
+      setInvitationNotice("Kallelsen kunde inte skickas.");
+      return;
+    } finally {
+      setInvitationPending(false);
+    }
     if (!response.ok) {
       setInvitationNotice(body.error ?? "Kallelsen kunde inte skickas.");
       return;
