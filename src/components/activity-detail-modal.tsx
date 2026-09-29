@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Activity, Organization, Team } from "@/domain/club";
 import { AttendanceModal } from "@/components/attendance-modal";
+import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
 
 type EventRow = {
   id: string;
@@ -73,6 +74,7 @@ const statusLabels: Record<DeliveryChannel["status"], string> = {
 };
 
 export function ActivityDetailModal({ activity, organization, team, canEdit, onClose, onEdit }: Props) {
+  useModalScrollLock();
   const timeZone = organization.timeZone ?? "Europe/Stockholm";
   const [events, setEvents] = useState<EventRow[]>([]);
   const [deliveryStatus, setDeliveryStatus] = useState<DeliveryStatus | null>(null);

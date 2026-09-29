@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { attendanceNames } from "@/lib/attendance-names";
+import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
 
 type Row = {
   personId: string;
@@ -14,6 +15,7 @@ type Row = {
 type Props = { activityId: string; onClose: () => void; onSaved?: () => void };
 
 export function AttendanceModal({ activityId, onClose, onSaved }: Props) {
+  useModalScrollLock();
   const [rows, setRows] = useState<Row[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [reportedAt, setReportedAt] = useState<string | null>(null);
