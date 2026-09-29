@@ -37,7 +37,7 @@ export async function POST(request: Request, { params }: Props) {
       return NextResponse.json({ error: "Kallelsen kunde inte skapas" }, { status: 500 });
     }
 
-    const { data: queued, error: queueError } = await supabase.rpc("queue_activity_invitation", { target_activity_id: activity.id });
+    const { data: queued, error: queueError } = await supabase.rpc("queue_activity_invitation", { target_activity_id: activity.id, target_person_ids: personIds });
     if (queueError) {
       console.error("activity_invitation.queue_failed", { activityId, code: queueError.code, message: queueError.message });
       return NextResponse.json({ error: "Kallelsen skapades men kunde inte köas" }, { status: 500 });
@@ -45,8 +45,8 @@ export async function POST(request: Request, { params }: Props) {
     console.info("activity_invitation.queued", { activityId, selectedPeople: personIds.length, queuedRecipients: queued ?? 0 });
     await supabase.from("activity_reminder_schedules").delete().eq("activity_id", activity.id).is("materialized_at", null);
     await supabase.from("activity_events").insert({
-      organization_id: activity.organization_id, activity_id: activity.id, event_type: "invitation_sent",
-      recipient_count: personIds.length, metadata: { mode: "now", personIds }, created_by: authData.user.id,
+      organization_id: activity.organization_id, activity_id: activity.id, event_type: "invitation_queued",
+      recipient_count: queued ?? 0, metadata: { mode: "now", selectedPeople: personIds.length }, created_by: authData.user.id,
     });
     return NextResponse.json({ invited: personIds.length, queuedRecipients: queued ?? 0 });
   }
