@@ -43,7 +43,9 @@ export function NotificationSettings() {
     async function checkState() {
       await Promise.resolve();
       const standalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
-      const requiresHomeScreen = /iPhone|iPad|iPod/.test(navigator.userAgent) && !standalone;
+      const isIos = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+        || (/Mac/i.test(navigator.platform) && navigator.maxTouchPoints > 1);
+      const requiresHomeScreen = isIos && !standalone;
       if (!cancelled) {
         setIosBrowser(requiresHomeScreen);
         setAndroidBrowser(/Android/i.test(navigator.userAgent) && !standalone);
