@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ApplicationReviewList } from "@/components/application-review-list";
+import { AppHeader } from "@/components/app-header";
 import { createClient } from "@/lib/supabase/server";
 
 type Props = { params: Promise<{ organizationSlug: string }> };
@@ -10,13 +11,13 @@ export default async function ApplicationsPage({ params }: Props) {
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getUser();
   if (!authData.user) redirect(`/login?next=${encodeURIComponent(`/o/${organizationSlug}/applications`)}`);
-  const { data: organization } = await supabase.from("organizations").select("id, name").eq("slug", organizationSlug).maybeSingle();
+  const { data: organization } = await supabase.from("organizations").select("id, name, slug, assistant_name").eq("slug", organizationSlug).maybeSingle();
   if (!organization) redirect("/setup");
 
   const [{ data: applications }, { data: sections }, { data: teams }] = await Promise.all([
     supabase.from("membership_applications").select("id, section_id, team_id, player_first_name, player_last_name, player_birth_date, previous_club, message, review_status, activation_status").eq("organization_id", organization.id).order("created_at", { ascending: false }),
     supabase.from("sections").select("id, name").eq("organization_id", organization.id),
-    supabase.from("teams").select("id, name").eq("organization_id", organization.id),
+    supabase.from("teams").select("id, name, slug").eq("organization_id", organization.id),
   ]);
   const applicationIds = (applications ?? []).map((item) => item.id);
   const { data: guardians } = applicationIds.length ? await supabase.from("membership_application_guardians").select("application_id, first_name, last_name, email, mobile").in("application_id", applicationIds).order("position") : { data: [] };
@@ -29,5 +30,8 @@ export default async function ApplicationsPage({ params }: Props) {
     previousClub: item.previous_club, message: item.message, reviewStatus: item.review_status as "submitted" | "approved" | "rejected", activationStatus: item.activation_status,
   }));
 
-  return <main className="application-page"><section className="application-card review-card"><div className="application-page-heading"><div><p className="eyebrow">{organization.name} · Kansliet</p><h1>Medlemsansökningar</h1><p>Godkänn eller avslå ansökningar. Aktiveringslänkar skickas först efter godkännande.</p></div><Link className="secondary" href={`/o/${organizationSlug}`}>Till översikten</Link></div><ApplicationReviewList initialApplications={items} /></section></main>;
+  return <><AppHeader homeHref={`/o/${organizationSlug}`} accountEmail={authData.user.email} organization={{ ...organization, assistantName: organization.assistant_name }} logoutDestination={`/o/${organizationSlug}`}
+    workspaces={[{ id: organization.id, kind: "organization", name: organization.name, description: "Förening", href: `/o/${organizationSlug}`, active: true }, ...(teams ?? []).map((item) => ({ id: item.id, kind: "team" as const, name: item.name, description: "Lag", href: `/o/${organizationSlug}/t/${item.slug}`, active: false }))]}
+    navigation={<nav className="header-general-links"><a href={`/o/${organizationSlug}`}>Föreningsöversikt</a><a href={`/o/${organizationSlug}/applications`}>Medlemsansökningar</a></nav>} />
+    <main className="application-page"><section className="application-card review-card"><div className="application-page-heading"><div><p className="eyebrow">{organization.name} · Kansliet</p><h1>Medlemsansökningar</h1><p>Godkänn eller avslå ansökningar. Aktiveringslänkar skickas först efter godkännande.</p></div><Link className="secondary" href={`/o/${organizationSlug}`}>Till översikten</Link></div><ApplicationReviewList initialApplications={items} /></section></main></>;
 }
