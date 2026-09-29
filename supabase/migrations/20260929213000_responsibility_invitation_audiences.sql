@@ -110,7 +110,7 @@ begin
 
     union
 
-    select distinct da.id, da.organization_id, m.person_id
+    select distinct da.id, da.organization_id, p.id as person_id
     from due_invitation_activities_v3 da
     join public.team_responsibilities tr
       on tr.team_id = da.team_id
@@ -121,12 +121,6 @@ begin
     join public.people p
       on p.organization_id = da.organization_id
      and p.user_id = tr.user_id
-    join public.memberships m
-      on m.team_id = da.team_id
-     and m.organization_id = da.organization_id
-     and m.person_id = p.id
-     and m.starts_on <= current_date
-     and (m.ends_on is null or m.ends_on >= current_date)
     where da.invitation_audience_kind = 'selection'
   ),
   inserted as (
