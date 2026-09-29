@@ -14,6 +14,7 @@ type Props = {
   onSelectView?: (view: "overview" | "calendar") => void;
   triggerOnly?: boolean;
   hideTrigger?: boolean;
+  navigationOnly?: boolean;
 };
 
 export function TeamMenu({
@@ -26,6 +27,7 @@ export function TeamMenu({
   onSelectView,
   triggerOnly = false,
   hideTrigger = false,
+  navigationOnly = false,
 }: Props) {
   const [open, setOpen] = useState(false);
   const teamHref = `/o/${organizationSlug}/t/${teamSlug}`;
@@ -34,6 +36,28 @@ export function TeamMenu({
     setOpen(false);
     onSelectView?.(view);
   }
+
+  const links = <>
+        <p className="eyebrow">{teamName}</p>
+        <nav>
+          {onSelectView ? (
+            <>
+              <button className={activeItem === "overview" ? "active" : ""} onClick={() => selectView("overview")} type="button">Översikt</button>
+              <button className={activeItem === "calendar" ? "active" : ""} onClick={() => selectView("calendar")} type="button">Kalender</button>
+            </>
+          ) : (
+            <>
+              <a className={activeItem === "overview" ? "active" : ""} onClick={() => setOpen(false)} href={teamHref}>Översikt</a>
+              <a className={activeItem === "calendar" ? "active" : ""} onClick={() => setOpen(false)} href={`${teamHref}?view=calendar`}>Kalender</a>
+            </>
+          )}
+          <a className={activeItem === "members" ? "active" : ""} onClick={() => setOpen(false)} href={canManageTeam ? `${teamHref}/members` : "#members"}>Truppen</a>
+          <a onClick={() => setOpen(false)} href="#attendance">Närvaro</a>
+        </nav>
+        {leaderView ? <><p className="eyebrow">Publicering</p><nav><a onClick={() => setOpen(false)} href="#news">Nyheter</a><a onClick={() => setOpen(false)} href="#pages">Sidor</a></nav></> : null}
+  </>;
+
+  if (navigationOnly) return <div className="team-navigation">{links}</div>;
 
   return (
     <>
@@ -50,39 +74,7 @@ export function TeamMenu({
 
       {open ? <button className="mobile-menu-backdrop" aria-label="Stäng meny" type="button" onClick={() => setOpen(false)} /> : null}
 
-      {!triggerOnly || open ? <aside id={triggerOnly ? "mobile-main-navigation" : "main-navigation"} className={`sidebar ${open ? "mobile-open" : ""}`} aria-label="Huvudmeny">
-        <p className="eyebrow">{teamName}</p>
-        <nav>
-          {onSelectView ? (
-            <>
-              <button className={activeItem === "overview" ? "active" : ""} onClick={() => selectView("overview")} type="button">Översikt</button>
-              <button className={activeItem === "calendar" ? "active" : ""} onClick={() => selectView("calendar")} type="button">Kalender</button>
-            </>
-          ) : (
-            <>
-              <a className={activeItem === "overview" ? "active" : ""} onClick={() => setOpen(false)} href={teamHref}>Översikt</a>
-              <a className={activeItem === "calendar" ? "active" : ""} onClick={() => setOpen(false)} href={`${teamHref}?view=calendar`}>Kalender</a>
-            </>
-          )}
-          <a
-            className={activeItem === "members" ? "active" : ""}
-            onClick={() => setOpen(false)}
-            href={canManageTeam ? `${teamHref}/members` : "#members"}
-          >
-            Truppen
-          </a>
-          <a onClick={() => setOpen(false)} href="#attendance">Närvaro</a>
-        </nav>
-        {leaderView ? (
-          <>
-            <p className="eyebrow">Publicering</p>
-            <nav>
-              <a onClick={() => setOpen(false)} href="#news">Nyheter</a>
-              <a onClick={() => setOpen(false)} href="#pages">Sidor</a>
-            </nav>
-          </>
-        ) : null}
-      </aside> : null}
+      {!triggerOnly || open ? <aside id={triggerOnly ? "mobile-main-navigation" : "main-navigation"} className={`sidebar ${open ? "mobile-open" : ""}`} aria-label="Huvudmeny">{links}</aside> : null}
     </>
   );
 }
