@@ -255,6 +255,53 @@ cupanmälan. Den skickar inte kallelser eller anmäler laget externt på egen ha
 - [ ] Stöd förhandsgranskning av assistentens plan och utkast före systemåtgärder
 - [ ] Implementera intresseanmälan till cup som första genomgående exempel
 
+
+### Brand Kit och AI Content Studio
+
+När CMS-liknande innehåll och visuell identitet finns på plats ska Förena kunna
+använda samma profil både i gränssnittet och för kommunikationsmaterial. Ett
+**Brand Kit** definieras på plattforms-, klubb-, sektions- och lagnivå med
+kontrollerat arv. Det kan innehålla logotyper, färgpalett, typografi,
+bildmanér, tonalitet och regler för grafiska element.
+
+AI ska kunna analysera exempelvis en uppladdad klubb-/lagbild eller logotyp och
+föreslå strukturerade design tokens. Förslaget ska förhandsgranskas och
+godkännas innan det publiceras. AI:n ska inte generera godtycklig CSS; Förena
+applicerar godkända tokens genom sitt designsystem och validerar bland annat
+kontrast och tillgänglighet.
+
+Samma Brand Kit ska kunna användas i ett **AI Content Studio** för att skapa
+enhetligt PR- och kommunikationsmaterial: matchannonser, resultatbilder,
+cupmaterial, rekryteringsinlägg, fotbollsskola, webb-banners och affischer.
+Generativa bildmodeller kan skapa bakgrunder/illustrationer, medan text,
+datum, logotyper och sponsorlogotyper läggs på deterministiskt från mallar så
+att innehållet blir korrekt och konsekvent. En kampanj ska kunna renderas till
+flera format, exempelvis Instagram-inlägg, Story, webb och A4.
+
+Design/rendering ska ligga bakom ett provideroberoende gränssnitt, exempelvis
+`DesignProvider`. Förena kan ha en egen enkel renderer och integrera externa
+tjänster utan att domänmodellen blir beroende av dem. **Canva** är en möjlig
+första extern provider: Förena fyller Brand Templates med strukturerad
+förenings- och aktivitetsdata och användaren kan därefter fortsätta redigera
+designen i Canva.
+
+Assistenten ska kunna använda detta kontextuellt, exempelvis ”Gör ett
+Instagraminlägg om söndagens match”. Förena hämtar då korrekt aktivitet,
+lag/motståndare, tid, plats och Brand Kit, skapar text och eventuell bild,
+väljer mall och visar resultatet för granskning före export eller publicering.
+
+- [ ] Definiera Brand Kit-schema med logotyp, design tokens, typografi, bildmanér och tonalitet
+- [ ] Stöd arv och overrides för Brand Kit på plattform/klubb/sektion/lag
+- [ ] Låt AI föreslå tema/design tokens från uppladdad logotyp eller referensbild
+- [ ] Validera tillgänglighet och kontrast innan ett AI-föreslaget tema kan publiceras
+- [ ] Bygg mallbaserad Content Studio för match-, cup-, rekryterings- och kampanjmaterial
+- [ ] Stöd AI-genererade bakgrunder/illustrationer separat från deterministisk text och logotyp-layout
+- [ ] Rendera samma innehåll till flera format (sociala medier, webb och utskrift)
+- [ ] Definiera provideroberoende `DesignProvider` för externa design-/renderingtjänster
+- [ ] Utvärdera Canva Brand Templates/Autofill som första externa designprovider
+- [ ] Låt assistenten skapa utkast till PR-material från befintlig aktivitets- och föreningsdata
+- [ ] Kräv förhandsgranskning före export/publicering och logga publiceringsåtgärder
+
 ## 5. Pilot
 
 - [ ] Import av medlemmar
