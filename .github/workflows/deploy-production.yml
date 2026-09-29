@@ -1,25 +1,28 @@
-name: Migrate production database
+name: Deploy production
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "supabase/migrations/**"
-      - ".github/workflows/deploy-production.yml"
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: production-database
+  group: production-deploy
   cancel-in-progress: false
 
 jobs:
   migrate:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     environment: production
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -27,18 +30,16 @@ jobs:
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
 
     steps:
-      - name: Check out repository
+      - name: Check out verified commit
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
-      - name: Check required secrets
+      - name: Check Supabase secrets
         shell: bash
         run: |
           missing=0
-          for name in \
-            SUPABASE_ACCESS_TOKEN \
-            SUPABASE_DB_PASSWORD \
-            SUPABASE_PROJECT_ID
-          do
+          for name in SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD SUPABASE_PROJECT_ID; do
             if [[ -z "${!name:-}" ]]; then
               echo "::error::Missing required secret: $name"
               missing=1
@@ -59,3 +60,45 @@ jobs:
 
       - name: Apply database migrations
         run: supabase db push --linked --yes
+
+  deploy:
+    needs: migrate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: team_hkR9c8WmDdaB7Ohge0pDlA6X
+      VERCEL_PROJECT_ID: prj_KoyZzpTGHV3osX77YpL9ON7YMHd1
+
+    steps:
+      - name: Check out verified commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Check Vercel token
+        shell: bash
+        run: |
+          if [[ -z "${VERCEL_TOKEN:-}" ]]; then
+            echo "::error::Missing required secret: VERCEL_TOKEN"
+            exit 1
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Pull Vercel production environment
+        run: npx --yes vercel@60.1.3 pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build production deployment
+        run: npx --yes vercel@60.1.3 build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy verified build
+        run: npx --yes vercel@60.1.3 deploy --prebuilt --prod --token="$VERCEL_TOKEN"
