@@ -1,0 +1,2 @@
+-- Production sync migration. The schema change is defined in 20260929125055_combined_invitation_audiences.sql.
+-- This file preserves the production migration history entry created while repairing schema drift.
