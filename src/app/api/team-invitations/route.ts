@@ -32,6 +32,12 @@ export async function POST(request: Request) {
     .eq("id", teamId)
     .maybeSingle();
   if (!team) return NextResponse.json({ error: "Laget kunde inte hittas eller så saknar du behörighet." }, { status: 403 });
+  if (role === "leader") {
+    const { data: isAdmin } = await supabase.rpc("has_organization_role", {
+      target_organization_id: team.organization_id, allowed_roles: ["owner", "admin"],
+    });
+    if (!isAdmin) return NextResponse.json({ error: "Endast klubbens administratörer kan bjuda in ledare." }, { status: 403 });
+  }
 
   const token = randomBytes(32).toString("base64url");
   const tokenHash = createHash("sha256").update(token).digest("hex");
