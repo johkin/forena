@@ -89,6 +89,7 @@ async function sendPushNotifications(
   subscriptions: PushSubscriptionRow[],
   type: string,
   payload: OutboxPayload,
+  outboxId: string,
 ): Promise<ChannelResult> {
   if (!subscriptions.length) {
     return { status: "skipped", providerMessageId: null, lastError: "no_active_push_subscription" };
@@ -97,6 +98,7 @@ async function sendPushNotifications(
   try {
     configureWebPush();
   } catch (error) {
+    console.error("notification_worker.push_configuration_failed", { outboxId, reason: deliveryError(error).message });
     return { status: "failed", providerMessageId: null, lastError: deliveryError(error).message };
   }
 
@@ -120,6 +122,7 @@ async function sendPushNotifications(
       await supabase.from("push_subscriptions").update({ last_used_at: new Date().toISOString() }).eq("id", subscription.id);
     } catch (error) {
       const failure = deliveryError(error);
+      console.warn("notification_worker.push_delivery_failed", { outboxId, subscriptionId: subscription.id, statusCode: failure.statusCode ?? null });
       errors.push(failure.message);
       if (failure.statusCode === 404 || failure.statusCode === 410) {
         await supabase.from("push_subscriptions").update({ disabled_at: new Date().toISOString() }).eq("id", subscription.id);
@@ -138,28 +141,33 @@ async function sendPushNotifications(
 }
 
 Deno.serve(async (request: Request) => {
+  const runId = crypto.randomUUID();
   const supabase = adminClient();
   const token = request.headers.get("x-forena-cron-token") ?? "";
   const { data: authorized, error: authError } = await supabase.rpc("authorize_notification_worker", { provided_token: token });
-  if (authError || authorized !== true) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (authError || authorized !== true) {
+    console.warn("notification_worker.unauthorized", { runId, rpcError: authError?.code ?? null });
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-  const { error: queueError } = await supabase.rpc("queue_due_activity_invitations", { batch_size: 100 });
+  const { data: queuedInvitations, error: queueError } = await supabase.rpc("queue_due_activity_invitations", { batch_size: 100 });
   if (queueError) {
-    console.error("activity_invitation_materialization_failed", queueError);
+    console.error("activity_invitation_materialization_failed", { runId, code: queueError.code, message: queueError.message });
     return Response.json({ error: "Kunde inte materialisera schemalagda kallelser." }, { status: 500 });
   }
 
-  const { error: reminderQueueError } = await supabase.rpc("queue_due_activity_reminders", { batch_size: 100 });
+  const { data: queuedReminders, error: reminderQueueError } = await supabase.rpc("queue_due_activity_reminders", { batch_size: 100 });
   if (reminderQueueError) {
-    console.error("activity_reminder_materialization_failed", reminderQueueError);
+    console.error("activity_reminder_materialization_failed", { runId, code: reminderQueueError.code, message: reminderQueueError.message });
     return Response.json({ error: "Kunde inte materialisera schemalagda påminnelser." }, { status: 500 });
   }
 
   const { data: rows, error: claimError } = await supabase.rpc("claim_notification_outbox", { batch_size: 25 });
   if (claimError) {
-    console.error("notification_claim_failed", claimError);
+    console.error("notification_claim_failed", { runId, code: claimError.code, message: claimError.message });
     return Response.json({ error: "Kunde inte hämta notifieringar." }, { status: 500 });
   }
+  console.info("notification_worker.batch", { runId, queuedInvitations, queuedReminders, claimed: rows?.length ?? 0 });
 
   let sent = 0;
   let failed = 0;
@@ -168,12 +176,20 @@ Deno.serve(async (request: Request) => {
   for (const row of rows ?? []) {
     const payload = (row.payload ?? {}) as OutboxPayload;
     const attemptedAt = new Date().toISOString();
-    const { data: subscriptionRows } = await supabase
+    const { data: subscriptionRows, error: subscriptionError } = await supabase
       .from("push_subscriptions")
       .select("id, endpoint, p256dh, auth")
       .eq("user_id", row.user_id)
       .is("disabled_at", null);
-    const pushResult = await sendPushNotifications(supabase, (subscriptionRows ?? []) as PushSubscriptionRow[], row.type, payload);
+    if (subscriptionError) console.error("notification_worker.subscription_lookup_failed", { runId, outboxId: row.id, code: subscriptionError.code, message: subscriptionError.message });
+    const pushResult: ChannelResult = subscriptionError
+      ? { status: "failed", providerMessageId: null, lastError: "push_subscription_lookup_failed" }
+      : await sendPushNotifications(supabase, (subscriptionRows ?? []) as PushSubscriptionRow[], row.type, payload, row.id);
+    console.info("notification_worker.push_result", {
+      runId, outboxId: row.id, activityId: payload.activityId ?? null, type: row.type,
+      activeSubscriptions: subscriptionRows?.length ?? 0, status: pushResult.status,
+      reason: pushResult.status === "skipped" ? pushResult.lastError : null,
+    });
 
     await supabase.from("notification_deliveries").upsert({
       organization_id: row.organization_id,
@@ -199,6 +215,11 @@ Deno.serve(async (request: Request) => {
         emailResult = { status: "failed", providerMessageId: null, lastError: deliveryError(error).message };
       }
     }
+    console.info("notification_worker.delivery_result", {
+      runId, outboxId: row.id, activityId: payload.activityId ?? null, type: row.type,
+      pushStatus: pushResult.status, emailStatus: emailResult.status,
+      emailFailure: emailResult.status === "failed" ? emailResult.lastError : null,
+    });
 
     await supabase.from("notification_deliveries").upsert({
       organization_id: row.organization_id,
@@ -253,5 +274,6 @@ Deno.serve(async (request: Request) => {
     });
   }
 
-  return Response.json({ claimed: rows?.length ?? 0, sent, failed });
+  console.info("notification_worker.complete", { runId, claimed: rows?.length ?? 0, sent, failed });
+  return Response.json({ claimed: rows?.length ?? 0, sent, failed, runId });
 });
