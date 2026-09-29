@@ -1,9 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { WorkspaceSwitcher } from "@/components/workspace-switcher";
-import { LogoutButton } from "@/components/logout-button";
-import { NotificationSettings } from "@/components/notification-settings";
 import { TeamAssistantCard } from "@/components/team-assistant-card";
 import { ActivityEditorModal } from "@/components/activity-editor-modal";
 import { TeamCalendar } from "@/components/team-calendar";
@@ -106,9 +103,10 @@ export function ClubDashboard({ organization, sections, team, activity, members,
     <main>
       <AppHeader
         homeHref={`/o/${organization.slug}/t/${team.slug}`}
-        menu={<TeamMenu organizationSlug={organization.slug} teamSlug={team.slug} teamName={team.name} canManageTeam={canManageTeam} leaderView={view === "leader"} activeItem={activePage} onSelectView={setActivePage} triggerOnly />}
+        navigation={<TeamMenu organizationSlug={organization.slug} teamSlug={team.slug} teamName={team.name} canManageTeam={canManageTeam} leaderView={view === "leader"} activeItem={activePage} onSelectView={setActivePage} navigationOnly />}
         accountEmail={accountEmail}
-        actions={<><NotificationSettings /><WorkspaceSwitcher organization={organization} team={team} workspaces={workspaces} /><LogoutButton destination={`/o/${organization.slug}/t/${team.slug}`} /></>}
+        organization={organization} team={team} workspaces={workspaces}
+        logoutDestination={`/o/${organization.slug}/t/${team.slug}`}
       />
       <div className="shell">
         <TeamMenu organizationSlug={organization.slug} teamSlug={team.slug} teamName={team.name} canManageTeam={canManageTeam} leaderView={view === "leader"} activeItem={activePage} onSelectView={setActivePage} hideTrigger />
