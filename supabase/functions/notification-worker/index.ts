@@ -255,11 +255,23 @@ Deno.serve(async (request: Request) => {
       const lastError = emailResult.lastError ?? pushResult.lastError ?? "all_delivery_channels_failed";
       const retryMinutes = Math.min(60, Math.pow(2, Math.max(0, row.attempts - 1)) * 5);
       const exhausted = row.attempts >= 5;
-      await supabase.from("notification_outbox").update({
+      const { error: updateError } = await supabase.from("notification_outbox").update({
         status: "failed",
         scheduled_at: exhausted ? row.scheduled_at : new Date(Date.now() + retryMinutes * 60_000).toISOString(),
         last_error: lastError,
       }).eq("id", row.id);
+      if (updateError) {
+        console.error("notification_worker.outbox_update_failed", { runId, outboxId: row.id, code: updateError.code, message: updateError.message });
+      } else if (exhausted && payload.activityId) {
+        const { error: eventError } = await supabase.from("activity_events").insert({
+          organization_id: row.organization_id,
+          activity_id: payload.activityId,
+          event_type: "invitation_delivery_failed",
+          recipient_count: 1,
+          metadata: { outboxId: row.id, type: row.type, attempts: row.attempts, reason: lastError },
+        });
+        if (eventError) console.error("notification_worker.failure_event_failed", { runId, outboxId: row.id, code: eventError.code, message: eventError.message });
+      }
     }
   }
 
