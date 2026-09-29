@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Activity, Member, Organization, Team } from "@/domain/club";
 import { AttendanceModal } from "@/components/attendance-modal";
 import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
@@ -92,22 +92,26 @@ export function ActivityDetailModal({ activity, organization, team, canEdit, ros
   const date = new Intl.DateTimeFormat("sv-SE", { timeZone, weekday: "long", day: "numeric", month: "long" }).format(new Date(activity.startsAt));
   const time = new Intl.DateTimeFormat("sv-SE", { timeZone, hour: "2-digit", minute: "2-digit" });
 
+  const loadEventsAndDelivery = useCallback(async (activityId: string, shouldApply = () => true) => {
+    try {
+      const response = await fetch(`/api/activities/${activityId}/events`);
+      if (!response.ok) throw new Error();
+      const body = await response.json();
+      if (shouldApply()) {
+        setEvents(body.events ?? []);
+        setDeliveryStatus(body.deliveryStatus ?? null);
+        setHistoryError(false);
+      }
+    } catch {
+      if (shouldApply()) setHistoryError(true);
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/activities/${activity.id}/events`)
-      .then(async (response) => {
-        if (!response.ok) throw new Error();
-        return response.json();
-      })
-      .then((body) => {
-        if (!cancelled) {
-          setEvents(body.events ?? []);
-          setDeliveryStatus(body.deliveryStatus ?? null);
-        }
-      })
-      .catch(() => { if (!cancelled) setHistoryError(true); });
+    void loadEventsAndDelivery(activity.id, () => !cancelled);
     return () => { cancelled = true; };
-  }, [activity.id]);
+  }, [activity.id, loadEventsAndDelivery]);
 
   useEffect(() => {
     if (!canEdit) return;
@@ -162,7 +166,10 @@ export function ActivityDetailModal({ activity, organization, team, canEdit, ros
     }
     setInvitationNotice(`Kallelsen köades till ${body.queuedRecipients ?? selectedPeople.size} mottagare.`);
     setSelectedPeople(new Set());
-    const detailResponse = await fetch(`/api/activities/${activity.id}`);
+    const [detailResponse] = await Promise.all([
+      fetch(`/api/activities/${activity.id}`),
+      loadEventsAndDelivery(activity.id),
+    ]);
     if (detailResponse.ok) {
       const detail = await detailResponse.json();
       setInvitees(detail.invitees ?? []);
