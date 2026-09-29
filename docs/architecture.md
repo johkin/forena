@@ -11,6 +11,25 @@ kommandon; AI:n får aldrig direkt databasåtkomst.
 3. **Infrastruktur** – PostgreSQL, objektlagring, push, mejl och AI-provider.
 4. **Gränssnitt** – server-renderad webbapp och installerbar PWA.
 
+## Gränssnitt och skärmstorlekar
+
+Alla vyer utformas mobile-first. Utgå från en smal telefon i stående läge,
+inklusive installerad PWA på iPhone, och bygg ut layouten för större skärmar.
+Det gäller även administration, formulär, kalender, dialoger och nya funktioner.
+
+- Sidans bredd ska följa viewporten utan horisontell scroll vid 320, 375 och
+  390 CSS-pixlar. Testa även 768 pixlar och desktop.
+- Rutnät och flexinnehåll måste kunna krympa (`min-width: 0`, `minmax(0, 1fr)`);
+  långa namn, e-postadresser och annan dynamisk text ska brytas eller avkortas
+  där det är begripligt. Dölj inte sidans overflow för att maskera ett fel.
+- Flera kolumner, knapprader och täta tabellrader ska staplas eller radbrytas på
+  telefon. Kalendern ska fortfarande gå att använda utan att sidan blir bredare.
+- Dialoger ska rymmas i både bredd och höjd och ha nåbara åtgärdsknappar.
+  Kontrollera även tangentbord, större text och tryggt tryckbara mål.
+- Granska varje ny eller ändrad vy i telefonbredd och desktop, med realistiskt
+  långa värden. Kontrollera `document.documentElement.scrollWidth <= innerWidth`
+  och åtgärda det element som orsakar overflow.
+
 ## Domänregler i första milstolpen
 
 - Föreningsdata tillhör explicit en förening; profiler och push-prenumerationer
