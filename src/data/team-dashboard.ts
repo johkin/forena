@@ -25,6 +25,7 @@ export type TeamDashboardData = {
   tasks: TeamTask[];
   familyActivities: FamilyActivity[];
   canManageTeam: boolean;
+  canAdministerOrganization: boolean;
   accountEmail?: string;
   respondablePersonIds: string[];
   referenceTime: string;
@@ -46,6 +47,7 @@ function demoDashboard(): TeamDashboardData {
     tasks: demoTasks,
     familyActivities: [],
     canManageTeam: true,
+    canAdministerOrganization: false,
     respondablePersonIds: demoMembers.map((item) => item.id),
     referenceTime: new Date().toISOString(),
     missingAttendanceActivities: [],
@@ -330,5 +332,5 @@ export async function getTeamDashboard(
     }];
   });
 
-  return { organization, sections: sectionList, team, activity, members, rosterMembers, upcomingActivities, invitations, workspaces, tasks, familyActivities, canManageTeam: canManageCurrentTeam, accountEmail: authData.user.email, respondablePersonIds: familyPersonIds, referenceTime, missingAttendanceActivities, source: "database" };
+  return { organization, sections: sectionList, team, activity, members, rosterMembers, upcomingActivities, invitations, workspaces, tasks, familyActivities, canManageTeam: canManageCurrentTeam, canAdministerOrganization: ["owner", "admin"].includes(organizationMembership?.role ?? ""), accountEmail: authData.user.email, respondablePersonIds: familyPersonIds, referenceTime, missingAttendanceActivities, source: "database" };
 }
