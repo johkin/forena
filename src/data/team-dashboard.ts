@@ -145,7 +145,7 @@ export async function getTeamDashboard(
 
   const { data: upcomingActivityRows } = await supabase
     .from("activities")
-    .select("id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location, series_id, status, invitation_send_at, response_due_at, reminder_send_at")
+    .select("id, organization_id, team_id, title, description_markdown, gathering_at, starts_at, ends_at, location, series_id, status, invitation_send_at, response_due_at, reminder_send_at")
     .eq("team_id", teamRow.id)
     .neq("status", "cancelled")
     .gte("ends_at", referenceTime)
@@ -165,7 +165,7 @@ export async function getTeamDashboard(
     .from("memberships")
     .select("person_id, role")
     .eq("team_id", teamRow.id)
-    .in("role", ["participant", "leader"])
+    .in("role", ["participant", "leader", "volunteer"])
     .is("ends_on", null);
   const { data: taskRows } = await supabase
     .from("team_tasks")
@@ -211,6 +211,7 @@ export async function getTeamDashboard(
     organizationId: activityRow.organization_id,
     teamId: activityRow.team_id ?? team.id,
     title: activityRow.title,
+    description: activityRow.description_markdown,
     gatheringAt: activityRow.gathering_at ?? undefined,
     startsAt: activityRow.starts_at,
     endsAt: activityRow.ends_at,
@@ -233,7 +234,7 @@ export async function getTeamDashboard(
     .filter((member) => rosterRoleByMemberId.has(member.id))
     .map((member) => ({ ...member, teamRole: rosterRoleByMemberId.get(member.id) }));
   const upcomingActivities: Activity[] = (upcomingActivityRows ?? []).map((item) => ({
-    id: item.id, organizationId: item.organization_id, teamId: item.team_id ?? team.id, title: item.title,
+    id: item.id, organizationId: item.organization_id, teamId: item.team_id ?? team.id, title: item.title, description: item.description_markdown,
     gatheringAt: item.gathering_at ?? undefined, startsAt: item.starts_at, endsAt: item.ends_at, location: item.location,
     seriesId: item.series_id ?? undefined, status: item.status, invitationSendAt: item.invitation_send_at ?? undefined,
     responseDueAt: item.response_due_at ?? undefined, reminderSendAt: item.reminder_send_at ?? undefined,

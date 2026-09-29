@@ -548,6 +548,58 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .invitation-person-picker span { display:flex; align-items:baseline; justify-content:space-between; gap:12px; width:100%; }
 .invitation-person-picker small { color:var(--ink-soft); font-weight:500; }
 
+/* Shared controls and editor sections */
+.primary, .secondary, .danger, .icon-button { border-radius:10px; }
+.icon-button { min-width:36px; min-height:36px; }
+.activity-editor-modal { width:min(760px,100%); }
+.activity-editor-modal form { gap:14px; margin-top:18px; }
+.activity-editor-modal .form-row { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.activity-editor-modal input, .activity-editor-modal select, .activity-editor-modal textarea { min-width:0; max-width:100%; }
+.editor-section { min-width:0; padding:16px; border:1px solid var(--line); border-radius:14px; background:white; }
+.editor-section h3 { margin:0 0 12px; font-size:16px; }
+.editor-section > .form-row, .editor-section > label { margin-top:12px; }
+.editor-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.editor-fields label, .editor-section label, .reminder-row label { display:grid; gap:6px; color:var(--ink-soft); font-size:12px; font-weight:800; }
+.editor-optional { margin-top:12px; }
+.editor-optional summary, .editor-invitation > summary { cursor:pointer; font-size:14px; font-weight:800; color:var(--ink); }
+.editor-optional textarea { width:100%; margin-top:10px; }
+.editor-invitation > summary { display:list-item; font-size:16px; }
+.editor-invitation > summary span { margin-left:8px; color:var(--ink-soft); font-size:12px; font-weight:600; }
+.invitation-mode-switch { grid-template-columns:repeat(3,minmax(0,1fr)); margin:14px 0; }
+.invitation-mode-switch button { min-width:0; padding:9px 5px; font-size:13px; }
+.editor-invitation-body { display:grid; gap:12px; }
+.editor-inline-heading { display:flex; align-items:center; gap:7px; color:var(--ink); font-size:13px; }
+.editor-help { position:relative; }
+.editor-help summary { width:20px; height:20px; display:grid; place-items:center; border:1px solid var(--line); border-radius:50%; color:var(--ink-soft); cursor:pointer; list-style:none; font-size:12px; }
+.editor-help summary::-webkit-details-marker { display:none; }
+.editor-help p { position:absolute; right:0; top:24px; z-index:3; width:min(260px,70vw); margin:0; padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--paper); box-shadow:var(--shadow); color:var(--ink); font-size:12px; font-weight:400; line-height:1.4; }
+.audience-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; }
+.audience-options label { display:flex; flex-direction:row; align-items:center; gap:8px; padding:10px; border:1px solid var(--line); border-radius:10px; color:var(--ink); cursor:pointer; }
+.audience-options input { width:auto; }
+.person-picker-columns { margin:0; }
+.person-picker-group h4 { margin:0; padding:7px 9px; background:var(--cream); color:var(--ink-soft); font-size:11px; }
+.reminder-row { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:end; gap:9px; }
+.reminder-row .secondary { height:42px; }
+.activity-editor-modal .modal-actions { position:sticky; bottom:-26px; z-index:2; margin:0 -26px -26px; padding:12px 26px; border-top:1px solid var(--line); background:var(--paper); }
+@media (max-width:560px) {
+  .activity-editor-modal { padding:16px; }
+  .activity-editor-modal .card-heading h2 { font-size:20px; }
+  .activity-editor-modal form { margin-top:12px; }
+  .editor-section { padding:12px; }
+  .editor-fields { grid-template-columns:1fr; }
+  .activity-editor-modal .form-row { gap:8px; }
+  .activity-editor-modal input, .activity-editor-modal select, .activity-editor-modal textarea { padding:9px 10px; }
+  .activity-editor-modal .modal-actions { bottom:-16px; margin:0 -16px -16px; padding:10px 16px; }
+  .activity-editor-modal .modal-actions .primary { flex:1 1 100%; order:-1; }
+  .activity-editor-modal .modal-actions .danger { margin-right:auto; }
+  .audience-options { grid-template-columns:1fr; }
+  .reminder-row { grid-template-columns:minmax(0,1fr); }
+  .reminder-row .secondary { justify-self:start; }
+}
+@media (max-width:380px) {
+  .activity-editor-modal .form-row { grid-template-columns:1fr; }
+}
+
 /* Mobile is the baseline: actions wrap, text breaks, and dense rows stack. */
 .card, .modal, .application-card, .auth-card { overflow-wrap:anywhere; }
 .topbar-actions, .topbar-brand-row, .workspace-switcher { min-width:0; }

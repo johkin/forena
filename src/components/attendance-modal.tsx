@@ -7,12 +7,14 @@ import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
 type Row = {
   personId: string;
   displayName: string;
-  role: "participant" | "leader";
+  role: "participant" | "leader" | "volunteer";
   response: "pending" | "accepted" | "declined" | null;
   present: boolean;
 };
 
 type Props = { activityId: string; onClose: () => void; onSaved?: () => void };
+const roleLabels = { leader: "Ledare", participant: "Spelare", volunteer: "Övriga roller" } as const;
+const roles: Row["role"][] = ["leader", "participant", "volunteer"];
 
 export function AttendanceModal({ activityId, onClose, onSaved }: Props) {
   useModalScrollLock();
@@ -45,6 +47,20 @@ export function AttendanceModal({ activityId, onClose, onSaved }: Props) {
   });
   const addAccepted = () => setSelected((current) => new Set([...current, ...accepted.map((row) => row.personId)]));
 
+  function peopleByRole(people: Row[], isPresent: boolean) {
+    return roles.map((role) => {
+      const matching = people.filter((row) => row.role === role);
+      return matching.length ? <div className="person-picker-group" key={role}>
+        <h4>{roleLabels[role]} ({matching.length})</h4>
+        {matching.map((row) => <button key={row.personId} type="button" className="attendance-person" onClick={() => toggle(row.personId)}
+          aria-label={`${row.displayName}, ${roleLabels[role].toLowerCase()}. Flytta till ${isPresent ? "ej närvarande" : "närvarande"}`} title={row.displayName}>
+          <strong>{names.get(row.personId)}</strong>
+          <small>{row.response === "accepted" ? "Anmäld" : row.response === "declined" ? "Tackat nej" : row.response === "pending" ? "Ej svarat" : "Ej kallad"}</small>
+        </button>)}
+      </div> : null;
+    });
+  }
+
   async function save() {
     setSaving(true); setError("");
     try {
@@ -68,13 +84,7 @@ export function AttendanceModal({ activityId, onClose, onSaved }: Props) {
         {([{ title: "Ej närvarande", people: absent, isPresent: false }, { title: "Närvarande", people: present, isPresent: true }] as const).map((column) =>
           <section className="attendance-column" key={column.title} aria-label={`${column.title}, ${column.people.length} personer`}>
             <h3 className={column.isPresent ? "attendance-present-heading" : "attendance-absent-heading"}>{column.title} ({column.people.length})</h3>
-            <div className="attendance-roster">
-              {column.people.map((row) => <button key={row.personId} type="button" className="attendance-person" onClick={() => toggle(row.personId)}
-                aria-label={`${row.displayName}, ${row.role === "leader" ? "ledare" : "spelare"}. Flytta till ${column.isPresent ? "ej närvarande" : "närvarande"}`} title={row.displayName}>
-                <strong>{names.get(row.personId)}</strong>
-                <small>{row.role === "leader" ? "Ledare" : row.response === "accepted" ? "Anmäld" : row.response === "declined" ? "Tackat nej" : row.response === "pending" ? "Ej svarat" : "Ej kallad"}</small>
-              </button>)}
-            </div>
+            <div className="attendance-roster">{peopleByRole(column.people, column.isPresent)}</div>
           </section>)}
       </div>
       <div className="modal-actions"><button className="secondary" onClick={onClose} type="button">Avbryt</button><button className="primary" disabled={saving} onClick={save} type="button">{saving ? "Sparar…" : "Spara närvaro"}</button></div>

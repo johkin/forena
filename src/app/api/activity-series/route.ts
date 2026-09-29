@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { invitationScheduleForOccurrence, previewWeeklySeries, type ResponseDueRule, type SeriesPreviewInput } from "@/lib/activity-series";
 import { createClient } from "@/lib/supabase/server";
+import { validateAudienceSelection, type AudienceSelection } from "@/lib/invitation-audience";
 
 type CreateSeriesBody = SeriesPreviewInput & {
   teamId?: string;
@@ -8,8 +9,9 @@ type CreateSeriesBody = SeriesPreviewInput & {
   title?: string;
   description?: string;
   location?: string;
-  invitationAudience?: "players" | "leaders" | "group";
+  invitationAudience?: "players" | "leaders" | "group" | "selection";
   invitationGroupId?: string;
+  invitationSelection?: AudienceSelection;
   invitationSendMinutesBefore?: number;
   responseDueRule?: ResponseDueRule;
   reminderMinutesBeforeDue?: number;
@@ -51,6 +53,11 @@ export async function POST(request: Request) {
 
   const invitationAudience = body.invitationAudience;
   const invitationGroupId = body.invitationGroupId;
+  let selection: AudienceSelection | undefined;
+  if (invitationAudience === "selection") {
+    try { selection = await validateAudienceSelection(supabase, team.id, body.invitationSelection); }
+    catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }
+  }
 
   if (invitationAudience === "group") {
     if (!invitationGroupId) return NextResponse.json({ error: "Välj en undergrupp" }, { status: 400 });
@@ -90,6 +97,7 @@ export async function POST(request: Request) {
     reminderMinutesBeforeDue: body.reminderMinutesBeforeDue ?? 1440,
     invitationAudience: invitationAudience ?? null,
     invitationGroupId: invitationAudience === "group" ? invitationGroupId ?? null : null,
+    invitationSelection: selection ?? null,
   };
 
   const { data: series, error: seriesError } = await supabase.from("activity_series").insert({
@@ -127,6 +135,7 @@ export async function POST(request: Request) {
       reminder_send_at: schedules[index]?.reminderSendAt ?? null,
       invitation_audience_kind: invitationAudience ?? null,
       invitation_group_id: invitationAudience === "group" ? invitationGroupId ?? null : null,
+      ...(selection ? { invitation_audience_roles: selection.roles, invitation_audience_group_ids: selection.groupIds } : {}),
       created_by: authData.user.id,
     })),
   ).select("id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location, series_id, status, invitation_send_at, response_due_at, reminder_send_at");

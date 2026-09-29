@@ -118,6 +118,7 @@ export function ActivityDetailModal({ activity, organization, team, canEdit, onC
 
   const leaders = invitees.filter((item) => item.role === "leader");
   const players = invitees.filter((item) => item.role === "participant");
+  const volunteers = invitees.filter((item) => item.role === "volunteer");
   const responseText = { accepted: "Kommer", declined: "Kan inte", pending: "Ej svarat" } as const;
 
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
@@ -136,6 +137,7 @@ export function ActivityDetailModal({ activity, organization, team, canEdit, onC
         <div className="card-heading"><div><p className="eyebrow">Kallelser</p><h3 id="activity-staffing-title">Bemanning</h3></div></div>
         {leaders.length ? <div className="invitee-list">{leaders.map((leader) => <div key={leader.personId}><strong>{leader.displayName}</strong><span data-response={leader.response}>{responseText[leader.response]}</span></div>)}</div> : <p className="overview-empty">Inga ledare är kallade till aktiviteten.</p>}
         {players.length ? <details className="player-invitations"><summary>Spelare · {players.filter((item) => item.response === "accepted").length} kommer av {players.length} kallade</summary><div className="invitee-list">{players.map((player) => <div key={player.personId}><strong>{player.displayName}</strong><span data-response={player.response}>{responseText[player.response]}</span></div>)}</div></details> : null}
+        {volunteers.length ? <details className="player-invitations"><summary>Övriga roller · {volunteers.filter((item) => item.response === "accepted").length} kommer av {volunteers.length} kallade</summary><div className="invitee-list">{volunteers.map((person) => <div key={person.personId}><strong>{person.displayName}</strong><span data-response={person.response}>{responseText[person.response]}</span></div>)}</div></details> : null}
       </section> : null}
 
       {canEdit && deliveryStatus ? <section className="delivery-status" aria-labelledby="delivery-status-title">
