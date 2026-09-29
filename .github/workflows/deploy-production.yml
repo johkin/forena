@@ -31,7 +31,7 @@ jobs:
 
     steps:
       - name: Check out verified commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
@@ -48,7 +48,7 @@ jobs:
           exit "$missing"
 
       - name: Set up Supabase CLI
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@v3
         with:
           version: 2.118.0
 
@@ -70,10 +70,11 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: team_hkR9c8WmDdaB7Ohge0pDlA6X
       VERCEL_PROJECT_ID: prj_KoyZzpTGHV3osX77YpL9ON7YMHd1
+      VERCEL_SCOPE: johkin
 
     steps:
       - name: Check out verified commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
@@ -86,7 +87,7 @@ jobs:
           fi
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
@@ -94,11 +95,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Link Vercel project
+        shell: bash
+        run: |
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
+          npx --yes vercel@60.1.3 project inspect "$VERCEL_PROJECT_ID" --scope="$VERCEL_SCOPE" --token="$VERCEL_TOKEN"
+
       - name: Pull Vercel production environment
-        run: npx --yes vercel@60.1.3 pull --yes --environment=production --token="$VERCEL_TOKEN"
+        run: npx --yes vercel@60.1.3 pull --yes --environment=production --scope="$VERCEL_SCOPE" --token="$VERCEL_TOKEN"
 
       - name: Build production deployment
-        run: npx --yes vercel@60.1.3 build --prod --token="$VERCEL_TOKEN"
+        run: npx --yes vercel@60.1.3 build --prod --scope="$VERCEL_SCOPE" --token="$VERCEL_TOKEN"
 
       - name: Deploy verified build
-        run: npx --yes vercel@60.1.3 deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+        run: npx --yes vercel@60.1.3 deploy --prebuilt --prod --scope="$VERCEL_SCOPE" --token="$VERCEL_TOKEN"
