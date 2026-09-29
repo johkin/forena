@@ -32,10 +32,17 @@ export async function POST(request: Request, { params }: Props) {
     const { error: invitationError } = await supabase.from("invitations").upsert(personIds.map((personId) => ({
       organization_id: activity.organization_id, activity_id: activity.id, person_id: personId,
     })), { onConflict: "activity_id,person_id", ignoreDuplicates: true });
-    if (invitationError) return NextResponse.json({ error: "Kallelsen kunde inte skapas" }, { status: 500 });
+    if (invitationError) {
+      console.error("activity_invitation.insert_failed", { activityId, code: invitationError.code, message: invitationError.message });
+      return NextResponse.json({ error: "Kallelsen kunde inte skapas" }, { status: 500 });
+    }
 
     const { data: queued, error: queueError } = await supabase.rpc("queue_activity_invitation", { target_activity_id: activity.id });
-    if (queueError) return NextResponse.json({ error: "Kallelsen skapades men kunde inte köas" }, { status: 500 });
+    if (queueError) {
+      console.error("activity_invitation.queue_failed", { activityId, code: queueError.code, message: queueError.message });
+      return NextResponse.json({ error: "Kallelsen skapades men kunde inte köas" }, { status: 500 });
+    }
+    console.info("activity_invitation.queued", { activityId, selectedPeople: personIds.length, queuedRecipients: queued ?? 0 });
     await supabase.from("activity_reminder_schedules").delete().eq("activity_id", activity.id).is("materialized_at", null);
     await supabase.from("activity_events").insert({
       organization_id: activity.organization_id, activity_id: activity.id, event_type: "invitation_sent",
@@ -84,7 +91,11 @@ export async function POST(request: Request, { params }: Props) {
     reminder_send_at: null,
     invitation_materialized_at: null,
   }).eq("id", activity.id);
-  if (error) return NextResponse.json({ error: "Kallelsen kunde inte schemaläggas" }, { status: 500 });
+  if (error) {
+    console.error("activity_invitation.schedule_failed", { activityId, code: error.code, message: error.message });
+    return NextResponse.json({ error: "Kallelsen kunde inte schemaläggas" }, { status: 500 });
+  }
+  console.info("activity_invitation.scheduled", { activityId, sendAt: schedule.invitationSendAt, audience });
 
   await supabase.from("activity_reminder_schedules").delete().eq("activity_id", activity.id).is("materialized_at", null);
   if (reminderSchedules.length) {

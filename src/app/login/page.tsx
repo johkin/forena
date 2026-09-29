@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PasskeySignIn } from "@/components/passkey-sign-in";
+import { AppHeader } from "@/components/app-header";
 import { requestMagicLink, signInWithPassword, signUpWithPassword } from "./actions";
 
 type Props = {
@@ -15,7 +16,8 @@ export default async function LoginPage({ searchParams }: Props) {
   const safeNext = next?.startsWith("/") && !next.startsWith("//") ? next : "/setup";
   if (data.user) redirect(safeNext);
 
-  return (
+  return (<>
+    <AppHeader homeHref="/" />
     <main className="auth-page">
       <section className="auth-card">
         <span className="brand-mark">F</span>
@@ -60,5 +62,5 @@ export default async function LoginPage({ searchParams }: Props) {
         )}
       </section>
     </main>
-  );
+  </>);
 }

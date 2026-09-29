@@ -33,9 +33,8 @@ export function NotificationSettings() {
   const [state, setState] = useState<PushState>("checking");
   const [pending, setPending] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [testMessage, setTestMessage] = useState("");
-  const [testing, setTesting] = useState(false);
   const [iosBrowser, setIosBrowser] = useState(false);
+  const [androidBrowser, setAndroidBrowser] = useState(false);
   const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim() ?? "";
   const secureContext = typeof window === "undefined" || window.isSecureContext;
 
@@ -43,8 +42,15 @@ export function NotificationSettings() {
     let cancelled = false;
     async function checkState() {
       await Promise.resolve();
-      if (!cancelled) setIosBrowser(/iPhone|iPad|iPod/.test(navigator.userAgent) && !window.matchMedia("(display-mode: standalone)").matches && !(navigator as Navigator & { standalone?: boolean }).standalone);
-      if (!window.isSecureContext || !("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window) || !publicKey) {
+      const standalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+      const isIos = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+        || (/Mac/i.test(navigator.platform) && navigator.maxTouchPoints > 1);
+      const requiresHomeScreen = isIos && !standalone;
+      if (!cancelled) {
+        setIosBrowser(requiresHomeScreen);
+        setAndroidBrowser(/Android/i.test(navigator.userAgent) && !standalone);
+      }
+      if (requiresHomeScreen || !window.isSecureContext || !("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window) || !publicKey) {
         if (!cancelled) setState("unsupported");
         return;
       }
@@ -70,23 +76,6 @@ export function NotificationSettings() {
     document.addEventListener("keydown", closeOnEscape);
     return () => document.removeEventListener("keydown", closeOnEscape);
   }, [open]);
-
-  async function testPush() {
-    setTesting(true);
-    setTestMessage("");
-    try {
-      const registration = await navigator.serviceWorker.getRegistration("/");
-      const subscription = await registration?.pushManager.getSubscription();
-      if (!subscription) { setState("inactive"); throw new Error("Push är inte längre aktiverat på den här enheten. Aktivera det igen."); }
-      const response = await fetch("/api/push-subscriptions/test", {
-        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ endpoint: subscription.endpoint }),
-      });
-      const result = await response.json().catch(() => null) as { error?: string } | null;
-      if (!response.ok) throw new Error(result?.error ?? "Testnotisen kunde inte skickas.");
-      setTestMessage("Testnotisen har skickats till den här enheten. Kontrollera även notisinställningarna om den inte visas.");
-    } catch (error) { setTestMessage(pushErrorMessage(error)); }
-    finally { setTesting(false); }
-  }
 
   async function enable() {
     setPending(true);
@@ -115,7 +104,6 @@ export function NotificationSettings() {
         throw new Error(body?.error ?? "Push-prenumerationen kunde inte sparas.");
       }
       setState("active");
-      setTestMessage("");
     } catch (error) {
       setErrorMessage(pushErrorMessage(error));
       setState("error");
@@ -144,7 +132,6 @@ export function NotificationSettings() {
         if (!unsubscribed) throw new Error("browser_unsubscribe_failed");
       }
       setState("inactive");
-      setTestMessage("");
     } catch (error) {
       setErrorMessage(pushErrorMessage(error));
       setState("error");
@@ -179,11 +166,11 @@ export function NotificationSettings() {
       <h2>Notisinställningar</h2>
       <p>{descriptions[state]}</p>
       {iosBrowser ? <p className="notification-settings-help">Öppna Förena i Safari, tryck på Dela och välj <strong>Lägg till på hemskärmen</strong>. Öppna sedan Förena via ikonen på hemskärmen och tryck på <strong>Aktivera pushnotiser</strong> här.</p> : null}
+      {androidBrowser ? <p className="notification-settings-help">Du kan aktivera push här i webbläsaren. Vill du använda Förena som app väljer du <strong>Installera app</strong> eller <strong>Lägg till på startskärmen</strong> i webbläsarens meny och öppnar sedan Förena via ikonen.</p> : null}
       {state === "blocked" ? <p className="notification-settings-help">Tillåt notiser för Förena i enhetens eller webbläsarens inställningar och öppna sidan igen.</p> : null}
       {state === "active"
-        ? <div className="notification-settings-actions"><button className="primary" disabled={testing || pending} onClick={() => void testPush()} type="button">{testing ? "Skickar…" : "Skicka testnotis"}</button><button className="secondary" disabled={pending || testing} onClick={() => void disable()} type="button">{pending ? "Stänger av…" : "Stäng av pushnotiser"}</button></div>
+        ? <button className="secondary" disabled={pending} onClick={() => void disable()} type="button">{pending ? "Stänger av…" : "Stäng av pushnotiser"}</button>
         : <button className="primary" disabled={pending || state === "unsupported" || state === "blocked" || state === "checking"} onClick={() => void enable()} type="button">{pending ? "Aktiverar…" : "Aktivera pushnotiser"}</button>}
-      {testMessage ? <p role="status" className="notification-settings-feedback">{testMessage}</p> : null}
     </section></div> : null}
   </div>;
 }

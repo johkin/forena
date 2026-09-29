@@ -1,12 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import type { GeneralWorkspaceData, PublicActivity } from "@/data/general-workspace";
 import type { Team } from "@/domain/club";
-import { LogoutButton } from "@/components/logout-button";
-import { NotificationSettings } from "@/components/notification-settings";
-import { WorkspaceSwitcher } from "@/components/workspace-switcher";
+import { AppHeader } from "@/components/app-header";
 
 function dateKey(value: string, timeZone: string) {
   const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(value)).map((part) => [part.type, part.value]));
@@ -38,7 +35,7 @@ export function GeneralWorkspace({ data, focusTeam }: { data: GeneralWorkspaceDa
   const format = new Intl.DateTimeFormat("sv-SE", { timeZone, weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   const heading = focusTeam?.name ?? data.section?.name ?? data.organization.name;
   const currentHref = focusTeam ? `/o/${data.organization.slug}/t/${focusTeam.slug}` : data.section ? `/o/${data.organization.slug}/s/${data.section.slug}` : `/o/${data.organization.slug}`;
-  return <main><header className="topbar"><a className="brand" href={`/o/${data.organization.slug}`} aria-label="Förena startsida"><span className="brand-mark">F</span><span>Förena</span></a><div className="topbar-actions">{data.accountEmail ? <span className="account-identity">Inloggad som <strong>{data.accountEmail}</strong></span> : null}{data.accountEmail ? <NotificationSettings /> : null}<WorkspaceSwitcher organization={data.organization} workspaces={data.workspaces} />{data.accountEmail ? <LogoutButton destination={currentHref} /> : <Link className="login-link" href={`/login?next=${encodeURIComponent(currentHref)}`}>Logga in</Link>}</div></header>
+  return <main><AppHeader homeHref={`/o/${data.organization.slug}`} accountEmail={data.accountEmail} organization={data.organization} team={focusTeam} workspaces={data.workspaces} logoutDestination={currentHref} loginHref={`/login?next=${encodeURIComponent(currentHref)}`} adminHref={data.canAdministerOrganization ? `/o/${data.organization.slug}/admin/roles` : undefined} navigation={<nav className="header-general-links"><a href="#overview">Översikt</a><a href="#calendar">Kalender</a>{!focusTeam ? data.teams.map((team) => <a href={`/o/${data.organization.slug}/t/${team.slug}`} key={team.id}>{team.name}</a>) : null}</nav>} />
     <div className="shell general-shell"><aside className="sidebar"><p className="eyebrow">{focusTeam ? "Lag" : data.section ? "Sektion" : "Förening"}</p><nav><a className="active" href="#overview">Översikt</a><a href="#calendar">Kalender</a>{!focusTeam ? data.teams.map((team) => <a href={`/o/${data.organization.slug}/t/${team.slug}`} key={team.id}>{team.name}</a>) : null}</nav></aside>
       <section className="content"><div className="welcome" id="overview"><div><p className="eyebrow">{focusTeam ? `${data.section?.name ?? data.organization.name} · generell information` : data.section ? data.organization.name : "Föreningsöversikt"}</p><h1>{heading}</h1><p>{focusTeam ? "Publicerade aktiviteter och matcher för laget." : `Information och aktiviteter för ${data.section ? "sektionens" : "föreningens"} lag.`}</p></div></div>{data.source === "demo" ? <div className="demo-notice">Demoläge</div> : null}
         <div className="general-summary"><section className="card"><div className="card-heading"><div><p className="eyebrow">Kommande</p><h2>Nästa matcher</h2></div></div>{nextMatches.length ? <div className="public-match-list">{nextMatches.map((match) => <a href={`/o/${data.organization.slug}/t/${match.teamSlug}`} key={match.id}><span><small>{match.teamName}</small><strong>{match.title}</strong><span>{format.format(new Date(match.startsAt))} · {match.location}</span></span><b aria-hidden="true">→</b></a>)}</div> : <p className="overview-empty">Inga kommande matcher är publicerade.</p>}<p className="privacy-note">Laguppställningar och kallelsesvar visas bara i respektive lags behöriga vy.</p></section>

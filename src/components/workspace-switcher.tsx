@@ -20,7 +20,7 @@ export function WorkspaceSwitcher({ organization, team, workspaces }: Props) {
         <span className="sr-only">Aktiv arbetsyta</span>
         <select
           aria-label="Välj arbetsyta"
-          value={workspaces.find((workspace) => workspace.active)?.href ?? ""}
+          value={workspaces.find((workspace) => workspace.active)?.href ?? workspaces[0]?.href ?? ""}
           onChange={(event) => router.push(event.target.value)}
         >
           {workspaces.map((workspace) => (

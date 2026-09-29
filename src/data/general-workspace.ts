@@ -23,6 +23,7 @@ export type GeneralWorkspaceData = {
   activities: PublicActivity[];
   workspaces: Workspace[];
   accountEmail?: string;
+  canAdministerOrganization: boolean;
   source: "database" | "demo";
 };
 
@@ -36,6 +37,7 @@ export async function getGeneralWorkspace(organizationSlug: string, sectionSlug?
       teams: [demoTeam],
       activities: [{ id: demoActivity.id, teamId: demoTeam.id, teamName: demoTeam.name, teamSlug: demoTeam.slug, title: demoActivity.title, startsAt: demoActivity.startsAt, endsAt: demoActivity.endsAt, location: demoActivity.location, isMatch: true }],
       workspaces: [],
+      canAdministerOrganization: false,
       source: "demo",
     };
   }
@@ -44,6 +46,9 @@ export async function getGeneralWorkspace(organizationSlug: string, sectionSlug?
   const { data: authData } = await supabase.auth.getUser();
   const { data: organizationRow } = await supabase.from("organizations").select("id, slug, name, assistant_name, time_zone").eq("slug", organizationSlug).maybeSingle();
   if (!organizationRow) return null;
+  const { data: organizationMembership } = authData.user
+    ? await supabase.from("organization_members").select("role").eq("organization_id", organizationRow.id).eq("user_id", authData.user.id).maybeSingle()
+    : { data: null };
 
   const [{ data: sectionRows }, { data: teamRows }, { data: activityTypes }] = await Promise.all([
     supabase.from("sections").select("id, organization_id, slug, name").eq("organization_id", organizationRow.id).order("name"),
@@ -73,5 +78,5 @@ export async function getGeneralWorkspace(organizationSlug: string, sectionSlug?
     ...(showSections ? sections.map((item) => ({ id: item.id, kind: "section" as const, name: item.name, description: "Sektion", href: `/o/${organization.slug}/s/${item.slug}`, active: item.id === section?.id })) : []),
     ...(teamRows ?? []).map((row) => ({ id: row.id, kind: "team" as const, name: row.name, description: showSections ? sections.find((item) => item.id === row.section_id)?.name ?? "Lag" : "Lag", href: `/o/${organization.slug}/t/${row.slug}`, active: false })),
   ];
-  return { organization, section, sections, teams, activities, workspaces, accountEmail: authData.user?.email, source: "database" };
+  return { organization, section, sections, teams, activities, workspaces, accountEmail: authData.user?.email, canAdministerOrganization: ["owner", "admin"].includes(organizationMembership?.role ?? ""), source: "database" };
 }

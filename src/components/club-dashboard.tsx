@@ -1,9 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { WorkspaceSwitcher } from "@/components/workspace-switcher";
-import { LogoutButton } from "@/components/logout-button";
-import { NotificationSettings } from "@/components/notification-settings";
 import { TeamAssistantCard } from "@/components/team-assistant-card";
 import { ActivityEditorModal } from "@/components/activity-editor-modal";
 import { TeamCalendar } from "@/components/team-calendar";
@@ -23,6 +20,7 @@ type Props = {
   organization: Organization; sections: Section[]; team: Team; activity: Activity; members: Member[]; rosterMembers: Member[]; upcomingActivities: Activity[];
   initialInvitations: Invitation[]; initialFamilyActivities: FamilyActivity[]; workspaces: Workspace[]; tasks: TeamTask[];
   canManageTeam: boolean;
+  canAdministerOrganization: boolean;
   accountEmail?: string;
   respondablePersonIds: string[];
   referenceTime: string;
@@ -32,7 +30,7 @@ type Props = {
 
 const responseLabels = { accepted: "Kommer", declined: "Kan inte", pending: "Ej svarat" } as const;
 
-export function ClubDashboard({ organization, sections, team, activity, members, rosterMembers, upcomingActivities, initialInvitations, initialFamilyActivities, workspaces, tasks, canManageTeam, accountEmail, respondablePersonIds, referenceTime, missingAttendanceActivities, source }: Props) {
+export function ClubDashboard({ organization, sections, team, activity, members, rosterMembers, upcomingActivities, initialInvitations, initialFamilyActivities, workspaces, tasks, canManageTeam, canAdministerOrganization, accountEmail, respondablePersonIds, referenceTime, missingAttendanceActivities, source }: Props) {
   const currentActivity = activity;
   const [invitations, setInvitations] = useState(initialInvitations);
   const view: DashboardView = canManageTeam ? "leader" : "family";
@@ -45,8 +43,6 @@ export function ClubDashboard({ organization, sections, team, activity, members,
   const [attendanceActivity, setAttendanceActivity] = useState<Activity>();
   const [pendingAttendance, setPendingAttendance] = useState(missingAttendanceActivities);
   const [editingActivity, setEditingActivity] = useState<Activity>();
-  const [showInvitationForm, setShowInvitationForm] = useState(false);
-  const [savingInvitation, setSavingInvitation] = useState(false);
   const [sendingReminder, setSendingReminder] = useState(false);
   const summary = useMemo(() => summarizeInvitations(invitations), [invitations]);
   const memberById = useMemo(() => new Map(members.map((member) => [member.id, member])), [members]);
@@ -79,41 +75,20 @@ export function ClubDashboard({ organization, sections, team, activity, members,
       : "Det finns inga nåbara mottagare för de obesvarade kallelserna.");
   }
 
-  async function inviteTeamMember(form: HTMLFormElement) {
-    setSavingInvitation(true);
-    const data = new FormData(form);
-    const response = await fetch("/api/team-invitations", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        teamId: team.id,
-        email: String(data.get("email")),
-        role: "leader",
-      }),
-    });
-    const result = await response.json();
-    setSavingInvitation(false);
-    if (!response.ok) {
-      setNotice(result.error ?? "Inbjudan kunde inte skickas.");
-      return;
-    }
-    form.reset();
-    setShowInvitationForm(false);
-    setNotice(`Inbjudan skickades till ${result.email}.`);
-  }
-
   return (
     <main>
       <AppHeader
         homeHref={`/o/${organization.slug}/t/${team.slug}`}
-        menu={<TeamMenu organizationSlug={organization.slug} teamSlug={team.slug} teamName={team.name} canManageTeam={canManageTeam} leaderView={view === "leader"} activeItem={activePage} onSelectView={setActivePage} triggerOnly />}
+        navigation={<TeamMenu organizationSlug={organization.slug} teamSlug={team.slug} teamName={team.name} canManageTeam={canManageTeam} leaderView={view === "leader"} activeItem={activePage} onSelectView={setActivePage} navigationOnly />}
         accountEmail={accountEmail}
-        actions={<><NotificationSettings /><WorkspaceSwitcher organization={organization} team={team} workspaces={workspaces} /><LogoutButton destination={`/o/${organization.slug}/t/${team.slug}`} /></>}
+        organization={organization} team={team} workspaces={workspaces}
+        logoutDestination={`/o/${organization.slug}/t/${team.slug}`}
+        adminHref={canAdministerOrganization ? `/o/${organization.slug}/admin/roles` : undefined}
       />
       <div className="shell">
         <TeamMenu organizationSlug={organization.slug} teamSlug={team.slug} teamName={team.name} canManageTeam={canManageTeam} leaderView={view === "leader"} activeItem={activePage} onSelectView={setActivePage} hideTrigger />
         <section className="content" id={activePage}>
-          <div className="welcome"><div><p className="eyebrow">{sections.length > 1 ? `${sections.find((item) => item.id === team.sectionId)?.name ?? "Sektion"} · ` : ""}{organization.name}</p><h1>{team.name}</h1><p>{activePage === "calendar" ? "Alla aktiviteter för laget." : view === "leader" ? "Det laget behöver från dig just nu." : `Det viktigaste för ${familyMember?.displayName ?? "spelaren"} just nu.`}</p></div>{view === "leader" && canManageTeam && <div className="welcome-actions"><button className="secondary" onClick={() => setShowInvitationForm(true)} type="button">Bjud in ledare</button><button className="primary" onClick={() => { setActivityDraft(undefined); setActivityEditorMode("create"); }} type="button">+ Ny aktivitet</button></div>}</div>
+          <div className="welcome"><div><p className="eyebrow">{sections.length > 1 ? `${sections.find((item) => item.id === team.sectionId)?.name ?? "Sektion"} · ` : ""}{organization.name}</p><h1>{team.name}</h1><p>{activePage === "calendar" ? "Alla aktiviteter för laget." : view === "leader" ? "Det laget behöver från dig just nu." : `Det viktigaste för ${familyMember?.displayName ?? "spelaren"} just nu.`}</p></div>{view === "leader" && canManageTeam && <div className="welcome-actions"><button className="primary" onClick={() => { setActivityDraft(undefined); setActivityEditorMode("create"); }} type="button">+ Ny aktivitet</button></div>}</div>
           {notice && <div className="toast" role="status">✓ {notice}</div>}
           {source === "demo" && <div className="demo-notice">Demoläge</div>}
 
@@ -160,7 +135,6 @@ export function ClubDashboard({ organization, sections, team, activity, members,
       {activityEditorMode ? <ActivityEditorModal mode={activityEditorMode} organization={organization} team={team} members={rosterMembers} activity={activityEditorMode === "edit" ? (editingActivity ?? currentActivity) : undefined} draft={activityEditorMode === "create" ? activityDraft : undefined} source={source} onClose={() => { setActivityEditorMode(null); setActivityDraft(undefined); }} onNotice={setNotice} /> : null}
       {selectedActivity ? <ActivityDetailModal activity={selectedActivity} organization={organization} team={team} canEdit={canManageTeam} onClose={() => setSelectedActivity(undefined)} onEdit={(item) => { setActivityDraft(undefined); setEditingActivity(item); setSelectedActivity(undefined); setActivityEditorMode("edit"); }} /> : null}
       {attendanceActivity ? <AttendanceModal activityId={attendanceActivity.id} onClose={() => setAttendanceActivity(undefined)} onSaved={() => setPendingAttendance((current) => current.filter((item) => item.id !== attendanceActivity.id))} /> : null}
-      {showInvitationForm && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowInvitationForm(false); }}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="invitation-form-title"><div className="card-heading"><div><p className="eyebrow">{team.name}</p><h2 id="invitation-form-title">Bjud in ledare</h2></div><button className="icon-button" onClick={() => setShowInvitationForm(false)} aria-label="Stäng" type="button">✕</button></div><form onSubmit={(event) => { event.preventDefault(); void inviteTeamMember(event.currentTarget); }}><label>E-postadress<input name="email" type="email" required autoComplete="email" placeholder="namn@example.se" /></label><p className="form-help">Nya spelare och målsmän kommer in genom föreningens medlemsansökan. Den här länken ger en godkänd ledare åtkomst till laget.</p><div className="modal-actions"><button className="secondary" onClick={() => setShowInvitationForm(false)} type="button">Avbryt</button><button className="primary" disabled={savingInvitation} type="submit">{savingInvitation ? "Skickar…" : "Skicka inbjudan"}</button></div></form></section></div>}
     </main>
   );
 }
