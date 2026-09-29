@@ -17,14 +17,20 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
   const { data: authData } = await supabase.auth.getUser();
   if (!authData.user) redirect(`/login?next=${encodeURIComponent(destination)}`);
 
-  const { data: organization } = await supabase.from("organizations").select("id, name").eq("slug", organizationSlug).maybeSingle();
+  const { data: organization } = await supabase.from("organizations").select("id, name, slug, assistant_name").eq("slug", organizationSlug).maybeSingle();
   const { data: team } = organization
-    ? await supabase.from("teams").select("id, name").eq("organization_id", organization.id).eq("slug", teamSlug).maybeSingle()
+    ? await supabase.from("teams").select("id, name, slug, organization_id, section_id, season").eq("organization_id", organization.id).eq("slug", teamSlug).maybeSingle()
     : { data: null };
   if (!organization || !team) redirect("/setup");
 
   const { data: canManage } = await supabase.rpc("can_manage_team", { target_team_id: team.id });
   if (!canManage) redirect(`/o/${organizationSlug}/t/${teamSlug}`);
+
+  const { data: accessibleTeams } = await supabase.from("teams").select("id, name, slug").eq("organization_id", organization.id).order("name");
+  const workspaces = [
+    { id: organization.id, kind: "organization" as const, name: organization.name, description: "Förening", href: `/o/${organizationSlug}`, active: false },
+    ...(accessibleTeams ?? []).map((item) => ({ id: item.id, kind: "team" as const, name: item.name, description: "Lag", href: `/o/${organizationSlug}/t/${item.slug}`, active: item.id === team.id })),
+  ];
 
   const { data: memberships } = await supabase.from("memberships").select("person_id, role, leader_title, is_primary_contact").eq("team_id", team.id).is("ends_on", null);
   const personIds = [...new Set((memberships ?? []).map((item) => item.person_id))];
@@ -45,7 +51,12 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
     <main>
       <AppHeader
         homeHref={`/o/${organizationSlug}/t/${teamSlug}`}
-        menu={<TeamMenu organizationSlug={organizationSlug} teamSlug={teamSlug} teamName={team.name} canManageTeam={Boolean(canManage)} leaderView activeItem="members" triggerOnly />}
+        navigation={<TeamMenu organizationSlug={organizationSlug} teamSlug={teamSlug} teamName={team.name} canManageTeam={Boolean(canManage)} leaderView activeItem="members" navigationOnly />}
+        accountEmail={authData.user.email}
+        organization={{ id: organization.id, slug: organization.slug, name: organization.name, assistantName: organization.assistant_name }}
+        team={{ id: team.id, slug: team.slug, name: team.name, organizationId: team.organization_id, sectionId: team.section_id, season: team.season ?? "" }}
+        workspaces={workspaces}
+        logoutDestination={`/o/${organizationSlug}/t/${teamSlug}`}
       />
       <div className="shell">
         <TeamMenu organizationSlug={organizationSlug} teamSlug={teamSlug} teamName={team.name} canManageTeam={Boolean(canManage)} leaderView activeItem="members" hideTrigger />
