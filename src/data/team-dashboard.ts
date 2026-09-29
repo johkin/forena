@@ -120,6 +120,11 @@ export async function getTeamDashboard(
 
   if (!accessibleTeams.some((item) => item.id === teamRow.id)) return null;
 
+  const { data: canManageTeamPermission } = await supabase.rpc("can_manage_team", {
+    target_team_id: teamRow.id,
+  });
+  canManageCurrentTeam = canManageTeamPermission === true;
+
   const [{ data: guardianLinksForUser }, { data: ownPeopleForUser }] = await Promise.all([
     supabase.from("person_guardians").select("person_id").eq("organization_id", organizationRow.id).eq("guardian_user_id", authData.user.id),
     supabase.from("people").select("id").eq("organization_id", organizationRow.id).eq("user_id", authData.user.id),
