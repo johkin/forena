@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(6);
+select plan(7);
 
 insert into auth.users (id, email, raw_user_meta_data) values
   ('b0000000-0000-0000-0000-000000000001', 'owner-roles@example.se', '{"display_name":"Ägare"}'),
@@ -45,6 +45,12 @@ select set_config('request.jwt.claims', '{"sub":"b0000000-0000-0000-0000-0000000
 select throws_ok(
   $$select public.assign_existing_guardian_team_role('b1000000-0000-0000-0000-000000000001', 'b3000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000002', 'team_manager')$$,
   '42501', 'Only organization admins can assign team roles', 'Målsmannen kan inte ge sig själv lagledarroll'
+);
+select throws_ok(
+  $$insert into public.team_member_invitations (organization_id, team_id, email, role, token_hash, invited_by)
+    values ('b1000000-0000-0000-0000-000000000001', 'b3000000-0000-0000-0000-000000000001', 'outsider-roles@example.se', 'leader', repeat('d', 64), 'b0000000-0000-0000-0000-000000000002')$$,
+  '42501', 'new row violates row-level security policy for table "team_member_invitations"',
+  'En tränare kan inte bjuda in en ny ledare utanför klubbadministrationen'
 );
 
 select * from finish();
