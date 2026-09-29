@@ -215,6 +215,40 @@ validering och krav på förhandsgranskning ligger alltid i applikationslagret.
 - [ ] Återanvänd Signal Engine och arbetsytekontext i assistenten
 - [ ] Låt UI och assistent anropa samma typade applikationskommandon
 
+### Administrerbara skills per arbetsyta
+
+Assistenten ska kunna använda versionshanterade skills: strukturerade
+instruktioner som beskriver när ett föreningsflöde är relevant, vilka frågor
+som behöver besvaras och vilka befintliga kommandon som kan föreslås. De är
+vägledning för assistenten, inte nya behörigheter eller exekverbar kod.
+
+Skills kan administreras på fyra nivåer: **plattform**, **klubb**, **sektion**
+och **lag**. Plattformen tillhandahåller gemensamma flöden, medan behöriga
+administratörer kan lägga till eller anpassa lokala rutiner. Assistenten får
+bara läsa skills som gäller den aktiva arbetsytan och användarens behörighet.
+Arv och företräde ska vara tydligt: lagets anpassning går före sektionens,
+sektionens före klubbens och klubbens före plattformens för samma skill.
+Säkerhetsregler, behörighetskontroll och krav på användarens godkännande kan
+aldrig åsidosättas av en lokal skill. Administratören ska kunna förhandsgranska,
+publicera, inaktivera och återgå till en tidigare version; ändringar loggas.
+
+Exempel: En ledare skriver ”Jag vill skapa en intresseanmälan för att delta på
+Aroscupen”. Assistenten känner igen cupflödet, undersöker befintlig information
+om cupen och lagets lokala rutin, och frågar efter saknade uppgifter som lag,
+åldersklass, datum, preliminär kostnad, svarstid och vem som ska tillfrågas.
+Den föreslår ett utkast till intresseanmälan med tydlig skillnad mellan
+**intresse** och bindande anmälan till arrangören. Ledaren granskar mottagare,
+text och svarsalternativ före utskick. Därefter kan assistenten sammanställa
+svaren och föreslå nästa steg, till exempel ett beslut eller en faktisk
+cupanmälan. Den skickar inte kallelser eller anmäler laget externt på egen hand.
+
+- [ ] Definiera skill-schema för trigger/intention, scope, frågor, källor, steg och tillåtna kommandon
+- [ ] Bygg administration med rollstyrd publicering och versionshistorik på alla fyra nivåer
+- [ ] Definiera arv, prioritet och konflikthantering för lokala anpassningar
+- [ ] Välj relevanta skills från aktiv arbetsyta utan att blanda data mellan föreningar
+- [ ] Stöd förhandsgranskning av assistentens plan och utkast före systemåtgärder
+- [ ] Implementera intresseanmälan till cup som första genomgående exempel
+
 ## 5. Pilot
 
 - [ ] Import av medlemmar
