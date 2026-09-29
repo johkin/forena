@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppHeader } from "@/components/app-header";
-import { LogoutButton } from "@/components/logout-button";
 import { updateProfile } from "./actions";
 
 type Props = { searchParams: Promise<{ saved?: string; error?: string }> };
@@ -21,7 +20,9 @@ export default async function ProfilePage({ searchParams }: Props) {
 
   return (
     <main>
-      <AppHeader homeHref={organizations?.[0] ? `/o/${organizations[0].slug}` : "/"} accountEmail={authData.user.email} actions={<LogoutButton destination="/" />} />
+      <AppHeader homeHref={organizations?.[0] ? `/o/${organizations[0].slug}` : "/"} accountEmail={authData.user.email} logoutDestination="/"
+        organization={organizations?.[0] ? { ...organizations[0], assistantName: "" } : undefined}
+        workspaces={(organizations ?? []).map((item) => ({ id: item.id, kind: "organization", name: item.name, description: "Förening", href: `/o/${item.slug}`, active: false }))} />
       <div className="application-page profile-page"><section className="application-card profile-card">
         <div className="application-page-heading">
           <div><p className="eyebrow">Konto</p><h1>Min profil</h1><p>Uppgifterna används när du visas som medlem eller ledare i en förening.</p></div>
