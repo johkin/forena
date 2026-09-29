@@ -159,10 +159,15 @@ export async function getTeamDashboard(
     return null;
   }
 
-  const { data: invitationRows } = await supabase
+  const invitationQuery = supabase
     .from("invitations")
     .select("id, organization_id, activity_id, person_id, response, responded_at, response_comment")
     .eq("activity_id", activityRow.id);
+  const { data: invitationRows } = canManageCurrentTeam
+    ? await invitationQuery
+    : familyPersonIds.length
+      ? await invitationQuery.in("person_id", familyPersonIds)
+      : { data: [] };
   const { data: rosterRows } = await supabase
     .from("memberships")
     .select("person_id, role")
