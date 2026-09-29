@@ -2,13 +2,18 @@
 alter table public.activities drop constraint if exists activities_invitation_audience_kind_check;
 alter table public.activities add constraint activities_invitation_audience_kind_check
   check (invitation_audience_kind in ('players', 'leaders', 'group', 'selection'));
+
 alter table public.activities
-  add column invitation_audience_roles text[] not null default '{}',
-  add column invitation_audience_group_ids uuid[] not null default '{}',
-  add constraint activities_invitation_roles_check
-    check (invitation_audience_roles <@ array['participant', 'leader', 'volunteer']::text[]),
-  add constraint activities_invitation_selection_check
-    check (invitation_audience_kind <> 'selection' or cardinality(invitation_audience_roles) + cardinality(invitation_audience_group_ids) > 0);
+  add column if not exists invitation_audience_roles text[] not null default '{}',
+  add column if not exists invitation_audience_group_ids uuid[] not null default '{}';
+
+alter table public.activities drop constraint if exists activities_invitation_roles_check;
+alter table public.activities add constraint activities_invitation_roles_check
+  check (invitation_audience_roles <@ array['participant', 'leader', 'volunteer']::text[]);
+
+alter table public.activities drop constraint if exists activities_invitation_selection_check;
+alter table public.activities add constraint activities_invitation_selection_check
+  check (invitation_audience_kind <> 'selection' or cardinality(invitation_audience_roles) + cardinality(invitation_audience_group_ids) > 0);
 
 create or replace function public.materialize_due_activity_invitations(batch_size integer default 100)
 returns integer
