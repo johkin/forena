@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 type PushState = "checking" | "unsupported" | "blocked" | "inactive" | "active" | "error";
 
@@ -29,11 +29,13 @@ function pushErrorMessage(error: unknown) {
 }
 
 export function NotificationSettings() {
-  const panelRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<PushState>("checking");
   const [pending, setPending] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [testMessage, setTestMessage] = useState("");
+  const [testing, setTesting] = useState(false);
+  const [iosBrowser, setIosBrowser] = useState(false);
   const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim() ?? "";
   const secureContext = typeof window === "undefined" || window.isSecureContext;
 
@@ -41,6 +43,7 @@ export function NotificationSettings() {
     let cancelled = false;
     async function checkState() {
       await Promise.resolve();
+      if (!cancelled) setIosBrowser(/iPhone|iPad|iPod/.test(navigator.userAgent) && !window.matchMedia("(display-mode: standalone)").matches && !(navigator as Navigator & { standalone?: boolean }).standalone);
       if (!window.isSecureContext || !("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window) || !publicKey) {
         if (!cancelled) setState("unsupported");
         return;
@@ -63,12 +66,27 @@ export function NotificationSettings() {
 
   useEffect(() => {
     if (!open) return;
-    function closeOnOutsideClick(event: MouseEvent) {
-      if (!panelRef.current?.contains(event.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", closeOnOutsideClick);
-    return () => document.removeEventListener("mousedown", closeOnOutsideClick);
+    function closeOnEscape(event: KeyboardEvent) { if (event.key === "Escape") setOpen(false); }
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
   }, [open]);
+
+  async function testPush() {
+    setTesting(true);
+    setTestMessage("");
+    try {
+      const registration = await navigator.serviceWorker.getRegistration("/");
+      const subscription = await registration?.pushManager.getSubscription();
+      if (!subscription) { setState("inactive"); throw new Error("Push är inte längre aktiverat på den här enheten. Aktivera det igen."); }
+      const response = await fetch("/api/push-subscriptions/test", {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ endpoint: subscription.endpoint }),
+      });
+      const result = await response.json().catch(() => null) as { error?: string } | null;
+      if (!response.ok) throw new Error(result?.error ?? "Testnotisen kunde inte skickas.");
+      setTestMessage("Testnotisen har skickats till den här enheten. Kontrollera även notisinställningarna om den inte visas.");
+    } catch (error) { setTestMessage(pushErrorMessage(error)); }
+    finally { setTesting(false); }
+  }
 
   async function enable() {
     setPending(true);
@@ -97,6 +115,7 @@ export function NotificationSettings() {
         throw new Error(body?.error ?? "Push-prenumerationen kunde inte sparas.");
       }
       setState("active");
+      setTestMessage("");
     } catch (error) {
       setErrorMessage(pushErrorMessage(error));
       setState("error");
@@ -125,6 +144,7 @@ export function NotificationSettings() {
         if (!unsubscribed) throw new Error("browser_unsubscribe_failed");
       }
       setState("inactive");
+      setTestMessage("");
     } catch (error) {
       setErrorMessage(pushErrorMessage(error));
       setState("error");
@@ -135,28 +155,35 @@ export function NotificationSettings() {
 
   const descriptions: Record<PushState, string> = {
     checking: "Kontrollerar inställningen…",
-    unsupported: !secureContext ? "Pushnotiser kräver HTTPS eller localhost." : publicKey ? "Den här webbläsaren stöder inte pushnotiser." : "Pushnotiser är inte konfigurerade ännu.",
+    unsupported: !secureContext ? "Pushnotiser kräver HTTPS eller localhost." : iosBrowser ? "På iPhone och iPad behöver du öppna Förena från hemskärmen för att aktivera push." : publicKey ? "Den här webbläsaren stöder inte pushnotiser." : "Pushnotiser är inte konfigurerade ännu.",
     blocked: "Notiser är blockerade i webbläsarens inställningar.",
     inactive: "Få kallelser och påminnelser även när Förena är stängt.",
     active: "Pushnotiser är aktiverade på den här enheten.",
     error: errorMessage || "Inställningen kunde inte sparas. Försök igen.",
   };
 
-  return <div className="notification-settings" ref={panelRef}>
+  return <div className="notification-settings">
     <button
       aria-expanded={open}
       aria-haspopup="dialog"
       className={`notification-settings-trigger${state === "active" ? " active" : ""}`}
       onClick={() => setOpen((current) => !current)}
+      aria-label={state === "active" ? "Pushnotiser aktiverade, öppna inställningar" : "Pushnotiser inaktiva, öppna inställningar"}
+      title={state === "active" ? "Pushnotiser aktiverade" : "Pushnotiser inaktiva"}
       type="button"
-    >Notiser</button>
-    {open ? <section aria-label="Notisinställningar" className="notification-settings-panel">
+    ><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>{state !== "active" ? <path d="M3 3l18 18" strokeWidth="2.2"/> : null}</svg><span>Notiser</span></button>
+    {open ? <div className="notification-settings-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}>
+    <section aria-label="Notisinställningar" aria-modal="true" role="dialog" className="notification-settings-panel">
+      <button className="notification-settings-close" type="button" aria-label="Stäng" onClick={() => setOpen(false)}>×</button>
       <p className="eyebrow">Profil</p>
       <h2>Notisinställningar</h2>
       <p>{descriptions[state]}</p>
+      {iosBrowser ? <p className="notification-settings-help">Öppna Förena i Safari, tryck på Dela och välj <strong>Lägg till på hemskärmen</strong>. Öppna sedan Förena via ikonen på hemskärmen och tryck på <strong>Aktivera pushnotiser</strong> här.</p> : null}
+      {state === "blocked" ? <p className="notification-settings-help">Tillåt notiser för Förena i enhetens eller webbläsarens inställningar och öppna sidan igen.</p> : null}
       {state === "active"
-        ? <button className="secondary" disabled={pending} onClick={() => void disable()} type="button">{pending ? "Stänger av…" : "Stäng av pushnotiser"}</button>
+        ? <div className="notification-settings-actions"><button className="primary" disabled={testing || pending} onClick={() => void testPush()} type="button">{testing ? "Skickar…" : "Skicka testnotis"}</button><button className="secondary" disabled={pending || testing} onClick={() => void disable()} type="button">{pending ? "Stänger av…" : "Stäng av pushnotiser"}</button></div>
         : <button className="primary" disabled={pending || state === "unsupported" || state === "blocked" || state === "checking"} onClick={() => void enable()} type="button">{pending ? "Aktiverar…" : "Aktivera pushnotiser"}</button>}
-    </section> : null}
+      {testMessage ? <p role="status" className="notification-settings-feedback">{testMessage}</p> : null}
+    </section></div> : null}
   </div>;
 }
