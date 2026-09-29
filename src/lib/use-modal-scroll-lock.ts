@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
+
+const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 let openModals = 0;
 let scrollY = 0;
@@ -8,7 +10,7 @@ let previousStyles: { position: string; top: string; width: string; overflow: st
 
 /** Freeze the page on iOS as well as desktop, without locking nested dialogs twice. */
 export function useModalScrollLock() {
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     if (openModals === 0) {
       scrollY = window.scrollY;
       const body = document.body;
