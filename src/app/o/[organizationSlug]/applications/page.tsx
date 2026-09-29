@@ -13,6 +13,7 @@ export default async function ApplicationsPage({ params }: Props) {
   if (!authData.user) redirect(`/login?next=${encodeURIComponent(`/o/${organizationSlug}/applications`)}`);
   const { data: organization } = await supabase.from("organizations").select("id, name, slug, assistant_name").eq("slug", organizationSlug).maybeSingle();
   if (!organization) redirect("/setup");
+  const { data: isAdmin } = await supabase.rpc("has_organization_role", { target_organization_id: organization.id, allowed_roles: ["owner", "admin"] });
 
   const [{ data: applications }, { data: sections }, { data: teams }] = await Promise.all([
     supabase.from("membership_applications").select("id, section_id, team_id, player_first_name, player_last_name, player_birth_date, previous_club, message, review_status, activation_status").eq("organization_id", organization.id).order("created_at", { ascending: false }),
@@ -31,6 +32,7 @@ export default async function ApplicationsPage({ params }: Props) {
   }));
 
   return <><AppHeader homeHref={`/o/${organizationSlug}`} accountEmail={authData.user.email} organization={{ ...organization, assistantName: organization.assistant_name }} logoutDestination={`/o/${organizationSlug}`}
+    adminHref={isAdmin ? `/o/${organizationSlug}/admin/roles` : undefined}
     workspaces={[{ id: organization.id, kind: "organization", name: organization.name, description: "Förening", href: `/o/${organizationSlug}`, active: true }, ...(teams ?? []).map((item) => ({ id: item.id, kind: "team" as const, name: item.name, description: "Lag", href: `/o/${organizationSlug}/t/${item.slug}`, active: false }))]}
     navigation={<nav className="header-general-links"><a href={`/o/${organizationSlug}`}>Föreningsöversikt</a><a href={`/o/${organizationSlug}/applications`}>Medlemsansökningar</a></nav>} />
     <main className="application-page"><section className="application-card review-card"><div className="application-page-heading"><div><p className="eyebrow">{organization.name} · Kansliet</p><h1>Medlemsansökningar</h1><p>Godkänn eller avslå ansökningar. Aktiveringslänkar skickas först efter godkännande.</p></div><Link className="secondary" href={`/o/${organizationSlug}`}>Till översikten</Link></div><ApplicationReviewList initialApplications={items} /></section></main></>;
