@@ -12,6 +12,7 @@ type Props = {
   referenceTime: string;
   reminderPending: boolean;
   onOpenActivity: (activity: Activity) => void;
+  onOpenAttendance: (activity: Activity) => void;
   onSendReminder: (activity: Activity) => void;
   missingAttendanceActivities?: Activity[];
 };
@@ -24,7 +25,7 @@ type TeamItem = {
   onClick?: () => void;
 };
 
-export function TeamOverview({ teamName, activity, summary, upcomingActivities, tasks, timeZone, referenceTime, reminderPending, onOpenActivity, onSendReminder, missingAttendanceActivities = [] }: Props) {
+export function TeamOverview({ teamName, activity, summary, upcomingActivities, tasks, timeZone, referenceTime, reminderPending, onOpenActivity, onOpenAttendance, onSendReminder, missingAttendanceActivities = [] }: Props) {
   const start = new Intl.DateTimeFormat("sv-SE", { timeZone, weekday: "long", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(activity.gatheringAt ?? activity.startsAt));
   const weekLimit = new Date(referenceTime).getTime() + 7 * 24 * 60 * 60 * 1000;
   const nextSevenDays = upcomingActivities.filter((item) => new Date(item.startsAt).getTime() <= weekLimit).length;
@@ -35,7 +36,7 @@ export function TeamOverview({ teamName, activity, summary, upcomingActivities, 
       kind: "attendance",
       title: `Rapportera närvaro: ${missing.title}`,
       meta: `Aktiviteten startade ${new Intl.DateTimeFormat("sv-SE", { timeZone, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(missing.startsAt))}`,
-      onClick: () => onOpenActivity(missing),
+      onClick: () => onOpenAttendance(missing),
     });
   }
 
