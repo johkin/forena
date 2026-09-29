@@ -1,3 +1,14 @@
+drop policy if exists "team managers can create member invitations" on public.team_member_invitations;
+create policy "team managers can invite guardians and admins can invite leaders"
+on public.team_member_invitations for insert to authenticated
+with check (
+  public.can_manage_team(team_id)
+  and (role <> 'leader' or public.has_organization_role(organization_id, array['owner', 'admin']))
+  and invited_by = auth.uid()
+  and accepted_at is null
+  and accepted_by is null
+);
+
 create policy "organization admins can record role changes" on public.audit_log
 for insert to authenticated
 with check (
