@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createWorkspace } from "./actions";
+import { AppHeader } from "@/components/app-header";
 
 type Props = {
   searchParams: Promise<{ error?: string }>;
@@ -41,7 +42,8 @@ export default async function SetupPage({ searchParams }: Props) {
     }
   }
 
-  return (
+  return (<>
+    <AppHeader accountEmail={authData.user.email} />
     <main className="auth-page">
       <section className="auth-card setup-card">
         <span className="brand-mark">F</span>
@@ -84,5 +86,5 @@ export default async function SetupPage({ searchParams }: Props) {
         </form>
       </section>
     </main>
-  );
+  </>);
 }
