@@ -42,6 +42,9 @@ jobs:
       - name: Recreate database from migrations
         run: supabase db reset
 
+      - name: Run database security tests
+        run: supabase test db
+
       - name: Generate database types
         run: |
           supabase gen types typescript --local --schema public > /tmp/database.types.ts
