@@ -7,7 +7,7 @@ import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
 
 type EventRow = {
   id: string;
-  event_type: "invitation_scheduled" | "invitation_sent" | "reminder_scheduled" | "reminder_sent" | "invitation_response_changed" | "activity_updated" | "activity_cancelled";
+  event_type: "invitation_scheduled" | "invitation_queued" | "invitation_sent" | "invitation_delivery_failed" | "reminder_scheduled" | "reminder_sent" | "invitation_response_changed" | "activity_updated" | "activity_cancelled";
   channel: "push" | "email" | "sms" | "in_app" | null;
   recipient_count: number | null;
   created_at: string;
@@ -58,7 +58,9 @@ type Props = {
 
 const eventLabels: Record<EventRow["event_type"], string> = {
   invitation_scheduled: "Kallelse schemalagd",
+  invitation_queued: "Kallelse köad",
   invitation_sent: "Kallelse skickad",
+  invitation_delivery_failed: "Notifiering kunde inte levereras",
   reminder_scheduled: "Påminnelse schemalagd",
   reminder_sent: "Påminnelse skickad",
   invitation_response_changed: "Kallelsesvar registrerat",
