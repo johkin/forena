@@ -13,25 +13,25 @@ export async function GET(request: Request) {
   if (!allowed) return NextResponse.json({ error: "Du saknar behörighet för laget" }, { status: 403 });
 
   const today = new Date().toISOString().slice(0, 10);
-  const [{ data: groups, error: groupError }, { data: responsibilities, error: responsibilityError }] = await Promise.all([
+  const [{ data: groups, error: groupError }, { data: assignments, error: assignmentError }] = await Promise.all([
     supabase.from("team_groups").select("id, name").eq("team_id", teamId).order("name"),
     supabase
       .from("team_responsibilities")
-      .select("responsibility_type_id, responsibility_types(id, name)")
+      .select("responsibility_type_id")
       .eq("team_id", teamId)
       .lte("starts_on", today)
       .or(`ends_on.is.null,ends_on.gte.${today}`),
   ]);
-  if (groupError || responsibilityError) return NextResponse.json({ error: "Målgrupperna kunde inte hämtas" }, { status: 500 });
+  if (groupError || assignmentError) return NextResponse.json({ error: "Målgrupperna kunde inte hämtas" }, { status: 500 });
 
-  const roleMap = new Map<string, string>();
-  for (const item of responsibilities ?? []) {
-    const type = Array.isArray(item.responsibility_types) ? item.responsibility_types[0] : item.responsibility_types;
-    if (type?.id && type?.name) roleMap.set(type.id, type.name);
-  }
+  const responsibilityTypeIds = [...new Set((assignments ?? []).map((item) => item.responsibility_type_id))];
+  const { data: responsibilityTypes, error: responsibilityError } = responsibilityTypeIds.length
+    ? await supabase.from("responsibility_types").select("id, name").in("id", responsibilityTypeIds).order("name")
+    : { data: [], error: null };
+  if (responsibilityError) return NextResponse.json({ error: "Lagrollerna kunde inte hämtas" }, { status: 500 });
 
   return NextResponse.json({
     groups: groups ?? [],
-    responsibilities: [...roleMap].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, "sv")),
+    responsibilities: responsibilityTypes ?? [],
   });
 }
