@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { invitationScheduleForOccurrence, type ResponseDueRule } from "@/lib/activity-series";
 import { createClient } from "@/lib/supabase/server";
+import { validateAudienceSelection, type AudienceSelection } from "@/lib/invitation-audience";
 
 type Props = { params: Promise<{ activityId: string }> };
 type Body =
   | { mode: "now"; personIds?: string[] }
-  | { mode: "schedule"; audience?: "players" | "leaders" | "group"; groupId?: string; invitationSendMinutesBefore?: number; responseDueRule?: ResponseDueRule; reminderMinutesBeforeDue?: number; reminderMinutesBeforeDueList?: number[] };
+  | { mode: "schedule"; audience?: "players" | "leaders" | "group" | "selection"; groupId?: string; selection?: AudienceSelection; invitationSendMinutesBefore?: number; responseDueRule?: ResponseDueRule; reminderMinutesBeforeDue?: number; reminderMinutesBeforeDueList?: number[] };
 
 export async function POST(request: Request, { params }: Props) {
   const { activityId } = await params;
@@ -24,7 +25,7 @@ export async function POST(request: Request, { params }: Props) {
   if (body.mode === "now") {
     const personIds = [...new Set((body.personIds ?? []).filter(Boolean))];
     if (!personIds.length) return NextResponse.json({ error: "Välj minst en person" }, { status: 400 });
-    const { data: memberships } = await supabase.from("memberships").select("person_id").eq("team_id", activity.team_id).in("person_id", personIds).in("role", ["participant", "leader"]).is("ends_on", null);
+    const { data: memberships } = await supabase.from("memberships").select("person_id").eq("team_id", activity.team_id).in("person_id", personIds).in("role", ["participant", "leader", "volunteer"]).is("ends_on", null);
     const valid = new Set((memberships ?? []).map((item) => item.person_id));
     if (personIds.some((id) => !valid.has(id))) return NextResponse.json({ error: "Någon av de valda personerna tillhör inte laget" }, { status: 400 });
 
@@ -45,6 +46,11 @@ export async function POST(request: Request, { params }: Props) {
 
   const audience = body.audience;
   if (!audience) return NextResponse.json({ error: "Välj målgrupp" }, { status: 400 });
+  let selection: AudienceSelection | undefined;
+  if (audience === "selection") {
+    try { selection = await validateAudienceSelection(supabase, activity.team_id, body.selection); }
+    catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }
+  }
   if (audience === "group") {
     if (!body.groupId) return NextResponse.json({ error: "Välj en undergrupp" }, { status: 400 });
     const { data: group } = await supabase.from("team_groups").select("id").eq("id", body.groupId).eq("team_id", activity.team_id).maybeSingle();
@@ -72,6 +78,7 @@ export async function POST(request: Request, { params }: Props) {
   const { error } = await supabase.from("activities").update({
     invitation_audience_kind: audience,
     invitation_group_id: audience === "group" ? body.groupId : null,
+    ...(selection ? { invitation_audience_roles: selection.roles, invitation_audience_group_ids: selection.groupIds } : {}),
     invitation_send_at: schedule.invitationSendAt,
     response_due_at: schedule.responseDueAt,
     reminder_send_at: null,

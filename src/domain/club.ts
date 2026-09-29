@@ -47,6 +47,7 @@ export type Activity = {
   organizationId: EntityId;
   teamId: EntityId;
   title: string;
+  description?: string;
   startsAt: string;
   endsAt: string;
   location: string;

@@ -74,6 +74,7 @@ begin
 end;
 $$;
 
+drop trigger if exists invitations_log_response_event on public.invitations;
 create trigger invitations_log_response_event
 after update of response on public.invitations
 for each row

@@ -21,7 +21,7 @@ export async function GET(_request: Request, { params }: Props) {
   const { supabase, activity } = context;
 
   const [{ data: membershipRows }, { data: invitationRows }, { data: report }] = await Promise.all([
-    supabase.from("memberships").select("person_id, role").eq("team_id", activity.team_id).in("role", ["participant", "leader"]).is("ends_on", null),
+    supabase.from("memberships").select("person_id, role").eq("team_id", activity.team_id).in("role", ["participant", "leader", "volunteer"]).is("ends_on", null),
     supabase.from("invitations").select("person_id, response").eq("activity_id", activityId),
     supabase.from("activity_attendance_reports").select("id, reported_at").eq("activity_id", activityId).maybeSingle(),
   ]);
@@ -55,7 +55,7 @@ export async function PUT(request: Request, { params }: Props) {
 
   const body = await request.json().catch(() => null) as { personIds?: string[] } | null;
   const requested = [...new Set((body?.personIds ?? []).filter((id) => typeof id === "string"))];
-  const { data: membershipRows } = await supabase.from("memberships").select("person_id").eq("team_id", activity.team_id).in("role", ["participant", "leader"]).is("ends_on", null);
+  const { data: membershipRows } = await supabase.from("memberships").select("person_id").eq("team_id", activity.team_id).in("role", ["participant", "leader", "volunteer"]).is("ends_on", null);
   const allowedPeople = new Set((membershipRows ?? []).map((item) => item.person_id));
   if (requested.some((id) => !allowedPeople.has(id))) return NextResponse.json({ error: "Närvaro innehåller en person som inte tillhör laget" }, { status: 400 });
 

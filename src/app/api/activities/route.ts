@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { invitationScheduleForOccurrence, type ResponseDueRule } from "@/lib/activity-series";
 import { createClient } from "@/lib/supabase/server";
+import { validateAudienceSelection, type AudienceSelection } from "@/lib/invitation-audience";
 
 type CreateActivityBody = {
   teamId?: string;
@@ -13,8 +14,9 @@ type CreateActivityBody = {
   location?: string;
   invitationMode?: "none" | "now" | "schedule";
   personIds?: string[];
-  invitationAudience?: "players" | "leaders" | "group";
+  invitationAudience?: "players" | "leaders" | "group" | "selection";
   invitationGroupId?: string;
+  invitationSelection?: AudienceSelection;
   invitationSendMinutesBefore?: number;
   responseDueRule?: ResponseDueRule;
   reminderMinutesBeforeDue?: number;
@@ -57,7 +59,11 @@ export async function POST(request: Request) {
   const { data: allowed } = await supabase.rpc("can_manage_team", { target_team_id: team.id });
   if (!allowed) return NextResponse.json({ error: "Du saknar behörighet för laget" }, { status: 403 });
 
-  if (invitationAudience === "group") {
+  let selection: AudienceSelection | undefined;
+  if (invitationAudience === "selection") {
+    try { selection = await validateAudienceSelection(supabase, team.id, body.invitationSelection); }
+    catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }
+  } else if (invitationAudience === "group") {
     if (!invitationGroupId) return NextResponse.json({ error: "Välj en undergrupp" }, { status: 400 });
     const { data: group } = await supabase.from("team_groups").select("id").eq("id", invitationGroupId).eq("team_id", team.id).maybeSingle();
     if (!group) return NextResponse.json({ error: "Undergruppen kunde inte hittas" }, { status: 400 });
@@ -93,6 +99,7 @@ export async function POST(request: Request) {
     reminder_send_at: schedule?.reminderSendAt ?? null,
     invitation_audience_kind: invitationAudience ?? null,
     invitation_group_id: invitationAudience === "group" ? invitationGroupId ?? null : null,
+    ...(selection ? { invitation_audience_roles: selection.roles, invitation_audience_group_ids: selection.groupIds } : {}),
     created_by: authData.user.id,
   }).select("id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location, series_id, status, invitation_send_at, response_due_at, reminder_send_at").single();
 
@@ -123,7 +130,7 @@ export async function POST(request: Request) {
   if (invitationMode === "now") {
     const personIds = [...new Set((body?.personIds ?? []).filter(Boolean))];
     if (!personIds.length) return NextResponse.json({ error: "Aktiviteten skapades, men välj minst en person att kalla" }, { status: 400 });
-    const { data: memberships } = await supabase.from("memberships").select("person_id").eq("team_id", team.id).in("person_id", personIds).in("role", ["participant", "leader"]).is("ends_on", null);
+    const { data: memberships } = await supabase.from("memberships").select("person_id").eq("team_id", team.id).in("person_id", personIds).in("role", ["participant", "leader", "volunteer"]).is("ends_on", null);
     const valid = new Set((memberships ?? []).map((item) => item.person_id));
     if (personIds.some((id) => !valid.has(id))) return NextResponse.json({ error: "Aktiviteten skapades, men någon vald person tillhör inte laget" }, { status: 400 });
     const { error: invitationError } = await supabase.from("invitations").upsert(personIds.map((personId) => ({ organization_id: team.organization_id, activity_id: activity.id, person_id: personId })), { onConflict: "activity_id,person_id", ignoreDuplicates: true });
