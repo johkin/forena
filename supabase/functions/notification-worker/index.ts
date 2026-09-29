@@ -68,10 +68,12 @@ async function sendEmail(to: string, type: string, payload: OutboxPayload) {
 }
 
 function configureWebPush() {
-  const subject = Deno.env.get("VAPID_SUBJECT")?.trim();
+  const subject = Deno.env.get("VAPID_SUBJECT")?.trim() || "https://forena-johkin.vercel.app";
   const publicKey = Deno.env.get("VAPID_PUBLIC_KEY")?.trim();
   const privateKey = Deno.env.get("VAPID_PRIVATE_KEY")?.trim();
-  if (!subject || !publicKey || !privateKey) throw new Error("web_push_transport_not_configured");
+  if (!publicKey || !privateKey) {
+    throw new Error(`Supabase saknar ${[!publicKey && "VAPID_PUBLIC_KEY", !privateKey && "VAPID_PRIVATE_KEY"].filter(Boolean).join(" och ")}`);
+  }
   webpush.setVapidDetails(subject, publicKey, privateKey);
 }
 
