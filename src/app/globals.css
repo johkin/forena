@@ -174,8 +174,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .empty-workspace h1 { max-width: 620px; margin: 0; font-family: Georgia, serif; font-size: clamp(36px, 6vw, 64px); font-weight: 500; letter-spacing: -2px; }
 .empty-workspace p { max-width: 520px; margin: 0 0 14px; color: var(--ink-soft); }
 .empty-workspace .primary { text-decoration: none; }
-.modal-backdrop { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 20px; background: rgba(14, 38, 32, .55); }
-.modal { width: min(620px, 100%); max-height: calc(100vh - 40px); overflow: auto; padding: 26px; border-radius: 18px; background: var(--paper); box-shadow: 0 28px 80px rgba(14, 38, 32, .3); }
+.modal-backdrop { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 20px; background: rgba(14, 38, 32, .55); overscroll-behavior: none; }
+.modal { width: min(620px, 100%); max-height: calc(100dvh - 40px); overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 26px; border-radius: 18px; background: var(--paper); box-shadow: 0 28px 80px rgba(14, 38, 32, .3); }
 .modal form { display: grid; gap: 17px; margin-top: 24px; }
 .modal form > label, .form-row label { display: grid; gap: 7px; color: var(--ink-soft); font-size: 12px; font-weight: 800; }
 .modal input, .modal select, .modal textarea { width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 9px; background: white; color: var(--ink); outline: none; font: inherit; }
