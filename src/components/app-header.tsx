@@ -15,9 +15,10 @@ type Props = {
   accountEmail?: string;
   loginHref?: string;
   logoutDestination?: string;
+  adminHref?: string;
 };
 
-export function AppHeader({ homeHref = "/", navigation, organization, team, workspaces, accountEmail, loginHref, logoutDestination = "/" }: Props) {
+export function AppHeader({ homeHref = "/", navigation, organization, team, workspaces, accountEmail, loginHref, logoutDestination = "/", adminHref }: Props) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -40,6 +41,7 @@ export function AppHeader({ homeHref = "/", navigation, organization, team, work
         <div className="header-menu-heading"><strong>Meny</strong><button type="button" aria-label="Stäng meny" onClick={() => setOpen(false)}>×</button></div>
         {organization && workspaces?.length ? <div className="header-menu-section"><p className="eyebrow">Arbetsyta</p><WorkspaceSwitcher organization={organization} team={team} workspaces={workspaces} /></div> : null}
         {navigation ? <div className="header-menu-section header-menu-navigation">{navigation}</div> : null}
+        {adminHref ? <div className="header-menu-section header-menu-account"><p className="eyebrow">Förening</p><a href={adminHref}>Administrera ledare och roller</a></div> : null}
         <div className="header-menu-section header-menu-account">
           {accountEmail ? <><p className="eyebrow">Konto</p><small className="header-menu-email">{accountEmail}</small><a href="/profile">Min profil</a><LogoutButton destination={logoutDestination} /></>
             : <a href={loginHref ?? `/login?next=${encodeURIComponent(homeHref)}`}>Logga in</a>}
