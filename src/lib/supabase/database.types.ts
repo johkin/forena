@@ -116,7 +116,7 @@ export interface Database {
           id: string;
           activity_id: string;
           invitation_id: string | null;
-          event_type: "invitation_scheduled" | "invitation_sent" | "reminder_scheduled" | "reminder_sent" | "invitation_response_changed" | "activity_updated" | "activity_cancelled";
+          event_type: "invitation_scheduled" | "invitation_queued" | "invitation_sent" | "invitation_delivery_failed" | "reminder_scheduled" | "reminder_sent" | "invitation_response_changed" | "activity_updated" | "activity_cancelled";
           channel: "push" | "email" | "sms" | "in_app" | null;
           recipient_count: number | null;
           metadata: Json;
@@ -126,7 +126,7 @@ export interface Database {
           id?: string;
           activity_id: string;
           invitation_id?: string | null;
-          event_type: "invitation_scheduled" | "invitation_sent" | "reminder_scheduled" | "reminder_sent" | "invitation_response_changed" | "activity_updated" | "activity_cancelled";
+          event_type: "invitation_scheduled" | "invitation_queued" | "invitation_sent" | "invitation_delivery_failed" | "reminder_scheduled" | "reminder_sent" | "invitation_response_changed" | "activity_updated" | "activity_cancelled";
           channel?: "push" | "email" | "sms" | "in_app" | null;
           recipient_count?: number | null;
           metadata?: Json;
@@ -198,7 +198,7 @@ export interface Database {
       accept_membership_application_invitation: { Args: { invitation_token_hash: string }; Returns: { organization_slug: string; team_slug: string }[] };
       claim_person_account: { Args: Record<never, never>; Returns: number };
       queue_activity_reminder: { Args: { target_activity_id: string }; Returns: number };
-      queue_activity_invitation: { Args: { target_activity_id: string }; Returns: number };
+      queue_activity_invitation: { Args: { target_activity_id: string; target_person_ids: string[] }; Returns: number };
       materialize_due_activity_invitations: { Args: { batch_size?: number }; Returns: number };
       queue_due_activity_invitations: { Args: { batch_size?: number }; Returns: number };
       claim_notification_outbox: { Args: { batch_size?: number }; Returns: Database["public"]["Tables"]["notification_outbox"]["Row"][] };

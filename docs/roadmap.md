@@ -32,6 +32,8 @@
 - [x] Lista obesvarade kallelser och köa manuell påminnelse
 - [x] Logga kallelse-, påminnelse- och svarshändelser i aktivitetshistoriken
 - [x] Worker för notification outbox med claim, retries och backoff
+- [x] Rensa avslutade notifieringar och leveransdetaljer efter 90 dagar när aktiviteten också har avslutats; behåll historikevent
+- [ ] Före uppskalning: dimensionera notifieringskön för samtidiga utskick till stora föreningar (nu högst 25 mottagare per minut), parallella workers, lämpliga köindex och övervakning av köfördröjning
 - [x] Kör notification worker i Supabase Edge Function
 - [x] Schemalägg notification worker med Supabase pg_cron + pg_net
 - [x] Leverera kallelser/påminnelser via mejl med Resend
