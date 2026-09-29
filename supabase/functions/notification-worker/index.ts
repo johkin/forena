@@ -31,7 +31,6 @@ function adminClient() {
 }
 
 function notificationContent(type: string, payload: OutboxPayload) {
-  if (type === "test_push") return { subject: "Testnotis från Förena", text: "Pushnotiser fungerar på den här enheten." };
   const title = payload.title || "Aktivitet";
   const when = payload.startsAt
     ? new Intl.DateTimeFormat("sv-SE", { dateStyle: "full", timeStyle: "short", timeZone: "Europe/Stockholm" }).format(new Date(payload.startsAt))
@@ -106,7 +105,7 @@ async function sendPushNotifications(
     title: content.subject,
     body: content.text,
     url: "/",
-    tag: type === "test_push" ? `test:${Date.now()}` : `${type}:${payload.activityId ?? "general"}`,
+    tag: `${type}:${payload.activityId ?? "general"}`,
   });
   let delivered = 0;
   const errors: string[] = [];
@@ -140,22 +139,6 @@ async function sendPushNotifications(
 
 Deno.serve(async (request: Request) => {
   const supabase = adminClient();
-  if (request.method === "POST" && new URL(request.url).searchParams.get("action") === "test-push") {
-    const bearer = request.headers.get("authorization")?.match(/^Bearer (.+)$/i)?.[1];
-    if (!bearer) return Response.json({ error: "Inloggning krävs" }, { status: 401 });
-    const { data: { user }, error: userError } = await supabase.auth.getUser(bearer);
-    if (userError || !user) return Response.json({ error: "Inloggningen kunde inte verifieras" }, { status: 401 });
-    const body = await request.json().catch(() => null) as { endpoint?: unknown } | null;
-    if (typeof body?.endpoint !== "string" || !body.endpoint.startsWith("https://") || body.endpoint.length > 2048) {
-      return Response.json({ error: "Ogiltig push-prenumeration" }, { status: 400 });
-    }
-    const { data: subscription, error: subscriptionError } = await supabase.from("push_subscriptions")
-      .select("id, endpoint, p256dh, auth")
-      .eq("user_id", user.id).eq("endpoint", body.endpoint).is("disabled_at", null).maybeSingle();
-    if (subscriptionError || !subscription) return Response.json({ error: "Aktivera push på den här enheten först" }, { status: 404 });
-    const result = await sendPushNotifications(supabase, [subscription], "test_push", {});
-    return Response.json({ sent: result.status === "sent", error: result.status === "sent" ? null : result.lastError }, { status: result.status === "sent" ? 200 : 502 });
-  }
   const token = request.headers.get("x-forena-cron-token") ?? "";
   const { data: authorized, error: authError } = await supabase.rpc("authorize_notification_worker", { provided_token: token });
   if (authError || authorized !== true) return Response.json({ error: "Unauthorized" }, { status: 401 });
