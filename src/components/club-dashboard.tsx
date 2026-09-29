@@ -10,6 +10,7 @@ import { TeamCalendar } from "@/components/team-calendar";
 import { PersonalOverview } from "@/components/personal-overview";
 import { TeamOverview } from "@/components/team-overview";
 import { ActivityDetailModal } from "@/components/activity-detail-modal";
+import { AttendanceModal } from "@/components/attendance-modal";
 import { TeamMenu } from "@/components/team-menu";
 import { AppHeader } from "@/components/app-header";
 import type { ActivityDraft } from "@/lib/ai/activity-draft";
@@ -41,6 +42,8 @@ export function ClubDashboard({ organization, sections, team, activity, members,
   const [activityDraft, setActivityDraft] = useState<ActivityDraft>();
   const [activePage, setActivePage] = useState<"overview" | "calendar">("overview");
   const [selectedActivity, setSelectedActivity] = useState<Activity>();
+  const [attendanceActivity, setAttendanceActivity] = useState<Activity>();
+  const [pendingAttendance, setPendingAttendance] = useState(missingAttendanceActivities);
   const [editingActivity, setEditingActivity] = useState<Activity>();
   const [showInvitationForm, setShowInvitationForm] = useState(false);
   const [savingInvitation, setSavingInvitation] = useState(false);
@@ -135,8 +138,9 @@ export function ClubDashboard({ organization, sections, team, activity, members,
                       referenceTime={referenceTime}
                       reminderPending={sendingReminder}
                       onOpenActivity={setSelectedActivity}
+                      onOpenAttendance={setAttendanceActivity}
                       onSendReminder={(item) => void sendReminder(item)}
-                      missingAttendanceActivities={missingAttendanceActivities}
+                      missingAttendanceActivities={pendingAttendance}
                     /> : null}
                   </div>
                   <aside className="overview-assistant">
@@ -155,6 +159,7 @@ export function ClubDashboard({ organization, sections, team, activity, members,
       </div>
       {activityEditorMode ? <ActivityEditorModal mode={activityEditorMode} organization={organization} team={team} members={rosterMembers} activity={activityEditorMode === "edit" ? (editingActivity ?? currentActivity) : undefined} draft={activityEditorMode === "create" ? activityDraft : undefined} source={source} onClose={() => { setActivityEditorMode(null); setActivityDraft(undefined); }} onNotice={setNotice} /> : null}
       {selectedActivity ? <ActivityDetailModal activity={selectedActivity} organization={organization} team={team} canEdit={canManageTeam} onClose={() => setSelectedActivity(undefined)} onEdit={(item) => { setActivityDraft(undefined); setEditingActivity(item); setSelectedActivity(undefined); setActivityEditorMode("edit"); }} /> : null}
+      {attendanceActivity ? <AttendanceModal activityId={attendanceActivity.id} onClose={() => setAttendanceActivity(undefined)} onSaved={() => setPendingAttendance((current) => current.filter((item) => item.id !== attendanceActivity.id))} /> : null}
       {showInvitationForm && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowInvitationForm(false); }}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="invitation-form-title"><div className="card-heading"><div><p className="eyebrow">{team.name}</p><h2 id="invitation-form-title">Bjud in ledare</h2></div><button className="icon-button" onClick={() => setShowInvitationForm(false)} aria-label="Stäng" type="button">✕</button></div><form onSubmit={(event) => { event.preventDefault(); void inviteTeamMember(event.currentTarget); }}><label>E-postadress<input name="email" type="email" required autoComplete="email" placeholder="namn@example.se" /></label><p className="form-help">Nya spelare och målsmän kommer in genom föreningens medlemsansökan. Den här länken ger en godkänd ledare åtkomst till laget.</p><div className="modal-actions"><button className="secondary" onClick={() => setShowInvitationForm(false)} type="button">Avbryt</button><button className="primary" disabled={savingInvitation} type="submit">{savingInvitation ? "Skickar…" : "Skicka inbjudan"}</button></div></form></section></div>}
     </main>
   );
