@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { attendanceNames } from "@/lib/attendance-names";
 
 type Row = {
   personId: string;
@@ -32,6 +33,9 @@ export function AttendanceModal({ activityId, onClose, onSaved }: Props) {
   }, [activityId]);
 
   const accepted = useMemo(() => rows.filter((row) => row.response === "accepted"), [rows]);
+  const names = useMemo(() => attendanceNames(rows), [rows]);
+  const absent = rows.filter((row) => !selected.has(row.personId));
+  const present = rows.filter((row) => selected.has(row.personId));
   const toggle = (id: string) => setSelected((current) => {
     const next = new Set(current);
     if (next.has(id)) next.delete(id); else next.add(id);
@@ -55,14 +59,21 @@ export function AttendanceModal({ activityId, onClose, onSaved }: Props) {
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <section className="modal attendance-modal" role="dialog" aria-modal="true" aria-labelledby="attendance-title">
       <div className="card-heading"><div><p className="eyebrow">Aktivitet</p><h2 id="attendance-title">Rapportera närvaro</h2></div><button className="icon-button" onClick={onClose} aria-label="Stäng" type="button">✕</button></div>
-      <p className="overview-empty">{reportedAt ? "Närvaron är redan rapporterad. Du kan justera den nedan." : "Markera de personer som faktiskt deltog."}</p>
+      <p className="overview-empty">{reportedAt ? "Närvaron är redan rapporterad. Du kan justera den nedan." : "Tryck på namnen för att flytta personer mellan listorna. Spara när du är klar."}</p>
       {error ? <div className="auth-error">{error}</div> : null}
       <div className="attendance-actions"><button className="secondary" type="button" onClick={addAccepted}>Lägg till alla anmälda ({accepted.length})</button><span>{selected.size} närvarande</span></div>
-      <div className="attendance-roster">
-        {rows.map((row) => <label key={row.personId} className="attendance-row">
-          <input type="checkbox" checked={selected.has(row.personId)} onChange={() => toggle(row.personId)} />
-          <span><strong>{row.displayName}</strong><small>{row.role === "leader" ? "Ledare" : row.response === "accepted" ? "Anmäld" : row.response === "declined" ? "Tackat nej" : row.response === "pending" ? "Ej svarat" : "Ej kallad"}</small></span>
-        </label>)}
+      <div className="attendance-columns">
+        {([{ title: "Ej närvarande", people: absent, isPresent: false }, { title: "Närvarande", people: present, isPresent: true }] as const).map((column) =>
+          <section className="attendance-column" key={column.title} aria-label={`${column.title}, ${column.people.length} personer`}>
+            <h3 className={column.isPresent ? "attendance-present-heading" : "attendance-absent-heading"}>{column.title} ({column.people.length})</h3>
+            <div className="attendance-roster">
+              {column.people.map((row) => <button key={row.personId} type="button" className="attendance-person" onClick={() => toggle(row.personId)}
+                aria-label={`${row.displayName}, ${row.role === "leader" ? "ledare" : "spelare"}. Flytta till ${column.isPresent ? "ej närvarande" : "närvarande"}`} title={row.displayName}>
+                <strong>{names.get(row.personId)}</strong>
+                <small>{row.role === "leader" ? "Ledare" : row.response === "accepted" ? "Anmäld" : row.response === "declined" ? "Tackat nej" : row.response === "pending" ? "Ej svarat" : "Ej kallad"}</small>
+              </button>)}
+            </div>
+          </section>)}
       </div>
       <div className="modal-actions"><button className="secondary" onClick={onClose} type="button">Avbryt</button><button className="primary" disabled={saving} onClick={save} type="button">{saving ? "Sparar…" : "Spara närvaro"}</button></div>
     </section>
