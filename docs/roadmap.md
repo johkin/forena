@@ -36,14 +36,18 @@
 - [x] Schemalägg notification worker med Supabase pg_cron + pg_net
 - [x] Leverera kallelser/påminnelser via mejl med Resend
 - [x] Visa leveransstatus per kanal och mottagare i aktivitetsvyn
-- [ ] Skapa och lagra Web Push-subscriptions per användare och enhet
-- [ ] UI för att aktivera/inaktivera pushnotiser
-- [ ] VAPID-konfiguration för Web Push
-- [ ] Skicka Web Push från notification workern
-- [ ] Hantera ogiltiga/utgångna push-subscriptions (404/410)
-- [ ] notificationclick öppnar rätt aktivitet i Förena
-- [ ] Visa push-leveransstatus i aktivitetsvyn
-- [ ] Registrera närvaro som ledare
+- [x] Skapa och lagra Web Push-subscriptions per användare och enhet
+- [x] UI för att aktivera/inaktivera pushnotiser
+- [x] VAPID-konfiguration för Web Push
+- [x] Skicka Web Push från notification workern
+- [x] Hantera ogiltiga/utgångna push-subscriptions (404/410)
+- [ ] notificationclick öppnar rätt aktivitet i Förena (klick öppnar appen, men push-payloaden länkar ännu till startsidan)
+- [x] Visa push-leveransstatus i aktivitetsvyn
+- [x] Registrera närvaro som ledare
+- [x] Prioritera oregistrerad närvaro för påbörjade aktiviteter i lagvyn
+- [x] Välj personer för omedelbar kallelse och målgrupper för schemalagd kallelse
+- [x] Lägg till kallelser när en aktivitet redigeras
+- [x] Stöd flera schemalagda påminnelser per aktivitet
 
 ### Nästa leverans: smart kallelseflöde
 
@@ -255,7 +259,7 @@ cupanmälan. Den skickar inte kallelser eller anmäler laget externt på egen ha
 - [x] Aktivitetsspecifik eventhistorik för kallelser och svar
 - [ ] Full revisionslogg och GDPR-funktioner
 - [x] Leveransstatus för e-postnotiser
-- [ ] Web Push-transport och push-leveransstatus
+- [x] Web Push-transport och push-leveransstatus i koden
 - [ ] Testa Web Push på iPhone PWA, Android och desktop
 - [ ] Verifiera e-postfallback när push saknas eller misslyckas
 - [ ] Mobil tillgänglighetsgranskning
