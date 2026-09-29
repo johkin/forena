@@ -7,13 +7,14 @@ export type AudienceSelection = { roles: AudienceRole[]; groupIds: string[]; res
 export function parseAudienceSelection(input: unknown): AudienceSelection {
   if (!input || typeof input !== "object") throw new Error("Välj minst en målgrupp.");
   const value = input as Record<string, unknown>;
-  if (!Array.isArray(value.roles) || !Array.isArray(value.groupIds) || !Array.isArray(value.responsibilityTypeIds ?? []) ||
+  const responsibilityTypeIdsInput = value.responsibilityTypeIds ?? [];
+  if (!Array.isArray(value.roles) || !Array.isArray(value.groupIds) || !Array.isArray(responsibilityTypeIdsInput) ||
       value.roles.some((role) => !["participant", "leader"].includes(role)) ||
       value.groupIds.some((id) => typeof id !== "string") ||
-      (value.responsibilityTypeIds ?? []).some((id) => typeof id !== "string")) throw new Error("Ogiltig målgrupp.");
+      responsibilityTypeIdsInput.some((id: unknown) => typeof id !== "string")) throw new Error("Ogiltig målgrupp.");
   const roles = [...new Set(value.roles)] as AudienceRole[];
   const groupIds = [...new Set(value.groupIds)] as string[];
-  const responsibilityTypeIds = [...new Set((value.responsibilityTypeIds ?? []) as string[])];
+  const responsibilityTypeIds = [...new Set(responsibilityTypeIdsInput as string[])];
   if (!roles.length && !groupIds.length && !responsibilityTypeIds.length) throw new Error("Välj minst en målgrupp.");
   return { roles, groupIds, responsibilityTypeIds };
 }
