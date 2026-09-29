@@ -25,6 +25,7 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
 
   const { data: canManage } = await supabase.rpc("can_manage_team", { target_team_id: team.id });
   if (!canManage) redirect(`/o/${organizationSlug}/t/${teamSlug}`);
+  const { data: isAdmin } = await supabase.rpc("has_organization_role", { target_organization_id: organization.id, allowed_roles: ["owner", "admin"] });
 
   const { data: accessibleTeams } = await supabase.from("teams").select("id, name, slug").eq("organization_id", organization.id).order("name");
   const workspaces = [
@@ -57,6 +58,7 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
         team={{ id: team.id, slug: team.slug, name: team.name, organizationId: team.organization_id, sectionId: team.section_id, season: team.season ?? "" }}
         workspaces={workspaces}
         logoutDestination={`/o/${organizationSlug}/t/${teamSlug}`}
+        adminHref={isAdmin ? `/o/${organizationSlug}/admin/roles` : undefined}
       />
       <div className="shell">
         <TeamMenu organizationSlug={organizationSlug} teamSlug={teamSlug} teamName={team.name} canManageTeam={Boolean(canManage)} leaderView activeItem="members" hideTrigger />
