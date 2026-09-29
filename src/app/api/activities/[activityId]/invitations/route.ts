@@ -85,7 +85,7 @@ export async function POST(request: Request, { params }: Props) {
   const { error } = await supabase.from("activities").update({
     invitation_audience_kind: audience,
     invitation_group_id: audience === "group" ? body.groupId : null,
-    ...(selection ? { invitation_audience_roles: selection.roles, invitation_audience_group_ids: selection.groupIds } : {}),
+    ...(selection ? { invitation_audience_roles: selection.roles, invitation_audience_group_ids: selection.groupIds, invitation_audience_responsibility_type_ids: selection.responsibilityTypeIds } : {}),
     invitation_send_at: schedule.invitationSendAt,
     response_due_at: schedule.responseDueAt,
     reminder_send_at: null,
