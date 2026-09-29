@@ -135,7 +135,7 @@ export async function POST(request: Request) {
       reminder_send_at: schedules[index]?.reminderSendAt ?? null,
       invitation_audience_kind: invitationAudience ?? null,
       invitation_group_id: invitationAudience === "group" ? invitationGroupId ?? null : null,
-      ...(selection ? { invitation_audience_roles: selection.roles, invitation_audience_group_ids: selection.groupIds } : {}),
+      ...(selection ? { invitation_audience_roles: selection.roles, invitation_audience_group_ids: selection.groupIds, invitation_audience_responsibility_type_ids: selection.responsibilityTypeIds } : {}),
       created_by: authData.user.id,
     })),
   ).select("id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location, series_id, status, invitation_send_at, response_due_at, reminder_send_at");

@@ -133,7 +133,7 @@ export function ClubDashboard({ organization, sections, team, activity, members,
         </section>
       </div>
       {activityEditorMode ? <ActivityEditorModal mode={activityEditorMode} organization={organization} team={team} members={rosterMembers} activity={activityEditorMode === "edit" ? (editingActivity ?? currentActivity) : undefined} draft={activityEditorMode === "create" ? activityDraft : undefined} source={source} onClose={() => { setActivityEditorMode(null); setActivityDraft(undefined); }} onNotice={setNotice} /> : null}
-      {selectedActivity ? <ActivityDetailModal activity={selectedActivity} organization={organization} team={team} canEdit={canManageTeam} onClose={() => setSelectedActivity(undefined)} onEdit={(item) => { setActivityDraft(undefined); setEditingActivity(item); setSelectedActivity(undefined); setActivityEditorMode("edit"); }} /> : null}
+      {selectedActivity ? <ActivityDetailModal activity={selectedActivity} organization={organization} team={team} canEdit={canManageTeam} rosterMembers={rosterMembers} onClose={() => setSelectedActivity(undefined)} onEdit={(item) => { setActivityDraft(undefined); setEditingActivity(item); setSelectedActivity(undefined); setActivityEditorMode("edit"); }} /> : null}
       {attendanceActivity ? <AttendanceModal activityId={attendanceActivity.id} onClose={() => setAttendanceActivity(undefined)} onSaved={() => setPendingAttendance((current) => current.filter((item) => item.id !== attendanceActivity.id))} /> : null}
     </main>
   );

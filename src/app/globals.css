@@ -479,8 +479,11 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .personal-invitation-response { padding-left:42px; min-width:0; }
 }
 
-.delivery-status { margin-top:22px; padding-top:18px; border-top:1px solid var(--line); }
-.delivery-status h3 { margin:0; font-size:16px; }
+.delivery-status, .activity-invitation-add { margin-top:22px; padding-top:18px; border-top:1px solid var(--line); }
+.delivery-status > summary, .activity-invitation-add > summary { cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:15px; font-weight:800; color:var(--ink); }
+.delivery-status > summary small { color:var(--ink-soft); font-size:12px; font-weight:600; }
+.delivery-status[open] > summary, .activity-invitation-add[open] > summary { margin-bottom:14px; }
+.activity-invitation-add-body { display:grid; gap:10px; }
 .delivery-summary { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
 .delivery-summary span { padding:7px 10px; border-radius:999px; background:var(--cream); color:var(--ink-soft); font-size:11px; }
 .delivery-summary strong { color:var(--ink); }

@@ -10,8 +10,9 @@ import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
 
 type Props = { mode: "create" | "edit"; organization: Organization; team: Team; members: Member[]; activity?: Activity; draft?: ActivityDraft; source: "database" | "demo"; onClose: () => void; onNotice: (notice: string) => void; };
 const weekdayOptions = [[1,"Mån"],[2,"Tis"],[3,"Ons"],[4,"Tor"],[5,"Fre"],[6,"Lör"],[7,"Sön"]] as const;
-const roleLabels: Record<AudienceRole,string> = { participant:"Spelare",leader:"Ledare",volunteer:"Övriga roller" };
-const roles: AudienceRole[] = ["participant","leader","volunteer"];
+const roleLabels: Record<AudienceRole,string> = { participant:"Spelare",leader:"Ledare",volunteer:"Övriga" };
+const directRoles: AudienceRole[] = ["participant","leader","volunteer"];
+const scheduledRoles: AudienceRole[] = ["participant","leader"];
 
 function Help({children,label}:{children:React.ReactNode;label:string}) {
   return <details className="editor-help"><summary aria-label={`Hjälp: ${label}`} title={`Hjälp: ${label}`}>?</summary><p>{children}</p></details>;
@@ -35,8 +36,10 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
   const [pending,setPending]=useState(false);
   const [error,setError]=useState<string>();
   const [groups,setGroups]=useState<{id:string;name:string}[]>([]);
+  const [responsibilities,setResponsibilities]=useState<{id:string;name:string}[]>([]);
   const [selectedRoles,setSelectedRoles]=useState<Set<AudienceRole>>(new Set(["participant","leader"]));
   const [selectedGroups,setSelectedGroups]=useState<Set<string>>(new Set());
+  const [selectedResponsibilities,setSelectedResponsibilities]=useState<Set<string>>(new Set());
   const [invitationMode,setInvitationMode]=useState<"none"|"now"|"schedule">(draft?"now":mode==="create"?"schedule":"none");
   const [selectedPeople,setSelectedPeople]=useState<Set<string>>(new Set(draft?members.filter(member=>member.teamRole==="participant").map(member=>member.id):[]));
   const [descriptionOpen,setDescriptionOpen]=useState(Boolean(draft?.description||activity?.description));
@@ -47,14 +50,14 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
   const invited=members.filter(member=>selectedPeople.has(member.id));
   const available=members.filter(member=>!selectedPeople.has(member.id));
   const recurring=mode==="create"&&kind==="series";
-  useEffect(()=>{if(source!=="database")return;fetch(`/api/team-groups?teamId=${encodeURIComponent(team.id)}`).then(r=>r.ok?r.json():{groups:[]}).then(body=>setGroups(body.groups??[])).catch(()=>setGroups([]));},[mode,source,team.id]);
+  useEffect(()=>{if(source!=="database")return;fetch(`/api/team-groups?teamId=${encodeURIComponent(team.id)}`).then(r=>r.ok?r.json():{groups:[],responsibilities:[]}).then(body=>{setGroups(body.groups??[]);setResponsibilities(body.responsibilities??[]);}).catch(()=>{setGroups([]);setResponsibilities([]);});},[mode,source,team.id]);
 
   function togglePerson(id:string) {
     setSelectedPeople(current=>{const next=new Set(current);if(next.has(id))next.delete(id);else next.add(id);return next;});
   }
 
   function peopleColumn(people:Member[],selected:boolean) {
-    return roles.map(role=>{
+    return directRoles.map(role=>{
       const matching=people.filter(member=>member.teamRole===role);
       return matching.length?<div className="person-picker-group" key={role}>
         <h4>{roleLabels[role]} ({matching.length})</h4>
@@ -79,8 +82,8 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
       const responseDueRule=String(data.get("responseDueRule")||"6h") as ResponseDueRule;
       const reminderMinutesBeforeDue=reminderOffsets[0]??0;
       const invitationAudience=invitationMode==="schedule"?"selection":undefined;
-      const invitationSelection={roles:[...selectedRoles],groupIds:[...selectedGroups]};
-      if(invitationMode==="schedule"&&!invitationSelection.roles.length&&!invitationSelection.groupIds.length) throw new Error("Välj minst en målgrupp.");
+      const invitationSelection={roles:[...selectedRoles],groupIds:[...selectedGroups],responsibilityTypeIds:[...selectedResponsibilities]};
+      if(invitationMode==="schedule"&&!invitationSelection.roles.length&&!invitationSelection.groupIds.length&&!invitationSelection.responsibilityTypeIds.length) throw new Error("Välj minst en målgrupp.");
       if(invitationMode==="now"&&!selectedPeople.size) throw new Error("Välj minst en person att kalla.");
       if(invitationMode==="schedule") occurrences.forEach(item=>invitationScheduleForOccurrence(item.startsAt,timeZone,{invitationSendMinutesBefore,responseDueRule,reminderMinutesBeforeDue}));
       setPreview(occurrences);
@@ -148,7 +151,8 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
           {invitationMode==="schedule"?<div className="editor-invitation-body">
             <div className="editor-inline-heading"><strong>Målgrupper</strong><Help label="Målgrupper">Valda roller och undergrupper kombineras utan dubletter. Personerna bestäms när kallelsen skickas, så ändringar i laget följer med.</Help></div>
             <div className="audience-options">
-              {roles.map(role=><label key={role}><input type="checkbox" checked={selectedRoles.has(role)} onChange={()=>setSelectedRoles(current=>{const next=new Set(current);if(next.has(role))next.delete(role);else next.add(role);return next;})}/>{roleLabels[role]}</label>)}
+              {scheduledRoles.map(role=><label key={role}><input type="checkbox" checked={selectedRoles.has(role)} onChange={()=>setSelectedRoles(current=>{const next=new Set(current);if(next.has(role))next.delete(role);else next.add(role);return next;})}/>{roleLabels[role]}</label>)}
+              {responsibilities.map(role=><label key={role.id}><input type="checkbox" checked={selectedResponsibilities.has(role.id)} onChange={()=>setSelectedResponsibilities(current=>{const next=new Set(current);if(next.has(role.id))next.delete(role.id);else next.add(role.id);return next;})}/>{role.name}</label>)}
               {groups.map(group=><label key={group.id}><input type="checkbox" checked={selectedGroups.has(group.id)} onChange={()=>setSelectedGroups(current=>{const next=new Set(current);if(next.has(group.id))next.delete(group.id);else next.add(group.id);return next;})}/>{group.name}</label>)}
             </div>
             <div className="form-row"><label>Skicka kallelsen<select name="invitationSendMinutesBefore" defaultValue="10080"><option value="20160">14 dagar före</option><option value="10080">7 dagar före</option><option value="4320">3 dagar före</option><option value="2880">2 dagar före</option><option value="1440">1 dag före</option><option value="720">12 timmar före</option><option value="360">6 timmar före</option><option value="60">1 timme före</option></select></label><label>Svara senast<select name="responseDueRule" defaultValue="6h"><option value="0h">Vid aktivitetsstart</option><option value="1h">1 timme före</option><option value="2h">2 timmar före</option><option value="6h">6 timmar före</option><option value="previous-midnight">Dagen innan kl 00:00</option><option value="1d">1 dag före</option><option value="2d">2 dagar före</option><option value="3d">3 dagar före</option></select></label></div>

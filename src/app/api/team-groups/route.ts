@@ -12,11 +12,26 @@ export async function GET(request: Request) {
   const { data: allowed } = await supabase.rpc("can_manage_team", { target_team_id: teamId });
   if (!allowed) return NextResponse.json({ error: "Du saknar behörighet för laget" }, { status: 403 });
 
-  const { data: groups, error } = await supabase
-    .from("team_groups")
-    .select("id, name")
-    .eq("team_id", teamId)
-    .order("name");
-  if (error) return NextResponse.json({ error: "Undergrupperna kunde inte hämtas" }, { status: 500 });
-  return NextResponse.json({ groups: groups ?? [] });
+  const today = new Date().toISOString().slice(0, 10);
+  const [{ data: groups, error: groupError }, { data: assignments, error: assignmentError }] = await Promise.all([
+    supabase.from("team_groups").select("id, name").eq("team_id", teamId).order("name"),
+    supabase
+      .from("team_responsibilities")
+      .select("responsibility_type_id")
+      .eq("team_id", teamId)
+      .lte("starts_on", today)
+      .or(`ends_on.is.null,ends_on.gte.${today}`),
+  ]);
+  if (groupError || assignmentError) return NextResponse.json({ error: "Målgrupperna kunde inte hämtas" }, { status: 500 });
+
+  const responsibilityTypeIds = [...new Set((assignments ?? []).map((item) => item.responsibility_type_id))];
+  const { data: responsibilityTypes, error: responsibilityError } = responsibilityTypeIds.length
+    ? await supabase.from("responsibility_types").select("id, name").in("id", responsibilityTypeIds).order("name")
+    : { data: [], error: null };
+  if (responsibilityError) return NextResponse.json({ error: "Lagrollerna kunde inte hämtas" }, { status: 500 });
+
+  return NextResponse.json({
+    groups: groups ?? [],
+    responsibilities: responsibilityTypes ?? [],
+  });
 }
