@@ -74,9 +74,11 @@ export function TeamOverview({ teamName, activity, summary, upcomingActivities, 
     </button>
 
     <div className="team-status-metrics">
-      <div><strong>{summary.accepted}</strong><span>kommer</span></div>
-      <div><strong>{summary.declined}</strong><span>kan inte</span></div>
-      <div><strong>{summary.pending}</strong><span>ej svarat</span></div>
+      {canManageInvitations ? <>
+        <div><strong>{summary.accepted}</strong><span>kommer</span></div>
+        <div><strong>{summary.declined}</strong><span>kan inte</span></div>
+        <div><strong>{summary.pending}</strong><span>ej svarat</span></div>
+      </> : null}
       <div><strong>{nextSevenDays}</strong><span>aktiviteter / 7 dagar</span></div>
     </div>
 
