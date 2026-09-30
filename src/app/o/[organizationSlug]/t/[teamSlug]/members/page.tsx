@@ -23,7 +23,7 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
     : { data: null };
   if (!organization || !team) redirect("/setup");
 
-  const { data: canManage } = await supabase.rpc("can_manage_team", { target_team_id: team.id });
+  const { data: canManage } = await supabase.rpc("has_team_permission", { target_team_id: team.id, target_permission: "roster.manage" });
   if (!canManage) redirect(`/o/${organizationSlug}/t/${teamSlug}`);
   const { data: isAdmin } = await supabase.rpc("has_organization_role", { target_organization_id: organization.id, allowed_roles: ["owner", "admin"] });
 
