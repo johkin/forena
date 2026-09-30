@@ -32,7 +32,10 @@ values ('a4000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-0000000
 
 insert into public.people (id, organization_id, user_id, display_name) values
   ('a5000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', null, 'Child A'),
-  ('a5000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000003', 'Member B');
+  ('a5000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000003', 'Member B')
+-- Organization membership already creates the user's person via a trigger.
+on conflict (organization_id, user_id) do update
+  set id = excluded.id, display_name = excluded.display_name;
 
 insert into public.person_guardians (organization_id, person_id, guardian_user_id)
 values ('a1000000-0000-0000-0000-000000000001', 'a5000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000002');
