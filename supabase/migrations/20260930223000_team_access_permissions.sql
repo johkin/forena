@@ -176,14 +176,6 @@ join public.team_access_profiles profile
  end
 on conflict do nothing;
 
-alter table public.team_responsibilities
-  drop column user_id;
-
-alter table public.team_responsibilities
-  add constraint team_responsibilities_person_type_start_key
-  unique (team_id, person_id, responsibility_type_id, starts_on);
-
-
 create or replace function public.materialize_due_activity_invitations(batch_size integer default 100)
 returns integer
 language plpgsql
@@ -326,6 +318,14 @@ begin
   return inserted_count;
 end;
 $materialize$;
+
+alter table public.team_responsibilities
+  drop column user_id;
+
+alter table public.team_responsibilities
+  add constraint team_responsibilities_person_type_start_key
+  unique (team_id, person_id, responsibility_type_id, starts_on);
+
 
 create or replace function private.has_team_permission(
   target_team_id uuid,
