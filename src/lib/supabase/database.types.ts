@@ -72,8 +72,8 @@ export interface Database {
         OrganizationScoped & { person_id: string; guardian_user_id: string; contact_name?: string | null; contact_phone?: string | null; created_at?: string }
       >;
       memberships: Table<
-        Timestamped & OrganizationScoped & { id: string; person_id: string; team_id: string | null; role: "participant" | "leader" | "volunteer"; leader_title: string | null; is_primary_contact: boolean; starts_on: string; ends_on: string | null },
-        OrganizationScoped & { id?: string; person_id: string; team_id?: string | null; role: "participant" | "leader" | "volunteer"; leader_title?: string | null; is_primary_contact?: boolean; starts_on?: string; ends_on?: string | null; created_at?: string }
+        Timestamped & OrganizationScoped & { id: string; person_id: string; team_id: string | null; role: "participant" | "leader"; leader_title: string | null; is_primary_contact: boolean; starts_on: string; ends_on: string | null },
+        OrganizationScoped & { id?: string; person_id: string; team_id?: string | null; role: "participant" | "leader"; leader_title?: string | null; is_primary_contact?: boolean; starts_on?: string; ends_on?: string | null; created_at?: string }
       >;
       team_groups: Table<
         Timestamped & OrganizationScoped & { id: string; team_id: string; name: string; updated_at: string },
@@ -155,8 +155,8 @@ export interface Database {
         OrganizationScoped & { id?: string; name: string; slug: string; capabilities?: string[]; created_at?: string; updated_at?: string }
       >;
       team_responsibilities: Table<
-        Timestamped & OrganizationScoped & { id: string; team_id: string; user_id: string; responsibility_type_id: string; starts_on: string; ends_on: string | null },
-        OrganizationScoped & { id?: string; team_id: string; user_id: string; responsibility_type_id: string; starts_on?: string; ends_on?: string | null; created_at?: string }
+        Timestamped & OrganizationScoped & { id: string; team_id: string; user_id: string | null; person_id: string; responsibility_type_id: string; starts_on: string; ends_on: string | null },
+        OrganizationScoped & { id?: string; team_id: string; user_id?: string | null; person_id: string; responsibility_type_id: string; starts_on?: string; ends_on?: string | null; created_at?: string }
       >;
       ai_generation_runs: Table<
         Timestamped & OrganizationScoped & { id: string; team_id: string; requested_by: string | null; feature: "team_briefing"; model: string; status: "success" | "fallback"; input_tokens: number | null; output_tokens: number | null; latency_ms: number; signal_count: number; error_code: string | null },

@@ -257,27 +257,17 @@ export async function POST(request: Request) {
           description: "Hämta en översiktlig lista med enbart visningsnamnen på aktiva personer i laget. Använd endast när frågan gäller vilka som är med i laget.",
           inputSchema: jsonSchema<Record<string, never>>({ type: "object", properties: {}, additionalProperties: false }),
           execute: async () => {
-            const [{ data: memberships }, { data: teamStaff }] = await Promise.all([
-              supabase.from("memberships").select("person_id").eq("team_id", teamId).is("ends_on", null),
-              supabase.from("team_staff").select("user_id").eq("team_id", teamId),
-            ]);
+            const { data: memberships } = await supabase
+              .from("memberships")
+              .select("person_id")
+              .eq("team_id", teamId)
+              .in("role", ["participant", "leader"])
+              .is("ends_on", null);
             const personIds = [...new Set((memberships ?? []).map((membership) => membership.person_id))];
-            const staffUserIds = [...new Set((teamStaff ?? []).map((staff) => staff.user_id))];
-            const [{ data: memberPeople }, { data: staffPeople }] = await Promise.all([
-              personIds.length
-                ? supabase.from("people").select("id, display_name").in("id", personIds)
-                : Promise.resolve({ data: [] }),
-              staffUserIds.length
-                ? supabase.from("people").select("id, display_name").eq("organization_id", team.organization_id).in("user_id", staffUserIds)
-                : Promise.resolve({ data: [] }),
-            ]);
-            const peopleById = new Map(
-              [...(memberPeople ?? []), ...(staffPeople ?? [])].map((person) => [person.id, person]),
-            );
-            const names = [...peopleById.values()]
-              .map((person) => person.display_name)
-              .sort((left, right) => left.localeCompare(right, "sv"));
-            return { names };
+            const { data: people } = personIds.length
+              ? await supabase.from("people").select("display_name").in("id", personIds).order("display_name")
+              : { data: [] };
+            return { names: (people ?? []).map((person) => person.display_name) };
           },
         }),
         getAcceptedParticipantNames: tool({

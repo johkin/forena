@@ -177,7 +177,7 @@ export async function getTeamDashboard(
     .from("memberships")
     .select("person_id, role")
     .eq("team_id", teamRow.id)
-    .in("role", ["participant", "leader", "volunteer"])
+    .in("role", ["participant", "leader"])
     .is("ends_on", null);
   const { data: taskRows } = await supabase
     .from("team_tasks")
@@ -241,10 +241,10 @@ export async function getTeamDashboard(
     guardianName: guardianByPersonId.get(person.id)?.contact_name ?? undefined,
     guardianPhone: guardianByPersonId.get(person.id)?.contact_phone ?? undefined,
   }));
-  const rosterRoleByMemberId = new Map((rosterRows ?? []).map((membership) => [membership.person_id, membership.role]));
+  const rosterRelationByMemberId = new Map((rosterRows ?? []).map((membership) => [membership.person_id, membership.role === "participant" ? "player" as const : "leader" as const]));
   const rosterMembers = members
-    .filter((member) => rosterRoleByMemberId.has(member.id))
-    .map((member) => ({ ...member, teamRole: rosterRoleByMemberId.get(member.id) }));
+    .filter((member) => rosterRelationByMemberId.has(member.id))
+    .map((member) => ({ ...member, teamRelation: rosterRelationByMemberId.get(member.id) }));
   const upcomingActivities: Activity[] = (upcomingActivityRows ?? []).map((item) => ({
     id: item.id, organizationId: item.organization_id, teamId: item.team_id ?? team.id, title: item.title, description: item.description_markdown,
     gatheringAt: item.gathering_at ?? undefined, startsAt: item.starts_at, endsAt: item.ends_at, location: item.location,
