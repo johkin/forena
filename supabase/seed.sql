@@ -89,11 +89,11 @@ values
   ('10000000-0000-0000-0000-000000000001', 'Utbildning', 'utbildning', 'education'),
   ('10000000-0000-0000-0000-000000000001', 'Övrigt', 'ovrigt', 'other');
 
-insert into public.responsibility_types (organization_id, name, slug, capabilities)
+insert into public.responsibility_types (organization_id, name, slug)
 values
-  ('10000000-0000-0000-0000-000000000001', 'Lagledare', 'lagledare', '{}'),
-  ('10000000-0000-0000-0000-000000000001', 'Tränare', 'tranare', '{}'),
-  ('10000000-0000-0000-0000-000000000001', 'Redaktör', 'redaktor', '{}');
+  ('10000000-0000-0000-0000-000000000001', 'Lagledare', 'lagledare'),
+  ('10000000-0000-0000-0000-000000000001', 'Tränare', 'tranare'),
+  ('10000000-0000-0000-0000-000000000001', 'Redaktör', 'redaktor');
 
 insert into public.sections (id, organization_id, slug, name)
 values (
