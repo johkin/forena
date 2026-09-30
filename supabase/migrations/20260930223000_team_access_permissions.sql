@@ -176,6 +176,13 @@ join public.team_access_profiles profile
  end
 on conflict do nothing;
 
+alter table public.team_responsibilities
+  drop column user_id;
+
+alter table public.team_responsibilities
+  add constraint team_responsibilities_person_type_start_key
+  unique (team_id, person_id, responsibility_type_id, starts_on);
+
 create or replace function private.has_team_permission(
   target_team_id uuid,
   target_permission text,
@@ -780,10 +787,10 @@ begin
         ends_on = null;
 
   insert into public.team_responsibilities (
-    organization_id, team_id, user_id, person_id, responsibility_type_id
+    organization_id, team_id, person_id, responsibility_type_id
   )
   values (
-    target_organization_id, target_team_id, target_user_id, guardian_person_id, responsibility_type_id
+    target_organization_id, target_team_id, guardian_person_id, responsibility_type_id
   )
   on conflict do nothing;
 
@@ -791,8 +798,7 @@ begin
   where organization_id = target_organization_id
     and team_id = target_team_id
     and person_id = guardian_person_id
-    and ends_on is null
-    and access_profile_id <> selected_access_profile_id;
+    and ends_on is null;
 
   insert into public.team_access_assignments (
     organization_id, team_id, person_id, access_profile_id
