@@ -80,46 +80,46 @@ select results_eq(
 select set_config('request.jwt.claims', '{"sub":"90000000-0000-0000-0000-000000000001","email":"manager@example.se","role":"authenticated"}', true);
 
 select lives_ok(
-  $insert into public.team_member_invitations
+  $q$insert into public.team_member_invitations
     (organization_id, team_id, email, role, token_hash, invited_by)
     values
-    ('91000000-0000-0000-0000-000000000001', '93000000-0000-0000-0000-000000000001', 'leader@example.se', 'leader', repeat('c', 64), '90000000-0000-0000-0000-000000000001')$,
+    ('91000000-0000-0000-0000-000000000001', '93000000-0000-0000-0000-000000000001', 'leader@example.se', 'leader', repeat('c', 64), '90000000-0000-0000-0000-000000000001')$q$,
   'Klubbägaren kan bjuda in en ledare'
 );
 
 select set_config('request.jwt.claims', '{"sub":"90000000-0000-0000-0000-000000000004","email":"leader@example.se","role":"authenticated"}', true);
 
 select lives_ok(
-  $select public.accept_team_member_invitation(repeat('c', 64))$,
+  $q$select public.accept_team_member_invitation(repeat('c', 64))$q$,
   'Den nya ledaren kan acceptera inbjudan'
 );
 
 select results_eq(
-  $select count(*)
+  $q$select count(*)
     from public.memberships membership
     join public.people person on person.id = membership.person_id
     where membership.team_id = '93000000-0000-0000-0000-000000000001'
       and membership.role = 'leader'
-      and person.user_id = '90000000-0000-0000-0000-000000000004'$,
+      and person.user_id = '90000000-0000-0000-0000-000000000004'$q$,
   array[1::bigint],
   'Ledarinbjudan skapar en ledarrelation'
 );
 
 select results_eq(
-  $select responsibility.slug
+  $q$select responsibility.slug
     from public.team_responsibilities assignment
     join public.responsibility_types responsibility
       on responsibility.id = assignment.responsibility_type_id
     join public.people person on person.id = assignment.person_id
     where assignment.team_id = '93000000-0000-0000-0000-000000000001'
       and person.user_id = '90000000-0000-0000-0000-000000000004'
-      and assignment.ends_on is null$,
+      and assignment.ends_on is null$q$,
   array['tranare'::text],
   'Ledarinbjudan tilldelar tränaransvar separat'
 );
 
 select results_eq(
-  $select profile.key
+  $q$select profile.key
     from public.team_access_assignments assignment
     join public.team_access_profiles profile on profile.id = assignment.access_profile_id
     join public.people person on person.id = assignment.person_id
