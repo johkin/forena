@@ -91,9 +91,9 @@ values
 
 insert into public.responsibility_types (organization_id, name, slug, capabilities)
 values
-  ('10000000-0000-0000-0000-000000000001', 'Lagledare', 'lagledare', array['manage_team', 'manage_activities', 'manage_members']),
-  ('10000000-0000-0000-0000-000000000001', 'Tränare', 'tranare', array['manage_activities']),
-  ('10000000-0000-0000-0000-000000000001', 'Redaktör', 'redaktor', array['edit_content']);
+  ('10000000-0000-0000-0000-000000000001', 'Lagledare', 'lagledare', '{}'),
+  ('10000000-0000-0000-0000-000000000001', 'Tränare', 'tranare', '{}'),
+  ('10000000-0000-0000-0000-000000000001', 'Redaktör', 'redaktor', '{}');
 
 insert into public.sections (id, organization_id, slug, name)
 values (
@@ -113,13 +113,18 @@ values (
   '2026/2027'
 );
 
-insert into public.team_staff (organization_id, team_id, user_id, role)
-values (
+insert into public.team_access_assignments (organization_id, team_id, person_id, access_profile_id)
+select
   '10000000-0000-0000-0000-000000000001',
   '20000000-0000-0000-0000-000000000001',
-  '50000000-0000-0000-0000-000000000001',
-  'team_manager'
-);
+  person.id,
+  profile.id
+from public.people person
+join public.team_access_profiles profile
+  on profile.organization_id = person.organization_id
+ and profile.key = 'team_admin'
+where person.organization_id = '10000000-0000-0000-0000-000000000001'
+  and person.user_id = '50000000-0000-0000-0000-000000000001';
 
 insert into public.team_responsibilities (organization_id, team_id, user_id, person_id, responsibility_type_id)
 select
