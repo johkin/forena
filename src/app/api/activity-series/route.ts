@@ -38,6 +38,14 @@ export async function POST(request: Request) {
   const { data: allowed } = await supabase.rpc("has_team_permission", { target_team_id: team.id, target_permission: "activity.manage" });
   if (!allowed) return NextResponse.json({ error: "Du saknar behörighet för laget" }, { status: 403 });
 
+  if (body.invitationAudience) {
+    const { data: canManageInvitations } = await supabase.rpc("has_team_permission", {
+      target_team_id: team.id,
+      target_permission: "invitation.manage",
+    });
+    if (!canManageInvitations) return NextResponse.json({ error: "Du saknar behörighet att hantera kallelser" }, { status: 403 });
+  }
+
   let occurrences: ReturnType<typeof previewWeeklySeries>;
   try {
     occurrences = previewWeeklySeries({ ...body, timeZone });
