@@ -11,7 +11,7 @@ export async function GET(_request: Request, { params }: Props) {
 
   const { data: activity } = await supabase.from("activities").select("id, team_id").eq("id", activityId).maybeSingle();
   if (!activity?.team_id) return NextResponse.json({ error: "Aktiviteten kunde inte hittas" }, { status: 404 });
-  const { data: allowed } = await supabase.rpc("can_manage_team", { target_team_id: activity.team_id });
+  const { data: allowed } = await supabase.rpc("has_team_permission", { target_team_id: activity.team_id, target_permission: "invitation.manage" });
   if (!allowed) return NextResponse.json({ error: "Du saknar behörighet för laget" }, { status: 403 });
 
   const [{ data: invitationRows }, { data: membershipRows }] = await Promise.all([
@@ -47,7 +47,7 @@ export async function PUT(request: Request, { params }: Props) {
   if (!authData.user) return NextResponse.json({ error: "Du måste logga in" }, { status: 401 });
   const { data: current } = await supabase.from("activities").select("id, team_id, status, source_kind").eq("id", activityId).maybeSingle();
   if (!current?.team_id) return NextResponse.json({ error: "Aktiviteten kunde inte hittas" }, { status: 404 });
-  const { data: allowed } = await supabase.rpc("can_manage_team", { target_team_id: current.team_id });
+  const { data: allowed } = await supabase.rpc("has_team_permission", { target_team_id: current.team_id, target_permission: "activity.manage" });
   if (!allowed) return NextResponse.json({ error: "Du saknar behörighet för laget" }, { status: 403 });
   if (current.source_kind === "imported") return NextResponse.json({ error: "Importerade aktiviteter måste ändras i källsystemet" }, { status: 409 });
   if (current.status === "cancelled") return NextResponse.json({ error: "En inställd aktivitet kan inte redigeras" }, { status: 409 });
@@ -64,7 +64,7 @@ export async function DELETE(request: Request, { params }: Props) {
   if (!authData.user) return NextResponse.json({ error: "Du måste logga in" }, { status: 401 });
   const { data: activity } = await supabase.from("activities").select("id, team_id, status, source_kind").eq("id", activityId).maybeSingle();
   if (!activity?.team_id) return NextResponse.json({ error: "Aktiviteten kunde inte hittas" }, { status: 404 });
-  const { data: allowed } = await supabase.rpc("can_manage_team", { target_team_id: activity.team_id });
+  const { data: allowed } = await supabase.rpc("has_team_permission", { target_team_id: activity.team_id, target_permission: "activity.manage" });
   if (!allowed) return NextResponse.json({ error: "Du saknar behörighet för laget" }, { status: 403 });
   if (activity.source_kind === "imported") return NextResponse.json({ error: "Importerade aktiviteter måste tas bort i källsystemet" }, { status: 409 });
   const { count } = await supabase.from("invitations").select("id", { count: "exact", head: true }).eq("activity_id", activityId).neq("response", "pending");
