@@ -343,6 +343,12 @@ as $$
     from public.teams team
     where team.id = target_team_id
       and target_user_id is not null
+      and exists (
+        select 1
+        from public.organization_members current_member
+        where current_member.organization_id = team.organization_id
+          and current_member.user_id = target_user_id
+      )
       and (
         exists (
           select 1
@@ -414,6 +420,88 @@ revoke all on function public.has_team_permission(uuid, text) from anon;
 revoke all on function public.can_manage_team(uuid, uuid) from anon;
 grant execute on function public.has_team_permission(uuid, text) to authenticated;
 grant execute on function public.can_manage_team(uuid, uuid) to authenticated;
+
+create or replace function private.protect_person_user_binding()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $person_binding$
+begin
+  if new.user_id is distinct from old.user_id
+     and auth.uid() is not null
+     and not public.has_organization_role(old.organization_id, array['owner', 'admin']) then
+    raise exception 'Only organization admins can change a person account binding'
+      using errcode = '42501';
+  end if;
+  return new;
+end;
+$person_binding$;
+
+revoke all on function private.protect_person_user_binding() from public;
+
+drop trigger if exists people_protect_user_binding on public.people;
+create trigger people_protect_user_binding
+before update of user_id on public.people
+for each row execute function private.protect_person_user_binding();
+
+create or replace function private.require_invitation_permission_for_activity_fields()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $activity_invitation_guard$
+declare
+  invitation_fields_changed boolean;
+begin
+  invitation_fields_changed :=
+    case
+      when tg_op = 'INSERT' then
+        new.invitation_send_at is not null
+        or new.response_due_at is not null
+        or new.reminder_send_at is not null
+        or new.invitation_audience_kind is not null
+        or new.invitation_group_id is not null
+        or cardinality(new.invitation_audience_roles) > 0
+        or cardinality(new.invitation_audience_group_ids) > 0
+        or cardinality(new.invitation_audience_responsibility_type_ids) > 0
+      else
+        new.invitation_send_at is distinct from old.invitation_send_at
+        or new.response_due_at is distinct from old.response_due_at
+        or new.reminder_send_at is distinct from old.reminder_send_at
+        or new.invitation_audience_kind is distinct from old.invitation_audience_kind
+        or new.invitation_group_id is distinct from old.invitation_group_id
+        or new.invitation_audience_roles is distinct from old.invitation_audience_roles
+        or new.invitation_audience_group_ids is distinct from old.invitation_audience_group_ids
+        or new.invitation_audience_responsibility_type_ids is distinct from old.invitation_audience_responsibility_type_ids
+    end;
+
+  if invitation_fields_changed
+     and auth.uid() is not null
+     and (new.team_id is null or not private.has_team_permission(new.team_id, 'invitation.manage', auth.uid())) then
+    raise exception 'Invitation permission is required to change invitation settings'
+      using errcode = '42501';
+  end if;
+
+  return new;
+end;
+$activity_invitation_guard$;
+
+revoke all on function private.require_invitation_permission_for_activity_fields() from public;
+
+drop trigger if exists activities_require_invitation_permission on public.activities;
+create trigger activities_require_invitation_permission
+before insert or update of
+  invitation_send_at,
+  response_due_at,
+  reminder_send_at,
+  invitation_audience_kind,
+  invitation_group_id,
+  invitation_audience_roles,
+  invitation_audience_group_ids,
+  invitation_audience_responsibility_type_ids
+on public.activities
+for each row execute function private.require_invitation_permission_for_activity_fields();
 
 alter table public.team_permissions enable row level security;
 alter table public.team_access_profiles enable row level security;
