@@ -22,7 +22,7 @@ async function getManagedPlayer(formData: FormData) {
   const { data: organization } = await supabase.from("organizations").select("id").eq("slug", organizationSlug).maybeSingle();
   const { data: team } = organization ? await supabase.from("teams").select("id, organization_id").eq("organization_id", organization.id).eq("slug", teamSlug).maybeSingle() : { data: null };
   if (!team) redirect(`${destination}?error=${encodeURIComponent("Laget kunde inte hittas")}`);
-  const { data: canManage } = await supabase.rpc("can_manage_team", { target_team_id: team.id });
+  const { data: canManage } = await supabase.rpc("has_team_permission", { target_team_id: team.id, target_permission: "roster.manage" });
   if (!canManage) redirect(`${destination}?error=${encodeURIComponent("Du saknar behörighet att ändra spelare")}`);
   const { data: membership } = await supabase.from("memberships").select("person_id").eq("team_id", team.id).eq("person_id", personId).eq("role", "participant").is("ends_on", null).maybeSingle();
   if (!membership) redirect(`${destination}?error=${encodeURIComponent("Spelaren tillhör inte laget")}`);
@@ -114,7 +114,7 @@ async function getManagedTeam(formData: FormData) {
   const { data: organization } = await supabase.from("organizations").select("id").eq("slug", organizationSlug).maybeSingle();
   const { data: team } = organization ? await supabase.from("teams").select("id, organization_id").eq("organization_id", organization.id).eq("slug", teamSlug).maybeSingle() : { data: null };
   if (!team) redirect(`${destination}?error=${encodeURIComponent("Laget kunde inte hittas")}`);
-  const { data: canManage } = await supabase.rpc("can_manage_team", { target_team_id: team.id });
+  const { data: canManage } = await supabase.rpc("has_team_permission", { target_team_id: team.id, target_permission: "roster.manage" });
   if (!canManage) redirect(`${destination}?error=${encodeURIComponent("Du saknar behörighet att hantera grupper")}`);
   return { supabase, team, destination, organizationSlug, teamSlug };
 }
