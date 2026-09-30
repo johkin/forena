@@ -1311,7 +1311,6 @@ declare
   accepting_name text;
   accepted_person_id uuid;
   coach_responsibility_type_id uuid;
-  team_admin_profile_id uuid;
 begin
   if accepting_user_id is null or accepting_email = '' then
     raise exception 'Du måste vara inloggad för att acceptera inbjudan';
@@ -1384,26 +1383,6 @@ begin
       on conflict do nothing;
     end if;
 
-    select profile.id
-    into team_admin_profile_id
-    from public.team_access_profiles profile
-    where profile.organization_id = invitation.organization_id
-      and profile.key = 'team_admin';
-
-    if team_admin_profile_id is null then
-      raise exception 'Team admin access profile is missing';
-    end if;
-
-    insert into public.team_access_assignments (
-      organization_id, team_id, person_id, access_profile_id
-    )
-    values (
-      invitation.organization_id,
-      invitation.team_id,
-      accepted_person_id,
-      team_admin_profile_id
-    )
-    on conflict do nothing;
   else
     insert into public.people (organization_id, display_name)
     values (invitation.organization_id, invitation.person_display_name)
