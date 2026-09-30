@@ -8,7 +8,7 @@ import {
   tasks as demoTasks,
   workspaces as demoWorkspaces,
 } from "@/data/demo";
-import type { Activity, FamilyActivity, Invitation, Member, Organization, Section, Team, TeamTask, Workspace } from "@/domain/club";
+import type { Activity, FamilyActivity, Invitation, Member, Organization, Section, Team, TeamPermission, TeamTask, Workspace } from "@/domain/club";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 
@@ -25,6 +25,7 @@ export type TeamDashboardData = {
   tasks: TeamTask[];
   familyActivities: FamilyActivity[];
   canManageTeam: boolean;
+  teamPermissions: TeamPermission[];
   canAdministerOrganization: boolean;
   accountEmail?: string;
   respondablePersonIds: string[];
@@ -47,6 +48,7 @@ function demoDashboard(): TeamDashboardData {
     tasks: demoTasks,
     familyActivities: [],
     canManageTeam: true,
+    teamPermissions: ["team.view", "team.manage", "activity.manage", "invitation.manage", "attendance.manage", "roster.manage", "responsibility.manage", "task.manage"],
     canAdministerOrganization: false,
     respondablePersonIds: demoMembers.map((item) => item.id),
     referenceTime: new Date().toISOString(),
@@ -93,7 +95,6 @@ export async function getTeamDashboard(
     .eq("user_id", authData.user.id)
     .maybeSingle();
   const hasOrganizationWideAccess = ["owner", "admin"].includes(organizationMembership?.role ?? "");
-  let canManageCurrentTeam = hasOrganizationWideAccess;
   let accessibleTeams = teams ?? [];
 
   if (!hasOrganizationWideAccess) {
@@ -125,10 +126,28 @@ export async function getTeamDashboard(
 
   if (!accessibleTeams.some((item) => item.id === teamRow.id)) return null;
 
-  const { data: canManageTeamPermission } = await supabase.rpc("can_manage_team", {
-    target_team_id: teamRow.id,
-  });
-  canManageCurrentTeam = canManageTeamPermission === true;
+  const permissionKeys: TeamPermission[] = [
+    "team.view",
+    "team.manage",
+    "activity.manage",
+    "invitation.manage",
+    "attendance.manage",
+    "roster.manage",
+    "responsibility.manage",
+    "task.manage",
+  ];
+  const permissionResults = await Promise.all(
+    permissionKeys.map((permission) =>
+      supabase.rpc("has_team_permission", {
+        target_team_id: teamRow.id,
+        target_permission: permission,
+      }),
+    ),
+  );
+  const teamPermissions = permissionKeys.filter((_, index) => permissionResults[index].data === true);
+  const canManageCurrentTeam = teamPermissions.includes("team.manage");
+  const canManageInvitations = teamPermissions.includes("invitation.manage");
+  const canManageAttendance = teamPermissions.includes("attendance.manage");
 
   const [{ data: guardianLinksForUser }, { data: ownPeopleForUser }] = await Promise.all([
     supabase.from("person_guardians").select("person_id").eq("organization_id", organizationRow.id).eq("guardian_user_id", authData.user.id),
@@ -173,7 +192,7 @@ export async function getTeamDashboard(
     .from("invitations")
     .select("id, organization_id, activity_id, person_id, response, responded_at, response_comment")
     .eq("activity_id", activityRow.id);
-  const { data: invitationRows } = canManageCurrentTeam
+  const { data: invitationRows } = canManageInvitations
     ? await invitationQuery
     : familyPersonIds.length
       ? await invitationQuery.in("person_id", familyPersonIds)
@@ -265,14 +284,16 @@ export async function getTeamDashboard(
     respondedAt: invitation.responded_at ?? undefined,
     responseComment: invitation.response_comment ?? undefined,
   }));
-  const startedActivityRows = await supabase
-    .from("activities")
-    .select("id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location, series_id, status, invitation_send_at, response_due_at, reminder_send_at")
-    .eq("team_id", teamRow.id)
-    .neq("status", "cancelled")
-    .lte("starts_at", referenceTime)
-    .order("starts_at", { ascending: false })
-    .limit(20);
+  const startedActivityRows = canManageAttendance
+    ? await supabase
+        .from("activities")
+        .select("id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location, series_id, status, invitation_send_at, response_due_at, reminder_send_at")
+        .eq("team_id", teamRow.id)
+        .neq("status", "cancelled")
+        .lte("starts_at", referenceTime)
+        .order("starts_at", { ascending: false })
+        .limit(20)
+    : { data: [] };
   const startedIds = (startedActivityRows.data ?? []).map((item) => item.id);
   const { data: attendanceReportRows } = startedIds.length
     ? await supabase.from("activity_attendance_reports").select("activity_id").in("activity_id", startedIds)
@@ -347,5 +368,5 @@ export async function getTeamDashboard(
     }];
   });
 
-  return { organization, sections: sectionList, team, activity, members, rosterMembers, upcomingActivities, invitations, workspaces, tasks, familyActivities, canManageTeam: canManageCurrentTeam, canAdministerOrganization: ["owner", "admin"].includes(organizationMembership?.role ?? ""), accountEmail: authData.user.email, respondablePersonIds: familyPersonIds, referenceTime, missingAttendanceActivities, source: "database" };
+  return { organization, sections: sectionList, team, activity, members, rosterMembers, upcomingActivities, invitations, workspaces, tasks, familyActivities, canManageTeam: canManageCurrentTeam, teamPermissions, canAdministerOrganization: ["owner", "admin"].includes(organizationMembership?.role ?? ""), accountEmail: authData.user.email, respondablePersonIds: familyPersonIds, referenceTime, missingAttendanceActivities, source: "database" };
 }
