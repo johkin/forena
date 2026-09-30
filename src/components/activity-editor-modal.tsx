@@ -8,7 +8,7 @@ import { attendanceNames } from "@/lib/attendance-names";
 import type { AudienceRole } from "@/lib/invitation-audience";
 import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
 
-type Props = { mode: "create" | "edit"; organization: Organization; team: Team; members: Member[]; activity?: Activity; draft?: ActivityDraft; source: "database" | "demo"; onClose: () => void; onNotice: (notice: string) => void; };
+type Props = { mode: "create" | "edit"; organization: Organization; team: Team; members: Member[]; activity?: Activity; draft?: ActivityDraft; source: "database" | "demo"; canManageInvitations: boolean; onClose: () => void; onNotice: (notice: string) => void; };
 const weekdayOptions = [[1,"Mån"],[2,"Tis"],[3,"Ons"],[4,"Tor"],[5,"Fre"],[6,"Lör"],[7,"Sön"]] as const;
 const roleLabels: Record<AudienceRole,string> = { participant:"Spelare",leader:"Ledare" };
 const directRoles: AudienceRole[] = ["participant","leader"];
@@ -24,7 +24,7 @@ function localParts(value:string|undefined,timeZone:string) {
   return {date:`${parts.year}-${parts.month}-${parts.day}`,time:`${parts.hour}:${parts.minute}`};
 }
 
-export function ActivityEditorModal({mode,organization,team,members,activity,draft,source,onClose,onNotice}:Props) {
+export function ActivityEditorModal({mode,organization,team,members,activity,draft,source,canManageInvitations,onClose,onNotice}:Props) {
   useModalScrollLock();
   const timeZone=organization.timeZone??"Europe/Stockholm";
   const initial=draft?{date:draft.startsOn,time:draft.startTime}:localParts(activity?.startsAt,timeZone);
@@ -40,17 +40,17 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
   const [selectedRoles,setSelectedRoles]=useState<Set<AudienceRole>>(new Set(["participant","leader"]));
   const [selectedGroups,setSelectedGroups]=useState<Set<string>>(new Set());
   const [selectedResponsibilities,setSelectedResponsibilities]=useState<Set<string>>(new Set());
-  const [invitationMode,setInvitationMode]=useState<"none"|"now"|"schedule">(draft?"now":mode==="create"?"schedule":"none");
+  const [invitationMode,setInvitationMode]=useState<"none"|"now"|"schedule">(canManageInvitations ? (draft?"now":mode==="create"?"schedule":"none") : "none");
   const [selectedPeople,setSelectedPeople]=useState<Set<string>>(new Set(draft?members.filter(member=>member.teamRelation==="player").map(member=>member.id):[]));
   const [descriptionOpen,setDescriptionOpen]=useState(Boolean(draft?.description||activity?.description));
-  const [invitationOpen,setInvitationOpen]=useState(mode==="create");
+  const [invitationOpen,setInvitationOpen]=useState(canManageInvitations && mode==="create");
   const [reminderOffsets,setReminderOffsets]=useState<number[]>([1440]);
   const formatter=useMemo(()=>new Intl.DateTimeFormat("sv-SE",{timeZone,weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}),[timeZone]);
   const names=useMemo(()=>attendanceNames(members.map(member=>({personId:member.id,displayName:member.displayName}))),[members]);
   const invited=members.filter(member=>selectedPeople.has(member.id));
   const available=members.filter(member=>!selectedPeople.has(member.id));
   const recurring=mode==="create"&&kind==="series";
-  useEffect(()=>{if(source!=="database")return;fetch(`/api/team-groups?teamId=${encodeURIComponent(team.id)}`).then(r=>r.ok?r.json():{groups:[],responsibilities:[]}).then(body=>{setGroups(body.groups??[]);setResponsibilities(body.responsibilities??[]);}).catch(()=>{setGroups([]);setResponsibilities([]);});},[mode,source,team.id]);
+  useEffect(()=>{if(source!=="database"||!canManageInvitations)return;fetch(`/api/team-groups?teamId=${encodeURIComponent(team.id)}`).then(r=>r.ok?r.json():{groups:[],responsibilities:[]}).then(body=>{setGroups(body.groups??[]);setResponsibilities(body.responsibilities??[]);}).catch(()=>{setGroups([]);setResponsibilities([]);});},[canManageInvitations,mode,source,team.id]);
 
   function togglePerson(id:string) {
     setSelectedPeople(current=>{const next=new Set(current);if(next.has(id))next.delete(id);else next.add(id);return next;});
@@ -138,7 +138,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
           {recurring?<><fieldset><legend>Veckodagar</legend><div className="weekday-options">{weekdayOptions.map(([value,label])=><label key={value}><input type="checkbox" name="weekdays" value={value} defaultChecked={value===(new Date(`${initial.date}T00:00:00Z`).getUTCDay()||7)}/>{label}</label>)}</div></fieldset><div className="form-row"><label>Startdatum<input name="startsOn" type="date" required defaultValue={initial.date}/></label><label>Slutdatum<input name="endsOn" type="date" required defaultValue={initial.date}/></label></div><label>Tid<input name="startTime" type="time" step={300} required defaultValue={initial.time}/></label></>:<div className="form-row"><label>Datum<input name="startsOn" type="date" required defaultValue={initial.date}/></label><label>Tid<input name="startTime" type="time" step={300} required defaultValue={initial.time}/></label></div>}
           <div className="form-row"><label>Längd<select name="durationMinutes" defaultValue={String(initialDuration)}><option value="30">30 minuter</option><option value="45">45 minuter</option><option value="60">1 timme</option><option value="75">1 tim 15 min</option><option value="90">1,5 timmar</option><option value="120">2 timmar</option><option value="180">3 timmar</option><option value="480">Heldag (8 timmar)</option></select></label><label>Samling före start<select name="gatheringMinutesBefore" defaultValue={String(initialGathering)}><option value="0">Ingen särskild samling</option><option value="15">15 minuter</option><option value="30">30 minuter</option><option value="45">45 minuter</option><option value="60">60 minuter</option></select></label></div>
         </section>
-        <details className="editor-section editor-invitation" open={invitationOpen} onToggle={event=>setInvitationOpen(event.currentTarget.open)}>
+        {canManageInvitations ? <details className="editor-section editor-invitation" open={invitationOpen} onToggle={event=>setInvitationOpen(event.currentTarget.open)}>
           <summary>Kallelse <span>{invitationMode==="none"?"Ingen":invitationMode==="now"?"Skicka nu":"Schemalägg"}</span></summary>
           <div className="activity-kind-switch invitation-mode-switch" role="group" aria-label="Kallelse"><button className={invitationMode==="none"?"selected":""} onClick={()=>setInvitationMode("none")} type="button">Ingen</button><button className={invitationMode==="now"?"selected":""} onClick={()=>setInvitationMode("now")} type="button">Skicka nu</button><button className={invitationMode==="schedule"?"selected":""} onClick={()=>setInvitationMode("schedule")} type="button">Schemalägg</button></div>
           {invitationMode==="now"?<div className="editor-invitation-body">
@@ -160,7 +160,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
             {reminderOffsets.map((offset,index)=><div className="reminder-row" key={index}><label>Påminn före svarstiden<select value={String(offset)} onChange={event=>setReminderOffsets(current=>current.map((value,i)=>i===index?Number(event.target.value):value))}><option value="60">1 timme</option><option value="360">6 timmar</option><option value="720">12 timmar</option><option value="1440">1 dag</option><option value="2880">2 dagar</option></select></label><button className="secondary" type="button" onClick={()=>setReminderOffsets(current=>current.filter((_,i)=>i!==index))}>Ta bort</button></div>)}
             <button className="secondary" type="button" onClick={()=>setReminderOffsets(current=>[...current,1440])}>+ Lägg till påminnelse</button>
           </div>:null}
-        </details>
+        </details> : null}
         {error?<p className="auth-error" role="alert">{error}</p>:null}
         {preview?<div className="activity-preview"><p className="eyebrow">Förhandsgranskning · {preview.length} {preview.length===1?"tillfälle":"tillfällen"}</p><ol>{preview.slice(0,12).map(item=><li key={item.startsAt}><strong>{formatter.format(new Date(item.startsAt))}</strong><span>{String(payload?.location)}</span></li>)}</ol></div>:null}
         <div className="modal-actions">{mode==="edit"?<button className="danger" disabled={pending} onClick={()=>void remove()} type="button">Ta bort</button>:null}<button className="secondary" onClick={onClose} type="button">Avbryt</button>{preview?<button className="primary" disabled={pending} onClick={()=>void save()} type="button">{pending?"Sparar…":mode==="edit"?"Spara ändring":recurring?`Skapa ${preview.length} aktiviteter`:"Skapa aktivitet"}</button>:<button className="primary" type="submit">Förhandsgranska</button>}</div>
