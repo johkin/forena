@@ -201,6 +201,7 @@ export interface Database {
       has_organization_role: { Args: { target_organization_id: string; allowed_roles: string[]; target_user_id?: string }; Returns: boolean };
       has_section_role: { Args: { target_section_id: string; allowed_roles: string[]; target_user_id?: string }; Returns: boolean };
       has_team_permission: { Args: { target_team_id: string; target_permission: string }; Returns: boolean };
+      delete_or_cancel_activity: { Args: { target_activity_id: string; target_cancellation_reason?: string | null }; Returns: "deleted" | "cancelled" };
       can_manage_team: { Args: { target_team_id: string; target_user_id?: string }; Returns: boolean };
       assign_existing_guardian_team_access: { Args: { target_organization_id: string; target_team_id: string; target_user_id: string; target_responsibility_slug: string; target_access_profile_key: string }; Returns: undefined };
       get_team_briefing_context: { Args: { target_team_id: string }; Returns: Json };
