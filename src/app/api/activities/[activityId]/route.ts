@@ -62,18 +62,18 @@ export async function DELETE(request: Request, { params }: Props) {
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getUser();
   if (!authData.user) return NextResponse.json({ error: "Du måste logga in" }, { status: 401 });
-  const { data: activity } = await supabase.from("activities").select("id, team_id, status, source_kind").eq("id", activityId).maybeSingle();
-  if (!activity?.team_id) return NextResponse.json({ error: "Aktiviteten kunde inte hittas" }, { status: 404 });
-  const { data: allowed } = await supabase.rpc("has_team_permission", { target_team_id: activity.team_id, target_permission: "activity.manage" });
-  if (!allowed) return NextResponse.json({ error: "Du saknar behörighet för laget" }, { status: 403 });
-  if (activity.source_kind === "imported") return NextResponse.json({ error: "Importerade aktiviteter måste tas bort i källsystemet" }, { status: 409 });
-  const { count } = await supabase.from("invitations").select("id", { count: "exact", head: true }).eq("activity_id", activityId).neq("response", "pending");
-  if (activity.status === "draft" || !count) {
-    const { error } = await supabase.from("activities").delete().eq("id", activityId);
-    if (error) return NextResponse.json({ error: "Aktiviteten kunde inte tas bort" }, { status: 500 });
-    return NextResponse.json({ disposition: "deleted" });
+
+  const { data: disposition, error } = await supabase.rpc("delete_or_cancel_activity", {
+    target_activity_id: activityId,
+    target_cancellation_reason: body?.reason?.trim() || null,
+  });
+
+  if (error) {
+    if (error.code === "P0002") return NextResponse.json({ error: "Aktiviteten kunde inte hittas" }, { status: 404 });
+    if (error.code === "42501") return NextResponse.json({ error: "Du saknar behörighet för laget" }, { status: 403 });
+    if (error.code === "55000") return NextResponse.json({ error: "Importerade aktiviteter måste tas bort i källsystemet" }, { status: 409 });
+    return NextResponse.json({ error: "Aktiviteten kunde inte tas bort eller ställas in" }, { status: 500 });
   }
-  const { error } = await supabase.from("activities").update({ status: "cancelled", cancelled_at: new Date().toISOString(), cancellation_reason: body?.reason?.trim() || "Inställd av ledare" }).eq("id", activityId);
-  if (error) return NextResponse.json({ error: "Aktiviteten kunde inte ställas in" }, { status: 500 });
-  return NextResponse.json({ disposition: "cancelled" });
+
+  return NextResponse.json({ disposition });
 }
