@@ -482,9 +482,8 @@ create trigger team_access_profiles_touch_updated_at
 before update on public.team_access_profiles
 for each row execute function public.touch_updated_at();
 
-update public.responsibility_types
-set capabilities = '{}'
-where cardinality(capabilities) > 0;
+alter table public.responsibility_types
+  drop column capabilities;
 
 drop policy if exists "scoped leaders can manage activities" on public.activities;
 create policy "team activity managers can manage activities"
