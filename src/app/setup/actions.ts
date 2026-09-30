@@ -185,7 +185,6 @@ export async function createWorkspace(formData: FormData) {
     const { error: responsibilityError } = await supabase.from("team_responsibilities").insert({
       organization_id: organizationId,
       team_id: teamId,
-      user_id: user.id,
       person_id: managerPerson.id,
       responsibility_type_id: managerType.id,
     });
