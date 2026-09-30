@@ -824,6 +824,309 @@ revoke all on function public.assign_existing_guardian_team_access(uuid, uuid, u
 revoke all on function public.assign_existing_guardian_team_access(uuid, uuid, uuid, text, text) from anon;
 grant execute on function public.assign_existing_guardian_team_access(uuid, uuid, uuid, text, text) to authenticated;
 
+
+create or replace function public.queue_activity_invitation(target_activity_id uuid)
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  target_activity public.activities%rowtype;
+  queued_count integer := 0;
+begin
+  select * into target_activity
+  from public.activities
+  where id = target_activity_id;
+
+  if target_activity.id is null or target_activity.team_id is null then
+    raise exception 'Activity not found';
+  end if;
+  if not public.has_team_permission(target_activity.team_id, 'invitation.manage') then
+    raise exception 'Not allowed';
+  end if;
+
+  with invited_people as (
+    select distinct invitation.person_id
+    from public.invitations invitation
+    where invitation.activity_id = target_activity_id
+  ),
+  recipients as (
+    select distinct person.user_id
+    from invited_people invited
+    join public.people person on person.id = invited.person_id
+    where person.user_id is not null
+    union
+    select distinct guardian.guardian_user_id
+    from invited_people invited
+    join public.person_guardians guardian on guardian.person_id = invited.person_id
+  ),
+  inserted as (
+    insert into public.notification_outbox (
+      organization_id, user_id, type, payload, scheduled_at, status
+    )
+    select
+      target_activity.organization_id,
+      recipient.user_id,
+      'activity_invitation',
+      jsonb_build_object(
+        'activityId', target_activity.id,
+        'teamId', target_activity.team_id,
+        'title', target_activity.title,
+        'startsAt', target_activity.starts_at,
+        'location', target_activity.location
+      ),
+      coalesce(target_activity.invitation_send_at, now()),
+      'pending'
+    from recipients recipient
+    where not exists (
+      select 1
+      from public.notification_outbox existing
+      where existing.user_id = recipient.user_id
+        and existing.type = 'activity_invitation'
+        and existing.payload ->> 'activityId' = target_activity.id::text
+        and existing.status <> 'cancelled'
+    )
+    returning id
+  )
+  select count(*) into queued_count from inserted;
+
+  return queued_count;
+end;
+$;
+
+create or replace function public.queue_activity_invitation(
+  target_activity_id uuid,
+  target_person_ids uuid[]
+)
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  target_activity public.activities%rowtype;
+  queued_count integer := 0;
+begin
+  select * into target_activity
+  from public.activities
+  where id = target_activity_id;
+
+  if target_activity.id is null or target_activity.team_id is null then
+    raise exception 'Activity not found';
+  end if;
+  if not public.has_team_permission(target_activity.team_id, 'invitation.manage') then
+    raise exception 'Not allowed';
+  end if;
+
+  with invited_people as (
+    select distinct invitation.person_id
+    from public.invitations invitation
+    where invitation.activity_id = target_activity_id
+      and invitation.person_id = any(target_person_ids)
+  ),
+  recipients as (
+    select distinct person.user_id
+    from invited_people invited
+    join public.people person on person.id = invited.person_id
+    where person.user_id is not null
+    union
+    select distinct guardian.guardian_user_id
+    from invited_people invited
+    join public.person_guardians guardian on guardian.person_id = invited.person_id
+  ),
+  inserted as (
+    insert into public.notification_outbox (
+      organization_id, user_id, type, payload, scheduled_at, status
+    )
+    select
+      target_activity.organization_id,
+      recipient.user_id,
+      'activity_invitation',
+      jsonb_build_object(
+        'activityId', target_activity.id,
+        'teamId', target_activity.team_id,
+        'title', target_activity.title,
+        'startsAt', target_activity.starts_at,
+        'location', target_activity.location
+      ),
+      now(),
+      'pending'
+    from recipients recipient
+    where not exists (
+      select 1
+      from public.notification_outbox existing
+      where existing.user_id = recipient.user_id
+        and existing.type = 'activity_invitation'
+        and existing.payload ->> 'activityId' = target_activity.id::text
+        and existing.status <> 'cancelled'
+        and not (existing.status = 'failed' and existing.attempts >= 5)
+    )
+    returning id
+  )
+  select count(*) into queued_count from inserted;
+
+  return queued_count;
+end;
+$;
+
+create or replace function public.queue_activity_reminder(target_activity_id uuid)
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  target_activity public.activities%rowtype;
+  queued_count integer := 0;
+begin
+  select * into target_activity
+  from public.activities
+  where id = target_activity_id;
+
+  if target_activity.id is null or target_activity.team_id is null then
+    raise exception 'Activity not found';
+  end if;
+  if not public.has_team_permission(target_activity.team_id, 'invitation.manage') then
+    raise exception 'Not allowed';
+  end if;
+
+  with pending_people as (
+    select distinct invitation.person_id
+    from public.invitations invitation
+    where invitation.activity_id = target_activity_id
+      and invitation.response = 'pending'
+  ),
+  recipients as (
+    select distinct person.user_id
+    from pending_people pending
+    join public.people person on person.id = pending.person_id
+    where person.user_id is not null
+    union
+    select distinct guardian.guardian_user_id
+    from pending_people pending
+    join public.person_guardians guardian on guardian.person_id = pending.person_id
+  ),
+  inserted as (
+    insert into public.notification_outbox (
+      organization_id, user_id, type, payload, scheduled_at, status
+    )
+    select
+      target_activity.organization_id,
+      recipient.user_id,
+      'invitation_reminder',
+      jsonb_build_object(
+        'activityId', target_activity.id,
+        'teamId', target_activity.team_id,
+        'title', target_activity.title,
+        'startsAt', target_activity.starts_at
+      ),
+      now(),
+      'pending'
+    from recipients recipient
+    returning id
+  )
+  select count(*) into queued_count from inserted;
+
+  insert into public.activity_events (
+    organization_id,
+    activity_id,
+    event_type,
+    recipient_count,
+    metadata,
+    created_by
+  )
+  values (
+    target_activity.organization_id,
+    target_activity.id,
+    'reminder_scheduled',
+    queued_count,
+    jsonb_build_object(
+      'queuedAt', now(),
+      'pendingInvitations', (
+        select count(*)
+        from public.invitations
+        where activity_id = target_activity.id
+          and response = 'pending'
+      )
+    ),
+    auth.uid()
+  );
+
+  return queued_count;
+end;
+$;
+
+create or replace function public.get_activity_delivery_status(target_activity_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  target_team_id uuid;
+begin
+  select activity.team_id
+  into target_team_id
+  from public.activities activity
+  where activity.id = target_activity_id;
+
+  if target_team_id is null
+     or not public.has_team_permission(target_team_id, 'invitation.manage') then
+    raise exception 'Not allowed';
+  end if;
+
+  return (
+    select jsonb_build_object(
+      'queued', count(*) filter (where outbox.status in ('pending', 'processing')),
+      'sent', count(*) filter (where outbox.status = 'sent'),
+      'failed', count(*) filter (where outbox.status = 'failed'),
+      'deliveries', coalesce(
+        jsonb_agg(
+          jsonb_build_object(
+            'outboxId', outbox.id,
+            'type', outbox.type,
+            'status', outbox.status,
+            'scheduledAt', outbox.scheduled_at,
+            'sentAt', outbox.sent_at,
+            'attempts', outbox.attempts,
+            'lastError', outbox.last_error,
+            'channels', coalesce((
+              select jsonb_agg(
+                jsonb_build_object(
+                  'channel', delivery.channel,
+                  'status', delivery.status,
+                  'provider', delivery.provider,
+                  'attempts', delivery.attempts,
+                  'sentAt', delivery.sent_at,
+                  'lastError', delivery.last_error
+                )
+                order by delivery.channel
+              )
+              from public.notification_deliveries delivery
+              where delivery.outbox_id = outbox.id
+            ), '[]'::jsonb)
+          )
+          order by outbox.created_at desc
+        ),
+        '[]'::jsonb
+      )
+    )
+    from public.notification_outbox outbox
+    where outbox.payload ->> 'activityId' = target_activity_id::text
+  );
+end;
+$;
+
+revoke all on function public.queue_activity_invitation(uuid) from public, anon;
+revoke all on function public.queue_activity_invitation(uuid, uuid[]) from public, anon;
+revoke all on function public.queue_activity_reminder(uuid) from public, anon;
+revoke all on function public.get_activity_delivery_status(uuid) from public, anon;
+grant execute on function public.queue_activity_invitation(uuid) to authenticated;
+grant execute on function public.queue_activity_invitation(uuid, uuid[]) to authenticated;
+grant execute on function public.queue_activity_reminder(uuid) to authenticated;
+grant execute on function public.get_activity_delivery_status(uuid) to authenticated;
+
 drop function public.assign_existing_guardian_team_role(uuid, uuid, uuid, text);
 drop function public.has_team_role(uuid, text[], uuid);
 drop table public.team_staff;
