@@ -1276,6 +1276,155 @@ grant execute on function public.queue_activity_invitation(uuid, uuid[]) to auth
 grant execute on function public.queue_activity_reminder(uuid) to authenticated;
 grant execute on function public.get_activity_delivery_status(uuid) to authenticated;
 
+create or replace function public.accept_team_member_invitation(invitation_token_hash text)
+returns table (organization_slug text, team_slug text, invitation_role text)
+language plpgsql
+security definer
+set search_path = ''
+as $accept_invitation$
+declare
+  invitation public.team_member_invitations%rowtype;
+  accepting_user_id uuid := auth.uid();
+  accepting_email text := lower(coalesce(auth.jwt() ->> 'email', ''));
+  accepting_name text;
+  accepted_person_id uuid;
+  coach_responsibility_type_id uuid;
+  team_admin_profile_id uuid;
+begin
+  if accepting_user_id is null or accepting_email = '' then
+    raise exception 'Du måste vara inloggad för att acceptera inbjudan';
+  end if;
+
+  select * into invitation
+  from public.team_member_invitations
+  where token_hash = invitation_token_hash
+  for update;
+
+  if invitation.id is null then
+    raise exception 'Inbjudan kunde inte hittas';
+  end if;
+  if invitation.accepted_at is not null then
+    raise exception 'Inbjudan har redan använts';
+  end if;
+  if invitation.expires_at <= now() then
+    raise exception 'Inbjudan har gått ut';
+  end if;
+  if invitation.email <> accepting_email then
+    raise exception 'Inbjudan tillhör en annan e-postadress';
+  end if;
+
+  insert into public.organization_members (organization_id, user_id, role)
+  values (
+    invitation.organization_id,
+    accepting_user_id,
+    case when invitation.role = 'leader' then 'leader' else 'member' end
+  )
+  on conflict (organization_id, user_id) do update
+  set role = case
+    when organization_members.role in ('owner', 'admin') then organization_members.role
+    when excluded.role = 'leader' then 'leader'
+    else organization_members.role
+  end;
+
+  select coalesce(nullif(display_name, ''), split_part(accepting_email, '@', 1))
+  into accepting_name
+  from public.profiles
+  where id = accepting_user_id;
+  accepting_name := coalesce(accepting_name, split_part(accepting_email, '@', 1));
+
+  if invitation.role = 'leader' then
+    insert into public.people (organization_id, user_id, display_name)
+    values (invitation.organization_id, accepting_user_id, accepting_name)
+    on conflict (organization_id, user_id) do update set updated_at = now()
+    returning id into accepted_person_id;
+
+    insert into public.memberships (organization_id, person_id, team_id, role)
+    values (invitation.organization_id, accepted_person_id, invitation.team_id, 'leader')
+    on conflict (organization_id, person_id, team_id, role) do update
+      set ends_on = null;
+
+    select responsibility.id
+    into coach_responsibility_type_id
+    from public.responsibility_types responsibility
+    where responsibility.organization_id = invitation.organization_id
+      and responsibility.slug = 'tranare';
+
+    if coach_responsibility_type_id is not null then
+      insert into public.team_responsibilities (
+        organization_id, team_id, person_id, responsibility_type_id
+      )
+      values (
+        invitation.organization_id,
+        invitation.team_id,
+        accepted_person_id,
+        coach_responsibility_type_id
+      )
+      on conflict do nothing;
+    end if;
+
+    select profile.id
+    into team_admin_profile_id
+    from public.team_access_profiles profile
+    where profile.organization_id = invitation.organization_id
+      and profile.key = 'team_admin';
+
+    if team_admin_profile_id is null then
+      raise exception 'Team admin access profile is missing';
+    end if;
+
+    insert into public.team_access_assignments (
+      organization_id, team_id, person_id, access_profile_id
+    )
+    values (
+      invitation.organization_id,
+      invitation.team_id,
+      accepted_person_id,
+      team_admin_profile_id
+    )
+    on conflict do nothing;
+  else
+    insert into public.people (organization_id, display_name)
+    values (invitation.organization_id, invitation.person_display_name)
+    returning id into accepted_person_id;
+
+    insert into public.memberships (organization_id, person_id, team_id, role)
+    values (invitation.organization_id, accepted_person_id, invitation.team_id, 'participant');
+
+    insert into public.person_guardians (
+      organization_id, person_id, guardian_user_id, contact_name
+    )
+    values (
+      invitation.organization_id,
+      accepted_person_id,
+      accepting_user_id,
+      accepting_name
+    );
+  end if;
+
+  update public.team_member_invitations
+  set accepted_at = now(), accepted_by = accepting_user_id
+  where id = invitation.id;
+
+  insert into public.audit_log (
+    organization_id, actor_user_id, action, entity_type, entity_id, details
+  )
+  values (
+    invitation.organization_id,
+    accepting_user_id,
+    'team_invitation.accepted',
+    'team_member_invitation',
+    invitation.id::text,
+    jsonb_build_object('team_id', invitation.team_id, 'role', invitation.role)
+  );
+
+  return query
+  select organization.slug, team.slug, invitation.role
+  from public.organizations organization
+  join public.teams team on team.id = invitation.team_id
+  where organization.id = invitation.organization_id;
+end;
+$accept_invitation$;
+
 drop function public.assign_existing_guardian_team_role(uuid, uuid, uuid, text);
 drop function public.has_team_role(uuid, text[], uuid);
 drop table public.team_staff;
