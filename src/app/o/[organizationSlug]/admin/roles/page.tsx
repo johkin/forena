@@ -38,7 +38,6 @@ export default async function ClubRolesPage({ params, searchParams }: Props) {
   const memberIds = new Set((members ?? []).map((member) => member.user_id));
   const guardians = (people ?? []).filter((person) => person.user_id && memberIds.has(person.user_id))
     .sort((a, b) => a.display_name.localeCompare(b.display_name, "sv"));
-  const guardianNames = new Map(guardians.map((person) => [person.user_id, person.display_name]));
   const guardianNamesByPersonId = new Map(guardians.map((person) => [person.id, person.display_name]));
   const guardianPersonIds = guardians.map((person) => person.id);
   const teamNames = new Map((teams ?? []).map((team) => [team.id, team.name]));
