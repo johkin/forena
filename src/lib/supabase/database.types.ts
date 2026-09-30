@@ -163,8 +163,8 @@ export interface Database {
         OrganizationScoped & { activity_type_id: string; document_id: string; visible_from_offset?: string; visible_until_offset?: string; created_at?: string }
       >;
       responsibility_types: Table<
-        Timestamped & OrganizationScoped & { id: string; name: string; slug: string; capabilities: string[]; updated_at: string },
-        OrganizationScoped & { id?: string; name: string; slug: string; capabilities?: string[]; created_at?: string; updated_at?: string }
+        Timestamped & OrganizationScoped & { id: string; name: string; slug: string; updated_at: string },
+        OrganizationScoped & { id?: string; name: string; slug: string; created_at?: string; updated_at?: string }
       >;
       team_responsibilities: Table<
         Timestamped & OrganizationScoped & { id: string; team_id: string; person_id: string; responsibility_type_id: string; starts_on: string; ends_on: string | null },
