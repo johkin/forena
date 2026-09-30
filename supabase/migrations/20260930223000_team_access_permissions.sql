@@ -486,16 +486,10 @@ alter table public.responsibility_types
   drop column capabilities;
 
 drop policy if exists "leaders can manage teams" on public.teams;
-create policy "organization and section admins can manage teams"
+create policy "organization admins can manage teams"
 on public.teams for all to authenticated
-using (
-  public.has_organization_role(organization_id, array['owner', 'admin'])
-  or public.has_section_role(section_id, array['section_admin'])
-)
-with check (
-  public.has_organization_role(organization_id, array['owner', 'admin'])
-  or public.has_section_role(section_id, array['section_admin'])
-);
+using (public.has_organization_role(organization_id, array['owner', 'admin']))
+with check (public.has_organization_role(organization_id, array['owner', 'admin']));
 
 drop policy if exists "scoped leaders can read document secrets" on public.contextual_document_secrets;
 create policy "admins and team administrators can read document secrets"
