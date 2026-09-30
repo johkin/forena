@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(11);
+select plan(13);
 
 insert into auth.users (id, email, raw_user_meta_data) values
   ('c0000000-0000-0000-0000-000000000001', 'access-owner@example.se', '{"display_name":"Ägare"}'),
@@ -151,6 +151,47 @@ select ok(
   not has_function_privilege('anon', 'public.has_team_permission(uuid,text)', 'EXECUTE'),
   'Anon kan inte anropa permission-funktionen'
 );
+
+select set_config('request.jwt.claims', '{"sub":"c0000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
+
+insert into public.team_access_assignments (organization_id, team_id, person_id, access_profile_id)
+select
+  'c1000000-0000-0000-0000-000000000001',
+  'c3000000-0000-0000-0000-000000000001',
+  person.id,
+  profile.id
+from public.people person
+join public.team_access_profiles profile
+  on profile.organization_id = person.organization_id
+ and profile.key = 'team_admin'
+where person.organization_id = 'c1000000-0000-0000-0000-000000000001'
+  and person.user_id = 'c0000000-0000-0000-0000-000000000003'
+on conflict do nothing;
+
+select set_config('request.jwt.claims', '{"sub":"c0000000-0000-0000-0000-000000000003","role":"authenticated"}', true);
+
+select throws_ok(
+  $update public.people
+    set user_id = 'c0000000-0000-0000-0000-000000000002'
+    where organization_id = 'c1000000-0000-0000-0000-000000000001'
+      and user_id = 'c0000000-0000-0000-0000-000000000003'$,
+  '42501',
+  'Only organization admins can change a person account binding',
+  'Lagbehörighet kan inte användas för att flytta en persons kontoidentitet'
+);
+
+select set_config('request.jwt.claims', '{"sub":"c0000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
+delete from public.organization_members
+where organization_id = 'c1000000-0000-0000-0000-000000000001'
+  and user_id = 'c0000000-0000-0000-0000-000000000003';
+
+select set_config('request.jwt.claims', '{"sub":"c0000000-0000-0000-0000-000000000003","role":"authenticated"}', true);
+select isnt(
+  public.has_team_permission('c3000000-0000-0000-0000-000000000001', 'team.manage'),
+  true,
+  'Borttaget organisationsmedlemskap upphäver kvarvarande team-access'
+);
+
 
 select * from finish();
 rollback;
