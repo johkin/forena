@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(8);
+select plan(10);
 
 insert into auth.users (id, email, raw_user_meta_data) values
   ('c0000000-0000-0000-0000-000000000001', 'access-owner@example.se', '{"display_name":"Ägare"}'),
@@ -96,6 +96,18 @@ select isnt(
   public.has_team_permission('c3000000-0000-0000-0000-000000000001', 'roster.manage'),
   true,
   'Lagredaktören får inte administrera truppen'
+);
+
+select isnt(
+  public.has_team_permission('c3000000-0000-0000-0000-000000000001', 'attendance.manage'),
+  true,
+  'Lagredaktören får inte närvarobehörighet implicit'
+);
+
+select isnt(
+  public.has_team_permission('c3000000-0000-0000-0000-000000000001', 'task.manage'),
+  true,
+  'Lagredaktören får inte uppgiftsbehörighet implicit'
 );
 select isnt(
   public.has_team_permission('c3000000-0000-0000-0000-000000000002', 'activity.manage'),
