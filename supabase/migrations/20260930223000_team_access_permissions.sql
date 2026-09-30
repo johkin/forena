@@ -111,7 +111,8 @@ begin
   values
     (new.id, 'team_admin', 'Lagadministratör'),
     (new.id, 'team_editor', 'Lagredaktör'),
-    (new.id, 'attendance_manager', 'Närvarohanterare')
+    (new.id, 'attendance_manager', 'Närvarohanterare'),
+    (new.id, 'team_viewer', 'Lagvisning')
   on conflict (organization_id, key) do nothing;
 
   for profile_record in
@@ -716,7 +717,7 @@ as $$
 declare
   guardian_person_id uuid;
   responsibility_type_id uuid;
-  access_profile_id uuid;
+  selected_access_profile_id uuid;
 begin
   if not public.has_organization_role(target_organization_id, array['owner', 'admin']) then
     raise exception 'Only organization admins can assign team access' using errcode = '42501';
@@ -763,12 +764,12 @@ begin
     raise exception 'Responsibility type is missing' using errcode = '22023';
   end if;
 
-  select profile.id into access_profile_id
+  select profile.id into selected_access_profile_id
   from public.team_access_profiles profile
   where profile.organization_id = target_organization_id
     and profile.key = target_access_profile_key;
 
-  if access_profile_id is null then
+  if selected_access_profile_id is null then
     raise exception 'Access profile is missing' using errcode = '22023';
   end if;
 
@@ -791,13 +792,13 @@ begin
     and team_id = target_team_id
     and person_id = guardian_person_id
     and ends_on is null
-    and access_profile_id <> access_profile_id;
+    and access_profile_id <> selected_access_profile_id;
 
   insert into public.team_access_assignments (
     organization_id, team_id, person_id, access_profile_id
   )
   values (
-    target_organization_id, target_team_id, guardian_person_id, access_profile_id
+    target_organization_id, target_team_id, guardian_person_id, selected_access_profile_id
   )
   on conflict do nothing;
 
