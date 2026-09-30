@@ -63,7 +63,7 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
     <main>
       <AppHeader
         homeHref={`/o/${organizationSlug}/t/${teamSlug}`}
-        navigation={<TeamMenu organizationSlug={organizationSlug} teamSlug={teamSlug} teamName={team.name} canManageTeam={Boolean(canManage)} leaderView activeItem="members" navigationOnly />}
+        navigation={<TeamMenu organizationSlug={organizationSlug} teamSlug={teamSlug} teamName={team.name} canManageRoster={Boolean(canManage)} leaderView activeItem="members" navigationOnly />}
         accountEmail={authData.user.email}
         organization={{ id: organization.id, slug: organization.slug, name: organization.name, assistantName: organization.assistant_name }}
         team={{ id: team.id, slug: team.slug, name: team.name, organizationId: team.organization_id, sectionId: team.section_id, season: team.season ?? "" }}
@@ -72,7 +72,7 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
         adminHref={isAdmin ? `/o/${organizationSlug}/admin/roles` : undefined}
       />
       <div className="shell">
-        <TeamMenu organizationSlug={organizationSlug} teamSlug={teamSlug} teamName={team.name} canManageTeam={Boolean(canManage)} leaderView activeItem="members" hideTrigger />
+        <TeamMenu organizationSlug={organizationSlug} teamSlug={teamSlug} teamName={team.name} canManageRoster={Boolean(canManage)} leaderView activeItem="members" hideTrigger />
         <section className="content">
           <section className="application-card members-admin-card">
         <div className="application-page-heading">
