@@ -121,13 +121,17 @@ values (
   'team_manager'
 );
 
-insert into public.team_responsibilities (organization_id, team_id, user_id, responsibility_type_id)
+insert into public.team_responsibilities (organization_id, team_id, user_id, person_id, responsibility_type_id)
 select
   '10000000-0000-0000-0000-000000000001',
   '20000000-0000-0000-0000-000000000001',
   '50000000-0000-0000-0000-000000000001',
+  person.id,
   responsibility_type.id
 from public.responsibility_types responsibility_type
+join public.people person
+  on person.organization_id = responsibility_type.organization_id
+ and person.user_id = '50000000-0000-0000-0000-000000000001'
 where responsibility_type.organization_id = '10000000-0000-0000-0000-000000000001'
   and responsibility_type.slug = 'lagledare';
 
