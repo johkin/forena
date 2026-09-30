@@ -43,7 +43,7 @@ type DeliveryStatus = {
 type ActivityInvitee = {
   personId: string;
   displayName: string;
-  role: "participant" | "leader" | "volunteer";
+  role: "participant" | "leader";
   response: "pending" | "accepted" | "declined";
 };
 
@@ -130,7 +130,6 @@ export function ActivityDetailModal({ activity, organization, team, canEdit, ros
 
   const leaders = invitees.filter((item) => item.role === "leader");
   const players = invitees.filter((item) => item.role === "participant");
-  const volunteers = invitees.filter((item) => item.role === "volunteer");
   const responseText = { accepted: "Kommer", declined: "Kan inte", pending: "Ej svarat" } as const;
   const alreadyInvited = new Set(invitees.map((item) => item.personId));
   const availableInvitees = rosterMembers.filter((member) => !alreadyInvited.has(member.id));
@@ -194,7 +193,6 @@ export function ActivityDetailModal({ activity, organization, team, canEdit, ros
         <div className="card-heading"><div><p className="eyebrow">Kallelser</p><h3 id="activity-staffing-title">Bemanning</h3></div></div>
         {leaders.length ? <div className="invitee-list">{leaders.map((leader) => <div key={leader.personId}><strong>{leader.displayName}</strong><span data-response={leader.response}>{responseText[leader.response]}</span></div>)}</div> : <p className="overview-empty">Inga ledare är kallade till aktiviteten.</p>}
         {players.length ? <details className="player-invitations"><summary>Spelare · {players.filter((item) => item.response === "accepted").length} kommer av {players.length} kallade</summary><div className="invitee-list">{players.map((player) => <div key={player.personId}><strong>{player.displayName}</strong><span data-response={player.response}>{responseText[player.response]}</span></div>)}</div></details> : null}
-        {volunteers.length ? <details className="player-invitations"><summary>Övriga roller · {volunteers.filter((item) => item.response === "accepted").length} kommer av {volunteers.length} kallade</summary><div className="invitee-list">{volunteers.map((person) => <div key={person.personId}><strong>{person.displayName}</strong><span data-response={person.response}>{responseText[person.response]}</span></div>)}</div></details> : null}
       </section> : null}
 
       {canEdit ? <details className="activity-invitation-add">
@@ -203,7 +201,7 @@ export function ActivityDetailModal({ activity, organization, team, canEdit, ros
           <p className="overview-empty">Välj personer som ska få en kallelse nu. Redan kallade personer visas inte här.</p>
           {availableInvitees.length ? <div className="invitation-person-picker">{availableInvitees.map((member) => <label key={member.id}>
             <input type="checkbox" checked={selectedPeople.has(member.id)} onChange={() => toggleInvitee(member.id)} />
-            <span><strong>{member.displayName}</strong><small>{member.teamRole === "participant" ? "Spelare" : member.teamRole === "leader" ? "Ledare" : "Övrig"}</small></span>
+            <span><strong>{member.displayName}</strong><small>{member.teamRelation === "player" ? "Spelare" : "Ledare"}</small></span>
           </label>)}</div> : <p className="overview-empty">Alla i laget är redan kallade.</p>}
           {invitationNotice ? <p className="overview-empty" role="status">{invitationNotice}</p> : null}
           <div className="modal-actions"><button className="primary" disabled={!selectedPeople.size || invitationPending} onClick={() => void sendInvitation()} type="button">{invitationPending ? "Köar…" : "Skicka kallelse"}</button></div>
