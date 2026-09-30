@@ -167,8 +167,8 @@ export interface Database {
         OrganizationScoped & { id?: string; name: string; slug: string; capabilities?: string[]; created_at?: string; updated_at?: string }
       >;
       team_responsibilities: Table<
-        Timestamped & OrganizationScoped & { id: string; team_id: string; user_id: string | null; person_id: string; responsibility_type_id: string; starts_on: string; ends_on: string | null },
-        OrganizationScoped & { id?: string; team_id: string; user_id?: string | null; person_id: string; responsibility_type_id: string; starts_on?: string; ends_on?: string | null; created_at?: string }
+        Timestamped & OrganizationScoped & { id: string; team_id: string; person_id: string; responsibility_type_id: string; starts_on: string; ends_on: string | null },
+        OrganizationScoped & { id?: string; team_id: string; person_id: string; responsibility_type_id: string; starts_on?: string; ends_on?: string | null; created_at?: string }
       >;
       ai_generation_runs: Table<
         Timestamped & OrganizationScoped & { id: string; team_id: string; requested_by: string | null; feature: "team_briefing"; model: string; status: "success" | "fallback"; input_tokens: number | null; output_tokens: number | null; latency_ms: number; signal_count: number; error_code: string | null },
