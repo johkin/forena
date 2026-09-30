@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(10);
+select plan(11);
 
 insert into auth.users (id, email, raw_user_meta_data) values
   ('c0000000-0000-0000-0000-000000000001', 'access-owner@example.se', '{"display_name":"Ägare"}'),
@@ -16,7 +16,7 @@ values (
 );
 
 insert into public.organization_members (organization_id, user_id, role) values
-  ('c1000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000002', 'member'),
+  ('c1000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000002', 'leader'),
   ('c1000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000003', 'member');
 
 insert into public.sections (id, organization_id, slug, name)
@@ -80,6 +80,18 @@ select isnt(
   public.has_team_permission('c3000000-0000-0000-0000-000000000001', 'activity.manage'),
   true,
   'En ledarrelation ger inte activity.manage'
+);
+
+select results_eq(
+  $with changed as (
+      update public.teams
+      set name = 'Otillåten ändring'
+      where id = 'c3000000-0000-0000-0000-000000000002'
+      returning id
+    )
+    select count(*) from changed$,
+  array[0::bigint],
+  'Organisationsrollen leader ger inte skrivåtkomst till andra lag'
 );
 
 select set_config('request.jwt.claims', '{"sub":"c0000000-0000-0000-0000-000000000003","role":"authenticated"}', true);
