@@ -39,9 +39,21 @@ export interface Database {
         Timestamped & OrganizationScoped & { section_id: string; user_id: string; role: "section_admin" | "editor" },
         OrganizationScoped & { section_id: string; user_id: string; role: "section_admin" | "editor"; created_at?: string }
       >;
-      team_staff: Table<
-        Timestamped & OrganizationScoped & { team_id: string; user_id: string; role: "team_manager" | "coach" | "editor" },
-        OrganizationScoped & { team_id: string; user_id: string; role: "team_manager" | "coach" | "editor"; created_at?: string }
+      team_permissions: Table<
+        Timestamped & { key: string; description: string },
+        { key: string; description: string; created_at?: string }
+      >;
+      team_access_profiles: Table<
+        Timestamped & OrganizationScoped & { id: string; key: string; name: string; updated_at: string },
+        OrganizationScoped & { id?: string; key: string; name: string; created_at?: string; updated_at?: string }
+      >;
+      team_access_profile_permissions: Table<
+        Timestamped & OrganizationScoped & { access_profile_id: string; permission_key: string },
+        OrganizationScoped & { access_profile_id: string; permission_key: string; created_at?: string }
+      >;
+      team_access_assignments: Table<
+        Timestamped & OrganizationScoped & { id: string; team_id: string; person_id: string; access_profile_id: string; starts_on: string; ends_on: string | null },
+        OrganizationScoped & { id?: string; team_id: string; person_id: string; access_profile_id: string; starts_on?: string; ends_on?: string | null; created_at?: string }
       >;
       team_member_invitations: Table<
         Timestamped & OrganizationScoped & { id: string; team_id: string; email: string; role: "leader" | "guardian"; person_display_name: string | null; token_hash: string; invited_by: string; expires_at: string; accepted_at: string | null; accepted_by: string | null },
@@ -151,12 +163,12 @@ export interface Database {
         OrganizationScoped & { activity_type_id: string; document_id: string; visible_from_offset?: string; visible_until_offset?: string; created_at?: string }
       >;
       responsibility_types: Table<
-        Timestamped & OrganizationScoped & { id: string; name: string; slug: string; capabilities: string[]; updated_at: string },
-        OrganizationScoped & { id?: string; name: string; slug: string; capabilities?: string[]; created_at?: string; updated_at?: string }
+        Timestamped & OrganizationScoped & { id: string; name: string; slug: string; updated_at: string },
+        OrganizationScoped & { id?: string; name: string; slug: string; created_at?: string; updated_at?: string }
       >;
       team_responsibilities: Table<
-        Timestamped & OrganizationScoped & { id: string; team_id: string; user_id: string | null; person_id: string; responsibility_type_id: string; starts_on: string; ends_on: string | null },
-        OrganizationScoped & { id?: string; team_id: string; user_id?: string | null; person_id: string; responsibility_type_id: string; starts_on?: string; ends_on?: string | null; created_at?: string }
+        Timestamped & OrganizationScoped & { id: string; team_id: string; person_id: string; responsibility_type_id: string; starts_on: string; ends_on: string | null },
+        OrganizationScoped & { id?: string; team_id: string; person_id: string; responsibility_type_id: string; starts_on?: string; ends_on?: string | null; created_at?: string }
       >;
       ai_generation_runs: Table<
         Timestamped & OrganizationScoped & { id: string; team_id: string; requested_by: string | null; feature: "team_briefing"; model: string; status: "success" | "fallback"; input_tokens: number | null; output_tokens: number | null; latency_ms: number; signal_count: number; error_code: string | null },
@@ -188,9 +200,10 @@ export interface Database {
       is_organization_member: { Args: { target_organization_id: string; target_user_id?: string }; Returns: boolean };
       has_organization_role: { Args: { target_organization_id: string; allowed_roles: string[]; target_user_id?: string }; Returns: boolean };
       has_section_role: { Args: { target_section_id: string; allowed_roles: string[]; target_user_id?: string }; Returns: boolean };
-      has_team_role: { Args: { target_team_id: string; allowed_roles: string[]; target_user_id?: string }; Returns: boolean };
+      has_team_permission: { Args: { target_team_id: string; target_permission: string }; Returns: boolean };
+      delete_or_cancel_activity: { Args: { target_activity_id: string; target_cancellation_reason?: string | null }; Returns: "deleted" | "cancelled" };
       can_manage_team: { Args: { target_team_id: string; target_user_id?: string }; Returns: boolean };
-      assign_existing_guardian_team_role: { Args: { target_organization_id: string; target_team_id: string; target_user_id: string; target_role: "team_manager" | "coach" }; Returns: undefined };
+      assign_existing_guardian_team_access: { Args: { target_organization_id: string; target_team_id: string; target_user_id: string; target_responsibility_slug: string; target_access_profile_key: string }; Returns: undefined };
       get_team_briefing_context: { Args: { target_team_id: string }; Returns: Json };
       accept_team_member_invitation: { Args: { invitation_token_hash: string }; Returns: { organization_slug: string; team_slug: string; invitation_role: string }[] };
       get_join_options: { Args: { requested_organization_slug: string }; Returns: { organization_id: string; organization_name: string; organization_slug: string; section_id: string; section_name: string; section_slug: string; team_id: string; team_name: string; team_slug: string }[] };

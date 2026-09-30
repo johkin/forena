@@ -51,7 +51,9 @@ type Props = {
   activity: Activity;
   organization: Organization;
   team: Team;
-  canEdit: boolean;
+  canManageActivity: boolean;
+  canManageInvitations: boolean;
+  canManageAttendance: boolean;
   rosterMembers: Member[];
   onClose: () => void;
   onEdit: (activity: Activity) => void;
@@ -76,7 +78,7 @@ const statusLabels: Record<DeliveryChannel["status"], string> = {
   skipped: "Ej använd",
 };
 
-export function ActivityDetailModal({ activity, organization, team, canEdit, rosterMembers, onClose, onEdit }: Props) {
+export function ActivityDetailModal({ activity, organization, team, canManageActivity, canManageInvitations, canManageAttendance, rosterMembers, onClose, onEdit }: Props) {
   useModalScrollLock();
   const timeZone = organization.timeZone ?? "Europe/Stockholm";
   const [events, setEvents] = useState<EventRow[]>([]);
@@ -108,15 +110,16 @@ export function ActivityDetailModal({ activity, organization, team, canEdit, ros
   }, []);
 
   useEffect(() => {
+    if (!canManageInvitations) return;
     let cancelled = false;
     // The shared loader only updates state after awaiting the fetch response.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadEventsAndDelivery(activity.id, () => !cancelled);
     return () => { cancelled = true; };
-  }, [activity.id, loadEventsAndDelivery]);
+  }, [activity.id, canManageInvitations, loadEventsAndDelivery]);
 
   useEffect(() => {
-    if (!canEdit) return;
+    if (!canManageInvitations) return;
     let cancelled = false;
     fetch(`/api/activities/${activity.id}`)
       .then(async (response) => {
@@ -126,7 +129,7 @@ export function ActivityDetailModal({ activity, organization, team, canEdit, ros
       .then((body) => { if (!cancelled) setInvitees(body.invitees ?? []); })
       .catch(() => { if (!cancelled) setInvitees([]); });
     return () => { cancelled = true; };
-  }, [activity.id, canEdit]);
+  }, [activity.id, canManageInvitations]);
 
   const leaders = invitees.filter((item) => item.role === "leader");
   const players = invitees.filter((item) => item.role === "participant");
@@ -189,13 +192,13 @@ export function ActivityDetailModal({ activity, organization, team, canEdit, ros
         {activity.seriesId ? <p><span>Serie</span><strong>Ingår i en aktivitetsserie</strong></p> : null}
       </div>
 
-      {canEdit ? <section className="activity-staffing" aria-labelledby="activity-staffing-title">
+      {canManageInvitations ? <section className="activity-staffing" aria-labelledby="activity-staffing-title">
         <div className="card-heading"><div><p className="eyebrow">Kallelser</p><h3 id="activity-staffing-title">Bemanning</h3></div></div>
         {leaders.length ? <div className="invitee-list">{leaders.map((leader) => <div key={leader.personId}><strong>{leader.displayName}</strong><span data-response={leader.response}>{responseText[leader.response]}</span></div>)}</div> : <p className="overview-empty">Inga ledare är kallade till aktiviteten.</p>}
         {players.length ? <details className="player-invitations"><summary>Spelare · {players.filter((item) => item.response === "accepted").length} kommer av {players.length} kallade</summary><div className="invitee-list">{players.map((player) => <div key={player.personId}><strong>{player.displayName}</strong><span data-response={player.response}>{responseText[player.response]}</span></div>)}</div></details> : null}
       </section> : null}
 
-      {canEdit ? <details className="activity-invitation-add">
+      {canManageInvitations ? <details className="activity-invitation-add">
         <summary>Lägg till kallelse</summary>
         <div className="activity-invitation-add-body">
           <p className="overview-empty">Välj personer som ska få en kallelse nu. Redan kallade personer visas inte här.</p>
@@ -208,7 +211,7 @@ export function ActivityDetailModal({ activity, organization, team, canEdit, ros
         </div>
       </details> : null}
 
-      {canEdit && deliveryStatus ? <details className="delivery-status">
+      {canManageInvitations && deliveryStatus ? <details className="delivery-status">
         <summary><span>Leveransstatus</span><small>{deliveryStatus.sent} skickade · {deliveryStatus.queued} väntar · {deliveryStatus.failed} misslyckade</small></summary>
         <div className="delivery-summary">
           <span><strong>{deliveryStatus.sent}</strong> skickade</span>
@@ -221,15 +224,15 @@ export function ActivityDetailModal({ activity, organization, team, canEdit, ros
         </li>)}</ol> : <p className="overview-empty">Inga notifieringar har köats för aktiviteten ännu.</p>}
       </details> : null}
 
-      {(events.length > 0 || historyError) ? <section className="activity-history" aria-labelledby="activity-history-title">
+      {canManageInvitations && (events.length > 0 || historyError) ? <section className="activity-history" aria-labelledby="activity-history-title">
         <div className="card-heading"><div><p className="eyebrow">Historik</p><h3 id="activity-history-title">Kallelser och ändringar</h3></div></div>
         {historyError ? <p className="overview-empty">Historiken kunde inte hämtas.</p> : <ol>{events.map((event) => <li key={event.id}>
           <span className="history-dot" />
           <span><strong>{eventLabels[event.event_type]}</strong><small>{new Intl.DateTimeFormat("sv-SE", { timeZone, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(event.created_at))}{event.recipient_count ? ` · ${event.recipient_count} mottagare` : ""}{event.channel ? ` · ${event.channel}` : ""}</small></span>
         </li>)}</ol>}
       </section> : null}
-      <div className="modal-actions"><button className="secondary" onClick={onClose} type="button">Stäng</button>{canEdit && activityStarted ? <button className="primary" onClick={() => setAttendanceOpen(true)} type="button">Rapportera närvaro</button> : null}{canEdit ? <button className="secondary" onClick={() => onEdit(activity)} type="button">Redigera aktivitet</button> : null}</div>
+      <div className="modal-actions"><button className="secondary" onClick={onClose} type="button">Stäng</button>{canManageAttendance && activityStarted ? <button className="primary" onClick={() => setAttendanceOpen(true)} type="button">Rapportera närvaro</button> : null}{canManageActivity ? <button className="secondary" onClick={() => onEdit(activity)} type="button">Redigera aktivitet</button> : null}</div>
     </section>
-    {attendanceOpen ? <AttendanceModal activityId={activity.id} onClose={() => setAttendanceOpen(false)} /> : null}
+    {attendanceOpen && canManageAttendance ? <AttendanceModal activityId={activity.id} onClose={() => setAttendanceOpen(false)} /> : null}
   </div>;
 }

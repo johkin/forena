@@ -1,5 +1,7 @@
 export type EntityId = string;
 
+export type TeamPermission = "team.view" | "team.manage" | "activity.manage" | "invitation.manage" | "attendance.manage" | "roster.manage" | "responsibility.manage" | "task.manage";
+
 export type Organization = {
   id: EntityId;
   slug: string;

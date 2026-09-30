@@ -11,6 +11,8 @@ type Props = {
   timeZone: string;
   referenceTime: string;
   reminderPending: boolean;
+  canManageInvitations: boolean;
+  canManageAttendance: boolean;
   onOpenActivity: (activity: Activity) => void;
   onOpenAttendance: (activity: Activity) => void;
   onSendReminder: (activity: Activity) => void;
@@ -25,12 +27,12 @@ type TeamItem = {
   onClick?: () => void;
 };
 
-export function TeamOverview({ teamName, activity, summary, upcomingActivities, tasks, timeZone, referenceTime, reminderPending, onOpenActivity, onOpenAttendance, onSendReminder, missingAttendanceActivities = [] }: Props) {
+export function TeamOverview({ teamName, activity, summary, upcomingActivities, tasks, timeZone, referenceTime, reminderPending, canManageInvitations, canManageAttendance, onOpenActivity, onOpenAttendance, onSendReminder, missingAttendanceActivities = [] }: Props) {
   const start = new Intl.DateTimeFormat("sv-SE", { timeZone, weekday: "long", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(activity.gatheringAt ?? activity.startsAt));
   const weekLimit = new Date(referenceTime).getTime() + 7 * 24 * 60 * 60 * 1000;
   const nextSevenDays = upcomingActivities.filter((item) => new Date(item.startsAt).getTime() <= weekLimit).length;
   const items: TeamItem[] = [];
-  for (const missing of missingAttendanceActivities) {
+  for (const missing of canManageAttendance ? missingAttendanceActivities : []) {
     items.push({
       id: `attendance:${missing.id}`,
       kind: "attendance",
@@ -40,7 +42,7 @@ export function TeamOverview({ teamName, activity, summary, upcomingActivities, 
     });
   }
 
-  if (summary.pending > 0) {
+  if (canManageInvitations && summary.pending > 0) {
     items.push({
       id: `invitation:${activity.id}`,
       kind: "invitation",
@@ -72,9 +74,11 @@ export function TeamOverview({ teamName, activity, summary, upcomingActivities, 
     </button>
 
     <div className="team-status-metrics">
-      <div><strong>{summary.accepted}</strong><span>kommer</span></div>
-      <div><strong>{summary.declined}</strong><span>kan inte</span></div>
-      <div><strong>{summary.pending}</strong><span>ej svarat</span></div>
+      {canManageInvitations ? <>
+        <div><strong>{summary.accepted}</strong><span>kommer</span></div>
+        <div><strong>{summary.declined}</strong><span>kan inte</span></div>
+        <div><strong>{summary.pending}</strong><span>ej svarat</span></div>
+      </> : null}
       <div><strong>{nextSevenDays}</strong><span>aktiviteter / 7 dagar</span></div>
     </div>
 
@@ -85,7 +89,7 @@ export function TeamOverview({ teamName, activity, summary, upcomingActivities, 
           <span className="priority-copy"><small>{item.kind === "attendance" ? "Närvaro · högsta prioritet" : item.kind === "invitation" ? "Kallelse" : "Uppgift"}</small><strong>{item.title}</strong><span>{item.meta}</span></span>
           {item.onClick ? <b aria-hidden="true">→</b> : null}
         </button>
-        {item.kind === "invitation" ? <button className="secondary reminder-action" disabled={reminderPending} onClick={() => onSendReminder(activity)} type="button">{reminderPending ? "Köar…" : "Skicka påminnelse"}</button> : null}
+        {item.kind === "invitation" && canManageInvitations ? <button className="secondary reminder-action" disabled={reminderPending} onClick={() => onSendReminder(activity)} type="button">{reminderPending ? "Köar…" : "Skicka påminnelse"}</button> : null}
       </div>)}
     </div> : <p className="overview-empty">Inget särskilt behöver hanteras för laget just nu.</p>}
   </section>;

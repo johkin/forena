@@ -8,7 +8,7 @@ type Props = {
   organizationSlug: string;
   teamSlug: string;
   teamName: string;
-  canManageTeam: boolean;
+  canManageRoster: boolean;
   leaderView: boolean;
   activeItem?: TeamMenuItem;
   onSelectView?: (view: "overview" | "calendar") => void;
@@ -21,7 +21,7 @@ export function TeamMenu({
   organizationSlug,
   teamSlug,
   teamName,
-  canManageTeam,
+  canManageRoster,
   leaderView,
   activeItem,
   onSelectView,
@@ -51,7 +51,7 @@ export function TeamMenu({
               <a className={activeItem === "calendar" ? "active" : ""} onClick={() => setOpen(false)} href={`${teamHref}?view=calendar`}>Kalender</a>
             </>
           )}
-          <a className={activeItem === "members" ? "active" : ""} onClick={() => setOpen(false)} href={canManageTeam ? `${teamHref}/members` : "#members"}>Truppen</a>
+          <a className={activeItem === "members" ? "active" : ""} onClick={() => setOpen(false)} href={canManageRoster ? `${teamHref}/members` : "#members"}>Truppen</a>
           <a onClick={() => setOpen(false)} href="#attendance">Närvaro</a>
         </nav>
         {leaderView ? <><p className="eyebrow">Publicering</p><nav><a onClick={() => setOpen(false)} href="#news">Nyheter</a><a onClick={() => setOpen(false)} href="#pages">Sidor</a></nav></> : null}

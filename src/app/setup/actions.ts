@@ -150,9 +150,9 @@ export async function createWorkspace(formData: FormData) {
     .maybeSingle();
   if (!managerType) {
     const { error: responsibilityTypeError } = await supabase.from("responsibility_types").insert([
-      { organization_id: organizationId, name: "Lagledare", slug: "lagledare", capabilities: ["manage_team", "manage_activities", "manage_members"] },
-      { organization_id: organizationId, name: "Tränare", slug: "tranare", capabilities: ["manage_activities"] },
-      { organization_id: organizationId, name: "Redaktör", slug: "redaktor", capabilities: ["edit_content"] },
+      { organization_id: organizationId, name: "Lagledare", slug: "lagledare" },
+      { organization_id: organizationId, name: "Tränare", slug: "tranare" },
+      { organization_id: organizationId, name: "Redaktör", slug: "redaktor" },
     ]);
     if (responsibilityTypeError) fail("Ansvarstyperna kunde inte skapas");
     const result = await supabase
@@ -173,6 +173,32 @@ export async function createWorkspace(formData: FormData) {
     .maybeSingle();
   if (!managerPerson) fail("Personkopplingen för lagledaren kunde inte hittas");
 
+  const { data: teamAdminProfile } = await supabase
+    .from("team_access_profiles")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("key", "team_admin")
+    .single();
+  if (!teamAdminProfile) fail("Lagadministratörsbehörigheten kunde inte hittas");
+
+  const { data: existingAccessAssignment } = await supabase
+    .from("team_access_assignments")
+    .select("id")
+    .eq("team_id", teamId)
+    .eq("person_id", managerPerson.id)
+    .eq("access_profile_id", teamAdminProfile.id)
+    .is("ends_on", null)
+    .maybeSingle();
+  if (!existingAccessAssignment) {
+    const { error: accessError } = await supabase.from("team_access_assignments").insert({
+      organization_id: organizationId,
+      team_id: teamId,
+      person_id: managerPerson.id,
+      access_profile_id: teamAdminProfile.id,
+    });
+    if (accessError) fail("Lagadministratörsbehörigheten kunde inte sparas");
+  }
+
   const { data: existingManagerResponsibility } = await supabase
     .from("team_responsibilities")
     .select("id")
@@ -185,7 +211,6 @@ export async function createWorkspace(formData: FormData) {
     const { error: responsibilityError } = await supabase.from("team_responsibilities").insert({
       organization_id: organizationId,
       team_id: teamId,
-      user_id: user.id,
       person_id: managerPerson.id,
       responsibility_type_id: managerType.id,
     });
