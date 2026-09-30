@@ -485,6 +485,34 @@ for each row execute function public.touch_updated_at();
 alter table public.responsibility_types
   drop column capabilities;
 
+drop policy if exists "leaders can manage teams" on public.teams;
+create policy "organization and section admins can manage teams"
+on public.teams for all to authenticated
+using (
+  public.has_organization_role(organization_id, array['owner', 'admin'])
+  or public.has_section_role(section_id, array['section_admin'])
+)
+with check (
+  public.has_organization_role(organization_id, array['owner', 'admin'])
+  or public.has_section_role(section_id, array['section_admin'])
+);
+
+drop policy if exists "scoped leaders can read document secrets" on public.contextual_document_secrets;
+create policy "admins and team administrators can read document secrets"
+on public.contextual_document_secrets for select to authenticated
+using (
+  public.has_organization_role(organization_id, array['owner', 'admin'])
+  or exists (
+    select 1
+    from public.activity_type_documents link
+    join public.activities activity
+      on activity.activity_type_id = link.activity_type_id
+    where link.document_id = contextual_document_secrets.document_id
+      and activity.team_id is not null
+      and public.has_team_permission(activity.team_id, 'team.manage')
+  )
+);
+
 drop policy if exists "scoped leaders can manage activities" on public.activities;
 create policy "team activity managers can manage activities"
 on public.activities for all to authenticated
