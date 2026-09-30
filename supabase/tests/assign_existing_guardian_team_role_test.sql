@@ -13,6 +13,12 @@ values ('b1000000-0000-0000-0000-000000000001', 'role-test', 'Rolltest', 'b00000
 insert into public.sections (id, organization_id, slug, name)
 values ('b2000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000001', 'fotboll', 'Fotboll');
 
+insert into public.responsibility_types (organization_id, name, slug)
+values
+  ('b1000000-0000-0000-0000-000000000001', 'Lagledare', 'lagledare'),
+  ('b1000000-0000-0000-0000-000000000001', 'Tränare', 'tranare');
+
+
 insert into public.teams (id, organization_id, section_id, slug, name, season)
 values ('b3000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000001', 'b2000000-0000-0000-0000-000000000001', 'f2016', 'F2016', '2026');
 
