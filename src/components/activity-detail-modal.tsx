@@ -92,7 +92,7 @@ export function ActivityDetailModal({ activity, organization, team, canEdit, ros
   const date = new Intl.DateTimeFormat("sv-SE", { timeZone, weekday: "long", day: "numeric", month: "long" }).format(new Date(activity.startsAt));
   const time = new Intl.DateTimeFormat("sv-SE", { timeZone, hour: "2-digit", minute: "2-digit" });
 
-  const loadEventsAndDelivery = useCallback(async (activityId: string, shouldApply = () => true) => {
+  const loadEventsAndDelivery = useCallback(async (activityId: string, shouldApply: () => boolean = () => true) => {
     try {
       const response = await fetch(`/api/activities/${activityId}/events`);
       if (!response.ok) throw new Error();
