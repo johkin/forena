@@ -126,11 +126,10 @@ join public.team_access_profiles profile
 where person.organization_id = '10000000-0000-0000-0000-000000000001'
   and person.user_id = '50000000-0000-0000-0000-000000000001';
 
-insert into public.team_responsibilities (organization_id, team_id, user_id, person_id, responsibility_type_id)
+insert into public.team_responsibilities (organization_id, team_id, person_id, responsibility_type_id)
 select
   '10000000-0000-0000-0000-000000000001',
   '20000000-0000-0000-0000-000000000001',
-  '50000000-0000-0000-0000-000000000001',
   person.id,
   responsibility_type.id
 from public.responsibility_types responsibility_type
