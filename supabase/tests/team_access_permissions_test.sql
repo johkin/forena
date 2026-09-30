@@ -82,15 +82,13 @@ select isnt(
   'En ledarrelation ger inte activity.manage'
 );
 
+update public.teams
+set name = 'Otillåten ändring'
+where id = 'c3000000-0000-0000-0000-000000000002';
+
 select results_eq(
-  $q$with changed as (
-      update public.teams
-      set name = 'Otillåten ändring'
-      where id = 'c3000000-0000-0000-0000-000000000002'
-      returning id
-    )
-    select count(*) from changed$q$,
-  array[0::bigint],
+  $select name from public.teams where id = 'c3000000-0000-0000-0000-000000000002'$,
+  array['Team B'::text],
   'Organisationsrollen leader ger inte skrivåtkomst till andra lag'
 );
 
