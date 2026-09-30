@@ -86,7 +86,7 @@ join public.team_permissions permission
   on profile.key = 'team_admin'
   or (
     profile.key = 'team_editor'
-    and permission.key in ('team.view', 'activity.manage', 'invitation.manage', 'attendance.manage', 'task.manage')
+    and permission.key in ('team.view', 'activity.manage', 'invitation.manage')
   )
   or (
     profile.key = 'attendance_manager'
@@ -129,7 +129,7 @@ begin
       insert into public.team_access_profile_permissions (organization_id, access_profile_id, permission_key)
       select new.id, profile_record.id, permission.key
       from public.team_permissions permission
-      where permission.key in ('team.view', 'activity.manage', 'invitation.manage', 'attendance.manage', 'task.manage')
+      where permission.key in ('team.view', 'activity.manage', 'invitation.manage')
       on conflict do nothing;
     elsif profile_record.key = 'attendance_manager' then
       insert into public.team_access_profile_permissions (organization_id, access_profile_id, permission_key)
