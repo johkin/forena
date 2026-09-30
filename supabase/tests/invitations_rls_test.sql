@@ -24,8 +24,18 @@ insert into public.teams (id, organization_id, section_id, slug, name, season) v
   ('a3000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'team-a', 'Team A', '2026'),
   ('a3000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'team-b', 'Team B', '2026');
 
-insert into public.team_staff (organization_id, team_id, user_id, role)
-values ('a1000000-0000-0000-0000-000000000001', 'a3000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'team_manager');
+insert into public.team_access_assignments (organization_id, team_id, person_id, access_profile_id)
+select
+  'a1000000-0000-0000-0000-000000000001',
+  'a3000000-0000-0000-0000-000000000001',
+  person.id,
+  profile.id
+from public.people person
+join public.team_access_profiles profile
+  on profile.organization_id = person.organization_id
+ and profile.key = 'team_admin'
+where person.organization_id = 'a1000000-0000-0000-0000-000000000001'
+  and person.user_id = 'a0000000-0000-0000-0000-000000000001';
 
 insert into public.activity_types (id, organization_id, name, slug, system_category)
 values ('a4000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'Träning', 'traning', 'session');
@@ -72,7 +82,7 @@ select set_config('request.jwt.claims', '{"sub":"a0000000-0000-0000-0000-0000000
 select results_eq(
   $$select response_comment from public.invitations order by response_comment$$,
   array['Private family comment A'::text],
-  'A team manager can read invitations for the managed team only'
+  'A team admin can read invitations for the managed team only'
 );
 
 select set_config('request.jwt.claims', '{"sub":"a0000000-0000-0000-0000-000000000004","role":"authenticated"}', true);
