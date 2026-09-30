@@ -19,9 +19,9 @@ select results_eq(
   array[1::bigint],
   'Publika besökare kan läsa valbara sektioner och lag'
 );
-select results_eq(
+select throws_ok(
   $$select count(*) from public.membership_applications$$,
-  array[0::bigint],
+  '42501', 'permission denied for table membership_applications',
   'Publika besökare kan inte läsa ansökningar'
 );
 select lives_ok(

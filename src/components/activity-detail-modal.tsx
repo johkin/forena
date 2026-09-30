@@ -109,6 +109,8 @@ export function ActivityDetailModal({ activity, organization, team, canEdit, ros
 
   useEffect(() => {
     let cancelled = false;
+    // The shared loader only updates state after awaiting the fetch response.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadEventsAndDelivery(activity.id, () => !cancelled);
     return () => { cancelled = true; };
   }, [activity.id, loadEventsAndDelivery]);
