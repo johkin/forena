@@ -183,6 +183,150 @@ alter table public.team_responsibilities
   add constraint team_responsibilities_person_type_start_key
   unique (team_id, person_id, responsibility_type_id, starts_on);
 
+
+create or replace function public.materialize_due_activity_invitations(batch_size integer default 100)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $materialize$
+declare
+  inserted_count integer := 0;
+begin
+  create temporary table if not exists due_invitation_activities_v3 (
+    id uuid primary key,
+    organization_id uuid not null,
+    team_id uuid not null,
+    invitation_audience_kind text not null,
+    invitation_group_id uuid,
+    invitation_audience_roles text[] not null,
+    invitation_audience_group_ids uuid[] not null,
+    invitation_audience_responsibility_type_ids uuid[] not null
+  ) on commit drop;
+  truncate due_invitation_activities_v3;
+
+  insert into due_invitation_activities_v3
+  select
+    activity.id,
+    activity.organization_id,
+    activity.team_id,
+    activity.invitation_audience_kind,
+    activity.invitation_group_id,
+    activity.invitation_audience_roles,
+    activity.invitation_audience_group_ids,
+    activity.invitation_audience_responsibility_type_ids
+  from public.activities activity
+  where activity.status = 'published'
+    and activity.invitation_send_at is not null
+    and activity.invitation_send_at <= now()
+    and activity.invitation_audience_kind is not null
+    and activity.invitation_materialized_at is null
+    and activity.team_id is not null
+  order by activity.invitation_send_at
+  for update skip locked
+  limit greatest(1, least(batch_size, 500));
+
+  with audience_people as (
+    select distinct due.id as activity_id, due.organization_id, membership.person_id
+    from due_invitation_activities_v3 due
+    join public.memberships membership
+      on membership.team_id = due.team_id
+     and membership.organization_id = due.organization_id
+    where due.invitation_audience_kind = 'players'
+      and membership.role = 'participant'
+      and membership.starts_on <= current_date
+      and (membership.ends_on is null or membership.ends_on >= current_date)
+
+    union
+
+    select distinct due.id, due.organization_id, membership.person_id
+    from due_invitation_activities_v3 due
+    join public.memberships membership
+      on membership.team_id = due.team_id
+     and membership.organization_id = due.organization_id
+    where due.invitation_audience_kind = 'leaders'
+      and membership.role = 'leader'
+      and membership.starts_on <= current_date
+      and (membership.ends_on is null or membership.ends_on >= current_date)
+
+    union
+
+    select distinct due.id, due.organization_id, group_member.person_id
+    from due_invitation_activities_v3 due
+    join public.team_group_members group_member
+      on group_member.group_id = due.invitation_group_id
+     and group_member.organization_id = due.organization_id
+    join public.memberships membership
+      on membership.team_id = due.team_id
+     and membership.organization_id = due.organization_id
+     and membership.person_id = group_member.person_id
+     and membership.role in ('participant', 'leader')
+     and membership.starts_on <= current_date
+     and (membership.ends_on is null or membership.ends_on >= current_date)
+    where due.invitation_audience_kind = 'group'
+
+    union
+
+    select distinct due.id, due.organization_id, membership.person_id
+    from due_invitation_activities_v3 due
+    join public.memberships membership
+      on membership.team_id = due.team_id
+     and membership.organization_id = due.organization_id
+    where due.invitation_audience_kind = 'selection'
+      and membership.role = any(due.invitation_audience_roles)
+      and membership.starts_on <= current_date
+      and (membership.ends_on is null or membership.ends_on >= current_date)
+
+    union
+
+    select distinct due.id, due.organization_id, group_member.person_id
+    from due_invitation_activities_v3 due
+    join public.team_group_members group_member
+      on group_member.group_id = any(due.invitation_audience_group_ids)
+     and group_member.organization_id = due.organization_id
+    join public.team_groups team_group
+      on team_group.id = group_member.group_id
+     and team_group.team_id = due.team_id
+     and team_group.organization_id = due.organization_id
+    join public.memberships membership
+      on membership.team_id = due.team_id
+     and membership.organization_id = due.organization_id
+     and membership.person_id = group_member.person_id
+     and membership.role in ('participant', 'leader')
+     and membership.starts_on <= current_date
+     and (membership.ends_on is null or membership.ends_on >= current_date)
+    where due.invitation_audience_kind = 'selection'
+
+    union
+
+    select distinct due.id, due.organization_id, responsibility.person_id
+    from due_invitation_activities_v3 due
+    join public.team_responsibilities responsibility
+      on responsibility.team_id = due.team_id
+     and responsibility.organization_id = due.organization_id
+     and responsibility.responsibility_type_id = any(due.invitation_audience_responsibility_type_ids)
+     and responsibility.starts_on <= current_date
+     and (responsibility.ends_on is null or responsibility.ends_on >= current_date)
+    where due.invitation_audience_kind = 'selection'
+  ),
+  inserted as (
+    insert into public.invitations (organization_id, activity_id, person_id)
+    select audience.organization_id, audience.activity_id, audience.person_id
+    from audience_people audience
+    on conflict (activity_id, person_id) do nothing
+    returning id
+  )
+  select count(*) into inserted_count from inserted;
+
+  update public.activities activity
+  set invitation_materialized_at = now()
+  from due_invitation_activities_v3 due
+  where activity.id = due.id;
+
+  return inserted_count;
+end;
+$materialize$;
+
 create or replace function private.has_team_permission(
   target_team_id uuid,
   target_permission text,
