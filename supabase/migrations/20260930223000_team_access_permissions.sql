@@ -58,6 +58,7 @@ create index team_access_assignments_profile_idx
   on public.team_access_assignments(access_profile_id, organization_id);
 
 insert into public.team_permissions (key, description) values
+  ('team.view', 'Open and view a team workspace'),
   ('team.manage', 'Full operational access to a team workspace'),
   ('activity.manage', 'Create and edit team activities'),
   ('invitation.manage', 'Manage activity invitations and reminders'),
@@ -73,7 +74,8 @@ from public.organizations organization
 cross join (values
   ('team_admin', 'Lagadministratör'),
   ('team_editor', 'Lagredaktör'),
-  ('attendance_manager', 'Närvarohanterare')
+  ('attendance_manager', 'Närvarohanterare'),
+  ('team_viewer', 'Lagvisning')
 ) profile(key, name)
 on conflict (organization_id, key) do nothing;
 
@@ -84,11 +86,15 @@ join public.team_permissions permission
   on profile.key = 'team_admin'
   or (
     profile.key = 'team_editor'
-    and permission.key in ('activity.manage', 'invitation.manage', 'attendance.manage', 'task.manage')
+    and permission.key in ('team.view', 'activity.manage', 'invitation.manage', 'attendance.manage', 'task.manage')
   )
   or (
     profile.key = 'attendance_manager'
-    and permission.key = 'attendance.manage'
+    and permission.key in ('team.view', 'attendance.manage')
+  )
+  or (
+    profile.key = 'team_viewer'
+    and permission.key = 'team.view'
   )
 on conflict do nothing;
 
@@ -122,11 +128,17 @@ begin
       insert into public.team_access_profile_permissions (organization_id, access_profile_id, permission_key)
       select new.id, profile_record.id, permission.key
       from public.team_permissions permission
-      where permission.key in ('activity.manage', 'invitation.manage', 'attendance.manage', 'task.manage')
+      where permission.key in ('team.view', 'activity.manage', 'invitation.manage', 'attendance.manage', 'task.manage')
       on conflict do nothing;
     elsif profile_record.key = 'attendance_manager' then
       insert into public.team_access_profile_permissions (organization_id, access_profile_id, permission_key)
-      values (new.id, profile_record.id, 'attendance.manage')
+      select new.id, profile_record.id, permission.key
+      from public.team_permissions permission
+      where permission.key in ('team.view', 'attendance.manage')
+      on conflict do nothing;
+    elsif profile_record.key = 'team_viewer' then
+      insert into public.team_access_profile_permissions (organization_id, access_profile_id, permission_key)
+      values (new.id, profile_record.id, 'team.view')
       on conflict do nothing;
     end if;
   end loop;
@@ -159,7 +171,7 @@ join public.team_access_profiles profile
   on profile.organization_id = staff.organization_id
  and profile.key = case
    when staff.role in ('team_manager', 'coach') then 'team_admin'
-   else 'team_editor'
+   else 'team_viewer'
  end
 on conflict do nothing;
 
@@ -714,7 +726,7 @@ begin
     raise exception 'Invalid team responsibility' using errcode = '22023';
   end if;
 
-  if target_access_profile_key not in ('team_admin', 'team_editor', 'attendance_manager') then
+  if target_access_profile_key not in ('team_admin', 'team_editor', 'attendance_manager', 'team_viewer') then
     raise exception 'Invalid team access profile' using errcode = '22023';
   end if;
 
@@ -773,6 +785,13 @@ begin
     target_organization_id, target_team_id, target_user_id, guardian_person_id, responsibility_type_id
   )
   on conflict do nothing;
+
+  delete from public.team_access_assignments
+  where organization_id = target_organization_id
+    and team_id = target_team_id
+    and person_id = guardian_person_id
+    and ends_on is null
+    and access_profile_id <> access_profile_id;
 
   insert into public.team_access_assignments (
     organization_id, team_id, person_id, access_profile_id
