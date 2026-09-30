@@ -83,13 +83,13 @@ select isnt(
 );
 
 select results_eq(
-  $with changed as (
+  $q$with changed as (
       update public.teams
       set name = 'Otillåten ändring'
       where id = 'c3000000-0000-0000-0000-000000000002'
       returning id
     )
-    select count(*) from changed$,
+    select count(*) from changed$q$,
   array[0::bigint],
   'Organisationsrollen leader ger inte skrivåtkomst till andra lag'
 );
