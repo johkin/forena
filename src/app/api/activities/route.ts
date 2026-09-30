@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     : await typeQuery.eq("slug", "ovrigt").maybeSingle();
   if (!activityType) return NextResponse.json({ error: "Aktivitetstypen kunde inte hittas" }, { status: 400 });
 
-  const { data: allowed } = await supabase.rpc("can_manage_team", { target_team_id: team.id });
+  const { data: allowed } = await supabase.rpc("has_team_permission", { target_team_id: team.id, target_permission: "activity.manage" });
   if (!allowed) return NextResponse.json({ error: "Du saknar behörighet för laget" }, { status: 403 });
 
   let selection: AudienceSelection | undefined;
