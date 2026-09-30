@@ -1298,6 +1298,63 @@ grant execute on function public.queue_activity_invitation(uuid, uuid[]) to auth
 grant execute on function public.queue_activity_reminder(uuid) to authenticated;
 grant execute on function public.get_activity_delivery_status(uuid) to authenticated;
 
+create or replace function public.delete_or_cancel_activity(
+  target_activity_id uuid,
+  target_cancellation_reason text default null
+)
+returns text
+language plpgsql
+security definer
+set search_path = ''
+as $activity_disposition$
+declare
+  target_activity public.activities%rowtype;
+  answered_invitation_count integer;
+begin
+  select *
+  into target_activity
+  from public.activities
+  where id = target_activity_id
+  for update;
+
+  if target_activity.id is null or target_activity.team_id is null then
+    raise exception 'Activity not found' using errcode = 'P0002';
+  end if;
+
+  if not private.has_team_permission(target_activity.team_id, 'activity.manage', auth.uid()) then
+    raise exception 'Not allowed' using errcode = '42501';
+  end if;
+
+  if target_activity.source_kind = 'imported' then
+    raise exception 'Imported activities must be removed in the source system' using errcode = '55000';
+  end if;
+
+  select count(*)
+  into answered_invitation_count
+  from public.invitations invitation
+  where invitation.activity_id = target_activity_id
+    and invitation.response <> 'pending';
+
+  if target_activity.status = 'draft' or answered_invitation_count = 0 then
+    delete from public.activities
+    where id = target_activity_id;
+    return 'deleted';
+  end if;
+
+  update public.activities
+  set
+    status = 'cancelled',
+    cancelled_at = now(),
+    cancellation_reason = coalesce(nullif(trim(target_cancellation_reason), ''), 'Inställd av ledare')
+  where id = target_activity_id;
+
+  return 'cancelled';
+end;
+$activity_disposition$;
+
+revoke all on function public.delete_or_cancel_activity(uuid, text) from public, anon;
+grant execute on function public.delete_or_cancel_activity(uuid, text) to authenticated;
+
 create or replace function public.accept_team_member_invitation(invitation_token_hash text)
 returns table (organization_slug text, team_slug text, invitation_role text)
 language plpgsql
