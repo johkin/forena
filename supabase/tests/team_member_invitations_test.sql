@@ -119,15 +119,14 @@ select results_eq(
 );
 
 select results_eq(
-  $q$select profile.key
+  $q$select count(*)
     from public.team_access_assignments assignment
-    join public.team_access_profiles profile on profile.id = assignment.access_profile_id
     join public.people person on person.id = assignment.person_id
     where assignment.team_id = '93000000-0000-0000-0000-000000000001'
       and person.user_id = '90000000-0000-0000-0000-000000000004'
-      and assignment.ends_on is null$,
-  array['team_admin'::text],
-  'Ledarinbjudan tilldelar team_admin-behörighet'
+      and assignment.ends_on is null$q$,
+  array[0::bigint],
+  'Ledarinbjudan ger ingen systembehörighet automatiskt'
 );
 
 select * from finish();
