@@ -92,26 +92,31 @@ export async function getTeamDashboard(
     .eq("organization_id", organizationRow.id)
     .eq("user_id", authData.user.id)
     .maybeSingle();
-  const hasOrganizationWideAccess = ["owner", "admin", "leader"].includes(organizationMembership?.role ?? "");
+  const hasOrganizationWideAccess = ["owner", "admin"].includes(organizationMembership?.role ?? "");
   let canManageCurrentTeam = hasOrganizationWideAccess;
   let accessibleTeams = teams ?? [];
 
   if (!hasOrganizationWideAccess) {
-    const [{ data: teamRoles }, { data: sectionRoles }, { data: guardianLinks }, { data: ownPeople }] = await Promise.all([
-      supabase.from("team_staff").select("team_id").eq("organization_id", organizationRow.id).eq("user_id", authData.user.id),
+    const [{ data: sectionRoles }, { data: guardianLinks }, { data: ownPeople }] = await Promise.all([
       supabase.from("section_staff").select("section_id").eq("organization_id", organizationRow.id).eq("user_id", authData.user.id),
       supabase.from("person_guardians").select("person_id").eq("organization_id", organizationRow.id).eq("guardian_user_id", authData.user.id),
       supabase.from("people").select("id").eq("organization_id", organizationRow.id).eq("user_id", authData.user.id),
     ]);
     const personIds = [...(guardianLinks ?? []).map((item) => item.person_id), ...(ownPeople ?? []).map((item) => item.id)];
-    const { data: participantMemberships } = personIds.length
-      ? await supabase.from("memberships").select("team_id").in("person_id", personIds)
-      : { data: [] };
+    const ownPersonIds = (ownPeople ?? []).map((item) => item.id);
+    const today = new Date().toISOString().slice(0, 10);
+    const [{ data: participantMemberships }, { data: accessAssignments }] = await Promise.all([
+      personIds.length
+        ? supabase.from("memberships").select("team_id").in("person_id", personIds)
+        : Promise.resolve({ data: [] }),
+      ownPersonIds.length
+        ? supabase.from("team_access_assignments").select("team_id").in("person_id", ownPersonIds).lte("starts_on", today).or(`ends_on.is.null,ends_on.gte.${today}`)
+        : Promise.resolve({ data: [] }),
+    ]);
     const directTeamIds = new Set([
-      ...(teamRoles ?? []).map((item) => item.team_id),
+      ...(accessAssignments ?? []).map((item) => item.team_id),
       ...(participantMemberships ?? []).flatMap((item) => (item.team_id ? [item.team_id] : [])),
     ]);
-    canManageCurrentTeam = (teamRoles ?? []).some((item) => item.team_id === teamRow.id);
     const managedSectionIds = new Set((sectionRoles ?? []).map((item) => item.section_id));
     accessibleTeams = accessibleTeams.filter(
       (item) => directTeamIds.has(item.id) || managedSectionIds.has(item.section_id),
