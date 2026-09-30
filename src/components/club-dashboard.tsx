@@ -13,13 +13,14 @@ import { AppHeader } from "@/components/app-header";
 import type { ActivityDraft } from "@/lib/ai/activity-draft";
 import {
   respondToInvitation, summarizeInvitations, type Activity, type DashboardView, type Invitation,
-  type FamilyActivity, type InvitationResponse, type Member, type Organization, type Section, type Team, type TeamTask, type Workspace,
+  type FamilyActivity, type InvitationResponse, type Member, type Organization, type Section, type Team, type TeamPermission, type TeamTask, type Workspace,
 } from "@/domain/club";
 
 type Props = {
   organization: Organization; sections: Section[]; team: Team; activity: Activity; members: Member[]; rosterMembers: Member[]; upcomingActivities: Activity[];
   initialInvitations: Invitation[]; initialFamilyActivities: FamilyActivity[]; workspaces: Workspace[]; tasks: TeamTask[];
   canManageTeam: boolean;
+  teamPermissions: TeamPermission[];
   canAdministerOrganization: boolean;
   accountEmail?: string;
   respondablePersonIds: string[];
@@ -30,10 +31,15 @@ type Props = {
 
 const responseLabels = { accepted: "Kommer", declined: "Kan inte", pending: "Ej svarat" } as const;
 
-export function ClubDashboard({ organization, sections, team, activity, members, rosterMembers, upcomingActivities, initialInvitations, initialFamilyActivities, workspaces, tasks, canManageTeam, canAdministerOrganization, accountEmail, respondablePersonIds, referenceTime, missingAttendanceActivities, source }: Props) {
+export function ClubDashboard({ organization, sections, team, activity, members, rosterMembers, upcomingActivities, initialInvitations, initialFamilyActivities, workspaces, tasks, canManageTeam, teamPermissions, canAdministerOrganization, accountEmail, respondablePersonIds, referenceTime, missingAttendanceActivities, source }: Props) {
   const currentActivity = activity;
+  const canViewTeam = teamPermissions.includes("team.view");
+  const canManageActivities = teamPermissions.includes("activity.manage");
+  const canManageInvitations = teamPermissions.includes("invitation.manage");
+  const canManageAttendance = teamPermissions.includes("attendance.manage");
+  const canManageRoster = teamPermissions.includes("roster.manage");
   const [invitations, setInvitations] = useState(initialInvitations);
-  const view: DashboardView = canManageTeam ? "leader" : "family";
+  const view: DashboardView = canViewTeam ? "leader" : "family";
   const [familyActivities, setFamilyActivities] = useState(initialFamilyActivities);
   const [notice, setNotice] = useState<string>();
   const [activityEditorMode, setActivityEditorMode] = useState<"create" | "edit" | null>(null);
@@ -88,7 +94,7 @@ export function ClubDashboard({ organization, sections, team, activity, members,
       <div className="shell">
         <TeamMenu organizationSlug={organization.slug} teamSlug={team.slug} teamName={team.name} canManageRoster={canManageRoster} leaderView={view === "leader"} activeItem={activePage} onSelectView={setActivePage} hideTrigger />
         <section className="content" id={activePage}>
-          <div className="welcome"><div><p className="eyebrow">{sections.length > 1 ? `${sections.find((item) => item.id === team.sectionId)?.name ?? "Sektion"} · ` : ""}{organization.name}</p><h1>{team.name}</h1><p>{activePage === "calendar" ? "Alla aktiviteter för laget." : view === "leader" ? "Det laget behöver från dig just nu." : `Det viktigaste för ${familyMember?.displayName ?? "spelaren"} just nu.`}</p></div>{view === "leader" && canManageTeam && <div className="welcome-actions"><button className="primary" onClick={() => { setActivityDraft(undefined); setActivityEditorMode("create"); }} type="button">+ Ny aktivitet</button></div>}</div>
+          <div className="welcome"><div><p className="eyebrow">{sections.length > 1 ? `${sections.find((item) => item.id === team.sectionId)?.name ?? "Sektion"} · ` : ""}{organization.name}</p><h1>{team.name}</h1><p>{activePage === "calendar" ? "Alla aktiviteter för laget." : view === "leader" ? "Det laget behöver från dig just nu." : `Det viktigaste för ${familyMember?.displayName ?? "spelaren"} just nu.`}</p></div>{view === "leader" && canManageActivities && <div className="welcome-actions"><button className="primary" onClick={() => { setActivityDraft(undefined); setActivityEditorMode("create"); }} type="button">+ Ny aktivitet</button></div>}</div>
           {notice && <div className="toast" role="status">✓ {notice}</div>}
           {source === "demo" && <div className="demo-notice">Demoläge</div>}
 
@@ -115,7 +121,9 @@ export function ClubDashboard({ organization, sections, team, activity, members,
                       onOpenActivity={setSelectedActivity}
                       onOpenAttendance={setAttendanceActivity}
                       onSendReminder={(item) => void sendReminder(item)}
-                      missingAttendanceActivities={pendingAttendance}
+                      canManageInvitations={canManageInvitations}
+                      canManageAttendance={canManageAttendance}
+                      missingAttendanceActivities={canManageAttendance ? pendingAttendance : []}
                     /> : null}
                   </div>
                   <aside className="overview-assistant">
@@ -124,7 +132,7 @@ export function ClubDashboard({ organization, sections, team, activity, members,
                       teamName={team.name}
                       assistantName={organization.assistantName}
                       demo={source === "demo"}
-                      canCreateActivity={canManageTeam}
+                      canCreateActivity={canManageActivities}
                       onActivityDraft={(draft) => { setActivityDraft(draft); setEditingActivity(undefined); setActivityEditorMode("create"); }}
                     />
                   </aside>
@@ -132,9 +140,9 @@ export function ClubDashboard({ organization, sections, team, activity, members,
               </>}
         </section>
       </div>
-      {activityEditorMode ? <ActivityEditorModal mode={activityEditorMode} organization={organization} team={team} members={rosterMembers} activity={activityEditorMode === "edit" ? (editingActivity ?? currentActivity) : undefined} draft={activityEditorMode === "create" ? activityDraft : undefined} source={source} onClose={() => { setActivityEditorMode(null); setActivityDraft(undefined); }} onNotice={setNotice} /> : null}
-      {selectedActivity ? <ActivityDetailModal activity={selectedActivity} organization={organization} team={team} canEdit={canManageTeam} rosterMembers={rosterMembers} onClose={() => setSelectedActivity(undefined)} onEdit={(item) => { setActivityDraft(undefined); setEditingActivity(item); setSelectedActivity(undefined); setActivityEditorMode("edit"); }} /> : null}
-      {attendanceActivity ? <AttendanceModal activityId={attendanceActivity.id} onClose={() => setAttendanceActivity(undefined)} onSaved={() => setPendingAttendance((current) => current.filter((item) => item.id !== attendanceActivity.id))} /> : null}
+      {activityEditorMode && canManageActivities ? <ActivityEditorModal mode={activityEditorMode} organization={organization} team={team} members={rosterMembers} activity={activityEditorMode === "edit" ? (editingActivity ?? currentActivity) : undefined} draft={activityEditorMode === "create" ? activityDraft : undefined} source={source} onClose={() => { setActivityEditorMode(null); setActivityDraft(undefined); }} onNotice={setNotice} /> : null}
+      {selectedActivity ? <ActivityDetailModal activity={selectedActivity} organization={organization} team={team} canManageActivity={canManageActivities} canManageInvitations={canManageInvitations} canManageAttendance={canManageAttendance} rosterMembers={rosterMembers} onClose={() => setSelectedActivity(undefined)} onEdit={(item) => { setActivityDraft(undefined); setEditingActivity(item); setSelectedActivity(undefined); setActivityEditorMode("edit"); }} /> : null}
+      {attendanceActivity && canManageAttendance ? <AttendanceModal activityId={attendanceActivity.id} onClose={() => setAttendanceActivity(undefined)} onSaved={() => setPendingAttendance((current) => current.filter((item) => item.id !== attendanceActivity.id))} /> : null}
     </main>
   );
 }
