@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   const { data: authData } = await supabase.auth.getUser();
   if (!authData.user) return NextResponse.json({ error: "Du måste logga in" }, { status: 401 });
 
-  const { data: allowed } = await supabase.rpc("can_manage_team", { target_team_id: teamId });
+  const { data: allowed } = await supabase.rpc("has_team_permission", { target_team_id: teamId, target_permission: "team.view" });
   if (!allowed) return NextResponse.json({ error: "Du saknar behörighet för laget" }, { status: 403 });
 
   const today = new Date().toISOString().slice(0, 10);
