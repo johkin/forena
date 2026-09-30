@@ -87,7 +87,7 @@ set name = 'Otillåten ändring'
 where id = 'c3000000-0000-0000-0000-000000000002';
 
 select results_eq(
-  $select name from public.teams where id = 'c3000000-0000-0000-0000-000000000002'$,
+  $q$select name from public.teams where id = 'c3000000-0000-0000-0000-000000000002'$q$,
   array['Team B'::text],
   'Organisationsrollen leader ger inte skrivåtkomst till andra lag'
 );
@@ -169,10 +169,10 @@ on conflict do nothing;
 select set_config('request.jwt.claims', '{"sub":"c0000000-0000-0000-0000-000000000003","role":"authenticated"}', true);
 
 select throws_ok(
-  $update public.people
+  $q$update public.people
     set user_id = 'c0000000-0000-0000-0000-000000000002'
     where organization_id = 'c1000000-0000-0000-0000-000000000001'
-      and user_id = 'c0000000-0000-0000-0000-000000000003'$,
+      and user_id = 'c0000000-0000-0000-0000-000000000003'$q$,
   '42501',
   'Only organization admins can change a person account binding',
   'Lagbehörighet kan inte användas för att flytta en persons kontoidentitet'
