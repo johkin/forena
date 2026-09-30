@@ -150,9 +150,9 @@ export async function createWorkspace(formData: FormData) {
     .maybeSingle();
   if (!managerType) {
     const { error: responsibilityTypeError } = await supabase.from("responsibility_types").insert([
-      { organization_id: organizationId, name: "Lagledare", slug: "lagledare", capabilities: [] },
-      { organization_id: organizationId, name: "Tränare", slug: "tranare", capabilities: [] },
-      { organization_id: organizationId, name: "Redaktör", slug: "redaktor", capabilities: [] },
+      { organization_id: organizationId, name: "Lagledare", slug: "lagledare" },
+      { organization_id: organizationId, name: "Tränare", slug: "tranare" },
+      { organization_id: organizationId, name: "Redaktör", slug: "redaktor" },
     ]);
     if (responsibilityTypeError) fail("Ansvarstyperna kunde inte skapas");
     const result = await supabase
