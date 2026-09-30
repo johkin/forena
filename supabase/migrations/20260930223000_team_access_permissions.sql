@@ -62,10 +62,35 @@ insert into public.team_permissions (key, description) values
   ('activity.manage', 'Create and edit team activities'),
   ('invitation.manage', 'Manage activity invitations and reminders'),
   ('attendance.manage', 'Report and edit attendance'),
-  ('roster.manage', 'Manage team membership and guardian links'),
+  ('roster.manage', 'Manage team membership, groups and guardian links'),
   ('responsibility.manage', 'Manage team responsibilities'),
   ('task.manage', 'Manage team tasks')
 on conflict (key) do nothing;
+
+insert into public.team_access_profiles (organization_id, key, name)
+select organization.id, profile.key, profile.name
+from public.organizations organization
+cross join (values
+  ('team_admin', 'Lagadministratör'),
+  ('team_editor', 'Lagredaktör'),
+  ('attendance_manager', 'Närvarohanterare')
+) profile(key, name)
+on conflict (organization_id, key) do nothing;
+
+insert into public.team_access_profile_permissions (organization_id, access_profile_id, permission_key)
+select profile.organization_id, profile.id, permission.key
+from public.team_access_profiles profile
+join public.team_permissions permission
+  on profile.key = 'team_admin'
+  or (
+    profile.key = 'team_editor'
+    and permission.key in ('activity.manage', 'invitation.manage', 'attendance.manage', 'task.manage')
+  )
+  or (
+    profile.key = 'attendance_manager'
+    and permission.key = 'attendance.manage'
+  )
+on conflict do nothing;
 
 create or replace function private.seed_default_team_access_profiles()
 returns trigger
@@ -110,37 +135,7 @@ begin
 end;
 $$;
 
-do $$
-declare
-  organization_record record;
-begin
-  for organization_record in select id from public.organizations loop
-    perform private.seed_default_team_access_profiles()
-    from (select organization_record.id as id) new_row;
-  end loop;
-end
-$$;
-
--- The trigger function above expects NEW and cannot be called directly in normal SQL.
--- Seed existing organizations explicitly.
-insert into public.team_access_profiles (organization_id, key, name)
-select organization.id, profile.key, profile.name
-from public.organizations organization
-cross join (values
-  ('team_admin', 'Lagadministratör'),
-  ('team_editor', 'Lagredaktör'),
-  ('attendance_manager', 'Närvarohanterare')
-) profile(key, name)
-on conflict (organization_id, key) do nothing;
-
-insert into public.team_access_profile_permissions (organization_id, access_profile_id, permission_key)
-select profile.organization_id, profile.id, permission.key
-from public.team_access_profiles profile
-join public.team_permissions permission
-  on profile.key = 'team_admin'
-  or (profile.key = 'team_editor' and permission.key in ('activity.manage', 'invitation.manage', 'attendance.manage', 'task.manage'))
-  or (profile.key = 'attendance_manager' and permission.key = 'attendance.manage')
-on conflict do nothing;
+revoke all on function private.seed_default_team_access_profiles() from public;
 
 drop trigger if exists organizations_seed_team_access_profiles on public.organizations;
 create trigger organizations_seed_team_access_profiles
@@ -220,6 +215,8 @@ as $$
   );
 $$;
 
+revoke all on function private.has_team_permission(uuid, text, uuid) from public;
+
 create or replace function public.has_team_permission(
   target_team_id uuid,
   target_permission text
@@ -227,7 +224,7 @@ create or replace function public.has_team_permission(
 returns boolean
 language sql
 stable
-security invoker
+security definer
 set search_path = ''
 as $$
   select private.has_team_permission(target_team_id, target_permission, auth.uid());
@@ -240,20 +237,17 @@ create or replace function public.can_manage_team(
 returns boolean
 language sql
 stable
-security invoker
+security definer
 set search_path = ''
 as $$
-  select private.has_team_permission(target_team_id, 'team.manage', target_user_id);
+  select target_user_id = auth.uid()
+     and private.has_team_permission(target_team_id, 'team.manage', target_user_id);
 $$;
 
-revoke all on function private.seed_default_team_access_profiles() from public;
-revoke all on function private.has_team_permission(uuid, text, uuid) from public;
 revoke all on function public.has_team_permission(uuid, text) from public;
 revoke all on function public.can_manage_team(uuid, uuid) from public;
 revoke all on function public.has_team_permission(uuid, text) from anon;
 revoke all on function public.can_manage_team(uuid, uuid) from anon;
-grant usage on schema private to authenticated;
-grant execute on function private.has_team_permission(uuid, text, uuid) to authenticated;
 grant execute on function public.has_team_permission(uuid, text) to authenticated;
 grant execute on function public.can_manage_team(uuid, uuid) to authenticated;
 
@@ -324,9 +318,371 @@ create trigger team_access_profiles_touch_updated_at
 before update on public.team_access_profiles
 for each row execute function public.touch_updated_at();
 
+update public.responsibility_types
+set capabilities = '{}'
+where cardinality(capabilities) > 0;
+
+drop policy if exists "scoped leaders can manage activities" on public.activities;
+create policy "team activity managers can manage activities"
+on public.activities for all to authenticated
+using (team_id is not null and public.has_team_permission(team_id, 'activity.manage'))
+with check (team_id is not null and public.has_team_permission(team_id, 'activity.manage'));
+
+drop policy if exists "leaders can insert activity series" on public.activity_series;
+drop policy if exists "leaders can update activity series" on public.activity_series;
+drop policy if exists "leaders can delete activity series" on public.activity_series;
+create policy "team activity managers can insert activity series"
+on public.activity_series for insert to authenticated
+with check (public.has_team_permission(team_id, 'activity.manage'));
+create policy "team activity managers can update activity series"
+on public.activity_series for update to authenticated
+using (public.has_team_permission(team_id, 'activity.manage'))
+with check (public.has_team_permission(team_id, 'activity.manage'));
+create policy "team activity managers can delete activity series"
+on public.activity_series for delete to authenticated
+using (public.has_team_permission(team_id, 'activity.manage'));
+
+drop policy if exists "scoped leaders can create invitations" on public.invitations;
+drop policy if exists "invitees and scoped leaders can update invitations" on public.invitations;
+drop policy if exists "scoped leaders can delete invitations" on public.invitations;
+drop policy if exists "scoped users can read invitations" on public.invitations;
+create policy "team invitation managers can create invitations"
+on public.invitations for insert to authenticated
+with check (
+  exists (
+    select 1 from public.activities activity
+    where activity.id = invitations.activity_id
+      and activity.team_id is not null
+      and public.has_team_permission(activity.team_id, 'invitation.manage')
+  )
+);
+create policy "invitees and team invitation managers can update invitations"
+on public.invitations for update to authenticated
+using (
+  exists (
+    select 1 from public.activities activity
+    where activity.id = invitations.activity_id
+      and activity.team_id is not null
+      and public.has_team_permission(activity.team_id, 'invitation.manage')
+  )
+  or exists (
+    select 1 from public.people person
+    where person.id = invitations.person_id
+      and person.user_id = auth.uid()
+  )
+  or exists (
+    select 1 from public.person_guardians guardian
+    where guardian.person_id = invitations.person_id
+      and guardian.guardian_user_id = auth.uid()
+  )
+);
+create policy "team invitation managers can delete invitations"
+on public.invitations for delete to authenticated
+using (
+  exists (
+    select 1 from public.activities activity
+    where activity.id = invitations.activity_id
+      and activity.team_id is not null
+      and public.has_team_permission(activity.team_id, 'invitation.manage')
+  )
+);
+create policy "scoped users can read invitations"
+on public.invitations for select to authenticated
+using (
+  public.has_organization_role(organization_id, array['owner', 'admin'])
+  or exists (
+    select 1
+    from public.activities activity
+    where activity.id = invitations.activity_id
+      and activity.organization_id = invitations.organization_id
+      and activity.team_id is not null
+      and public.has_team_permission(activity.team_id, 'invitation.manage')
+  )
+  or exists (
+    select 1
+    from public.people person
+    where person.id = invitations.person_id
+      and person.organization_id = invitations.organization_id
+      and person.user_id = auth.uid()
+  )
+  or exists (
+    select 1
+    from public.person_guardians guardian
+    where guardian.person_id = invitations.person_id
+      and guardian.organization_id = invitations.organization_id
+      and guardian.guardian_user_id = auth.uid()
+  )
+);
+
+drop policy if exists "team leaders can manage reminder schedules" on public.activity_reminder_schedules;
+create policy "team invitation managers can manage reminder schedules"
+on public.activity_reminder_schedules for all to authenticated
+using (
+  exists (
+    select 1 from public.activities activity
+    where activity.id = activity_reminder_schedules.activity_id
+      and activity.team_id is not null
+      and public.has_team_permission(activity.team_id, 'invitation.manage')
+  )
+)
+with check (
+  exists (
+    select 1 from public.activities activity
+    where activity.id = activity_reminder_schedules.activity_id
+      and activity.team_id is not null
+      and public.has_team_permission(activity.team_id, 'invitation.manage')
+  )
+);
+
+drop policy if exists "activity events manageable by team managers" on public.activity_events;
+create policy "activity events manageable by invitation managers"
+on public.activity_events for insert to authenticated
+with check (
+  exists (
+    select 1 from public.activities activity
+    where activity.id = activity_events.activity_id
+      and activity.organization_id = activity_events.organization_id
+      and activity.team_id is not null
+      and public.has_team_permission(activity.team_id, 'invitation.manage')
+  )
+);
+
+drop policy if exists "team leaders can manage attendance reports" on public.activity_attendance_reports;
+create policy "team attendance managers can manage attendance reports"
+on public.activity_attendance_reports for all to authenticated
+using (
+  exists (
+    select 1 from public.activities activity
+    where activity.id = activity_attendance_reports.activity_id
+      and activity.team_id is not null
+      and public.has_team_permission(activity.team_id, 'attendance.manage')
+  )
+)
+with check (
+  exists (
+    select 1 from public.activities activity
+    where activity.id = activity_attendance_reports.activity_id
+      and activity.team_id is not null
+      and public.has_team_permission(activity.team_id, 'attendance.manage')
+  )
+);
+
+drop policy if exists "team leaders can manage attendance records" on public.activity_attendance_records;
+create policy "team attendance managers can manage attendance records"
+on public.activity_attendance_records for all to authenticated
+using (
+  exists (
+    select 1
+    from public.activity_attendance_reports report
+    join public.activities activity on activity.id = report.activity_id
+    where report.id = activity_attendance_records.report_id
+      and activity.team_id is not null
+      and public.has_team_permission(activity.team_id, 'attendance.manage')
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.activity_attendance_reports report
+    join public.activities activity on activity.id = report.activity_id
+    where report.id = activity_attendance_records.report_id
+      and activity.team_id is not null
+      and public.has_team_permission(activity.team_id, 'attendance.manage')
+  )
+);
+
+drop policy if exists "scoped leaders can manage memberships" on public.memberships;
+create policy "team roster managers can manage memberships"
+on public.memberships for all to authenticated
+using (
+  (team_id is not null and public.has_team_permission(team_id, 'roster.manage'))
+  or public.has_organization_role(organization_id, array['owner', 'admin'])
+)
+with check (
+  (team_id is not null and public.has_team_permission(team_id, 'roster.manage'))
+  or public.has_organization_role(organization_id, array['owner', 'admin'])
+);
+
+drop policy if exists "scoped leaders can manage people" on public.people;
+create policy "team roster managers can manage people"
+on public.people for all to authenticated
+using (
+  public.has_organization_role(organization_id, array['owner', 'admin'])
+  or exists (
+    select 1 from public.memberships membership
+    where membership.person_id = people.id
+      and membership.team_id is not null
+      and public.has_team_permission(membership.team_id, 'roster.manage')
+  )
+)
+with check (
+  public.has_organization_role(organization_id, array['owner', 'admin'])
+  or exists (
+    select 1 from public.memberships membership
+    where membership.person_id = people.id
+      and membership.team_id is not null
+      and public.has_team_permission(membership.team_id, 'roster.manage')
+  )
+);
+
+drop policy if exists "scoped leaders can manage guardian links" on public.person_guardians;
+drop policy if exists "guardians and scoped leaders can read guardian contacts" on public.person_guardians;
+create policy "guardians and team roster managers can read guardian contacts"
+on public.person_guardians for select to authenticated
+using (
+  guardian_user_id = auth.uid()
+  or exists (
+    select 1 from public.memberships membership
+    where membership.person_id = person_guardians.person_id
+      and membership.team_id is not null
+      and public.has_team_permission(membership.team_id, 'roster.manage')
+  )
+);
+create policy "team roster managers can manage guardian links"
+on public.person_guardians for all to authenticated
+using (
+  public.has_organization_role(organization_id, array['owner', 'admin'])
+  or exists (
+    select 1 from public.memberships membership
+    where membership.person_id = person_guardians.person_id
+      and membership.team_id is not null
+      and public.has_team_permission(membership.team_id, 'roster.manage')
+  )
+)
+with check (
+  public.has_organization_role(organization_id, array['owner', 'admin'])
+  or exists (
+    select 1 from public.memberships membership
+    where membership.person_id = person_guardians.person_id
+      and membership.team_id is not null
+      and public.has_team_permission(membership.team_id, 'roster.manage')
+  )
+);
+
+drop policy if exists "team managers can read player login emails" on public.person_login_emails;
+drop policy if exists "team managers can create player login emails" on public.person_login_emails;
+drop policy if exists "team managers can update player login emails" on public.person_login_emails;
+create policy "team roster managers can read player login emails"
+on public.person_login_emails for select to authenticated
+using (
+  public.has_organization_role(organization_id, array['owner', 'admin'])
+  or exists (
+    select 1 from public.memberships membership
+    where membership.person_id = person_login_emails.person_id
+      and membership.team_id is not null
+      and public.has_team_permission(membership.team_id, 'roster.manage')
+  )
+);
+create policy "team roster managers can create player login emails"
+on public.person_login_emails for insert to authenticated
+with check (
+  public.has_organization_role(organization_id, array['owner', 'admin'])
+  or exists (
+    select 1 from public.memberships membership
+    where membership.person_id = person_login_emails.person_id
+      and membership.team_id is not null
+      and public.has_team_permission(membership.team_id, 'roster.manage')
+  )
+);
+create policy "team roster managers can update player login emails"
+on public.person_login_emails for update to authenticated
+using (
+  public.has_organization_role(organization_id, array['owner', 'admin'])
+  or exists (
+    select 1 from public.memberships membership
+    where membership.person_id = person_login_emails.person_id
+      and membership.team_id is not null
+      and public.has_team_permission(membership.team_id, 'roster.manage')
+  )
+)
+with check (
+  public.has_organization_role(organization_id, array['owner', 'admin'])
+  or exists (
+    select 1 from public.memberships membership
+    where membership.person_id = person_login_emails.person_id
+      and membership.team_id is not null
+      and public.has_team_permission(membership.team_id, 'roster.manage')
+  )
+);
+
+drop policy if exists "team managers can create team groups" on public.team_groups;
+drop policy if exists "team managers can update team groups" on public.team_groups;
+drop policy if exists "team managers can delete team groups" on public.team_groups;
+create policy "team roster managers can create team groups"
+on public.team_groups for insert to authenticated
+with check (public.has_team_permission(team_id, 'roster.manage'));
+create policy "team roster managers can update team groups"
+on public.team_groups for update to authenticated
+using (public.has_team_permission(team_id, 'roster.manage'))
+with check (public.has_team_permission(team_id, 'roster.manage'));
+create policy "team roster managers can delete team groups"
+on public.team_groups for delete to authenticated
+using (public.has_team_permission(team_id, 'roster.manage'));
+
+drop policy if exists "team managers can add team group members" on public.team_group_members;
+drop policy if exists "team managers can delete team group members" on public.team_group_members;
+create policy "team roster managers can add team group members"
+on public.team_group_members for insert to authenticated
+with check (
+  exists (
+    select 1 from public.team_groups team_group
+    where team_group.id = team_group_members.group_id
+      and public.has_team_permission(team_group.team_id, 'roster.manage')
+  )
+);
+create policy "team roster managers can delete team group members"
+on public.team_group_members for delete to authenticated
+using (
+  exists (
+    select 1 from public.team_groups team_group
+    where team_group.id = team_group_members.group_id
+      and public.has_team_permission(team_group.team_id, 'roster.manage')
+  )
+);
+
+drop policy if exists "team managers can invite guardians and admins can invite leaders" on public.team_member_invitations;
+drop policy if exists "team managers can invite guardians and admins can invite leader" on public.team_member_invitations;
+drop policy if exists "team managers can read member invitations" on public.team_member_invitations;
+drop policy if exists "team managers can delete member invitations" on public.team_member_invitations;
+create policy "team roster managers can invite guardians and admins can invite leaders"
+on public.team_member_invitations for insert to authenticated
+with check (
+  public.has_team_permission(team_id, 'roster.manage')
+  and (role <> 'leader' or public.has_organization_role(organization_id, array['owner', 'admin']))
+  and invited_by = auth.uid()
+  and accepted_at is null
+  and accepted_by is null
+);
+create policy "team roster managers can read member invitations"
+on public.team_member_invitations for select to authenticated
+using (public.has_team_permission(team_id, 'roster.manage'));
+create policy "team roster managers can delete member invitations"
+on public.team_member_invitations for delete to authenticated
+using (public.has_team_permission(team_id, 'roster.manage'));
+
+drop policy if exists "team managers can insert responsibilities" on public.team_responsibilities;
+drop policy if exists "team managers can update responsibilities" on public.team_responsibilities;
+drop policy if exists "team managers can delete responsibilities" on public.team_responsibilities;
+create policy "team responsibility managers can insert responsibilities"
+on public.team_responsibilities for insert to authenticated
+with check (public.has_team_permission(team_id, 'responsibility.manage'));
+create policy "team responsibility managers can update responsibilities"
+on public.team_responsibilities for update to authenticated
+using (public.has_team_permission(team_id, 'responsibility.manage'))
+with check (public.has_team_permission(team_id, 'responsibility.manage'));
+create policy "team responsibility managers can delete responsibilities"
+on public.team_responsibilities for delete to authenticated
+using (public.has_team_permission(team_id, 'responsibility.manage'));
+
+drop policy if exists "scoped leaders can update tasks" on public.team_tasks;
+create policy "team task managers can update tasks"
+on public.team_tasks for update to authenticated
+using (public.has_team_permission(team_id, 'task.manage'))
+with check (public.has_team_permission(team_id, 'task.manage'));
+
 drop policy if exists "organization admins can record role changes" on public.audit_log;
-create policy "organization admins can record team access changes" on public.audit_log
-for insert to authenticated
+create policy "organization admins can record team access changes"
+on public.audit_log for insert to authenticated
 with check (
   actor_user_id = auth.uid()
   and public.has_organization_role(organization_id, array['owner', 'admin'])
@@ -377,8 +733,7 @@ begin
   where person.organization_id = target_organization_id
     and person.user_id = target_user_id
     and exists (
-      select 1
-      from public.person_guardians guardian
+      select 1 from public.person_guardians guardian
       where guardian.organization_id = person.organization_id
         and guardian.guardian_user_id = target_user_id
     );
@@ -387,10 +742,10 @@ begin
     raise exception 'The user is not an existing guardian in this organization' using errcode = '22023';
   end if;
 
-  select type.id into responsibility_type_id
-  from public.responsibility_types type
-  where type.organization_id = target_organization_id
-    and type.slug = target_responsibility_slug;
+  select responsibility.id into responsibility_type_id
+  from public.responsibility_types responsibility
+  where responsibility.organization_id = target_organization_id
+    and responsibility.slug = target_responsibility_slug;
 
   if responsibility_type_id is null then
     raise exception 'Responsibility type is missing' using errcode = '22023';
@@ -449,35 +804,6 @@ revoke all on function public.assign_existing_guardian_team_access(uuid, uuid, u
 revoke all on function public.assign_existing_guardian_team_access(uuid, uuid, uuid, text, text) from anon;
 grant execute on function public.assign_existing_guardian_team_access(uuid, uuid, uuid, text, text) to authenticated;
 
-create or replace function public.assign_existing_guardian_team_role(
-  target_organization_id uuid,
-  target_team_id uuid,
-  target_user_id uuid,
-  target_role text
-)
-returns void
-language plpgsql
-security invoker
-set search_path = ''
-as $$
-begin
-  if target_role = 'team_manager' then
-    perform public.assign_existing_guardian_team_access(
-      target_organization_id, target_team_id, target_user_id, 'lagledare', 'team_admin'
-    );
-  elsif target_role = 'coach' then
-    perform public.assign_existing_guardian_team_access(
-      target_organization_id, target_team_id, target_user_id, 'tranare', 'team_admin'
-    );
-  else
-    raise exception 'Invalid team role' using errcode = '22023';
-  end if;
-end;
-$$;
-
-revoke all on function public.assign_existing_guardian_team_role(uuid, uuid, uuid, text) from public;
-revoke all on function public.assign_existing_guardian_team_role(uuid, uuid, uuid, text) from anon;
-grant execute on function public.assign_existing_guardian_team_role(uuid, uuid, uuid, text) to authenticated;
-
+drop function public.assign_existing_guardian_team_role(uuid, uuid, uuid, text);
 drop function public.has_team_role(uuid, text[], uuid);
 drop table public.team_staff;
