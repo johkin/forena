@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
 
-export type AudienceRole = "participant" | "leader" | "volunteer";
+export type AudienceRole = "participant" | "leader";
 export type AudienceSelection = { roles: AudienceRole[]; groupIds: string[]; responsibilityTypeIds: string[] };
 
 export function parseAudienceSelection(input: unknown): AudienceSelection {
