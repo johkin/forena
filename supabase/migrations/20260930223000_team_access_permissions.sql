@@ -836,7 +836,7 @@ returns integer
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $function$
 declare
   target_activity public.activities%rowtype;
   queued_count integer := 0;
@@ -899,7 +899,7 @@ begin
 
   return queued_count;
 end;
-$;
+$function$;
 
 create or replace function public.queue_activity_invitation(
   target_activity_id uuid,
@@ -909,7 +909,7 @@ returns integer
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $function$
 declare
   target_activity public.activities%rowtype;
   queued_count integer := 0;
@@ -974,14 +974,14 @@ begin
 
   return queued_count;
 end;
-$;
+$function$;
 
 create or replace function public.queue_activity_reminder(target_activity_id uuid)
 returns integer
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $function$
 declare
   target_activity public.activities%rowtype;
   queued_count integer := 0;
@@ -1061,14 +1061,14 @@ begin
 
   return queued_count;
 end;
-$;
+$function$;
 
 create or replace function public.get_activity_delivery_status(target_activity_id uuid)
 returns jsonb
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $function$
 declare
   target_team_id uuid;
 begin
@@ -1122,7 +1122,7 @@ begin
     where outbox.payload ->> 'activityId' = target_activity_id::text
   );
 end;
-$;
+$function$;
 
 revoke all on function public.queue_activity_invitation(uuid) from public, anon;
 revoke all on function public.queue_activity_invitation(uuid, uuid[]) from public, anon;
