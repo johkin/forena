@@ -25,7 +25,7 @@ export async function POST(request: Request, { params }: Props) {
   if (body.mode === "now") {
     const personIds = [...new Set((body.personIds ?? []).filter(Boolean))];
     if (!personIds.length) return NextResponse.json({ error: "Välj minst en person" }, { status: 400 });
-    const { data: memberships } = await supabase.from("memberships").select("person_id").eq("team_id", activity.team_id).in("person_id", personIds).in("role", ["participant", "leader", "volunteer"]).is("ends_on", null);
+    const { data: memberships } = await supabase.from("memberships").select("person_id").eq("team_id", activity.team_id).in("person_id", personIds).in("role", ["participant", "leader"]).is("ends_on", null);
     const valid = new Set((memberships ?? []).map((item) => item.person_id));
     if (personIds.some((id) => !valid.has(id))) return NextResponse.json({ error: "Någon av de valda personerna tillhör inte laget" }, { status: 400 });
 

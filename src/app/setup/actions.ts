@@ -165,11 +165,19 @@ export async function createWorkspace(formData: FormData) {
   }
   if (!managerType) fail("Lagledaransvaret kunde inte hittas");
 
+  const { data: managerPerson } = await supabase
+    .from("people")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!managerPerson) fail("Personkopplingen för lagledaren kunde inte hittas");
+
   const { data: existingManagerResponsibility } = await supabase
     .from("team_responsibilities")
     .select("id")
     .eq("team_id", teamId)
-    .eq("user_id", user.id)
+    .eq("person_id", managerPerson.id)
     .eq("responsibility_type_id", managerType.id)
     .is("ends_on", null)
     .maybeSingle();
@@ -178,6 +186,7 @@ export async function createWorkspace(formData: FormData) {
       organization_id: organizationId,
       team_id: teamId,
       user_id: user.id,
+      person_id: managerPerson.id,
       responsibility_type_id: managerType.id,
     });
     if (responsibilityError) fail("Lagledaransvaret kunde inte sparas");

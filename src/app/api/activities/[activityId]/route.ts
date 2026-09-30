@@ -16,7 +16,7 @@ export async function GET(_request: Request, { params }: Props) {
 
   const [{ data: invitationRows }, { data: membershipRows }] = await Promise.all([
     supabase.from("invitations").select("person_id, response").eq("activity_id", activityId),
-    supabase.from("memberships").select("person_id, role").eq("team_id", activity.team_id).in("role", ["participant", "leader", "volunteer"]).is("ends_on", null),
+    supabase.from("memberships").select("person_id, role").eq("team_id", activity.team_id).in("role", ["participant", "leader"]).is("ends_on", null),
   ]);
   const personIds = [...new Set((invitationRows ?? []).map((item) => item.person_id))];
   const { data: peopleRows } = personIds.length

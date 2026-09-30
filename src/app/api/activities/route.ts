@@ -130,7 +130,7 @@ export async function POST(request: Request) {
   if (invitationMode === "now") {
     const personIds = [...new Set((body?.personIds ?? []).filter(Boolean))];
     if (!personIds.length) return NextResponse.json({ error: "Aktiviteten skapades, men välj minst en person att kalla" }, { status: 400 });
-    const { data: memberships } = await supabase.from("memberships").select("person_id").eq("team_id", team.id).in("person_id", personIds).in("role", ["participant", "leader", "volunteer"]).is("ends_on", null);
+    const { data: memberships } = await supabase.from("memberships").select("person_id").eq("team_id", team.id).in("person_id", personIds).in("role", ["participant", "leader"]).is("ends_on", null);
     const valid = new Set((memberships ?? []).map((item) => item.person_id));
     if (personIds.some((id) => !valid.has(id))) return NextResponse.json({ error: "Aktiviteten skapades, men någon vald person tillhör inte laget" }, { status: 400 });
     const { error: invitationError } = await supabase.from("invitations").upsert(personIds.map((personId) => ({ organization_id: team.organization_id, activity_id: activity.id, person_id: personId })), { onConflict: "activity_id,person_id", ignoreDuplicates: true });

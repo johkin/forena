@@ -10,8 +10,8 @@ import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
 
 type Props = { mode: "create" | "edit"; organization: Organization; team: Team; members: Member[]; activity?: Activity; draft?: ActivityDraft; source: "database" | "demo"; onClose: () => void; onNotice: (notice: string) => void; };
 const weekdayOptions = [[1,"Mån"],[2,"Tis"],[3,"Ons"],[4,"Tor"],[5,"Fre"],[6,"Lör"],[7,"Sön"]] as const;
-const roleLabels: Record<AudienceRole,string> = { participant:"Spelare",leader:"Ledare",volunteer:"Övriga" };
-const directRoles: AudienceRole[] = ["participant","leader","volunteer"];
+const roleLabels: Record<AudienceRole,string> = { participant:"Spelare",leader:"Ledare" };
+const directRoles: AudienceRole[] = ["participant","leader"];
 const scheduledRoles: AudienceRole[] = ["participant","leader"];
 
 function Help({children,label}:{children:React.ReactNode;label:string}) {
@@ -41,7 +41,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
   const [selectedGroups,setSelectedGroups]=useState<Set<string>>(new Set());
   const [selectedResponsibilities,setSelectedResponsibilities]=useState<Set<string>>(new Set());
   const [invitationMode,setInvitationMode]=useState<"none"|"now"|"schedule">(draft?"now":mode==="create"?"schedule":"none");
-  const [selectedPeople,setSelectedPeople]=useState<Set<string>>(new Set(draft?members.filter(member=>member.teamRole==="participant").map(member=>member.id):[]));
+  const [selectedPeople,setSelectedPeople]=useState<Set<string>>(new Set(draft?members.filter(member=>member.teamRelation==="player").map(member=>member.id):[]));
   const [descriptionOpen,setDescriptionOpen]=useState(Boolean(draft?.description||activity?.description));
   const [invitationOpen,setInvitationOpen]=useState(mode==="create");
   const [reminderOffsets,setReminderOffsets]=useState<number[]>([1440]);
@@ -58,7 +58,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
 
   function peopleColumn(people:Member[],selected:boolean) {
     return directRoles.map(role=>{
-      const matching=people.filter(member=>member.teamRole===role);
+      const matching=people.filter(member=>member.teamRelation === (role === "participant" ? "player" : "leader"));
       return matching.length?<div className="person-picker-group" key={role}>
         <h4>{roleLabels[role]} ({matching.length})</h4>
         {matching.map(member=><button key={member.id} type="button" className="attendance-person" onClick={()=>togglePerson(member.id)}
