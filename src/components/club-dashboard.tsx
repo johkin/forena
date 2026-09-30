@@ -79,14 +79,14 @@ export function ClubDashboard({ organization, sections, team, activity, members,
     <main>
       <AppHeader
         homeHref={`/o/${organization.slug}/t/${team.slug}`}
-        navigation={<TeamMenu organizationSlug={organization.slug} teamSlug={team.slug} teamName={team.name} canManageTeam={canManageTeam} leaderView={view === "leader"} activeItem={activePage} onSelectView={setActivePage} navigationOnly />}
+        navigation={<TeamMenu organizationSlug={organization.slug} teamSlug={team.slug} teamName={team.name} canManageRoster={canManageRoster} leaderView={view === "leader"} activeItem={activePage} onSelectView={setActivePage} navigationOnly />}
         accountEmail={accountEmail}
         organization={organization} team={team} workspaces={workspaces}
         logoutDestination={`/o/${organization.slug}/t/${team.slug}`}
         adminHref={canAdministerOrganization ? `/o/${organization.slug}/admin/roles` : undefined}
       />
       <div className="shell">
-        <TeamMenu organizationSlug={organization.slug} teamSlug={team.slug} teamName={team.name} canManageTeam={canManageTeam} leaderView={view === "leader"} activeItem={activePage} onSelectView={setActivePage} hideTrigger />
+        <TeamMenu organizationSlug={organization.slug} teamSlug={team.slug} teamName={team.name} canManageRoster={canManageRoster} leaderView={view === "leader"} activeItem={activePage} onSelectView={setActivePage} hideTrigger />
         <section className="content" id={activePage}>
           <div className="welcome"><div><p className="eyebrow">{sections.length > 1 ? `${sections.find((item) => item.id === team.sectionId)?.name ?? "Sektion"} · ` : ""}{organization.name}</p><h1>{team.name}</h1><p>{activePage === "calendar" ? "Alla aktiviteter för laget." : view === "leader" ? "Det laget behöver från dig just nu." : `Det viktigaste för ${familyMember?.displayName ?? "spelaren"} just nu.`}</p></div>{view === "leader" && canManageTeam && <div className="welcome-actions"><button className="primary" onClick={() => { setActivityDraft(undefined); setActivityEditorMode("create"); }} type="button">+ Ny aktivitet</button></div>}</div>
           {notice && <div className="toast" role="status">✓ {notice}</div>}
