@@ -125,7 +125,7 @@ language sql
 stable
 security definer
 set search_path = ''
-as $
+as $$
   select exists (
     select 1
     from public.teams team
@@ -136,7 +136,7 @@ as $
         or public.has_team_role(team.id, array['team_manager', 'coach'], target_user_id)
       )
   );
-$;
+$$;
 
 -- Volunteer was a third team relation in the old model. After authorization is
 -- explicit, volunteers can become leaders without gaining management access.
