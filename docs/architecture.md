@@ -67,6 +67,22 @@ ska aldrig exponeras som en `NEXT_PUBLIC_`-variabel eller skickas till PWA:n.
 
 ## Assistenten
 
+Lagassistentens HTTP-adapter i `src/app/api/ai/team-assistant/route.ts` hanterar
+request-validering och HTTP-svar. `withAuthenticatedRoute` verifierar sessionen
+och ger anropet en användaridentitet och en Supabase-klient. `proxy.ts` uppdaterar
+sessionens cookies; API-säkerheten förutsätter inte att anropet passerar proxyn.
+
+AI-flödet finns i `src/lib/ai/team-assistant.ts`. Kontext och lagbehörighet,
+skrivskyddade verktyg, utkast-schema och promptar ligger i separata moduler i
+samma katalog. Promptarna väljer professionell, saklig ton för användare med
+ledaråtkomst till laget, och varm, enkel ton för spelare och målsmän. Tonvalet
+kommer från serverns lagbehörigheter och kan inte väljas i requesten.
+
+Återkommande aktivitetsutkast innehåller veckodagar och slutdatum och öppnar
+aktivitetsdialogen i serieläge. Saknas slutdatum måste ledaren ange det innan
+förhandsgranskningen. Utkastet valideras mot samma serieregler som dialogen och
+sparas först efter ledarens granskning.
+
 Assistenten översätter naturligt språk till typade verktygsanrop. Varje anrop
 kontrolleras mot användarens roll och aktiv förening. Namn, avatar och tonalitet
 kan anpassas per förening, men säkerhetsregler och systemprompt kan inte ersättas.

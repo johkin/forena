@@ -1,3 +1,5 @@
+import { previewWeeklySeries } from "../activity-series";
+
 export const activityDurations = [30, 45, 60, 75, 90, 120, 180, 480] as const;
 export const gatheringOffsets = [0, 15, 30, 45, 60] as const;
 
@@ -14,6 +16,7 @@ export type ActivityDraft = {
   startTime: string;
   durationMinutes: (typeof activityDurations)[number];
   gatheringMinutesBefore: (typeof gatheringOffsets)[number];
+  recurrence?: { weekdays: number[]; endsOn: string | null } | null;
   sources: ActivityDraftSource[];
 };
 
@@ -21,8 +24,8 @@ export type ActivityDraftInput = Omit<ActivityDraft, "sources">;
 
 export function isActivityDraftRequest(question: string) {
   const normalized = question.trim().toLocaleLowerCase("sv-SE");
-  const action = /\b(skapa|gör|förbered|lägg till|skriv)\b/.test(normalized);
-  const activity = /\b(aktivitet|träning|match|turnering|läger|intresseanmälan|kallelse)\b/.test(normalized) || /cup(?:en)?\b/.test(normalized);
+  const action = /\b(skapa|gör|förbered|lägg till|skriv|planera|schemalägg)\b/.test(normalized);
+  const activity = /\b(aktivitet(?:er)?|träning(?:ar)?|match(?:er)?|turnering(?:ar)?|läger|intresseanmälan|kallelse(?:r)?|aktivitetsserie)\b/.test(normalized) || /cup(?:en)?\b/.test(normalized);
   return action && activity;
 }
 
@@ -48,6 +51,25 @@ export function normalizeActivityDraft(input: ActivityDraftInput): ActivityDraft
   }
   if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(startTime)) throw new Error("Aktivitetsutkastet har en ogiltig tid.");
 
+  let recurrence: ActivityDraftInput["recurrence"];
+  if (input.recurrence != null) {
+    const { weekdays, endsOn } = input.recurrence;
+    if (!Array.isArray(weekdays) || !weekdays.length || weekdays.some(day => !Number.isInteger(day) || day < 1 || day > 7)) {
+      throw new Error("Aktivitetsserien har ogiltiga veckodagar.");
+    }
+    if (endsOn !== null) {
+      const end = typeof endsOn === "string" ? new Date(`${endsOn}T00:00:00Z`) : new Date(NaN);
+      if (typeof endsOn !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(endsOn) || Number.isNaN(end.getTime()) || end.toISOString().slice(0, 10) !== endsOn || endsOn < startsOn) {
+        throw new Error("Aktivitetsserien har ett ogiltigt slutdatum.");
+      }
+    }
+    recurrence = { weekdays: [...new Set(weekdays)].sort((a, b) => a - b), endsOn };
+    // Reuse the editor's limits and reject empty or oversized series before opening it.
+    if (endsOn !== null) previewWeeklySeries({ startsOn, endsOn, weekdays: recurrence.weekdays, startTime,
+      durationMinutes: allowedNumber(input.durationMinutes, activityDurations, 90),
+      gatheringMinutesBefore: allowedNumber(input.gatheringMinutesBefore, gatheringOffsets, 0), timeZone: "UTC" });
+  }
+
   return {
     title: requiredText(input.title, "Titel", 160),
     description: requiredText(input.description, "Beskrivning", 5_000),
@@ -56,6 +78,7 @@ export function normalizeActivityDraft(input: ActivityDraftInput): ActivityDraft
     startTime,
     durationMinutes: allowedNumber(input.durationMinutes, activityDurations, 90),
     gatheringMinutesBefore: allowedNumber(input.gatheringMinutesBefore, gatheringOffsets, 0),
+    ...(recurrence ? { recurrence } : {}),
   };
 }
 
