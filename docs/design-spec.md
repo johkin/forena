@@ -49,7 +49,9 @@ dialogen kan scrollas med touch och att bakgrunden är stilla.
 ## Truppen
 
 - Medlemslistan och undergrupper är två separata vyer. Listan har sökning,
-  gruppfilter och tydliga avsnitt för ledare och spelare. Hela medlemsraden
+  gruppfilter. Visa ledare först, därefter spelare och sedan övriga roller som
+  förekommer i truppen. Tomma rollavsnitt visas inte. Gruppval använder samma
+  ordning och visar varje person en gång, även vid flera roller. Hela medlemsraden
   öppnar profilen; fullständigt namn används i medlemsadministrationen.
 - Profilen samlar medlemsuppgifter, undergrupper, registrerade målsmän och barn
   som tillhör det aktuella laget. Redigering öppnas uttryckligen från profilen.

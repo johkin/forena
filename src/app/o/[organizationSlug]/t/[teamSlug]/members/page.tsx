@@ -12,6 +12,7 @@ import {
 } from "./actions";
 
 import Link from "next/link";
+import { primaryRosterRole, rosterRoleLabel } from "@/lib/roster-roles";
 import {
   GroupEditor,
   RosterSubmit,
@@ -107,7 +108,6 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
     .from("memberships")
     .select("person_id, role")
     .eq("team_id", team.id)
-    .in("role", ["participant", "leader"])
     .is("ends_on", null);
   if (membershipsError) throw new Error("Truppen kunde inte hämtas");
   const personIds = [
@@ -201,11 +201,13 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
     ],
     title:
       responsibilitiesByPerson.get(person.id)?.join(" · ") ||
-      ((memberships ?? []).some(
-        (item) => item.person_id === person.id && item.role === "leader",
-      )
-        ? "Ledare"
-        : "Spelare"),
+      rosterRoleLabel(
+        primaryRosterRole(
+          (memberships ?? [])
+            .filter((item) => item.person_id === person.id)
+            .map((item) => item.role),
+        ),
+      ),
     linked: Boolean(person.user_id),
   }));
   const rosterGroups = (groups ?? []).map((group) => ({

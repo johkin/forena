@@ -221,7 +221,6 @@ export async function updateMemberName(formData: FormData) {
     .select("id")
     .eq("team_id", team.id)
     .eq("person_id", personId)
-    .in("role", ["leader", "participant"])
     .is("ends_on", null);
   if (membershipError || !memberships?.length)
     redirect(

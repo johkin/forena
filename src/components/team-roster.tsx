@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { rosterRoleLabel, rosterSections } from "@/lib/roster-roles";
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
 
@@ -73,14 +74,11 @@ export function TeamRoster({
         {visible.length} av {people.length} medlemmar
         {group ? ` · ${group.name}` : ""}
       </p>
-      {(["leader", "participant"] as const).map((role) => {
-        const members = visible.filter((person) => person.roles.includes(role));
-        if (!members.length) return null;
+      {rosterSections(visible).map(({ role, label, people: members }) => {
         return (
           <section className="squad-section" key={role}>
             <h2>
-              {role === "leader" ? "Ledare" : "Spelare"}{" "}
-              <span className="badge">{members.length}</span>
+              {label} <span className="badge">{members.length}</span>
             </h2>
             <div className="squad-list">
               {members.map((person) => (
@@ -99,7 +97,7 @@ export function TeamRoster({
                   <span className="squad-person-copy">
                     <strong>{person.name}</strong>
                     <small>
-                      {role === "leader" ? person.title : "Spelare"}
+                      {role === "leader" ? person.title : rosterRoleLabel(role)}
                     </small>
                   </span>
                   <span aria-hidden="true">›</span>
@@ -203,35 +201,30 @@ export function GroupEditor({
                   {chosen ? selected.size : people.length - selected.size}
                 </span>
               </h2>
-              {(["leader", "participant"] as const).map((role) => {
-                // A person with both roles is shown once in the selector.
-                const members = filtered.filter(
-                  (person) =>
-                    (person.roles.includes("leader")
-                      ? "leader"
-                      : "participant") === role,
-                );
-                return members.length ? (
-                  <div key={role}>
-                    <h3>{role === "leader" ? "Ledare" : "Spelare"}</h3>
-                    {members.map((person) => (
-                      <button
-                        key={person.id}
-                        type="button"
-                        className="squad-person"
-                        onClick={() => toggle(person.id)}
-                        aria-label={`${chosen ? "Ta bort" : "Lägg till"} ${person.name} ${chosen ? "ur" : "i"} gruppen`}
-                      >
-                        <span className="squad-person-copy">
-                          <strong>{person.name}</strong>
-                          <small>{person.title}</small>
-                        </span>
-                        <span aria-hidden="true">{chosen ? "−" : "+"}</span>
-                      </button>
-                    ))}
-                  </div>
-                ) : null;
-              })}
+              {rosterSections(filtered, true).map(
+                ({ role, label, people: members }) => {
+                  return members.length ? (
+                    <div key={role}>
+                      <h3>{label}</h3>
+                      {members.map((person) => (
+                        <button
+                          key={person.id}
+                          type="button"
+                          className="squad-person"
+                          onClick={() => toggle(person.id)}
+                          aria-label={`${chosen ? "Ta bort" : "Lägg till"} ${person.name} ${chosen ? "ur" : "i"} gruppen`}
+                        >
+                          <span className="squad-person-copy">
+                            <strong>{person.name}</strong>
+                            <small>{person.title}</small>
+                          </span>
+                          <span aria-hidden="true">{chosen ? "−" : "+"}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null;
+                },
+              )}
               {!filtered.length ? (
                 <p className="squad-empty">
                   {search
