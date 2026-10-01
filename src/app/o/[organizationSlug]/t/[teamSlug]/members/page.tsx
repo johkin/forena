@@ -2,133 +2,623 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { TeamMenu } from "@/components/team-menu";
 import { AppHeader } from "@/components/app-header";
-import { createTeamGroup, deleteTeamGroup, sendPlayerInvitation, updatePlayer, updateTeamGroup } from "./actions";
+import {
+  createTeamGroup,
+  deleteTeamGroup,
+  sendPlayerInvitation,
+  updatePlayer,
+  updateTeamGroup,
+  updateMemberName,
+} from "./actions";
+
+import Link from "next/link";
+import {
+  GroupEditor,
+  RosterSubmit,
+  TeamRoster,
+} from "@/components/team-roster";
 
 type Props = {
   params: Promise<{ organizationSlug: string; teamSlug: string }>;
-  searchParams: Promise<{ error?: string; saved?: string; leaderSaved?: string; invited?: string; groupSaved?: string; groupDeleted?: string }>;
+  searchParams: Promise<{
+    person?: string;
+    view?: string;
+    group?: string;
+    edit?: string;
+    error?: string;
+    saved?: string;
+    leaderSaved?: string;
+    invited?: string;
+    groupSaved?: string;
+    groupDeleted?: string;
+  }>;
 };
 
 export default async function TeamMembersPage({ params, searchParams }: Props) {
   const { organizationSlug, teamSlug } = await params;
-  const { error, saved, leaderSaved, invited, groupSaved, groupDeleted } = await searchParams;
+  const {
+    person: selectedPersonId,
+    view,
+    group: selectedGroupId,
+    edit,
+    error,
+    saved,
+    leaderSaved,
+    invited,
+    groupSaved,
+    groupDeleted,
+  } = await searchParams;
   const destination = `/o/${organizationSlug}/t/${teamSlug}/members`;
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getUser();
-  if (!authData.user) redirect(`/login?next=${encodeURIComponent(destination)}`);
+  if (!authData.user)
+    redirect(`/login?next=${encodeURIComponent(destination)}`);
 
-  const { data: organization } = await supabase.from("organizations").select("id, name, slug, assistant_name").eq("slug", organizationSlug).maybeSingle();
+  const { data: organization } = await supabase
+    .from("organizations")
+    .select("id, name, slug, assistant_name")
+    .eq("slug", organizationSlug)
+    .maybeSingle();
   const { data: team } = organization
-    ? await supabase.from("teams").select("id, name, slug, organization_id, section_id, season").eq("organization_id", organization.id).eq("slug", teamSlug).maybeSingle()
+    ? await supabase
+        .from("teams")
+        .select("id, name, slug, organization_id, section_id, season")
+        .eq("organization_id", organization.id)
+        .eq("slug", teamSlug)
+        .maybeSingle()
     : { data: null };
   if (!organization || !team) redirect("/setup");
 
-  const { data: canManage } = await supabase.rpc("has_team_permission", { target_team_id: team.id, target_permission: "roster.manage" });
+  const { data: canManage } = await supabase.rpc("has_team_permission", {
+    target_team_id: team.id,
+    target_permission: "roster.manage",
+  });
   if (!canManage) redirect(`/o/${organizationSlug}/t/${teamSlug}`);
-  const { data: isAdmin } = await supabase.rpc("has_organization_role", { target_organization_id: organization.id, allowed_roles: ["owner", "admin"] });
+  const { data: isAdmin } = await supabase.rpc("has_organization_role", {
+    target_organization_id: organization.id,
+    allowed_roles: ["owner", "admin"],
+  });
 
-  const { data: accessibleTeams } = await supabase.from("teams").select("id, name, slug").eq("organization_id", organization.id).order("name");
+  const { data: accessibleTeams } = await supabase
+    .from("teams")
+    .select("id, name, slug")
+    .eq("organization_id", organization.id)
+    .order("name");
   const workspaces = [
-    { id: organization.id, kind: "organization" as const, name: organization.name, description: "Förening", href: `/o/${organizationSlug}`, active: false },
-    ...(accessibleTeams ?? []).map((item) => ({ id: item.id, kind: "team" as const, name: item.name, description: "Lag", href: `/o/${organizationSlug}/t/${item.slug}`, active: item.id === team.id })),
+    {
+      id: organization.id,
+      kind: "organization" as const,
+      name: organization.name,
+      description: "Förening",
+      href: `/o/${organizationSlug}`,
+      active: false,
+    },
+    ...(accessibleTeams ?? []).map((item) => ({
+      id: item.id,
+      kind: "team" as const,
+      name: item.name,
+      description: "Lag",
+      href: `/o/${organizationSlug}/t/${item.slug}`,
+      active: item.id === team.id,
+    })),
   ];
 
-  const { data: memberships } = await supabase.from("memberships").select("person_id, role").eq("team_id", team.id).in("role", ["participant", "leader"]).is("ends_on", null);
-  const personIds = [...new Set((memberships ?? []).map((item) => item.person_id))];
-  const roleByPerson = new Map((memberships ?? []).map((item) => [item.person_id, item.role]));
-  const roleLabel = (role: string | undefined) => role === "participant" ? "Spelare" : role === "leader" ? "Ledare" : "Medlem";
-  const [{ data: people }, { data: loginEmails }, { data: groups }, { data: groupMembers }, { data: responsibilities }] = await Promise.all([
-    personIds.length ? supabase.from("people").select("id, display_name, user_id").in("id", personIds).order("display_name") : Promise.resolve({ data: [] }),
-    personIds.length ? supabase.from("person_login_emails").select("person_id, email").in("person_id", personIds) : Promise.resolve({ data: [] }),
-    supabase.from("team_groups").select("id, name").eq("team_id", team.id).order("name"),
-    supabase.from("team_group_members").select("group_id, person_id").eq("organization_id", organization.id),
-    supabase.from("team_responsibilities").select("person_id, responsibility_type_id").eq("team_id", team.id).is("ends_on", null),
+  const { data: memberships, error: membershipsError } = await supabase
+    .from("memberships")
+    .select("person_id, role")
+    .eq("team_id", team.id)
+    .in("role", ["participant", "leader"])
+    .is("ends_on", null);
+  if (membershipsError) throw new Error("Truppen kunde inte hämtas");
+  const personIds = [
+    ...new Set((memberships ?? []).map((item) => item.person_id)),
+  ];
+
+  const [
+    { data: people, error: peopleError },
+    { data: loginEmails, error: loginEmailsError },
+    { data: groups, error: groupsError },
+    { data: responsibilities },
+  ] = await Promise.all([
+    personIds.length
+      ? supabase
+          .from("people")
+          .select("id, display_name, user_id")
+          .in("id", personIds)
+          .order("display_name")
+      : Promise.resolve({ data: [], error: null }),
+    personIds.length
+      ? supabase
+          .from("person_login_emails")
+          .select("person_id, email")
+          .in("person_id", personIds)
+      : Promise.resolve({ data: [], error: null }),
+    supabase
+      .from("team_groups")
+      .select("id, name")
+      .eq("team_id", team.id)
+      .order("name"),
+    supabase
+      .from("team_responsibilities")
+      .select("person_id, responsibility_type_id")
+      .eq("team_id", team.id)
+      .is("ends_on", null),
   ]);
-  const responsibilityTypeIds = [...new Set((responsibilities ?? []).map((item) => item.responsibility_type_id))];
+  if (peopleError || loginEmailsError || groupsError)
+    throw new Error("Medlemsuppgifterna kunde inte hämtas");
+  const responsibilityTypeIds = [
+    ...new Set(
+      (responsibilities ?? []).map((item) => item.responsibility_type_id),
+    ),
+  ];
   const { data: responsibilityTypes } = responsibilityTypeIds.length
-    ? await supabase.from("responsibility_types").select("id, name").in("id", responsibilityTypeIds)
+    ? await supabase
+        .from("responsibility_types")
+        .select("id, name")
+        .in("id", responsibilityTypeIds)
     : { data: [] };
-  const responsibilityNameById = new Map((responsibilityTypes ?? []).map((item) => [item.id, item.name]));
+  const responsibilityNameById = new Map(
+    (responsibilityTypes ?? []).map((item) => [item.id, item.name]),
+  );
   const responsibilitiesByPerson = new Map<string, string[]>();
   for (const item of responsibilities ?? []) {
     const name = responsibilityNameById.get(item.responsibility_type_id);
     if (!name) continue;
-    responsibilitiesByPerson.set(item.person_id, [...(responsibilitiesByPerson.get(item.person_id) ?? []), name]);
+    responsibilitiesByPerson.set(item.person_id, [
+      ...(responsibilitiesByPerson.get(item.person_id) ?? []),
+      name,
+    ]);
   }
+  const { data: groupMembers, error: groupMembersError } = groups?.length
+    ? await supabase
+        .from("team_group_members")
+        .select("group_id, person_id")
+        .in(
+          "group_id",
+          groups.map((group) => group.id),
+        )
+    : { data: [], error: null };
+  if (groupMembersError) throw new Error("Gruppmedlemmarna kunde inte hämtas");
   const groupPersonIds = new Map<string, Set<string>>();
-  for (const item of groupMembers ?? []) { const ids = groupPersonIds.get(item.group_id) ?? new Set<string>(); ids.add(item.person_id); groupPersonIds.set(item.group_id, ids); }
-  const emailByPerson = new Map((loginEmails ?? []).map((item) => [item.person_id, item.email]));
+  for (const item of groupMembers ?? []) {
+    const ids = groupPersonIds.get(item.group_id) ?? new Set<string>();
+    ids.add(item.person_id);
+    groupPersonIds.set(item.group_id, ids);
+  }
+  const emailByPerson = new Map(
+    (loginEmails ?? []).map((item) => [item.person_id, item.email]),
+  );
+
+  const roster = (people ?? []).map((person) => ({
+    id: person.id,
+    name: person.display_name,
+    roles: [
+      ...new Set(
+        (memberships ?? [])
+          .filter((item) => item.person_id === person.id)
+          .map((item) => item.role),
+      ),
+    ],
+    title:
+      responsibilitiesByPerson.get(person.id)?.join(" · ") ||
+      ((memberships ?? []).some(
+        (item) => item.person_id === person.id && item.role === "leader",
+      )
+        ? "Ledare"
+        : "Spelare"),
+    linked: Boolean(person.user_id),
+  }));
+  const rosterGroups = (groups ?? []).map((group) => ({
+    ...group,
+    personIds: [...(groupPersonIds.get(group.id) ?? [])].filter((id) =>
+      personIds.includes(id),
+    ),
+  }));
+  const member = roster.find((person) => person.id === selectedPersonId);
+  const selectedGroup = rosterGroups.find(
+    (group) => group.id === selectedGroupId,
+  );
+  const { data: guardians, error: guardianError } = member
+    ? await supabase
+        .from("person_guardians")
+        .select("contact_name, contact_phone")
+        .eq("person_id", member.id)
+        .eq("organization_id", organization.id)
+    : { data: [], error: null };
+  const { data: childLinks, error: childError } =
+    member &&
+    people?.find((person) => person.id === member.id)?.user_id &&
+    personIds.length
+      ? await supabase
+          .from("person_guardians")
+          .select("person_id")
+          .eq(
+            "guardian_user_id",
+            people.find((person) => person.id === member.id)!.user_id!,
+          )
+          .eq("organization_id", organization.id)
+          .in("person_id", personIds)
+      : { data: [], error: null };
+  const children = roster.filter((person) =>
+    childLinks?.some((link) => link.person_id === person.id),
+  );
 
   return (
     <main>
       <AppHeader
         homeHref={`/o/${organizationSlug}/t/${teamSlug}`}
-        navigation={<TeamMenu organizationSlug={organizationSlug} teamSlug={teamSlug} teamName={team.name} canManageRoster={Boolean(canManage)} leaderView activeItem="members" navigationOnly />}
+        navigation={
+          <TeamMenu
+            organizationSlug={organizationSlug}
+            teamSlug={teamSlug}
+            teamName={team.name}
+            canManageRoster={Boolean(canManage)}
+            leaderView
+            activeItem="members"
+            navigationOnly
+          />
+        }
         accountEmail={authData.user.email}
-        organization={{ id: organization.id, slug: organization.slug, name: organization.name, assistantName: organization.assistant_name }}
-        team={{ id: team.id, slug: team.slug, name: team.name, organizationId: team.organization_id, sectionId: team.section_id, season: team.season ?? "" }}
+        organization={{
+          id: organization.id,
+          slug: organization.slug,
+          name: organization.name,
+          assistantName: organization.assistant_name,
+        }}
+        team={{
+          id: team.id,
+          slug: team.slug,
+          name: team.name,
+          organizationId: team.organization_id,
+          sectionId: team.section_id,
+          season: team.season ?? "",
+        }}
         workspaces={workspaces}
         logoutDestination={`/o/${organizationSlug}/t/${teamSlug}`}
         adminHref={isAdmin ? `/o/${organizationSlug}/admin/roles` : undefined}
       />
       <div className="shell">
-        <TeamMenu organizationSlug={organizationSlug} teamSlug={teamSlug} teamName={team.name} canManageRoster={Boolean(canManage)} leaderView activeItem="members" hideTrigger />
+        <TeamMenu
+          organizationSlug={organizationSlug}
+          teamSlug={teamSlug}
+          teamName={team.name}
+          canManageRoster={Boolean(canManage)}
+          leaderView
+          activeItem="members"
+          hideTrigger
+        />
         <section className="content">
           <section className="application-card members-admin-card">
-        <div className="application-page-heading">
-          <div><p className="eyebrow">{organization.name} · {team.name}</p><h1>Truppen</h1><p>Hantera spelare, ledare och undergrupper som kan användas som målgrupper för kallelser.</p></div>
-        </div>
-        {saved ? <div className="auth-message">{saved} har uppdaterats.</div> : null}
-        {leaderSaved ? <div className="auth-message">{leaderSaved} har uppdaterats.</div> : null}
-        {invited ? <div className="auth-message">Inbjudan har skickats till {invited}.</div> : null}
-        {groupSaved ? <div className="auth-message">Gruppen {groupSaved} har sparats.</div> : null}
-        {groupDeleted ? <div className="auth-message">Gruppen {groupDeleted} har tagits bort.</div> : null}
-        {error ? <div className="auth-error">{error}</div> : null}
-        <div className="application-page-heading"><div><p className="eyebrow">Trupp</p><h2>Alla i laget</h2><p>Spelare, ledare och andra personer som är knutna till laget.</p></div></div>
-        <div className="roster-sections">
-          {(["participant","leader"] as const).map((role) => {
-            const rolePeople = (people ?? []).filter((person) => roleByPerson.get(person.id) === role);
-            if (!rolePeople.length) return null;
-            return <section className="roster-section" key={role}>
-              <div className="roster-section-heading"><h3>{role === "participant" ? "Spelare" : "Ledare"}</h3><span>{rolePeople.length}</span></div>
-              <div className="roster-card-grid">
-                {rolePeople.map((person) => <article className="roster-person-card" key={person.id}>
-                  <span className="member-avatar">{person.display_name.slice(0,1)}</span>
-                  <div><strong>{person.display_name}</strong><small>{role === "leader" ? (responsibilitiesByPerson.get(person.id)?.join(" · ") || "Ledare") : roleLabel(roleByPerson.get(person.id))}</small></div>
-                  {person.user_id ? <span className="status accepted">Konto kopplat</span> : null}
-                </article>)}
+            <div className="application-page-heading">
+              <div>
+                <p className="eyebrow">
+                  {organization.name} · {team.name}
+                </p>
+                <h1>Truppen</h1>
+                <p>
+                  {roster.length} medlemmar · {rosterGroups.length}{" "}
+                  {rosterGroups.length === 1 ? "undergrupp" : "undergrupper"}
+                </p>
               </div>
-            </section>;
-          })}
-        </div>
-        <div className="application-page-heading group-admin-heading"><div><p className="eyebrow">Grupper</p><h2>Egna grupper</h2><p>Klubben kan sätta upp valfria grupper ovanpå truppen. En grupp kan innehålla spelare, ledare och övriga lagmedlemmar och kan användas som målgrupp för kallelser.</p></div></div>
-        <form action={createTeamGroup} className="member-admin-row">
-          <input name="organizationSlug" type="hidden" value={organizationSlug} /><input name="teamSlug" type="hidden" value={teamSlug} />
-          <label>Namn på ny grupp<input name="name" required maxLength={80} placeholder="Till exempel Matchtrupp" /></label><div className="member-account-state"><button className="primary" type="submit">Skapa grupp</button></div>
-        </form>
-        <div className="member-admin-list">
-          {(groups ?? []).map((group) => <form action={updateTeamGroup} className="member-admin-row" key={group.id}>
-            <input name="organizationSlug" type="hidden" value={organizationSlug} /><input name="teamSlug" type="hidden" value={teamSlug} /><input name="groupId" type="hidden" value={group.id} />
-            <label>Gruppnamn<input name="name" defaultValue={group.name} required maxLength={80} /></label>
-            <fieldset><legend>Medlemmar</legend><div className="member-options">{(people ?? []).map((person) => <label key={person.id}><input type="checkbox" name="personIds" value={person.id} defaultChecked={groupPersonIds.get(group.id)?.has(person.id) ?? false} /><span className="member-avatar">{person.display_name.slice(0,1)}</span>{person.display_name} <small>{roleLabel(roleByPerson.get(person.id))}</small></label>)}</div></fieldset>
-            <div className="member-account-state"><div className="member-admin-actions"><button className="secondary" formAction={deleteTeamGroup} type="submit">Ta bort</button><button className="primary" type="submit">Spara grupp</button></div></div>
-          </form>)}
-        </div>
-        <div className="application-page-heading player-admin-heading"><div><p className="eyebrow">Ansvar</p><h2>Ledarnas funktioner</h2><p>Lagledare, tränare, kontaktperson och andra funktioner är ansvar som ligger separat från personens relation som ledare i laget.</p></div></div>
-        <div className="application-page-heading player-admin-heading"><div><p className="eyebrow">Administration</p><h2>Spelaruppgifter</h2><p>Uppdatera spelaruppgifter och lägg till e-post för den som ska kunna logga in själv.</p></div></div>
-        <div className="member-admin-list">
-          {(people ?? []).filter((person) => roleByPerson.get(person.id) === "participant").map((person) => (
-            <form action={updatePlayer} className="member-admin-row" key={person.id}>
-              <input name="organizationSlug" type="hidden" value={organizationSlug} />
-              <input name="teamSlug" type="hidden" value={teamSlug} />
-              <input name="personId" type="hidden" value={person.id} />
-              <label>Namn<input name="displayName" defaultValue={person.display_name} required /></label>
-              <label>E-post för egen inloggning<input name="email" type="email" defaultValue={emailByPerson.get(person.id) ?? ""} placeholder="namn+spelare@example.se" readOnly={Boolean(person.user_id)} /></label>
-              <div className="member-account-state"><span className={`status ${person.user_id ? "accepted" : "pending"}`}>{person.user_id ? "Konto kopplat" : "Inte aktiverat"}</span><div className="member-admin-actions"><button className="secondary" formAction={sendPlayerInvitation} type="submit">{person.user_id ? "Skicka inloggningslänk" : "Skicka inbjudan"}</button><button className="primary" type="submit">Spara</button></div></div>
-            </form>
-          ))}
-        </div>
-        <p className="form-help member-admin-help">En ny e-postadress får automatiskt en inbjudan. Länken verifierar adressen, kopplar kontot till spelaren och erbjuder en passkey. Lösenord finns kvar som ett valfritt alternativ.</p>
+            </div>
+            {saved ? (
+              <div className="auth-message">{saved} har uppdaterats.</div>
+            ) : null}
+            {leaderSaved ? (
+              <div className="auth-message">{leaderSaved} har uppdaterats.</div>
+            ) : null}
+            {invited ? (
+              <div className="auth-message">
+                Inbjudan har skickats till {invited}.
+              </div>
+            ) : null}
+            {groupSaved ? (
+              <div className="auth-message">
+                Gruppen {groupSaved} har sparats.
+              </div>
+            ) : null}
+            {groupDeleted ? (
+              <div className="auth-message">
+                Gruppen {groupDeleted} har tagits bort.
+              </div>
+            ) : null}
+            {error ? <div className="auth-error">{error}</div> : null}
+            <nav className="squad-tabs" aria-label="Truppen">
+              <Link
+                aria-current={member || view !== "groups" ? "page" : undefined}
+                href={destination}
+              >
+                Medlemmar
+              </Link>
+              <Link
+                aria-current={view === "groups" ? "page" : undefined}
+                href={`${destination}?view=groups`}
+              >
+                Undergrupper
+              </Link>
+            </nav>
+            {selectedPersonId && !member ? (
+              <p className="auth-error">
+                Medlemmen finns inte i lagets aktiva trupp.
+              </p>
+            ) : null}
+            {member ? (
+              <>
+                <Link className="squad-back" href={destination}>
+                  ← Tillbaka till truppen
+                </Link>
+                <div className="squad-profile-heading">
+                  <span className="member-avatar" aria-hidden="true">
+                    {member.name
+                      .split(" ")
+                      .map((part) => part[0])
+                      .slice(0, 2)
+                      .join("")}
+                  </span>
+                  <div>
+                    <h2>{member.name}</h2>
+                    <p>{member.title}</p>
+                  </div>
+                  <Link
+                    className="secondary"
+                    href={`${destination}?person=${member.id}${edit ? "" : "&edit=1"}`}
+                  >
+                    {edit ? "Visa profil" : "Redigera medlem"}
+                  </Link>
+                </div>
+                {edit ? (
+                  <form
+                    action={
+                      member.roles.includes("participant")
+                        ? updatePlayer
+                        : updateMemberName
+                    }
+                    className="squad-form"
+                  >
+                    <input
+                      name="organizationSlug"
+                      type="hidden"
+                      value={organizationSlug}
+                    />
+                    <input name="teamSlug" type="hidden" value={teamSlug} />
+                    <input name="personId" type="hidden" value={member.id} />
+                    <h3>Medlemsuppgifter</h3>
+                    <label>
+                      Namn
+                      <input
+                        name="displayName"
+                        defaultValue={member.name}
+                        required
+                        maxLength={160}
+                        autoComplete="name"
+                      />
+                    </label>
+                    {member.roles.includes("participant") ? (
+                      <>
+                        <label>
+                          E-post för egen inloggning
+                          <input
+                            name="email"
+                            type="email"
+                            defaultValue={emailByPerson.get(member.id) ?? ""}
+                            readOnly={member.linked}
+                            autoComplete="email"
+                          />
+                        </label>
+                        <p className="form-help">
+                          En ny e-postadress får automatiskt en inbjudan.{" "}
+                          {member.linked
+                            ? "Adressen är låst eftersom ett konto redan är kopplat."
+                            : "Lämna tomt om spelaren använder målsmans konto."}
+                        </p>
+                      </>
+                    ) : null}
+                    <div className="squad-save-bar">
+                      <Link
+                        className="secondary"
+                        href={`${destination}?person=${member.id}`}
+                      >
+                        Avbryt
+                      </Link>
+                      <RosterSubmit>Spara medlem</RosterSubmit>
+                    </div>
+                  </form>
+                ) : (
+                  <section className="squad-section">
+                    <h3>Konto</h3>
+                    <p>
+                      {member.linked
+                        ? "Konto kopplat"
+                        : "Inget eget konto kopplat"}
+                    </p>
+                    {member.roles.includes("participant") &&
+                    emailByPerson.get(member.id) ? (
+                      <>
+                        <p className="squad-contact">
+                          {emailByPerson.get(member.id)}
+                        </p>
+                        <form action={sendPlayerInvitation}>
+                          <input
+                            type="hidden"
+                            name="organizationSlug"
+                            value={organizationSlug}
+                          />
+                          <input
+                            type="hidden"
+                            name="teamSlug"
+                            value={teamSlug}
+                          />
+                          <input
+                            type="hidden"
+                            name="personId"
+                            value={member.id}
+                          />
+                          <input
+                            type="hidden"
+                            name="displayName"
+                            value={member.name}
+                          />
+                          <RosterSubmit>
+                            {member.linked
+                              ? "Skicka inloggningslänk"
+                              : "Skicka inbjudan igen"}
+                          </RosterSubmit>
+                        </form>
+                      </>
+                    ) : null}
+                  </section>
+                )}
+                <section className="squad-section">
+                  <h3>Undergrupper</h3>
+                  <div className="squad-list">
+                    {rosterGroups
+                      .filter((group) => group.personIds.includes(member.id))
+                      .map((group) => (
+                        <Link
+                          className="squad-person"
+                          key={group.id}
+                          href={`${destination}?view=groups&group=${group.id}`}
+                        >
+                          <strong>{group.name}</strong>
+                          <span aria-hidden="true">›</span>
+                        </Link>
+                      ))}
+                  </div>
+                  {!rosterGroups.some((group) =>
+                    group.personIds.includes(member.id),
+                  ) ? (
+                    <p className="form-help">Ingår inte i någon undergrupp.</p>
+                  ) : null}
+                </section>
+                <section className="squad-section">
+                  <h3>Målsmän</h3>
+                  {guardianError ? (
+                    <p className="auth-error">Målsmän kunde inte hämtas.</p>
+                  ) : guardians?.length ? (
+                    <div className="squad-list">
+                      {guardians.map((guardian, index) => (
+                        <div className="squad-person" key={index}>
+                          <span className="squad-person-copy">
+                            <strong>
+                              {guardian.contact_name || "Målsman"}
+                            </strong>
+                            {guardian.contact_phone ? (
+                              <a
+                                href={`tel:${guardian.contact_phone.replace(/[^+\d]/g, "")}`}
+                              >
+                                {guardian.contact_phone}
+                              </a>
+                            ) : null}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="form-help">Inga målsmän registrerade.</p>
+                  )}
+                </section>
+                {childError ? (
+                  <p className="auth-error">Barn i laget kunde inte hämtas.</p>
+                ) : children.length ? (
+                  <section className="squad-section">
+                    <h3>Barn i laget</h3>
+                    <div className="squad-list">
+                      {children.map((child) => (
+                        <Link
+                          key={child.id}
+                          className="squad-person"
+                          href={`${destination}?person=${child.id}`}
+                        >
+                          <strong>{child.name}</strong>
+                          <span aria-hidden="true">›</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
+              </>
+            ) : view === "groups" ? (
+              <>
+                {selectedGroup ? (
+                  <>
+                    <Link
+                      className="squad-back"
+                      href={`${destination}?view=groups`}
+                    >
+                      ← Alla undergrupper
+                    </Link>
+                    <h2>{selectedGroup.name}</h2>
+                    <p className="form-help">
+                      Tryck på en person för att lägga till eller ta bort.
+                      Ändringarna gäller när du sparar.
+                    </p>
+                    <GroupEditor
+                      key={selectedGroup.id}
+                      group={selectedGroup}
+                      people={roster}
+                      organizationSlug={organizationSlug}
+                      teamSlug={teamSlug}
+                      action={updateTeamGroup}
+                      deleteAction={deleteTeamGroup}
+                    />
+                  </>
+                ) : (
+                  <>
+                    {selectedGroupId ? (
+                      <p className="auth-error">Gruppen kunde inte hittas.</p>
+                    ) : null}
+                    <div className="squad-list">
+                      {rosterGroups.map((group) => (
+                        <Link
+                          className="squad-person"
+                          key={group.id}
+                          href={`${destination}?view=groups&group=${group.id}`}
+                        >
+                          <span className="squad-person-copy">
+                            <strong>{group.name}</strong>
+                            <small>{group.personIds.length} medlemmar</small>
+                          </span>
+                          <span aria-hidden="true">›</span>
+                        </Link>
+                      ))}
+                    </div>
+                    {!rosterGroups.length ? (
+                      <p className="squad-empty">
+                        Skapa en undergrupp för till exempel matchtrupp eller
+                        rotationsträning.
+                      </p>
+                    ) : null}
+                    <details className="squad-create">
+                      <summary>+ Ny undergrupp</summary>
+                      <form action={createTeamGroup} className="squad-form">
+                        <input
+                          type="hidden"
+                          name="organizationSlug"
+                          value={organizationSlug}
+                        />
+                        <input type="hidden" name="teamSlug" value={teamSlug} />
+                        <label>
+                          Gruppnamn
+                          <input
+                            name="name"
+                            required
+                            maxLength={80}
+                            placeholder="Till exempel Lag Gul"
+                          />
+                        </label>
+                        <RosterSubmit>Skapa grupp</RosterSubmit>
+                      </form>
+                    </details>
+                  </>
+                )}
+              </>
+            ) : (
+              <TeamRoster
+                people={roster}
+                groups={rosterGroups}
+                href={destination}
+              />
+            )}
           </section>
         </section>
       </div>

@@ -45,3 +45,18 @@ utan att ändra arbetsflödet. Ingen vy får kräva horisontell sidskroll.
 Kontrollera ändrade vyer på 320, 375, 390 och 768 CSS-pixlar och i desktop.
 Verifiera att `document.documentElement.scrollWidth <= innerWidth`, att
 dialogen kan scrollas med touch och att bakgrunden är stilla.
+
+## Truppen
+
+- Medlemslistan och undergrupper är två separata vyer. Listan har sökning,
+  gruppfilter och tydliga avsnitt för ledare och spelare. Hela medlemsraden
+  öppnar profilen; fullständigt namn används i medlemsadministrationen.
+- Profilen samlar medlemsuppgifter, undergrupper, registrerade målsmän och barn
+  som tillhör det aktuella laget. Redigering öppnas uttryckligen från profilen.
+- Undergruppens personval visar två listor på större skärmar. På telefon växlar
+  användaren mellan **Ej i gruppen** och **I gruppen**, med antal i båda valen.
+  Sökningen filtrerar listorna utan att ändra gjorda val.
+- Namn och medlemsval sparas uttryckligen med en nåbar knapp. Borttagning av en
+  grupp kräver bekräftelse och påverkar inte personernas medlemskap i laget.
+- Vyerna använder `roster.manage`. Ledarnas funktioner visas från lagets ansvar;
+  namnredigering ändrar inte roller eller ansvar.

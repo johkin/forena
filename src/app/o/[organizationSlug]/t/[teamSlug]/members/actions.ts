@@ -52,18 +52,18 @@ export async function updatePlayer(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const destination = memberDestination(organizationSlug, teamSlug);
 
-  if (!personId || !displayName || (email && !email.includes("@"))) {
-    redirect(`${destination}?error=${encodeURIComponent("Kontrollera namn och e-postadress")}`);
+  if (!personId || !displayName || displayName.length > 160 || (email && !email.includes("@"))) {
+    redirect(`${destination}?person=${encodeURIComponent(personId)}&error=${encodeURIComponent("Kontrollera namn och e-postadress")}`);
   }
 
   const { supabase, team, linkedUserId } = await getManagedPlayer(formData);
   const { data: previousLogin } = await supabase.from("person_login_emails").select("email").eq("person_id", personId).maybeSingle();
-  if (linkedUserId && previousLogin?.email !== email) {
-    redirect(`${destination}?error=${encodeURIComponent("E-postadressen kan inte bytas efter att kontot har aktiverats")}`);
+  if (linkedUserId && (previousLogin?.email ?? "") !== email) {
+    redirect(`${destination}?person=${encodeURIComponent(personId)}&error=${encodeURIComponent("E-postadressen kan inte bytas efter att kontot har aktiverats")}`);
   }
 
   const { error: personError } = await supabase.from("people").update({ display_name: displayName }).eq("id", personId);
-  if (personError) redirect(`${destination}?error=${encodeURIComponent("Spelarens namn kunde inte sparas")}`);
+  if (personError) redirect(`${destination}?person=${encodeURIComponent(personId)}&error=${encodeURIComponent("Spelarens namn kunde inte sparas")}`);
 
   const emailResult = email
     ? await supabase.from("person_login_emails").upsert({ person_id: personId, organization_id: team.organization_id, email }, { onConflict: "person_id" })
@@ -71,36 +71,36 @@ export async function updatePlayer(formData: FormData) {
 
   if (emailResult.error) {
     const message = emailResult.error.code === "23505" ? "E-postadressen används redan av en annan spelare" : "E-postadressen kunde inte sparas";
-    redirect(`${destination}?error=${encodeURIComponent(message)}`);
+    redirect(`${destination}?person=${encodeURIComponent(personId)}&error=${encodeURIComponent(message)}`);
   }
 
   if (email && previousLogin?.email !== email) {
     const { error: invitationError } = await sendLoginInvitation(email, organizationSlug, teamSlug);
     if (invitationError) {
       console.error("[player-invitation] email failed", { message: invitationError.message, personId });
-      redirect(`${destination}?saved=${encodeURIComponent(displayName)}&error=${encodeURIComponent("Uppgifterna sparades, men inbjudan kunde inte skickas. Försök med Skicka igen.")}`);
+      redirect(`${destination}?person=${encodeURIComponent(personId)}&saved=${encodeURIComponent(displayName)}&error=${encodeURIComponent("Uppgifterna sparades, men inbjudan kunde inte skickas. Försök med Skicka igen.")}`);
     }
     revalidatePath(destination);
-    redirect(`${destination}?invited=${encodeURIComponent(displayName)}`);
+    redirect(`${destination}?person=${encodeURIComponent(personId)}&invited=${encodeURIComponent(displayName)}`);
   }
 
   revalidatePath(destination);
   revalidatePath(`/o/${organizationSlug}/t/${teamSlug}`);
-  redirect(`${destination}?saved=${encodeURIComponent(displayName)}`);
+  redirect(`${destination}?person=${encodeURIComponent(personId)}&saved=${encodeURIComponent(displayName)}`);
 }
 
 export async function sendPlayerInvitation(formData: FormData) {
   const displayName = String(formData.get("displayName") ?? "Spelaren").trim();
   const { supabase, personId, organizationSlug, teamSlug, destination } = await getManagedPlayer(formData);
   const { data: login } = await supabase.from("person_login_emails").select("email").eq("person_id", personId).maybeSingle();
-  if (!login?.email) redirect(`${destination}?error=${encodeURIComponent("Spara e-postadressen innan du skickar inbjudan")}`);
+  if (!login?.email) redirect(`${destination}?person=${encodeURIComponent(personId)}&error=${encodeURIComponent("Spara e-postadressen innan du skickar inbjudan")}`);
 
   const { error } = await sendLoginInvitation(login.email, organizationSlug, teamSlug);
   if (error) {
     console.error("[player-invitation] resend failed", { message: error.message });
-    redirect(`${destination}?error=${encodeURIComponent("Inbjudan kunde inte skickas just nu. Försök igen om en stund.")}`);
+    redirect(`${destination}?person=${encodeURIComponent(personId)}&error=${encodeURIComponent("Inbjudan kunde inte skickas just nu. Försök igen om en stund.")}`);
   }
-  redirect(`${destination}?invited=${encodeURIComponent(displayName)}`);
+  redirect(`${destination}?person=${encodeURIComponent(personId)}&invited=${encodeURIComponent(displayName)}`);
 }
 
 
@@ -164,11 +164,11 @@ export async function updateLeader(formData: FormData) {
 export async function createTeamGroup(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const { supabase, team, destination } = await getManagedTeam(formData);
-  if (!name) redirect(`${destination}?error=${encodeURIComponent("Ange ett namn på gruppen")}`);
+  if (!name || name.length > 80) redirect(`${destination}?error=${encodeURIComponent("Ange ett namn på gruppen")}`);
   const { error } = await supabase.from("team_groups").insert({ organization_id: team.organization_id, team_id: team.id, name });
   if (error) redirect(`${destination}?error=${encodeURIComponent(error.code === "23505" ? "Det finns redan en grupp med det namnet" : "Gruppen kunde inte skapas")}`);
   revalidatePath(destination);
-  redirect(`${destination}?groupSaved=${encodeURIComponent(name)}`);
+  redirect(`${destination}?view=groups&groupSaved=${encodeURIComponent(name)}`);
 }
 
 export async function updateTeamGroup(formData: FormData) {
@@ -176,12 +176,12 @@ export async function updateTeamGroup(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const personIds = [...new Set(formData.getAll("personIds").map(String))];
   const { supabase, team, destination } = await getManagedTeam(formData);
-  if (!groupId || !name) redirect(`${destination}?error=${encodeURIComponent("Gruppen är ogiltig")}`);
+  if (!groupId || !name || name.length > 80) redirect(`${destination}?error=${encodeURIComponent("Gruppen är ogiltig")}`);
   const { data: group } = await supabase.from("team_groups").select("id").eq("id", groupId).eq("team_id", team.id).maybeSingle();
   if (!group) redirect(`${destination}?error=${encodeURIComponent("Gruppen kunde inte hittas")}`);
   if (personIds.length) {
     const { data: memberships } = await supabase.from("memberships").select("person_id").eq("team_id", team.id).is("ends_on", null).in("person_id", personIds);
-    if ((memberships ?? []).length !== personIds.length) redirect(`${destination}?error=${encodeURIComponent("En vald person tillhör inte truppen")}`);
+    if (new Set((memberships ?? []).map((membership) => membership.person_id)).size !== personIds.length) redirect(`${destination}?error=${encodeURIComponent("En vald person tillhör inte truppen")}`);
   }
   const { error: nameError } = await supabase.from("team_groups").update({ name }).eq("id", groupId);
   if (nameError) redirect(`${destination}?error=${encodeURIComponent(nameError.code === "23505" ? "Det finns redan en grupp med det namnet" : "Gruppen kunde inte sparas")}`);
@@ -192,7 +192,7 @@ export async function updateTeamGroup(formData: FormData) {
     if (insertError) redirect(`${destination}?error=${encodeURIComponent("Gruppmedlemmarna kunde inte sparas")}`);
   }
   revalidatePath(destination);
-  redirect(`${destination}?groupSaved=${encodeURIComponent(name)}`);
+  redirect(`${destination}?view=groups&group=${encodeURIComponent(groupId)}&groupSaved=${encodeURIComponent(name)}`);
 }
 
 export async function deleteTeamGroup(formData: FormData) {
@@ -203,5 +203,44 @@ export async function deleteTeamGroup(formData: FormData) {
   const { error } = await supabase.from("team_groups").delete().eq("id", groupId);
   if (error) redirect(`${destination}?error=${encodeURIComponent("Gruppen kunde inte tas bort")}`);
   revalidatePath(destination);
-  redirect(`${destination}?groupDeleted=${encodeURIComponent(group.name)}`);
+  redirect(`${destination}?view=groups&groupDeleted=${encodeURIComponent(group.name)}`);
+}
+
+/** Update a current team member without changing their roles or responsibilities. */
+export async function updateMemberName(formData: FormData) {
+  const personId = String(formData.get("personId") ?? "");
+  const displayName = String(formData.get("displayName") ?? "").trim();
+  const { supabase, team, destination, organizationSlug, teamSlug } =
+    await getManagedTeam(formData);
+  if (!personId || !displayName || displayName.length > 160)
+    redirect(
+      `${destination}?error=${encodeURIComponent("Kontrollera medlemmens namn")}`,
+    );
+  const { data: memberships, error: membershipError } = await supabase
+    .from("memberships")
+    .select("id")
+    .eq("team_id", team.id)
+    .eq("person_id", personId)
+    .in("role", ["leader", "participant"])
+    .is("ends_on", null);
+  if (membershipError || !memberships?.length)
+    redirect(
+      `${destination}?error=${encodeURIComponent("Medlemmen tillhör inte laget")}`,
+    );
+  const { data: updated, error } = await supabase
+    .from("people")
+    .update({ display_name: displayName })
+    .eq("id", personId)
+    .eq("organization_id", team.organization_id)
+    .select("id")
+    .maybeSingle();
+  if (error || !updated)
+    redirect(
+      `${destination}?error=${encodeURIComponent("Namnet kunde inte sparas")}`,
+    );
+  revalidatePath(destination);
+  revalidatePath(`/o/${organizationSlug}/t/${teamSlug}`);
+  redirect(
+    `${destination}?person=${encodeURIComponent(personId)}&saved=${encodeURIComponent(displayName)}`,
+  );
 }
