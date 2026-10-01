@@ -688,3 +688,61 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .header-menu-panel .workspace-copy small { display:block; }
   .auth-page { min-height:calc(100dvh - 66px); }
 }
+
+/* Truppen: compact lists and separate editing views, starting at phone width. */
+.squad-tabs { display:flex; gap:6px; padding:5px; margin:24px 0; background:var(--cream); border:1px solid var(--line); border-radius:12px; }
+.squad-tabs a { flex:1; min-width:0; padding:12px 8px; border-radius:8px; text-align:center; color:var(--ink-soft); text-decoration:none; font-size:14px; font-weight:700; }
+.squad-tabs a[aria-current=page] { color:white; background:var(--ink); }
+.squad-filters { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; }
+.squad-filters label, .squad-form>label { display:grid; gap:8px; min-width:0; color:var(--ink-soft); font-size:13px; font-weight:700; }
+.squad-filters input, .squad-filters select, .squad-form>label>input { width:100%; min-width:0; min-height:46px; padding:12px; background:white; color:var(--ink); border:1px solid var(--line); border-radius:10px; font-size:16px; }
+.squad-filters :focus-visible, .squad-form :focus-visible, .squad-person:focus-visible, .squad-tabs a:focus-visible { outline:3px solid var(--ink); outline-offset:3px; }
+.squad-count { margin:14px 0 24px; color:var(--ink-soft); font-size:13px; }
+.squad-section { margin:28px 0; }
+.squad-section h2 { display:flex; align-items:center; gap:10px; margin-bottom:12px; font-size:20px; }
+.squad-list { display:grid; border:1px solid var(--line); border-radius:14px; overflow:hidden; background:white; }
+.squad-list:empty { display:none; }
+.squad-person { display:flex; align-items:center; gap:12px; min-width:0; width:100%; min-height:68px; padding:14px 16px; border:0; border-bottom:1px solid var(--line); color:var(--ink); background:white; text-align:left; text-decoration:none; cursor:pointer; }
+.squad-list>.squad-person:last-child { border-bottom:0; }
+.squad-person:hover { background:var(--cream); }
+.squad-person-copy { flex:1; min-width:0; display:grid; gap:4px; }
+.squad-person strong { font-size:15px; overflow-wrap:anywhere; }
+.squad-person small { color:var(--ink-soft); font-size:12px; line-height:1.4; }
+.squad-person>span:last-child:not(.squad-person-copy) { margin-left:auto; }
+.squad-person>.member-avatar { flex:none; width:40px; height:40px; font-size:13px; }
+.squad-person a { color:var(--ink); min-height:44px; display:flex; align-items:center; overflow-wrap:anywhere; }
+.squad-empty { padding:20px; border-radius:12px; color:var(--ink-soft); background:var(--cream); font-size:14px; line-height:1.5; }
+.squad-back { display:inline-flex; align-items:center; min-height:44px; margin-bottom:16px; color:var(--ink-soft); font-size:14px; text-decoration:none; }
+.squad-profile-heading { display:flex; align-items:center; flex-wrap:wrap; gap:16px; padding:20px 0; border-bottom:1px solid var(--line); }
+.squad-profile-heading>.member-avatar { width:64px; height:64px; flex:none; font-size:20px; }
+.squad-profile-heading>div { flex:1; min-width:0; }
+.squad-profile-heading h2 { margin:0; overflow-wrap:anywhere; font-size:24px; }
+.squad-profile-heading p { margin:6px 0 0; color:var(--ink-soft); font-size:14px; }
+.squad-profile-heading>a { text-decoration:none; text-align:center; }
+.squad-form { display:grid; gap:18px; margin-top:20px; }
+.squad-form h3 { margin:0; }
+.squad-form .form-help { margin:0; }
+.squad-contact { overflow-wrap:anywhere; }
+.squad-picker { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; align-items:start; }
+.squad-picker-list { min-width:0; border:1px solid var(--line); border-radius:14px; overflow:hidden; background:white; }
+.squad-picker-list h2 { display:flex; align-items:center; gap:8px; margin:0; padding:16px; background:var(--mint); font-size:16px; }
+.squad-picker-list h3 { margin:0; padding:10px 16px; background:var(--cream); font-size:12px; color:var(--ink-soft); }
+.squad-picker-list .squad-person { min-height:64px; }
+.squad-save-bar { position:sticky; bottom:0; z-index:2; display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px 0 calc(14px + env(safe-area-inset-bottom)); background:var(--paper); border-top:1px solid var(--line); font-size:14px; }
+.squad-save-bar a { text-decoration:none; }
+.squad-mobile-switch { display:none; }
+.squad-danger { padding-top:20px; border-top:1px solid var(--line); }
+.danger-button { min-height:44px; padding:12px; border:1px solid #efd0cc; border-radius:10px; background:#fff1ee; color:#9d3029; cursor:pointer; }
+.squad-create { margin-top:24px; padding:16px; border:1px solid var(--line); border-radius:14px; }
+.squad-create summary { min-height:44px; display:flex; align-items:center; font-weight:700; cursor:pointer; }
+@media(max-width:600px) {
+  .squad-filters { grid-template-columns:minmax(0,1fr); }
+  .squad-profile-heading>a { width:100%; }
+  .squad-profile-heading h2 { font-size:21px; }
+  .squad-picker { grid-template-columns:minmax(0,1fr); }
+  .squad-picker-list { display:none; }
+  .squad-picker-list.mobile-active { display:block; }
+  .squad-mobile-switch { display:flex; gap:4px; padding:4px; border:1px solid var(--line); border-radius:12px; background:var(--cream); }
+  .squad-mobile-switch button { flex:1; min-width:0; min-height:46px; padding:10px 4px; border:0; border-radius:8px; color:var(--ink); background:transparent; font-size:13px; font-weight:700; cursor:pointer; }
+  .squad-mobile-switch button.selected { color:white; background:var(--ink); }
+}

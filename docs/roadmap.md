@@ -19,6 +19,8 @@
 - [x] Bjud in ledare direkt
 - [x] Publik medlemsansökan med val av sektion och lag
 - [x] Kansligodkännande före e-postverifiering och aktivering
+- [x] Sökbar trupp med medlemsprofiler, namnredigering och mobilanpassade undergrupper
+- [ ] Komplettera medlemsprofil med bildhantering och administration av verifierade målsmanskopplingar
 - [x] Skapa och redigera en aktivitet
 - [x] Skapa en aktivitetsserie med återkommande aktiviteter
 - [x] Förhandsgranska en serie och dess genererade tillfällen före publicering
