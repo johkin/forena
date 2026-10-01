@@ -30,7 +30,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
   const initial=draft?{date:draft.startsOn,time:draft.startTime}:localParts(activity?.startsAt,timeZone);
   const initialDuration=draft?.durationMinutes??(activity?Math.round((new Date(activity.endsAt).getTime()-new Date(activity.startsAt).getTime())/60000):90);
   const initialGathering=draft?.gatheringMinutesBefore??(activity?.gatheringAt?Math.max(0,Math.round((new Date(activity.startsAt).getTime()-new Date(activity.gatheringAt).getTime())/60000)):0);
-  const [kind,setKind]=useState<"single"|"series">("single");
+  const [kind,setKind]=useState<"single"|"series">(draft?.recurrence?"series":"single");
   const [preview,setPreview]=useState<ActivityOccurrence[]>();
   const [payload,setPayload]=useState<Record<string,unknown>>();
   const [pending,setPending]=useState(false);
@@ -51,6 +51,10 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
   const available=members.filter(member=>!selectedPeople.has(member.id));
   const recurring=mode==="create"&&kind==="series";
   useEffect(()=>{if(source!=="database"||!canManageInvitations)return;fetch(`/api/team-groups?teamId=${encodeURIComponent(team.id)}`).then(r=>r.ok?r.json():{groups:[],responsibilities:[]}).then(body=>{setGroups(body.groups??[]);setResponsibilities(body.responsibilities??[]);}).catch(()=>{setGroups([]);setResponsibilities([]);});},[canManageInvitations,mode,source,team.id]);
+
+  function changeKind(next:"single"|"series") {
+    setKind(next);setPreview(undefined);setPayload(undefined);
+  }
 
   function togglePerson(id:string) {
     setSelectedPeople(current=>{const next=new Set(current);if(next.has(id))next.delete(id);else next.add(id);return next;});
@@ -124,7 +128,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
       <div className="card-heading"><div><p className="eyebrow">{team.name}</p><h2 id="activity-editor-title">{mode==="edit"?"Redigera aktivitet":"Ny aktivitet"}</h2></div><button className="icon-button" onClick={onClose} aria-label="Stäng" type="button">✕</button></div>
       {draft?<div className="ai-draft-notice"><strong>AI-utkast för granskning</strong><span>Kontrollera särskilt datum, plats och text innan aktiviteten skapas.</span>{draft.sources.length?<div>{draft.sources.map(source=><a href={source.url} key={source.url} target="_blank" rel="noreferrer">{source.title}</a>)}</div>:<small>Inga webbkällor följde med utkastet.</small>}</div>:null}
       <form onSubmit={prepare} onChange={()=>{setPreview(undefined);setPayload(undefined);}}>
-        {mode==="create"?<div className="activity-kind-switch" role="group" aria-label="Typ av aktivitet"><button className={kind==="single"?"selected":""} onClick={()=>setKind("single")} type="button">En aktivitet</button><button className={kind==="series"?"selected":""} onClick={()=>setKind("series")} type="button">Aktivitetsserie</button></div>:null}
+        {mode==="create"?<div className="activity-kind-switch" role="group" aria-label="Typ av aktivitet"><button className={kind==="single"?"selected":""} onClick={()=>changeKind("single")} type="button">En aktivitet</button><button className={kind==="series"?"selected":""} onClick={()=>changeKind("series")} type="button">Aktivitetsserie</button></div>:null}
         <section className="editor-section" aria-labelledby="editor-basics-title">
           <h3 id="editor-basics-title">Aktivitet</h3>
           <div className="editor-fields">
@@ -135,7 +139,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
         </section>
         <section className="editor-section" aria-labelledby="editor-time-title">
           <h3 id="editor-time-title">När och varaktighet</h3>
-          {recurring?<><fieldset><legend>Veckodagar</legend><div className="weekday-options">{weekdayOptions.map(([value,label])=><label key={value}><input type="checkbox" name="weekdays" value={value} defaultChecked={value===(new Date(`${initial.date}T00:00:00Z`).getUTCDay()||7)}/>{label}</label>)}</div></fieldset><div className="form-row"><label>Startdatum<input name="startsOn" type="date" required defaultValue={initial.date}/></label><label>Slutdatum<input name="endsOn" type="date" required defaultValue={initial.date}/></label></div><label>Tid<input name="startTime" type="time" step={300} required defaultValue={initial.time}/></label></>:<div className="form-row"><label>Datum<input name="startsOn" type="date" required defaultValue={initial.date}/></label><label>Tid<input name="startTime" type="time" step={300} required defaultValue={initial.time}/></label></div>}
+          {recurring?<><fieldset><legend>Veckodagar</legend><div className="weekday-options">{weekdayOptions.map(([value,label])=><label key={value}><input type="checkbox" name="weekdays" value={value} defaultChecked={draft?.recurrence?draft.recurrence.weekdays.includes(value):value===(new Date(`${initial.date}T00:00:00Z`).getUTCDay()||7)}/>{label}</label>)}</div></fieldset><div className="form-row"><label>Startdatum<input name="startsOn" type="date" required defaultValue={initial.date}/></label><label>Slutdatum<input name="endsOn" type="date" required min={initial.date} defaultValue={draft?.recurrence?draft.recurrence.endsOn??"":initial.date}/></label></div><label>Tid<input name="startTime" type="time" step={300} required defaultValue={initial.time}/></label></>:<div className="form-row"><label>Datum<input name="startsOn" type="date" required defaultValue={initial.date}/></label><label>Tid<input name="startTime" type="time" step={300} required defaultValue={initial.time}/></label></div>}
           <div className="form-row"><label>Längd<select name="durationMinutes" defaultValue={String(initialDuration)}><option value="30">30 minuter</option><option value="45">45 minuter</option><option value="60">1 timme</option><option value="75">1 tim 15 min</option><option value="90">1,5 timmar</option><option value="120">2 timmar</option><option value="180">3 timmar</option><option value="480">Heldag (8 timmar)</option></select></label><label>Samling före start<select name="gatheringMinutesBefore" defaultValue={String(initialGathering)}><option value="0">Ingen särskild samling</option><option value="15">15 minuter</option><option value="30">30 minuter</option><option value="45">45 minuter</option><option value="60">60 minuter</option></select></label></div>
         </section>
         {canManageInvitations ? <details className="editor-section editor-invitation" open={invitationOpen} onToggle={event=>setInvitationOpen(event.currentTarget.open)}>
