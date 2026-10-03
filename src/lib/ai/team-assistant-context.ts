@@ -13,7 +13,7 @@ function validTimeZone(value: unknown, fallback: string) {
 
 export async function loadTeamAssistantContext(input: TeamAssistantInput, { supabase, userId }: AssistantDependencies) {
   const { teamId } = input;
-  const { data: team } = await supabase.from("teams").select("id, organization_id, section_id, name").eq("id", teamId).maybeSingle();
+  const { data: team } = await supabase.from("teams").select("id, organization_id, section_id, discipline_id, name").eq("id", teamId).maybeSingle();
   if (!team) throw new TeamAssistantError("team-not-found", "Laget kunde inte hittas.");
 
   const [
@@ -37,15 +37,16 @@ export async function loadTeamAssistantContext(input: TeamAssistantInput, { supa
     : { data: [] };
   if (!canViewTeam && !(personalMemberships ?? []).length) throw new TeamAssistantError("team-forbidden", "Du saknar åtkomst till laget.");
 
-  const [{ data: organization }, { data: activities }, { data: memories }] = await Promise.all([
+  const [{ data: organization }, { data: activities }, { data: section }, { data: memories }] = await Promise.all([
     supabase.from("organizations").select("name, assistant_name, time_zone").eq("id", team.organization_id).single(),
     supabase.from("activities").select("id, activity_type_id, title, description_markdown, gathering_at, starts_at, ends_at, location").eq("team_id", teamId).neq("status", "cancelled").gte("ends_at", new Date().toISOString()).order("starts_at").limit(5),
+    supabase.from("sections").select("discipline_id").eq("id", team.section_id).maybeSingle(),
     supabase.from("assistant_memories")
-      .select("scope, kind, subject, memory_key, content, updated_at")
+      .select("scope, discipline_id, kind, subject, memory_key, content, updated_at")
       .or(`scope.eq.system,and(scope.eq.organization,scope_id.eq.${team.organization_id}),and(scope.eq.section,scope_id.eq.${team.section_id}),and(scope.eq.team,scope_id.eq.${teamId}),and(scope.eq.personal,scope_id.eq.${userId})`)
       .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
       .order("updated_at", { ascending: false })
-      .limit(40),
+      .limit(80),
   ]);
   const activityIds = (activities ?? []).map((item) => item.id);
   const activityTypeIds = [...new Set((activities ?? []).map((item) => item.activity_type_id))];
@@ -123,11 +124,13 @@ export async function loadTeamAssistantContext(input: TeamAssistantInput, { supa
       instructions: (documentsByType.get(activity.activity_type_id) ?? []).map((document) => ({ title: document.title, summary: document.summary, content: document.content_markdown.slice(0, 3000) })),
     })),
     tasks: (tasks ?? []).map((task) => ({ title: task.title, description: task.description, dueAt: { instantUtc: task.due_at, organizationLocal: localTime(task.due_at, organizationTimeZone), viewerLocal: localTime(task.due_at, viewerTimeZone) } })),
-    memories: (memories ?? []).map((memory) => ({
+    disciplineId,
+    memories: relevantMemories.map((memory) => ({
       scope: memory.scope,
       kind: memory.kind,
       subject: memory.subject,
       key: memory.memory_key,
+      disciplineId: memory.discipline_id,
       content: memory.content,
     })),
   };
@@ -136,7 +139,7 @@ export async function loadTeamAssistantContext(input: TeamAssistantInput, { supa
     activities,
     activityIds,
     canManageActivities: Boolean(canManageActivities),
-    memoryScope: { organizationId: team.organization_id, sectionId: team.section_id, teamId, userId },
+    memoryScope: { organizationId: team.organization_id, sectionId: team.section_id, teamId, userId, disciplineId },
     context,
     organizationToday,
   };
