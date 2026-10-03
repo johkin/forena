@@ -23,6 +23,10 @@ create unique index platform_admin_invites_pending_email_idx
   on public.platform_admin_invites (lower(email))
   where status = 'pending';
 
+create unique index platform_admin_invites_one_bootstrap_pending_idx
+  on public.platform_admin_invites (source)
+  where source = 'bootstrap' and status = 'pending';
+
 create index platform_admin_invites_status_created_idx
   on public.platform_admin_invites (status, created_at desc);
 
@@ -90,6 +94,13 @@ begin
   where invite.status = 'pending'
     and invite.expires_at > now()
     and lower(invite.email) = current_email
+    and (
+      invite.source <> 'bootstrap'
+      or not exists (
+        select 1 from public.platform_roles role_row
+        where role_row.role = 'system_admin'
+      )
+    )
   order by invite.created_at
   limit 1
   for update;
