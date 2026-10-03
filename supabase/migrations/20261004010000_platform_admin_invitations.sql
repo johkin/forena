@@ -143,3 +143,24 @@ $$;
 
 revoke all on function public.list_platform_admins() from public;
 grant execute on function public.list_platform_admins() to authenticated;
+
+
+-- Do not expose a platform-role membership oracle for arbitrary user ids.
+-- Internal callers already pass auth.uid(); keep the existing signature so
+-- dependent policies/functions remain stable while binding checks to the caller.
+create or replace function public.has_platform_role(
+  allowed_roles text[],
+  target_user_id uuid default auth.uid()
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select target_user_id = auth.uid()
+    and exists (
+      select 1 from public.platform_roles
+      where user_id = auth.uid() and role = any(allowed_roles)
+    );
+$$;
