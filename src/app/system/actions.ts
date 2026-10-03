@@ -2,6 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { sendPlatformAdminInvitationEmail } from "@/lib/email/platform-admin-invitation";
+import { getSiteUrl } from "@/lib/site-url";
 import { createClient } from "@/lib/supabase/server";
 
 async function requireSystemAdmin() {
@@ -70,4 +73,106 @@ export async function deleteSystemMemory(formData: FormData) {
   if (id) await supabase.from("assistant_memories").delete().eq("id", id).eq("scope", "system");
   revalidatePath("/system/memories");
   redirect("/system/memories?deleted=1");
+}
+
+
+export async function inviteSystemAdmin(formData: FormData) {
+  const { supabase, user } = await requireSystemAdmin();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!email || !email.includes("@") || email.length > 320) {
+    redirect("/system/administrators?error=Ange+en+giltig+e-postadress");
+  }
+
+  const { data: admins, error: adminsError } = await supabase.rpc("list_platform_admins");
+  if (adminsError) {
+    console.error("[system-admin] could not list platform admins", { message: adminsError.message });
+    redirect("/system/administrators?error=Administratörerna+kunde+inte+kontrolleras");
+  }
+  if ((admins ?? []).some((admin) => admin.email?.toLowerCase() === email)) {
+    redirect("/system/administrators?error=Användaren+är+redan+systemadministratör");
+  }
+
+  const now = new Date().toISOString();
+  await supabase
+    .from("platform_admin_invites")
+    .update({ status: "expired" })
+    .eq("email", email)
+    .eq("status", "pending")
+    .lte("expires_at", now);
+
+  let { data: invite, error: inviteError } = await supabase
+    .from("platform_admin_invites")
+    .select("id, email, sent_at, expires_at")
+    .eq("email", email)
+    .eq("status", "pending")
+    .gt("expires_at", now)
+    .maybeSingle();
+
+  if (inviteError) {
+    console.error("[system-admin] invite lookup failed", { message: inviteError.message });
+    redirect("/system/administrators?error=Inbjudan+kunde+inte+kontrolleras");
+  }
+
+  if (!invite) {
+    const created = await supabase
+      .from("platform_admin_invites")
+      .insert({ email, source: "system_admin", invited_by: user.id, status: "pending" })
+      .select("id, email, sent_at, expires_at")
+      .single();
+    if (created.error) {
+      console.error("[system-admin] invite insert failed", { message: created.error.message });
+      redirect("/system/administrators?error=Inbjudan+kunde+inte+skapas");
+    }
+    invite = created.data;
+  }
+
+  const requestHeaders = await headers();
+  const invitationUrl = `${getSiteUrl(requestHeaders.get("origin") ?? undefined)}/login?next=${encodeURIComponent("/system")}`;
+
+  try {
+    await sendPlatformAdminInvitationEmail({
+      to: email,
+      invitationUrl,
+      invitationId: invite.id,
+    });
+  } catch (error) {
+    console.error("[system-admin] invite email failed", {
+      message: error instanceof Error ? error.message : String(error),
+      inviteId: invite.id,
+    });
+    redirect("/system/administrators?error=Inbjudan+skapades+men+e-posten+kunde+inte+skickas");
+  }
+
+  const { error: sentError } = await supabase
+    .from("platform_admin_invites")
+    .update({ sent_at: new Date().toISOString() })
+    .eq("id", invite.id)
+    .eq("status", "pending");
+
+  if (sentError) {
+    console.error("[system-admin] invite sent timestamp failed", { message: sentError.message, inviteId: invite.id });
+  }
+
+  revalidatePath("/system/administrators");
+  redirect(`/system/administrators?invited=${encodeURIComponent(email)}`);
+}
+
+export async function cancelSystemAdminInvite(formData: FormData) {
+  const { supabase } = await requireSystemAdmin();
+  const id = String(formData.get("id") ?? "");
+  if (!id) redirect("/system/administrators?error=Ogiltig+inbjudan");
+
+  const { error } = await supabase
+    .from("platform_admin_invites")
+    .update({ status: "cancelled" })
+    .eq("id", id)
+    .eq("status", "pending");
+
+  if (error) {
+    console.error("[system-admin] invite cancellation failed", { message: error.message, inviteId: id });
+    redirect("/system/administrators?error=Inbjudan+kunde+inte+avbrytas");
+  }
+
+  revalidatePath("/system/administrators");
+  redirect("/system/administrators?cancelled=1");
 }
