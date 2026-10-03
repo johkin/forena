@@ -3,7 +3,7 @@ import { loadTeamAssistantContext } from "./team-assistant-context";
 import type { AssistantDependencies } from "./team-assistant-types";
 
 function setup({ leader = false, family = true, team = true, invitationManager = false } = {}) {
-  const queries: { table: string; select: ReturnType<typeof vi.fn>; in: ReturnType<typeof vi.fn> }[] = [];
+  const queries: { table: string; select: ReturnType<typeof vi.fn>; in: ReturnType<typeof vi.fn>; or: ReturnType<typeof vi.fn> }[] = [];
   const from = vi.fn((table: string) => {
     const data = {
       teams: team ? { id: "team", organization_id: "org", section_id: "section", discipline_id: null, name: "Laget" } : null,
@@ -23,7 +23,7 @@ function setup({ leader = false, family = true, team = true, invitationManager =
       then: (resolve: (value: unknown) => unknown) => Promise.resolve(result).then(resolve),
     };
     for (const method of [builder.select, builder.eq, builder.in, builder.is, builder.neq, builder.gte, builder.or, builder.order, builder.limit]) method.mockReturnValue(builder);
-    queries.push({ table, select: builder.select, in: builder.in });
+    queries.push({ table, select: builder.select, in: builder.in, or: builder.or });
     return builder;
   });
   const rpc = vi.fn((_name: string, { target_permission }: { target_permission: string }) => Promise.resolve({
@@ -58,6 +58,15 @@ describe("team assistant context access", () => {
     const invitations = queries.filter(query => query.table === "invitations");
     expect(invitations).toHaveLength(1);
     expect(invitations[0].in).toHaveBeenCalledWith("person_id", ["own-person"]);
+  });
+
+
+  it("scopes personal memories to the current organization", async () => {
+    const { dependencies, queries } = setup();
+    await loadTeamAssistantContext(input, dependencies);
+    const memoryQuery = queries.find((query) => query.table === "assistant_memories");
+    expect(memoryQuery).toBeDefined();
+    expect(memoryQuery?.or).toHaveBeenCalledWith(expect.stringContaining("and(scope.eq.personal,scope_id.eq.user,organization_id.eq.org)"));
   });
 
   it("selects leader tone without granting invitation permissions", async () => {
