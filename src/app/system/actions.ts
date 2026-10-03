@@ -70,7 +70,9 @@ export async function updateSystemMemory(formData: FormData) {
 export async function deleteSystemMemory(formData: FormData) {
   const { supabase } = await requireSystemAdmin();
   const id = String(formData.get("id") ?? "");
-  if (id) await supabase.from("assistant_memories").delete().eq("id", id).eq("scope", "system");
+  if (!id) redirect("/system/memories?error=Ogiltigt+minne");
+  const { error } = await supabase.from("assistant_memories").delete().eq("id", id).eq("scope", "system");
+  if (error) redirect("/system/memories?error=Minnet+kunde+inte+tas+bort");
   revalidatePath("/system/memories");
   redirect("/system/memories?deleted=1");
 }
