@@ -783,3 +783,28 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .memory-item-heading small { white-space: normal; }
   .memory-summary-card p { font-size: 17px; }
 }
+
+
+.system-header { display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 14px max(18px, calc((100vw - 1100px) / 2)); border-bottom: 1px solid var(--line); background: var(--paper); }
+.system-header > a { display: flex; gap: 9px; align-items: baseline; color: var(--ink); text-decoration: none; }
+.system-header > a span { color: var(--ink-soft); font-size: 13px; }
+.system-header nav { display: flex; gap: 16px; font-size: 13px; font-weight: 700; }
+.system-header nav a { color: var(--ink); }
+.system-admin-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 24px; }
+.system-admin-grid a { display: grid; gap: 7px; padding: 20px; border: 1px solid var(--line); border-radius: 14px; color: var(--ink); text-decoration: none; }
+.system-admin-grid a span { color: var(--ink-soft); line-height: 1.4; }
+.system-inline-form { display: grid; grid-template-columns: 1fr 1fr 1fr auto; align-items: end; gap: 10px; margin: 24px 0; }
+.system-admin-list { display: grid; gap: 8px; }
+.system-admin-row { display: grid; grid-template-columns: minmax(140px, 1fr) 1fr 1fr auto; align-items: center; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; }
+.system-admin-row > div { display: grid; gap: 2px; }
+.system-admin-row small { color: var(--ink-soft); }
+.memory-scope-tabs a { min-width: 118px; display: grid; gap: 3px; padding: 10px 13px; border: 1px solid var(--line); border-radius: 12px; background: white; color: var(--ink); text-align: left; text-decoration: none; }
+.memory-scope-tabs a span { font-size: 13px; font-weight: 800; }
+.memory-scope-tabs a small { color: var(--ink-soft); }
+.memory-scope-tabs a.selected { border-color: var(--ink); background: var(--ink); color: white; }
+.memory-scope-tabs a.selected small { color: #c5d4cf; }
+@media (max-width: 700px) {
+  .system-header { align-items: flex-start; }
+  .system-header nav { flex-wrap: wrap; justify-content: flex-end; }
+  .system-admin-grid, .system-inline-form, .system-admin-row { grid-template-columns: 1fr; }
+}
