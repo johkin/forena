@@ -41,11 +41,10 @@ export default async function MemoriesPage({ params, searchParams }: Props) {
     ...(admin ? [{ id: organization.id, scope: "organization" as const, name: organization.name, description: "Hela klubben" }] : []),
     ...(sections ?? []).filter(section => admin || managedSectionIds.has(section.id)).map(section => ({ id: section.id, scope: "section" as const, name: section.name, description: "Sektion" })),
     ...(teams ?? []).filter(team => admin || managedSectionIds.has(team.section_id) || managedTeamIds.has(team.id)).map(team => ({ id: team.id, scope: "team" as const, name: team.name, description: "Lag" })),
-    { id: "system", scope: "system" as const, name: "Förena", description: "System" },
-  ];
+   ];
 
   const { data: memories } = await supabase.from("assistant_memories")
-    .select("id, scope, scope_id, kind, subject, content, updated_at")
+    .select("id, scope, scope_id, discipline_id, kind, subject, content, updated_at")
     .or(`scope.eq.system,organization_id.eq.${organization.id}`)
     .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
     .order("updated_at", { ascending: false });
@@ -54,7 +53,7 @@ export default async function MemoriesPage({ params, searchParams }: Props) {
     { id: organization.id, kind: "organization" as const, name: organization.name, description: "Förening", href: `/o/${organizationSlug}`, active: true },
     ...(teams ?? []).map(team => ({ id: team.id, kind: "team" as const, name: team.name, description: "Lag", href: `/o/${organizationSlug}/t/${team.slug}`, active: false })),
   ];
-  const requestedScope = ["personal", "organization", "section", "team", "system"].includes(query.scope ?? "") ? query.scope as Scope : "personal";
+  const requestedScope = ["personal", "organization", "section", "team"].includes(query.scope ?? "") ? query.scope as Scope : "personal";
 
   return <>
     <AppHeader homeHref={`/o/${organizationSlug}`} accountEmail={authData.user.email} organization={{ ...organization, assistantName: organization.assistant_name }}
