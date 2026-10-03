@@ -44,14 +44,18 @@ export function createAssistantMemoryTools(
         additionalProperties: false,
       }),
       execute: async input => {
+        const content = input.content.trim();
+        const subject = input.subject.trim();
+        if (!content || content.length > 1200 || !subject || subject.length > 80) return { saved: false, error: "Minnet har ogiltigt innehåll." };
+        if (input.key && !/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/.test(input.key)) return { saved: false, error: "Minnets nyckel är ogiltig." };
         const row = {
           organization_id: scope.organizationId,
           scope: input.scope,
           scope_id: scopeIds[input.scope],
           kind: input.kind,
-          subject: input.subject.trim(),
+          subject,
           memory_key: input.key ?? null,
-          content: input.content.trim(),
+          content,
           created_by: scope.userId,
         };
         const query = input.key
