@@ -77,7 +77,7 @@ create index assistant_memories_discipline_idx on public.assistant_memories(disc
 -- intentionally not unique, so a scope can contain any number of free-form items.
 alter table public.assistant_memories drop constraint assistant_memories_scope_key_unique;
 create unique index assistant_memories_scope_discipline_key_unique
-  on public.assistant_memories (scope, scope_id, discipline_id, memory_key) nulls not distinct
+  on public.assistant_memories (scope, organization_id, scope_id, discipline_id, memory_key) nulls not distinct
   where memory_key is not null;
 
 -- PostgREST upsert cannot express the predicate of the partial unique index.
@@ -127,7 +127,7 @@ begin
     target_content,
     auth.uid()
   )
-  on conflict (scope, scope_id, discipline_id, memory_key)
+  on conflict (scope, organization_id, scope_id, discipline_id, memory_key)
     where memory_key is not null
   do update set
     kind = excluded.kind,
