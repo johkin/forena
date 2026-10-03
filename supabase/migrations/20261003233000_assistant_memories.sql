@@ -60,7 +60,16 @@ set search_path = ''
 as $$
   select target_user_id is not null and (
     memory_scope = 'system'
-    or (memory_scope = 'personal' and memory_scope_id = target_user_id)
+    or (
+      memory_scope = 'personal'
+      and memory_scope_id = target_user_id
+      and memory_organization_id is not null
+      and exists (
+        select 1 from public.organization_members member
+        where member.organization_id = memory_organization_id
+          and member.user_id = target_user_id
+      )
+    )
     or (
       memory_organization_id is not null
       and exists (
