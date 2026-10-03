@@ -41,6 +41,11 @@ create unique index assistant_memories_key_unique
   on public.assistant_memories(scope, scope_id, memory_key)
   where memory_key is not null;
 
+-- Supabase/PostgREST upsert needs a non-partial unique constraint for
+-- onConflict. Anonymous memories use a generated id and never collide here.
+alter table public.assistant_memories
+  add constraint assistant_memories_scope_key_unique unique (scope, scope_id, memory_key);
+
 create trigger assistant_memories_touch_updated_at
 before update on public.assistant_memories
 for each row execute function public.touch_updated_at();
