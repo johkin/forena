@@ -2,6 +2,23 @@
 
 Dessa instruktioner gäller hela repot.
 
+## Projektdokumentation
+
+Läs de dokument som berör uppgiften innan implementation. Håll dokumentationen
+uppdaterad när ett beslut eller en gemensam princip ändras.
+
+- [Arkitektur och systemdesign](docs/architecture.md) – lager, domänregler,
+  persistens, assistentens struktur och gemensamma gränssnittskomponenter.
+- [Gränssnittets designregler](docs/design-spec.md) – mobile-first, menyer,
+  header, footer, formulär, dialoger och medlemsvyer.
+- [Säkerhetsarkitektur](docs/security-architecture.md) – säkerhets- och
+  behörighetsprinciper.
+- [Roadmap](docs/roadmap.md) – planerad utveckling och prioriteringar.
+
+Vid gränssnittsändringar ska både arkitekturen och designreglerna följas.
+Menyer, header och footer ska återanvändas från centrala komponenter; skapa
+inte egna kopior för enskilda sidor eller administrationsområden.
+
 ## Sammanhållna ändringar och pushar
 
 - Läs relevanta filer och planera ändringen innan du börjar skriva. Samla kod,

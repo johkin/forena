@@ -30,6 +30,29 @@ Det gäller även administration, formulär, kalender, dialoger och nya funktion
   långa värden. Kontrollera `document.documentElement.scrollWidth <= innerWidth`
   och åtgärda det element som orsakar overflow.
 
+### Gemensamma komponenter
+
+Menyer, header och footer ska implementeras som centrala, återanvändbara
+komponenter under `src/components`. Ett gemensamt sidskal komponerar dem i
+layoutlagret. Enskilda sidor ska ange sitt innehåll och sin kontext, inte
+implementera egna kopior av navigation, sidhuvud eller sidfot.
+
+- En central menykomponent ska rendera navigationen från gemensamma
+  menydefinitioner. Länkar, etiketter, ordning, aktivt val och synlighetsregler
+  ska inte dupliceras mellan sidor eller mellan mobil- och desktopmenyer.
+- Header och footer ska ha var sin gemensam komponent. Skillnader mellan
+  publik vy, konto, förening, sektion, lag och systemadministration uttrycks
+  genom kontext och definierade varianter, inte parallella implementationer.
+- Behörighetsstyrda menyval ska utgå från serververifierad åtkomst. Gemensamma
+  komponenter innebär inte gemensamma rättigheter: systemadministration
+  förblir separat skyddad. Dolda menyval ersätter aldrig serverns kontroller.
+- Layouten ansvarar för att header, meny och footer inte renderas dubbelt i
+  nästlade vyer. Responsivt beteende och tillgänglighet hanteras i de gemensamma
+  komponenterna så att rättningar får genomslag i alla berörda vyer.
+
+Se [gränssnittets designregler](design-spec.md) för utformning och kontroll av
+menyer, header och footer.
+
 ## Domänregler i första milstolpen
 
 - Föreningsdata tillhör explicit en förening; profiler och push-prenumerationer
