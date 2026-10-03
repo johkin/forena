@@ -26,8 +26,13 @@ export default async function MemoriesPage({ params, searchParams }: Props) {
   if (!membership) redirect(`/o/${organizationSlug}`);
 
   const personIds = (people ?? []).map(person => person.id);
+  const today = new Date().toISOString().slice(0, 10);
   const { data: teamAssignments } = personIds.length ? await supabase.from("team_access_assignments")
-    .select("team_id, access_profile_id").eq("organization_id", organization.id).in("person_id", personIds).is("ends_on", null) : { data: [] };
+    .select("team_id, access_profile_id")
+    .eq("organization_id", organization.id)
+    .in("person_id", personIds)
+    .lte("starts_on", today)
+    .or(`ends_on.is.null,ends_on.gte.${today}`) : { data: [] };
   const profileIds = [...new Set((teamAssignments ?? []).map(item => item.access_profile_id))];
   const { data: memoryProfiles } = profileIds.length ? await supabase.from("team_access_profile_permissions")
     .select("access_profile_id").eq("organization_id", organization.id).eq("permission_key", "assistant.memory.manage").in("access_profile_id", profileIds) : { data: [] };
