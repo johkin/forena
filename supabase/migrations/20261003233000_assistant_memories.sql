@@ -173,27 +173,74 @@ $$;
 revoke all on function private.can_read_assistant_memory(text, uuid, uuid, uuid) from public;
 revoke all on function private.can_manage_assistant_memory(text, uuid, uuid, uuid) from public;
 
+-- RLS calls public wrappers so authenticated clients never need USAGE on the
+-- private schema. The wrappers bind permission evaluation to auth.uid().
+create or replace function public.can_read_assistant_memory(
+  memory_scope text,
+  memory_organization_id uuid,
+  memory_scope_id uuid
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $
+  select private.can_read_assistant_memory(
+    memory_scope,
+    memory_organization_id,
+    memory_scope_id,
+    auth.uid()
+  );
+$;
+
+create or replace function public.can_manage_assistant_memory(
+  memory_scope text,
+  memory_organization_id uuid,
+  memory_scope_id uuid
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $
+  select private.can_manage_assistant_memory(
+    memory_scope,
+    memory_organization_id,
+    memory_scope_id,
+    auth.uid()
+  );
+$;
+
+revoke all on function public.can_read_assistant_memory(text, uuid, uuid) from public;
+revoke all on function public.can_manage_assistant_memory(text, uuid, uuid) from public;
+revoke all on function public.can_read_assistant_memory(text, uuid, uuid) from anon;
+revoke all on function public.can_manage_assistant_memory(text, uuid, uuid) from anon;
+grant execute on function public.can_read_assistant_memory(text, uuid, uuid) to authenticated;
+grant execute on function public.can_manage_assistant_memory(text, uuid, uuid) to authenticated;
+
 alter table public.assistant_memories enable row level security;
 
 create policy "read scoped assistant memories" on public.assistant_memories
 for select to authenticated
-using (private.can_read_assistant_memory(scope, organization_id, scope_id, auth.uid()));
+using (public.can_read_assistant_memory(scope, organization_id, scope_id));
 
 create policy "create scoped assistant memories" on public.assistant_memories
 for insert to authenticated
 with check (
   created_by = auth.uid()
-  and private.can_manage_assistant_memory(scope, organization_id, scope_id, auth.uid())
+  and public.can_manage_assistant_memory(scope, organization_id, scope_id)
 );
 
 create policy "update scoped assistant memories" on public.assistant_memories
 for update to authenticated
-using (private.can_manage_assistant_memory(scope, organization_id, scope_id, auth.uid()))
-with check (private.can_manage_assistant_memory(scope, organization_id, scope_id, auth.uid()));
+using (public.can_manage_assistant_memory(scope, organization_id, scope_id))
+with check (public.can_manage_assistant_memory(scope, organization_id, scope_id));
 
 create policy "delete scoped assistant memories" on public.assistant_memories
 for delete to authenticated
-using (private.can_manage_assistant_memory(scope, organization_id, scope_id, auth.uid()));
+using (public.can_manage_assistant_memory(scope, organization_id, scope_id));
 
 revoke all on table public.assistant_memories from anon;
 grant select, insert, update, delete on table public.assistant_memories to authenticated;
