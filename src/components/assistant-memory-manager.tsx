@@ -5,7 +5,7 @@ import { createMemory, deleteMemory, updateMemory } from "@/app/o/[organizationS
 
 type Scope = "personal" | "organization" | "section" | "team" | "system";
 type Target = { id: string; scope: Scope; name: string; description: string };
-type Memory = { id: string; scope: Scope; scope_id: string | null; kind: string; subject: string; content: string; updated_at: string };
+type Memory = { id: string; scope: Scope; scope_id: string | null; discipline_id: string | null; kind: string; subject: string; content: string; updated_at: string };
 
 const scopeLabels: Record<Scope, string> = { personal: "Jag", team: "Lag", section: "Sektion", organization: "Klubb", system: "System" };
 const kindLabels: Record<string, string> = { fact: "Fakta", preference: "Preferens", instruction: "Instruktion", convention: "Arbetssätt" };
@@ -29,7 +29,7 @@ export function AssistantMemoryManager({ organizationSlug, targets, memories, in
 
   return <div className="memory-manager">
     <div className="memory-scope-tabs" role="tablist" aria-label="Minnesnivåer">
-      {targets.map(item => <button key={`${item.scope}:${item.id}`} type="button" role="tab"
+      {targets.filter(item => item.scope !== "system").map(item => <button key={`${item.scope}:${item.id}`} type="button" role="tab"
         aria-selected={targetKey === `${item.scope}:${item.id}`} className={targetKey === `${item.scope}:${item.id}` ? "selected" : ""}
         onClick={() => setTargetKey(`${item.scope}:${item.id}`)}>
         <span>{scopeLabels[item.scope]}</span><small>{item.name}</small>
@@ -59,7 +59,7 @@ export function AssistantMemoryManager({ organizationSlug, targets, memories, in
 
     <div className="memory-list">
       {visible.length ? visible.map(memory => <article className="memory-item" key={memory.id}>
-        <div className="memory-item-heading"><div><span className="status accepted">{kindLabels[memory.kind] ?? memory.kind}</span><strong>{memory.subject}</strong></div><small>Uppdaterat {new Intl.DateTimeFormat("sv-SE", { dateStyle: "medium" }).format(new Date(memory.updated_at))}</small></div>
+        <div className="memory-item-heading"><div><span className="status accepted">{kindLabels[memory.kind] ?? memory.kind}</span>{memory.discipline_id ? <span className="status">Disciplin</span> : null}<strong>{memory.subject}</strong></div><small>Uppdaterat {new Intl.DateTimeFormat("sv-SE", { dateStyle: "medium" }).format(new Date(memory.updated_at))}</small></div>
         {editable ? <form action={updateMemory}>
           <input type="hidden" name="organizationSlug" value={organizationSlug} /><input type="hidden" name="scope" value={target.scope} /><input type="hidden" name="scopeId" value={target.id} /><input type="hidden" name="id" value={memory.id} />
           <textarea name="content" required maxLength={1200} rows={3} defaultValue={memory.content} /><button className="secondary" type="submit">Spara ändring</button>
