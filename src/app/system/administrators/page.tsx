@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { cancelSystemAdminInvite, inviteSystemAdmin } from "../actions";
 
 type Props = {
-  searchParams: Promise<{ invited?: string; cancelled?: string; error?: string }>;
+  searchParams: Promise<{ invited?: string; joined?: string; cancelled?: string; error?: string }>;
 };
 
 export default async function SystemAdministratorsPage({ searchParams }: Props) {
@@ -31,6 +31,7 @@ export default async function SystemAdministratorsPage({ searchParams }: Props) 
         </div>
 
         {query.invited ? <p className="auth-message">Inbjudan skickades till {query.invited}.</p> : null}
+        {query.joined ? <p className="auth-message">Systemadministrationen är aktiverad för ditt konto.</p> : null}
         {query.cancelled ? <p className="auth-message">Inbjudan avbröts.</p> : null}
         {query.error ? <p className="auth-error">{query.error}</p> : null}
 
