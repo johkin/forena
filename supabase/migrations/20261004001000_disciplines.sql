@@ -97,7 +97,7 @@ returns uuid
 language plpgsql
 security invoker
 set search_path = ''
-as $
+as $$
 declare
   memory_id uuid;
 begin
@@ -138,7 +138,7 @@ begin
 
   return memory_id;
 end;
-$;
+$$;
 
 revoke all on function public.upsert_assistant_memory(uuid, uuid, text, uuid, text, text, text, text) from public;
 grant execute on function public.upsert_assistant_memory(uuid, uuid, text, uuid, text, text, text, text) to authenticated;
