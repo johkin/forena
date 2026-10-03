@@ -16,8 +16,8 @@ export interface Database {
   public: {
     Tables: {
       organizations: Table<
-        Timestamped & { id: string; slug: string; name: string; assistant_name: string; time_zone: string; created_by: string | null; updated_at: string },
-        { id?: string; slug: string; name: string; assistant_name?: string; time_zone?: string; created_by?: string | null; created_at?: string; updated_at?: string }
+        Timestamped & { id: string; slug: string; name: string; assistant_name: string; time_zone: string; discipline_id: string | null; created_by: string | null; updated_at: string },
+        { id?: string; slug: string; name: string; assistant_name?: string; time_zone?: string; discipline_id?: string | null; created_by?: string | null; created_at?: string; updated_at?: string }
       >;
       profiles: Table<
         Timestamped & { id: string; display_name: string; updated_at: string },
@@ -28,12 +28,12 @@ export interface Database {
         OrganizationScoped & { user_id: string; role: "owner" | "admin" | "leader" | "member"; created_at?: string }
       >;
       sections: Table<
-        Timestamped & OrganizationScoped & { id: string; slug: string; name: string; updated_at: string },
-        OrganizationScoped & { id?: string; slug: string; name: string; created_at?: string; updated_at?: string }
+        Timestamped & OrganizationScoped & { id: string; slug: string; name: string; discipline_id: string | null; updated_at: string },
+        OrganizationScoped & { id?: string; slug: string; name: string; discipline_id?: string | null; created_at?: string; updated_at?: string }
       >;
       teams: Table<
-        Timestamped & OrganizationScoped & { id: string; section_id: string; slug: string; name: string; season: string; updated_at: string },
-        OrganizationScoped & { id?: string; section_id: string; slug: string; name: string; season?: string; created_at?: string; updated_at?: string }
+        Timestamped & OrganizationScoped & { id: string; section_id: string; slug: string; name: string; season: string; discipline_id: string | null; updated_at: string },
+        OrganizationScoped & { id?: string; section_id: string; slug: string; name: string; season?: string; discipline_id?: string | null; created_at?: string; updated_at?: string }
       >;
       section_staff: Table<
         Timestamped & OrganizationScoped & { section_id: string; user_id: string; role: "section_admin" | "editor" },
@@ -55,10 +55,15 @@ export interface Database {
         Timestamped & OrganizationScoped & { id: string; team_id: string; person_id: string; access_profile_id: string; starts_on: string; ends_on: string | null },
         OrganizationScoped & { id?: string; team_id: string; person_id: string; access_profile_id: string; starts_on?: string; ends_on?: string | null; created_at?: string }
       >;
+      disciplines: Table<
+        Timestamped & { id: string; key: string; name: string; category: string | null; updated_at: string },
+        { id?: string; key: string; name: string; category?: string | null; created_at?: string; updated_at?: string }
+      >;
       assistant_memories: Table<
         Timestamped & {
           id: string;
           organization_id: string | null;
+          discipline_id: string | null;
           scope: "system" | "organization" | "section" | "team" | "personal";
           scope_id: string | null;
           kind: "fact" | "preference" | "instruction" | "convention";
@@ -73,6 +78,7 @@ export interface Database {
         {
           id?: string;
           organization_id?: string | null;
+          discipline_id?: string | null;
           scope: "system" | "organization" | "section" | "team" | "personal";
           scope_id?: string | null;
           kind?: "fact" | "preference" | "instruction" | "convention";
