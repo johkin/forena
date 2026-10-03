@@ -38,16 +38,21 @@ export async function loadTeamAssistantContext(input: TeamAssistantInput, { supa
   if (!canViewTeam && !(personalMemberships ?? []).length) throw new TeamAssistantError("team-forbidden", "Du saknar åtkomst till laget.");
 
   const [{ data: organization }, { data: activities }, { data: section }, { data: memories }] = await Promise.all([
-    supabase.from("organizations").select("name, assistant_name, time_zone").eq("id", team.organization_id).single(),
+    supabase.from("organizations").select("name, assistant_name, time_zone, discipline_id").eq("id", team.organization_id).single(),
     supabase.from("activities").select("id, activity_type_id, title, description_markdown, gathering_at, starts_at, ends_at, location").eq("team_id", teamId).neq("status", "cancelled").gte("ends_at", new Date().toISOString()).order("starts_at").limit(5),
     supabase.from("sections").select("discipline_id").eq("id", team.section_id).maybeSingle(),
     supabase.from("assistant_memories")
       .select("scope, discipline_id, kind, subject, memory_key, content, updated_at")
-      .or(`scope.eq.system,and(scope.eq.organization,scope_id.eq.${team.organization_id}),and(scope.eq.section,scope_id.eq.${team.section_id}),and(scope.eq.team,scope_id.eq.${teamId}),and(scope.eq.personal,scope_id.eq.${userId})`)
+      .or(`scope.eq.system,and(scope.eq.organization,scope_id.eq.${team.organization_id}),and(scope.eq.section,scope_id.eq.${team.section_id}),and(scope.eq.team,scope_id.eq.${teamId}),and(scope.eq.personal,scope_id.eq.${userId},organization_id.eq.${team.organization_id})`)
       .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
       .order("updated_at", { ascending: false })
       .limit(80),
   ]);
+  const disciplineId = team.discipline_id ?? section?.discipline_id ?? organization?.discipline_id ?? null;
+  const relevantMemories = (memories ?? [])
+    .filter((memory) => memory.discipline_id === null || memory.discipline_id === disciplineId)
+    .slice(0, 40);
+
   const activityIds = (activities ?? []).map((item) => item.id);
   const activityTypeIds = [...new Set((activities ?? []).map((item) => item.activity_type_id))];
 
