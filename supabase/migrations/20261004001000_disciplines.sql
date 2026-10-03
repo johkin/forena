@@ -73,11 +73,75 @@ alter table public.assistant_memories
 
 create index assistant_memories_discipline_idx on public.assistant_memories(discipline_id);
 
--- Keyed memories may coexist for different disciplines.
+-- Keyed memories may coexist for different disciplines. Unkeyed memories are
+-- intentionally not unique, so a scope can contain any number of free-form items.
 alter table public.assistant_memories drop constraint assistant_memories_scope_key_unique;
-alter table public.assistant_memories
-  add constraint assistant_memories_scope_discipline_key_unique
-  unique nulls not distinct (scope, scope_id, discipline_id, memory_key);
+create unique index assistant_memories_scope_discipline_key_unique
+  on public.assistant_memories (scope, scope_id, discipline_id, memory_key) nulls not distinct
+  where memory_key is not null;
+
+-- PostgREST upsert cannot express the predicate of the partial unique index.
+-- Keep keyed writes atomic behind a narrow security-invoker RPC so normal RLS
+-- remains authoritative for the caller.
+create or replace function public.upsert_assistant_memory(
+  target_organization_id uuid,
+  target_discipline_id uuid,
+  target_scope text,
+  target_scope_id uuid,
+  target_kind text,
+  target_subject text,
+  target_memory_key text,
+  target_content text
+)
+returns uuid
+language plpgsql
+security invoker
+set search_path = ''
+as $
+declare
+  memory_id uuid;
+begin
+  if target_memory_key is null then
+    raise exception 'Minnesnyckel krävs' using errcode = '22023';
+  end if;
+
+  insert into public.assistant_memories (
+    organization_id,
+    discipline_id,
+    scope,
+    scope_id,
+    kind,
+    subject,
+    memory_key,
+    content,
+    created_by
+  )
+  values (
+    target_organization_id,
+    target_discipline_id,
+    target_scope,
+    target_scope_id,
+    target_kind,
+    target_subject,
+    target_memory_key,
+    target_content,
+    auth.uid()
+  )
+  on conflict (scope, scope_id, discipline_id, memory_key)
+    where memory_key is not null
+  do update set
+    kind = excluded.kind,
+    subject = excluded.subject,
+    content = excluded.content,
+    updated_at = now()
+  returning id into memory_id;
+
+  return memory_id;
+end;
+$;
+
+revoke all on function public.upsert_assistant_memory(uuid, uuid, text, uuid, text, text, text, text) from public;
+grant execute on function public.upsert_assistant_memory(uuid, uuid, text, uuid, text, text, text, text) to authenticated;
 
 -- Resolve the effective discipline by nearest explicit assignment.
 create or replace function public.resolve_team_discipline(target_team_id uuid)
