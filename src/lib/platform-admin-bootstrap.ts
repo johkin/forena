@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from "node:crypto";
 import { sendPlatformAdminInvitationEmail } from "@/lib/email/platform-admin-invitation";
 import { getSiteUrl } from "@/lib/site-url";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -20,13 +21,16 @@ export async function ensureInitialSystemAdminInvite() {
   if (adminError) throw adminError;
   if ((adminCount ?? 0) > 0) return { status: "already-configured" as const };
 
-  const now = new Date().toISOString();
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const staleUnsentBefore = new Date(now.getTime() - 5 * 60_000).toISOString();
+
   await supabase
     .from("platform_admin_invites")
     .update({ status: "expired" })
     .eq("source", "bootstrap")
     .eq("status", "pending")
-    .lte("expires_at", now);
+    .lte("expires_at", nowIso);
 
   await supabase
     .from("platform_admin_invites")
@@ -35,54 +39,66 @@ export async function ensureInitialSystemAdminInvite() {
     .eq("status", "pending")
     .neq("email", email);
 
-  let { data: invite, error: inviteError } = await supabase
+  // Recover if a server process died after reserving an invitation but before
+  // sending it. A fresh instance may reclaim that unsent reservation after 5 min.
+  await supabase
     .from("platform_admin_invites")
-    .select("id, email, sent_at, expires_at")
+    .update({ status: "failed" })
+    .eq("source", "bootstrap")
+    .eq("email", email)
+    .eq("status", "pending")
+    .is("sent_at", null)
+    .lte("created_at", staleUnsentBefore);
+
+  const { data: existing, error: existingError } = await supabase
+    .from("platform_admin_invites")
+    .select("id, sent_at, expires_at")
     .eq("email", email)
     .eq("source", "bootstrap")
     .eq("status", "pending")
-    .gt("expires_at", now)
+    .gt("expires_at", nowIso)
     .maybeSingle();
 
-  if (inviteError) throw inviteError;
+  if (existingError) throw existingError;
+  if (existing) return { status: "pending" as const, email };
 
-  if (!invite) {
-    const result = await supabase
-      .from("platform_admin_invites")
-      .insert({ email, source: "bootstrap", status: "pending" })
-      .select("id, email, sent_at, expires_at")
-      .single();
+  const token = randomBytes(32).toString("base64url");
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const created = await supabase
+    .from("platform_admin_invites")
+    .insert({ email, token_hash: tokenHash, source: "bootstrap", status: "pending" })
+    .select("id")
+    .single();
 
-    if (result.error) {
-      // Another server instance may have won the race. Re-read the canonical row.
-      const concurrent = await supabase
-        .from("platform_admin_invites")
-        .select("id, email, sent_at, expires_at")
-        .eq("email", email)
-        .eq("status", "pending")
-        .gt("expires_at", now)
-        .maybeSingle();
-      if (concurrent.error || !concurrent.data) throw result.error;
-      invite = concurrent.data;
-    } else {
-      invite = result.data;
-    }
+  if (created.error || !created.data) {
+    // Another server instance may have reserved the one allowed bootstrap
+    // invitation first. It owns the token and therefore also owns the send.
+    if (created.error?.code === "23505") return { status: "pending" as const, email };
+    throw created.error ?? new Error("Bootstrap-inbjudan kunde inte skapas.");
   }
 
-  if (invite.sent_at) return { status: "pending" as const, email };
+  const invitationUrl = `${getSiteUrl()}/system-admin-invite/${encodeURIComponent(token)}`;
 
-  const invitationUrl = `${getSiteUrl()}/login?next=${encodeURIComponent("/system")}`;
-  await sendPlatformAdminInvitationEmail({
-    to: email,
-    invitationUrl,
-    invitationId: invite.id,
-    bootstrap: true,
-  });
+  try {
+    await sendPlatformAdminInvitationEmail({
+      to: email,
+      invitationUrl,
+      invitationId: created.data.id,
+      bootstrap: true,
+    });
+  } catch (error) {
+    await supabase
+      .from("platform_admin_invites")
+      .update({ status: "failed" })
+      .eq("id", created.data.id)
+      .eq("status", "pending");
+    throw error;
+  }
 
   const { error: sentError } = await supabase
     .from("platform_admin_invites")
     .update({ sent_at: new Date().toISOString() })
-    .eq("id", invite.id)
+    .eq("id", created.data.id)
     .eq("status", "pending");
 
   if (sentError) throw sentError;
