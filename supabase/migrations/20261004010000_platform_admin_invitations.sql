@@ -5,6 +5,7 @@
 create table public.platform_admin_invites (
   id uuid primary key default gen_random_uuid(),
   email text not null check (email = lower(trim(email)) and email like '%@%'),
+  token_hash text not null unique check (length(token_hash) = 64),
   status text not null default 'pending' check (status in ('pending', 'accepted', 'expired', 'failed', 'cancelled')),
   source text not null default 'system_admin' check (source in ('bootstrap', 'system_admin')),
   invited_by uuid references auth.users(id) on delete set null,
@@ -58,7 +59,7 @@ with check (public.has_platform_role(array['system_admin']));
 revoke all on table public.platform_admin_invites from anon;
 grant select, insert, update on table public.platform_admin_invites to authenticated;
 
-create or replace function public.claim_platform_admin_invite()
+create or replace function public.claim_platform_admin_invite(invitation_token_hash text)
 returns boolean
 language plpgsql
 security definer
@@ -91,7 +92,8 @@ begin
   select invite.id
   into matched_invite_id
   from public.platform_admin_invites invite
-  where invite.status = 'pending'
+  where invite.token_hash = invitation_token_hash
+    and invite.status = 'pending'
     and invite.expires_at > now()
     and lower(invite.email) = current_email
     and (
@@ -123,8 +125,8 @@ begin
 end;
 $$;
 
-revoke all on function public.claim_platform_admin_invite() from public;
-grant execute on function public.claim_platform_admin_invite() to authenticated;
+revoke all on function public.claim_platform_admin_invite(text) from public;
+grant execute on function public.claim_platform_admin_invite(text) to authenticated;
 
 create or replace function public.list_platform_admins()
 returns table (
