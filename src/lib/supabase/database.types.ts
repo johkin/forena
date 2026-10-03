@@ -55,6 +55,37 @@ export interface Database {
         Timestamped & OrganizationScoped & { id: string; team_id: string; person_id: string; access_profile_id: string; starts_on: string; ends_on: string | null },
         OrganizationScoped & { id?: string; team_id: string; person_id: string; access_profile_id: string; starts_on?: string; ends_on?: string | null; created_at?: string }
       >;
+      assistant_memories: Table<
+        Timestamped & {
+          id: string;
+          organization_id: string | null;
+          scope: "system" | "organization" | "section" | "team" | "personal";
+          scope_id: string | null;
+          kind: "fact" | "preference" | "instruction" | "convention";
+          subject: string;
+          memory_key: string | null;
+          content: string;
+          structured_value: Json | null;
+          created_by: string | null;
+          updated_at: string;
+          expires_at: string | null;
+        },
+        {
+          id?: string;
+          organization_id?: string | null;
+          scope: "system" | "organization" | "section" | "team" | "personal";
+          scope_id?: string | null;
+          kind?: "fact" | "preference" | "instruction" | "convention";
+          subject?: string;
+          memory_key?: string | null;
+          content: string;
+          structured_value?: Json | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          expires_at?: string | null;
+        }
+      >;
       team_member_invitations: Table<
         Timestamped & OrganizationScoped & { id: string; team_id: string; email: string; role: "leader" | "guardian"; person_display_name: string | null; token_hash: string; invited_by: string; expires_at: string; accepted_at: string | null; accepted_by: string | null },
         OrganizationScoped & { id?: string; team_id: string; email: string; role: "leader" | "guardian"; person_display_name?: string | null; token_hash: string; invited_by: string; expires_at?: string; accepted_at?: string | null; accepted_by?: string | null; created_at?: string }
