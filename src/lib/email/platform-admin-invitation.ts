@@ -30,6 +30,7 @@ export async function sendPlatformAdminInvitationEmail({
   const safeInvitationUrl = escapeHtml(invitationUrl);
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
+    signal: AbortSignal.timeout(10_000),
     headers: {
       authorization: `Bearer ${apiKey}`,
       "content-type": "application/json",
