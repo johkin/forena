@@ -6,7 +6,7 @@ function setup({ leader = false, family = true, team = true, invitationManager =
   const queries: { table: string; select: ReturnType<typeof vi.fn>; in: ReturnType<typeof vi.fn> }[] = [];
   const from = vi.fn((table: string) => {
     const data = {
-      teams: team ? { id: "team", organization_id: "org", section_id: "section", name: "Laget" } : null,
+      teams: team ? { id: "team", organization_id: "org", section_id: "section", discipline_id: null, name: "Laget" } : null,
       people: family ? [{ id: "own-person", display_name: "Barn" }] : [],
       person_guardians: [],
       memberships: family ? [{ person_id: "own-person" }] : [],
