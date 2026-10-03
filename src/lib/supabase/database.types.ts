@@ -59,6 +59,31 @@ export interface Database {
         Timestamped & { user_id: string; role: "system_admin" },
         { user_id: string; role: "system_admin"; created_at?: string }
       >;
+      platform_admin_invites: Table<
+        Timestamped & {
+          id: string;
+          email: string;
+          status: "pending" | "accepted" | "expired" | "failed" | "cancelled";
+          source: "bootstrap" | "system_admin";
+          invited_by: string | null;
+          sent_at: string | null;
+          expires_at: string;
+          accepted_at: string | null;
+          accepted_by: string | null;
+        },
+        {
+          id?: string;
+          email: string;
+          status?: "pending" | "accepted" | "expired" | "failed" | "cancelled";
+          source?: "bootstrap" | "system_admin";
+          invited_by?: string | null;
+          sent_at?: string | null;
+          expires_at?: string;
+          accepted_at?: string | null;
+          accepted_by?: string | null;
+          created_at?: string;
+        }
+      >;
       disciplines: Table<
         Timestamped & { id: string; key: string; name: string; category: string | null; updated_at: string },
         { id?: string; key: string; name: string; category?: string | null; created_at?: string; updated_at?: string }
@@ -240,6 +265,9 @@ export interface Database {
     Functions: {
       is_organization_member: { Args: { target_organization_id: string; target_user_id?: string }; Returns: boolean };
       has_organization_role: { Args: { target_organization_id: string; allowed_roles: string[]; target_user_id?: string }; Returns: boolean };
+      has_platform_role: { Args: { allowed_roles: string[]; target_user_id?: string }; Returns: boolean };
+      claim_platform_admin_invite: { Args: Record<never, never>; Returns: boolean };
+      list_platform_admins: { Args: Record<never, never>; Returns: { user_id: string; email: string | null; created_at: string }[] };
       has_section_role: { Args: { target_section_id: string; allowed_roles: string[]; target_user_id?: string }; Returns: boolean };
       has_team_permission: { Args: { target_team_id: string; target_permission: string }; Returns: boolean };
       delete_or_cancel_activity: { Args: { target_activity_id: string; target_cancellation_reason?: string | null }; Returns: "deleted" | "cancelled" };
