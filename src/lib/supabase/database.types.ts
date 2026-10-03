@@ -55,6 +55,10 @@ export interface Database {
         Timestamped & OrganizationScoped & { id: string; team_id: string; person_id: string; access_profile_id: string; starts_on: string; ends_on: string | null },
         OrganizationScoped & { id?: string; team_id: string; person_id: string; access_profile_id: string; starts_on?: string; ends_on?: string | null; created_at?: string }
       >;
+      platform_roles: Table<
+        Timestamped & { user_id: string; role: "system_admin" },
+        { user_id: string; role: "system_admin"; created_at?: string }
+      >;
       disciplines: Table<
         Timestamped & { id: string; key: string; name: string; category: string | null; updated_at: string },
         { id?: string; key: string; name: string; category?: string | null; created_at?: string; updated_at?: string }
