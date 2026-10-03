@@ -13,7 +13,7 @@ vi.mock("ai", async importOriginal => ({
 }));
 import { answerTeamAssistant } from "./team-assistant";
 
-const dependencies: AssistantDependencies = { supabase: {} as AssistantDependencies["supabase"], userId: "user", disciplineId: null };
+const dependencies: AssistantDependencies = { supabase: {} as AssistantDependencies["supabase"], userId: "user" };
 const input = { teamId: "team", question: "Skapa träningar varje tisdag och torsdag", messages: [] };
 const draft = {
   title: "Träning", description: "Välkomna!", location: "Planen", startsOn: "2026-10-20", startTime: "18:00",
