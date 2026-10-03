@@ -1,5 +1,6 @@
 "use server";
 
+import { createHash, randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
@@ -102,34 +103,36 @@ export async function inviteSystemAdmin(formData: FormData) {
     .eq("status", "pending")
     .lte("expires_at", now);
 
-  let { data: invite, error: inviteError } = await supabase
+  // A new send gets a new one-time token. This also provides an explicit
+  // "resend" behaviour without ever storing the plaintext token.
+  await supabase
     .from("platform_admin_invites")
-    .select("id, email, sent_at, expires_at")
+    .update({ status: "cancelled" })
     .eq("email", email)
-    .eq("status", "pending")
-    .gt("expires_at", now)
-    .maybeSingle();
+    .eq("status", "pending");
 
-  if (inviteError) {
-    console.error("[system-admin] invite lookup failed", { message: inviteError.message });
-    redirect("/system/administrators?error=Inbjudan+kunde+inte+kontrolleras");
-  }
+  const token = randomBytes(32).toString("base64url");
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const { data: invite, error: inviteError } = await supabase
+    .from("platform_admin_invites")
+    .insert({
+      email,
+      token_hash: tokenHash,
+      source: "system_admin",
+      invited_by: user.id,
+      status: "pending",
+    })
+    .select("id")
+    .single();
 
-  if (!invite) {
-    const created = await supabase
-      .from("platform_admin_invites")
-      .insert({ email, source: "system_admin", invited_by: user.id, status: "pending" })
-      .select("id, email, sent_at, expires_at")
-      .single();
-    if (created.error) {
-      console.error("[system-admin] invite insert failed", { message: created.error.message });
-      redirect("/system/administrators?error=Inbjudan+kunde+inte+skapas");
-    }
-    invite = created.data;
+  if (inviteError || !invite) {
+    console.error("[system-admin] invite insert failed", { message: inviteError?.message });
+    redirect("/system/administrators?error=Inbjudan+kunde+inte+skapas");
   }
 
   const requestHeaders = await headers();
-  const invitationUrl = `${getSiteUrl(requestHeaders.get("origin") ?? undefined)}/login?next=${encodeURIComponent("/system")}`;
+  const origin = getSiteUrl(requestHeaders.get("origin") ?? undefined);
+  const invitationUrl = `${origin}/system-admin-invite/${encodeURIComponent(token)}`;
 
   try {
     await sendPlatformAdminInvitationEmail({
@@ -138,6 +141,11 @@ export async function inviteSystemAdmin(formData: FormData) {
       invitationId: invite.id,
     });
   } catch (error) {
+    await supabase
+      .from("platform_admin_invites")
+      .update({ status: "failed" })
+      .eq("id", invite.id)
+      .eq("status", "pending");
     console.error("[system-admin] invite email failed", {
       message: error instanceof Error ? error.message : String(error),
       inviteId: invite.id,
