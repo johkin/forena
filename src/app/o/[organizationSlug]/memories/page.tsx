@@ -45,7 +45,7 @@ export default async function MemoriesPage({ params, searchParams }: Props) {
 
   const { data: memories } = await supabase.from("assistant_memories")
     .select("id, scope, scope_id, discipline_id, kind, subject, content, updated_at")
-    .or(`scope.eq.system,organization_id.eq.${organization.id}`)
+    .eq("organization_id", organization.id)
     .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
     .order("updated_at", { ascending: false });
 
