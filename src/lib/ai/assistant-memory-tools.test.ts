@@ -15,7 +15,7 @@ describe("assistant memory tools", () => {
     const { tools, upsert } = setup();
     const result = await tools.remember.execute!({ scope: "team", kind: "convention", subject: "match", key: "match.gathering", content: "Samling 45 minuter före hemmamatch." } as never, {} as never);
     expect(result).toMatchObject({ saved: true, scope: "team" });
-    expect(upsert).toHaveBeenCalledWith(expect.objectContaining({ organization_id: "org", scope_id: "team", created_by: "user" }), { onConflict: "scope,scope_id,discipline_id,memory_key" });
+    expect(upsert).toHaveBeenCalledWith(expect.objectContaining({ organization_id: "org", discipline_id: null, scope_id: "team", created_by: "user" }), { onConflict: "scope,scope_id,discipline_id,memory_key" });
   });
 
   it("reports RLS permission failures without claiming that memory was saved", async () => {
