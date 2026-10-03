@@ -62,10 +62,18 @@ export function createAssistantMemoryTools(
           content,
           created_by: scope.userId,
         };
-        const query = input.key
-          ? supabase.from("assistant_memories").upsert(row, { onConflict: "scope,scope_id,discipline_id,memory_key" })
-          : supabase.from("assistant_memories").insert(row);
-        const { error } = await query;
+        const { error } = input.key
+          ? await supabase.rpc("upsert_assistant_memory", {
+              target_organization_id: row.organization_id,
+              target_discipline_id: row.discipline_id,
+              target_scope: row.scope,
+              target_scope_id: row.scope_id,
+              target_kind: row.kind,
+              target_subject: row.subject,
+              target_memory_key: input.key,
+              target_content: row.content,
+            })
+          : await supabase.from("assistant_memories").insert(row);
         if (error) return { saved: false, error: error.code === "42501" ? "Du saknar behörighet att spara minne på den nivån." : "Minnet kunde inte sparas." };
         return { saved: true, scope: input.scope, kind: input.kind, content: row.content };
       },
