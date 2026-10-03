@@ -267,6 +267,7 @@ export interface Database {
       has_organization_role: { Args: { target_organization_id: string; allowed_roles: string[]; target_user_id?: string }; Returns: boolean };
       has_platform_role: { Args: { allowed_roles: string[]; target_user_id?: string }; Returns: boolean };
       claim_platform_admin_invite: { Args: Record<never, never>; Returns: boolean };
+      upsert_assistant_memory: { Args: { target_organization_id: string; target_discipline_id: string | null; target_scope: string; target_scope_id: string; target_kind: string; target_subject: string; target_memory_key: string; target_content: string }; Returns: string };
       list_platform_admins: { Args: Record<never, never>; Returns: { user_id: string; email: string | null; created_at: string }[] };
       has_section_role: { Args: { target_section_id: string; allowed_roles: string[]; target_user_id?: string }; Returns: boolean };
       has_team_permission: { Args: { target_team_id: string; target_permission: string }; Returns: boolean };
