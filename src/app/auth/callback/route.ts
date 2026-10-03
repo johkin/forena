@@ -12,8 +12,12 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      const { error: claimError } = await supabase.rpc("claim_person_account");
+      const [{ error: claimError }, { error: adminClaimError }] = await Promise.all([
+        supabase.rpc("claim_person_account"),
+        supabase.rpc("claim_platform_admin_invite"),
+      ]);
       if (claimError) console.error("[auth] player account claim failed", { message: claimError.message });
+      if (adminClaimError) console.error("[auth] platform admin claim failed", { message: adminClaimError.message });
       return NextResponse.redirect(new URL(next, url.origin));
     }
 
