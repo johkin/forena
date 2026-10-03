@@ -5,6 +5,7 @@ import { activityDraftSchema } from "./activity-draft-schema";
 import { loadTeamAssistantContext } from "./team-assistant-context";
 import { buildActivityDraftPrompt, buildEventResearchPrompt, buildTeamAssistantPrompt } from "./team-assistant-prompts";
 import { createTeamAssistantTools } from "./team-assistant-tools";
+import { createAssistantMemoryTools } from "./assistant-memory-tools";
 import { TeamAssistantError, type AssistantDependencies, type TeamAssistantInput, type TeamAssistantReply } from "./team-assistant-types";
 
 // Keep the model already exercised by the production team briefing.
@@ -14,7 +15,7 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
   const startedAt = Date.now();
   const { teamId, question } = input;
   const { supabase, userId } = dependencies;
-  const { organization, activities, activityIds, canManageActivities, context, organizationToday } = await loadTeamAssistantContext(input, dependencies);
+  const { organization, activities, activityIds, canManageActivities, memoryScope, context, organizationToday } = await loadTeamAssistantContext(input, dependencies);
   const model = process.env.AI_ASSISTANT_MODEL?.trim() || process.env.AI_FEED_MODEL?.trim() || DEFAULT_MODEL;
   const requiresActivityDraft = Boolean(canManageActivities) && isActivityDraftRequest(question);
   const requiresWebResearch = requiresActivityDraft && activityDraftNeedsWebResearch(question);
@@ -84,7 +85,7 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
     const assistant = new ToolLoopAgent({
       model,
       instructions: buildTeamAssistantPrompt({ assistantName: organization?.assistant_name, viewerKind: context.viewer.kind, canManageActivities }),
-      tools: createTeamAssistantTools(supabase, teamId, activityIds),
+      tools: { ...createTeamAssistantTools(supabase, teamId, activityIds), ...createAssistantMemoryTools(supabase, memoryScope) },
       maxOutputTokens: 500,
       stopWhen: isStepCount(5),
       providerOptions: { gateway: { user: createHash("sha256").update(userId).digest("hex").slice(0, 24), tags: ["feature:team-assistant"] } },
