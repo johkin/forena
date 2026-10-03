@@ -25,7 +25,7 @@ describe("answerTeamAssistant", () => {
     vi.clearAllMocks();
     mocks.context.mockResolvedValue({
       organization: { assistant_name: "Nova" }, activities: [], activityIds: [],
-      canManageActivities: true, organizationToday: "2026-10-01", context: { viewer: { kind: "leader" } },
+      canManageActivities: true, memoryScope: { organizationId: "org", sectionId: "section", teamId: "team", userId: "user" }, organizationToday: "2026-10-01", context: { viewer: { kind: "leader" }, memories: [] },
     });
     mocks.generate.mockResolvedValue({ output: draft, usage: { inputTokens: 10, outputTokens: 10 } });
     mocks.chat.mockResolvedValue({ text: "Svar", usage: {} });
@@ -52,7 +52,8 @@ describe("answerTeamAssistant", () => {
   it.each(["leader", "player-or-guardian"] as const)("selects the %s tone using server context", async kind => {
     mocks.context.mockResolvedValue({
       organization: null, activities: [], activityIds: [], canManageActivities: false,
-      organizationToday: "2026-10-01", context: { viewer: { kind } },
+      memoryScope: { organizationId: "org", sectionId: "section", teamId: "team", userId: "user" },
+      organizationToday: "2026-10-01", context: { viewer: { kind }, memories: [] },
     });
     const result = await answerTeamAssistant(input, dependencies);
     expect(result.activityDraft).toBeUndefined();
