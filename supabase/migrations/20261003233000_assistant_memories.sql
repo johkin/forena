@@ -185,14 +185,14 @@ language sql
 stable
 security definer
 set search_path = ''
-as $
+as $$
   select private.can_read_assistant_memory(
     memory_scope,
     memory_organization_id,
     memory_scope_id,
     auth.uid()
   );
-$;
+$$;
 
 create or replace function public.can_manage_assistant_memory(
   memory_scope text,
@@ -204,14 +204,14 @@ language sql
 stable
 security definer
 set search_path = ''
-as $
+as $$
   select private.can_manage_assistant_memory(
     memory_scope,
     memory_organization_id,
     memory_scope_id,
     auth.uid()
   );
-$;
+$$;
 
 revoke all on function public.can_read_assistant_memory(text, uuid, uuid) from public;
 revoke all on function public.can_manage_assistant_memory(text, uuid, uuid) from public;
