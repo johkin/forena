@@ -51,8 +51,12 @@ export async function signInWithPassword(formData: FormData) {
     redirect(`/login?mode=password&next=${encodeURIComponent(next)}&error=${encodeURIComponent("Fel e-postadress eller lösenord")}`);
   }
 
-  const { error: claimError } = await supabase.rpc("claim_person_account");
+  const [{ error: claimError }, { error: adminClaimError }] = await Promise.all([
+    supabase.rpc("claim_person_account"),
+    supabase.rpc("claim_platform_admin_invite"),
+  ]);
   if (claimError) console.error("[auth] player account claim failed", { message: claimError.message });
+  if (adminClaimError) console.error("[auth] platform admin claim failed", { message: adminClaimError.message });
   redirect(next);
 }
 
@@ -79,8 +83,12 @@ export async function signUpWithPassword(formData: FormData) {
   }
 
   if (data.session) {
-    const { error: claimError } = await supabase.rpc("claim_person_account");
+    const [{ error: claimError }, { error: adminClaimError }] = await Promise.all([
+      supabase.rpc("claim_person_account"),
+      supabase.rpc("claim_platform_admin_invite"),
+    ]);
     if (claimError) console.error("[auth] player account claim failed", { message: claimError.message });
+    if (adminClaimError) console.error("[auth] platform admin claim failed", { message: adminClaimError.message });
     redirect(next);
   }
 
