@@ -50,7 +50,7 @@ export default async function SystemAdministratorsPage({ searchParams }: Props) 
           <h2>Aktiva systemadministratörer</h2>
           <div className="system-admin-list">
             {(admins ?? []).length ? (admins ?? []).map((admin) => (
-              <div className="system-admin-row" key={admin.user_id}>
+              <div className="system-admin-row system-admin-person-row" key={admin.user_id}>
                 <div>
                   <strong>{admin.email ?? "Okänd e-postadress"}</strong>
                   <small>system_admin</small>
@@ -65,7 +65,7 @@ export default async function SystemAdministratorsPage({ searchParams }: Props) 
           <h2>Väntande inbjudningar</h2>
           <div className="system-admin-list">
             {pending.length ? pending.map((invite) => (
-              <div className="system-admin-row" key={invite.id}>
+              <div className="system-admin-row system-admin-person-row" key={invite.id}>
                 <div>
                   <strong>{invite.email}</strong>
                   <small>{invite.source === "bootstrap" ? "Initial bootstrap" : "Inbjuden av systemadmin"}</small>
