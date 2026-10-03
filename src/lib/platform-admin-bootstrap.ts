@@ -28,6 +28,13 @@ export async function ensureInitialSystemAdminInvite() {
     .eq("status", "pending")
     .lte("expires_at", now);
 
+  await supabase
+    .from("platform_admin_invites")
+    .update({ status: "cancelled" })
+    .eq("source", "bootstrap")
+    .eq("status", "pending")
+    .neq("email", email);
+
   let { data: invite, error: inviteError } = await supabase
     .from("platform_admin_invites")
     .select("id, email, sent_at, expires_at")
