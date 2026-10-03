@@ -119,11 +119,13 @@ för transaktionsmail. `RESEND_FROM_EMAIL` ska vara en avsändare på en domän
 som verifierats i Resend.
 
 För en ny installation kan `FORENA_INITIAL_SYSTEM_ADMIN_EMAIL` sättas till
-e-postadressen för den första systemadministratören. Så länge databasen saknar
-en `system_admin` skapar servern idempotent en bootstrap-inbjudan och skickar
-ett mail till adressen. Behörigheten aktiveras först när mottagaren loggar in
-med samma verifierade e-postadress. När den första systemadministratören finns
-är databasen source of truth och miljövariabeln kan tas bort.
+e-postadressen för den första systemadministratören. Sätt den endast i den
+miljö som ska bootstrapas, normalt Production. Så länge databasen saknar en
+`system_admin` skapar servern idempotent en bootstrap-inbjudan och skickar
+ett mail till adressen. Mailet innehåller en engångslänk; rollen aktiveras först
+när mottagaren öppnar länken, loggar in med samma verifierade e-postadress och
+accepterar inbjudan. När den första systemadministratören finns är databasen
+source of truth och miljövariabeln kan tas bort.
 
 Applikationen använder requestens origin för länkar i e-post och använder
 Vercels `VERCEL_PROJECT_PRODUCTION_URL` som reserv. Sätt `SITE_URL` till den
