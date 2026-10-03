@@ -37,12 +37,8 @@ create index assistant_memories_organization_idx on public.assistant_memories(or
 create index assistant_memories_scope_idx on public.assistant_memories(scope, scope_id);
 create index assistant_memories_active_idx on public.assistant_memories(updated_at desc)
   where expires_at is null;
-create unique index assistant_memories_key_unique
-  on public.assistant_memories(scope, scope_id, memory_key)
-  where memory_key is not null;
-
--- Supabase/PostgREST upsert needs a non-partial unique constraint for
--- onConflict. Anonymous memories use a generated id and never collide here.
+-- A regular unique constraint also permits multiple NULL memory_key values,
+-- while allowing PostgREST keyed upserts through onConflict.
 alter table public.assistant_memories
   add constraint assistant_memories_scope_key_unique unique (scope, scope_id, memory_key);
 
