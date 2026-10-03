@@ -59,6 +59,7 @@ export function AppHeader({ homeHref = "/", navigation, organization, team, work
         <div className="header-menu-heading"><strong>Meny</strong><button type="button" aria-label="Stäng meny" onClick={() => setOpen(false)}>×</button></div>
         {organization && workspaces?.length ? <div className="header-menu-section"><p className="eyebrow">Arbetsyta</p><WorkspaceSwitcher organization={organization} team={team} workspaces={workspaces} /></div> : null}
         {navigation ? <div className="header-menu-section header-menu-navigation">{navigation}</div> : null}
+        {organization && accountEmail ? <div className="header-menu-section header-menu-account"><p className="eyebrow">Assistent</p><a href={`/o/${organization.slug}/memories`}>Minnen</a></div> : null}
         {adminHref ? <div className="header-menu-section header-menu-account"><p className="eyebrow">Förening</p><a href={adminHref}>Administrera ledare och roller</a></div> : null}
         <div className="header-menu-section header-menu-account">
           {accountEmail ? <><p className="eyebrow">Konto</p><small className="header-menu-email">{accountEmail}</small><a href="/profile">Min profil</a><LogoutButton destination={logoutDestination} /></>
