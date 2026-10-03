@@ -9,6 +9,7 @@ export type AssistantMemoryScope = {
   sectionId: string;
   teamId: string;
   userId: string;
+  disciplineId: string | null;
 };
 
 export function createAssistantMemoryTools(
@@ -31,6 +32,7 @@ export function createAssistantMemoryTools(
         subject: string;
         key?: string;
         content: string;
+        disciplineSpecific?: boolean;
       }>({
         type: "object",
         properties: {
@@ -39,6 +41,7 @@ export function createAssistantMemoryTools(
           subject: { type: "string", minLength: 1, maxLength: 80 },
           key: { type: "string", pattern: "^[a-z0-9]+(?:[._-][a-z0-9]+)*$" },
           content: { type: "string", minLength: 1, maxLength: 1200 },
+          disciplineSpecific: { type: "boolean", description: "True only when the memory is specific to the current discipline rather than generally applicable." },
         },
         required: ["scope", "kind", "subject", "content"],
         additionalProperties: false,
@@ -50,6 +53,7 @@ export function createAssistantMemoryTools(
         if (input.key && !/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/.test(input.key)) return { saved: false, error: "Minnets nyckel är ogiltig." };
         const row = {
           organization_id: scope.organizationId,
+          discipline_id: input.disciplineSpecific ? scope.disciplineId : null,
           scope: input.scope,
           scope_id: scopeIds[input.scope],
           kind: input.kind,
@@ -59,7 +63,7 @@ export function createAssistantMemoryTools(
           created_by: scope.userId,
         };
         const query = input.key
-          ? supabase.from("assistant_memories").upsert(row, { onConflict: "scope,scope_id,memory_key" })
+          ? supabase.from("assistant_memories").upsert(row, { onConflict: "scope,scope_id,discipline_id,memory_key" })
           : supabase.from("assistant_memories").insert(row);
         const { error } = await query;
         if (error) return { saved: false, error: error.code === "42501" ? "Du saknar behörighet att spara minne på den nivån." : "Minnet kunde inte sparas." };
