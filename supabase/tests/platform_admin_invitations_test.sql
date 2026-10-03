@@ -1,17 +1,29 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(13);
+select plan(14);
 
 insert into auth.users (id, email, email_confirmed_at, raw_user_meta_data) values
   ('a0000000-0000-0000-0000-000000000001', 'admin@example.se', now(), '{"display_name":"Systemadmin"}'),
   ('a0000000-0000-0000-0000-000000000002', 'invitee@example.se', now(), '{"display_name":"Inbjuden"}'),
   ('a0000000-0000-0000-0000-000000000003', 'outsider@example.se', now(), '{"display_name":"Utomstående"}'),
-  ('a0000000-0000-0000-0000-000000000004', 'unverified@example.se', null, '{"display_name":"Overifierad"}');
+  ('a0000000-0000-0000-0000-000000000004', 'unverified@example.se', null, '{"display_name":"Overifierad"}'),
+  ('a0000000-0000-0000-0000-000000000005', 'bootstrap@example.se', now(), '{"display_name":"Bootstrap"}');
+
+insert into public.platform_admin_invites (email, source)
+values ('bootstrap@example.se', 'bootstrap');
 
 insert into public.platform_roles (user_id, role)
 values ('a0000000-0000-0000-0000-000000000001', 'system_admin');
 
 set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"a0000000-0000-0000-0000-000000000005","email":"bootstrap@example.se","role":"authenticated"}', true);
+
+select results_eq(
+  $select public.claim_platform_admin_invite()$,
+  array[false],
+  'Bootstrapinbjudan kan inte skapa ytterligare systemadmin när en redan finns'
+);
+
 select set_config('request.jwt.claims', '{"sub":"a0000000-0000-0000-0000-000000000001","email":"admin@example.se","role":"authenticated"}', true);
 
 select ok(
@@ -35,7 +47,7 @@ select lives_ok(
 
 select results_eq(
   $$select count(*) from public.platform_admin_invites where status = 'pending'$$,
-  array[2::bigint],
+  array[3::bigint],
   'Systemadmin kan läsa väntande inbjudningar'
 );
 
