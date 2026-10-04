@@ -93,3 +93,21 @@ dialogen kan scrollas med touch och att bakgrunden är stilla.
   grupp kräver bekräftelse och påverkar inte personernas medlemskap i laget.
 - Vyerna använder `roster.manage`. Ledarnas funktioner visas från lagets ansvar;
   namnredigering ändrar inte roller eller ansvar.
+
+## Kompakta aktivitetsvyer och komponentreferens
+
+- Aktivitetsdetaljer visas i en kort sammanfattning med datum, tid, samling och
+  plats. Serietillhörighet är en liten markering.
+- Bemanning visas som rader med kortnamn och svar, ledare först och därefter
+  spelare. Grupprubriker visar antal kallade och antal som kommer.
+- Teknisk aktivitetshistorik visas inte i den vanliga aktivitetsdialogen.
+  Händelser behålls i databasen för spårbarhet och felsökning. Leveransstatus
+  finns kvar i en hopfällbar del.
+- Formulärdelar skiljs åt med tunna linjer. Datum och tid har innehållsanpassad
+  bredd; kontroller ska ha minst 44 px höjd och rymmas även i Safari på iOS.
+- På lagets sidor finns hela menyn i vänsterspalten från 768 CSS-pixlar
+  (dator och iPad). Under 768 pixlar används endast hamburgermenyn.
+  Arbetsyteval, konto och lagnavigation kommer från samma komponent i båda lägen.
+- [Komponentsidan](/components) visar interaktiva exempel med syntetiska data.
+  Aktivitetsdialogerna återanvänder produktionskomponenterna i skrivskyddat
+  demoläge så att exempel inte kan skapa aktiviteter eller utskick.

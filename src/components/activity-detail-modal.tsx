@@ -2,16 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Activity, Member, Organization, Team } from "@/domain/club";
+import { ActivityStaffingList } from "@/components/activity-staffing-list";
 import { AttendanceModal } from "@/components/attendance-modal";
 import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
-
-type EventRow = {
-  id: string;
-  event_type: "invitation_scheduled" | "invitation_queued" | "invitation_sent" | "invitation_delivery_failed" | "reminder_scheduled" | "reminder_sent" | "invitation_response_changed" | "activity_updated" | "activity_cancelled";
-  channel: "push" | "email" | "sms" | "in_app" | null;
-  recipient_count: number | null;
-  created_at: string;
-};
 
 type DeliveryChannel = {
   channel: "email" | "push";
@@ -59,18 +52,6 @@ type Props = {
   onEdit: (activity: Activity) => void;
 };
 
-const eventLabels: Record<EventRow["event_type"], string> = {
-  invitation_scheduled: "Kallelse schemalagd",
-  invitation_queued: "Kallelse köad",
-  invitation_sent: "Kallelse skickad",
-  invitation_delivery_failed: "Notifiering kunde inte levereras",
-  reminder_scheduled: "Påminnelse schemalagd",
-  reminder_sent: "Påminnelse skickad",
-  invitation_response_changed: "Kallelsesvar registrerat",
-  activity_updated: "Aktiviteten uppdaterad",
-  activity_cancelled: "Aktiviteten inställd",
-};
-
 const statusLabels: Record<DeliveryChannel["status"], string> = {
   pending: "Väntar",
   sent: "Skickad",
@@ -81,10 +62,9 @@ const statusLabels: Record<DeliveryChannel["status"], string> = {
 export function ActivityDetailModal({ activity, organization, team, canManageActivity, canManageInvitations, canManageAttendance, rosterMembers, onClose, onEdit }: Props) {
   useModalScrollLock();
   const timeZone = organization.timeZone ?? "Europe/Stockholm";
-  const [events, setEvents] = useState<EventRow[]>([]);
   const [deliveryStatus, setDeliveryStatus] = useState<DeliveryStatus | null>(null);
   const [invitees, setInvitees] = useState<ActivityInvitee[]>([]);
-  const [historyError, setHistoryError] = useState(false);
+  const [deliveryError, setDeliveryError] = useState(false);
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [selectedPeople, setSelectedPeople] = useState<Set<string>>(new Set());
   const [invitationPending, setInvitationPending] = useState(false);
@@ -94,18 +74,17 @@ export function ActivityDetailModal({ activity, organization, team, canManageAct
   const date = new Intl.DateTimeFormat("sv-SE", { timeZone, weekday: "long", day: "numeric", month: "long" }).format(new Date(activity.startsAt));
   const time = new Intl.DateTimeFormat("sv-SE", { timeZone, hour: "2-digit", minute: "2-digit" });
 
-  const loadEventsAndDelivery = useCallback(async (activityId: string, shouldApply: () => boolean = () => true) => {
+  const loadDelivery = useCallback(async (activityId: string, shouldApply: () => boolean = () => true) => {
     try {
       const response = await fetch(`/api/activities/${activityId}/events`);
       if (!response.ok) throw new Error();
       const body = await response.json();
       if (shouldApply()) {
-        setEvents(body.events ?? []);
         setDeliveryStatus(body.deliveryStatus ?? null);
-        setHistoryError(false);
+        setDeliveryError(false);
       }
     } catch {
-      if (shouldApply()) setHistoryError(true);
+      if (shouldApply()) setDeliveryError(true);
     }
   }, []);
 
@@ -114,9 +93,9 @@ export function ActivityDetailModal({ activity, organization, team, canManageAct
     let cancelled = false;
     // The shared loader only updates state after awaiting the fetch response.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    void loadEventsAndDelivery(activity.id, () => !cancelled);
+    void loadDelivery(activity.id, () => !cancelled);
     return () => { cancelled = true; };
-  }, [activity.id, canManageInvitations, loadEventsAndDelivery]);
+  }, [activity.id, canManageInvitations, loadDelivery]);
 
   useEffect(() => {
     if (!canManageInvitations) return;
@@ -131,9 +110,6 @@ export function ActivityDetailModal({ activity, organization, team, canManageAct
     return () => { cancelled = true; };
   }, [activity.id, canManageInvitations]);
 
-  const leaders = invitees.filter((item) => item.role === "leader");
-  const players = invitees.filter((item) => item.role === "participant");
-  const responseText = { accepted: "Kommer", declined: "Kan inte", pending: "Ej svarat" } as const;
   const alreadyInvited = new Set(invitees.map((item) => item.personId));
   const availableInvitees = rosterMembers.filter((member) => !alreadyInvited.has(member.id));
 
@@ -172,7 +148,7 @@ export function ActivityDetailModal({ activity, organization, team, canManageAct
     setSelectedPeople(new Set());
     const [detailResponse] = await Promise.all([
       fetch(`/api/activities/${activity.id}`),
-      loadEventsAndDelivery(activity.id),
+      loadDelivery(activity.id),
     ]);
     if (detailResponse.ok) {
       const detail = await detailResponse.json();
@@ -189,13 +165,12 @@ export function ActivityDetailModal({ activity, organization, team, canManageAct
         <p><span>Tid</span><strong>{time.format(new Date(activity.startsAt))}–{time.format(new Date(activity.endsAt))}</strong></p>
         <p><span>Plats</span><strong>{activity.location || "Ingen plats angiven"}</strong></p>
         {activity.responseDueAt ? <p><span>Svara senast</span><strong>{new Intl.DateTimeFormat("sv-SE", { timeZone, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(activity.responseDueAt))}</strong></p> : null}
-        {activity.seriesId ? <p><span>Serie</span><strong>Ingår i en aktivitetsserie</strong></p> : null}
+        {activity.seriesId ? <span className="activity-series-badge">Aktivitetsserie</span> : null}
       </div>
 
       {canManageInvitations ? <section className="activity-staffing" aria-labelledby="activity-staffing-title">
         <div className="card-heading"><div><p className="eyebrow">Kallelser</p><h3 id="activity-staffing-title">Bemanning</h3></div></div>
-        {leaders.length ? <div className="invitee-list">{leaders.map((leader) => <div key={leader.personId}><strong>{leader.displayName}</strong><span data-response={leader.response}>{responseText[leader.response]}</span></div>)}</div> : <p className="overview-empty">Inga ledare är kallade till aktiviteten.</p>}
-        {players.length ? <details className="player-invitations"><summary>Spelare · {players.filter((item) => item.response === "accepted").length} kommer av {players.length} kallade</summary><div className="invitee-list">{players.map((player) => <div key={player.personId}><strong>{player.displayName}</strong><span data-response={player.response}>{responseText[player.response]}</span></div>)}</div></details> : null}
+        <ActivityStaffingList invitees={invitees} />
       </section> : null}
 
       {canManageInvitations ? <details className="activity-invitation-add">
@@ -224,13 +199,7 @@ export function ActivityDetailModal({ activity, organization, team, canManageAct
         </li>)}</ol> : <p className="overview-empty">Inga notifieringar har köats för aktiviteten ännu.</p>}
       </details> : null}
 
-      {canManageInvitations && (events.length > 0 || historyError) ? <section className="activity-history" aria-labelledby="activity-history-title">
-        <div className="card-heading"><div><p className="eyebrow">Historik</p><h3 id="activity-history-title">Kallelser och ändringar</h3></div></div>
-        {historyError ? <p className="overview-empty">Historiken kunde inte hämtas.</p> : <ol>{events.map((event) => <li key={event.id}>
-          <span className="history-dot" />
-          <span><strong>{eventLabels[event.event_type]}</strong><small>{new Intl.DateTimeFormat("sv-SE", { timeZone, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(event.created_at))}{event.recipient_count ? ` · ${event.recipient_count} mottagare` : ""}{event.channel ? ` · ${event.channel}` : ""}</small></span>
-        </li>)}</ol>}
-      </section> : null}
+      {canManageInvitations && deliveryError ? <p className="overview-empty" role="status">Leveransstatus kunde inte hämtas.</p> : null}
       <div className="modal-actions"><button className="secondary" onClick={onClose} type="button">Stäng</button>{canManageAttendance && activityStarted ? <button className="primary" onClick={() => setAttendanceOpen(true)} type="button">Rapportera närvaro</button> : null}{canManageActivity ? <button className="secondary" onClick={() => onEdit(activity)} type="button">Redigera aktivitet</button> : null}</div>
     </section>
     {attendanceOpen && canManageAttendance ? <AttendanceModal activityId={activity.id} onClose={() => setAttendanceOpen(false)} /> : null}

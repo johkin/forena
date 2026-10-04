@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { TeamMenu } from "@/components/team-menu";
-import { AppHeader } from "@/components/app-header";
+import { AppShell } from "@/components/app-shell";
 import {
   createTeamGroup,
   deleteTeamGroup,
@@ -247,7 +247,7 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
 
   return (
     <main>
-      <AppHeader
+      <AppShell
         homeHref={`/o/${organizationSlug}/t/${teamSlug}`}
         navigation={
           <TeamMenu
@@ -278,17 +278,7 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
         workspaces={workspaces}
         logoutDestination={`/o/${organizationSlug}/t/${teamSlug}`}
         adminHref={isAdmin ? `/o/${organizationSlug}/admin/roles` : undefined}
-      />
-      <div className="shell">
-        <TeamMenu
-          organizationSlug={organizationSlug}
-          teamSlug={teamSlug}
-          teamName={team.name}
-          canManageRoster={Boolean(canManage)}
-          leaderView
-          activeItem="members"
-          hideTrigger
-        />
+      >
         <section className="content">
           <section className="application-card members-admin-card">
             <div className="application-page-heading">
@@ -623,7 +613,7 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
             )}
           </section>
         </section>
-      </div>
+      </AppShell>
     </main>
   );
 }
