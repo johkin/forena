@@ -4,9 +4,11 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Organization, Team, Workspace } from "@/domain/club";
 import { LogoutButton } from "@/components/logout-button";
 import { NotificationSettings } from "@/components/notification-settings";
+import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 
-type Props = {
+export type AppHeaderProps = {
+  sidebarNavigation?: boolean;
   homeHref?: string;
   navigation?: ReactNode;
   organization?: Organization;
@@ -18,16 +20,23 @@ type Props = {
   adminHref?: string;
 };
 
-export function AppHeader({ homeHref = "/", navigation, organization, team, workspaces, accountEmail, loginHref, logoutDestination = "/", adminHref }: Props) {
+export function AppHeader({ homeHref = "/", navigation, organization, team, workspaces, accountEmail, loginHref, logoutDestination = "/", adminHref, sidebarNavigation = false }: AppHeaderProps) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const media = window.matchMedia("(min-width: 768px)");
+    const closeOnDesktop = () => { if (sidebarNavigation && media.matches) setOpen(false); };
+    media.addEventListener("change", closeOnDesktop);
+    return () => media.removeEventListener("change", closeOnDesktop);
+  }, [sidebarNavigation]);
+
+  useEffect(() => {
     if (!open) return;
     const menu = menuRef.current;
     const trigger = triggerRef.current;
-    const focusable = () => Array.from(menu?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? []);
+    const focusable = () => Array.from(menu?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), select:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? []);
     (focusable()[0] ?? menu)?.focus();
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") { setOpen(false); return; }
@@ -50,13 +59,26 @@ export function AppHeader({ homeHref = "/", navigation, organization, team, work
     <a className="brand" href={homeHref} aria-label="Förena startsida"><span className="brand-mark">F</span><span>Förena</span></a>
     <div className="topbar-actions">
       {accountEmail ? <NotificationSettings /> : null}
-      <button ref={triggerRef} className="header-menu-trigger" type="button" aria-label={open ? "Stäng meny" : "Öppna meny"} aria-expanded={open} aria-controls="header-menu" onClick={() => setOpen((value) => !value)}>
+      <button ref={triggerRef} className={`header-menu-trigger ${sidebarNavigation ? "sidebar-menu-trigger" : ""}`} type="button" aria-label={open ? "Stäng meny" : "Öppna meny"} aria-expanded={open} aria-controls="header-menu" onClick={() => setOpen((value) => !value)}>
         <span aria-hidden="true">{open ? "×" : "☰"}</span><span>Meny</span>
       </button>
     </div>
-    {open ? <div className="header-menu-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}>
+    {open ? <MenuScrollLock><div className="header-menu-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}>
       <div ref={menuRef} id="header-menu" className="header-menu-panel" role="dialog" aria-modal="true" aria-label="Huvudmeny" tabIndex={-1} onClick={(event) => { if ((event.target as HTMLElement).closest("a, nav button")) setOpen(false); }}>
         <div className="header-menu-heading"><strong>Meny</strong><button type="button" aria-label="Stäng meny" onClick={() => setOpen(false)}>×</button></div>
+        <AppMenuContent organization={organization} team={team} workspaces={workspaces} navigation={navigation} accountEmail={accountEmail} loginHref={loginHref} homeHref={homeHref} logoutDestination={logoutDestination} adminHref={adminHref} />
+      </div>
+    </div></MenuScrollLock> : null}
+  </header>;
+}
+
+function MenuScrollLock({ children }: { children: ReactNode }) {
+  useModalScrollLock();
+  return children;
+}
+
+export function AppMenuContent({ organization, team, workspaces, navigation, accountEmail, adminHref, loginHref, homeHref = "/", logoutDestination = "/" }: AppHeaderProps) {
+  return <>
         {organization && workspaces?.length ? <div className="header-menu-section"><p className="eyebrow">Arbetsyta</p><WorkspaceSwitcher organization={organization} team={team} workspaces={workspaces} /></div> : null}
         {navigation ? <div className="header-menu-section header-menu-navigation">{navigation}</div> : null}
         {organization && accountEmail ? <div className="header-menu-section header-menu-account"><p className="eyebrow">Assistent</p><a href={`/o/${organization.slug}/memories`}>Minnen</a></div> : null}
@@ -65,8 +87,7 @@ export function AppHeader({ homeHref = "/", navigation, organization, team, work
           {accountEmail ? <><p className="eyebrow">Konto</p><small className="header-menu-email">{accountEmail}</small><a href="/profile">Min profil</a><LogoutButton destination={logoutDestination} /></>
             : <a href={loginHref ?? `/login?next=${encodeURIComponent(homeHref)}`}>Logga in</a>}
           <a href="/connect">Anslut AI</a>
+          <a href="/components">Komponenter</a>
         </div>
-      </div>
-    </div> : null}
-  </header>;
+  </>;
 }

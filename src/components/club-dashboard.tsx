@@ -9,7 +9,7 @@ import { TeamOverview } from "@/components/team-overview";
 import { ActivityDetailModal } from "@/components/activity-detail-modal";
 import { AttendanceModal } from "@/components/attendance-modal";
 import { TeamMenu } from "@/components/team-menu";
-import { AppHeader } from "@/components/app-header";
+import { AppShell } from "@/components/app-shell";
 import type { ActivityDraft } from "@/lib/ai/activity-draft";
 import {
   respondToInvitation, summarizeInvitations, type Activity, type DashboardView, type Invitation,
@@ -82,16 +82,14 @@ export function ClubDashboard({ organization, sections, team, activity, members,
 
   return (
     <main>
-      <AppHeader
+      <AppShell
         homeHref={`/o/${organization.slug}/t/${team.slug}`}
         navigation={<TeamMenu organizationSlug={organization.slug} teamSlug={team.slug} teamName={team.name} canManageRoster={canManageRoster} leaderView={view === "leader"} activeItem={activePage} onSelectView={setActivePage} navigationOnly />}
         accountEmail={accountEmail}
         organization={organization} team={team} workspaces={workspaces}
         logoutDestination={`/o/${organization.slug}/t/${team.slug}`}
         adminHref={canAdministerOrganization ? `/o/${organization.slug}/admin/roles` : undefined}
-      />
-      <div className="shell">
-        <TeamMenu organizationSlug={organization.slug} teamSlug={team.slug} teamName={team.name} canManageRoster={canManageRoster} leaderView={view === "leader"} activeItem={activePage} onSelectView={setActivePage} hideTrigger />
+      >
         <section className="content" id={activePage}>
           <div className="welcome"><div><p className="eyebrow">{sections.length > 1 ? `${sections.find((item) => item.id === team.sectionId)?.name ?? "Sektion"} · ` : ""}{organization.name}</p><h1>{team.name}</h1><p>{activePage === "calendar" ? "Alla aktiviteter för laget." : view === "leader" ? "Det laget behöver från dig just nu." : `Det viktigaste för ${familyMember?.displayName ?? "spelaren"} just nu.`}</p></div>{view === "leader" && canManageActivities && <div className="welcome-actions"><button className="primary" onClick={() => { setActivityDraft(undefined); setActivityEditorMode("create"); }} type="button">+ Ny aktivitet</button></div>}</div>
           {notice && <div className="toast" role="status">✓ {notice}</div>}
@@ -138,7 +136,7 @@ export function ClubDashboard({ organization, sections, team, activity, members,
                 </div>
               </>}
         </section>
-      </div>
+      </AppShell>
       {activityEditorMode && canManageActivities ? <ActivityEditorModal mode={activityEditorMode} organization={organization} team={team} members={rosterMembers} activity={activityEditorMode === "edit" ? (editingActivity ?? currentActivity) : undefined} draft={activityEditorMode === "create" ? activityDraft : undefined} source={source} canManageInvitations={canManageInvitations} onClose={() => { setActivityEditorMode(null); setActivityDraft(undefined); }} onNotice={setNotice} /> : null}
       {selectedActivity ? <ActivityDetailModal activity={selectedActivity} organization={organization} team={team} canManageActivity={canManageActivities} canManageInvitations={canManageInvitations} canManageAttendance={canManageAttendance} rosterMembers={rosterMembers} onClose={() => setSelectedActivity(undefined)} onEdit={(item) => { setActivityDraft(undefined); setEditingActivity(item); setSelectedActivity(undefined); setActivityEditorMode("edit"); }} /> : null}
       {attendanceActivity && canManageAttendance ? <AttendanceModal activityId={attendanceActivity.id} onClose={() => setAttendanceActivity(undefined)} onSaved={() => setPendingAttendance((current) => current.filter((item) => item.id !== attendanceActivity.id))} /> : null}

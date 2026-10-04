@@ -121,3 +121,11 @@ applikationsbehörighet och omfattas dessutom av RLS. MCP-svar är dataminimerad
 privata kommentarer och assistentminnen exporteras inte. Verktygsanrop loggas
 på metadata-nivå. Första versionen läser och förbereder utkast utan skrivningar.
 Se [MCP-server och anslutning](mcp.md) för verktyg, autentisering och nästa steg.
+
+Lagdashboarden och truppen använder `AppShell`. Den komponerar `AppHeader`
+och vänstermenyn från samma `AppMenuContent`, med `TeamMenu` som central
+lagnavigation. Vid 768 CSS-pixlar växlar hela navigationen mellan vänsterspalt
+och mobilens dialogmeny; den visas aldrig på båda sidor samtidigt.
+`/components` är en publik komponentreferens med enbart syntetiska data och
+aktivitetsredigeraren i demoläge. Aktivitetshändelser lagras fortsatt, men
+renderas inte som teknisk historik i den vanliga aktivitetsdialogen.
