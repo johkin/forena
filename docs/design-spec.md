@@ -18,6 +18,37 @@ utan att ändra arbetsflödet. Ingen vy får kräva horisontell sidskroll.
 | Fält | Vit yta, tunn linje, minst 9–10 px hörnradie och tydlig fokusmarkering |
 | Kort/dialog | 14–18 px hörnradie; dialogens innehåll får scrolla utan att bakgrunden rör sig |
 
+## Gemensamma menyer, header och footer
+
+Alla sidor ska använda centrala komponenter för navigation, sidhuvud och sidfot
+enligt [arkitekturen](architecture.md). Det gäller även inloggning, profil,
+publika vyer och administration på förenings-, sektions-, lag- och systemnivå.
+En ny sida ska inte skapa en egen meny, header eller footer genom kopierad JSX.
+
+- **Menyer:** Använd en gemensam menykomponent och centrala menydefinitioner.
+  Samma destination ska ha samma benämning och ordning i samma kontext. Markera
+  aktuellt val tydligt. Mobilmenyn och desktopnavigationen ska utgå från samma
+  definitioner, inte ha separata listor av länkar.
+- **Header:** Använd den gemensamma headerkomponenten. Varumärke, arbetsyteval,
+  menyknapp och relevanta kontoåtgärder ska placeras och fungera konsekvent.
+  Systemadministrationen får ha en tydligt markerad variant men inte en egen
+  fristående headerimplementation.
+- **Footer:** Använd den gemensamma footerkomponenten. Återkommande länkar och
+  information ska definieras centralt och visas konsekvent där de är relevanta.
+  Sidfoten ska kunna radbrytas på telefon och får inte täcka innehåll eller
+  åtgärdsknappar.
+- **Kontext och behörighet:** Anpassa innehållet genom props eller gemensam
+  konfiguration. Visa bara relevanta och tillåtna menyval. En avskalad variant
+  för exempelvis inloggning ska använda samma komponenter, inte kopior.
+- **Tillgänglighet:** Tangentbordsnavigation, fokus, stängning med Escape och
+  eventuell scrollåsning ska hanteras i den gemensamma menykomponenten.
+  Undvik dubbla headers, menyer och footers när layouter nästlas.
+
+Vid ändringar i dessa komponenter ska berörda sidtyper kontrolleras både på
+telefon och desktop, inklusive publikt läge, inloggat läge och systemadmin.
+Kontrollera att navigationen är nåbar, att aktivt val och behörighetsstyrda
+länkar är korrekta och att ingen horisontell sidskroll uppstår.
+
 ## Formulär och dialoger
 
 - Dela långa formulär i namngivna delar. Aktivitetens grunduppgifter och tid

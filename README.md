@@ -113,12 +113,24 @@ secrets direkt i Supabase. De behöver inte kopieras till GitHub för en deploy.
 
 Vercel-projektet ska dessutom ha `NEXT_PUBLIC_SUPABASE_URL`,
 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` och `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
-konfigurerade för Production. `RESEND_FROM_EMAIL` ska vara en avsändare på en
-domän som verifierats i Resend. Applikationen använder requestens origin för
-länkar i e-post och använder Vercels
-`VERCEL_PROJECT_PRODUCTION_URL` som reserv. Sätt `SITE_URL` till den canonical
-produktionsadressen om projektet har flera domäner eller Vercel-alias; denna
-override används då för samtliga användarlänkar. Endast publika nycklar får
+konfigurerade för Production. Serverdelen använder även `SUPABASE_SECRET_KEY`
+för betrodda bootstrap-åtgärder samt `RESEND_API_KEY` och `RESEND_FROM_EMAIL`
+för transaktionsmail. `RESEND_FROM_EMAIL` ska vara en avsändare på en domän
+som verifierats i Resend.
+
+För en ny installation kan `FORENA_INITIAL_SYSTEM_ADMIN_EMAIL` sättas till
+e-postadressen för den första systemadministratören. Sätt den endast i den
+miljö som ska bootstrapas, normalt Production. Så länge databasen saknar en
+`system_admin` skapar servern idempotent en bootstrap-inbjudan och skickar
+ett mail till adressen. Mailet innehåller en engångslänk; rollen aktiveras först
+när mottagaren öppnar länken, loggar in med samma verifierade e-postadress och
+accepterar inbjudan. När den första systemadministratören finns är databasen
+source of truth och miljövariabeln kan tas bort.
+
+Applikationen använder requestens origin för länkar i e-post och använder
+Vercels `VERCEL_PROJECT_PRODUCTION_URL` som reserv. Sätt `SITE_URL` till den
+canonical produktionsadressen om projektet har flera domäner eller Vercel-alias;
+denna override används då för samtliga användarlänkar. Endast publika nycklar får
 exponeras i webbläsaren; lägg aldrig in en secret-, service-role- eller privat
 VAPID-nyckel som `NEXT_PUBLIC_*`.
 

@@ -2,12 +2,20 @@ export type EntityId = string;
 
 export type TeamPermission = "team.view" | "team.manage" | "activity.manage" | "invitation.manage" | "attendance.manage" | "roster.manage" | "responsibility.manage" | "task.manage";
 
+export type Discipline = {
+  id: EntityId;
+  key: string;
+  name: string;
+  category?: string;
+};
+
 export type Organization = {
   id: EntityId;
   slug: string;
   name: string;
   assistantName: string;
   timeZone?: string;
+  disciplineId?: EntityId;
 };
 
 export type Section = {
@@ -15,6 +23,7 @@ export type Section = {
   organizationId: EntityId;
   slug: string;
   name: string;
+  disciplineId?: EntityId;
 };
 
 export type Team = {
@@ -24,6 +33,7 @@ export type Team = {
   slug: string;
   name: string;
   season: string;
+  disciplineId?: EntityId;
 };
 
 export type Workspace = {
