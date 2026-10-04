@@ -6,6 +6,7 @@ import { loadTeamAssistantContext } from "./team-assistant-context";
 import { buildActivityDraftPrompt, buildEventResearchPrompt, buildTeamAssistantPrompt } from "./team-assistant-prompts";
 import { createTeamAssistantTools } from "./team-assistant-tools";
 import { createAssistantMemoryTools } from "./assistant-memory-tools";
+import type { AssistantMemoryDraft } from "./assistant-memory-draft";
 import { TeamAssistantError, type AssistantDependencies, type TeamAssistantInput, type TeamAssistantReply } from "./team-assistant-types";
 
 // Keep the model already exercised by the production team briefing.
@@ -82,10 +83,11 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
       };
     }
 
+    const memoryDrafts: AssistantMemoryDraft[] = [];
     const assistant = new ToolLoopAgent({
       model,
       instructions: buildTeamAssistantPrompt({ assistantName: organization?.assistant_name, viewerKind: context.viewer.kind, canManageActivities }),
-      tools: { ...createTeamAssistantTools(supabase, teamId, activityIds), ...createAssistantMemoryTools(supabase, memoryScope) },
+      tools: { ...createTeamAssistantTools(supabase, teamId, activityIds), ...createAssistantMemoryTools(memoryScope, draft => memoryDrafts.push(draft)) },
       maxOutputTokens: 500,
       stopWhen: isStepCount(5),
       providerOptions: { gateway: { user: createHash("sha256").update(userId).digest("hex").slice(0, 24), tags: ["feature:team-assistant"] } },
@@ -95,7 +97,7 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
       abortSignal: AbortSignal.timeout(30_000),
     });
     console.info("team_assistant_completed", { teamId, model, latencyMs: Date.now() - startedAt, inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens });
-    return { answer: result.text || "Jag kunde inte formulera ett svar.", source: "ai", model };
+    return { answer: result.text || "Jag kunde inte formulera ett svar.", memoryDrafts, source: "ai", model };
   } catch (error) {
     const gatewayError = error as Error & { statusCode?: number; cause?: { name?: string; message?: string } };
     console.warn("team_assistant_fallback", {

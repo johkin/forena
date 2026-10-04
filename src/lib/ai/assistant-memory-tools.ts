@@ -1,8 +1,6 @@
+import { randomUUID } from "node:crypto";
 import { jsonSchema, tool } from "ai";
-import type { AssistantDependencies } from "./team-assistant-types";
-
-type MemoryScope = "personal" | "team" | "section" | "organization";
-type MemoryKind = "fact" | "preference" | "instruction" | "convention";
+import { memoryScopeLabels, normalizeMemoryInput, type AssistantMemoryDraft, type MemoryInput, type MemoryScope } from "./assistant-memory-draft";
 
 export type AssistantMemoryScope = {
   organizationId: string;
@@ -10,72 +8,56 @@ export type AssistantMemoryScope = {
   teamId: string;
   userId: string;
   disciplineId: string | null;
+  organizationName?: string;
+  sectionName?: string;
+  teamName?: string;
 };
 
-export function createAssistantMemoryTools(
-  supabase: AssistantDependencies["supabase"],
-  scope: AssistantMemoryScope,
-) {
+/** This tool deliberately has no database client or persistence capability. */
+export function createAssistantMemoryTools(scope: AssistantMemoryScope, onDraft: (draft: AssistantMemoryDraft) => void) {
   const scopeIds: Record<MemoryScope, string> = {
-    personal: scope.userId,
-    team: scope.teamId,
-    section: scope.sectionId,
-    organization: scope.organizationId,
+    personal: scope.userId, team: scope.teamId, section: scope.sectionId, organization: scope.organizationId,
   };
-
+  const scopeNames: Record<MemoryScope, string> = {
+    personal: "Mina minnen", team: scope.teamName ?? "Laget",
+    section: scope.sectionName ?? "Sektionen", organization: scope.organizationName ?? "Föreningen",
+  };
+  const proposed = new Set<string>();
   return {
     remember: tool({
-      description: "Spara beständig information som användaren uttryckligen ber assistenten komma ihåg, eller en tydlig stabil konvention som är värdefull i framtida samtal. Spara inte känsliga personuppgifter, hälsouppgifter, tillfälliga planer eller fakta som redan finns strukturerade i Förena. Välj minsta lämpliga scope.",
-      inputSchema: jsonSchema<{
-        scope: MemoryScope;
-        kind: MemoryKind;
-        subject: string;
-        key?: string;
-        content: string;
-        disciplineSpecific?: boolean;
-      }>({
+      description: "Föreslå ett beständigt minne. Verktyget sparar ingenting. Användaren måste granska den exakta texten och nivån och klicka Spara minne. Föreslå inte känsliga personuppgifter, hälsouppgifter, kallelsesvar, tillfälliga planer eller fakta som redan finns i Förena.",
+      inputSchema: jsonSchema<MemoryInput>({
         type: "object",
         properties: {
           scope: { type: "string", enum: ["personal", "team", "section", "organization"] },
           kind: { type: "string", enum: ["fact", "preference", "instruction", "convention"] },
           subject: { type: "string", minLength: 1, maxLength: 80 },
-          key: { type: "string", pattern: "^[a-z0-9]+(?:[._-][a-z0-9]+)*$" },
+          key: { type: "string", maxLength: 120, pattern: "^[a-z0-9]+(?:[._-][a-z0-9]+)*$" },
           content: { type: "string", minLength: 1, maxLength: 1200 },
-          disciplineSpecific: { type: "boolean", description: "True only when the memory is specific to the current discipline rather than generally applicable." },
+          disciplineSpecific: { type: "boolean", description: "Gäller bara den aktuella disciplinen, inte verksamheten generellt." },
         },
         required: ["scope", "kind", "subject", "content"],
         additionalProperties: false,
       }),
-      execute: async input => {
-        const content = input.content.trim();
-        const subject = input.subject.trim();
-        if (!content || content.length > 1200 || !subject || subject.length > 80) return { saved: false, error: "Minnet har ogiltigt innehåll." };
-        if (input.key && !/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/.test(input.key)) return { saved: false, error: "Minnets nyckel är ogiltig." };
-        const row = {
-          organization_id: scope.organizationId,
-          discipline_id: input.disciplineSpecific ? scope.disciplineId : null,
-          scope: input.scope,
-          scope_id: scopeIds[input.scope],
-          kind: input.kind,
-          subject,
-          memory_key: input.key ?? null,
-          content,
-          created_by: scope.userId,
-        };
-        const { error } = input.key
-          ? await supabase.rpc("upsert_assistant_memory", {
-              target_organization_id: row.organization_id,
-              target_discipline_id: row.discipline_id,
-              target_scope: row.scope,
-              target_scope_id: row.scope_id,
-              target_kind: row.kind,
-              target_subject: row.subject,
-              target_memory_key: input.key,
-              target_content: row.content,
-            })
-          : await supabase.from("assistant_memories").insert(row);
-        if (error) return { saved: false, error: error.code === "42501" ? "Du saknar behörighet att spara minne på den nivån." : "Minnet kunde inte sparas." };
-        return { saved: true, scope: input.scope, kind: input.kind, content: row.content };
+      execute: async value => {
+        try {
+          const input = normalizeMemoryInput(value);
+          if (input.disciplineSpecific && !scope.disciplineId) return { proposed: false, saved: false, error: "Ingen disciplin är vald för laget." };
+          const fingerprint = JSON.stringify(input);
+          if (proposed.has(fingerprint)) return { proposed: true, saved: false, requiresConfirmation: true };
+          if (proposed.size >= 3) return { proposed: false, saved: false, error: "Granska de befintliga förslagen först." };
+          const draft: AssistantMemoryDraft = {
+            id: randomUUID(), userId: scope.userId, organizationId: scope.organizationId,
+            scope: input.scope, scopeId: scopeIds[input.scope], scopeName: scopeNames[input.scope],
+            disciplineId: input.disciplineSpecific ? scope.disciplineId : null,
+            kind: input.kind, subject: input.subject, key: input.key ?? null, content: input.content,
+          };
+          proposed.add(fingerprint);
+          onDraft(draft);
+          return { proposed: true, saved: false, requiresConfirmation: true, scope: memoryScopeLabels[draft.scope], content: draft.content };
+        } catch (error) {
+          return { proposed: false, saved: false, error: error instanceof Error ? error.message : "Ogiltigt minnesförslag." };
+        }
       },
     }),
   };

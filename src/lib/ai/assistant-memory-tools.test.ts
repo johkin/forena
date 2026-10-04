@@ -1,40 +1,54 @@
 import { describe, expect, it, vi } from "vitest";
 import { createAssistantMemoryTools } from "./assistant-memory-tools";
-import type { AssistantDependencies } from "./team-assistant-types";
+import { normalizeMemoryDraft, type AssistantMemoryDraft } from "./assistant-memory-draft";
 
-function setup(error: { code?: string } | null = null) {
-  const insert = vi.fn().mockResolvedValue({ error });
-  const from = vi.fn(() => ({ insert }));
-  const rpc = vi.fn().mockResolvedValue({ data: "memory-id", error });
-  const supabase = { from, rpc } as unknown as AssistantDependencies["supabase"];
-  return { tools: createAssistantMemoryTools(supabase, { organizationId: "org", sectionId: "section", teamId: "team", userId: "user", disciplineId: "football" }), insert, rpc };
+const scope = {
+  organizationId: "10000000-0000-0000-0000-000000000001", sectionId: "20000000-0000-0000-0000-000000000001",
+  teamId: "30000000-0000-0000-0000-000000000001", userId: "40000000-0000-0000-0000-000000000001",
+  disciplineId: "50000000-0000-0000-0000-000000000001", teamName: "F2016",
+};
+const input = { scope: "team" as const, kind: "convention" as const, subject: "Match", content: "Samling 45 minuter innan.", key: "match.gathering" };
+function setup() {
+  const drafts: AssistantMemoryDraft[] = [];
+  const onDraft = vi.fn((draft: AssistantMemoryDraft) => drafts.push(draft));
+  const tools = createAssistantMemoryTools(scope, onDraft);
+  return { tools, onDraft, drafts };
 }
 
-describe("assistant memory tools", () => {
-  it("stores a keyed team memory using the current team scope", async () => {
-    const { tools, rpc } = setup();
-    const result = await tools.remember.execute!({ scope: "team", kind: "convention", subject: "match", key: "match.gathering", content: "Samling 45 minuter före hemmamatch." } as never, {} as never);
-    expect(result).toMatchObject({ saved: true, scope: "team" });
-    expect(rpc).toHaveBeenCalledWith("upsert_assistant_memory", expect.objectContaining({
-      target_organization_id: "org",
-      target_discipline_id: null,
-      target_scope: "team",
-      target_scope_id: "team",
-      target_memory_key: "match.gathering",
-    }));
+describe("assistant memory proposals", () => {
+  it("only proposes even when a tool call requests persistent shared memory", async () => {
+    const { tools, drafts } = setup();
+    const result = await tools.remember.execute!(input, {} as never);
+    expect(result).toMatchObject({ proposed: true, saved: false, requiresConfirmation: true });
+    expect(drafts).toHaveLength(1);
+    expect(drafts[0]).toMatchObject({ scope: "team", scopeId: scope.teamId, organizationId: scope.organizationId, scopeName: "F2016", userId: scope.userId });
+    expect(normalizeMemoryDraft(drafts[0])).toEqual(drafts[0]);
+    // There is deliberately no database dependency and no confirmation tool.
+    expect(Object.keys(tools)).toEqual(["remember"]);
   });
-
-
-  it("allows multiple unkeyed memories through regular inserts", async () => {
-    const { tools, insert } = setup();
-    await tools.remember.execute!({ scope: "team", kind: "fact", subject: "one", content: "Första minnet" } as never, {} as never);
-    await tools.remember.execute!({ scope: "team", kind: "fact", subject: "two", content: "Andra minnet" } as never, {} as never);
-    expect(insert).toHaveBeenCalledTimes(2);
+  it.each(["personal", "team", "section", "organization"] as const)("requires confirmation for %s", async level => {
+    const { tools } = setup();
+    expect(await tools.remember.execute!({ ...input, scope: level }, {} as never)).toMatchObject({ saved: false, requiresConfirmation: true });
   });
-
-  it("reports RLS permission failures without claiming that memory was saved", async () => {
-    const { tools } = setup({ code: "42501" });
-    const result = await tools.remember.execute!({ scope: "organization", kind: "fact", subject: "club", content: "Klubbregel" } as never, {} as never);
-    expect(result).toMatchObject({ saved: false });
+  it("rejects invalid and system-scoped proposals at the execution boundary", async () => {
+    const { tools, onDraft } = setup();
+    expect(await tools.remember.execute!({ ...input, scope: "system" } as never, {} as never)).toMatchObject({ proposed: false, saved: false });
+    expect(await tools.remember.execute!({ ...input, content: " " }, {} as never)).toMatchObject({ proposed: false });
+    expect(await tools.remember.execute!({ ...input, content: 123 } as never, {} as never)).toMatchObject({ proposed: false });
+    expect(onDraft).not.toHaveBeenCalled();
+  });
+  it("deduplicates proposals and limits the number per answer", async () => {
+    const { tools, drafts } = setup();
+    await tools.remember.execute!(input, {} as never);
+    await tools.remember.execute!(input, {} as never);
+    expect(drafts).toHaveLength(1);
+    for (let i = 0; i < 5; i++) await tools.remember.execute!({ ...input, content: `Memory ${i}` }, {} as never);
+    expect(drafts).toHaveLength(3);
+  });
+  it("does not silently turn a missing discipline into a general memory", async () => {
+    const onDraft = vi.fn();
+    const tools = createAssistantMemoryTools({ ...scope, disciplineId: null }, onDraft);
+    expect(await tools.remember.execute!({ ...input, disciplineSpecific: true }, {} as never)).toMatchObject({ proposed: false });
+    expect(onDraft).not.toHaveBeenCalled();
   });
 });

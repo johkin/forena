@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import type { MemoryScope } from "@/lib/ai/assistant-memory-draft";
 
 const scopes = new Set(["personal", "organization", "section", "team"]);
 const kinds = new Set(["fact", "preference", "instruction", "convention"]);
@@ -24,7 +25,9 @@ async function context(formData: FormData) {
   if (!authData.user) redirect(`/login?next=${encodeURIComponent(next)}`);
   const { data: organization } = await supabase.from("organizations").select("id").eq("slug", slug).maybeSingle();
   if (!organization) redirect("/");
-  return { supabase, user: authData.user, organization, slug, scope, scopeId, next };
+  const targetScopeId = scope === "personal" ? authData.user.id : scope === "organization" ? organization.id : scopeId;
+  if (!targetScopeId) redirect(`${next}&error=${encodeURIComponent("Välj nivå först.")}`);
+  return { supabase, user: authData.user, organization, slug, scope: scope as MemoryScope, scopeId: targetScopeId, next };
 }
 
 export async function createMemory(formData: FormData) {
@@ -35,12 +38,10 @@ export async function createMemory(formData: FormData) {
   if (!kinds.has(kind) || !subject || subject.length > 80 || !content || content.length > 1200) {
     redirect(`${ctx.next}&error=${encodeURIComponent("Fyll i rubrik och minne.")}`);
   }
-  const scopeId = ctx.scope === "personal" ? ctx.user.id : ctx.scope === "organization" ? ctx.organization.id : ctx.scopeId;
-  if (!scopeId) redirect(`${ctx.next}&error=${encodeURIComponent("Välj nivå först.")}`);
   const { error } = await ctx.supabase.from("assistant_memories").insert({
     organization_id: ctx.organization.id,
     scope: ctx.scope as "personal" | "organization" | "section" | "team",
-    scope_id: scopeId,
+    scope_id: ctx.scopeId,
     kind: kind as "fact" | "preference" | "instruction" | "convention",
     subject,
     content,
@@ -56,8 +57,10 @@ export async function updateMemory(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const content = String(formData.get("content") ?? "").trim();
   if (!id || !content || content.length > 1200) redirect(`${ctx.next}&error=${encodeURIComponent("Minnet har ogiltigt innehåll.")}`);
-  const { error } = await ctx.supabase.from("assistant_memories").update({ content, updated_at: new Date().toISOString() }).eq("id", id);
-  if (error) redirect(`${ctx.next}&error=${encodeURIComponent("Minnet kunde inte uppdateras.")}`);
+  const { data, error } = await ctx.supabase.from("assistant_memories").update({ content, updated_at: new Date().toISOString() })
+    .eq("id", id).eq("organization_id", ctx.organization.id).eq("scope", ctx.scope).eq("scope_id", ctx.scopeId)
+    .select("id").maybeSingle();
+  if (error || !data) redirect(`${ctx.next}&error=${encodeURIComponent("Minnet kunde inte uppdateras. Det kan ha tagits bort eller så saknas behörighet.")}`);
   revalidatePath(`/o/${ctx.slug}/memories`);
   redirect(`${ctx.next}&saved=1`);
 }
@@ -66,8 +69,10 @@ export async function deleteMemory(formData: FormData) {
   const ctx = await context(formData);
   const id = String(formData.get("id") ?? "");
   if (!id) redirect(ctx.next);
-  const { error } = await ctx.supabase.from("assistant_memories").delete().eq("id", id);
-  if (error) redirect(`${ctx.next}&error=${encodeURIComponent("Minnet kunde inte tas bort.")}`);
+  const { data, error } = await ctx.supabase.from("assistant_memories").delete()
+    .eq("id", id).eq("organization_id", ctx.organization.id).eq("scope", ctx.scope).eq("scope_id", ctx.scopeId)
+    .select("id").maybeSingle();
+  if (error || !data) redirect(`${ctx.next}&error=${encodeURIComponent("Minnet kunde inte tas bort. Det kan redan vara borttaget eller så saknas behörighet.")}`);
   revalidatePath(`/o/${ctx.slug}/memories`);
   redirect(`${ctx.next}&deleted=1`);
 }

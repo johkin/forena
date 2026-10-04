@@ -35,8 +35,8 @@ export async function updateDiscipline(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const category = String(formData.get("category") ?? "").trim() || null;
   if (!id || !name || name.length > 120) redirect("/system/disciplines?error=Ogiltig+disciplin");
-  const { error } = await supabase.from("disciplines").update({ name, category, updated_at: new Date().toISOString() }).eq("id", id);
-  if (error) redirect("/system/disciplines?error=Disciplinen+kunde+inte+uppdateras");
+  const { data, error } = await supabase.from("disciplines").update({ name, category, updated_at: new Date().toISOString() }).eq("id", id).select("id").maybeSingle();
+  if (error || !data) redirect("/system/disciplines?error=Disciplinen+kunde+inte+uppdateras");
   revalidatePath("/system/disciplines");
   redirect("/system/disciplines?saved=1");
 }
@@ -62,8 +62,8 @@ export async function updateSystemMemory(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const content = String(formData.get("content") ?? "").trim();
   if (!id || !content || content.length > 1200) redirect("/system/memories?error=Ogiltigt+minne");
-  const { error } = await supabase.from("assistant_memories").update({ content, updated_at: new Date().toISOString() }).eq("id", id).eq("scope", "system");
-  if (error) redirect("/system/memories?error=Minnet+kunde+inte+uppdateras");
+  const { data, error } = await supabase.from("assistant_memories").update({ content, updated_at: new Date().toISOString() }).eq("id", id).eq("scope", "system").select("id").maybeSingle();
+  if (error || !data) redirect("/system/memories?error=Minnet+kunde+inte+uppdateras");
   revalidatePath("/system/memories");
   redirect("/system/memories?saved=1");
 }
@@ -72,8 +72,8 @@ export async function deleteSystemMemory(formData: FormData) {
   const { supabase } = await requireSystemAdmin();
   const id = String(formData.get("id") ?? "");
   if (!id) redirect("/system/memories?error=Ogiltigt+minne");
-  const { error } = await supabase.from("assistant_memories").delete().eq("id", id).eq("scope", "system");
-  if (error) redirect("/system/memories?error=Minnet+kunde+inte+tas+bort");
+  const { data, error } = await supabase.from("assistant_memories").delete().eq("id", id).eq("scope", "system").select("id").maybeSingle();
+  if (error || !data) redirect("/system/memories?error=Minnet+kunde+inte+tas+bort");
   revalidatePath("/system/memories");
   redirect("/system/memories?deleted=1");
 }
@@ -172,14 +172,14 @@ export async function cancelSystemAdminInvite(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) redirect("/system/administrators?error=Ogiltig+inbjudan");
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("platform_admin_invites")
     .update({ status: "cancelled" })
     .eq("id", id)
-    .eq("status", "pending");
+    .eq("status", "pending").select("id").maybeSingle();
 
-  if (error) {
-    console.error("[system-admin] invite cancellation failed", { message: error.message, inviteId: id });
+  if (error || !data) {
+    console.error("[system-admin] invite cancellation failed", { message: error?.message ?? "No pending invitation changed", inviteId: id });
     redirect("/system/administrators?error=Inbjudan+kunde+inte+avbrytas");
   }
 

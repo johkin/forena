@@ -40,7 +40,7 @@ export async function loadTeamAssistantContext(input: TeamAssistantInput, { supa
   const [{ data: organization }, { data: activities }, { data: section }, { data: memories }] = await Promise.all([
     supabase.from("organizations").select("name, assistant_name, time_zone, discipline_id").eq("id", team.organization_id).single(),
     supabase.from("activities").select("id, activity_type_id, title, description_markdown, gathering_at, starts_at, ends_at, location").eq("team_id", teamId).neq("status", "cancelled").gte("ends_at", new Date().toISOString()).order("starts_at").limit(5),
-    supabase.from("sections").select("discipline_id").eq("id", team.section_id).maybeSingle(),
+    supabase.from("sections").select("discipline_id, name").eq("id", team.section_id).maybeSingle(),
     supabase.from("assistant_memories")
       .select("scope, discipline_id, kind, subject, memory_key, content, updated_at")
       .or(`scope.eq.system,and(scope.eq.organization,scope_id.eq.${team.organization_id}),and(scope.eq.section,scope_id.eq.${team.section_id}),and(scope.eq.team,scope_id.eq.${teamId}),and(scope.eq.personal,scope_id.eq.${userId},organization_id.eq.${team.organization_id})`)
@@ -144,7 +144,8 @@ export async function loadTeamAssistantContext(input: TeamAssistantInput, { supa
     activities,
     activityIds,
     canManageActivities: Boolean(canManageActivities),
-    memoryScope: { organizationId: team.organization_id, sectionId: team.section_id, teamId, userId, disciplineId },
+    memoryScope: { organizationId: team.organization_id, sectionId: team.section_id, teamId, userId, disciplineId,
+      organizationName: organization?.name, sectionName: section?.name, teamName: team.name },
     context,
     organizationToday,
   };

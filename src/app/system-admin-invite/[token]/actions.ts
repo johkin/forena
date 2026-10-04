@@ -3,12 +3,13 @@
 import { createHash } from "node:crypto";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { systemAdminInvitationPath } from "@/lib/platform-admin-invitation-token";
 
 export async function acceptSystemAdminInvitation(formData: FormData) {
   const token = String(formData.get("token") ?? "");
-  if (!token) redirect("/login?error=Inbjudan+saknar+en+giltig+länk");
+  const destination = systemAdminInvitationPath(token);
+  if (!destination) redirect("/login?error=Inbjudan+saknar+en+giltig+länk");
 
-  const destination = `/system-admin-invite/${token}`;
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getUser();
   if (!authData.user) redirect(`/login?next=${encodeURIComponent(destination)}`);

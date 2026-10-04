@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
 import { createClient } from "@/lib/supabase/server";
+import { systemAdminInvitationPath } from "@/lib/platform-admin-invitation-token";
 import { acceptSystemAdminInvitation } from "./actions";
 
 type Props = {
@@ -11,11 +12,13 @@ type Props = {
 export default async function SystemAdminInvitationPage({ params, searchParams }: Props) {
   const { token } = await params;
   const { error } = await searchParams;
+  const destination = systemAdminInvitationPath(token);
+  if (!destination) redirect("/login?error=Inbjudan+saknar+en+giltig+länk");
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
 
   if (!data.user) {
-    redirect(`/login?next=${encodeURIComponent(`/system-admin-invite/${token}`)}`);
+    redirect(`/login?next=${encodeURIComponent(destination)}`);
   }
 
   return (<>

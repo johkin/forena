@@ -13,6 +13,8 @@ uppdaterad när ett beslut eller en gemensam princip ändras.
   header, footer, formulär, dialoger och medlemsvyer.
 - [Säkerhetsarkitektur](docs/security-architecture.md) – säkerhets- och
   behörighetsprinciper.
+- [Assistentminne](docs/assistant-memory.md) – förslag, bekräftelse,
+  sektionsarv och avgränsning mot systemadministration.
 - [Roadmap](docs/roadmap.md) – planerad utveckling och prioriteringar.
 
 Vid gränssnittsändringar ska både arkitekturen och designreglerna följas.
