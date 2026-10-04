@@ -109,3 +109,15 @@ sparas först efter ledarens granskning.
 Assistenten översätter naturligt språk till typade verktygsanrop. Varje anrop
 kontrolleras mot användarens roll och aktiv förening. Namn, avatar och tonalitet
 kan anpassas per förening, men säkerhetsregler och systemprompt kan inte ersättas.
+
+## MCP
+
+`src/app/api/mcp/route.ts` är HTTP-adapter till en stateless MCP-server.
+`src/lib/mcp/auth.ts` verifierar explicit användar-token och skapar en
+request-lokal Supabase-klient utan service role eller browser-cookies.
+`src/lib/mcp/server.ts` registrerar typade verktyg som återanvänder
+lagassistentens kontext och aktivitetsutkastens validering. Läsningar kräver
+applikationsbehörighet och omfattas dessutom av RLS. MCP-svar är dataminimerade;
+privata kommentarer och assistentminnen exporteras inte. Verktygsanrop loggas
+på metadata-nivå. Första versionen läser och förbereder utkast utan skrivningar.
+Se [MCP-server och anslutning](mcp.md) för verktyg, autentisering och nästa steg.

@@ -296,3 +296,18 @@ medlemsuppgifter:
 Den här arkitekturen ska hållas synkroniserad med datamodell, RLS-policyer,
 AI-arkitektur och roadmap. Nya funktioner som introducerar personuppgifter ska
 beskriva vilken dataklass de använder och varför informationen behöver lagras.
+
+## MCP-åtkomst
+
+MCP-adaptern verifierar explicit bearer-token för en användare och använder en
+request-lokal Supabase-klient med publishable key och samma token. Cookie-auth
+eller service role accepteras inte. Verktygen kontrollerar aktuell lagbehörighet
+och RLS gäller för samtliga läsningar. Familjer får endast egna kallelsesvar;
+trupp- och deltagarnamn kräver särskilda lagbehörigheter. Privata kommentarer,
+kontaktuppgifter, personnummer och assistentminnen exporteras inte. Verktygen
+skriver inte verksamhetsdata och aktivitetsförslag kräver granskning i appen.
+
+MCP-anrop loggas med verktygsnamn, användar-id, utfall och latens utan token,
+argument eller medlemsdata. Origin begränsas till appens konfigurerade URL och
+svar får inte cachas. Bearer-token-stöd är första steget; klientbundet OAuth,
+scopes, samtycke och omedelbar sessionsåterkallning återstår. Se [MCP](mcp.md).

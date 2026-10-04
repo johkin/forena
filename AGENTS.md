@@ -17,6 +17,7 @@ uppdaterad när ett beslut eller en gemensam princip ändras.
   sektionsarv och avgränsning mot systemadministration.
 - [Aktiviteters tidsregler](docs/activity-time-rules.md) – datumuttryck,
   tidszoner, ärvda förval och återstående appintegration.
+- [MCP-server](docs/mcp.md) – verktyg, behörigheter, transport och anslutning.
 - [Roadmap](docs/roadmap.md) – planerad utveckling och prioriteringar.
 
 Vid gränssnittsändringar ska både arkitekturen och designreglerna följas.
