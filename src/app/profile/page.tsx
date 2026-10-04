@@ -38,6 +38,7 @@ export default async function ProfilePage({ searchParams }: Props) {
             <p className="form-help">E-postadressen hör till ditt inloggningskonto och kan inte ändras här ännu.</p>
           </div>
           {organizations?.length ? <div className="form-section"><h2>Föreningar</h2><div className="profile-organizations">{organizations.map((organization) => <a key={organization.id} href={`/o/${organization.slug}`}>{organization.name}<span>›</span></a>)}</div></div> : null}
+          <div className="form-section"><h2>Integrationer</h2><div className="profile-organizations"><a href="/connect">Anslut AI<span aria-hidden="true">›</span></a></div><p className="form-help">Anslutningsinstruktioner och serveradress för AI-tjänster som stöder MCP.</p></div>
           <button className="primary application-submit" type="submit">Spara profil</button>
         </form>
       </section></div>
