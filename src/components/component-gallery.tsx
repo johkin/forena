@@ -17,7 +17,7 @@ const invitees = [
 ] as const;
 
 export function ComponentGallery() {
-  const [dialog, setDialog] = useState<"editor" | "detail">();
+  const [dialog, setDialog] = useState<"create" | "edit" | "detail">();
   const [notice, setNotice] = useState("Prova en knapp.");
   return <>
     <section><h2>Knappar</h2><div className="component-example-actions">
@@ -35,9 +35,9 @@ export function ComponentGallery() {
     <section><h2>Bemanning</h2><ActivityStaffingList invitees={[...invitees]} /></section>
     <section><h2>Aktivitetsdialoger</h2><p>Den riktiga aktivitetsredigeraren körs i demoläge. Inga aktiviteter eller kallelser sparas.</p><div className="component-example-actions">
       <button className="secondary" onClick={() => setDialog("detail")}>Visa aktivitet</button>
-      <button className="primary" onClick={() => setDialog("editor")}>Ny aktivitet</button>
+      <button className="primary" onClick={() => setDialog("create")}>Ny aktivitet</button>
     </div></section>
-    {dialog === "editor" ? <ActivityEditorModal mode="create" organization={organization} team={team} members={invitees.map(person => ({ id: person.personId, organizationId: organization.id, displayName: person.displayName, teamRelation: person.role === "leader" ? "leader" : "player" }))} source="demo" canManageInvitations={false} onClose={() => setDialog(undefined)} onNotice={setNotice} /> : null}
-    {dialog === "detail" ? <ActivityDetailModal activity={activity} organization={organization} team={team} canManageActivity canManageInvitations={false} canManageAttendance={false} rosterMembers={[]} onClose={() => setDialog(undefined)} onEdit={() => setDialog("editor")} /> : null}
+    {dialog === "create" || dialog === "edit" ? <ActivityEditorModal mode={dialog} activity={dialog === "edit" ? activity : undefined} organization={organization} team={team} members={invitees.map(person => ({ id: person.personId, organizationId: organization.id, displayName: person.displayName, teamRelation: person.role === "leader" ? "leader" : "player" }))} source="demo" canManageInvitations={false} onClose={() => setDialog(undefined)} onNotice={setNotice} /> : null}
+    {dialog === "detail" ? <ActivityDetailModal activity={activity} organization={organization} team={team} canManageActivity canManageInvitations={false} canManageAttendance={false} rosterMembers={[]} onClose={() => setDialog(undefined)} onEdit={() => setDialog("edit")} /> : null}
   </>;
 }
