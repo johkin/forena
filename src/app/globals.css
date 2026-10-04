@@ -834,3 +834,5 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .connection-note h2 { margin: 0 0 8px; font-size: 22px; }
 .connection-steps { display: grid; gap: 12px; margin: 0; padding-left: 22px; color: var(--ink-soft); line-height: 1.6; }
 .connection-steps li, .connection-steps code { overflow-wrap: anywhere; }
+.consent-actions { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; }
+.connection-card code { overflow-wrap: anywhere; }

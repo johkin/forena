@@ -5,10 +5,12 @@ import { CopyAddress } from "@/components/copy-address";
 import { getSiteUrl } from "@/lib/site-url";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import { getMcpOAuthConfig } from "@/lib/mcp/oauth";
 
 export const metadata: Metadata = { title: "Anslut AI | Förena" };
 
 export default async function ConnectPage() {
+  const oauthEnabled = Boolean(getMcpOAuthConfig());
   const requestHeaders = await headers();
   const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
   const protocol = requestHeaders.get("x-forwarded-proto") === "https" ? "https" : "http";
@@ -33,7 +35,7 @@ export default async function ConnectPage() {
           </section>
           <section className="connection-note" aria-labelledby="connection-chatgpt-heading">
             <h2 id="connection-chatgpt-heading">ChatGPT</h2>
-            <p>Direkt anslutning till ChatGPT är ännu inte tillgänglig. Det behövs ett inloggningsflöde där du kan godkänna anslutningen. Att lägga in serveradressen räcker därför inte ännu.</p>
+            <p>{oauthEnabled ? "Välj OAuth när du lägger till MCP-adressen i din AI-klient. Logga in i Förena och kontrollera klienten och rättigheterna innan du godkänner. Klienten måste vara registrerad av installationens administratör." : "Samtyckessidan finns, men OAuth är inte aktiverat för den här installationen. En administratör behöver konfigurera Supabase, registrera klienten och verifiera token och databasbehörigheter innan direkt anslutning kan användas."}</p>
           </section>
           <section className="form-section" aria-labelledby="connection-steps-heading">
             <h2 id="connection-steps-heading">Anslut med en MCP-klient</h2>

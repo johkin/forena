@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST, GET, DELETE } from "./route";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
@@ -35,6 +35,17 @@ beforeEach(() => {
 });
 
 describe("MCP HTTP protocol and authorization", () => {
+  afterEach(() => vi.unstubAllEnvs());
+  it("advertises canonical resource metadata on an OAuth authentication challenge", async () => {
+    vi.stubEnv("FORENA_MCP_OAUTH_ENABLED", "true");
+    vi.stubEnv("FORENA_MCP_OAUTH_CLIENT_IDS", "client-1");
+    vi.stubEnv("SITE_URL", "https://forena.example");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://project.supabase.co");
+    mocks.authenticate.mockResolvedValue(null);
+    const response = await POST(request("initialize"));
+    expect(response.status).toBe(401);
+    expect(response.headers.get("WWW-Authenticate")).toBe('Bearer realm="forena", resource_metadata="https://forena.example/.well-known/oauth-protected-resource/api/mcp"');
+  });
   it("requires authentication even for initialization", async () => {
     mocks.authenticate.mockResolvedValue(null);
     const response = await POST(request("initialize", { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "test", version: "1" } }));

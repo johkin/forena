@@ -50,11 +50,11 @@ projektets publishable key med användarens token och vanliga RLS-policyer.
 Cookies, anon/service-role tokens och klientangivna användaridentiteter accepteras
 inte. Browser-sessionens proxy hoppar över exakt `/api/mcp`.
 
-Detta är **bearer-token-stöd, inte ett färdigt OAuth-anslutningsflöde**.
-Servern har ännu ingen OAuth-discovery, klientregistrering, samtyckessida eller
-MCP-specifik audience/scopes. En direkt ChatGPT-anslutning med OAuth är därför
-nästa steg. Kopiera inte långlivade eller privilegierade nycklar för att kringgå
-avsaknaden av OAuth. Befintliga access tokens kan förbli giltiga till utgångstid
+OAuth-samtycke och resource discovery finns nu, men är **avstängda som standard**.
+Supabase-konfiguration, klientregistrering, token-audience och granskning av RLS
+måste slutföras separat; denna ändring aktiverar inget i Supabase eller produktion.
+Kopiera inte långlivade eller privilegierade nycklar för att kringgå detta.
+Befintliga access tokens kan förbli giltiga till utgångstid
 efter utloggning; omedelbar sessionsåterkallning kräver ytterligare sessionskontroll.
 
 Miljövariabler:
@@ -64,12 +64,85 @@ Miljövariabler:
   `Origin` accepterar bara denna origin. Utan `SITE_URL` används request-URL för
   lokal utveckling. Klienter utan `Origin` fungerar över vanlig bearer-auth.
 
-Ingen service role-nyckel, AI Gateway-konfiguration eller migration behövs.
+Ingen service role-nyckel, AI Gateway-konfiguration eller migration behövs för
+bearer-token-läget eller dessa sidor. Produktions-OAuth kan kräva separat
+token-hook och RLS-migration enligt nedan.
 Token ska inte sparas i Git eller loggas. Verktygsanrop loggar verktygsnamn,
 användar-id, utfall och latens, aldrig token, argument eller resultat.
 Requests är begränsade till 64 KiB och svar får `Cache-Control: no-store`.
 GET och DELETE returnerar 405; servern har ingen SSE-prenumeration eller
 MCP-session att stänga. Rate limiting kan införas i driftens gateway.
+
+## OAuth: samtycke och discovery
+
+`/oauth/consent?authorization_id=…` använder Supabase Auths OAuth-server.
+Sidan kräver inloggning och visar klientnamn, klient-id, returadress och begärda
+`openid`, `email`, `profile`-rättigheter. Okända klienter/rättigheter nekas.
+Godkänn/avbryt är server actions (POST med Next.js origin-kontroll), aldrig GET.
+Varje beslut verifierar användare och hämtar auktoriseringen på nytt innan
+Supabase får approve/deny. Bara Supabase-resultatet får bestämma returadress;
+efter ett beslut måste origin och sökväg matcha den verifierade klientadressen.
+Redan godkända auktoriseringar kan returnera en färdig Supabase-redirect.
+Utgångna länkar och fel visar ett neutralt fel utan token eller API-detaljer.
+Magic-link-inloggning behåller `next` så att samtycket kan återupptas.
+
+Publik RFC 9728-metadata finns på båda adresserna:
+
+- `/.well-known/oauth-protected-resource`
+- `/.well-known/oauth-protected-resource/api/mcp`
+
+De annonserar exakt `SITE_URL/api/mcp` som resource och Supabase
+`NEXT_PUBLIC_SUPABASE_URL/auth/v1` som authorization server. Anonyma MCP-POST
+får `WWW-Authenticate` med `resource_metadata`. Proxy uppdaterar inga cookies
+för dessa discovery-adresser. Metadata kommer aldrig från inkommande Host.
+Om OAuth är avstängt eller konfigurationen är ogiltig svarar discovery 503,
+samtyckessidan visar inaktivt läge och MCP använder sin tidigare Bearer-challenge.
+
+### Installationssteg (administratör)
+
+1. Aktivera Supabase OAuth Server (beta) i Auth-inställningarna. Ställ Site URL
+   till Förena-adressen och Authorization URL Path till `/oauth/consent`.
+   Lokal `supabase/config.toml` har redan sökvägen men lämnar funktionen avstängd.
+2. Registrera klienten manuellt i Supabase. Använd den exakta callback-URL som
+   AI-klienten visar; inga jokertecken. Behåll dynamisk registrering avstängd.
+   Konfigurera klient-id och eventuellt klienthemlighet i AI-klienten, aldrig
+   i Förena-sidan eller ett `NEXT_PUBLIC_`-fält.
+3. Sätt servervariablerna `SITE_URL` (en HTTPS-origin utan sökväg),
+   `FORENA_MCP_OAUTH_CLIENT_IDS` (kommaseparerad tillåtelselista) och till sist
+   `FORENA_MCP_OAUTH_ENABLED=true`. Lokal HTTP accepteras bara för localhost/
+   127.0.0.1 i icke-produktionsläge. Supabase-URL måste också vara en origin.
+4. **Konfigurera och verifiera resource-audience innan aktivering.** MCP kräver
+   att signerade OAuth-token har ett tillåtet `client_id` och `aud` som innehåller
+   exakt `SITE_URL/api/mcp`. Supabases standardaudience `authenticated` räcker
+   därför inte. En separat Custom Access Token Hook/issuer-konfiguration behöver
+   ge rätt audience och bevara det som Auth/PostgREST behöver. Hooken ingår inte
+   här. Om ert Supabase-flöde inte kan binda rätt audience till begärd resource,
+   lämna funktionen avstängd. Vanliga användartoken utan `client_id` fungerar
+   fortsatt i det manuella läget; OAuth-token utan korrekt audience nekas.
+5. **Granska RLS för OAuth-klienter.** En OAuth-token kan användas direkt mot
+   Supabase och får annars samma databasbehörigheter som användaren. Förena-MCP:s
+   verktygsfilter begränsar inte direkt databasåtkomst. Inför vid behov restriktiva
+   policyer baserade på signerad `client_id`, inklusive skydd mot skrivningar och
+   kontaktdata. `openid/email/profile` är identitetsrättigheter, inte egna
+   MCP-läs-/skrivscopes och inte en ersättning för RLS. Inga sådana policyer
+   läggs till automatiskt i denna ändring.
+6. För `openid` behöver Supabase asymmetriska signeringsnycklar (ES256/RS256).
+   Testa klientens discovery, Authorization Code + PKCE, godkänn/avbryt,
+   tokenförnyelse, fel audience, okänd klient och lagisolering i en testmiljö
+   med syntetiska data innan anslutningen används med medlemsdata.
+
+Supabase äger authorization-server-metadata, authorize/token-endpoints och JWKS.
+Förena annonserar inte sig själv som issuer och skapar inte en konkurrerande
+`oauth-authorization-server`-fil. Supabase discovery finns normalt på
+`https://<project>.supabase.co/.well-known/oauth-authorization-server/auth/v1`.
+Kontrollera installationens faktiska metadata och klientstöd före driftsättning.
+Samtyckessidan ensam gör inte installationen färdig för ChatGPT.
+
+Officiella referenser:
+
+- [Supabase OAuth Server](https://supabase.com/docs/guides/auth/oauth-server/getting-started)
+- [Supabase token security och RLS](https://supabase.com/docs/guides/auth/oauth-server/token-security)
+- [MCP authorization](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization)
 
 ## Anslutningssida i appen
 
