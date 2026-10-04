@@ -15,6 +15,8 @@ uppdaterad när ett beslut eller en gemensam princip ändras.
   behörighetsprinciper.
 - [Assistentminne](docs/assistant-memory.md) – förslag, bekräftelse,
   sektionsarv och avgränsning mot systemadministration.
+- [Aktiviteters tidsregler](docs/activity-time-rules.md) – datumuttryck,
+  tidszoner, ärvda förval och återstående appintegration.
 - [Roadmap](docs/roadmap.md) – planerad utveckling och prioriteringar.
 
 Vid gränssnittsändringar ska både arkitekturen och designreglerna följas.
