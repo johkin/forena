@@ -1,6 +1,7 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { authenticateMcp } from "@/lib/mcp/auth";
 import { createForenaMcpServer } from "@/lib/mcp/server";
+import { mcpAuthenticationChallenge } from "@/lib/mcp/oauth";
 
 export const runtime = "nodejs";
 export const maxDuration = 45;
@@ -12,7 +13,7 @@ export async function POST(request: Request) {
   try {
     const authentication = await authenticateMcp(request);
     if (!authentication) return Response.json({ error: "Authentication required" }, {
-      status: 401, headers: { "WWW-Authenticate": 'Bearer realm="forena"', "Cache-Control": "no-store" },
+      status: 401, headers: { "WWW-Authenticate": mcpAuthenticationChallenge(), "Cache-Control": "no-store" },
     });
     // No shared state, transport or user identity between serverless invocations.
     const server = createForenaMcpServer(authentication);

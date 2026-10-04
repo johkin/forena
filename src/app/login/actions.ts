@@ -11,7 +11,7 @@ export async function requestMagicLink(formData: FormData) {
   const next = requestedNext.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : "/passkey/setup";
 
   if (!email || !email.includes("@")) {
-    redirect("/login?error=Ange+en+giltig+e-postadress");
+    redirect(`/login?error=Ange+en+giltig+e-postadress&next=${encodeURIComponent(next)}`);
   }
 
   const requestHeaders = await headers();
@@ -28,10 +28,10 @@ export async function requestMagicLink(formData: FormData) {
 
   if (error) {
     console.error("[auth] magic link request failed", { message: error.message });
-    redirect("/login?error=Inloggningslänken+kunde+inte+skickas");
+    redirect(`/login?error=Inloggningslänken+kunde+inte+skickas&next=${encodeURIComponent(next)}`);
   }
 
-  redirect("/login?sent=1");
+  redirect(`/login?sent=1&next=${encodeURIComponent(next)}`);
 }
 
 function getSafeNext(formData: FormData) {

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { authenticateMcp } from "./auth";
 const mocks = vi.hoisted(() => ({ client: vi.fn(), claims: vi.fn(), user: vi.fn() }));
 vi.mock("@supabase/supabase-js", () => ({ createClient: mocks.client }));
@@ -10,7 +10,20 @@ beforeEach(() => {
   mocks.user.mockResolvedValue({ data: { user: { id: "user" } }, error: null });
 });
 const request = (authorization?: string) => new Request("http://localhost/api/mcp", { headers: authorization ? { authorization } : { cookie: "session=browser-cookie" } });
+afterEach(() => vi.unstubAllEnvs());
 describe("MCP bearer authentication", () => {
+  it("rejects OAuth tokens until client and resource audience are verified", async () => {
+    vi.stubEnv("FORENA_MCP_OAUTH_ENABLED", "true");
+    vi.stubEnv("FORENA_MCP_OAUTH_CLIENT_IDS", "client-1");
+    vi.stubEnv("SITE_URL", "https://forena.example");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://project.supabase.co");
+    const claims = { role: "authenticated", sub: "user", client_id: "client-1", aud: "authenticated" };
+    mocks.claims.mockResolvedValue({ data: { claims }, error: null });
+    expect(await authenticateMcp(request("Bearer token"))).toBeNull();
+    expect(mocks.user).not.toHaveBeenCalled();
+    mocks.claims.mockResolvedValue({ data: { claims: { ...claims, aud: ["authenticated", "https://forena.example/api/mcp"] } }, error: null });
+    expect(await authenticateMcp(request("Bearer token"))).toMatchObject({ userId: "user" });
+  });
   it("does not accept cookies or malformed authorization", async () => {
     for (const header of [undefined, "Basic token", "Bearer token extra", "Bearer "]) expect(await authenticateMcp(request(header))).toBeNull();
     expect(mocks.client).not.toHaveBeenCalled();

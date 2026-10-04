@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
 import { getSupabaseEnvironment } from "@/lib/supabase/env";
 import type { AssistantDependencies } from "@/lib/ai/team-assistant-types";
+import { isAllowedOAuthToken } from "@/lib/mcp/oauth";
 
 /** MCP credentials never fall back to browser cookies or privileged clients. */
 export async function authenticateMcp(request: Request): Promise<AssistantDependencies | null> {
@@ -14,6 +15,7 @@ export async function authenticateMcp(request: Request): Promise<AssistantDepend
   });
   const { data, error } = await supabase.auth.getClaims(match[1]);
   if (error || data?.claims.role !== "authenticated" || typeof data.claims.sub !== "string") return null;
+  if (!isAllowedOAuthToken(data.claims)) return null;
   const { data: userData, error: userError } = await supabase.auth.getUser(match[1]);
   if (userError || !userData.user || userData.user.id !== data.claims.sub) return null;
   return { supabase, userId: userData.user.id };
