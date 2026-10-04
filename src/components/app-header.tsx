@@ -64,6 +64,7 @@ export function AppHeader({ homeHref = "/", navigation, organization, team, work
         <div className="header-menu-section header-menu-account">
           {accountEmail ? <><p className="eyebrow">Konto</p><small className="header-menu-email">{accountEmail}</small><a href="/profile">Min profil</a><LogoutButton destination={logoutDestination} /></>
             : <a href={loginHref ?? `/login?next=${encodeURIComponent(homeHref)}`}>Logga in</a>}
+          <a href="/connect">Anslut AI</a>
         </div>
       </div>
     </div> : null}

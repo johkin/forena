@@ -71,6 +71,15 @@ Requests är begränsade till 64 KiB och svar får `Cache-Control: no-store`.
 GET och DELETE returnerar 405; servern har ingen SSE-prenumeration eller
 MCP-session att stänga. Rate limiting kan införas i driftens gateway.
 
+## Anslutningssida i appen
+
+Den publika sidan `/connect` visar serveradressen och instruktioner, inklusive
+den aktuella begränsningen för ChatGPT. Den nås från **Anslut AI** i den
+gemensamma menyn och från profilens Integrationer-avsnitt. Kopieringsikonen
+kopierar endast den publika MCP-adressen, aldrig någon token. Vid nekad
+urklippsåtkomst markeras adressen för manuell kopiering. `SITE_URL` används
+när den är satt; annars visas adressen för den aktuella sajten.
+
 ## Anslutningsexempel
 
 En klient med TypeScript-SDK:n kan ansluta så här:
