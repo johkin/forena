@@ -23,13 +23,17 @@ insert into public.sections (id, organization_id, slug, name) values
 insert into public.teams (id, organization_id, section_id, slug, name) values
   ('d3000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000001', 'd2000000-0000-0000-0000-000000000001', 'a', 'Team A'),
   ('d3000000-0000-0000-0000-000000000002', 'd1000000-0000-0000-0000-000000000001', 'd2000000-0000-0000-0000-000000000002', 'b', 'Team B');
+-- organization_member_ensure_person already created the account-linked people.
+-- Reuse their IDs below; only the child without an account needs an insert.
 insert into public.people (id, organization_id, user_id, display_name) values
-  ('d4000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000002', 'Leader A'),
-  ('d4000000-0000-0000-0000-000000000002', 'd1000000-0000-0000-0000-000000000001', null, 'Child A'),
-  ('d4000000-0000-0000-0000-000000000003', 'd1000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000004', 'Player B');
+  ('d4000000-0000-0000-0000-000000000002', 'd1000000-0000-0000-0000-000000000001', null, 'Child A');
 insert into public.memberships (organization_id, team_id, person_id, role, starts_on, ends_on) values
   ('d1000000-0000-0000-0000-000000000001', 'd3000000-0000-0000-000000000001', 'd4000000-0000-0000-0000-000000000002', 'participant', current_date - 10, current_date + 2),
-  ('d1000000-0000-0000-0000-000000000001', 'd3000000-0000-0000-000000000002', 'd4000000-0000-0000-0000-000000000003', 'participant', current_date - 10, null);
+  ('d1000000-0000-0000-0000-000000000001', 'd3000000-0000-0000-000000000002',
+    (select id from public.people
+     where organization_id = 'd1000000-0000-0000-0000-000000000001'
+       and user_id = 'd0000000-0000-0000-0000-000000000004'),
+    'participant', current_date - 10, null);
 insert into public.person_guardians (organization_id, person_id, guardian_user_id) values
   ('d1000000-0000-0000-0000-000000000001', 'd4000000-0000-0000-0000-000000000002', 'd0000000-0000-0000-0000-000000000003');
 insert into public.section_staff (organization_id, section_id, user_id, role) values
@@ -39,15 +43,19 @@ insert into public.team_access_profiles (id, organization_id, key, name) values
 insert into public.team_access_profile_permissions (organization_id, access_profile_id, permission_key) values
   ('d1000000-0000-0000-0000-000000000001', 'd5000000-0000-0000-0000-000000000001', 'team.view');
 insert into public.team_access_assignments (organization_id, team_id, person_id, access_profile_id, starts_on, ends_on) values
-  ('d1000000-0000-0000-0000-000000000001', 'd3000000-0000-0000-000000000001', 'd4000000-0000-0000-0000-000000000001', 'd5000000-0000-0000-0000-000000000001', current_date - 10, current_date + 2);
+  ('d1000000-0000-0000-0000-000000000001', 'd3000000-0000-0000-000000000001',
+    (select id from public.people
+     where organization_id = 'd1000000-0000-0000-0000-000000000001'
+       and user_id = 'd0000000-0000-0000-0000-000000000002'),
+    'd5000000-0000-0000-0000-000000000001', current_date - 10, current_date + 2);
 insert into public.assistant_memories (organization_id, scope, scope_id, content) values
-  ('d1000000-0000-0000-0000-000000000001', 'section', 'd2000000-0000-0000-000000000001', 'A'),
+  ('d1000000-0000-0000-0000-000000000001', 'section', 'd2000000-0000-0000-0000-000000000001', 'A'),
   ('d1000000-0000-0000-0000-000000000001', 'section', 'd2000000-0000-0000-0000-000000000002', 'B');
 
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"d0000000-0000-0000-0000-000000000002","role":"authenticated"}', true);
 select results_eq($$select content from public.assistant_memories where scope = 'section'$$, array['A'::text], 'Team leader inherits only the authorized section');
-select results_eq($$select public.can_read_assistant_memory('section', 'd1000000-0000-0000-0000-000000000002', 'd2000000-0000-0000-0000-000000000001')$$, array[false], 'A mismatched organization and section is denied');
+select results_eq($$select public.can_read_assistant_memory('section', 'd1000000-0000-0000-000000000002', 'd2000000-0000-0000-0000-000000000001')$$, array[false], 'A mismatched organization and section is denied');
 select set_config('request.jwt.claims', '{"sub":"d0000000-0000-0000-0000-000000000003","role":"authenticated"}', true);
 select results_eq($$select content from public.assistant_memories where scope = 'section'$$, array['A'::text], 'Active guardian inherits only the child section');
 select set_config('request.jwt.claims', '{"sub":"d0000000-0000-0000-0000-000000000004","role":"authenticated"}', true);
