@@ -225,30 +225,7 @@ export async function createWorkspace(formData: FormData) {
     .maybeSingle();
 
   if (!existingActivity) {
-    let { data: activityType } = await supabase
-      .from("activity_types")
-      .select("id")
-      .eq("organization_id", organizationId)
-      .eq("slug", "ovrigt")
-      .maybeSingle();
-    if (!activityType) {
-      const { error: typeError } = await supabase.from("activity_types").insert([
-        { organization_id: organizationId, name: "Träning", slug: "traning", system_category: "session" },
-        { organization_id: organizationId, name: "Match eller tävling", slug: "match-tavling", system_category: "competition" },
-        { organization_id: organizationId, name: "Arbetspass", slug: "arbetspass", system_category: "work" },
-        { organization_id: organizationId, name: "Möte", slug: "mote", system_category: "meeting" },
-        { organization_id: organizationId, name: "Utbildning", slug: "utbildning", system_category: "education" },
-        { organization_id: organizationId, name: "Övrigt", slug: "ovrigt", system_category: "other" },
-      ]);
-      if (typeError) fail("Aktivitetstyperna kunde inte skapas");
-      const result = await supabase
-        .from("activity_types")
-        .select("id")
-        .eq("organization_id", organizationId)
-        .eq("slug", "ovrigt")
-        .single();
-      activityType = result.data;
-    }
+    const { data: activityType } = await supabase.from("activity_types").select("id").is("organization_id", null).eq("slug", "ovrigt").eq("active", true).single();
     if (!activityType) fail("Aktivitetstypen kunde inte hittas");
 
     const startsAt = stockholmDateInDays(7, 17, 30);

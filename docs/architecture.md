@@ -129,3 +129,17 @@ och mobilens dialogmeny; den visas aldrig på båda sidor samtidigt.
 `/components` är en publik komponentreferens med enbart syntetiska data och
 aktivitetsredigeraren i demoläge. Aktivitetshändelser lagras fortsatt, men
 renderas inte som teknisk historik i den vanliga aktivitetsdialogen.
+
+## Aktivitetstyper och gemensamma förval
+
+`activity_types` innehåller systemets gemensamma katalog (utan organisationsägare)
+med valfri `discipline_id`; äldre lokala specialtyper förblir föreningsägda.
+Typreferenser använder identitet, medan en databas-trigger kontrollerar lokalt
+ägarskap och lagets effektiva disciplin. Dokumentkopplingar förblir tenantbundna.
+
+`activity_defaults` lagrar sparsamma override-värden, regelversion och revision.
+`loadActivityConfiguration` är den gemensamma läsvägen för dialog och assistent;
+`resolveActivityDefaults` är den rena domänfunktionen för fältvis arv.
+Skrivkommandot kontrollerar mål och behörighet på både server- och databasnivå.
+`reminder_send_ats` materialiseras atomärt till påminnelsescheman vid samma
+aktivitetsskrivning. Se [aktiviteters tidsregler](activity-time-rules.md).

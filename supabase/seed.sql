@@ -80,15 +80,6 @@ values
   ('10000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001', 'member'),
   ('10000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000002', 'member');
 
-insert into public.activity_types (organization_id, name, slug, system_category)
-values
-  ('10000000-0000-0000-0000-000000000001', 'Träning', 'traning', 'session'),
-  ('10000000-0000-0000-0000-000000000001', 'Match eller tävling', 'match-tavling', 'competition'),
-  ('10000000-0000-0000-0000-000000000001', 'Arbetspass', 'arbetspass', 'work'),
-  ('10000000-0000-0000-0000-000000000001', 'Möte', 'mote', 'meeting'),
-  ('10000000-0000-0000-0000-000000000001', 'Utbildning', 'utbildning', 'education'),
-  ('10000000-0000-0000-0000-000000000001', 'Övrigt', 'ovrigt', 'other');
-
 insert into public.responsibility_types (organization_id, name, slug)
 values
   ('10000000-0000-0000-0000-000000000001', 'Lagledare', 'lagledare'),
@@ -188,7 +179,7 @@ select
   'Ursviks IP · Plan 2'
 from public.teams team
 join public.activity_types activity_type
-  on activity_type.organization_id = team.organization_id
+  on activity_type.organization_id is null
  and activity_type.slug = 'traning'
 where team.id = '20000000-0000-0000-0000-000000000001';
 

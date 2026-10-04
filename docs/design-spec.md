@@ -111,3 +111,12 @@ dialogen kan scrollas med touch och att bakgrunden är stilla.
 - [Komponentsidan](/components) visar interaktiva exempel med syntetiska data.
   Aktivitetsdialogerna återanvänder produktionskomponenterna i skrivskyddat
   demoläge så att exempel inte kan skapa aktiviteter eller utskick.
+
+## Aktivitetsinställningar
+
+System, klubb, sektion och lag använder samma formulär för standardvärden.
+Visa ärvt värde och källa per fält; tomt fält innebär arv och en tom
+påminnelselista är ett uttryckligt avstängningsval. Redigera typer i hopfällbara
+rader och samla nivåval i en radbrytande navigation. Aktivitetens typval ändrar
+bara orörda nya fält. Förhandsgranskningen visar tider i föreningens tidszon.
+Kallelsemottagare och utskicksläge väljs alltid uttryckligen av ledaren.

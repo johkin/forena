@@ -1,0 +1,2 @@
+export const systemNavigationItems = [{ href:"/system",label:"System" },{ href:"/system/administrators",label:"Administratörer" },{ href:"/system/disciplines",label:"Discipliner" },{ href:"/system/activity-types",label:"Aktivitetstyper" },{ href:"/system/memories",label:"Assistentminnen" },{ href:"/",label:"Till Förena" }];
+export function SystemNavigation() { return <nav aria-label="Systemadministration">{systemNavigationItems.map(item=><a key={item.href} href={item.href}>{item.label}</a>)}</nav>; }

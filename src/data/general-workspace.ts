@@ -53,7 +53,7 @@ export async function getGeneralWorkspace(organizationSlug: string, sectionSlug?
   const [{ data: sectionRows }, { data: teamRows }, { data: activityTypes }] = await Promise.all([
     supabase.from("sections").select("id, organization_id, slug, name, discipline_id").eq("organization_id", organizationRow.id).order("name"),
     supabase.from("teams").select("id, organization_id, section_id, slug, name, season, discipline_id").eq("organization_id", organizationRow.id).order("name"),
-    supabase.from("activity_types").select("id, system_category").eq("organization_id", organizationRow.id),
+    supabase.from("activity_types").select("id, system_category").or(`organization_id.is.null,organization_id.eq.${organizationRow.id}`),
   ]);
   const sections: Section[] = (sectionRows ?? []).map((row) => ({ id: row.id, organizationId: row.organization_id, slug: row.slug, name: row.name, disciplineId: row.discipline_id ?? undefined }));
   const section = sectionSlug ? sections.find((item) => item.slug === sectionSlug) : undefined;

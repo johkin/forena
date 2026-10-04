@@ -1,11 +1,16 @@
+import { requireActivityType } from "@/lib/activity-configuration";
+import { buildInvitationSchedule, requireFutureSchedule } from "@/lib/activity-schedule";
+import { normalizeActivityTimingRules, scheduleActivityTimes, ACTIVITY_TIME_RULE_VERSION } from "@/lib/activity-time-rules";
 import { NextResponse } from "next/server";
-import { invitationScheduleForOccurrence, type ResponseDueRule } from "@/lib/activity-series";
+import { type ResponseDueRule } from "@/lib/activity-series";
 import { createClient } from "@/lib/supabase/server";
 import { validateAudienceSelection, type AudienceSelection } from "@/lib/invitation-audience";
 
 type CreateActivityBody = {
   teamId?: string;
   activityTypeId?: string;
+  timingRules?: unknown;
+  reminderMinutesBeforeDueList?: number[];
   title?: string;
   description?: string;
   gatheringAt?: string;
@@ -50,14 +55,13 @@ export async function POST(request: Request) {
   const timeZone = organization?.time_zone;
   if (!timeZone) return NextResponse.json({ error: "Föreningen kunde inte hittas" }, { status: 404 });
 
-  const typeQuery = supabase.from("activity_types").select("id").eq("organization_id", team.organization_id).eq("active", true);
-  const { data: activityType } = body.activityTypeId
-    ? await typeQuery.eq("id", body.activityTypeId).maybeSingle()
-    : await typeQuery.eq("slug", "ovrigt").maybeSingle();
-  if (!activityType) return NextResponse.json({ error: "Aktivitetstypen kunde inte hittas" }, { status: 400 });
-
   const { data: allowed } = await supabase.rpc("has_team_permission", { target_team_id: team.id, target_permission: "activity.manage" });
   if (!allowed) return NextResponse.json({ error: "Du saknar behörighet för laget" }, { status: 403 });
+
+  let activityType;
+  try { activityType = await requireActivityType(supabase, team.id, body.activityTypeId); }
+  catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Ogiltig aktivitetstyp" }, { status: 400 }); }
+
 
   if (invitationMode !== "none") {
     const { data: canManageInvitations } = await supabase.rpc("has_team_permission", {
@@ -79,19 +83,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Undergrupp kan bara användas som målgrupp" }, { status: 400 });
   }
 
-  let schedule: { invitationSendAt: string; responseDueAt: string; reminderSendAt: string | null } | undefined;
+  let schedule: ReturnType<typeof buildInvitationSchedule> | undefined;
   if (invitationAudience) {
     try {
-      schedule = invitationScheduleForOccurrence(startsAt.toISOString(), timeZone, {
-        invitationSendMinutesBefore: body.invitationSendMinutesBefore ?? 10080,
-        responseDueRule: body.responseDueRule ?? "6h",
-        reminderMinutesBeforeDue: body.reminderMinutesBeforeDue ?? 1440,
-      });
+      schedule = buildInvitationSchedule(startsAt.toISOString(), timeZone, body);
+      requireFutureSchedule(schedule);
     } catch (error) {
       return NextResponse.json({ error: error instanceof Error ? error.message : "Kallelseschemat är ogiltigt" }, { status: 400 });
     }
   }
 
+  if (body.timingRules !== undefined) {
+    try {
+      const times = scheduleActivityTimes(startsAt.toISOString(), timeZone, body.timingRules);
+      if (times.endsAt !== endsAt.toISOString() || times.gatheringAt !== (gatheringAt?.toISOString() ?? null)) throw new Error("Tiderna stämmer inte med tidsreglerna.");
+    } catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }
+  }
   const { data: activity, error: activityError } = await supabase.from("activities").insert({
     organization_id: team.organization_id,
     team_id: team.id,
@@ -104,7 +111,10 @@ export async function POST(request: Request) {
     location,
     invitation_send_at: schedule?.invitationSendAt ?? null,
     response_due_at: schedule?.responseDueAt ?? null,
-    reminder_send_at: schedule?.reminderSendAt ?? null,
+    reminder_send_at: null,
+    reminder_send_ats: schedule?.reminderSendAts ?? null,
+    timing_rules: body.timingRules === undefined ? null : normalizeActivityTimingRules(body.timingRules),
+    timing_rule_version: body.timingRules === undefined ? null : ACTIVITY_TIME_RULE_VERSION,
     invitation_audience_kind: invitationAudience ?? null,
     invitation_group_id: invitationAudience === "group" ? invitationGroupId ?? null : null,
     ...(selection ? { invitation_audience_roles: selection.roles, invitation_audience_group_ids: selection.groupIds, invitation_audience_responsibility_type_ids: selection.responsibilityTypeIds } : {}),

@@ -1,3 +1,5 @@
+import { requireActivityType } from "@/lib/activity-configuration";
+import { scheduleActivityTimes, normalizeActivityTimingRules, ACTIVITY_TIME_RULE_VERSION } from "@/lib/activity-time-rules";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -34,24 +36,33 @@ export async function GET(_request: Request, { params }: Props) {
 
 export async function PUT(request: Request, { params }: Props) {
   const { activityId } = await params;
-  const body = await request.json().catch(() => null) as { title?: string; description?: string; gatheringAt?: string | null; startsAt?: string; endsAt?: string; location?: string } | null;
+  const body = await request.json().catch(() => null) as { activityTypeId?: string; timingRules?: unknown; title?: string; description?: string; gatheringAt?: string | null; startsAt?: string; endsAt?: string; location?: string } | null;
   const title = body?.title?.trim();
   const startsAt = body?.startsAt ? new Date(body.startsAt) : null;
   const endsAt = body?.endsAt ? new Date(body.endsAt) : null;
   const gatheringAt = body?.gatheringAt ? new Date(body.gatheringAt) : null;
-  if (!title || !startsAt || !endsAt || Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime()) || endsAt <= startsAt || (gatheringAt && gatheringAt > startsAt)) {
+  if (!title || !startsAt || !endsAt || Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime()) || endsAt <= startsAt || (gatheringAt && (Number.isNaN(gatheringAt.getTime()) || gatheringAt > startsAt))) {
     return NextResponse.json({ error: "Ogiltiga aktivitetsuppgifter" }, { status: 400 });
   }
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getUser();
   if (!authData.user) return NextResponse.json({ error: "Du måste logga in" }, { status: 401 });
-  const { data: current } = await supabase.from("activities").select("id, team_id, status, source_kind").eq("id", activityId).maybeSingle();
+  const { data: current } = await supabase.from("activities").select("id, organization_id, team_id, activity_type_id, status, source_kind").eq("id", activityId).maybeSingle();
   if (!current?.team_id) return NextResponse.json({ error: "Aktiviteten kunde inte hittas" }, { status: 404 });
   const { data: allowed } = await supabase.rpc("has_team_permission", { target_team_id: current.team_id, target_permission: "activity.manage" });
   if (!allowed) return NextResponse.json({ error: "Du saknar behörighet för laget" }, { status: 403 });
   if (current.source_kind === "imported") return NextResponse.json({ error: "Importerade aktiviteter måste ändras i källsystemet" }, { status: 409 });
   if (current.status === "cancelled") return NextResponse.json({ error: "En inställd aktivitet kan inte redigeras" }, { status: 409 });
-  const { data: activity, error } = await supabase.from("activities").update({ title, description_markdown: body?.description?.trim() ?? "", gathering_at: gatheringAt?.toISOString() ?? null, starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString(), location: body?.location?.trim() ?? "" }).eq("id", activityId).select("id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location, series_id, status").single();
+  try {
+    if (body?.activityTypeId && body.activityTypeId !== current.activity_type_id) await requireActivityType(supabase, current.team_id, body.activityTypeId);
+    if (body?.timingRules !== undefined) {
+      const { data: organization, error: organizationError } = await supabase.from("organizations").select("time_zone").eq("id", current.organization_id).single();
+      if (organizationError || !organization) throw new Error("Föreningens tidszon kunde inte hämtas.");
+      const times = scheduleActivityTimes(startsAt.toISOString(), organization.time_zone, body.timingRules);
+      if (times.endsAt !== endsAt.toISOString() || times.gatheringAt !== (gatheringAt?.toISOString() ?? null)) throw new Error("Tiderna stämmer inte med reglerna.");
+    }
+  } catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }
+  const { data: activity, error } = await supabase.from("activities").update({ ...(body?.activityTypeId ? { activity_type_id: body.activityTypeId } : {}), ...(body?.timingRules !== undefined ? { timing_rules: normalizeActivityTimingRules(body.timingRules), timing_rule_version: ACTIVITY_TIME_RULE_VERSION } : {}), title, description_markdown: body?.description?.trim() ?? "", gathering_at: gatheringAt?.toISOString() ?? null, starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString(), location: body?.location?.trim() ?? "" }).eq("id", activityId).select("id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location, series_id, status").single();
   if (error || !activity) return NextResponse.json({ error: "Aktiviteten kunde inte uppdateras" }, { status: 500 });
   return NextResponse.json({ activity });
 }

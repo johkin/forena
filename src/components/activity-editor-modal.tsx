@@ -1,11 +1,17 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState, useRef } from "react";
 import type { Activity, Member, Organization, Team } from "@/domain/club";
-import { invitationScheduleForOccurrence, previewSingleActivity, previewWeeklySeries, type ActivityOccurrence, type ResponseDueRule } from "@/lib/activity-series";
+import { previewRuleSingleActivity, previewRuleWeeklySeries, type ActivityOccurrence } from "@/lib/activity-series";
 import type { ActivityDraft } from "@/lib/ai/activity-draft";
 import { attendanceNames } from "@/lib/attendance-names";
 import type { AudienceRole } from "@/lib/invitation-audience";
+import { ActivityTimingFields } from "./activity-timing-fields";
+import type { ActivityConfiguration } from "@/lib/activity-configuration";
+import { FALLBACK_ACTIVITY_DEFAULTS } from "@/lib/activity-defaults";
+import { applyUntouchedDefaults } from "@/lib/activity-editor-defaults";
+import { normalizeActivityTimingRules, type ActivityTimingRules } from "@/lib/activity-time-rules";
+import { requireFutureSchedule } from "@/lib/activity-schedule";
 import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
 
 type Props = { mode: "create" | "edit"; organization: Organization; team: Team; members: Member[]; activity?: Activity; draft?: ActivityDraft; source: "database" | "demo"; canManageInvitations: boolean; onClose: () => void; onNotice: (notice: string) => void; };
@@ -31,20 +37,39 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
   const initialDuration=draft?.durationMinutes??(activity?Math.round((new Date(activity.endsAt).getTime()-new Date(activity.startsAt).getTime())/60000):90);
   const initialGathering=draft?.gatheringMinutesBefore??(activity?.gatheringAt?Math.max(0,Math.round((new Date(activity.startsAt).getTime()-new Date(activity.gatheringAt).getTime())/60000)):0);
   const [kind,setKind]=useState<"single"|"series">(draft?.recurrence?"series":"single");
-  const [preview,setPreview]=useState<ActivityOccurrence[]>();
+  const [preview,setPreview]=useState<(ActivityOccurrence & { invitationSendAt:string;responseDueAt:string;reminderSendAts:string[] })[]>();
   const [payload,setPayload]=useState<Record<string,unknown>>();
   const [pending,setPending]=useState(false);
   const [error,setError]=useState<string>();
   const [groups,setGroups]=useState<{id:string;name:string}[]>([]);
   const [responsibilities,setResponsibilities]=useState<{id:string;name:string}[]>([]);
-  const [selectedRoles,setSelectedRoles]=useState<Set<AudienceRole>>(new Set(["participant","leader"]));
+  const [selectedRoles,setSelectedRoles]=useState<Set<AudienceRole>>(new Set());
   const [selectedGroups,setSelectedGroups]=useState<Set<string>>(new Set());
   const [selectedResponsibilities,setSelectedResponsibilities]=useState<Set<string>>(new Set());
-  const [invitationMode,setInvitationMode]=useState<"none"|"now"|"schedule">(canManageInvitations ? (draft?"now":mode==="create"?"schedule":"none") : "none");
-  const [selectedPeople,setSelectedPeople]=useState<Set<string>>(new Set(draft?members.filter(member=>member.teamRelation==="player").map(member=>member.id):[]));
+  const [invitationMode,setInvitationMode]=useState<"none"|"now"|"schedule">("none");
+  const [selectedPeople,setSelectedPeople]=useState<Set<string>>(new Set());
   const [descriptionOpen,setDescriptionOpen]=useState(Boolean(draft?.description||activity?.description));
   const [invitationOpen,setInvitationOpen]=useState(canManageInvitations && mode==="create");
-  const [reminderOffsets,setReminderOffsets]=useState<number[]>([1440]);
+  const [configuration,setConfiguration] = useState<ActivityConfiguration>();
+  const [configurationError,setConfigurationError] = useState<string>();
+  const [activityTypeId,setActivityTypeId] = useState(activity?.activityTypeId ?? "");
+  const touched = useRef(new Set<keyof ActivityTimingRules>(mode === "edit" || draft ? ["duration","gatheringRule"] : []));
+  const [touchedKeys,setTouchedKeys] = useState(new Set<keyof ActivityTimingRules>(mode === "edit" || draft ? ["duration","gatheringRule"] : []));
+  const [rules,setRules] = useState<ActivityTimingRules>({ ...FALLBACK_ACTIVITY_DEFAULTS, duration:`PT${initialDuration}M`,gatheringRule:initialGathering ? `start-${initialGathering}m` : "start",reminderRules:[...FALLBACK_ACTIVITY_DEFAULTS.reminderRules] });
+  const typeDefaults = configuration?.types.find(type=>type.id===activityTypeId)?.defaults;
+  useEffect(()=>{
+    if (source !== "database") return;
+    const controller = new AbortController();
+    fetch(`/api/activity-configuration?teamId=${encodeURIComponent(team.id)}`,{signal:controller.signal})
+      .then(async response=> { const result = await response.json(); if (!response.ok) throw new Error(result.error); return result as ActivityConfiguration; })
+      .then(config=> { setConfiguration(config); const type = config.types.find(t=>activity?.activityTypeId ? t.id===activity.activityTypeId : t.slug==="ovrigt" && !t.organization_id); setActivityTypeId(activity?.activityTypeId ?? type?.id ?? ""); if(mode==="create" && type) setRules(current=>applyUntouchedDefaults(current,type.defaults,touched.current)); })
+      .catch(error=>{if(!controller.signal.aborted)setConfigurationError(error instanceof Error ? error.message : "Inställningarna kunde inte hämtas.");});
+    return ()=>controller.abort();
+  },[source,team.id,activity?.activityTypeId,mode]);
+  function invalidatePreview() {setPreview(undefined);setPayload(undefined);}
+  function changeRule(key:keyof ActivityTimingRules,value:string|string[]) { invalidatePreview();touched.current.add(key);setTouchedKeys(new Set(touched.current));setRules(current=>({...current,[key]:value})); }
+  function changeActivityType(id:string) { invalidatePreview();setActivityTypeId(id); if(mode==="create") {const defaults=configuration?.types.find(type=>type.id===id)?.defaults;if(defaults)setRules(current=>applyUntouchedDefaults(current,defaults,touched.current));} }
+
   const formatter=useMemo(()=>new Intl.DateTimeFormat("sv-SE",{timeZone,weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}),[timeZone]);
   const names=useMemo(()=>attendanceNames(members.map(member=>({personId:member.id,displayName:member.displayName}))),[members]);
   const invited=members.filter(member=>selectedPeople.has(member.id));
@@ -53,11 +78,12 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
   useEffect(()=>{if(source!=="database"||!canManageInvitations)return;fetch(`/api/team-groups?teamId=${encodeURIComponent(team.id)}`).then(r=>r.ok?r.json():{groups:[],responsibilities:[]}).then(body=>{setGroups(body.groups??[]);setResponsibilities(body.responsibilities??[]);}).catch(()=>{setGroups([]);setResponsibilities([]);});},[canManageInvitations,mode,source,team.id]);
 
   function changeKind(next:"single"|"series") {
+    if(next==="series" && invitationMode==="now")setInvitationMode("none");
     setKind(next);setPreview(undefined);setPayload(undefined);
   }
 
   function togglePerson(id:string) {
-    setSelectedPeople(current=>{const next=new Set(current);if(next.has(id))next.delete(id);else next.add(id);return next;});
+    invalidatePreview();setSelectedPeople(current=>{const next=new Set(current);if(next.has(id))next.delete(id);else next.add(id);return next;});
   }
 
   function peopleColumn(people:Member[],selected:boolean) {
@@ -78,20 +104,19 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
     event.preventDefault();
     const data=new FormData(event.currentTarget);
     const startsOn=String(data.get("startsOn")), startTime=String(data.get("startTime"));
-    const durationMinutes=Number(data.get("durationMinutes")), gatheringMinutesBefore=Number(data.get("gatheringMinutesBefore"));
-    const base={startsOn,startTime,durationMinutes,gatheringMinutesBefore,timeZone};
     try {
-      const occurrences=recurring?previewWeeklySeries({...base,endsOn:String(data.get("endsOn")),weekdays:data.getAll("weekdays").map(Number)}):[previewSingleActivity(base)];
-      const invitationSendMinutesBefore=Number(data.get("invitationSendMinutesBefore")||10080);
-      const responseDueRule=String(data.get("responseDueRule")||"6h") as ResponseDueRule;
-      const reminderMinutesBeforeDue=reminderOffsets[0]??0;
+      if(source === "database" && (!configuration || !activityTypeId)) throw new Error(configurationError ?? "Vänta tills aktivitetstyperna har hämtats och välj en typ.");
+      const timingRules=normalizeActivityTimingRules(rules);
+      const base={startsOn,startTime,timeZone,rules:timingRules};
+      const occurrences=recurring?previewRuleWeeklySeries({...base,endsOn:String(data.get("endsOn")),weekdays:data.getAll("weekdays").map(Number)}):[previewRuleSingleActivity(base)];
+      if(recurring && invitationMode==="now")throw new Error("Välj schemaläggning för en aktivitetsserie.");
       const invitationAudience=invitationMode==="schedule"?"selection":undefined;
       const invitationSelection={roles:[...selectedRoles],groupIds:[...selectedGroups],responsibilityTypeIds:[...selectedResponsibilities]};
       if(invitationMode==="schedule"&&!invitationSelection.roles.length&&!invitationSelection.groupIds.length&&!invitationSelection.responsibilityTypeIds.length) throw new Error("Välj minst en målgrupp.");
       if(invitationMode==="now"&&!selectedPeople.size) throw new Error("Välj minst en person att kalla.");
-      if(invitationMode==="schedule") occurrences.forEach(item=>invitationScheduleForOccurrence(item.startsAt,timeZone,{invitationSendMinutesBefore,responseDueRule,reminderMinutesBeforeDue}));
+      if(invitationMode==="schedule") occurrences.forEach(item=>requireFutureSchedule({...item,reminderSendAt:null}));
       setPreview(occurrences);
-      setPayload({teamId:team.id,title:String(data.get("title")),description:String(data.get("description")),location:String(data.get("location")),invitationMode,invitationAudience,invitationSelection:invitationMode==="schedule"?invitationSelection:undefined,personIds:invitationMode==="now"?[...selectedPeople]:undefined,invitationSendMinutesBefore,responseDueRule,reminderMinutesBeforeDue,reminderMinutesBeforeDueList:reminderOffsets,...base,endsOn:recurring?String(data.get("endsOn")):startsOn,weekdays:recurring?data.getAll("weekdays").map(Number):[new Date(`${startsOn}T00:00:00Z`).getUTCDay()||7]});
+      setPayload({teamId:team.id,activityTypeId:activityTypeId || undefined,title:String(data.get("title")),description:String(data.get("description")),location:String(data.get("location")),invitationMode,invitationAudience,invitationSelection:invitationMode==="schedule"?invitationSelection:undefined,personIds:invitationMode==="now"?[...selectedPeople]:undefined,timingRules,startsOn,startTime,timeZone,endsOn:recurring?String(data.get("endsOn")):startsOn,weekdays:recurring?data.getAll("weekdays").map(Number):[new Date(`${startsOn}T00:00:00Z`).getUTCDay()||7]});
       setError(undefined);
     } catch(caught) { setError(caught instanceof Error?caught.message:"Förhandsgranskningen kunde inte skapas"); }
   }
@@ -107,7 +132,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
     if(!response.ok){setError(result.error??"Aktiviteten kunde inte sparas");return;}
     const savedActivityId=activity?.id??result.activity?.id;
     if(savedActivityId&&invitationMode!=="none"&&mode==="edit"){
-      const invitationResponse=await fetch(`/api/activities/${savedActivityId}/invitations`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(invitationMode==="now"?{mode:"now",personIds:[...selectedPeople]}:{mode:"schedule",audience:"selection",selection:payload.invitationSelection,invitationSendMinutesBefore:payload.invitationSendMinutesBefore,responseDueRule:payload.responseDueRule,reminderMinutesBeforeDue:payload.reminderMinutesBeforeDue,reminderMinutesBeforeDueList:payload.reminderMinutesBeforeDueList})});
+      const invitationResponse=await fetch(`/api/activities/${savedActivityId}/invitations`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(invitationMode==="now"?{mode:"now",personIds:[...selectedPeople]}:{mode:"schedule",audience:"selection",selection:payload.invitationSelection,invitationSendMinutesBefore:payload.invitationSendMinutesBefore,responseDueRule:payload.responseDueRule,reminderMinutesBeforeDue:payload.reminderMinutesBeforeDue,reminderMinutesBeforeDueList:payload.reminderMinutesBeforeDueList,timingRules:payload.timingRules})});
       const invitationResult=await invitationResponse.json();
       if(!invitationResponse.ok){setError(invitationResult.error??"Aktiviteten sparades, men kallelsen kunde inte läggas till");return;}
     }
@@ -131,6 +156,8 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
         {mode==="create"?<div className="activity-kind-switch" role="group" aria-label="Typ av aktivitet"><button className={kind==="single"?"selected":""} onClick={()=>changeKind("single")} type="button">En aktivitet</button><button className={kind==="series"?"selected":""} onClick={()=>changeKind("series")} type="button">Aktivitetsserie</button></div>:null}
         <section className="editor-section" aria-labelledby="editor-basics-title">
           <h3 id="editor-basics-title">Aktivitet</h3>
+          {source === "database" ? <label>Aktivitetstyp<select required value={activityTypeId} onChange={e=>changeActivityType(e.target.value)} disabled={!configuration}><option value="">Välj aktivitetstyp</option>{activity?.activityTypeId && !configuration?.types.some(t=>t.id===activity.activityTypeId) ? <option value={activity.activityTypeId}>Befintlig aktivitetstyp (inaktiv eller annan disciplin)</option> : null}{configuration?.types.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></label> : null}
+          {configurationError ? <p className="auth-error" role="alert">{configurationError}</p> : null}
           <div className="editor-fields">
             <label>Titel<input name="title" required defaultValue={draft?.title??activity?.title??""} placeholder="Träning eller match"/></label>
             <label>Plats<input name="location" required defaultValue={draft?.location??activity?.location??""} placeholder="Plan eller hall"/></label>
@@ -140,11 +167,12 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
         <section className="editor-section" aria-labelledby="editor-time-title">
           <h3 id="editor-time-title">När och varaktighet</h3>
           {recurring?<><fieldset><legend>Veckodagar</legend><div className="weekday-options">{weekdayOptions.map(([value,label])=><label key={value}><input type="checkbox" name="weekdays" value={value} defaultChecked={draft?.recurrence?draft.recurrence.weekdays.includes(value):value===(new Date(`${initial.date}T00:00:00Z`).getUTCDay()||7)}/>{label}</label>)}</div></fieldset><div className="form-row editor-date-row"><label>Startdatum<input name="startsOn" type="date" required defaultValue={initial.date}/></label><label>Slutdatum<input name="endsOn" type="date" required min={initial.date} defaultValue={draft?.recurrence?draft.recurrence.endsOn??"":initial.date}/></label></div><label className="editor-time-field">Tid<input name="startTime" type="time" step={300} required defaultValue={initial.time}/></label></>:<div className="form-row editor-date-row"><label>Datum<input name="startsOn" type="date" required defaultValue={initial.date}/></label><label className="editor-time-field">Tid<input name="startTime" type="time" step={300} required defaultValue={initial.time}/></label></div>}
-          <div className="form-row"><label>Längd<select name="durationMinutes" defaultValue={String(initialDuration)}><option value="30">30 minuter</option><option value="45">45 minuter</option><option value="60">1 timme</option><option value="75">1 tim 15 min</option><option value="90">1,5 timmar</option><option value="120">2 timmar</option><option value="180">3 timmar</option><option value="480">Heldag (8 timmar)</option></select></label><label>Samling före start<select name="gatheringMinutesBefore" defaultValue={String(initialGathering)}><option value="0">Ingen särskild samling</option><option value="15">15 minuter</option><option value="30">30 minuter</option><option value="45">45 minuter</option><option value="60">60 minuter</option></select></label></div>
+          <ActivityTimingFields rules={rules} onChange={changeRule} defaults={typeDefaults} touched={touchedKeys} invitations={false}/>
+          <small>Samling anges exempelvis som start-15m. Välj kallelse och mottagare uttryckligen nedan.</small>
         </section>
         {canManageInvitations ? <details className="editor-section editor-invitation" open={invitationOpen} onToggle={event=>setInvitationOpen(event.currentTarget.open)}>
           <summary>Kallelse <span>{invitationMode==="none"?"Ingen":invitationMode==="now"?"Skicka nu":"Schemalägg"}</span></summary>
-          <div className="activity-kind-switch invitation-mode-switch" role="group" aria-label="Kallelse"><button className={invitationMode==="none"?"selected":""} onClick={()=>setInvitationMode("none")} type="button">Ingen</button><button className={invitationMode==="now"?"selected":""} onClick={()=>setInvitationMode("now")} type="button">Skicka nu</button><button className={invitationMode==="schedule"?"selected":""} onClick={()=>setInvitationMode("schedule")} type="button">Schemalägg</button></div>
+          <div className="activity-kind-switch invitation-mode-switch" role="group" aria-label="Kallelse"><button className={invitationMode==="none"?"selected":""} onClick={()=>{invalidatePreview();setInvitationMode("none");}} type="button">Ingen</button><button className={invitationMode==="now"?"selected":""} onClick={()=>{invalidatePreview();setInvitationMode("now");}} disabled={recurring} title={recurring ? "Använd Schemalägg för en serie" : undefined} type="button">Skicka nu</button><button className={invitationMode==="schedule"?"selected":""} onClick={()=>{invalidatePreview();setInvitationMode("schedule");}} type="button">Schemalägg</button></div>
           {invitationMode==="now"?<div className="editor-invitation-body">
             <div className="editor-inline-heading"><strong>Välj personer</strong><Help label="Skicka nu">Tryck på ett namn för att flytta det till listan över mottagare. Du kan välja spelare, ledare och andra roller tillsammans.</Help></div>
             <div className="attendance-columns person-picker-columns">
@@ -159,14 +187,12 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
               {responsibilities.map(role=><label key={role.id}><input type="checkbox" checked={selectedResponsibilities.has(role.id)} onChange={()=>setSelectedResponsibilities(current=>{const next=new Set(current);if(next.has(role.id))next.delete(role.id);else next.add(role.id);return next;})}/>{role.name}</label>)}
               {groups.map(group=><label key={group.id}><input type="checkbox" checked={selectedGroups.has(group.id)} onChange={()=>setSelectedGroups(current=>{const next=new Set(current);if(next.has(group.id))next.delete(group.id);else next.add(group.id);return next;})}/>{group.name}</label>)}
             </div>
-            <div className="form-row"><label>Skicka kallelsen<select name="invitationSendMinutesBefore" defaultValue="10080"><option value="20160">14 dagar före</option><option value="10080">7 dagar före</option><option value="4320">3 dagar före</option><option value="2880">2 dagar före</option><option value="1440">1 dag före</option><option value="720">12 timmar före</option><option value="360">6 timmar före</option><option value="60">1 timme före</option></select></label><label>Svara senast<select name="responseDueRule" defaultValue="6h"><option value="0h">Vid aktivitetsstart</option><option value="1h">1 timme före</option><option value="2h">2 timmar före</option><option value="6h">6 timmar före</option><option value="previous-midnight">Dagen innan kl 00:00</option><option value="1d">1 dag före</option><option value="2d">2 dagar före</option><option value="3d">3 dagar före</option></select></label></div>
-            <div className="editor-inline-heading"><strong>Påminnelser till obesvarade</strong><Help label="Påminnelser">Du kan lägga till flera påminnelser. Bara personer som fortfarande inte har svarat får respektive utskick.</Help></div>
-            {reminderOffsets.map((offset,index)=><div className="reminder-row" key={index}><label>Påminn före svarstiden<select value={String(offset)} onChange={event=>setReminderOffsets(current=>current.map((value,i)=>i===index?Number(event.target.value):value))}><option value="60">1 timme</option><option value="360">6 timmar</option><option value="720">12 timmar</option><option value="1440">1 dag</option><option value="2880">2 dagar</option></select></label><button className="secondary" type="button" onClick={()=>setReminderOffsets(current=>current.filter((_,i)=>i!==index))}>Ta bort</button></div>)}
-            <button className="secondary" type="button" onClick={()=>setReminderOffsets(current=>[...current,1440])}>+ Lägg till påminnelse</button>
+            <ActivityTimingFields rules={rules} onChange={changeRule} defaults={typeDefaults} touched={touchedKeys} invitations/>
+            <small>Exempel: start-6d = sex kalenderdagar före. deadline-2h = två timmar före sista svarstid. Bara obesvarade får påminnelser.</small>
           </div>:null}
         </details> : null}
         {error?<p className="auth-error" role="alert">{error}</p>:null}
-        {preview?<div className="activity-preview"><p className="eyebrow">Förhandsgranskning · {preview.length} {preview.length===1?"tillfälle":"tillfällen"}</p><ol>{preview.slice(0,12).map(item=><li key={item.startsAt}><strong>{formatter.format(new Date(item.startsAt))}</strong><span>{String(payload?.location)}</span></li>)}</ol></div>:null}
+        {preview?<div className="activity-preview"><p className="eyebrow">Förhandsgranskning · {preview.length} {preview.length===1?"tillfälle":"tillfällen"}</p><ol>{preview.slice(0,12).map(item=><li key={item.startsAt}><strong>{formatter.format(new Date(item.startsAt))}</strong><span>{String(payload?.location)} · Slut: {formatter.format(new Date(item.endsAt))}{item.gatheringAt ? ` · Samling: ${formatter.format(new Date(item.gatheringAt))}` : ""}</span>{invitationMode === "schedule" ? <small>Kallelse: {formatter.format(new Date(item.invitationSendAt))} · Svar: {formatter.format(new Date(item.responseDueAt))} · Påminnelser: {item.reminderSendAts.map(t=>formatter.format(new Date(t))).join(", ") || "Inga"}</small> : null}</li>)}</ol></div>:null}
         <div className="modal-actions">{mode==="edit"?<button className="danger" disabled={pending} onClick={()=>void remove()} type="button">Ta bort</button>:null}<button className="secondary" onClick={onClose} type="button">Avbryt</button>{preview?<button className="primary" disabled={pending} onClick={()=>void save()} type="button">{pending?"Sparar…":mode==="edit"?"Spara ändring":recurring?`Skapa ${preview.length} aktiviteter`:"Skapa aktivitet"}</button>:<button className="primary" type="submit">Förhandsgranska</button>}</div>
       </form>
     </section>
