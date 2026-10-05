@@ -255,7 +255,7 @@ Fortsatt utveckling:
 - [ ] Skilj saknad närvarorapportering från frånvaro och räkna närvaro från spelarens medlemsstart
 - [ ] Kontrollera aktivitetskrockar inklusive samlingstid vid kandidaturval och före kallelse; skilj anmäld från obesvarad kallelse
 - [ ] Beskriv krockar som varningar och ”ingen känd krock”, aldrig garanterad tillgänglighet; begränsa detaljer från andra lag
-- [ ] Föreslå spelare till arbetspass utifrån få/inga genomförda pass och rotera tidigare arbetsuppgifter, exempelvis städning
+- [x] Föreslå spelare till arbetspass utifrån få/inga genomförda pass och rotera tidigare arbetsuppgifter, exempelvis städning
 - [ ] Föreslå matchuttagning utifrån träningsnärvaro, tidigare matchfördelning och krockar
 - [ ] Hitta spelare som faktiskt rotationstränat med mottagande lag under vald period
 - [ ] Spara lagets urvalsprinciper och tidsperiod inom klubbens riktlinjer; visa underlag och motivering per kandidat
@@ -267,8 +267,9 @@ Fortsatt utveckling:
 - [x] Generera bemanningsschema med passlängd, antal platser och öppnings-/stängningsinstruktioner
 - [x] Familjer kan boka för egna barn och föreslå ändring genom ActivityDutyChangeRequest
 - [x] Atomära byten, valbart ledargodkännande, självservicegräns, återtagning och revisionskontroll
-- [ ] Notifiera berörda familjer och ledare om ändringsförslag och beslut
-- [ ] Administrera namnändring/inaktivering och redigera/radera publicerade behov med bevarad historik
+- [x] Notifiera berörda familjer och ledare om ändringsförslag och beslut
+- [x] Administrera namnändring/inaktivering och redigera/radera publicerade behov med bevarad historik
+- [ ] Kalenderexport/prenumeration för enskilda arbetspass (uppskjuten)
 
 För utlån är tills vidare arbetshypotesen att F2016:s ledare erbjuder en grupp
 spelare till F2015 under en period. F2015 ser dem i personvalet utan namnsökning.

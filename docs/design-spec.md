@@ -161,3 +161,9 @@ Familjer väljer barn före bokning och granskar varje ändring. Andra familjer
 visas som ”Bokad av annan familj”. Väntande förslag visas utan att ersätta den
 nuvarande tilldelningen. Ledaren använder samma vy med tilldelning, genomförande,
 schemagenerering och självserviceregler. Alla kontroller radbryts på telefon.
+
+Bemanningsschemats redigering, uppgiftstyper och fördelningsförslag ligger i
+hopfällbara avsnitt. Fördelningsförslag visar period, registrerat underlag och
+motivering per spelare, och kan justeras före gemensam förhandsgranskning.
+Förhandsgranskningen anger när familjer notifieras. Genomförd historik visas
+som låst, och ändrade platsrevisioner kräver uppdatering före nytt försök.

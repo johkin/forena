@@ -58,10 +58,47 @@ platser med bibehållet genomförande. De gamla kolumnerna finns kvar som
 kompatibilitetsdata, men gamla HTTP-skrivningar ger 410. Historikfunktionen
 läser nu verkliga platser och visar högst 20 påbörjade uppgifter inom behörigt lag.
 
+## Redigering och notifieringar
+
+Ledaren kan ändra tider, instruktioner och antal platser. Antalet kan bara
+minskas genom att ta bort lediga platser. Borttagning av en uppgift är en
+avbokning: platser stängs och tilldelningar frigörs, medan poster och tidigare
+tilldelningar i audit-loggen behålls. Uppgifter med registrerat genomförande
+låses för redigering och borttagning. Uppgiftstyper kan döpas om och inaktiveras;
+namnet sparas separat på varje befintlig uppgift så att historiken inte döps om.
+
+Alla ändringar kontrollerar revision under aktivitetslåset. En ny bokning
+ogiltigförklarar en gammal redigeringsförhandsvisning. Redigering/avbokning
+stänger berörda väntande ändringsförslag.
+
+Förslag, slutliga beslut, manuella tilldelningar och schemaändringar köar
+notiser transaktionellt till berörda personers konton/målsmän samt lagets
+behöriga ledare. Samma mottagare får högst en köpost per händelse även vid
+flera roller. Notiser innehåller inga andra familjers identiteter och använder
+befintlig worker: push först, mejl som reserv. Väntande förslagsnotiser som
+ännu inte börjat skickas ersätts när beslut fattas. Workern måste driftsättas
+med det nya innehållsstödet; migrationskörning i sig skickar inga notiser.
+
+## Förslag på fördelning
+
+Ledaren väljer historikens startdatum (innevarande år är förvalt, högst tio år
+bakåt). Behörighetskontrollerad statistik räknar genomförda uppgifter inom
+samma lag, inklusive antal per uppgiftstyp och senaste typen. Ej registrerat
+arbete räknas inte som genomfört; siffrorna visas därför som registrerad
+historik och är inte ett bevis på att någon aldrig arbetat.
+
+Förslaget fyller lediga platser deterministiskt: lägst antal genomförda först,
+sedan annan uppgift än den senaste och sedan färre av samma typ. Lika underlag
+avgörs med namn/ID. Redan tilldelade personer hoppas över och varje person får
+högst en ny plats i automatförslaget. Högst 100 platser föreslås åt gången;
+övriga lämnas lediga. Ledaren kan justera eller hoppa över varje tilldelning.
+En uttrycklig förhandsgranskning visar mottagarna före sparande och notifiering.
+Tilldelningarna sparas atomärt med nya behörighets- och revisionskontroller;
+en ändrad plats gör att hela förslaget måste granskas på nytt.
+
 ## Återstående arbete
 
-Automatiska notifieringar för ändringsförslag, kalenderexport av enskilda pass,
-redigering/radering av redan publicerade behov och sammanvägd rättviseranking
-kommer senare. Väntande förslag visas i aktivitetens schema; inget mejl eller
-push skickas i den här versionen. Automatisk krockkontroll mellan aktiviteter
-är fortfarande en separat roadmap-punkt.
+Kalenderexport av enskilda pass är uppskjuten. Automatisk krockkontroll mellan
+aktiviteter, matchurval och assistentverktyg över historiken är fortsatt
+separata roadmap-punkter. Fördelningsförslaget kontrollerar inte tillgänglighet
+mot andra aktiviteter eller fördelning mellan olika lag.

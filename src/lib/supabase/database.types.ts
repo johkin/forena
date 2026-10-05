@@ -179,7 +179,7 @@ export interface Database {
         OrganizationScoped & { id?: string; team_id: string; activity_type_id: string; title: string; location?: string; recurrence_rule: Json; starts_on: string; ends_on?: string | null; status?: "draft" | "published" | "ended" | "cancelled"; created_by?: string | null; created_at?: string; updated_at?: string }
       >;
       activity_duty_types: Table<
-        Timestamped & OrganizationScoped & { id: string; team_id: string; name: string },
+        Timestamped & OrganizationScoped & { id: string; team_id: string; name: string; active: boolean; revision: number },
         OrganizationScoped & { id?: string; team_id: string; name: string }
       >;
       invitations: Table<
@@ -272,6 +272,7 @@ export interface Database {
     };
     Views: Record<never, never>;
     Functions: {
+      activity_duty_fairness: { Args: { target_activity_id: string; from_date: string }; Returns: Json };
       my_activity_duty_links: { Args: { target_organization_id: string }; Returns: { activity_id: string; team_id: string; person_id: string }[] };
       get_activity_duty_schedule: { Args: { target_activity_id: string }; Returns: Json };
       command_activity_duty: { Args: { target_activity_id: string; command: Json }; Returns: Json };

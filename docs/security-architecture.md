@@ -332,3 +332,11 @@ Bemanningsschemats tabeller saknar direkta klientgrants. RPC:er filtrerar
 familjeidentiteter, verifierar rätt att boka för personen och låser aktiviteten
 under varje ändring. Förslag gäller specifika platsrevisioner och kan inte
 återanvändas mot senare tilldelningar. Se [bemanningsschema](activity-duty-schedule.md).
+
+Bemanningsändringar och fördelningsförslag använder explicita lagbehörigheter,
+aktivitetslås och revisionskontroller. Statistik lämnas bara till ledare för
+aktuellt lag och räknar enbart dess genomförda uppgifter. Den tidigare
+kommandofunktionen ligger privat utan klient-EXECUTE så att inaktiverade platser
+inte kan nås via en äldre RPC. Notifieringsköer skapas i samma transaktion som
+ändringen, dedupliceras per händelse och mottagare och innehåller inga andra
+familjers namn. Avbokning sparar tidigare platser i audit-loggen.
