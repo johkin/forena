@@ -327,3 +327,8 @@ av familjer via Data API. Arbetsuppgift måste tillhöra aktivitetens lag och
 förening; genomförande kräver ett påbörjat, ej inställt arbetspass. Namnkatalogen
 har RLS, explicita grants och saknar direkt uppdaterings-/raderingsrätt för
 klienter, så tidigare historik kan inte oavsiktligt döpas om eller raderas.
+
+Bemanningsschemats tabeller saknar direkta klientgrants. RPC:er filtrerar
+familjeidentiteter, verifierar rätt att boka för personen och låser aktiviteten
+under varje ändring. Förslag gäller specifika platsrevisioner och kan inte
+återanvändas mot senare tilldelningar. Se [bemanningsschema](activity-duty-schedule.md).

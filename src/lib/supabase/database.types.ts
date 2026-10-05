@@ -272,6 +272,9 @@ export interface Database {
     };
     Views: Record<never, never>;
     Functions: {
+      my_activity_duty_links: { Args: { target_organization_id: string }; Returns: { activity_id: string; team_id: string; person_id: string }[] };
+      get_activity_duty_schedule: { Args: { target_activity_id: string }; Returns: Json };
+      command_activity_duty: { Args: { target_activity_id: string; command: Json }; Returns: Json };
       activity_duty_history: { Args: { target_team_id: string; target_person_id: string }; Returns: { activity_title: string; starts_at: string; duty_name: string | null; completed_at: string | null; response: string }[] };
       add_activity_participants: { Args: { target_activity_id: string; participants: Json; register_accepted?: boolean }; Returns: number };
       set_activity_discipline: { Args: { target_scope: string; target_organization_id: string; target_scope_id: string; target_discipline_id: string | null }; Returns: undefined };

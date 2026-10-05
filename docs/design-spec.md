@@ -155,3 +155,9 @@ Valda personer ligger kvar när sökningen ändras. Spelare föreslås som spela
 förhandsgranskning. Redan kallade döljs och dubbleringar nekas på servern.
 Arbetsuppgifter visas hopfällbart för arbetspass, med separat markering för
 utfört arbete, och visas för familjen i den personliga kallelsen.
+
+Bemanningsschema visar uppgifter som rader med tid/deadline och lediga platser.
+Familjer väljer barn före bokning och granskar varje ändring. Andra familjer
+visas som ”Bokad av annan familj”. Väntande förslag visas utan att ersätta den
+nuvarande tilldelningen. Ledaren använder samma vy med tilldelning, genomförande,
+schemagenerering och självserviceregler. Alla kontroller radbryts på telefon.

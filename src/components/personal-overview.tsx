@@ -41,7 +41,7 @@ export function PersonalOverview({ activities, timeZone, onAnswer, onOpenActivit
             <span className="personal-activity-copy">
               <small>{item.member.displayName} · {item.team.name}</small>
               <strong>{item.activity.title}</strong>
-              {invitation?.dutyName && <span>Uppgift: {invitation.dutyName}</span>}
+
               <span>{when(dueAt, timeZone)} · {item.activity.location}</span>
             </span>
             <b aria-hidden="true">→</b>

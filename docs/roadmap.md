@@ -263,7 +263,12 @@ Fortsatt utveckling:
 - [ ] Visa uppdateringsbar flödeshändelse för ordinarie ledare när spelare kallas till annat lag, svarar eller kallelsen återtas
 - [ ] Stöd tidsbegränsat utlån (”lease”): avsändande ledare gör utvalda spelare direkt valbara för mottagande lag
 - [ ] Bestäm utlånets giltighetsperiod, godkännande, återkallning och synlighet; utlån ska varken vara automatisk kallelse eller lagbehörighet
-- [ ] Utöka arbetsuppgifter med antal platser och administration för namnändring/inaktivering med bevarad historik
+- [x] Separata uppgifter med tidsintervall, deadline eller ingen tid samt lediga platser
+- [x] Generera bemanningsschema med passlängd, antal platser och öppnings-/stängningsinstruktioner
+- [x] Familjer kan boka för egna barn och föreslå ändring genom ActivityDutyChangeRequest
+- [x] Atomära byten, valbart ledargodkännande, självservicegräns, återtagning och revisionskontroll
+- [ ] Notifiera berörda familjer och ledare om ändringsförslag och beslut
+- [ ] Administrera namnändring/inaktivering och redigera/radera publicerade behov med bevarad historik
 
 För utlån är tills vidare arbetshypotesen att F2016:s ledare erbjuder en grupp
 spelare till F2015 under en period. F2015 ser dem i personvalet utan namnsökning.
