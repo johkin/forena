@@ -117,7 +117,7 @@ update public.activity_duty_change_requests set created_at=now()+interval '1 sec
 set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"a0000000-0000-0000-0000-000000000002","role":"authenticated"}',true);
 select is(jsonb_array_length(public.get_activity_duty_schedule('a6000000-0000-0000-0000-000000000001')->'requests'),21,'Family gets all pending plus twenty visible resolved requests');
-select is((select count(*)::integer from jsonb_array_elements(public.get_activity_duty_schedule('a6000000-0000-0000-000000000001')->'requests') r where r->>'status'='pending'),1,'Pending request remains visible');
+select is((select count(*)::integer from jsonb_array_elements(public.get_activity_duty_schedule('a6000000-0000-0000-0000-000000000001')->'requests') r where r->>'status'='pending'),1,'Pending request remains visible');
 select throws_ok('select private.maintain_due_activity_duty_requests()','42501',null,'Clients cannot invoke global maintenance');
 reset role;
 update public.activities set starts_at=now()-interval '1 hour',ends_at=now()+interval '1 hour'
