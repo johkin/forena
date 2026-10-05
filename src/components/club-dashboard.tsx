@@ -138,8 +138,9 @@ export function ClubDashboard({ organization, sections, team, activity, members,
         </section>
       </AppShell>
       {activityEditorMode && canManageActivities ? <ActivityEditorModal mode={activityEditorMode} organization={organization} team={team} members={rosterMembers} activity={activityEditorMode === "edit" ? (editingActivity ?? currentActivity) : undefined} draft={activityEditorMode === "create" ? activityDraft : undefined} source={source} canManageInvitations={canManageInvitations} onClose={() => { setActivityEditorMode(null); setActivityDraft(undefined); }} onNotice={setNotice} /> : null}
-      {selectedActivity ? <ActivityDetailModal activity={selectedActivity} organization={organization} team={team} canManageActivity={canManageActivities} canManageInvitations={canManageInvitations} canManageAttendance={canManageAttendance} rosterMembers={rosterMembers} onClose={() => setSelectedActivity(undefined)} onEdit={(item) => { setActivityDraft(undefined); setEditingActivity(item); setSelectedActivity(undefined); setActivityEditorMode("edit"); }} /> : null}
+      {selectedActivity ? <ActivityDetailModal activity={selectedActivity} organization={organization} team={familyActivities.find(item => item.activity.id === selectedActivity.id)?.team ?? team} canManageActivity={selectedActivity.teamId === team.id && canManageActivities} canManageInvitations={selectedActivity.teamId === team.id && canManageInvitations} canManageAttendance={selectedActivity.teamId === team.id && canManageAttendance} rosterMembers={rosterMembers} onClose={() => setSelectedActivity(undefined)} onEdit={(item) => { setActivityDraft(undefined); setEditingActivity(item); setSelectedActivity(undefined); setActivityEditorMode("edit"); }} /> : null}
       {attendanceActivity && canManageAttendance ? <AttendanceModal activityId={attendanceActivity.id} onClose={() => setAttendanceActivity(undefined)} onSaved={() => setPendingAttendance((current) => current.filter((item) => item.id !== attendanceActivity.id))} /> : null}
     </main>
   );
 }
+

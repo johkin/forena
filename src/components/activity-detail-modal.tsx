@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Activity, Member, Organization, Team } from "@/domain/club";
 import { ActivityStaffingList } from "@/components/activity-staffing-list";
+import { ActivityParticipantPicker } from "@/components/activity-participant-picker";
+import { ActivityDutyEditor } from "@/components/activity-duty-editor";
+import type { ActivityRole } from "@/lib/activity-participation";
 import { AttendanceModal } from "@/components/attendance-modal";
 import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
 
@@ -36,7 +39,10 @@ type DeliveryStatus = {
 type ActivityInvitee = {
   personId: string;
   displayName: string;
-  role: "participant" | "leader";
+  role: ActivityRole;
+  dutyTypeId?: string | null;
+  dutyCompletedAt?: string | null;
+  registeredByLeader?: boolean;
   response: "pending" | "accepted" | "declined";
 };
 
@@ -66,9 +72,6 @@ export function ActivityDetailModal({ activity, organization, team, canManageAct
   const [invitees, setInvitees] = useState<ActivityInvitee[]>([]);
   const [deliveryError, setDeliveryError] = useState(false);
   const [attendanceOpen, setAttendanceOpen] = useState(false);
-  const [selectedPeople, setSelectedPeople] = useState<Set<string>>(new Set());
-  const [invitationPending, setInvitationPending] = useState(false);
-  const [invitationNotice, setInvitationNotice] = useState<string>();
   const [openedAt] = useState(() => Date.now());
   const activityStarted = new Date(activity.startsAt).getTime() <= openedAt;
   const date = new Intl.DateTimeFormat("sv-SE", { timeZone, weekday: "long", day: "numeric", month: "long" }).format(new Date(activity.startsAt));
@@ -110,50 +113,12 @@ export function ActivityDetailModal({ activity, organization, team, canManageAct
     return () => { cancelled = true; };
   }, [activity.id, canManageInvitations]);
 
-  const alreadyInvited = new Set(invitees.map((item) => item.personId));
-  const availableInvitees = rosterMembers.filter((member) => !alreadyInvited.has(member.id));
-
-  function toggleInvitee(personId: string) {
-    setSelectedPeople((current) => {
-      const next = new Set(current);
-      if (next.has(personId)) next.delete(personId); else next.add(personId);
-      return next;
-    });
-  }
-
-  async function sendInvitation() {
-    if (!selectedPeople.size) return;
-    setInvitationPending(true);
-    setInvitationNotice(undefined);
-    let response: Response;
-    let body: { error?: string; queuedRecipients?: number };
-    try {
-      response = await fetch(`/api/activities/${activity.id}/invitations`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ mode: "now", personIds: [...selectedPeople] }),
-      });
-      body = await response.json();
-    } catch {
-      setInvitationNotice("Kallelsen kunde inte skickas.");
-      return;
-    } finally {
-      setInvitationPending(false);
-    }
-    if (!response.ok) {
-      setInvitationNotice(body.error ?? "Kallelsen kunde inte skickas.");
-      return;
-    }
-    setInvitationNotice(`Kallelsen köades till ${body.queuedRecipients ?? selectedPeople.size} mottagare.`);
-    setSelectedPeople(new Set());
-    const [detailResponse] = await Promise.all([
-      fetch(`/api/activities/${activity.id}`),
-      loadDelivery(activity.id),
-    ]);
-    if (detailResponse.ok) {
-      const detail = await detailResponse.json();
-      setInvitees(detail.invitees ?? []);
-    }
+  async function refreshParticipation() {
+    const response = await fetch(`/api/activities/${activity.id}`);
+    if (!response.ok) throw new Error("Deltagarlistan kunde inte uppdateras. Öppna aktiviteten igen.");
+    const detail = await response.json();
+    setInvitees(detail.invitees ?? []);
+    await loadDelivery(activity.id);
   }
 
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
@@ -173,18 +138,10 @@ export function ActivityDetailModal({ activity, organization, team, canManageAct
         <ActivityStaffingList invitees={invitees} />
       </section> : null}
 
-      {canManageInvitations ? <details className="activity-invitation-add">
-        <summary>Lägg till kallelse</summary>
-        <div className="activity-invitation-add-body">
-          <p className="overview-empty">Välj personer som ska få en kallelse nu. Redan kallade personer visas inte här.</p>
-          {availableInvitees.length ? <div className="invitation-person-picker">{availableInvitees.map((member) => <label key={member.id}>
-            <input type="checkbox" checked={selectedPeople.has(member.id)} onChange={() => toggleInvitee(member.id)} />
-            <span><strong>{member.displayName}</strong><small>{member.teamRelation === "player" ? "Spelare" : "Ledare"}</small></span>
-          </label>)}</div> : <p className="overview-empty">Alla i laget är redan kallade.</p>}
-          {invitationNotice ? <p className="overview-empty" role="status">{invitationNotice}</p> : null}
-          <div className="modal-actions"><button className="primary" disabled={!selectedPeople.size || invitationPending} onClick={() => void sendInvitation()} type="button">{invitationPending ? "Köar…" : "Skicka kallelse"}</button></div>
-        </div>
-      </details> : null}
+      {canManageInvitations ? <>
+        <ActivityParticipantPicker activityId={activity.id} rosterMembers={rosterMembers} invitedIds={invitees.map(p => p.personId)} onAdded={refreshParticipation} />
+        <ActivityDutyEditor activityId={activity.id} invitees={invitees} started={activityStarted} timeZone={timeZone} onSaved={refreshParticipation} />
+      </> : null}
 
       {canManageInvitations && deliveryStatus ? <details className="delivery-status">
         <summary><span>Leveransstatus</span><small>{deliveryStatus.sent} skickade · {deliveryStatus.queued} väntar · {deliveryStatus.failed} misslyckade</small></summary>
@@ -205,3 +162,4 @@ export function ActivityDetailModal({ activity, organization, team, canManageAct
     {attendanceOpen && canManageAttendance ? <AttendanceModal activityId={activity.id} onClose={() => setAttendanceOpen(false)} /> : null}
   </div>;
 }
+

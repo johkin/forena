@@ -144,3 +144,14 @@ Listkonfiguration nekar nollförskjutning för kallelse/påminnelse utan dagens
 början. Förval från äldre data ändras inte; full schemavalidering finns kvar.
 Nollförskjutning med dagens början visas som ”Vid början av aktivitetsdagen”
 respektive ”Vid början av dagen för sista svarstid”.
+
+
+## Deltagare och arbetsuppgifter
+
+Aktivitetsdialogens deltagarval har namnsökning inom klubben (minst två tecken,
+högst 30 träffar), fullständiga namn och aktuella lag för att skilja personer åt.
+Valda personer ligger kvar när sökningen ändras. Spelare föreslås som spelare;
+övriga kräver uttryckligt rollval. Kallelse och ledaranmälan har var sin tydlig
+förhandsgranskning. Redan kallade döljs och dubbleringar nekas på servern.
+Arbetsuppgifter visas hopfällbart för arbetspass, med separat markering för
+utfört arbete, och visas för familjen i den personliga kallelsen.

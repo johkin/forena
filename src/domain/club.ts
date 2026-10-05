@@ -103,6 +103,7 @@ export type Invitation = {
   response: InvitationResponse;
   respondedAt?: string;
   responseComment?: string;
+  dutyName?: string;
 };
 
 export type InvitationSummary = Record<InvitationResponse, number>;
@@ -129,3 +130,4 @@ export function respondToInvitation(
   const comment = responseComment?.trim();
   return { ...invitation, response, respondedAt, responseComment: comment || undefined };
 }
+

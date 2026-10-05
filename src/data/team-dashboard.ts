@@ -157,10 +157,26 @@ export async function getTeamDashboard(
     ...(guardianLinksForUser ?? []).map((item) => item.person_id),
     ...(ownPeopleForUser ?? []).map((item) => item.id),
   ])];
+  const { data: familyInvitationRows } = familyPersonIds.length
+    ? await supabase.from("invitations").select("id, organization_id, activity_id, person_id, response, responded_at, response_comment, duty_type_id").in("person_id", familyPersonIds)
+    : { data: [] };
   const { data: familyMembershipRows } = familyPersonIds.length
     ? await supabase.from("memberships").select("person_id, team_id").in("person_id", familyPersonIds).in("role", ["participant", "leader"]).is("ends_on", null)
     : { data: [] };
-  const familyTeamIds = [...new Set((familyMembershipRows ?? []).flatMap((item) => item.team_id ? [item.team_id] : []))];
+  const familyInvitedActivityIds = [...new Set((familyInvitationRows ?? []).map(i => i.activity_id))];
+  const { data: invitedActivities } = familyInvitedActivityIds.length
+    ? await supabase.from("activities").select("id, team_id").in("id", familyInvitedActivityIds).neq("status", "cancelled").gte("ends_at", referenceTime)
+    : { data: [] };
+  const invitationTeamByActivity = new Map((invitedActivities ?? []).map(a => [a.id, a.team_id]));
+  // A personal invitation creates an activity link, never a team membership or team permission.
+  const familyLinks = [...(familyMembershipRows ?? []).map(m => ({ ...m, activityId: undefined as string | undefined })),
+    ...(familyInvitationRows ?? []).flatMap(i => {
+      const teamId = invitationTeamByActivity.get(i.activity_id);
+      return teamId ? [{ person_id: i.person_id, team_id: teamId, activityId: i.activity_id }] : [];
+    })];
+  const { data: familyDutyTypes } = await supabase.from("activity_duty_types").select("id, name").eq("organization_id", organizationRow.id);
+  const dutyNameById = new Map((familyDutyTypes ?? []).map(d => [d.id, d.name]));
+  const familyTeamIds = [...new Set(familyLinks.flatMap((item) => item.team_id ? [item.team_id] : []))];
   const [{ data: familyPeopleRows }, { data: familyTeamRows }, { data: familyActivityRows }] = await Promise.all([
     familyPersonIds.length ? supabase.from("people").select("id, organization_id, display_name").in("id", familyPersonIds) : Promise.resolve({ data: [] }),
     familyTeamIds.length ? supabase.from("teams").select("id, organization_id, section_id, slug, name, season").in("id", familyTeamIds) : Promise.resolve({ data: [] }),
@@ -170,9 +186,6 @@ export async function getTeamDashboard(
   for (const item of familyActivityRows ?? []) {
     if (item.team_id && !nextActivityByTeam.has(item.team_id)) nextActivityByTeam.set(item.team_id, item);
   }
-  const { data: familyInvitationRows } = familyPersonIds.length
-    ? await supabase.from("invitations").select("id, organization_id, activity_id, person_id, response, responded_at, response_comment").in("person_id", familyPersonIds)
-    : { data: [] };
 
   const { data: upcomingActivityRows } = await supabase
     .from("activities")
@@ -190,7 +203,7 @@ export async function getTeamDashboard(
 
   const invitationQuery = supabase
     .from("invitations")
-    .select("id, organization_id, activity_id, person_id, response, responded_at, response_comment")
+    .select("id, organization_id, activity_id, person_id, response, responded_at, response_comment, duty_type_id")
     .eq("activity_id", activityRow.id);
   const { data: invitationRows } = canManageInvitations
     ? await invitationQuery
@@ -283,6 +296,7 @@ export async function getTeamDashboard(
     response: invitation.response,
     respondedAt: invitation.responded_at ?? undefined,
     responseComment: invitation.response_comment ?? undefined,
+    dutyName: dutyNameById.get(invitation.duty_type_id ?? ""),
   }));
   const startedActivityRows = canManageAttendance
     ? await supabase
@@ -350,11 +364,11 @@ export async function getTeamDashboard(
   const familyPeopleById = new Map((familyPeopleRows ?? []).map((item) => [item.id, item]));
   const familyTeamsById = new Map((familyTeamRows ?? []).map((item) => [item.id, item]));
   const familyInvitationByKey = new Map((familyInvitationRows ?? []).map((item) => [`${item.person_id}:${item.activity_id}`, item]));
-  const familyActivities: FamilyActivity[] = (familyMembershipRows ?? []).flatMap((membership) => {
+  const familyActivities: FamilyActivity[] = familyLinks.flatMap((membership) => {
     if (!membership.team_id) return [];
     const person = familyPeopleById.get(membership.person_id);
     const teamItem = familyTeamsById.get(membership.team_id);
-    const activityItem = (familyActivityRows ?? []).find((candidate) =>
+    const activityItem = membership.activityId ? (familyActivityRows ?? []).find(a => a.id === membership.activityId) : (familyActivityRows ?? []).find((candidate) =>
       candidate.team_id === membership.team_id
       && familyInvitationByKey.has(`${person?.id}:${candidate.id}`),
     ) ?? nextActivityByTeam.get(membership.team_id);
@@ -364,9 +378,10 @@ export async function getTeamDashboard(
       member: { id: person.id, organizationId: person.organization_id, displayName: person.display_name },
       team: { id: teamItem.id, organizationId: teamItem.organization_id, sectionId: teamItem.section_id, slug: teamItem.slug, name: teamItem.name, season: teamItem.season },
       activity: { id: activityItem.id, organizationId: activityItem.organization_id, teamId: activityItem.team_id ?? teamItem.id, title: activityItem.title, activityTypeId: activityItem.activity_type_id, gatheringAt: activityItem.gathering_at ?? undefined, startsAt: activityItem.starts_at, endsAt: activityItem.ends_at, location: activityItem.location, seriesId: activityItem.series_id ?? undefined, status: activityItem.status, invitationSendAt: activityItem.invitation_send_at ?? undefined, responseDueAt: activityItem.response_due_at ?? undefined, reminderSendAt: activityItem.reminder_send_at ?? undefined },
-      invitation: invitationItem && (!activityItem.invitation_send_at || new Date(activityItem.invitation_send_at) <= new Date()) ? { id: invitationItem.id, organizationId: invitationItem.organization_id, activityId: invitationItem.activity_id, memberId: invitationItem.person_id, response: invitationItem.response, respondedAt: invitationItem.responded_at ?? undefined, responseComment: invitationItem.response_comment ?? undefined } : undefined,
+      invitation: invitationItem && (!activityItem.invitation_send_at || new Date(activityItem.invitation_send_at) <= new Date()) ? { id: invitationItem.id, organizationId: invitationItem.organization_id, activityId: invitationItem.activity_id, memberId: invitationItem.person_id, response: invitationItem.response, respondedAt: invitationItem.responded_at ?? undefined, responseComment: invitationItem.response_comment ?? undefined, dutyName: dutyNameById.get(invitationItem.duty_type_id ?? "") } : undefined,
     }];
   });
 
-  return { organization, sections: sectionList, team, activity, members, rosterMembers, upcomingActivities, invitations, workspaces, tasks, familyActivities, canManageTeam: canManageCurrentTeam, teamPermissions, canAdministerOrganization: ["owner", "admin"].includes(organizationMembership?.role ?? ""), accountEmail: authData.user.email, respondablePersonIds: familyPersonIds, referenceTime, missingAttendanceActivities, source: "database" };
+  return { organization, sections: sectionList, team, activity, members, rosterMembers, upcomingActivities, invitations, workspaces, tasks, familyActivities: [...new Map(familyActivities.map(item => [`${item.member.id}:${item.activity.id}`, item])).values()], canManageTeam: canManageCurrentTeam, teamPermissions, canAdministerOrganization: ["owner", "admin"].includes(organizationMembership?.role ?? ""), accountEmail: authData.user.email, respondablePersonIds: familyPersonIds, referenceTime, missingAttendanceActivities, source: "database" };
 }
+

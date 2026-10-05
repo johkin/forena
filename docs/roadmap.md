@@ -232,6 +232,44 @@ validering och krav på förhandsgranskning ligger alltid i applikationslagret.
 - [ ] Återanvänd Signal Engine och arbetsytekontext i assistenten
 - [ ] Låt UI och assistent anropa samma typade applikationskommandon
 
+### Deltagande, arbetsrotation och kandidatförslag
+
+Grundprincip: kallelse, anmälan och faktiskt deltagande är olika saker.
+Arbetspass tilldelas spelaren; familjen avgör vem som arbetar. Fördelning räknas
+per spelare, inte per vuxen eller hushåll. Deltagande ger aldrig lagbehörighet.
+
+Första etappen (denna ändring):
+
+- [x] Sök personer på namn inom klubben från aktivitetsdialogen och visa deras aktuella lag
+- [x] Kalla personer från andra lag utan att skapa lagmedlemskap; återanvänd personens målsmän
+- [x] Spara roll per aktivitet: spelare, ledare, målsman eller funktionär; fråga när roll behöver väljas
+- [x] Låt ledaren lägga till personer som anmälda med tydlig bekräftelse och registrerad avsändare
+- [x] Ta med kallade personer från andra lag i närvarolistan och familjens personliga översikt
+- [x] Skapa återanvändbara arbetsuppgifter per lag och tilldela dem till spelarnas kallelser
+- [x] Visa tilldelad arbetsuppgift för familjen och registrera genomförande separat från kallelsesvaret
+- [x] Visa de senaste 20 påbörjade arbetspassen och arbetsuppgifterna för en person inom hanterat lag
+
+Fortsatt utveckling:
+
+- [ ] Gemensamt behörighetskontrollerat historikverktyg för träning, matcher och arbetspass, med tidsperiod och summeringar
+- [ ] Skilj saknad närvarorapportering från frånvaro och räkna närvaro från spelarens medlemsstart
+- [ ] Kontrollera aktivitetskrockar inklusive samlingstid vid kandidaturval och före kallelse; skilj anmäld från obesvarad kallelse
+- [ ] Beskriv krockar som varningar och ”ingen känd krock”, aldrig garanterad tillgänglighet; begränsa detaljer från andra lag
+- [ ] Föreslå spelare till arbetspass utifrån få/inga genomförda pass och rotera tidigare arbetsuppgifter, exempelvis städning
+- [ ] Föreslå matchuttagning utifrån träningsnärvaro, tidigare matchfördelning och krockar
+- [ ] Hitta spelare som faktiskt rotationstränat med mottagande lag under vald period
+- [ ] Spara lagets urvalsprinciper och tidsperiod inom klubbens riktlinjer; visa underlag och motivering per kandidat
+- [ ] Ge assistenten läs- och förslagsverktyg över samma applikationskommandon; ledaren granskar och justerar innan utskick
+- [ ] Visa uppdateringsbar flödeshändelse för ordinarie ledare när spelare kallas till annat lag, svarar eller kallelsen återtas
+- [ ] Stöd tidsbegränsat utlån (”lease”): avsändande ledare gör utvalda spelare direkt valbara för mottagande lag
+- [ ] Bestäm utlånets giltighetsperiod, godkännande, återkallning och synlighet; utlån ska varken vara automatisk kallelse eller lagbehörighet
+- [ ] Utöka arbetsuppgifter med antal platser och administration för namnändring/inaktivering med bevarad historik
+
+För utlån är tills vidare arbetshypotesen att F2016:s ledare erbjuder en grupp
+spelare till F2015 under en period. F2015 ser dem i personvalet utan namnsökning.
+Detaljerna beslutas före implementation. Den första etappen skickar inte
+flödesnotiser till andra ledare och innehåller inte AI-urval eller krockkontroll.
+
 ### Administrerbara skills per arbetsyta
 
 Assistenten ska kunna använda versionshanterade skills: strukturerade
@@ -324,3 +362,4 @@ väljer mall och visar resultatet för granskning före export eller publicering
 - [ ] Verifiera e-postfallback när push saknas eller misslyckas
 - [ ] Mobil tillgänglighetsgranskning
 - [ ] Pilot med ett lag
+
