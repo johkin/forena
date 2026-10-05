@@ -169,7 +169,8 @@ export async function getTeamDashboard(
     : { data: [] };
   const invitationTeamByActivity = new Map((invitedActivities ?? []).map(a => [a.id, a.team_id]));
   // A personal invitation creates an activity link, never a team membership or team permission.
-  const familyLinks = [...(familyMembershipRows ?? []).map(m => ({ ...m, activityId: undefined as string | undefined })),
+  const { data: familyDutyLinks } = await supabase.rpc("my_activity_duty_links", { target_organization_id: organizationRow.id });
+  const familyLinks = [...(familyDutyLinks ?? []).map(link => ({ person_id: link.person_id, team_id: link.team_id, activityId: link.activity_id })),...(familyMembershipRows ?? []).map(m => ({ ...m, activityId: undefined as string | undefined })),
     ...(familyInvitationRows ?? []).flatMap(i => {
       const teamId = invitationTeamByActivity.get(i.activity_id);
       return teamId ? [{ person_id: i.person_id, team_id: teamId, activityId: i.activity_id }] : [];

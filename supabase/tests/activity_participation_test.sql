@@ -85,7 +85,7 @@ select throws_ok($q$select public.add_activity_participants('a6000000-0000-0000-
  '[{"personId":"a5000000-0000-0000-0000-000000000003","role":"participant"}]', false)$q$, '23514', null, 'Cannot invite another club person');
 select lives_ok($q$update public.invitations set duty_type_id='a7000000-0000-0000-0000-000000000001', duty_completed_at=now()
  where activity_id='a6000000-0000-0000-0000-000000000001' and person_id='a5000000-0000-0000-0000-000000000002'$q$, 'Manager can record completed work');
-select results_eq($q$select duty_name from public.activity_duty_history('a3000000-0000-0000-0000-000000000001', 'a5000000-0000-0000-0000-000000000002')$q$, array['Städning'::text], 'History contains stable duty name');
+select results_eq($q$select duty_name from public.activity_duty_history('a3000000-0000-0000-0000-000000000001', 'a5000000-0000-0000-0000-000000000002')$q$, array[]::text[], 'Legacy invitation metadata is not new schedule history');
 select throws_ok($q$update public.invitations set duty_type_id='a7000000-0000-0000-0000-000000000002'
  where activity_id='a6000000-0000-0000-0000-000000000001' and person_id='a5000000-0000-0000-0000-000000000002'$q$, '23514', null, 'Reject duty from another team');
 select throws_ok($q$select public.activity_duty_history('a3000000-0000-0000-0000-000000000002', 'a5000000-0000-0000-0000-000000000002')$q$, '42501', null, 'Manager cannot read another team history');
