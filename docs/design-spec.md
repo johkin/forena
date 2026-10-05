@@ -120,3 +120,7 @@ påminnelselista är ett uttryckligt avstängningsval. Redigera typer i hopfäll
 rader och samla nivåval i en radbrytande navigation. Aktivitetens typval ändrar
 bara orörda nya fält. Förhandsgranskningen visar tider i föreningens tidszon.
 Kallelsemottagare och utskicksläge väljs alltid uttryckligen av ledaren.
+
+Tidsval använder den gemensamma `FiveMinuteTimeField`: timmar 00–23 och minuter
+00, 05, 10 … 55. Samma kontroll visas på komponentsidan. Befintliga tider och
+utkast mellan femminutersstegen bevaras tills användaren ändrar minutvalet.
