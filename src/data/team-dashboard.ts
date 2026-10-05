@@ -164,7 +164,7 @@ export async function getTeamDashboard(
   const [{ data: familyPeopleRows }, { data: familyTeamRows }, { data: familyActivityRows }] = await Promise.all([
     familyPersonIds.length ? supabase.from("people").select("id, organization_id, display_name").in("id", familyPersonIds) : Promise.resolve({ data: [] }),
     familyTeamIds.length ? supabase.from("teams").select("id, organization_id, section_id, slug, name, season").in("id", familyTeamIds) : Promise.resolve({ data: [] }),
-    familyTeamIds.length ? supabase.from("activities").select("id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location, series_id, status, invitation_send_at, response_due_at, reminder_send_at").in("team_id", familyTeamIds).neq("status", "cancelled").gte("ends_at", referenceTime).order("starts_at") : Promise.resolve({ data: [] }),
+    familyTeamIds.length ? supabase.from("activities").select("id, organization_id, team_id, activity_type_id, title, gathering_at, starts_at, ends_at, location, series_id, status, invitation_send_at, response_due_at, reminder_send_at").in("team_id", familyTeamIds).neq("status", "cancelled").gte("ends_at", referenceTime).order("starts_at") : Promise.resolve({ data: [] }),
   ]);
   const nextActivityByTeam = new Map<string, NonNullable<typeof familyActivityRows>[number]>();
   for (const item of familyActivityRows ?? []) {
@@ -176,7 +176,7 @@ export async function getTeamDashboard(
 
   const { data: upcomingActivityRows } = await supabase
     .from("activities")
-    .select("id, organization_id, team_id, title, description_markdown, gathering_at, starts_at, ends_at, location, series_id, status, invitation_send_at, response_due_at, reminder_send_at")
+    .select("id, organization_id, team_id, activity_type_id, title, description_markdown, gathering_at, starts_at, ends_at, location, series_id, status, invitation_send_at, response_due_at, reminder_send_at")
     .eq("team_id", teamRow.id)
     .neq("status", "cancelled")
     .gte("ends_at", referenceTime)
@@ -246,7 +246,7 @@ export async function getTeamDashboard(
     id: activityRow.id,
     organizationId: activityRow.organization_id,
     teamId: activityRow.team_id ?? team.id,
-    title: activityRow.title,
+    title: activityRow.title, activityTypeId: activityRow.activity_type_id,
     description: activityRow.description_markdown,
     gatheringAt: activityRow.gathering_at ?? undefined,
     startsAt: activityRow.starts_at,
@@ -270,7 +270,7 @@ export async function getTeamDashboard(
     .filter((member) => rosterRelationByMemberId.has(member.id))
     .map((member) => ({ ...member, teamRelation: rosterRelationByMemberId.get(member.id) }));
   const upcomingActivities: Activity[] = (upcomingActivityRows ?? []).map((item) => ({
-    id: item.id, organizationId: item.organization_id, teamId: item.team_id ?? team.id, title: item.title, description: item.description_markdown,
+    id: item.id, organizationId: item.organization_id, teamId: item.team_id ?? team.id, title: item.title, activityTypeId: item.activity_type_id, description: item.description_markdown,
     gatheringAt: item.gathering_at ?? undefined, startsAt: item.starts_at, endsAt: item.ends_at, location: item.location,
     seriesId: item.series_id ?? undefined, status: item.status, invitationSendAt: item.invitation_send_at ?? undefined,
     responseDueAt: item.response_due_at ?? undefined, reminderSendAt: item.reminder_send_at ?? undefined,
@@ -287,7 +287,7 @@ export async function getTeamDashboard(
   const startedActivityRows = canManageAttendance
     ? await supabase
         .from("activities")
-        .select("id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location, series_id, status, invitation_send_at, response_due_at, reminder_send_at")
+        .select("id, organization_id, team_id, activity_type_id, title, gathering_at, starts_at, ends_at, location, series_id, status, invitation_send_at, response_due_at, reminder_send_at")
         .eq("team_id", teamRow.id)
         .neq("status", "cancelled")
         .lte("starts_at", referenceTime)
@@ -300,7 +300,7 @@ export async function getTeamDashboard(
     : { data: [] };
   const reportedActivityIds = new Set((attendanceReportRows ?? []).map((item) => item.activity_id));
   const missingAttendanceActivities: Activity[] = (startedActivityRows.data ?? []).filter((item) => !reportedActivityIds.has(item.id)).map((item) => ({
-    id: item.id, organizationId: item.organization_id, teamId: item.team_id ?? team.id, title: item.title,
+    id: item.id, organizationId: item.organization_id, teamId: item.team_id ?? team.id, title: item.title, activityTypeId: item.activity_type_id,
     gatheringAt: item.gathering_at ?? undefined, startsAt: item.starts_at, endsAt: item.ends_at, location: item.location,
     seriesId: item.series_id ?? undefined, status: item.status, invitationSendAt: item.invitation_send_at ?? undefined,
     responseDueAt: item.response_due_at ?? undefined, reminderSendAt: item.reminder_send_at ?? undefined,
@@ -363,7 +363,7 @@ export async function getTeamDashboard(
     return [{
       member: { id: person.id, organizationId: person.organization_id, displayName: person.display_name },
       team: { id: teamItem.id, organizationId: teamItem.organization_id, sectionId: teamItem.section_id, slug: teamItem.slug, name: teamItem.name, season: teamItem.season },
-      activity: { id: activityItem.id, organizationId: activityItem.organization_id, teamId: activityItem.team_id ?? teamItem.id, title: activityItem.title, gatheringAt: activityItem.gathering_at ?? undefined, startsAt: activityItem.starts_at, endsAt: activityItem.ends_at, location: activityItem.location, seriesId: activityItem.series_id ?? undefined, status: activityItem.status, invitationSendAt: activityItem.invitation_send_at ?? undefined, responseDueAt: activityItem.response_due_at ?? undefined, reminderSendAt: activityItem.reminder_send_at ?? undefined },
+      activity: { id: activityItem.id, organizationId: activityItem.organization_id, teamId: activityItem.team_id ?? teamItem.id, title: activityItem.title, activityTypeId: activityItem.activity_type_id, gatheringAt: activityItem.gathering_at ?? undefined, startsAt: activityItem.starts_at, endsAt: activityItem.ends_at, location: activityItem.location, seriesId: activityItem.series_id ?? undefined, status: activityItem.status, invitationSendAt: activityItem.invitation_send_at ?? undefined, responseDueAt: activityItem.response_due_at ?? undefined, reminderSendAt: activityItem.reminder_send_at ?? undefined },
       invitation: invitationItem && (!activityItem.invitation_send_at || new Date(activityItem.invitation_send_at) <= new Date()) ? { id: invitationItem.id, organizationId: invitationItem.organization_id, activityId: invitationItem.activity_id, memberId: invitationItem.person_id, response: invitationItem.response, respondedAt: invitationItem.responded_at ?? undefined, responseComment: invitationItem.response_comment ?? undefined } : undefined,
     }];
   });

@@ -56,6 +56,7 @@ export type Member = {
 };
 
 export type Activity = {
+  activityTypeId?: string;
   id: EntityId;
   organizationId: EntityId;
   teamId: EntityId;

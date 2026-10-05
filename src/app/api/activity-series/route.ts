@@ -1,11 +1,16 @@
+import { requireActivityType } from "@/lib/activity-configuration";
+import { buildInvitationSchedule, requireFutureSchedule } from "@/lib/activity-schedule";
+import { normalizeActivityTimingRules, ACTIVITY_TIME_RULE_VERSION } from "@/lib/activity-time-rules";
 import { NextResponse } from "next/server";
-import { invitationScheduleForOccurrence, previewWeeklySeries, type ResponseDueRule, type SeriesPreviewInput } from "@/lib/activity-series";
+import { previewRuleWeeklySeries, previewWeeklySeries, type ResponseDueRule, type SeriesPreviewInput } from "@/lib/activity-series";
 import { createClient } from "@/lib/supabase/server";
 import { validateAudienceSelection, type AudienceSelection } from "@/lib/invitation-audience";
 
 type CreateSeriesBody = SeriesPreviewInput & {
   teamId?: string;
   activityTypeId?: string;
+  timingRules?: unknown;
+  reminderMinutesBeforeDueList?: number[];
   title?: string;
   description?: string;
   location?: string;
@@ -48,16 +53,15 @@ export async function POST(request: Request) {
 
   let occurrences: ReturnType<typeof previewWeeklySeries>;
   try {
-    occurrences = previewWeeklySeries({ ...body, timeZone });
+    occurrences = body.timingRules !== undefined ? previewRuleWeeklySeries({ ...body, timeZone, rules: normalizeActivityTimingRules(body.timingRules) }) : previewWeeklySeries({ ...body, timeZone });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Serien kunde inte beräknas" }, { status: 400 });
   }
 
-  const typeQuery = supabase.from("activity_types").select("id").eq("organization_id", team.organization_id).eq("active", true);
-  const { data: activityType } = body.activityTypeId
-    ? await typeQuery.eq("id", body.activityTypeId).maybeSingle()
-    : await typeQuery.eq("slug", "ovrigt").maybeSingle();
-  if (!activityType) return NextResponse.json({ error: "Aktivitetstypen kunde inte hittas" }, { status: 400 });
+  let activityType;
+  try { activityType = await requireActivityType(supabase, team.id, body.activityTypeId); }
+  catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Ogiltig aktivitetstyp" }, { status: 400 }); }
+
 
   const invitationAudience = body.invitationAudience;
   const invitationGroupId = body.invitationGroupId;
@@ -80,14 +84,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Undergrupp kan bara användas som målgrupp" }, { status: 400 });
   }
 
-  let schedules: ReturnType<typeof invitationScheduleForOccurrence>[] = [];
+  let schedules: ReturnType<typeof buildInvitationSchedule>[] = [];
   if (invitationAudience) {
     try {
-      schedules = occurrences.map((item) => invitationScheduleForOccurrence(item.startsAt, timeZone, {
-        invitationSendMinutesBefore: body.invitationSendMinutesBefore ?? 10080,
-        responseDueRule: body.responseDueRule ?? "6h",
-        reminderMinutesBeforeDue: body.reminderMinutesBeforeDue ?? 1440,
-      }));
+      schedules = occurrences.map(item => {
+        const schedule = buildInvitationSchedule(item.startsAt, timeZone, body);
+        requireFutureSchedule(schedule);
+        return schedule;
+      });
     } catch (error) {
       return NextResponse.json({ error: error instanceof Error ? error.message : "Kallelseschemat är ogiltigt" }, { status: 400 });
     }
@@ -95,6 +99,8 @@ export async function POST(request: Request) {
 
   const recurrenceRule = {
     frequency: "weekly",
+    timingRules: body.timingRules === undefined ? null : normalizeActivityTimingRules(body.timingRules),
+    ruleVersion: body.timingRules === undefined ? null : ACTIVITY_TIME_RULE_VERSION,
     weekdays: body.weekdays,
     startTime: body.startTime,
     durationMinutes: body.durationMinutes,
@@ -140,7 +146,10 @@ export async function POST(request: Request) {
       status: "published" as const,
       invitation_send_at: schedules[index]?.invitationSendAt ?? null,
       response_due_at: schedules[index]?.responseDueAt ?? null,
-      reminder_send_at: schedules[index]?.reminderSendAt ?? null,
+      reminder_send_at: null,
+      reminder_send_ats: schedules[index]?.reminderSendAts ?? null,
+      timing_rules: body.timingRules === undefined ? null : normalizeActivityTimingRules(body.timingRules),
+      timing_rule_version: body.timingRules === undefined ? null : ACTIVITY_TIME_RULE_VERSION,
       invitation_audience_kind: invitationAudience ?? null,
       invitation_group_id: invitationAudience === "group" ? invitationGroupId ?? null : null,
       ...(selection ? { invitation_audience_roles: selection.roles, invitation_audience_group_ids: selection.groupIds, invitation_audience_responsibility_type_ids: selection.responsibilityTypeIds } : {}),

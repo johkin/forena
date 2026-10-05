@@ -1,10 +1,15 @@
 # Aktiviteters tidsregler (version 1)
 
-Detta är en fokuserad implementation av regelmotorn och upplösningen av
-standardvärden. Den ändrar inte databasens katalog med aktivitetstyper,
-inför inte lagring eller administration av `activity_defaults`, och kopplar
-inte automatiskt nya fält till aktivitetsmodalens formulär. Integrationens
-återstående delar beskrivs nedan. Inget i dessa funktioner skickar kallelser.
+Regelmotorn används i aktivitetsdialogen och serverns skrivvägar för enstaka
+aktiviteter, serier och kallelser. Gemensamma aktivitetstyper kan kopplas till
+en disciplin och administreras under `/system/activity-types`. Lokala specialtyper
+behåller sin föreningsägare; oförändrade tidigare standardtyper migreras till den
+gemensamma katalogen med bibehållna aktivitets- och dokumentkopplingar.
+
+Standardvärden lagras i `activity_defaults` och administreras på system-, klubb-,
+sektions- och lagnivå. Föreningens vy finns under `/o/<slug>/activity-settings`.
+Samma sida låter behöriga användare välja eller återställa ärvd disciplin.
+Disciplinkatalogen administreras fortsatt under `/system/disciplines`.
 
 ## Tidsregler och varaktighet
 
@@ -112,26 +117,38 @@ behåller exakt 1440 minuter; nya `start-1d` använder kalenderdagar.
 Alla fyra befintliga tester i `activity-series.test.ts` finns också med som
 regressionsfall i den fristående testkörningen.
 
-## Återstående appintegration
+## Appintegration och behörighet
 
-Följande är INTE implementerat i denna fokuserade patch:
+- Systemadmin administrerar gemensamma typer och systemförval. Klubbadmin
+  administrerar klubbförval, sektionsadmin sin sektion och lag med
+  `activity.manage` sina lagförval. Plattformens roll ger inte klubbbehörighet.
+- Sparning använder en smal RPC med serverkontroll, databaskontroll, målvalidering
+  och förväntad revision. En samtidig ändring ger konflikt och kräver omladdning.
+- Tomt förvalsfält återställer arv. `[]` stänger av påminnelser. GUI:t visar varje
+  upplöst värde och dess ursprung. Disciplinen begränsar tillgängliga typer, inte
+  organisationsarvet. Typer utan disciplin gäller alla verksamheter.
+- Aktivitetsdialogen hämtar lagets tillgängliga typer och förval. Vid byte av typ
+  ändras enbart orörda fält på nya aktiviteter. Explicit längd/samling i AI-utkast
+  och sparade aktiviteter bevaras. Förhandsgranskning visar riktiga tider för
+  samling, slut, kallelse, svarstid och alla påminnelser.
+- Ingen kallelse eller målgrupp förväljs. Saknad målgrupp blir aldrig alla.
+  För serier används schemaläggning; omedelbart utskick gäller enstaka aktiviteter.
+  Passerad kallelsetid måste ändras eller ersättas av ett explicit Skicka nu.
+- Servern validerar regler och beräknar varje serietillfälle separat i föreningens
+  tidszon. `timing_rule_version` och regler sparas tillsammans med fasta tider.
+  Alla påminnelser sparas atomärt via aktivitetens `reminder_send_ats` och en
+  trigger. Ett ogiltigt schema rullar tillbaka aktiviteten och dess påminnelser.
+- Sparade aktiviteter räknas aldrig om vid en ändring av standardvärden. En
+  arkiverad/omklassificerad typ hindrar nya aktiviteter men bevarar historikens
+  redigering. Direkta databasskrivningar kontrollerar lokal typägare och disciplin.
+- Dokumentkopplingar behåller sin organisation även med gemensamma typ-ID:n.
+  Alla berörda kopplingar/behörighetsfrågor matchar både typ och organisation.
+- Ledarassistenten får samma upplösta förval som dialogen i strukturerad kontext.
+  Inställningarna ska inte dupliceras som fritextminne. Ett bekräftat AI-kommando
+  för att ändra förval återstår; administration sker via GUI:t i denna version.
 
-1. Migrera föreningsägda aktivitetstyper till systemets gemensamma katalog med
-   disciplin, med bibehållna referenser från aktiviteter och serier.
-2. Lagra `activity_defaults` med RLS, unika mål, revisionskontroll och GUI för
-   klubb/sektion/lag; endast systemadmin administrerar systemnivån.
-3. Låt aktivitetsdialogen läsa de upplösta förvalen och uppdatera enbart
-   orörda fält på nya aktiviteter. Visa riktiga tider och värdenas ursprung.
-4. Uppdatera och testa samtliga skrivvägar (enstaka, serie, redigering och
-   kallelse) så att nya regler valideras på servern och alla påminnelser
-   sparas atomärt. Sparade aktiviteter behåller sina tidsstämplar.
-5. Ge assistenten samma upplösta förval och ett separat bekräftat kommando
-   för att ändra dem; skapa inte ett andra fritextminne med samma inställning.
-
-Kallelsemottagare och utskicksläget ingen/nu/schemalagd ska fortfarande väljas
-explicit. Saknad målgrupp får inte bli alla. System-fliken ska inte införas
-i den vanliga minneshanteringen. Menyer, header och footer återanvänds från
-gemensamma komponenter.
+Menyer och header återanvänds från gemensamma komponenter. Systemförval är en
+separat administration och läggs inte i minneshanteringens vanliga systemflik.
 
 ## Testning
 
@@ -141,3 +158,7 @@ kompilerar till en temporär katalog och kör samma testfall som Vitest-wrappern
 Wrappern `src/lib/activity-time-rules.test.ts` ingår i vanliga `npm test`.
 Ingen npm-installation eller nätverksåtkomst används av den fristående
 körningen om TypeScript redan finns.
+
+Kör även `supabase db reset --local` och `supabase test db` mot en lokal teststack.
+`activity_defaults_test.sql` verifierar revisionskonflikter, scope/tenant-isolering,
+rollgränser, disciplintillämplighet, historik och atomära påminnelseskrivningar.

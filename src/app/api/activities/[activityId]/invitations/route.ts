@@ -1,12 +1,13 @@
+import { buildInvitationSchedule, requireFutureSchedule } from "@/lib/activity-schedule";
 import { NextResponse } from "next/server";
-import { invitationScheduleForOccurrence, type ResponseDueRule } from "@/lib/activity-series";
+import { type ResponseDueRule } from "@/lib/activity-series";
 import { createClient } from "@/lib/supabase/server";
 import { validateAudienceSelection, type AudienceSelection } from "@/lib/invitation-audience";
 
 type Props = { params: Promise<{ activityId: string }> };
 type Body =
   | { mode: "now"; personIds?: string[] }
-  | { mode: "schedule"; audience?: "players" | "leaders" | "group" | "selection"; groupId?: string; selection?: AudienceSelection; invitationSendMinutesBefore?: number; responseDueRule?: ResponseDueRule; reminderMinutesBeforeDue?: number; reminderMinutesBeforeDueList?: number[] };
+  | { mode: "schedule"; audience?: "players" | "leaders" | "group" | "selection"; groupId?: string; selection?: AudienceSelection; invitationSendMinutesBefore?: number; responseDueRule?: ResponseDueRule; reminderMinutesBeforeDue?: number; reminderMinutesBeforeDueList?: number[]; timingRules?: unknown };
 
 export async function POST(request: Request, { params }: Props) {
   const { activityId } = await params;
@@ -68,19 +69,12 @@ export async function POST(request: Request, { params }: Props) {
 
   let schedule;
   try {
-    schedule = invitationScheduleForOccurrence(activity.starts_at, organization.time_zone, {
-      invitationSendMinutesBefore: body.invitationSendMinutesBefore ?? 10080,
-      responseDueRule: body.responseDueRule ?? "6h",
-      reminderMinutesBeforeDue: body.reminderMinutesBeforeDue ?? 1440,
-    });
+    schedule = buildInvitationSchedule(activity.starts_at, organization.time_zone, body);
+    requireFutureSchedule(schedule);
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Kallelseschemat är ogiltigt" }, { status: 400 });
   }
   if (new Date(schedule.invitationSendAt).getTime() <= Date.now()) return NextResponse.json({ error: "Den schemalagda tiden har redan passerat. Använd Skicka nu i stället." }, { status: 400 });
-
-  const reminderOffsets = [...new Set((body.reminderMinutesBeforeDueList ?? (body.reminderMinutesBeforeDue ? [body.reminderMinutesBeforeDue] : [])).filter((value) => Number.isFinite(value) && value > 0))];
-  const reminderSchedules = reminderOffsets.map((minutes) => ({ minutes, sendAt: new Date(new Date(schedule.responseDueAt).getTime() - minutes * 60_000).toISOString() }));
-  if (reminderSchedules.some((item) => new Date(item.sendAt).getTime() < new Date(schedule.invitationSendAt).getTime())) return NextResponse.json({ error: "En påminnelse hamnar före kallelsen" }, { status: 400 });
 
   const { error } = await supabase.from("activities").update({
     invitation_audience_kind: audience,
@@ -89,6 +83,7 @@ export async function POST(request: Request, { params }: Props) {
     invitation_send_at: schedule.invitationSendAt,
     response_due_at: schedule.responseDueAt,
     reminder_send_at: null,
+    reminder_send_ats: schedule.reminderSendAts,
     invitation_materialized_at: null,
   }).eq("id", activity.id);
   if (error) {
@@ -96,14 +91,6 @@ export async function POST(request: Request, { params }: Props) {
     return NextResponse.json({ error: "Kallelsen kunde inte schemaläggas" }, { status: 500 });
   }
   console.info("activity_invitation.scheduled", { activityId, sendAt: schedule.invitationSendAt, audience });
-
-  await supabase.from("activity_reminder_schedules").delete().eq("activity_id", activity.id).is("materialized_at", null);
-  if (reminderSchedules.length) {
-    const { error: reminderError } = await supabase.from("activity_reminder_schedules").insert(reminderSchedules.map((item) => ({
-      organization_id: activity.organization_id, activity_id: activity.id, send_at: item.sendAt, created_by: authData.user.id,
-    })));
-    if (reminderError) return NextResponse.json({ error: "Kallelsen sparades, men påminnelserna kunde inte schemaläggas" }, { status: 500 });
-  }
 
   await supabase.from("activity_events").insert({
     organization_id: activity.organization_id, activity_id: activity.id, event_type: "invitation_scheduled",

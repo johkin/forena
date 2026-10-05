@@ -1,3 +1,4 @@
+import { loadActivityConfiguration } from "../activity-configuration";
 import { formatDateTimeInZone } from "../date-time";
 import { TeamAssistantError, type AssistantDependencies, type AssistantViewerKind, type TeamAssistantInput } from "./team-assistant-types";
 
@@ -53,6 +54,8 @@ export async function loadTeamAssistantContext(input: TeamAssistantInput, { supa
     .filter((memory) => memory.discipline_id === null || memory.discipline_id === disciplineId)
     .slice(0, 40);
 
+  const configuration = canManageActivities ? await loadActivityConfiguration(supabase, teamId) : null;
+
   const activityIds = (activities ?? []).map((item) => item.id);
   const activityTypeIds = [...new Set((activities ?? []).map((item) => item.activity_type_id))];
 
@@ -64,7 +67,7 @@ export async function loadTeamAssistantContext(input: TeamAssistantInput, { supa
       ? supabase.from("invitations").select("activity_id, response, response_comment").in("activity_id", activityIds)
       : Promise.resolve({ data: [] }),
     activityTypeIds.length
-      ? supabase.from("activity_type_documents").select("activity_type_id, document_id").in("activity_type_id", activityTypeIds)
+      ? supabase.from("activity_type_documents").select("activity_type_id, document_id").eq("organization_id",team.organization_id).in("activity_type_id", activityTypeIds)
       : Promise.resolve({ data: [] }),
     canManageTasks
       ? supabase.from("team_tasks").select("title, description, due_at").eq("team_id", teamId).eq("status", "open").order("due_at").limit(8)
@@ -130,6 +133,7 @@ export async function loadTeamAssistantContext(input: TeamAssistantInput, { supa
     })),
     tasks: (tasks ?? []).map((task) => ({ title: task.title, description: task.description, dueAt: { instantUtc: task.due_at, organizationLocal: localTime(task.due_at, organizationTimeZone), viewerLocal: localTime(task.due_at, viewerTimeZone) } })),
     disciplineId,
+    activityTypes: configuration?.types.map(type=>({id:type.id,name:type.name,category:type.system_category,defaults:type.defaults})),
     memories: relevantMemories.map((memory) => ({
       scope: memory.scope,
       kind: memory.kind,
