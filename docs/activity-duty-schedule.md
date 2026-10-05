@@ -30,6 +30,20 @@ kan i stället ha en leveransdeadline. Tider tolkas i föreningens tidszon.
 - Bokning skapar ingen kallelse och ändrar inte ett kallelsesvar. Egna bokningar
   inkluderas ändå i familjens aktivitetsöversikt.
 
+## Ändringsförslagens livslängd
+
+Vid aktivitetens start blir väntande förslag utgångna. Ett privat databasjobb
+kör varje minut (högst 100 aktiviteter per körning); även läsning av ett
+påbörjat schema stänger kvarvarande förslag. Godkännande efter start kan inte
+ändra tilldelningar, oavsett om bakgrundsjobbet hunnit köras. Ledare kan
+fortfarande tilldela platser direkt.
+
+Schemat returnerar alla öppna förslag och högst de 20 senaste avslutade som
+användaren har rätt att se. Avslutade förslag raderas 30 dagar efter
+aktivitetens sluttid. Tilldelningar, genomförda arbetsuppgifter och audit-logg
+behålls. Ingen kvot begränsar familjens normala ändringar; städningen är inte
+ett generellt skydd mot automatiserade massanrop före aktivitetens start.
+
 ## Behörighet och lagring
 
 De tre tabellerna har RLS och saknar direkta klientgrants. Begränsade RPC:er

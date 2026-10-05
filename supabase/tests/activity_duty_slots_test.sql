@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(14);
+select plan(26);
 
 insert into auth.users (id, email, raw_user_meta_data) values
   ('a0000000-0000-0000-0000-000000000001', 'manager-a@example.se', '{"display_name":"Manager A"}'),
@@ -95,5 +95,59 @@ select is((select value->>'personId' from jsonb_array_elements(public.get_activi
 select throws_ok($q$select public.get_activity_duty_schedule('a6000000-0000-0000-0000-000000000099')$q$,'42501',null,'Unrelated activity denied');
 set local role anon;
 select throws_ok($q$select public.get_activity_duty_schedule('a6000000-0000-0000-0000-000000000001')$q$,'42501',null,'Anonymous cannot read schedule');
+-- History is capped after visibility filtering, without hiding pending requests.
+reset role;
+insert into public.activity_duty_change_requests(activity_id,source_slot_id,person_id,requested_by,status,resolved_at,created_at)
+select 'a6000000-0000-0000-0000-000000000001',s.id,
+ 'a5000000-0000-0000-0000-000000000001','a0000000-0000-0000-0000-000000000002',
+ 'withdrawn',now(),now()-n*interval '1 minute'
+from duty_test_slots s cross join generate_series(1,25) n where s.label='slot2';
+insert into public.activity_duty_change_requests(activity_id,source_slot_id,person_id,requested_by,status,resolved_at)
+select 'a6000000-0000-0000-0000-000000000001',s.id,
+ 'a5000000-0000-0000-0000-000000000002','a0000000-0000-0000-0000-000000000003','withdrawn',now()
+from duty_test_slots s cross join generate_series(1,25) n where s.label='slot1';
+truncate duty_test_requests;
+with added as (
+ insert into public.activity_duty_change_requests(activity_id,source_slot_id,source_revision,person_id,requested_by,counterpart_approved)
+ select s.activity_id,s.id,s.revision,s.person_id,'a0000000-0000-0000-0000-000000000002',true
+ from public.activity_duty_slots s join duty_test_slots t on t.id=s.id where t.label='slot2'
+ returning id
+) insert into duty_test_requests select id from added;
+update public.activity_duty_change_requests set created_at=now()+interval '1 second' where id=(select id from duty_test_requests);
+set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"a0000000-0000-0000-0000-000000000002","role":"authenticated"}',true);
+select is(jsonb_array_length(public.get_activity_duty_schedule('a6000000-0000-0000-0000-000000000001')->'requests'),21,'Family gets all pending plus twenty visible resolved requests');
+select is((select count(*)::integer from jsonb_array_elements(public.get_activity_duty_schedule('a6000000-0000-0000-000000000001')->'requests') r where r->>'status'='pending'),1,'Pending request remains visible');
+select throws_ok('select private.maintain_due_activity_duty_requests()','42501',null,'Clients cannot invoke global maintenance');
+reset role;
+update public.activities set starts_at=now()-interval '1 hour',ends_at=now()+interval '1 hour'
+where id='a6000000-0000-0000-0000-000000000001';
+set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"a0000000-0000-0000-0000-000000000001","role":"authenticated"}',true);
+select is((select r->>'status' from jsonb_array_elements(public.command_activity_duty('a6000000-0000-0000-0000-000000000001',jsonb_build_object('op','approve','requestId',(select id from duty_test_requests)))->'requests') r where r->>'id'=(select id::text from duty_test_requests)),'expired','Approval expires a proposal after start even before cron runs');
+reset role;
+select is((select person_id::text from public.activity_duty_slots where id=(select id from duty_test_slots where label='slot2')),'a5000000-0000-0000-0000-000000000001','Late approval leaves assignment untouched');
+update public.activity_duty_change_requests set status='pending',resolved_at=null where id=(select id from duty_test_requests);
+select private.maintain_due_activity_duty_requests();
+select is((select status from public.activity_duty_change_requests where id=(select id from duty_test_requests)),'expired','Scheduled maintenance expires started activity requests');
+update public.activity_duty_change_requests set status='pending',resolved_at=null where id=(select id from duty_test_requests);
+set local role authenticated;
+select public.get_activity_duty_schedule('a6000000-0000-0000-0000-000000000001');
+reset role;
+select is((select status from public.activity_duty_change_requests where id=(select id from duty_test_requests)),'expired','Schedule read expires requests between maintenance runs');
+update public.activities set starts_at=now()-interval '31 days',ends_at=now()-interval '30 days'+interval '1 second'
+where id='a6000000-0000-0000-0000-000000000001';
+select private.maintain_due_activity_duty_requests();
+select ok(exists(select 1 from public.activity_duty_change_requests where id=(select id from duty_test_requests)),'History retained until thirty days after end');
+update public.activities set ends_at=now()-interval '30 days'
+where id='a6000000-0000-0000-0000-000000000001';
+update public.activity_duty_slots set completed_at=now()-interval '30 days' where id=(select id from duty_test_slots where label='slot2');
+select private.maintain_due_activity_duty_requests();
+select is((select count(*)::integer from public.activity_duty_change_requests where activity_id='a6000000-0000-0000-0000-000000000001'),0,'Resolved requests pruned at retention boundary');
+select is((select count(*)::integer from public.activity_duty_slots where activity_id='a6000000-0000-0000-0000-000000000001' and person_id is not null),2,'Assigned slots survive cleanup');
+select ok((select completed_at is not null from public.activity_duty_slots where id=(select id from duty_test_slots where label='slot2')),'Completion history survives cleanup');
+select private.maintain_due_activity_duty_requests();
+select is((select count(*)::integer from public.activity_duty_slots where activity_id='a6000000-0000-0000-0000-000000000001'),2,'Maintenance is idempotent');
+
 select * from finish();
 rollback;
