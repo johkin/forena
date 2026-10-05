@@ -132,3 +132,15 @@ Visa tydligt att påminnelser räknas före sista svarstid, övriga tider före 
 Administratörer anpassar listorna med antal, enhet och valfri dagens början;
 listorna ärvs separat från förvalen. Äldre/egna val utanför listan visas läsbart
 som nuvarande värde och bevaras tills användaren väljer en annan tid.
+
+Aktivitetsdialogens listor filtreras mot verkliga tidpunkter i föreningens tidszon:
+kallelse före vald svarstid, svarstid efter kallelse och senast vid start,
+påminnelser strikt mellan kallelse och svarstid utan sammanfallande tider.
+Kontrollen gäller samtliga serietillfällen, även över sommar-/vintertid.
+Ett redan valt värde som blir ogiltigt behålls, markeras och måste ändras eller
+tas bort före sparande. Datum, tid och serieval räknar om listorna direkt.
+Ogiltig/ofullständig period blockerar tidsvalen tills den rättats.
+Listkonfiguration nekar nollförskjutning för kallelse/påminnelse utan dagens
+början. Förval från äldre data ändras inte; full schemavalidering finns kvar.
+Nollförskjutning med dagens början visas som ”Vid början av aktivitetsdagen”
+respektive ”Vid början av dagen för sista svarstid”.

@@ -15,6 +15,10 @@ declare k text; v jsonb; r text; n numeric; option_key text; choices jsonb; choi
     if (select count(*)<>count(distinct value) from jsonb_array_elements(choices)) then return false; end if;
     for choice in select value from jsonb_array_elements(choices) loop
      if jsonb_typeof(choice)<>'string' then return false; end if;
+     -- These zero-offset choices can never satisfy strict schedule ordering.
+     if option_key in ('invitationRule','reminderRules') and (choice #>> '{}') !~ '/d$'
+       and not exists(select 1 from regexp_matches(choice #>> '{}','-([0-9]+)([dhm])','g') m where m[1]::numeric>0)
+       then return false; end if;
      if not public.validate_activity_defaults_patch(jsonb_build_object(option_key,
        case when option_key='reminderRules' then jsonb_build_array(choice) else choice end)) then return false; end if;
     end loop;

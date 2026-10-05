@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState, useRef } from "react";
 import type { Activity, Member, Organization, Team } from "@/domain/club";
-import { previewRuleSingleActivity, previewRuleWeeklySeries, type ActivityOccurrence } from "@/lib/activity-series";
+import { previewWeeklySeries, previewRuleSingleActivity, previewRuleWeeklySeries, type ActivityOccurrence } from "@/lib/activity-series";
 import type { ActivityDraft } from "@/lib/ai/activity-draft";
 import { attendanceNames } from "@/lib/attendance-names";
 import type { AudienceRole } from "@/lib/invitation-audience";
@@ -37,6 +37,8 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
   const initial=draft?{date:draft.startsOn,time:draft.startTime}:localParts(activity?.startsAt,timeZone);
   const initialDuration=draft?.durationMinutes??(activity?Math.round((new Date(activity.endsAt).getTime()-new Date(activity.startsAt).getTime())/60000):90);
   const initialGathering=draft?.gatheringMinutesBefore??(activity?.gatheringAt?Math.max(0,Math.round((new Date(activity.startsAt).getTime()-new Date(activity.gatheringAt).getTime())/60000)):0);
+  const [scheduleDates, setScheduleDates] = useState({ startsOn:initial.date, endsOn:draft?.recurrence ? draft.recurrence.endsOn ?? "" : initial.date, startTime:initial.time,
+    weekdays:draft?.recurrence?.weekdays ?? [new Date(`${initial.date}T00:00:00Z`).getUTCDay() || 7] });
   const [kind,setKind]=useState<"single"|"series">(draft?.recurrence?"series":"single");
   const [preview,setPreview]=useState<(ActivityOccurrence & { invitationSendAt:string;responseDueAt:string;reminderSendAts:string[] })[]>();
   const [payload,setPayload]=useState<Record<string,unknown>>();
@@ -76,6 +78,13 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
   const invited=members.filter(member=>selectedPeople.has(member.id));
   const available=members.filter(member=>!selectedPeople.has(member.id));
   const recurring=mode==="create"&&kind==="series";
+  const scheduleContext = useMemo(() => {
+    try {
+      return { starts: previewWeeklySeries({ ...scheduleDates, endsOn:recurring ? scheduleDates.endsOn : scheduleDates.startsOn,
+        weekdays:recurring ? scheduleDates.weekdays : [new Date(`${scheduleDates.startsOn}T00:00:00Z`).getUTCDay() || 7],
+        timeZone, durationMinutes:1, gatheringMinutesBefore:0 }).map(item => item.startsAt) };
+    } catch { return { starts:[], error:"Ange giltigt datum, tid och eventuell serieperiod för att välja kallelsetider." }; }
+  }, [scheduleDates, recurring, timeZone]);
   useEffect(()=>{if(source!=="database"||!canManageInvitations)return;fetch(`/api/team-groups?teamId=${encodeURIComponent(team.id)}`).then(r=>r.ok?r.json():{groups:[],responsibilities:[]}).then(body=>{setGroups(body.groups??[]);setResponsibilities(body.responsibilities??[]);}).catch(()=>{setGroups([]);setResponsibilities([]);});},[canManageInvitations,mode,source,team.id]);
 
   function changeKind(next:"single"|"series") {
@@ -167,7 +176,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
         </section>
         <section className="editor-section" aria-labelledby="editor-time-title">
           <h3 id="editor-time-title">När och varaktighet</h3>
-          {recurring?<><fieldset><legend>Veckodagar</legend><div className="weekday-options">{weekdayOptions.map(([value,label])=><label key={value}><input type="checkbox" name="weekdays" value={value} defaultChecked={draft?.recurrence?draft.recurrence.weekdays.includes(value):value===(new Date(`${initial.date}T00:00:00Z`).getUTCDay()||7)}/>{label}</label>)}</div></fieldset><div className="form-row editor-date-row"><label>Startdatum<input name="startsOn" type="date" required defaultValue={initial.date}/></label><label>Slutdatum<input name="endsOn" type="date" required min={initial.date} defaultValue={draft?.recurrence?draft.recurrence.endsOn??"":initial.date}/></label></div><div className="editor-time-field"><FiveMinuteTimeField name="startTime" defaultValue={initial.time}/></div></>:<div className="form-row editor-date-row"><label>Datum<input name="startsOn" type="date" required defaultValue={initial.date}/></label><div className="editor-time-field"><FiveMinuteTimeField name="startTime" defaultValue={initial.time}/></div></div>}
+          {recurring?<><fieldset><legend>Veckodagar</legend><div className="weekday-options">{weekdayOptions.map(([value,label])=><label key={value}><input type="checkbox" name="weekdays" value={value} checked={scheduleDates.weekdays.includes(value)} onChange={event=>setScheduleDates(current=>({...current,weekdays:event.target.checked ? [...current.weekdays,value] : current.weekdays.filter(day=>day!==value)}))}/>{label}</label>)}</div></fieldset><div className="form-row editor-date-row"><label>Startdatum<input name="startsOn" type="date" required value={scheduleDates.startsOn} onChange={event=>setScheduleDates(current=>({...current,startsOn:event.target.value}))}/></label><label>Slutdatum<input name="endsOn" type="date" required min={scheduleDates.startsOn} value={scheduleDates.endsOn} onChange={event=>setScheduleDates(current=>({...current,endsOn:event.target.value}))}/></label></div><div className="editor-time-field"><FiveMinuteTimeField name="startTime" defaultValue={scheduleDates.startTime} onChange={value=>setScheduleDates(current=>({...current,startTime:value}))}/></div></>:<div className="form-row editor-date-row"><label>Datum<input name="startsOn" type="date" required value={scheduleDates.startsOn} onChange={event=>setScheduleDates(current=>({...current,startsOn:event.target.value}))}/></label><div className="editor-time-field"><FiveMinuteTimeField name="startTime" defaultValue={scheduleDates.startTime} onChange={value=>setScheduleDates(current=>({...current,startTime:value}))}/></div></div>}
           <ActivityTimingFields rules={rules} onChange={changeRule} defaults={typeDefaults} touched={touchedKeys} invitations={false}/>
           <small>Samlingen räknas före aktivitetens start. Välj kallelse och mottagare nedan.</small>
         </section>
@@ -188,7 +197,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
               {responsibilities.map(role=><label key={role.id}><input type="checkbox" checked={selectedResponsibilities.has(role.id)} onChange={()=>setSelectedResponsibilities(current=>{const next=new Set(current);if(next.has(role.id))next.delete(role.id);else next.add(role.id);return next;})}/>{role.name}</label>)}
               {groups.map(group=><label key={group.id}><input type="checkbox" checked={selectedGroups.has(group.id)} onChange={()=>setSelectedGroups(current=>{const next=new Set(current);if(next.has(group.id))next.delete(group.id);else next.add(group.id);return next;})}/>{group.name}</label>)}
             </div>
-            <ActivityTimingFields rules={rules} onChange={changeRule} defaults={typeDefaults} touched={touchedKeys} invitations/>
+            <ActivityTimingFields rules={rules} onChange={changeRule} defaults={typeDefaults} touched={touchedKeys} invitations starts={scheduleContext.starts} timeZone={timeZone} contextError={scheduleContext.error}/>
             <small>Kallelse och sista svarstid räknas före aktivitetens start.</small>
           </div>:null}
         </details> : null}

@@ -1,4 +1,4 @@
-import { durationToMinutes, parseTimeRule, type ActivityTimingRules } from "./activity-time-rules";
+import { durationToMinutes, evaluateTimeRule, parseActivityInstant, parseTimeRule, type ActivityTimingRules } from "./activity-time-rules";
 
 export const TIMING_FIELDS = ["duration", "gatheringRule", "invitationRule", "responseDueRule", "reminderRules"] as const;
 export type TimingField = keyof ActivityTimingRules;
@@ -26,7 +26,12 @@ export function normalizeTimingOptions(value: unknown): TimingOptionsPatch {
     if (!Array.isArray(choices) || !choices.length || choices.length > 32 || new Set(choices).size !== choices.length) throw new Error("Välj 1–32 unika tider.");
     for (const choice of choices) {
       if (key === "duration") durationToMinutes(choice);
-      else parseTimeRule(choice, key === "reminderRules" ? "deadline" : "start");
+      else {
+        const rule = parseTimeRule(choice, key === "reminderRules" ? "deadline" : "start");
+        if ((key === "invitationRule" || key === "reminderRules") && !rule.startOfDay && rule.offsets.every(offset => offset.amount === 0)) {
+          throw new Error(key === "invitationRule" ? "Kallelsen måste skickas före sista svarstid." : "Påminnelsen måste skickas före sista svarstid.");
+        }
+      }
     }
   }
   return patch as TimingOptionsPatch;
@@ -37,6 +42,7 @@ export function timingLabel(field: TimingField, value: string): string {
   const rule = parseTimeRule(value, field === "reminderRules" ? "deadline" : "start");
   const units = { d: ["dag", "dagar"], h: ["timme", "timmar"], m: ["minut", "minuter"] };
   const offsets = rule.offsets.filter(offset => offset.amount !== 0);
+  if (!offsets.length && rule.startOfDay) return field === "reminderRules" ? "Vid början av dagen för sista svarstid" : "Vid början av aktivitetsdagen";
   const relative = offsets.length ? `${offsets.map(({amount, unit}) => `${amount} ${units[unit][amount === 1 ? 0 : 1]}`).join(" och ")} innan` : field === "reminderRules" ? "Vid sista svarstid" : "Vid start";
   return rule.startOfDay ? `${relative} · vid dagens början` : relative;
 }
@@ -44,4 +50,27 @@ export function timingLabel(field: TimingField, value: string): string {
 /** Never silently replace a current choice when an inherited list changes. */
 export function timingChoices(field: TimingField, options: readonly string[], current: readonly string[]) {
   return [...new Set([...options, ...current])].map(value => ({ value, label: timingLabel(field, value) + (options.includes(value) ? "" : " (nuvarande värde)") }));
+}
+
+/** Compare real instants for every occurrence, including calendar days across DST.
+ * Constraints remain field-specific so an invalid reminder cannot lock the two
+ * anchor selectors. Existing values are never changed by this filter.
+ */
+export function createTimingChoiceFilter(rules: ActivityTimingRules, starts: readonly string[], timeZone: string) {
+  const contexts = starts.map(start => {
+    const context = {start, timeZone};
+    const invitation = evaluateTimeRule(rules.invitationRule, context, "start");
+    const deadline = evaluateTimeRule(rules.responseDueRule, context, "start");
+    return { ...context, deadline, startMs: parseActivityInstant(start), invitationMs: parseActivityInstant(invitation), deadlineMs: parseActivityInstant(deadline) };
+  });
+  return (field: TimingField, value: string, otherReminders: readonly string[] = []): boolean => {
+    if (field === "duration" || field === "gatheringRule") return true;
+    return contexts.every(context => {
+      const candidate = parseActivityInstant(evaluateTimeRule(value, context, field === "reminderRules" ? "deadline" : "start"));
+      if (field === "invitationRule") return candidate < context.deadlineMs;
+      if (field === "responseDueRule") return candidate > context.invitationMs && candidate <= context.startMs;
+      return candidate > context.invitationMs && candidate < context.deadlineMs
+        && otherReminders.every(rule => candidate !== parseActivityInstant(evaluateTimeRule(rule, context, "deadline")));
+    });
+  };
 }

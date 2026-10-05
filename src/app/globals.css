@@ -922,3 +922,5 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .timing-option-editor ul { padding: 0; list-style: none; }
 .timing-option-editor li { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-block: .5rem; }
 .settings-fields fieldset { min-width: 0; margin: 0; }
+.settings-fields small.auth-error { color: #7f3821; }
+.settings-fields select[aria-invalid="true"] { border-color: #a52b22; }

@@ -49,7 +49,7 @@ export function ComponentGallery() {
       <FiveMinuteTimeField name="exampleTime" defaultValue="17:00"/>
       <label>Längd<select defaultValue="60"><option value="60">1 timme</option><option value="90">1,5 timmar</option></select></label>
     </div><details><summary>Beskrivning (valfritt)</summary><p>Extra uppgifter visas när de behövs.</p></details></section>
-    <section><h2>Tider för kallelse</h2><ActivityTimingFields rules={timing} defaults={defaults} touched={new Set()} invitations onChange={(key, value) => setTiming(current => ({...current, [key]:value}))}/></section>
+    <section><h2>Tider för kallelse</h2><ActivityTimingFields rules={timing} defaults={defaults} touched={new Set()} invitations starts={[activity.startsAt]} timeZone="Europe/Stockholm" onChange={(key, value) => setTiming(current => ({...current, [key]:value}))}/></section>
     <section><h2>Aktivitetsförval</h2><ActivityDefaultsFields initial={{}} resolved={defaults}/></section>
     <section><h2>Bemanning</h2><ActivityStaffingList invitees={[...invitees]} /></section>
     <section><h2>Assistentens påminnelseförslag</h2><p>Exempel med syntetiska minnen. Knapparna skickar ingenting.</p><div className="card assistant-card team-chat-card"><div className="assistant-message"><AssistantReminderDraftCard draft={reminderDraft} demo /></div></div></section>
@@ -57,7 +57,7 @@ export function ComponentGallery() {
       <button className="secondary" onClick={() => setDialog("detail")}>Visa aktivitet</button>
       <button className="primary" onClick={() => setDialog("create")}>Ny aktivitet</button>
     </div></section>
-    {dialog === "create" || dialog === "edit" ? <ActivityEditorModal mode={dialog} activity={dialog === "edit" ? activity : undefined} organization={organization} team={team} members={invitees.map(person => ({ id: person.personId, organizationId: organization.id, displayName: person.displayName, teamRelation: person.role === "leader" ? "leader" : "player" }))} source="demo" canManageInvitations={false} onClose={() => setDialog(undefined)} onNotice={setNotice} /> : null}
+    {dialog === "create" || dialog === "edit" ? <ActivityEditorModal mode={dialog} activity={dialog === "edit" ? activity : undefined} organization={organization} team={team} members={invitees.map(person => ({ id: person.personId, organizationId: organization.id, displayName: person.displayName, teamRelation: person.role === "leader" ? "leader" : "player" }))} source="demo" canManageInvitations onClose={() => setDialog(undefined)} onNotice={setNotice} /> : null}
     {dialog === "detail" ? <ActivityDetailModal activity={activity} organization={organization} team={team} canManageActivity canManageInvitations={false} canManageAttendance={false} rosterMembers={[]} onClose={() => setDialog(undefined)} onEdit={() => setDialog("edit")} /> : null}
   </>;
 }
