@@ -18,6 +18,7 @@ uppdaterad när ett beslut eller en gemensam princip ändras.
 - [Aktiviteters tidsregler](docs/activity-time-rules.md) – datumuttryck,
   tidszoner, ärvda förval och återstående appintegration.
 - [MCP-server](docs/mcp.md) – verktyg, behörigheter, transport och anslutning.
+- [Bemanningsschema](docs/activity-duty-schedule.md) – platser, självservice och ändringsförslag.
 - [Roadmap](docs/roadmap.md) – planerad utveckling och prioriteringar.
 
 Vid gränssnittsändringar ska både arkitekturen och designreglerna följas.
@@ -72,3 +73,4 @@ inte egna kopior för enskilda sidor eller administrationsområden.
 - Skilj mellan godkända, misslyckade, överhoppade, pågående och ej körda kontroller.
 - Sammanfatta vad som ändrats, var ändringen finns och vad som faktiskt har
   verifierats. Lova inte fortsatt bevakning om ingen sådan har satts upp.
+

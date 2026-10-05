@@ -164,10 +164,7 @@ till klubbpersoner och köa deras ordinarie mottagare; vid ledaranmälan sparas
 Namnsökningen är kopplad till en aktivitet och kräver `invitation.manage`.
 
 `activity_duty_types` är en återanvändbar katalog per lag med stabila ID:n.
-Kallelsen har `duty_type_id` och `duty_completed_at`. Uppgiften följer spelaren;
-familjen väljer vuxen. Genomförande registreras uttryckligen, aldrig utifrån
-ett ja-svar. Databasen kontrollerar förening, lag, arbetstyp och starttid.
-Familjer får svara på kallelsen men inte ändra deltagarroll eller arbetsuppgift.
-Historiken är än så länge begränsad till hanterat lag och 20 påbörjade pass.
-Deltagare från andra lag inkluderas i närvaro och deras familjs översikt utan
-att lagmedlemskap eller åtkomst till det andra lagets administration skapas.
+Arbetsuppgifter, platser och ändringsförslag finns i separata tabeller kopplade
+till aktiviteten. Bokning och tilldelning är fristående från kallelsesvar.
+Se [bemanningsschema](activity-duty-schedule.md) för datamodell, migration,
+självservice, atomära ändringar och aktuella avgränsningar.

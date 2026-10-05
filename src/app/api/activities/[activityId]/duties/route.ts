@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { activityManagementContext } from "@/lib/activity-management-context";
-import { dutyAssignmentSchema } from "@/lib/activity-participation";
 
 type Props = { params: Promise<{ activityId: string }> };
 export async function GET(request: Request, { params }: Props) {
@@ -31,17 +30,6 @@ export async function POST(request: Request, { params }: Props) {
   if (error) return NextResponse.json({ error: error.code === "23505" ? "Uppgiften finns redan" : "Uppgiften kunde inte skapas" }, { status: error.code === "23505" ? 409 : 500 });
   return NextResponse.json({ duty: data });
 }
-export async function PUT(request: Request, { params }: Props) {
-  const context = await activityManagementContext((await params).activityId);
-  if ("error" in context) return context.error;
-  const parsed = dutyAssignmentSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: "Ogiltig arbetsuppgift" }, { status: 400 });
-  const { supabase, activity } = context;
-  const body = parsed.data;
-  // Preserve completion time on a repeated save. Changing the duty requires a fresh completion.
-  const { data: previous, error: readError } = await supabase.from("invitations").select("duty_type_id, duty_completed_at").eq("activity_id", activity.id).eq("person_id", body.personId).single();
-  if (readError || !previous) return NextResponse.json({ error: "Kallelsen kunde inte hittas" }, { status: 404 });
-  const { data, error } = await supabase.from("invitations").update({ duty_type_id: body.dutyTypeId, duty_completed_at: body.completed ? (previous.duty_type_id === body.dutyTypeId ? previous.duty_completed_at : null) ?? new Date().toISOString() : null }).eq("activity_id", activity.id).eq("person_id", body.personId).select("id").single();
-  if (error || !data) return NextResponse.json({ error: "Uppgiften kunde inte sparas. Kontrollera att aktiviteten är ett arbetspass och har startat innan uppgiften markeras genomförd." }, { status: 409 });
-  return NextResponse.json({ saved: true });
+export async function PUT() {
+  return NextResponse.json({ error: "Arbetsuppgifter hanteras nu i bemanningsschemat. Uppdatera sidan." }, { status: 410 });
 }

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Activity, Member, Organization, Team } from "@/domain/club";
 import { ActivityStaffingList } from "@/components/activity-staffing-list";
 import { ActivityParticipantPicker } from "@/components/activity-participant-picker";
-import { ActivityDutyEditor } from "@/components/activity-duty-editor";
+import { ActivityDutySchedule } from "@/components/activity-duty-schedule";
 import type { ActivityRole } from "@/lib/activity-participation";
 import { AttendanceModal } from "@/components/attendance-modal";
 import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
@@ -140,8 +140,10 @@ export function ActivityDetailModal({ activity, organization, team, canManageAct
 
       {canManageInvitations ? <>
         <ActivityParticipantPicker activityId={activity.id} rosterMembers={rosterMembers} invitedIds={invitees.map(p => p.personId)} onAdded={refreshParticipation} />
-        <ActivityDutyEditor activityId={activity.id} invitees={invitees} started={activityStarted} timeZone={timeZone} onSaved={refreshParticipation} />
+
       </> : null}
+
+      <ActivityDutySchedule key={activity.id} activityId={activity.id} startsAt={activity.startsAt} timeZone={timeZone} />
 
       {canManageInvitations && deliveryStatus ? <details className="delivery-status">
         <summary><span>Leveransstatus</span><small>{deliveryStatus.sent} skickade · {deliveryStatus.queued} väntar · {deliveryStatus.failed} misslyckade</small></summary>
