@@ -169,7 +169,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
           <h3 id="editor-time-title">När och varaktighet</h3>
           {recurring?<><fieldset><legend>Veckodagar</legend><div className="weekday-options">{weekdayOptions.map(([value,label])=><label key={value}><input type="checkbox" name="weekdays" value={value} defaultChecked={draft?.recurrence?draft.recurrence.weekdays.includes(value):value===(new Date(`${initial.date}T00:00:00Z`).getUTCDay()||7)}/>{label}</label>)}</div></fieldset><div className="form-row editor-date-row"><label>Startdatum<input name="startsOn" type="date" required defaultValue={initial.date}/></label><label>Slutdatum<input name="endsOn" type="date" required min={initial.date} defaultValue={draft?.recurrence?draft.recurrence.endsOn??"":initial.date}/></label></div><div className="editor-time-field"><FiveMinuteTimeField name="startTime" defaultValue={initial.time}/></div></>:<div className="form-row editor-date-row"><label>Datum<input name="startsOn" type="date" required defaultValue={initial.date}/></label><div className="editor-time-field"><FiveMinuteTimeField name="startTime" defaultValue={initial.time}/></div></div>}
           <ActivityTimingFields rules={rules} onChange={changeRule} defaults={typeDefaults} touched={touchedKeys} invitations={false}/>
-          <small>Samling anges exempelvis som start-15m. Välj kallelse och mottagare uttryckligen nedan.</small>
+          <small>Samlingen räknas före aktivitetens start. Välj kallelse och mottagare nedan.</small>
         </section>
         {canManageInvitations ? <details className="editor-section editor-invitation" open={invitationOpen} onToggle={event=>setInvitationOpen(event.currentTarget.open)}>
           <summary>Kallelse <span>{invitationMode==="none"?"Ingen":invitationMode==="now"?"Skicka nu":"Schemalägg"}</span></summary>
@@ -189,7 +189,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
               {groups.map(group=><label key={group.id}><input type="checkbox" checked={selectedGroups.has(group.id)} onChange={()=>setSelectedGroups(current=>{const next=new Set(current);if(next.has(group.id))next.delete(group.id);else next.add(group.id);return next;})}/>{group.name}</label>)}
             </div>
             <ActivityTimingFields rules={rules} onChange={changeRule} defaults={typeDefaults} touched={touchedKeys} invitations/>
-            <small>Exempel: start-6d = sex kalenderdagar före. deadline-2h = två timmar före sista svarstid. Bara obesvarade får påminnelser.</small>
+            <small>Kallelse och sista svarstid räknas före aktivitetens start.</small>
           </div>:null}
         </details> : null}
         {error?<p className="auth-error" role="alert">{error}</p>:null}

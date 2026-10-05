@@ -25,10 +25,7 @@ export async function saveActivityDefaults(form: FormData) {
     const typeId = String(form.get("activityTypeId"));
     const revision = Number(form.get("revision"));
     if (!isUuid(typeId) || !Number.isSafeInteger(revision) || revision < 0) throw new Error("Ogiltiga standardvärden.");
-    const patch = normalizeDefaultsPatch(Object.fromEntries(["duration","gatheringRule","invitationRule","responseDueRule","reminderRules"].map(key => {
-      const input = String(form.get(key) ?? "").trim();
-      return [key, !input ? null : key === "reminderRules" ? input === "[]" ? [] : input.split(",").map(item => item.trim()) : input];
-    })));
+    const patch = normalizeDefaultsPatch(JSON.parse(String(form.get("values") ?? "{}")));
     const { error } = await supabase.rpc("save_activity_defaults", { target_type_id: typeId, target_scope: t.scope, target_organization_id: organization?.id ?? null, target_scope_id: t.scopeId, expected_revision: revision, patch });
     if (error) throw new Error(error.code === "40001" ? "Inställningarna har ändrats. Ladda om sidan och försök igen." : "Standardvärdena kunde inte sparas.");
   } catch (error) { unstable_rethrow(error); errorMessage = error instanceof Error ? error.message : "Standardvärdena kunde inte sparas."; }

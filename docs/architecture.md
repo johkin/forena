@@ -146,6 +146,8 @@ Typreferenser använder identitet, medan en databas-trigger kontrollerar lokalt
 ägarskap och lagets effektiva disciplin. Dokumentkopplingar förblir tenantbundna.
 
 `activity_defaults` lagrar sparsamma override-värden, regelversion och revision.
+`values.options` lagrar valbara interna tidsvärden per fält; listorna ärvs
+oberoende av valda förval och ersätts helt vid lokal override.
 `loadActivityConfiguration` är den gemensamma läsvägen för dialog och assistent;
 `resolveActivityDefaults` är den rena domänfunktionen för fältvis arv.
 Skrivkommandot kontrollerar mål och behörighet på både server- och databasnivå.

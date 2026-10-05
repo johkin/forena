@@ -115,8 +115,8 @@ dialogen kan scrollas med touch och att bakgrunden är stilla.
 ## Aktivitetsinställningar
 
 System, klubb, sektion och lag använder samma formulär för standardvärden.
-Visa ärvt värde och källa per fält; tomt fält innebär arv och en tom
-påminnelselista är ett uttryckligt avstängningsval. Redigera typer i hopfällbara
+Visa ärvt värde och källa per fält. Listvalet ”Ärv från överordnad nivå”
+innebär arv och en tom påminnelselista är ett avstängningsval. Redigera typer i hopfällbara
 rader och samla nivåval i en radbrytande navigation. Aktivitetens typval ändrar
 bara orörda nya fält. Förhandsgranskningen visar tider i föreningens tidszon.
 Kallelsemottagare och utskicksläge väljs alltid uttryckligen av ledaren.
@@ -124,3 +124,11 @@ Kallelsemottagare och utskicksläge väljs alltid uttryckligen av ledaren.
 Tidsval använder den gemensamma `FiveMinuteTimeField`: timmar 00–23 och minuter
 00, 05, 10 … 55. Samma kontroll visas på komponentsidan. Befintliga tider och
 utkast mellan femminutersstegen bevaras tills användaren ändrar minutvalet.
+
+Relativa tider väljs från listor med svenska texter, exempelvis ”6 dagar innan”.
+Uttryck som `start-6d` är interna värden och visas inte i kontroller eller hjälptexter.
+Påminnelser har ett listval per rad, borttagningsknapp och ”Lägg till påminnelse”.
+Visa tydligt att påminnelser räknas före sista svarstid, övriga tider före start.
+Administratörer anpassar listorna med antal, enhet och valfri dagens början;
+listorna ärvs separat från förvalen. Äldre/egna val utanför listan visas läsbart
+som nuvarande värde och bevaras tills användaren väljer en annan tid.

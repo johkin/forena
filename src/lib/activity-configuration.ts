@@ -1,17 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./supabase/database.types";
-import { resolveActivityDefaults, FALLBACK_ACTIVITY_DEFAULTS, type ActivityDefaultsRow, type ActivityDefaultsPatch } from "./activity-defaults";
-import { normalizeActivityTimingRules } from "./activity-time-rules";
+import { resolveActivityDefaults, normalizeDefaultsPatch, type ActivityDefaultsRow } from "./activity-defaults";
 
-export function normalizeDefaultsPatch(value: unknown): ActivityDefaultsPatch {
-  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Ogiltiga standardvärden.");
-  const patch = value as Record<string, unknown>;
-  const fields = Object.keys(FALLBACK_ACTIVITY_DEFAULTS);
-  if (Object.keys(patch).some(key => !fields.includes(key))) throw new Error("Okänt standardfält.");
-  const present = Object.fromEntries(Object.entries(patch).filter(([, item]) => item !== null && item !== undefined));
-  normalizeActivityTimingRules({ ...FALLBACK_ACTIVITY_DEFAULTS, ...present });
-  return patch as ActivityDefaultsPatch;
-}
+export { normalizeDefaultsPatch } from "./activity-defaults";
 
 export async function loadActivityConfiguration(supabase: SupabaseClient<Database>, teamId: string) {
   const { data: team, error: teamError } = await supabase.from("teams").select("id, organization_id, section_id, discipline_id").eq("id", teamId).single();

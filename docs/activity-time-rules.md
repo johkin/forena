@@ -170,3 +170,24 @@ körningen om TypeScript redan finns.
 Kör även `supabase db reset --local` och `supabase test db` mot en lokal teststack.
 `activity_defaults_test.sql` verifierar revisionskonflikter, scope/tenant-isolering,
 rollgränser, disciplintillämplighet, historik och atomära påminnelseskrivningar.
+
+## Valbara tider
+
+`activity_defaults.values.options` innehåller valbara tider för `duration`,
+`gatheringRule`, `invitationRule`, `responseDueRule` och `reminderRules`.
+Varje lista har 1–32 unika giltiga värden med fältets ankare. Utelämnat fält
+eller `null` ärver listan; en lokal lista ersätter hela den överordnade listan.
+Förval och listor har separata ursprung i `resolveActivityDefaults`.
+Systemlistorna seedas för gemensamma typer; kodens grundlistor används när data
+saknas, exempelvis för en ny typ. Behörigheter och revisionskontroll är desamma
+som för övriga aktivitetsförval.
+
+UI visar ”6 dagar innan” för `start-6d`, ”2 timmar innan” för `deadline-2h`
+och markerar dagens början för `/d`. Ankaret förklaras vid respektive kontroll.
+Kalenderdagar och förflutna timmar hålls åtskilda även i etiketterna.
+Tidigare val som inte finns i en ändrad lista behålls som läsbara alternativ.
+Påminnelser hanteras som separata listval, maximalt fem utan dubbletter.
+Administratörer lägger till tider med antal/enhet, utan uttrycksinmatning.
+Listvalen används endast när tider beräknas för nya aktiviteter eller ett
+uttryckligt nytt kallelseschema. Migrationen ändrar inga fasta aktivitetstider
+eller påminnelsescheman.
