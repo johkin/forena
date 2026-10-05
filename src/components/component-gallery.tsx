@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { FiveMinuteTimeField } from "@/components/five-minute-time-field";
 import { ActivityEditorModal } from "@/components/activity-editor-modal";
 import { ActivityDetailModal } from "@/components/activity-detail-modal";
 import { ActivityStaffingList } from "@/components/activity-staffing-list";
@@ -39,7 +40,7 @@ export function ComponentGallery() {
     <section><h2>Formulärfält</h2><div className="component-fields">
       <label>Titel<input placeholder="Träning eller match" /></label>
       <label>Datum<input type="date" defaultValue="2026-10-05" /></label>
-      <label>Tid<input type="time" step={300} defaultValue="17:00" /></label>
+      <FiveMinuteTimeField name="exampleTime" defaultValue="17:00"/>
       <label>Längd<select defaultValue="60"><option value="60">1 timme</option><option value="90">1,5 timmar</option></select></label>
     </div><details><summary>Beskrivning (valfritt)</summary><p>Extra uppgifter visas när de behövs.</p></details></section>
     <section><h2>Bemanning</h2><ActivityStaffingList invitees={[...invitees]} /></section>

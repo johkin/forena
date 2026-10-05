@@ -6,6 +6,7 @@ import { previewRuleSingleActivity, previewRuleWeeklySeries, type ActivityOccurr
 import type { ActivityDraft } from "@/lib/ai/activity-draft";
 import { attendanceNames } from "@/lib/attendance-names";
 import type { AudienceRole } from "@/lib/invitation-audience";
+import { FiveMinuteTimeField } from "./five-minute-time-field";
 import { ActivityTimingFields } from "./activity-timing-fields";
 import type { ActivityConfiguration } from "@/lib/activity-configuration";
 import { FALLBACK_ACTIVITY_DEFAULTS } from "@/lib/activity-defaults";
@@ -27,7 +28,7 @@ function Help({children,label}:{children:React.ReactNode;label:string}) {
 function localParts(value:string|undefined,timeZone:string) {
   const date=value?new Date(value):new Date();
   const parts=Object.fromEntries(new Intl.DateTimeFormat("en-CA",{timeZone,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(date).map(part=>[part.type,part.value]));
-  return {date:`${parts.year}-${parts.month}-${parts.day}`,time:`${parts.hour}:${parts.minute}`};
+  return {date:`${parts.year}-${parts.month}-${parts.day}`,time:`${parts.hour}:${value ? parts.minute : String(Math.floor(Number(parts.minute)/5)*5).padStart(2,"0")}`};
 }
 
 export function ActivityEditorModal({mode,organization,team,members,activity,draft,source,canManageInvitations,onClose,onNotice}:Props) {
@@ -126,7 +127,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
     setPending(true); setError(undefined);
     if(source==="demo"){onNotice(`${String(payload.title)} förhandsgranskades i demoläge.`);onClose();return;}
     const occurrence=preview[0], endpoint=mode==="edit"?`/api/activities/${activity?.id}`:recurring?"/api/activity-series":"/api/activities";
-    const body=mode==="edit"||!recurring?{...payload,gatheringAt:occurrence.gatheringAt,startsAt:occurrence.startsAt,endsAt:occurrence.endsAt}:payload;
+    const body=mode==="edit"||!recurring?{...payload,...(mode==="edit" ? {timingRules:undefined} : {}),gatheringAt:occurrence.gatheringAt,startsAt:occurrence.startsAt,endsAt:occurrence.endsAt}:payload;
     const response=await fetch(endpoint,{method:mode==="edit"?"PUT":"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
     const result=await response.json(); setPending(false);
     if(!response.ok){setError(result.error??"Aktiviteten kunde inte sparas");return;}
@@ -166,7 +167,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
         </section>
         <section className="editor-section" aria-labelledby="editor-time-title">
           <h3 id="editor-time-title">När och varaktighet</h3>
-          {recurring?<><fieldset><legend>Veckodagar</legend><div className="weekday-options">{weekdayOptions.map(([value,label])=><label key={value}><input type="checkbox" name="weekdays" value={value} defaultChecked={draft?.recurrence?draft.recurrence.weekdays.includes(value):value===(new Date(`${initial.date}T00:00:00Z`).getUTCDay()||7)}/>{label}</label>)}</div></fieldset><div className="form-row editor-date-row"><label>Startdatum<input name="startsOn" type="date" required defaultValue={initial.date}/></label><label>Slutdatum<input name="endsOn" type="date" required min={initial.date} defaultValue={draft?.recurrence?draft.recurrence.endsOn??"":initial.date}/></label></div><label className="editor-time-field">Tid<input name="startTime" type="time" step={300} required defaultValue={initial.time}/></label></>:<div className="form-row editor-date-row"><label>Datum<input name="startsOn" type="date" required defaultValue={initial.date}/></label><label className="editor-time-field">Tid<input name="startTime" type="time" step={300} required defaultValue={initial.time}/></label></div>}
+          {recurring?<><fieldset><legend>Veckodagar</legend><div className="weekday-options">{weekdayOptions.map(([value,label])=><label key={value}><input type="checkbox" name="weekdays" value={value} defaultChecked={draft?.recurrence?draft.recurrence.weekdays.includes(value):value===(new Date(`${initial.date}T00:00:00Z`).getUTCDay()||7)}/>{label}</label>)}</div></fieldset><div className="form-row editor-date-row"><label>Startdatum<input name="startsOn" type="date" required defaultValue={initial.date}/></label><label>Slutdatum<input name="endsOn" type="date" required min={initial.date} defaultValue={draft?.recurrence?draft.recurrence.endsOn??"":initial.date}/></label></div><div className="editor-time-field"><FiveMinuteTimeField name="startTime" defaultValue={initial.time}/></div></>:<div className="form-row editor-date-row"><label>Datum<input name="startsOn" type="date" required defaultValue={initial.date}/></label><div className="editor-time-field"><FiveMinuteTimeField name="startTime" defaultValue={initial.time}/></div></div>}
           <ActivityTimingFields rules={rules} onChange={changeRule} defaults={typeDefaults} touched={touchedKeys} invitations={false}/>
           <small>Samling anges exempelvis som start-15m. Välj kallelse och mottagare uttryckligen nedan.</small>
         </section>

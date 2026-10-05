@@ -1,6 +1,6 @@
 import { requireActivityType } from "@/lib/activity-configuration";
 import { buildInvitationSchedule, requireFutureSchedule } from "@/lib/activity-schedule";
-import { normalizeActivityTimingRules, ACTIVITY_TIME_RULE_VERSION } from "@/lib/activity-time-rules";
+import { normalizeActivityTimingRules } from "@/lib/activity-time-rules";
 import { NextResponse } from "next/server";
 import { previewRuleWeeklySeries, previewWeeklySeries, type ResponseDueRule, type SeriesPreviewInput } from "@/lib/activity-series";
 import { createClient } from "@/lib/supabase/server";
@@ -99,11 +99,8 @@ export async function POST(request: Request) {
 
   const recurrenceRule = {
     frequency: "weekly",
-    timingRules: body.timingRules === undefined ? null : normalizeActivityTimingRules(body.timingRules),
-    ruleVersion: body.timingRules === undefined ? null : ACTIVITY_TIME_RULE_VERSION,
     weekdays: body.weekdays,
     startTime: body.startTime,
-    durationMinutes: body.durationMinutes,
     gatheringMinutesBefore: body.gatheringMinutesBefore,
     timeZone,
     invitationSendMinutesBefore: body.invitationSendMinutesBefore ?? 10080,
@@ -148,8 +145,6 @@ export async function POST(request: Request) {
       response_due_at: schedules[index]?.responseDueAt ?? null,
       reminder_send_at: null,
       reminder_send_ats: schedules[index]?.reminderSendAts ?? null,
-      timing_rules: body.timingRules === undefined ? null : normalizeActivityTimingRules(body.timingRules),
-      timing_rule_version: body.timingRules === undefined ? null : ACTIVITY_TIME_RULE_VERSION,
       invitation_audience_kind: invitationAudience ?? null,
       invitation_group_id: invitationAudience === "group" ? invitationGroupId ?? null : null,
       ...(selection ? { invitation_audience_roles: selection.roles, invitation_audience_group_ids: selection.groupIds, invitation_audience_responsibility_type_ids: selection.responsibilityTypeIds } : {}),
