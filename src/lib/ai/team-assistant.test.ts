@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AssistantDependencies } from "./team-assistant-types";
+import * as reminderTools from "./reminder-tools";
 
 const mocks = vi.hoisted(() => ({ context: vi.fn(), generate: vi.fn(), chat: vi.fn(), agentOptions: vi.fn() }));
 vi.mock("./team-assistant-context", () => ({ loadTeamAssistantContext: mocks.context }));
@@ -61,6 +62,7 @@ describe("answerTeamAssistant", () => {
     const prompt = mocks.agentOptions.mock.calls[0][0].instructions;
     expect(prompt.includes("professionellt, sakligt och tydligt")).toBe(kind === "leader");
     expect(prompt.includes("så att ett barn förstår")).toBe(kind !== "leader");
+    expect(mocks.agentOptions.mock.calls[0][0].tools).not.toHaveProperty("proposeReminder");
   });
 
   it("propagates team access rejection before calling AI", async () => {
@@ -68,5 +70,21 @@ describe("answerTeamAssistant", () => {
     await expect(answerTeamAssistant(input, dependencies)).rejects.toThrow("forbidden");
     expect(mocks.generate).not.toHaveBeenCalled();
     expect(mocks.chat).not.toHaveBeenCalled();
+  });
+
+  it("offers reminder tools only for invitation managers and excludes personal memories", async () => {
+    const toolFactory = vi.spyOn(reminderTools, "createReminderTools");
+    mocks.context.mockResolvedValue({ organization: null, activities: [], activityIds: ["activity"], canManageActivities: false, canManageInvitations: true,
+      memoryScope: { organizationId: "org", sectionId: "section", teamId: "team", userId: "user", disciplineId: null },
+      organizationToday: "2026-10-01", context: { viewer: { kind: "leader" }, clock: { organizationTimeZone: "Europe/Stockholm" }, memories: [
+        { scope: "personal", content: "Privat preferens", subject: "Privat", disciplineId: null },
+        { scope: "team", content: "Nio spelare", subject: "Match", disciplineId: null },
+      ] } });
+    await answerTeamAssistant({ ...input, question: "Behöver vi påminna?" }, dependencies);
+    expect(mocks.agentOptions.mock.calls[0][0].tools).toHaveProperty("assessReminder");
+    expect(mocks.agentOptions.mock.calls[0][0].tools).toHaveProperty("proposeReminder");
+    expect(toolFactory).toHaveBeenCalledWith(expect.objectContaining({ memories: [{ scope: "team", content: "Nio spelare", subject: "Match", disciplineId: null }] }));
+    expect(mocks.agentOptions.mock.calls[0][0].instructions).toContain("Personliga minnen får inte styra utskick till laget");
+    toolFactory.mockRestore();
   });
 });

@@ -773,6 +773,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .memory-item-heading small { color: var(--ink-soft); white-space: nowrap; }
 .memory-item form { display: grid; justify-items: start; gap: 9px; }
 .memory-item > p { margin: 0; line-height: 1.5; }
+.assistant-message .memory-item { color: var(--ink); margin-top: 10px; }
+.assistant-message .memory-item p { color: var(--ink); background: transparent; padding: 0; border-radius: 0; }
 .memory-delete { padding: 0; border: 0; background: transparent; color: #94452b; font-size: 12px; font-weight: 700; cursor: pointer; }
 .memory-empty, .memory-system-note { padding: 18px; border: 1px dashed var(--line); border-radius: 14px; color: var(--ink-soft); }
 .memory-empty p { margin: 6px 0 0; }

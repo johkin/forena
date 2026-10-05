@@ -7,6 +7,8 @@ import { buildActivityDraftPrompt, buildEventResearchPrompt, buildTeamAssistantP
 import { createTeamAssistantTools } from "./team-assistant-tools";
 import { createAssistantMemoryTools } from "./assistant-memory-tools";
 import type { AssistantMemoryDraft } from "./assistant-memory-draft";
+import { createReminderTools } from "./reminder-tools";
+import type { ReminderDraft } from "./reminder-draft";
 import { TeamAssistantError, type AssistantDependencies, type TeamAssistantInput, type TeamAssistantReply } from "./team-assistant-types";
 
 // Keep the model already exercised by the production team briefing.
@@ -16,7 +18,7 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
   const startedAt = Date.now();
   const { teamId, question } = input;
   const { supabase, userId } = dependencies;
-  const { organization, activities, activityIds, canManageActivities, memoryScope, context, organizationToday } = await loadTeamAssistantContext(input, dependencies);
+  const { organization, activities, activityIds, canManageActivities, canManageInvitations, memoryScope, context, organizationToday } = await loadTeamAssistantContext(input, dependencies);
   const model = process.env.AI_ASSISTANT_MODEL?.trim() || process.env.AI_FEED_MODEL?.trim() || DEFAULT_MODEL;
   const requiresActivityDraft = Boolean(canManageActivities) && isActivityDraftRequest(question);
   const requiresWebResearch = requiresActivityDraft && activityDraftNeedsWebResearch(question);
@@ -84,10 +86,23 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
     }
 
     const memoryDrafts: AssistantMemoryDraft[] = [];
+    const reminderDrafts: ReminderDraft[] = [];
     const assistant = new ToolLoopAgent({
       model,
-      instructions: buildTeamAssistantPrompt({ assistantName: organization?.assistant_name, viewerKind: context.viewer.kind, canManageActivities }),
-      tools: { ...createTeamAssistantTools(supabase, teamId, activityIds), ...createAssistantMemoryTools(memoryScope, draft => memoryDrafts.push(draft)) },
+      instructions: buildTeamAssistantPrompt({ assistantName: organization?.assistant_name, viewerKind: context.viewer.kind, canManageActivities, canManageInvitations }),
+      tools: {
+        ...createTeamAssistantTools(supabase, teamId, activityIds),
+        ...createAssistantMemoryTools(memoryScope, draft => memoryDrafts.push(draft)),
+        ...(canManageInvitations ? createReminderTools({ supabase, teamId, activityIds,
+          timeZone: context.clock.organizationTimeZone,
+          memories: context.memories.filter(memory => memory.scope !== "personal").map(memory => ({ scope: memory.scope, subject: memory.subject, content: memory.content, disciplineId: memory.disciplineId })),
+          onDraft: draft => {
+            const index = reminderDrafts.findIndex(item => item.assessment.activityId === draft.assessment.activityId);
+            if (index >= 0) reminderDrafts[index] = draft;
+            else reminderDrafts.push(draft);
+          },
+        }) : {}),
+      },
       maxOutputTokens: 500,
       stopWhen: isStepCount(5),
       providerOptions: { gateway: { user: createHash("sha256").update(userId).digest("hex").slice(0, 24), tags: ["feature:team-assistant"] } },
@@ -97,7 +112,7 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
       abortSignal: AbortSignal.timeout(30_000),
     });
     console.info("team_assistant_completed", { teamId, model, latencyMs: Date.now() - startedAt, inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens });
-    return { answer: result.text || "Jag kunde inte formulera ett svar.", memoryDrafts, source: "ai", model };
+    return { answer: result.text || "Jag kunde inte formulera ett svar.", memoryDrafts, reminderDrafts, source: "ai", model };
   } catch (error) {
     const gatewayError = error as Error & { statusCode?: number; cause?: { name?: string; message?: string } };
     console.warn("team_assistant_fallback", {
