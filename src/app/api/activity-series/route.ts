@@ -101,7 +101,6 @@ export async function POST(request: Request) {
     frequency: "weekly",
     weekdays: body.weekdays,
     startTime: body.startTime,
-    durationMinutes: body.durationMinutes,
     gatheringMinutesBefore: body.gatheringMinutesBefore,
     timeZone,
     invitationSendMinutesBefore: body.invitationSendMinutesBefore ?? 10080,

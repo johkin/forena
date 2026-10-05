@@ -96,6 +96,8 @@ const preview = previewRuleSingleActivity({
 ```
 
 `previewRuleWeeklySeries` beräknar alla tider separat för varje tillfälle.
+Serien lagrar inte `durationMinutes`; längden används bara för att skapa
+tillfällenas fasta start- och sluttider.
 Spara inte en UTC-offset eller den första träningens klockslag som mall för
 resten av serien. Perioden är högst 366 dagar och antalet tillfällen högst 100.
 
