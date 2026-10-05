@@ -5,8 +5,9 @@ import { normalizeDefaultsPatch } from "@/lib/activity-configuration";
 import { AppHeader } from "./app-header";
 import { saveActivityDefaults, saveActivityType, saveTargetDiscipline } from "@/app/activity-settings-actions";
 
+import { ActivityDefaultsFields } from "./activity-defaults-fields";
+
 const sourceNames = { system: "System", organization: "Klubb", section: "Sektion", team: "Lag", fallback: "Grundvärde" };
-const fields = [["duration","Längd","PT1H30M"],["gatheringRule","Samling","start-15m"],["invitationRule","Kallelse","start-6d"],["responseDueRule","Sista svarstid","start-6h"],["reminderRules","Påminnelser","deadline-1d, deadline-2h"]] as const;
 type Query = { team?: string; scope?: string; scopeId?: string; typeId?: string; saved?: string; error?: string };
 export async function ActivitySettingsPage({ organizationSlug = null, query }: { organizationSlug?: string | null; query: Query }) {
   const supabase = await createClient();
@@ -46,14 +47,14 @@ export async function ActivitySettingsPage({ organizationSlug = null, query }: {
     {query.saved ? <p className="auth-message" role="status">Sparat.</p> : null}{query.error ? <p className="auth-error" role="alert">{query.error}</p> : null}
     {org ? <><nav className="settings-targets" aria-label="Nivå för standardvärden">{targets.map(t=><a aria-current={t.id === selected.id && t.scope === selected.scope ? "page" : undefined} className="secondary" key={`${t.scope}${t.id}`} href={`${path}?${new URLSearchParams({ scope:t.scope,scopeId:t.id! })}`}>{sourceNames[t.scope]}: {t.name}</a>)}</nav>
     <form action={saveTargetDiscipline} className="application-form">{hidden}<label>Disciplin för {selected.name}<select name="discipline_id" defaultValue={selected.discipline_id ?? ""}><option value="">{selected.scope === "organization" ? "Ingen disciplin" : "Ärv från överordnad nivå"}</option>{disciplines.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></label><small>Aktuell disciplin: {disciplines.find(d=>d.id===disciplineId)?.name ?? "Ingen"}. Gemensamma aktivitetstyper är alltid tillgängliga.</small><button className="secondary">Spara disciplin</button></form></> : <details className="settings-item"><summary>Ny aktivitetstyp</summary><form action={saveActivityType} className="application-form">{typeFields()}<button className="primary">Skapa aktivitetstyp</button></form></details>}
-    <h2>Standardvärden för {selected.name}</h2><p>Lämna tomt för att ärva. Påminnelser anges med kommatecken; <code>[]</code> stänger av dem.</p>
+    <h2>Standardvärden för {selected.name}</h2><p>Välj ett förval eller ärv från överordnad nivå. Ta bort alla påminnelser för att stänga av dem.</p>
     {types.map(type=>{
       const row = rows.find(r=>r.activityTypeId===type.id && r.scope===selected.scope && r.scopeId===selected.id && r.organizationId===(org?.id ?? null));
       const applicable = rows.filter(r=> selected.scope === "system" ? r.scope === "system" : selected.scope === "organization" ? ["system","organization"].includes(r.scope) : selected.scope === "section" ? r.scope!=="team" : true);
-      const resolved = resolveActivityDefaults({ activityTypeId:type.id,organizationId:org?.id ?? "",sectionId:selectedSection?.id ?? "",teamId:selectedTeam?.id ?? "" },applicable);
+      const resolved = resolveActivityDefaults({ activityTypeId:type.id,organizationId:org?.id ?? "",sectionId:selectedSection?.id ?? "",teamId:selectedTeam?.id ?? "" },applicable.filter(candidate => candidate.id !== row?.id));
       return <details className="settings-item" key={type.id} open={query.typeId===type.id}><summary>{type.name} {!type.active ? "(inaktiv)" : ""} <small>{disciplines.find(d=>d.id===type.discipline_id)?.name ?? (type.organization_id ? "Lokal typ" : "Gemensam")}</small></summary>
         {!org ? <details><summary>Redigera aktivitetstyp</summary><form action={saveActivityType} className="application-form"><input type="hidden" name="id" value={type.id}/>{typeFields(type)}<button className="secondary">Spara aktivitetstyp</button></form></details> : null}
-        <form action={saveActivityDefaults} className="application-form">{hidden}<input type="hidden" name="activityTypeId" value={type.id}/><input type="hidden" name="revision" value={row?.revision ?? 0}/><div className="settings-fields">{fields.map(([key,label,example])=><label key={key}>{label}<input name={key} defaultValue={key==="reminderRules" ? row?.values.reminderRules ? row.values.reminderRules.length ? row.values.reminderRules.join(", ") : "[]" : "" : String(row?.values[key] ?? "")} placeholder={example}/><small>Gäller: {Array.isArray(resolved.rules[key]) ? resolved.rules.reminderRules.join(", ") || "Inga" : resolved.rules[key]} · {sourceNames[resolved.sources[key].scope]}</small></label>)}</div><button className="primary">Spara standardvärden</button></form>
+        <form action={saveActivityDefaults} className="application-form">{hidden}<input type="hidden" name="activityTypeId" value={type.id}/><input type="hidden" name="revision" value={row?.revision ?? 0}/><ActivityDefaultsFields initial={row?.values ?? {}} resolved={resolved}/><button className="primary">Spara standardvärden</button></form>
       </details>;
     })}</section></main></>;
 }

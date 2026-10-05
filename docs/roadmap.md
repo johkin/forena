@@ -23,6 +23,7 @@
 - [ ] Komplettera medlemsprofil med bildhantering och administration av verifierade målsmanskopplingar
 - [x] Gemensam aktivitetstypskatalog med disciplinspecifika typer och systemadministration
 - [x] Administrera aktivitetsförval med fältvis arv system/klubb/sektion/lag och revisionskontroll
+- [x] Läsbara listval för relativa tider och valbara alternativ i activity-defaults med separat arv
 - [x] Läs förval i aktivitetsdialog och ledarassistent; visa ursprung och bevara egna val
 - [x] Spara alla schemalagda påminnelser atomärt för nya aktiviteter och serier
 - [ ] Bekräftat assistentkommando för att ändra aktivitetsförval
