@@ -51,9 +51,10 @@ export async function saveActivityType(form: FormData) {
   redirect("/system/activity-types?saved=1");
 }
 export async function saveTargetDiscipline(form: FormData) {
-  const t = target(form);
+  let t: ReturnType<typeof target> | undefined;
   let errorMessage: string | undefined;
   try {
+    t = target(form);
     const { supabase, organization } = await activitySettingsAccess(t.slug, t.scope, t.scopeId);
     const disciplineId = String(form.get("discipline_id") ?? "") || null;
     if (disciplineId && !isUuid(disciplineId)) throw new Error("Ogiltig disciplin.");
@@ -64,7 +65,9 @@ export async function saveTargetDiscipline(form: FormData) {
     unstable_rethrow(error);
     errorMessage = error instanceof Error ? error.message : "Disciplinen kunde inte sparas.";
   }
-  t.query.set(errorMessage ? "error" : "saved", errorMessage ?? "1");
-  revalidatePath(t.path);
-  redirect(`${t.path}?${t.query}`);
+  const path = t?.path ?? "/";
+  const query = t?.query ?? new URLSearchParams();
+  query.set(errorMessage ? "error" : "saved", errorMessage ?? "1");
+  revalidatePath(path);
+  redirect(`${path}?${query}`);
 }

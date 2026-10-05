@@ -18,12 +18,15 @@ beforeEach(()=>{
  client={auth:{getUser:vi.fn(async()=>({data:{user:{id:"leader"}}}))},rpc:vi.fn(async()=>({data:true,error:null})),from:vi.fn(table=>table==="organizations"?org:activities)};mocks.client.mockResolvedValue(client);
 });
 async function put(changes:Record<string,unknown>={}) { return PUT(new Request("https://example.test/api/activities/activity",{method:"PUT",body:JSON.stringify({title:"Updated",startsAt:start,endsAt:times.endsAt,gatheringAt:times.gatheringAt,timingRules:rules,...changes})}),{params:Promise.resolve({activityId:"activity"})}); }
-describe("fixed invitation times during activity edits",()=>{
- it.each([ {invitationRule:"start-7d"}, {responseDueRule:"start-5h"}, {reminderRules:["deadline-1h"]} ])("rejects rules that contradict a pending schedule",async changed=>{const result=await put({timingRules:{...rules,...changed}});expect(result.status).toBe(409);expect(mocks.update).not.toHaveBeenCalled();});
- it("preserves all schedule columns on a title edit with unchanged rules",async()=>{expect((await put()).status).toBe(200);const patch=mocks.update.mock.calls[0][0]; for(const key of ["invitation_send_at","response_due_at","reminder_send_at","reminder_send_ats","invitation_materialized_at"]) expect(patch).not.toHaveProperty(key);});
- it("rejects a moved start when it contradicts the saved schedule",async()=>{const shifted=scheduleActivityTimes("2030-10-21T16:00:00Z","Europe/Stockholm",rules);expect((await put({startsAt:shifted.startsAt,endsAt:shifted.endsAt})).status).toBe(409);expect(mocks.update).not.toHaveBeenCalled();});
- it("rejects moving a legacy pending activity without supplied rules",async()=>{expect((await put({startsAt:"2030-10-21T16:00:00Z",endsAt:"2030-10-21T17:00:00Z",timingRules:undefined})).status).toBe(409);expect(mocks.update).not.toHaveBeenCalled();});
- it("allows a legacy title edit without applying any new timing rules",async()=>{expect((await put({timingRules:undefined})).status).toBe(200);expect(mocks.update.mock.calls[0][0]).not.toHaveProperty("timing_rules");expect(mocks.update.mock.calls[0][0]).not.toHaveProperty("invitation_send_at");});
- it("allows new rules on an activity without a scheduled invitation without scheduling anything",async()=>{current.invitation_send_at=null;expect((await put({timingRules:{...rules,invitationRule:"start-7d"}})).status).toBe(200);expect(mocks.update.mock.calls[0][0]).not.toHaveProperty("invitation_send_at");});
- it("does not reschedule already materialized invitations",async()=>{current.invitation_materialized_at="2030-10-14T16:01:00Z";expect((await put({timingRules:{...rules,invitationRule:"start-7d"}})).status).toBe(200);expect(mocks.update.mock.calls[0][0]).not.toHaveProperty("reminder_send_ats");});
+describe("concrete activity times",()=>{
+ it.each([null,"2030-10-14T16:01:00Z"])("edits explicit timestamps without changing pending or sent invitation schedules",async materialized=>{
+  current.invitation_materialized_at=materialized;
+  const response=await put({startsAt:"2030-10-21T16:00:00Z",endsAt:"2030-10-21T18:00:00Z",gatheringAt:"2030-10-21T15:45:00Z"});
+  expect(response.status).toBe(200);
+  const patch=mocks.update.mock.calls[0][0];
+  expect(patch).toMatchObject({starts_at:"2030-10-21T16:00:00.000Z",ends_at:"2030-10-21T18:00:00.000Z",gathering_at:"2030-10-21T15:45:00.000Z"});
+  for(const key of ["timing_rules","timing_rule_version","invitation_send_at","response_due_at","reminder_send_at","reminder_send_ats","invitation_materialized_at"])expect(patch).not.toHaveProperty(key);
+ });
+ it("ignores obsolete rule metadata from an older client",async()=>{expect((await put({timingRules:{invalid:true}})).status).toBe(200);expect(mocks.update.mock.calls[0][0]).not.toHaveProperty("timing_rules");});
+ it("rejects invalid concrete times without writing",async()=>{expect((await put({endsAt:start})).status).toBe(400);expect(mocks.update).not.toHaveBeenCalled();});
 });

@@ -55,8 +55,8 @@ nödvändigtvis det i tidszoner där midnatt hoppas över.
 
 Regelmotorn använder `Intl` och verifierar möjliga lokala tider genom
 rundresor till lokal tid. Datumintervallet är 1900–9999. Ändra inte dessa
-semantiska regler utan ny regelversion och migrationsbeslut. Persistenta regler
-bör lagra `ACTIVITY_TIME_RULE_VERSION` tillsammans med värdena.
+semantiska regler utan ny regelversion och migrationsbeslut. Förvalsregler
+ska lagra `ACTIVITY_TIME_RULE_VERSION` tillsammans med värdena.
 
 ## Standardvärden
 
@@ -136,12 +136,14 @@ regressionsfall i den fristående testkörningen.
   För serier används schemaläggning; omedelbart utskick gäller enstaka aktiviteter.
   Passerad kallelsetid måste ändras eller ersättas av ett explicit Skicka nu.
 - Servern validerar regler och beräknar varje serietillfälle separat i föreningens
-  tidszon. `timing_rule_version` och regler sparas tillsammans med fasta tider.
+  tidszon. Aktiviteter, serietillfällen och kallelser lagrar enbart de beräknade
+  tidpunkterna; inga kopior av tidsuttrycken sparas på aktiviteten eller serien.
   Alla påminnelser sparas atomärt via aktivitetens `reminder_send_ats` och en
   trigger. Ett ogiltigt schema rullar tillbaka aktiviteten och dess påminnelser.
-- Sparade kallelsescheman flyttas aldrig automatiskt vid ändring av en aktivitets
-  regler. Om reglerna motsäger ett väntande schema avvisas redigeringen;
-  omschemaläggning kräver ett uttryckligt val i kallelsefunktionen.
+- Redigering av aktivitetens start, slut och samling ändrar endast uttryckligen
+  angivna tidpunkter. Kallelseschemat ligger kvar; omschemaläggning kräver ett
+  uttryckligt val i kallelsefunktionen. Tidsuttryck är beräkningsunderlag i
+  förval och skapandets förhandsgranskning, inte en del av sparade aktiviteter.
 - Sparade aktiviteter räknas aldrig om vid en ändring av standardvärden. En
   arkiverad/omklassificerad typ hindrar nya aktiviteter men bevarar historikens
   redigering. Direkta databasskrivningar kontrollerar lokal typägare och disciplin.

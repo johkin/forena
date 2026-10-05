@@ -9,7 +9,6 @@ import {
   workspaces as demoWorkspaces,
 } from "@/data/demo";
 import type { Activity, FamilyActivity, Invitation, Member, Organization, Section, Team, TeamPermission, TeamTask, Workspace } from "@/domain/club";
-import { normalizeActivityTimingRules } from "@/lib/activity-time-rules";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 
@@ -177,7 +176,7 @@ export async function getTeamDashboard(
 
   const { data: upcomingActivityRows } = await supabase
     .from("activities")
-    .select("id, organization_id, team_id, activity_type_id, timing_rules, title, description_markdown, gathering_at, starts_at, ends_at, location, series_id, status, invitation_send_at, response_due_at, reminder_send_at")
+    .select("id, organization_id, team_id, activity_type_id, title, description_markdown, gathering_at, starts_at, ends_at, location, series_id, status, invitation_send_at, response_due_at, reminder_send_at")
     .eq("team_id", teamRow.id)
     .neq("status", "cancelled")
     .gte("ends_at", referenceTime)
@@ -249,7 +248,6 @@ export async function getTeamDashboard(
     teamId: activityRow.team_id ?? team.id,
     title: activityRow.title, activityTypeId: activityRow.activity_type_id,
     description: activityRow.description_markdown,
-    timingRules: activityRow.timing_rules ? normalizeActivityTimingRules(activityRow.timing_rules) : undefined,
     gatheringAt: activityRow.gathering_at ?? undefined,
     startsAt: activityRow.starts_at,
     endsAt: activityRow.ends_at,
@@ -272,7 +270,7 @@ export async function getTeamDashboard(
     .filter((member) => rosterRelationByMemberId.has(member.id))
     .map((member) => ({ ...member, teamRelation: rosterRelationByMemberId.get(member.id) }));
   const upcomingActivities: Activity[] = (upcomingActivityRows ?? []).map((item) => ({
-    id: item.id, organizationId: item.organization_id, teamId: item.team_id ?? team.id, title: item.title, activityTypeId: item.activity_type_id, description: item.description_markdown, timingRules: item.timing_rules ? normalizeActivityTimingRules(item.timing_rules) : undefined,
+    id: item.id, organizationId: item.organization_id, teamId: item.team_id ?? team.id, title: item.title, activityTypeId: item.activity_type_id, description: item.description_markdown,
     gatheringAt: item.gathering_at ?? undefined, startsAt: item.starts_at, endsAt: item.ends_at, location: item.location,
     seriesId: item.series_id ?? undefined, status: item.status, invitationSendAt: item.invitation_send_at ?? undefined,
     responseDueAt: item.response_due_at ?? undefined, reminderSendAt: item.reminder_send_at ?? undefined,

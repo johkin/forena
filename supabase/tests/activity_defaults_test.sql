@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(31);
+select plan(33);
 insert into auth.users(id,email,email_confirmed_at) values
  ('e0000000-0000-0000-0000-000000000001','defaults-admin@example.test',now()),
  ('e0000000-0000-0000-0000-000000000002','defaults-leader@example.test',now()),
@@ -70,5 +70,8 @@ select lives_ok($$update public.activity_types set active=false where id='e40000
 select throws_ok($$update public.activity_types set organization_id='e1000000-0000-0000-0000-000000000001' where id='e4000000-0000-0000-0000-000000000001'$$,'23514','Activity type owner is immutable','Catalogue ownership cannot be changed');
 set local role anon;
 select throws_ok($$select * from public.activity_defaults$$,'42501',null,'Anonymous callers cannot read defaults');
+reset role;
+select hasnt_column('public','activities','timing_rules','Activities do not store timing expressions');
+select hasnt_column('public','activities','timing_rule_version','Activities do not store a timing rule version');
 select * from finish();
 rollback;

@@ -1,6 +1,6 @@
 import { requireActivityType } from "@/lib/activity-configuration";
 import { buildInvitationSchedule, requireFutureSchedule } from "@/lib/activity-schedule";
-import { normalizeActivityTimingRules, scheduleActivityTimes, ACTIVITY_TIME_RULE_VERSION } from "@/lib/activity-time-rules";
+import { scheduleActivityTimes } from "@/lib/activity-time-rules";
 import { NextResponse } from "next/server";
 import { type ResponseDueRule } from "@/lib/activity-series";
 import { createClient } from "@/lib/supabase/server";
@@ -113,8 +113,6 @@ export async function POST(request: Request) {
     response_due_at: schedule?.responseDueAt ?? null,
     reminder_send_at: null,
     reminder_send_ats: schedule?.reminderSendAts ?? null,
-    timing_rules: body.timingRules === undefined ? null : normalizeActivityTimingRules(body.timingRules),
-    timing_rule_version: body.timingRules === undefined ? null : ACTIVITY_TIME_RULE_VERSION,
     invitation_audience_kind: invitationAudience ?? null,
     invitation_group_id: invitationAudience === "group" ? invitationGroupId ?? null : null,
     ...(selection ? { invitation_audience_roles: selection.roles, invitation_audience_group_ids: selection.groupIds, invitation_audience_responsibility_type_ids: selection.responsibilityTypeIds } : {}),
