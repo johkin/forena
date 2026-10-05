@@ -7,14 +7,14 @@ import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
 type Row = {
   personId: string;
   displayName: string;
-  role: "participant" | "leader" | "volunteer";
+  role: "participant" | "leader" | "volunteer" | "guardian";
   response: "pending" | "accepted" | "declined" | null;
   present: boolean;
 };
 
 type Props = { activityId: string; onClose: () => void; onSaved?: () => void };
-const roleLabels = { leader: "Ledare", participant: "Spelare", volunteer: "Övriga roller" } as const;
-const roles: Row["role"][] = ["leader", "participant", "volunteer"];
+const roleLabels = { leader: "Ledare", participant: "Spelare", volunteer: "Funktionärer", guardian: "Målsmän" } as const;
+const roles: Row["role"][] = ["leader", "participant", "guardian", "volunteer"];
 
 export function AttendanceModal({ activityId, onClose, onSaved }: Props) {
   useModalScrollLock();
@@ -91,3 +91,4 @@ export function AttendanceModal({ activityId, onClose, onSaved }: Props) {
     </section>
   </div>;
 }
+

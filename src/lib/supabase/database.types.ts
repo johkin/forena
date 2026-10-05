@@ -178,9 +178,13 @@ export interface Database {
         Timestamped & OrganizationScoped & { id: string; team_id: string; activity_type_id: string; title: string; location: string; recurrence_rule: Json; starts_on: string; ends_on: string | null; status: "draft" | "published" | "ended" | "cancelled"; created_by: string | null; updated_at: string },
         OrganizationScoped & { id?: string; team_id: string; activity_type_id: string; title: string; location?: string; recurrence_rule: Json; starts_on: string; ends_on?: string | null; status?: "draft" | "published" | "ended" | "cancelled"; created_by?: string | null; created_at?: string; updated_at?: string }
       >;
+      activity_duty_types: Table<
+        Timestamped & OrganizationScoped & { id: string; team_id: string; name: string },
+        OrganizationScoped & { id?: string; team_id: string; name: string }
+      >;
       invitations: Table<
-        Timestamped & OrganizationScoped & { id: string; activity_id: string; person_id: string; response: "pending" | "accepted" | "declined"; responded_at: string | null; response_comment: string | null },
-        OrganizationScoped & { id?: string; activity_id: string; person_id: string; response?: "pending" | "accepted" | "declined"; responded_at?: string | null; response_comment?: string | null; created_at?: string }
+        Timestamped & OrganizationScoped & { id: string; activity_id: string; person_id: string; activity_role: "participant" | "leader" | "guardian" | "volunteer"; duty_type_id: string | null; duty_completed_at: string | null; registered_by: string | null; response: "pending" | "accepted" | "declined"; responded_at: string | null; response_comment: string | null },
+        OrganizationScoped & { id?: string; activity_id: string; person_id: string; activity_role?: "participant" | "leader" | "guardian" | "volunteer"; duty_type_id?: string | null; duty_completed_at?: string | null; registered_by?: string | null; response?: "pending" | "accepted" | "declined"; responded_at?: string | null; response_comment?: string | null; created_at?: string }
       >;
       activity_reminder_schedules: Table<
         Timestamped & OrganizationScoped & { id: string; activity_id: string; send_at: string; materialized_at: string | null; created_by: string | null },
@@ -268,6 +272,8 @@ export interface Database {
     };
     Views: Record<never, never>;
     Functions: {
+      activity_duty_history: { Args: { target_team_id: string; target_person_id: string }; Returns: { activity_title: string; starts_at: string; duty_name: string | null; completed_at: string | null; response: string }[] };
+      add_activity_participants: { Args: { target_activity_id: string; participants: Json; register_accepted?: boolean }; Returns: number };
       set_activity_discipline: { Args: { target_scope: string; target_organization_id: string; target_scope_id: string; target_discipline_id: string | null }; Returns: undefined };
 
       can_manage_activity_defaults: { Args: { target_scope: string; target_organization_id: string | null; target_scope_id: string | null }; Returns: boolean };
@@ -301,3 +307,4 @@ export interface Database {
     CompositeTypes: Record<never, never>;
   };
 }
+

@@ -22,10 +22,10 @@ export async function GET(_request: Request, { params }: Props) {
 
   const [{ data: membershipRows }, { data: invitationRows }, { data: report }] = await Promise.all([
     supabase.from("memberships").select("person_id, role").eq("team_id", activity.team_id).in("role", ["participant", "leader"]).is("ends_on", null),
-    supabase.from("invitations").select("person_id, response").eq("activity_id", activityId),
+    supabase.from("invitations").select("person_id, response, activity_role").eq("activity_id", activityId),
     supabase.from("activity_attendance_reports").select("id, reported_at").eq("activity_id", activityId).maybeSingle(),
   ]);
-  const personIds = [...new Set((membershipRows ?? []).map((item) => item.person_id))];
+  const personIds = [...new Set([...(membershipRows ?? []).map((item) => item.person_id), ...(invitationRows ?? []).map((item) => item.person_id)])];
   const [{ data: peopleRows }, { data: attendanceRows }] = await Promise.all([
     personIds.length ? supabase.from("people").select("id, display_name").in("id", personIds) : Promise.resolve({ data: [] }),
     report ? supabase.from("activity_attendance_records").select("person_id").eq("report_id", report.id) : Promise.resolve({ data: [] }),
@@ -39,7 +39,7 @@ export async function GET(_request: Request, { params }: Props) {
     roster: (peopleRows ?? []).map((person) => ({
       personId: person.id,
       displayName: person.display_name,
-      role: roleByPerson.get(person.id) ?? "participant",
+      role: (invitationRows ?? []).find(item => item.person_id === person.id)?.activity_role ?? roleByPerson.get(person.id) ?? "participant",
       response: invitationByPerson.get(person.id) ?? null,
       present: present.has(person.id),
     })).sort((a,b) => a.displayName.localeCompare(b.displayName, "sv")),
@@ -56,7 +56,9 @@ export async function PUT(request: Request, { params }: Props) {
   const body = await request.json().catch(() => null) as { personIds?: string[] } | null;
   const requested = [...new Set((body?.personIds ?? []).filter((id) => typeof id === "string"))];
   const { data: membershipRows } = await supabase.from("memberships").select("person_id").eq("team_id", activity.team_id).in("role", ["participant", "leader"]).is("ends_on", null);
-  const allowedPeople = new Set((membershipRows ?? []).map((item) => item.person_id));
+  const { data: invitationRows, error: invitationsError } = await supabase.from("invitations").select("person_id").eq("activity_id", activity.id);
+  if (invitationsError) return NextResponse.json({ error: "Deltagarna kunde inte hämtas" }, { status: 500 });
+  const allowedPeople = new Set([...(membershipRows ?? []).map((item) => item.person_id), ...(invitationRows ?? []).map((item) => item.person_id)]);
   if (requested.some((id) => !allowedPeople.has(id))) return NextResponse.json({ error: "Närvaro innehåller en person som inte tillhör laget" }, { status: 400 });
 
   const { data: report, error: reportError } = await supabase.from("activity_attendance_reports").upsert({
@@ -78,3 +80,4 @@ export async function PUT(request: Request, { params }: Props) {
   }
   return NextResponse.json({ reportedAt: report.reported_at, count: requested.length });
 }
+

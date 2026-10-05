@@ -16,7 +16,7 @@ export async function GET(_request: Request, { params }: Props) {
   if (!allowed) return NextResponse.json({ error: "Du saknar behörighet för laget" }, { status: 403 });
 
   const [{ data: invitationRows }, { data: membershipRows }] = await Promise.all([
-    supabase.from("invitations").select("person_id, response").eq("activity_id", activityId),
+    supabase.from("invitations").select("person_id, response, activity_role, duty_type_id, duty_completed_at, registered_by").eq("activity_id", activityId),
     supabase.from("memberships").select("person_id, role").eq("team_id", activity.team_id).in("role", ["participant", "leader"]).is("ends_on", null),
   ]);
   const personIds = [...new Set((invitationRows ?? []).map((item) => item.person_id))];
@@ -28,7 +28,7 @@ export async function GET(_request: Request, { params }: Props) {
   const invitees = (invitationRows ?? []).flatMap((item) => {
     const person = personById.get(item.person_id);
     if (!person) return [];
-    return [{ personId: person.id, displayName: person.display_name, role: roleByPersonId.get(person.id) ?? "participant", response: item.response }];
+    return [{ personId: person.id, displayName: person.display_name, role: item.activity_role ?? roleByPersonId.get(person.id) ?? "participant", response: item.response, dutyTypeId: item.duty_type_id, dutyCompletedAt: item.duty_completed_at, registeredByLeader: Boolean(item.registered_by) }];
   });
   return NextResponse.json({ invitees });
 }
@@ -82,3 +82,4 @@ export async function DELETE(request: Request, { params }: Props) {
 
   return NextResponse.json({ disposition });
 }
+

@@ -924,3 +924,12 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .settings-fields fieldset { min-width: 0; margin: 0; }
 .settings-fields small.auth-error { color: #7f3821; }
 .settings-fields select[aria-invalid="true"] { border-color: #a52b22; }
+
+
+.participant-search, .participant-selection { display: flex; flex-wrap: wrap; gap: .6rem; align-items: end; margin-block: .7rem; }
+.participant-search > label, .participant-selection > label { display: grid; gap: .3rem; min-width: 0; flex: 1 1 150px; }
+.participant-selection > strong { flex: 1 1 100%; overflow-wrap: anywhere; }
+.participant-search input, .participant-selection select { width: 100%; min-width: 0; min-height: 44px; }
+.duty-row { padding-block: .75rem; border-bottom: 1px solid var(--line, #dfe4df); overflow-wrap: anywhere; }
+.participant-selection .duty-completed { display: flex; align-items: center; min-height: 44px; }
+.duty-completed input { width: auto; }

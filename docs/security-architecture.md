@@ -311,3 +311,19 @@ MCP-anrop loggas med verktygsnamn, användar-id, utfall och latens utan token,
 argument eller medlemsdata. Origin begränsas till appens konfigurerade URL och
 svar får inte cachas. Bearer-token-stöd är första steget; klientbundet OAuth,
 scopes, samtycke och omedelbar sessionsåterkallning återstår. Se [MCP](mcp.md).
+
+
+## Aktivitetsdeltagare över laggränser
+
+Klubbens namnsökning kräver `invitation.manage` för målaktivitetens lag och
+returnerar endast person-ID, namn, aktuella lagnamn och rollförslag. Den ger
+inte tillgång till andra lags kallelsesvar, kontaktuppgifter eller historik.
+Sökningar loggas med aktivitet och antal träffar, utan söksträng eller namn.
+Samma förening verifieras igen i det atomära skrivkommandot. En aktivitetsroll
+skapar aldrig medlemskap eller åtkomstprofil. Familjens svarsrätt består.
+
+En trigger skyddar kallelsens identitet och nya deltagarmetadata mot ändring
+av familjer via Data API. Arbetsuppgift måste tillhöra aktivitetens lag och
+förening; genomförande kräver ett påbörjat, ej inställt arbetspass. Namnkatalogen
+har RLS, explicita grants och saknar direkt uppdaterings-/raderingsrätt för
+klienter, så tidigare historik kan inte oavsiktligt döpas om eller raderas.

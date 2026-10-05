@@ -153,3 +153,21 @@ oberoende av valda förval och ersätts helt vid lokal override.
 Skrivkommandot kontrollerar mål och behörighet på både server- och databasnivå.
 `reminder_send_ats` materialiseras atomärt till påminnelsescheman vid samma
 aktivitetsskrivning. Se [aktiviteters tidsregler](activity-time-rules.md).
+
+
+## Deltagande och arbetsuppgifter
+
+`invitations.activity_role` beskriver rollen i just aktiviteten och ger aldrig
+behörighet. `add_activity_participants` är det atomära kommandot för att lägga
+till klubbpersoner och köa deras ordinarie mottagare; vid ledaranmälan sparas
+`registered_by` och inget utskick görs. Befintliga svar skrivs inte över.
+Namnsökningen är kopplad till en aktivitet och kräver `invitation.manage`.
+
+`activity_duty_types` är en återanvändbar katalog per lag med stabila ID:n.
+Kallelsen har `duty_type_id` och `duty_completed_at`. Uppgiften följer spelaren;
+familjen väljer vuxen. Genomförande registreras uttryckligen, aldrig utifrån
+ett ja-svar. Databasen kontrollerar förening, lag, arbetstyp och starttid.
+Familjer får svara på kallelsen men inte ändra deltagarroll eller arbetsuppgift.
+Historiken är än så länge begränsad till hanterat lag och 20 påbörjade pass.
+Deltagare från andra lag inkluderas i närvaro och deras familjs översikt utan
+att lagmedlemskap eller åtkomst till det andra lagets administration skapas.
