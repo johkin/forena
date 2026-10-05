@@ -8,6 +8,10 @@ export const dutyDefinitionSchema = z.object({
  if (!valid) ctx.addIssue({ code: "custom", message: "Ange tidsintervall, deadline eller ingen tid" });
 });
 export const dutyCommandSchema = z.discriminatedUnion("op", [
+ z.object({ op: z.literal("edit_duty"), dutyId: z.uuid(), revision: z.number().int().positive(), definition: dutyDefinitionSchema }),
+ z.object({ op: z.literal("cancel_duty"), dutyId: z.uuid(), revision: z.number().int().positive() }),
+ z.object({ op: z.literal("edit_type"), dutyTypeId: z.uuid(), revision: z.number().int().positive(), name: z.string().trim().min(1).max(80), active: z.boolean() }),
+ z.object({ op: z.literal("assign_batch"), assignments: z.array(z.object({ slotId: z.uuid(), personId: z.uuid(), revision: z.number().int().positive() })).min(1).max(100) }),
  z.object({ op: z.literal("create"), dutyTypeId: z.uuid(), duties: z.array(dutyDefinitionSchema).min(1).max(48) }),
  z.object({ op: z.literal("settings"), claimRequiresApproval: z.boolean(), changeRequiresApproval: z.boolean(), selfServiceUntil: instant.nullable() }),
  z.object({ op: z.literal("claim"), personId: z.uuid(), targetSlotId: z.uuid() }),
@@ -18,9 +22,9 @@ export const dutyCommandSchema = z.discriminatedUnion("op", [
 ]);
 export type DutyCommand = z.infer<typeof dutyCommandSchema>;
 export type DutySlot = { id: string; personId: string | null; personName: string | null; occupied: boolean; mine: boolean; completedAt: string | null; revision: number };
-export type Duty = { id: string; name: string; timingKind: "interval" | "deadline" | "none"; startsAt: string | null; endsAt: string | null; dueAt: string | null; instructions: string; slots: DutySlot[] };
+export type Duty = { id: string; dutyTypeId: string; revision: number; name: string; timingKind: "interval" | "deadline" | "none"; startsAt: string | null; endsAt: string | null; dueAt: string | null; instructions: string; slots: DutySlot[] };
 export type DutyRequest = { id: string; sourceSlotId: string | null; targetSlotId: string | null; status: "pending" | "applied" | "rejected" | "withdrawn" | "expired"; counterpartApproved: boolean; managerApproved: boolean; mine: boolean; canApprove: boolean; requestedAt: string };
-export type DutySchedule = { isWork: boolean; canManage: boolean; claimRequiresApproval: boolean; changeRequiresApproval: boolean; selfServiceUntil: string; people: { id: string; name: string }[]; duties: Duty[]; requests: DutyRequest[] };
+export type DutySchedule = { types: { id: string; name: string; active: boolean; revision: number }[]; isWork: boolean; canManage: boolean; claimRequiresApproval: boolean; changeRequiresApproval: boolean; selfServiceUntil: string; people: { id: string; name: string }[]; duties: Duty[]; requests: DutyRequest[] };
 
 /** Split a local interval into shifts; the last shift may be shorter. */
 export function createDutyIntervals(date: string, startTime: string, endTime: string, timeZone: string, minutes: number, places: number, instructions = "", opening = "", closing = "") {

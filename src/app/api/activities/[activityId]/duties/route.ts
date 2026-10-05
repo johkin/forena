@@ -16,7 +16,7 @@ export async function GET(request: Request, { params }: Props) {
   }
   const [{ data: type, error: typeError }, { data: duties, error }] = await Promise.all([
     supabase.from("activity_types").select("system_category").eq("id", activity.activity_type_id).single(),
-    supabase.from("activity_duty_types").select("id, name").eq("team_id", activity.team_id).order("name"),
+    supabase.from("activity_duty_types").select("id, name").eq("team_id", activity.team_id).eq("active", true).order("name"),
   ]);
   if (error || typeError) return NextResponse.json({ error: "Uppgifterna kunde inte hämtas" }, { status: 500 });
   return NextResponse.json({ isWork: type?.system_category === "work", duties });

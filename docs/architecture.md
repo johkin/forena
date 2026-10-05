@@ -168,3 +168,8 @@ Arbetsuppgifter, platser och ändringsförslag finns i separata tabeller kopplad
 till aktiviteten. Bokning och tilldelning är fristående från kallelsesvar.
 Se [bemanningsschema](activity-duty-schedule.md) för datamodell, migration,
 självservice, atomära ändringar och aktuella avgränsningar.
+
+Bemanningsförslag använder lagavgränsad statistik via `activity_duty_fairness`
+och en deterministisk rangordning. Ledaren bekräftar ändringsbara förslag genom
+samma atomära kommando som manuella tilldelningar. Schemaskrivning och köläggning
+av bemanningsnotiser sker i samma databastransaktion.

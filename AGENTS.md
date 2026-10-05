@@ -25,6 +25,11 @@ Vid gränssnittsändringar ska både arkitekturen och designreglerna följas.
 Menyer, header och footer ska återanvändas från centrala komponenter; skapa
 inte egna kopior för enskilda sidor eller administrationsområden.
 
+## Brancher och pull requests
+
+Skapa nya utvecklingsbrancher från aktuell `main` och rikta alla nya PR:er mot
+`main`. Bygg inte kedjor av PR:er med andra utvecklingsbrancher som bas.
+
 ## Sammanhållna ändringar och pushar
 
 - Läs relevanta filer och planera ändringen innan du börjar skriva. Samla kod,

@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "supabase/functions/notification-worker/**"
+      - "supabase/functions/_shared/**"
       - "supabase/config.toml"
       - ".github/workflows/deploy-notification-worker.yml"
   workflow_dispatch:
@@ -49,3 +50,4 @@ jobs:
 
       - name: Deploy notification worker
         run: supabase functions deploy notification-worker --project-ref "$SUPABASE_PROJECT_ID"
+

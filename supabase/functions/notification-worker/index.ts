@@ -2,7 +2,10 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
 
+import { dutyNotificationContent } from "../_shared/duty-notification.ts";
+
 type OutboxPayload = {
+  reason?: string;
   activityId?: string;
   teamId?: string;
   title?: string;
@@ -32,6 +35,7 @@ function adminClient() {
 
 function notificationContent(type: string, payload: OutboxPayload) {
   const title = payload.title || "Aktivitet";
+  if (type === "duty_update") return dutyNotificationContent(title, payload.reason);
   const when = payload.startsAt
     ? new Intl.DateTimeFormat("sv-SE", { dateStyle: "full", timeStyle: "short", timeZone: "Europe/Stockholm" }).format(new Date(payload.startsAt))
     : "";
@@ -107,7 +111,7 @@ async function sendPushNotifications(
     title: content.subject,
     body: content.text,
     url: "/",
-    tag: `${type}:${payload.activityId ?? "general"}`,
+    tag: type === "duty_update" ? outboxId : `${type}:${payload.activityId ?? "general"}`,
   });
   let delivered = 0;
   const errors: string[] = [];
@@ -239,7 +243,7 @@ Deno.serve(async (request: Request) => {
     if (deliveredChannel) {
       sent += 1;
       await supabase.from("notification_outbox").update({ status: "sent", sent_at: new Date().toISOString(), last_error: null }).eq("id", row.id);
-      if (payload.activityId) {
+      if (payload.activityId && row.type !== "duty_update") {
         const key = `${payload.activityId}:${row.type}:${deliveredChannel}`;
         const current = sentGroups.get(key);
         sentGroups.set(key, {
@@ -289,3 +293,4 @@ Deno.serve(async (request: Request) => {
   console.info("notification_worker.complete", { runId, claimed: rows?.length ?? 0, sent, failed });
   return Response.json({ claimed: rows?.length ?? 0, sent, failed, runId });
 });
+
