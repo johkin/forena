@@ -8,12 +8,16 @@ const trainingDraft = {
 } as const;
 
 describe("activity draft intent", () => {
+  it.each(["Skapa en påminnelse till nästa match", "Lägg till påminnelse för träning", "Påminn alla som inte svarat på vår match"])("routes reminder requests to the assistant tools: %s", question => {
+    expect(isActivityDraftRequest(question)).toBe(false);
+  });
   it.each([
     "Skapa återkommande aktiviteter varje tisdag och torsdag",
     "Lägg till träningar på måndagar under oktober",
     "Förbered en aktivitetsserie varje vecka",
     "Skapa matcher varje lördag",
     "Schemalägg återkommande träningar varje tisdag",
+    "Skapa en träning och påminn oss innan",
   ])("recognizes recurring creation requests: %s", question => {
     expect(isActivityDraftRequest(question)).toBe(true);
     expect(activityDraftNeedsWebResearch(question)).toBe(false);

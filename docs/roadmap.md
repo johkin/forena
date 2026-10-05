@@ -223,7 +223,10 @@ validering och krav på förhandsgranskning ligger alltid i applikationslagret.
 - [x] Behörighetskontrollerade läsverktyg för laglista och anmälda deltagare
 - [x] Skapa aktivitet som utkast, med webbsökning för externa evenemang
 - [ ] Lista obesvarade kallelser via gemensamt applikationskommando
-- [ ] Föreslå, förhandsgranska och köa påminnelse via gemensamt applikationskommando
+- [x] Föreslå, förhandsgranska och köa påminnelse via gemensamt applikationskommando
+- [x] Använd tillämpliga sparade delade minnen i assistentens påminnelseförslag och visa minneskällorna före bekräftelse
+- [ ] Återanvänd minnesstyrd påminnelsebedömning i Signal Engine och den proaktiva lagöversikten
+- [ ] Stöd uttryckligen aktiverade strukturerade regler för automatiska kontextkänsliga påminnelser; fritextminnen aktiverar aldrig utskick
 - [ ] Anpassningsbart namn och visuell identitet
 - [ ] Återanvänd Signal Engine och arbetsytekontext i assistenten
 - [ ] Låt UI och assistent anropa samma typade applikationskommandon

@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "../supabase/database.types";
 import type { ActivityDraft } from "./activity-draft";
 import type { AssistantMemoryDraft } from "./assistant-memory-draft";
+import type { ReminderDraft } from "./reminder-draft";
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 export type AssistantViewerKind = "leader" | "player-or-guardian";
@@ -16,6 +17,7 @@ export type TeamAssistantReply = {
   answer: string;
   activityDraft?: ActivityDraft;
   memoryDrafts?: AssistantMemoryDraft[];
+  reminderDrafts?: ReminderDraft[];
   source: "ai" | "fallback";
   model: string;
 };

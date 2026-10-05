@@ -24,6 +24,7 @@ export type ActivityDraftInput = Omit<ActivityDraft, "sources">;
 
 export function isActivityDraftRequest(question: string) {
   const normalized = question.trim().toLocaleLowerCase("sv-SE");
+  if (/^påminn\b/.test(normalized) || /\b(?:skapa|gör|förbered|lägg till|skriv|planera|schemalägg)\s+(?:en\s+)?påminnelse(?:r)?\b/.test(normalized)) return false;
   const action = /\b(skapa|gör|förbered|lägg till|skriv|planera|schemalägg)\b/.test(normalized);
   const activity = /\b(aktivitet(?:er)?|träning(?:ar)?|match(?:er)?|turnering(?:ar)?|läger|intresseanmälan|kallelse(?:r)?|aktivitetsserie)\b/.test(normalized) || /cup(?:en)?\b/.test(normalized);
   return action && activity;

@@ -101,6 +101,14 @@ samma katalog. Promptarna väljer professionell, saklig ton för användare med
 ledaråtkomst till laget, och varm, enkel ton för spelare och målsmän. Tonvalet
 kommer från serverns lagbehörigheter och kan inte väljas i requesten.
 
+Påminnelseverktygen läser aktuellt läge via `assessActivityReminder` och
+returnerar ett skrivskyddat utkast med referenser till sparade delade minnen.
+`confirmAssistantReminder` är ett separat autentiserat serveranrop efter ett
+knapptryck; det kontrollerar behörighet och förhandsgranskningens fingeravtryck
+innan `queueActivityReminder` köar utskicket. Samma skrivkommando används av
+aktivitetsvyn. Ingen modell har ett verktyg för själva köningen. Se
+[assistentminne](assistant-memory.md) för omfattning och skydd.
+
 Återkommande aktivitetsutkast innehåller veckodagar och slutdatum och öppnar
 aktivitetsdialogen i serieläge. Saknas slutdatum måste ledaren ange det innan
 förhandsgranskningen. Utkastet valideras mot samma serieregler som dialogen och

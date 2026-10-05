@@ -148,6 +148,7 @@ export async function loadTeamAssistantContext(input: TeamAssistantInput, { supa
     activities,
     activityIds,
     canManageActivities: Boolean(canManageActivities),
+    canManageInvitations: Boolean(canManageInvitations),
     memoryScope: { organizationId: team.organization_id, sectionId: team.section_id, teamId, userId, disciplineId,
       organizationName: organization?.name, sectionName: section?.name, teamName: team.name },
     context,
