@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(25);
+select plan(31);
 insert into auth.users(id,email,email_confirmed_at) values
  ('e0000000-0000-0000-0000-000000000001','defaults-admin@example.test',now()),
  ('e0000000-0000-0000-0000-000000000002','defaults-leader@example.test',now()),
@@ -32,8 +32,12 @@ select set_config('request.jwt.claim.sub','e0000000-0000-0000-0000-000000000001'
 select lives_ok($$select public.save_activity_defaults('e4000000-0000-0000-0000-000000000001','system',null,null,0,'{"duration":"PT60M"}')$$,'System admin creates defaults');
 select lives_ok($$select public.save_activity_defaults('e4000000-0000-0000-0000-000000000001','system',null,null,1,'{"duration":null,"reminderRules":[]}')$$,'Admin restores inheritance and disables reminders');
 select is((select revision from public.activity_defaults where activity_type_id='e4000000-0000-0000-0000-000000000001' and scope='system'),2,'Revision increments');
+select throws_ok($$select public.save_activity_defaults('e4000000-0000-0000-0000-000000000001','system',null,null,2,'{"invitationRule":"start-0000000d"}')$$,'22023','Invalid defaults','Seven-digit start offset is rejected');
+select throws_ok($$select public.save_activity_defaults('e4000000-0000-0000-0000-000000000001','system',null,null,2,'{"reminderRules":["deadline-0000001h"]}')$$,'22023','Invalid defaults','Seven-digit deadline offset is rejected');
+select lives_ok($$select public.save_activity_defaults('e4000000-0000-0000-0000-000000000001','system',null,null,2,'{"invitationRule":"start-000001d-000002h/d","reminderRules":["deadline-000001h"]}')$$,'Six-digit offsets remain valid');
+select lives_ok($$select public.save_activity_defaults('e4000000-0000-0000-0000-000000000001','system',null,null,3,'{"duration":null,"reminderRules":[]}')$$,'Restore original defaults for remaining cases');
 select throws_ok($$select public.save_activity_defaults('e4000000-0000-0000-0000-000000000001','system',null,null,1,'{}')$$,'40001','Defaults changed; reload','Stale revision rejected');
-select throws_ok($$select public.save_activity_defaults('e4000000-0000-0000-0000-000000000001','system',null,null,2,'{"invitationRule":"start-367d"}')$$,'22023','Invalid defaults','Bounded rules validated in database');
+select throws_ok($$select public.save_activity_defaults('e4000000-0000-0000-0000-000000000001','system',null,null,4,'{"invitationRule":"start-367d"}')$$,'22023','Invalid defaults','Bounded rules validated in database');
 select throws_ok($$select public.save_activity_defaults('e4000000-0000-0000-0000-000000000001','section','e1000000-0000-0000-0000-000000000001','e2000000-0000-0000-0000-000000000002',0,'{}')$$,'42501','Forbidden','Target must belong to declared organization');
 select lives_ok($$select public.set_activity_discipline('organization','e1000000-0000-0000-0000-000000000001','e1000000-0000-0000-0000-000000000001',(select id from public.disciplines where key='football'))$$,'Club admin selects discipline');
 select lives_ok($$insert into public.activities(organization_id,team_id,activity_type_id,title,starts_at,ends_at) values('e1000000-0000-0000-0000-000000000001','e3000000-0000-0000-0000-000000000001','e4000000-0000-0000-0000-000000000001','Test','2030-10-20T16:00:00Z','2030-10-20T17:00:00Z')$$,'Team inherits organization discipline');
@@ -47,6 +51,8 @@ select throws_ok($$select public.save_activity_defaults('e4000000-0000-0000-0000
 select throws_ok($$insert into public.activity_types(name,slug,system_category) values('Denied','defaults-denied','session')$$,'42501',null,'Leader cannot create common types');
 select lives_ok($$insert into public.activities(organization_id,team_id,activity_type_id,title,starts_at,ends_at,invitation_send_at,response_due_at,reminder_send_ats) values('e1000000-0000-0000-0000-000000000001','e3000000-0000-0000-0000-000000000001','e4000000-0000-0000-0000-000000000001','Reminders','2030-10-20T16:00:00Z','2030-10-20T17:00:00Z','2030-10-14T16:00:00Z','2030-10-20T10:00:00Z',array['2030-10-19T10:00:00Z','2030-10-20T08:00:00Z']::timestamptz[])$$,'All reminders are persisted in one write');
 select is((select count(*)::integer from public.activity_reminder_schedules r join public.activities a on a.id=r.activity_id where a.title='Reminders'),2,'Both reminder rows exist');
+select lives_ok($$select public.save_activity_defaults('e4000000-0000-0000-0000-000000000001','team','e1000000-0000-0000-0000-000000000001','e3000000-0000-0000-0000-000000000001',1,'{"invitationRule":"start-2d","responseDueRule":"start-1h","reminderRules":[]}')$$,'Change defaults for future activities');
+select ok((select starts_at='2030-10-20T16:00:00Z' and ends_at='2030-10-20T17:00:00Z' and invitation_send_at='2030-10-14T16:00:00Z' and response_due_at='2030-10-20T10:00:00Z' and reminder_send_ats=array['2030-10-19T10:00:00Z','2030-10-20T08:00:00Z']::timestamptz[] from public.activities where title='Reminders') and (select count(*)=2 from public.activity_reminder_schedules r join public.activities a on a.id=r.activity_id where a.title='Reminders'),'Changing defaults leaves existing activity and reminder times unchanged');
 select throws_ok($$insert into public.activities(organization_id,team_id,activity_type_id,title,starts_at,ends_at,invitation_send_at,response_due_at,reminder_send_ats) values('e1000000-0000-0000-0000-000000000001','e3000000-0000-0000-0000-000000000001','e4000000-0000-0000-0000-000000000001','Invalid','2030-10-20T16:00:00Z','2030-10-20T17:00:00Z','2030-10-14T16:00:00Z','2030-10-20T10:00:00Z',array['2030-10-14T16:00:00Z']::timestamptz[])$$,'23514','Invalid reminder schedule','Invalid reminder rolls back activity write');
 select is((select count(*)::integer from public.activities where title='Invalid'),0,'Failed schedule leaves no activity');
 select set_config('request.jwt.claim.sub','e0000000-0000-0000-0000-000000000003',true);

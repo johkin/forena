@@ -52,12 +52,19 @@ export async function saveActivityType(form: FormData) {
 }
 export async function saveTargetDiscipline(form: FormData) {
   const t = target(form);
-  const { supabase, organization } = await activitySettingsAccess(t.slug, t.scope, t.scopeId);
-  const disciplineId = String(form.get("discipline_id") ?? "") || null;
-  if (disciplineId && !isUuid(disciplineId)) throw new Error("Ogiltig disciplin.");
-  // Narrow RPC uses the same configuration permission as defaults.
-  const { error } = await supabase.rpc("set_activity_discipline", { target_scope: t.scope, target_organization_id: organization!.id, target_scope_id: t.scopeId!, target_discipline_id: disciplineId });
-  t.query.set(error ? "error" : "saved", error ? "Disciplinen kunde inte sparas." : "1");
+  let errorMessage: string | undefined;
+  try {
+    const { supabase, organization } = await activitySettingsAccess(t.slug, t.scope, t.scopeId);
+    const disciplineId = String(form.get("discipline_id") ?? "") || null;
+    if (disciplineId && !isUuid(disciplineId)) throw new Error("Ogiltig disciplin.");
+    if (t.scope === "system" || !organization || !t.scopeId) throw new Error("Ogiltigt mål.");
+    const { error } = await supabase.rpc("set_activity_discipline", { target_scope: t.scope, target_organization_id: organization.id, target_scope_id: t.scopeId, target_discipline_id: disciplineId });
+    if (error) throw new Error("Disciplinen kunde inte sparas.");
+  } catch (error) {
+    unstable_rethrow(error);
+    errorMessage = error instanceof Error ? error.message : "Disciplinen kunde inte sparas.";
+  }
+  t.query.set(errorMessage ? "error" : "saved", errorMessage ?? "1");
   revalidatePath(t.path);
   redirect(`${t.path}?${t.query}`);
 }

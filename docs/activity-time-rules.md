@@ -31,6 +31,7 @@ Grafana-inspirerade syntax, inte Grafanas fullständiga uttrycksspråk.
 
 En regel består av `start` eller `deadline`, högst fyra avdrag med `d`, `h`
 eller `m`, och valfritt `/d` sist. Operationerna sker från vänster till höger.
+Varje avdrag innehåller 1–6 siffror i både applikation och databas.
 Avdragen begränsas till nominellt 366 dagar och regeln till 80 tecken.
 Plustecken, `now`, godtyckliga funktioner, veckor/månader/år och avrundning till
 andra enheter accepteras inte. Parsern använder inte `eval`.
@@ -138,6 +139,9 @@ regressionsfall i den fristående testkörningen.
   tidszon. `timing_rule_version` och regler sparas tillsammans med fasta tider.
   Alla påminnelser sparas atomärt via aktivitetens `reminder_send_ats` och en
   trigger. Ett ogiltigt schema rullar tillbaka aktiviteten och dess påminnelser.
+- Sparade kallelsescheman flyttas aldrig automatiskt vid ändring av en aktivitets
+  regler. Om reglerna motsäger ett väntande schema avvisas redigeringen;
+  omschemaläggning kräver ett uttryckligt val i kallelsefunktionen.
 - Sparade aktiviteter räknas aldrig om vid en ändring av standardvärden. En
   arkiverad/omklassificerad typ hindrar nya aktiviteter men bevarar historikens
   redigering. Direkta databasskrivningar kontrollerar lokal typägare och disciplin.

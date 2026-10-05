@@ -47,7 +47,7 @@ export async function PUT(request: Request, { params }: Props) {
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getUser();
   if (!authData.user) return NextResponse.json({ error: "Du måste logga in" }, { status: 401 });
-  const { data: current } = await supabase.from("activities").select("id, organization_id, team_id, activity_type_id, status, source_kind").eq("id", activityId).maybeSingle();
+  const { data: current } = await supabase.from("activities").select("id, organization_id, team_id, activity_type_id, status, source_kind, starts_at, invitation_send_at, invitation_materialized_at, response_due_at, reminder_send_at, reminder_send_ats").eq("id", activityId).maybeSingle();
   if (!current?.team_id) return NextResponse.json({ error: "Aktiviteten kunde inte hittas" }, { status: 404 });
   const { data: allowed } = await supabase.rpc("has_team_permission", { target_team_id: current.team_id, target_permission: "activity.manage" });
   if (!allowed) return NextResponse.json({ error: "Du saknar behörighet för laget" }, { status: 403 });
@@ -55,10 +55,21 @@ export async function PUT(request: Request, { params }: Props) {
   if (current.status === "cancelled") return NextResponse.json({ error: "En inställd aktivitet kan inte redigeras" }, { status: 409 });
   try {
     if (body?.activityTypeId && body.activityTypeId !== current.activity_type_id) await requireActivityType(supabase, current.team_id, body.activityTypeId);
+    if (current.invitation_send_at && !current.invitation_materialized_at && body?.timingRules === undefined && Date.parse(current.starts_at) !== startsAt.getTime()) {
+      return NextResponse.json({ error: "Aktiviteten har ett sparat kallelseschema. Schemalägg kallelsen uttryckligen innan starttiden ändras." }, { status: 409 });
+    }
     if (body?.timingRules !== undefined) {
       const { data: organization, error: organizationError } = await supabase.from("organizations").select("time_zone").eq("id", current.organization_id).single();
       if (organizationError || !organization) throw new Error("Föreningens tidszon kunde inte hämtas.");
       const times = scheduleActivityTimes(startsAt.toISOString(), organization.time_zone, body.timingRules);
+      if (current.invitation_send_at && !current.invitation_materialized_at) {
+        const sameInstant = (a: string | null, b: string) => a !== null && Date.parse(a) === Date.parse(b);
+        const reminders = current.reminder_send_ats ?? (current.reminder_send_at ? [current.reminder_send_at] : []);
+        if (!sameInstant(current.invitation_send_at, times.invitationSendAt) || !sameInstant(current.response_due_at, times.responseDueAt)
+          || reminders.length !== times.reminderSendAts.length || reminders.some((r, i) => !sameInstant(r, times.reminderSendAts[i]))) {
+          return NextResponse.json({ error: "Reglerna ändrar ett sparat kallelseschema. Behåll reglerna eller schemalägg kallelsen uttryckligen." }, { status: 409 });
+        }
+      }
       if (times.endsAt !== endsAt.toISOString() || times.gatheringAt !== (gatheringAt?.toISOString() ?? null)) throw new Error("Tiderna stämmer inte med reglerna.");
     }
   } catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }

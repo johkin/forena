@@ -57,6 +57,7 @@ export type Member = {
 
 export type Activity = {
   activityTypeId?: string;
+  timingRules?: import("@/lib/activity-time-rules").ActivityTimingRules;
   id: EntityId;
   organizationId: EntityId;
   teamId: EntityId;

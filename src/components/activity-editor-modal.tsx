@@ -55,7 +55,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
   const [activityTypeId,setActivityTypeId] = useState(activity?.activityTypeId ?? "");
   const touched = useRef(new Set<keyof ActivityTimingRules>(mode === "edit" || draft ? ["duration","gatheringRule"] : []));
   const [touchedKeys,setTouchedKeys] = useState(new Set<keyof ActivityTimingRules>(mode === "edit" || draft ? ["duration","gatheringRule"] : []));
-  const [rules,setRules] = useState<ActivityTimingRules>({ ...FALLBACK_ACTIVITY_DEFAULTS, duration:`PT${initialDuration}M`,gatheringRule:initialGathering ? `start-${initialGathering}m` : "start",reminderRules:[...FALLBACK_ACTIVITY_DEFAULTS.reminderRules] });
+  const [rules,setRules] = useState<ActivityTimingRules>({ ...(activity?.timingRules ?? FALLBACK_ACTIVITY_DEFAULTS), duration:`PT${initialDuration}M`,gatheringRule:initialGathering ? `start-${initialGathering}m` : "start",reminderRules:[...(activity?.timingRules ?? FALLBACK_ACTIVITY_DEFAULTS).reminderRules] });
   const typeDefaults = configuration?.types.find(type=>type.id===activityTypeId)?.defaults;
   useEffect(()=>{
     if (source !== "database") return;
@@ -126,7 +126,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
     setPending(true); setError(undefined);
     if(source==="demo"){onNotice(`${String(payload.title)} förhandsgranskades i demoläge.`);onClose();return;}
     const occurrence=preview[0], endpoint=mode==="edit"?`/api/activities/${activity?.id}`:recurring?"/api/activity-series":"/api/activities";
-    const body=mode==="edit"||!recurring?{...payload,gatheringAt:occurrence.gatheringAt,startsAt:occurrence.startsAt,endsAt:occurrence.endsAt}:payload;
+    const body=mode==="edit"||!recurring?{...payload,...(mode==="edit" && !activity?.timingRules ? {timingRules:undefined} : {}),gatheringAt:occurrence.gatheringAt,startsAt:occurrence.startsAt,endsAt:occurrence.endsAt}:payload;
     const response=await fetch(endpoint,{method:mode==="edit"?"PUT":"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
     const result=await response.json(); setPending(false);
     if(!response.ok){setError(result.error??"Aktiviteten kunde inte sparas");return;}
