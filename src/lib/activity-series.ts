@@ -1,4 +1,4 @@
-import { durationToMinutes, evaluateTimeRule, localActivityTime, normalizeActivityTimingRules, parseActivityInstant, scheduleActivityTimes, type ActivityTimingRules, type StartTimeRule } from "./activity-time-rules";
+import { MAX_ACTIVITY_DURATION_MINUTES, durationToMinutes, evaluateTimeRule, localActivityTime, normalizeActivityTimingRules, parseActivityInstant, scheduleActivityTimes, type ActivityTimingRules, type StartTimeRule } from "./activity-time-rules";
 
 export type SeriesPreviewInput = {
   startsOn: string;
@@ -94,7 +94,7 @@ export function previewWeeklySeries(input: SeriesPreviewInput): ActivityOccurren
   const start = new Date(`${input.startsOn}T00:00:00Z`);
   const end = new Date(`${input.endsOn}T00:00:00Z`);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) throw new Error("Ogiltig period");
-  if (!Number.isInteger(input.durationMinutes) || input.durationMinutes < 1 || input.durationMinutes > 1440) throw new Error("Ogiltig längd");
+  if (!Number.isInteger(input.durationMinutes) || input.durationMinutes < 1 || input.durationMinutes > MAX_ACTIVITY_DURATION_MINUTES) throw new Error("Ogiltig längd");
   if (!Number.isInteger(input.gatheringMinutesBefore) || input.gatheringMinutesBefore < 0 || input.gatheringMinutesBefore > 1440) throw new Error("Ogiltig samlingstid");
   if (end.getTime() - start.getTime() > 366 * 86400000) throw new Error("En serie får omfatta högst 366 dagar");
   // Validate exact dates rather than letting Date silently normalise February 30.
@@ -147,3 +147,4 @@ export function previewRuleSingleActivity(input: Omit<RuleSeriesPreviewInput, "e
   const startsAt = localActivityTime(input.startsOn, input.startTime, input.timeZone);
   return { date: input.startsOn, ...scheduleActivityTimes(startsAt, input.timeZone, input.rules) };
 }
+

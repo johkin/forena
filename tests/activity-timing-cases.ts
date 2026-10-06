@@ -68,7 +68,7 @@ add("reject overflowed form date", () => throws(() => localActivityTime("2026-02
 for (const [duration, minutes] of [["PT1H30M", 90], ["PT90M", 90], ["PT1M", 1], ["PT24H", 1440], ["PT0H10M", 10]] as const) {
   add(`duration ${duration}`, () => equal(durationToMinutes(duration), minutes));
 }
-for (const bad of ["PT", "P6D", "P1M", "PT0M", "PT25H", "PT1.5H", "-PT1H", "PT1S", "90", null, {}]) add(`reject duration ${JSON.stringify(bad)}`, () => throws(() => durationToMinutes(bad), "duration"));
+for (const bad of ["PT", "P6D", "P1M", "PT0M", "PT169H", "PT1.5H", "-PT1H", "PT1S", "90", null, {}]) add(`reject duration ${JSON.stringify(bad)}`, () => throws(() => durationToMinutes(bad), "duration"));
 
 add("complete schedule resolves all timestamps", () => {
   const actual = scheduleActivityTimes(start, zone, rules);
@@ -153,3 +153,4 @@ add("legacy weekly DST test preserved", () => {
 add("legacy multi-weekday test preserved", () => equal(previewWeeklySeries({ startsOn: "2026-09-21", endsOn: "2026-09-27", weekdays: [1, 3], startTime: "18:00", durationMinutes: 60, gatheringMinutesBefore: 0, timeZone: zone }).map(r => r.date), ["2026-09-21", "2026-09-23"]));
 add("series size remains bounded", () => throws(() => previewRuleWeeklySeries({ startsOn: "2026-01-01", endsOn: "2026-12-31", weekdays: [1,2,3,4,5,6,7], startTime: "18:00", timeZone: zone, rules })));
 add("reject fractional weekdays", () => throws(() => previewRuleWeeklySeries({ startsOn: "2026-01-01", endsOn: "2026-01-08", weekdays: [1.5], startTime: "18:00", timeZone: zone, rules })));
+

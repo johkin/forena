@@ -1,4 +1,5 @@
 "use client";
+import { activitiesByDate } from "@/lib/activity-range";
 
 import { useMemo, useState } from "react";
 import type { GeneralWorkspaceData, PublicActivity } from "@/data/general-workspace";
@@ -13,7 +14,7 @@ function dateKey(value: string, timeZone: string) {
 function SharedCalendar({ activities, timeZone, organizationSlug }: { activities: PublicActivity[]; timeZone: string; organizationSlug: string }) {
   const initial = activities[0] ? dateKey(activities[0].startsAt, timeZone) : dateKey(new Date().toISOString(), timeZone);
   const [cursor, setCursor] = useState(() => { const [year, month] = initial.split("-").map(Number); return { year, month }; });
-  const byDate = useMemo(() => { const map = new Map<string, PublicActivity[]>(); for (const item of activities) map.set(dateKey(item.startsAt, timeZone), [...(map.get(dateKey(item.startsAt, timeZone)) ?? []), item]); return map; }, [activities, timeZone]);
+  const byDate = useMemo(() => activitiesByDate(activities, timeZone, cursor.year, cursor.month), [activities, timeZone, cursor.year, cursor.month]);
   const title = new Intl.DateTimeFormat("sv-SE", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(cursor.year, cursor.month - 1, 1)));
   const first = new Date(Date.UTC(cursor.year, cursor.month - 1, 1));
   const offset = (first.getUTCDay() + 6) % 7;
@@ -23,7 +24,7 @@ function SharedCalendar({ activities, timeZone, organizationSlug }: { activities
   return <section className="card team-calendar calendar-page general-calendar" aria-labelledby="shared-calendar-title">
     <div className="calendar-heading"><div><p className="eyebrow">Alla lag</p><h2 id="shared-calendar-title">{title}</h2></div><div><button className="secondary" onClick={() => move(-1)} type="button" aria-label="Föregående månad">←</button><button className="secondary" onClick={() => move(1)} type="button" aria-label="Nästa månad">→</button></div></div>
     <div className="calendar-weekdays">{["Mån","Tis","Ons","Tor","Fre","Lör","Sön"].map((day) => <span key={day}>{day}</span>)}</div>
-    <div className="calendar-grid">{Array.from({ length: 42 }, (_, index) => { const day = index - offset + 1; if (day < 1 || day > days) return <div className="calendar-day empty" key={index} />; const key = `${cursor.year}-${String(cursor.month).padStart(2,"0")}-${String(day).padStart(2,"0")}`; const items = byDate.get(key) ?? []; return <div className={`calendar-day ${items.length ? "has-activity" : ""}`} key={key}><strong>{day}</strong>{items.slice(0, 4).map((item) => <a className="calendar-event" href={`/o/${organizationSlug}/t/${item.teamSlug}`} key={item.id} title={`${item.teamName}: ${item.title}`}><b>{time.format(new Date(item.startsAt))}</b><span>{item.teamName} · {item.title}</span></a>)}{items.length > 4 ? <small>+{items.length - 4} till</small> : null}</div>; })}</div>
+    <div className="calendar-grid">{Array.from({ length: 42 }, (_, index) => { const day = index - offset + 1; if (day < 1 || day > days) return <div className="calendar-day empty" key={index} />; const key = `${cursor.year}-${String(cursor.month).padStart(2,"0")}-${String(day).padStart(2,"0")}`; const items = byDate.get(key) ?? []; return <div className={`calendar-day ${items.length ? "has-activity" : ""}`} key={key}><strong>{day}</strong>{items.slice(0, 4).map((item) => <a className="calendar-event" href={`/o/${organizationSlug}/t/${item.teamSlug}`} key={item.id} title={`${item.teamName}: ${item.title}`}><b>{dateKey(item.startsAt, timeZone) === key ? time.format(new Date(item.startsAt)) : "Fortsätter"}</b><span>{item.teamName} · {item.title}</span></a>)}{items.length > 4 ? <small>+{items.length - 4} till</small> : null}</div>; })}</div>
   </section>;
 }
 
@@ -43,3 +44,4 @@ export function GeneralWorkspace({ data, focusTeam }: { data: GeneralWorkspaceDa
         <div id="calendar"><SharedCalendar activities={visibleActivities} timeZone={timeZone} organizationSlug={data.organization.slug} /></div>
       </section></div></main>;
 }
+

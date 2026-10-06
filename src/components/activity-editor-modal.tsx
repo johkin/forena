@@ -11,8 +11,9 @@ import { ActivityTimingFields } from "./activity-timing-fields";
 import type { ActivityConfiguration } from "@/lib/activity-configuration";
 import { FALLBACK_ACTIVITY_DEFAULTS } from "@/lib/activity-defaults";
 import { applyUntouchedDefaults } from "@/lib/activity-editor-defaults";
-import { normalizeActivityTimingRules, type ActivityTimingRules } from "@/lib/activity-time-rules";
+import { durationToMinutes, localActivityTime, normalizeActivityTimingRules, type ActivityTimingRules } from "@/lib/activity-time-rules";
 import { requireFutureSchedule } from "@/lib/activity-schedule";
+import { activityRangeDuration } from "@/lib/activity-range";
 import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
 
 type Props = { mode: "create" | "edit"; organization: Organization; team: Team; members: Member[]; activity?: Activity; draft?: ActivityDraft; source: "database" | "demo"; canManageInvitations: boolean; onClose: () => void; onNotice: (notice: string) => void; };
@@ -59,6 +60,11 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
   const touched = useRef(new Set<keyof ActivityTimingRules>(mode === "edit" || draft ? ["duration","gatheringRule"] : []));
   const [touchedKeys,setTouchedKeys] = useState(new Set<keyof ActivityTimingRules>(mode === "edit" || draft ? ["duration","gatheringRule"] : []));
   const [rules,setRules] = useState<ActivityTimingRules>({ ...FALLBACK_ACTIVITY_DEFAULTS, duration:`PT${initialDuration}M`,gatheringRule:initialGathering ? `start-${initialGathering}m` : "start",reminderRules:[...FALLBACK_ACTIVITY_DEFAULTS.reminderRules] });
+  const [explicitEnd, setExplicitEnd] = useState<{ date: string; time: string } | null>(activity ? localParts(activity.endsAt, timeZone) : null);
+  const end = explicitEnd ?? (() => {
+    try { return localParts(new Date(localActivityTime(scheduleDates.startsOn, scheduleDates.startTime, timeZone).getTime() + durationToMinutes(rules.duration) * 60000).toISOString(), timeZone); }
+    catch { return { date: scheduleDates.startsOn, time: scheduleDates.startTime }; }
+  })();
   const typeDefaults = configuration?.types.find(type=>type.id===activityTypeId)?.defaults;
   useEffect(()=>{
     if (source !== "database") return;
@@ -116,7 +122,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
     const startsOn=String(data.get("startsOn")), startTime=String(data.get("startTime"));
     try {
       if(source === "database" && (!configuration || !activityTypeId)) throw new Error(configurationError ?? "Vänta tills aktivitetstyperna har hämtats och välj en typ.");
-      const timingRules=normalizeActivityTimingRules(rules);
+      const timingRules=normalizeActivityTimingRules(recurring ? rules : { ...rules, duration: activityRangeDuration(startsOn, startTime, end.date, end.time, timeZone) });
       const base={startsOn,startTime,timeZone,rules:timingRules};
       const occurrences=recurring?previewRuleWeeklySeries({...base,endsOn:String(data.get("endsOn")),weekdays:data.getAll("weekdays").map(Number)}):[previewRuleSingleActivity(base)];
       if(recurring && invitationMode==="now")throw new Error("Välj schemaläggning för en aktivitetsserie.");
@@ -175,9 +181,10 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
           <details className="editor-optional" open={descriptionOpen} onToggle={event=>setDescriptionOpen(event.currentTarget.open)}><summary>Beskrivning (valfritt)</summary><label className="sr-only" htmlFor="editor-description">Beskrivning</label><textarea id="editor-description" name="description" rows={3} defaultValue={draft?.description??activity?.description??""} placeholder="Praktisk information till deltagarna"/></details>
         </section>
         <section className="editor-section" aria-labelledby="editor-time-title">
-          <h3 id="editor-time-title">När och varaktighet</h3>
-          {recurring?<><fieldset><legend>Veckodagar</legend><div className="weekday-options">{weekdayOptions.map(([value,label])=><label key={value}><input type="checkbox" name="weekdays" value={value} checked={scheduleDates.weekdays.includes(value)} onChange={event=>setScheduleDates(current=>({...current,weekdays:event.target.checked ? [...current.weekdays,value] : current.weekdays.filter(day=>day!==value)}))}/>{label}</label>)}</div></fieldset><div className="form-row editor-date-row"><label>Startdatum<input name="startsOn" type="date" required value={scheduleDates.startsOn} onChange={event=>setScheduleDates(current=>({...current,startsOn:event.target.value}))}/></label><label>Slutdatum<input name="endsOn" type="date" required min={scheduleDates.startsOn} value={scheduleDates.endsOn} onChange={event=>setScheduleDates(current=>({...current,endsOn:event.target.value}))}/></label></div><div className="editor-time-field"><FiveMinuteTimeField name="startTime" defaultValue={scheduleDates.startTime} onChange={value=>setScheduleDates(current=>({...current,startTime:value}))}/></div></>:<div className="form-row editor-date-row"><label>Datum<input name="startsOn" type="date" required value={scheduleDates.startsOn} onChange={event=>setScheduleDates(current=>({...current,startsOn:event.target.value}))}/></label><div className="editor-time-field"><FiveMinuteTimeField name="startTime" defaultValue={scheduleDates.startTime} onChange={value=>setScheduleDates(current=>({...current,startTime:value}))}/></div></div>}
-          <ActivityTimingFields rules={rules} onChange={changeRule} defaults={typeDefaults} touched={touchedKeys} invitations={false}/>
+          <h3 id="editor-time-title">Start och slut</h3>
+          {recurring?<><fieldset><legend>Veckodagar</legend><div className="weekday-options">{weekdayOptions.map(([value,label])=><label key={value}><input type="checkbox" name="weekdays" value={value} checked={scheduleDates.weekdays.includes(value)} onChange={event=>setScheduleDates(current=>({...current,weekdays:event.target.checked ? [...current.weekdays,value] : current.weekdays.filter(day=>day!==value)}))}/>{label}</label>)}</div></fieldset><div className="form-row editor-date-row"><label>Startdatum<input name="startsOn" type="date" required value={scheduleDates.startsOn} onChange={event=>setScheduleDates(current=>({...current,startsOn:event.target.value}))}/></label><label>Slutdatum<input name="endsOn" type="date" required min={scheduleDates.startsOn} value={scheduleDates.endsOn} onChange={event=>setScheduleDates(current=>({...current,endsOn:event.target.value}))}/></label></div><div className="editor-time-field"><FiveMinuteTimeField name="startTime" label="Starttid" defaultValue={scheduleDates.startTime} onChange={value=>setScheduleDates(current=>({...current,startTime:value}))}/></div></>:<div className="form-row editor-date-row"><label>Startdatum<input name="startsOn" type="date" required value={scheduleDates.startsOn} onChange={event=>setScheduleDates(current=>({...current,startsOn:event.target.value}))}/></label><div className="editor-time-field"><FiveMinuteTimeField name="startTime" label="Starttid" defaultValue={scheduleDates.startTime} onChange={value=>setScheduleDates(current=>({...current,startTime:value}))}/></div></div>}
+          {!recurring && <div className="form-row editor-date-row"><label>Slutdatum<input name="activityEndsOn" type="date" required min={scheduleDates.startsOn} value={end.date} onChange={event => setExplicitEnd({ ...end, date: event.target.value })} /></label><div className="editor-time-field"><FiveMinuteTimeField name="endTime" label="Sluttid" defaultValue={end.time} value={end.time} onChange={time => setExplicitEnd({ ...end, time })} /></div></div>}
+          <ActivityTimingFields rules={rules} onChange={changeRule} defaults={typeDefaults} touched={touchedKeys} invitations={false} showDuration={recurring}/>
           <small>Samlingen räknas före aktivitetens start. Välj kallelse och mottagare nedan.</small>
         </section>
         {canManageInvitations ? <details className="editor-section editor-invitation" open={invitationOpen} onToggle={event=>setInvitationOpen(event.currentTarget.open)}>
@@ -208,3 +215,4 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
     </section>
   </div>;
 }
+

@@ -114,3 +114,10 @@ kallelsesvar. Familjen föreslår ändringar i schemat.
 Caféverksamhet använder aktivitetstypen **Arbetspass**, med exempelvis
 ”Café 21 september” som titel. Den äldre typen Cafépass är inaktiverad för
 nyregistrering; redan skapade aktiviteter och deras inställningar bevaras.
+
+Bemanningsskaparen utgår från aktivitetens sparade start och slut och kan
+ange ett separat slutdatum. Pass utanför aktivitetens period avvisas före
+förhandsgranskningen med vägledning att ändra aktivitetens tider.
+Förhandsgranskningen får fokus och måste bekräftas med **Spara uppgifter**;
+först då visas bokningsbara platser. Datum och tider i ett osparat formulär
+är inte ett skapat schema.
