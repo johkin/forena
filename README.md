@@ -89,7 +89,15 @@ demoförening och används tills registreringsflödet kopplas till gränssnittet
 
 Pull requests verifieras av GitHub Actions genom att databasen byggs från
 migrationerna, databastyper kan genereras och appens tester, typkontroll, lint
-och produktionsbygge körs.
+och produktionsbygge körs. Appkontrollerna och databaskontrollerna körs i parallella
+jobb; den gemensamma kontrollen `verify` kräver att båda lyckas. Databasjobbet
+startar en ny databas med `supabase db start`, som redan kör migrationer och seed,
+och gör därför ingen extra `db reset`.
+
+Supabase Docker-images cachas inte: vid mätning tog återställning, inläsning och
+databasstart 81 sekunder med varm cache jämfört med 70 sekunder utan cache.
+Npm-cachen för appjobbet behålls. Vid byte av CLI-version uppdateras
+`SUPABASE_CLI_VERSION` i CI.
 
 När en ändring landar på `main` kör GitHub Actions databasmigrationer om filer i
 `supabase/migrations` har ändrats. Ändringar i `supabase/functions/notification-worker`
