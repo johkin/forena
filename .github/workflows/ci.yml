@@ -60,17 +60,6 @@ jobs:
         with:
           version: ${{ env.SUPABASE_CLI_VERSION }}
 
-      - name: Restore Supabase Docker images
-        id: docker-cache
-        uses: actions/cache/restore@v5
-        with:
-          path: /tmp/supabase-images.tar
-          key: supabase-images-v1-${{ runner.os }}-${{ runner.arch }}-${{ env.SUPABASE_CLI_VERSION }}-${{ hashFiles('supabase/config.toml') }}
-
-      - name: Load cached Docker images
-        if: steps.docker-cache.outputs.cache-hit == 'true'
-        run: docker load --input /tmp/supabase-images.tar
-
       - name: Start local Supabase
         run: supabase db start
 
@@ -81,33 +70,6 @@ jobs:
         run: |
           supabase gen types typescript --local --schema public > /tmp/database.types.ts
           test -s /tmp/database.types.ts
-
-      # Cache images only; every run still initializes a fresh database and migrations.
-      - name: Export Supabase Docker images
-        if: steps.docker-cache.outputs.cache-hit != 'true'
-        shell: bash
-        run: |
-          mapfile -t images < <(docker image ls --format '{{.Repository}}:{{.Tag}}' | awk '/^(public\.ecr\.aws\/supabase\/|supabase\/)/ && !/:<none>$/ { print }' | sort -u)
-          if (( ${#images[@]} == 0 )); then
-            echo "::error::No Supabase images found to cache"
-            exit 1
-          fi
-          docker save --output /tmp/supabase-images.tar "${images[@]}"
-
-      - name: Save Supabase Docker images
-        if: steps.docker-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v5
-        with:
-          path: /tmp/supabase-images.tar
-          key: ${{ steps.docker-cache.outputs.cache-primary-key }}
-
-      - name: Report database cache
-        if: always()
-        env:
-          CACHE_HIT: ${{ steps.docker-cache.outputs.cache-hit }}
-        run: |
-          echo "Supabase Docker image cache hit: ${CACHE_HIT:-false}" >> "$GITHUB_STEP_SUMMARY"
-          echo "Compare restore/load + database start on a warm run with start + export/save on a cold run in the job timings." >> "$GITHUB_STEP_SUMMARY"
 
   # Keep the existing required check; it must fail if either parallel job fails or skips.
   verify:

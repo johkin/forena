@@ -94,12 +94,9 @@ jobb; den gemensamma kontrollen `verify` kräver att båda lyckas. Databasjobbet
 startar en ny databas med `supabase db start`, som redan kör migrationer och seed,
 och gör därför ingen extra `db reset`.
 
-Docker-images för Supabase cachas mellan körningar, inklusive images för
-schemainitialisering, pgTAP och typgenerering. Cachen innehåller inga databasvolymer
-eller testdata. Nyckeln följer operativsystem, arkitektur, CLI-version och
-`supabase/config.toml`. Första körningen fyller cachen; jämför stegtiderna för
-cacheåterställning/laddning och databasstart med en körning utan cache för att
-avgöra den faktiska vinsten. Vid byte av CLI-version uppdateras även
+Supabase Docker-images cachas inte: vid mätning tog återställning, inläsning och
+databasstart 81 sekunder med varm cache jämfört med 70 sekunder utan cache.
+Npm-cachen för appjobbet behålls. Vid byte av CLI-version uppdateras
 `SUPABASE_CLI_VERSION` i CI.
 
 När en ändring landar på `main` kör GitHub Actions databasmigrationer om filer i
