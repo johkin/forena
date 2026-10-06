@@ -209,3 +209,10 @@ Aktivitetstyp ändras per tillfälle. Befintliga kallelsetider, svar och seriens
 ursprungliga skapandemall bevaras. Tidsändring med uppgiftsschema kräver
 separat anpassning och blockeras i seriekommandot. Nya enskilda ändringar
 markeras med `series_exception` för kommande serieredigeringar.
+
+Serieomfattningen gäller även borttagning. `delete_activity_series_from` använder
+samma urvalsregler men validerar inte tider som inte ändras. Antal och datum
+förhandsgranskas separat innan bekräftelse. Kontrolltoken och låsning skyddar
+mot ändrat urval; hela borttagningen sker i en transaktion med auditlogg.
+Varje tillfälle använder `delete_or_cancel_activity`: publicerade aktiviteter
+med svar ställs in, övriga tas bort. Historik och undantag lämnas kvar.
