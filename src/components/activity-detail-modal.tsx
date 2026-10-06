@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Activity, Member, Organization, Team } from "@/domain/club";
 import { ActivityStaffingList } from "@/components/activity-staffing-list";
 import { ActivityParticipantPicker } from "@/components/activity-participant-picker";
+import { activityDateKey } from "@/lib/activity-range";
 import { ActivityDutySchedule } from "@/components/activity-duty-schedule";
 import type { ActivityRole } from "@/lib/activity-participation";
 import { AttendanceModal } from "@/components/attendance-modal";
@@ -125,7 +126,7 @@ export function ActivityDetailModal({ activity, organization, team, canManageAct
     <section className="modal activity-detail-modal" role="dialog" aria-modal="true" aria-labelledby="activity-detail-title">
       <div className="card-heading"><div><p className="eyebrow">{team.name}</p><h2 id="activity-detail-title">{activity.title}</h2></div><button className="icon-button" onClick={onClose} aria-label="Stäng" type="button">✕</button></div>
       <div className="activity-detail-body">
-        <p><span>Datum</span><strong>{date}</strong></p>
+        <p><span>Datum</span><strong>{date}{activityDateKey(activity.startsAt, timeZone) !== activityDateKey(activity.endsAt, timeZone) ? ` – ${new Intl.DateTimeFormat("sv-SE", { timeZone, weekday: "long", day: "numeric", month: "long" }).format(new Date(activity.endsAt))}` : ""}</strong></p>
         {activity.gatheringAt ? <p><span>Samling</span><strong>{time.format(new Date(activity.gatheringAt))}</strong></p> : null}
         <p><span>Tid</span><strong>{time.format(new Date(activity.startsAt))}–{time.format(new Date(activity.endsAt))}</strong></p>
         <p><span>Plats</span><strong>{activity.location || "Ingen plats angiven"}</strong></p>
@@ -143,7 +144,7 @@ export function ActivityDetailModal({ activity, organization, team, canManageAct
 
       </> : null}
 
-      <ActivityDutySchedule key={activity.id} activityId={activity.id} startsAt={activity.startsAt} timeZone={timeZone} />
+      <ActivityDutySchedule key={activity.id} activityId={activity.id} startsAt={activity.startsAt} endsAt={activity.endsAt} timeZone={timeZone} />
 
       {canManageInvitations && deliveryStatus ? <details className="delivery-status">
         <summary><span>Leveransstatus</span><small>{deliveryStatus.sent} skickade · {deliveryStatus.queued} väntar · {deliveryStatus.failed} misslyckade</small></summary>

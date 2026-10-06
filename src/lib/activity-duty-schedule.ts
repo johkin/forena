@@ -27,9 +27,9 @@ export type DutyRequest = { id: string; sourceSlotId: string | null; targetSlotI
 export type DutySchedule = { types: { id: string; name: string; active: boolean; revision: number }[]; isWork: boolean; canManage: boolean; claimRequiresApproval: boolean; changeRequiresApproval: boolean; selfServiceUntil: string; people: { id: string; name: string }[]; duties: Duty[]; requests: DutyRequest[] };
 
 /** Split a local interval into shifts; the last shift may be shorter. */
-export function createDutyIntervals(date: string, startTime: string, endTime: string, timeZone: string, minutes: number, places: number, instructions = "", opening = "", closing = "") {
+export function createDutyIntervals(date: string, startTime: string, endTime: string, timeZone: string, minutes: number, places: number, instructions = "", opening = "", closing = "", endDate = date) {
  const start = localActivityTime(date, startTime, timeZone).getTime();
- const end = localActivityTime(date, endTime, timeZone).getTime();
+ const end = localActivityTime(endDate, endTime, timeZone).getTime();
  if (!Number.isFinite(minutes) || minutes < 5 || minutes % 5 || end <= start || Math.ceil((end-start)/(minutes*60000)) > 48) throw new Error("Välj ett giltigt intervall och högst 48 pass");
  const result: z.infer<typeof dutyDefinitionSchema>[] = [];
  for (let at = start; at < end; at += minutes * 60000) {
@@ -37,4 +37,11 @@ export function createDutyIntervals(date: string, startTime: string, endTime: st
    result.push(dutyDefinitionSchema.parse({ timingKind: "interval", startsAt: new Date(at).toISOString(), endsAt: new Date(stop).toISOString(), places, instructions: [instructions, at===start ? opening : "", stop===end ? closing : ""].filter(Boolean).join("\n") }));
  }
  return result;
+}
+
+/** Reject unsavable shifts before asking the user to confirm a schedule. */
+export function validateDutyBounds(duties: { timingKind: string; startsAt: string | null; endsAt: string | null }[], startsAt: string, endsAt: string) {
+ if (duties.some(d => d.timingKind === "interval" && (Date.parse(d.startsAt!) < Date.parse(startsAt) || Date.parse(d.endsAt!) > Date.parse(endsAt)))) {
+   throw new Error("Bemanningspassen måste rymmas inom aktivitetens start och slut. Ändra aktivitetens tider eller korta schemat innan du sparar.");
+ }
 }

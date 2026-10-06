@@ -25,6 +25,7 @@ export class ActivityTimingError extends Error {
     this.name = "ActivityTimingError";
   }
 }
+export const MAX_ACTIVITY_DURATION_MINUTES = 7 * 24 * 60;
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
@@ -152,10 +153,10 @@ export function evaluateTimeRule(value: string, context: { start: string | Date;
 /** ISO duration for actual activity length: positive integer hours/minutes. */
 export function durationToMinutes(value: unknown): number {
   if (typeof value !== "string" || value.length > 24) fail("duration", "Ogiltig aktivitetsl\u00e4ngd.");
-  const match = /^PT(?:(\d{1,4})H)?(?:(\d{1,4})M)?$/.exec(value);
+  const match = /^PT(?:(\d{1,4})H)?(?:(\d{1,5})M)?$/.exec(value);
   if (!match || (!match[1] && !match[2])) fail("duration", "Ange l\u00e4ngd som PT1H30M eller PT90M.");
   const minutes = +(match[1] ?? 0) * 60 + +(match[2] ?? 0);
-  if (minutes < 1 || minutes > 1440) fail("duration", "Aktivitetsl\u00e4ngden ska vara 1 till 1440 minuter.");
+  if (minutes < 1 || minutes > MAX_ACTIVITY_DURATION_MINUTES) fail("duration", "Aktivitetsl\u00e4ngden ska vara 1 minut till 7 dygn.");
   return minutes;
 }
 export function normalizeActivityTimingRules(value: unknown): ActivityTimingRules {
@@ -199,3 +200,4 @@ export function inspectScheduleAgainstNow(schedule: ReturnType<typeof scheduleAc
     passedReminderTimes: schedule.reminderSendAts.filter(value => parseActivityInstant(value) <= ms),
   };
 }
+

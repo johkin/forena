@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { activitiesByDate } from "@/lib/activity-range";
 import type { Activity } from "@/domain/club";
 
 type Props = { activities: Activity[]; timeZone: string; onSelectActivity: (activity: Activity) => void };
@@ -21,11 +22,7 @@ export function TeamCalendar({ activities, timeZone, onSelectActivity }: Props) 
   const first = new Date(Date.UTC(cursor.year, cursor.month - 1, 1));
   const offset = (first.getUTCDay() + 6) % 7;
   const days = new Date(Date.UTC(cursor.year, cursor.month, 0)).getUTCDate();
-  const byDate = new Map<string, Activity[]>();
-  for (const activity of activities) {
-    const key = localDateKey(activity.startsAt, timeZone);
-    byDate.set(key, [...(byDate.get(key) ?? []), activity]);
-  }
+  const byDate = activitiesByDate(activities, timeZone, cursor.year, cursor.month);
   function move(delta: number) {
     const next = new Date(Date.UTC(cursor.year, cursor.month - 1 + delta, 1));
     setCursor({ year: next.getUTCFullYear(), month: next.getUTCMonth() + 1 });
@@ -42,10 +39,11 @@ export function TeamCalendar({ activities, timeZone, onSelectActivity }: Props) 
         const items = byDate.get(key) ?? [];
         return <div className={`calendar-day ${items.length ? "has-activity" : ""}`} key={key}>
           <strong>{day}</strong>
-          {items.slice(0, 4).map((item) => <button className="calendar-event" key={item.id} onClick={() => onSelectActivity(item)} type="button" title={item.title}><b>{formatter.format(new Date(item.startsAt))}</b><span>{item.title}</span></button>)}
+          {items.slice(0, 4).map((item) => <button className="calendar-event" key={item.id} onClick={() => onSelectActivity(item)} type="button" title={item.title}><b>{localDateKey(item.startsAt, timeZone) === key ? formatter.format(new Date(item.startsAt)) : "Fortsätter"}</b><span>{item.title}</span></button>)}
           {items.length > 4 ? <small>+{items.length - 4} till</small> : null}
         </div>;
       })}
     </div>
   </section>;
 }
+

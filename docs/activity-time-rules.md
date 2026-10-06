@@ -14,7 +14,7 @@ Disciplinkatalogen administreras fortsatt under `/system/disciplines`.
 ## Tidsregler och varaktighet
 
 `duration` är en faktisk aktivitetslängd, till exempel `PT1H30M` eller `PT90M`.
-Endast heltalstimmar och heltalsminuter accepteras, totalt 1–1440 minuter.
+Endast heltalstimmar och heltalsminuter accepteras, totalt 1–10080 minuter (sju dygn).
 Dagar, månader, år, negativa värden och bråkdelar är inte tillåtna för längden.
 
 En regel beräknar i stället en tidpunkt. Det är Förenas begränsade,
@@ -203,3 +203,11 @@ Listkonfiguration nekar nollförskjutning för kallelse/påminnelse utan dagens
 början. Förval från äldre data ändras inte; full schemavalidering finns kvar.
 Nollförskjutning med dagens början visas som ”Vid början av aktivitetsdagen”
 respektive ”Vid början av dagen för sista svarstid”.
+
+
+Enstaka aktiviteter anges med startdatum/starttid och slutdatum/sluttid.
+Förvalets längd föreslår slutet tills användaren väljer ett eget slut.
+Längden beräknas från de två tidpunkterna i föreningens tidszon, även över
+sommartidsbyten. Serier använder fortsatt en längd per tillfälle. Kalendern
+visar varje berörd lokal dag; ett slut exakt vid midnatt räknas inte som
+aktivitet på den nya dagen.
