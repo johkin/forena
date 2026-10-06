@@ -299,3 +299,5 @@ serverinstanser. Reservationen görs atomärt i databasen före mejlanropet.
 Kansliet visar källa, inskickad tid, verifieringsunderlag och ansöknings-ID under
 hopfällbara detaljer. Äldre ansökningar behåller sin status och märks som
 `legacy`, utan fabricerade verifieringstidpunkter. De kan granskas som tidigare.
+
+Historiksvar formuleras från verifierade summeringar, inte modellens slutsatser om fysisk närvaro. Namn hämtas endast från `attendance=present`. Frågor om ledare/spelare filtreras med medlemsrollen på aktivitetens lokala datum, inom samma organisation och lag med anroparens RLS. Rollsummeringar kräver kompletta detaljposter och komplett medlemsuppslag; vid trunkering ombeds användaren begränsa perioden. Saknad närvaroregistrering är inte bevisad frånvaro.

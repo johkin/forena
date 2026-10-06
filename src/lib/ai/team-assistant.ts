@@ -4,6 +4,7 @@ import { historyPeriodFromQuestion } from "./activity-history-period";
 import { containsToolCode, hasHistoryPeriod, isActivityHistoryQuestion } from "./activity-history-intent";
 import { resolveDraftActivityType } from "./activity-draft-type";
 import type { ActivityHistoryResult } from "./activity-history-result";
+import { historyMemberRole, verifiedHistoryAnswer } from "./activity-history-facts";
 import { createHash } from "node:crypto";
 import { generateText, gateway, isStepCount, Output, ToolLoopAgent } from "ai";
 import { activityDraftNeedsWebResearch, isActivityDraftRequest, normalizeActivityDraft, requiresWeeklyRecurrence, searchSourcesFromToolResults, type ActivityDraft } from "./activity-draft";
@@ -109,7 +110,7 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
       tools: {
         ...(requiresInvitations ? createActivityInvitationTools(supabase, memoryScope.organizationId, teamId, { today: organizationToday, now: new Date().toISOString(), timeZone: context.clock?.organizationTimeZone ?? organization?.time_zone ?? "Europe/Stockholm", period: historyPeriod, periodRequired: hasHistoryPeriod(question), question, category: /träning/iu.test(question) ? "session" : /match/iu.test(question) ? "competition" : /arbetspass/iu.test(question) ? "work" : undefined, response: /tackat ja|anmäld/iu.test(question) ? "accepted" : /tackat nej/iu.test(question) ? "declined" : /obesvarad|inte svarat/iu.test(question) ? "pending" : "all", onResult: result => historyResults.push(result) }) : {}),
         ...createTeamAssistantTools(supabase, teamId, activityIds),
-        ...(context.viewer.kind === "leader" ? createActivityHistoryTools(supabase, memoryScope.organizationId, teamId, { today: organizationToday, period: historyPeriod, onResult: result => historyResults.push(result) }) : {}),
+        ...(context.viewer.kind === "leader" ? createActivityHistoryTools(supabase, memoryScope.organizationId, teamId, { today: organizationToday, period: historyPeriod, memberRole: historyMemberRole(question), onResult: result => historyResults.push(result) }) : {}),
         ...createAssistantMemoryTools(memoryScope, draft => memoryDrafts.push(draft)),
         ...(canManageInvitations ? createReminderTools({ supabase, teamId, activityIds,
           timeZone: context.clock.organizationTimeZone,
@@ -164,8 +165,8 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
       return { answer: error ?? "Historiken kunde inte verifieras. Försök igen. Det betyder inte att registrerad närvaro saknas.", historyResults: [], source: "fallback", model };
     }
     const invalidAnswer = !result.text || containsToolCode(result.text);
-    const answer = invalidAnswer && historyResults.length
-      ? historyResults.map(history => `${history.team}, ${history.from}–${history.through}: ${history.summary.uniquePeople} unika personer och ${history.summary.participationCount} registrerade deltagartillfällen.${history.unreportedActivityCount ? ` ${history.unreportedActivityCount} aktiviteter saknar närvarorapport.` : ""}`).join("\n")
+    const answer = historyResults.length
+      ? historyResults.map(history => verifiedHistoryAnswer(history, question)).join("\n")
       : invalidAnswer ? "Jag kunde inte hämta ett verifierat svar. Försök igen och ange vilken period som avses om den saknas." : result.text;
     return { answer, memoryDrafts, reminderDrafts, historyResults, source: invalidAnswer && !historyResults.length ? "fallback" : "ai", model };
   } catch (error) {

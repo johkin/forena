@@ -46,11 +46,22 @@ it("executes native calls through the real SDK and defaults to the current team'
   const { model, rpc, dependencies } = setup();
   const reply = await answerTeamAssistant(input, dependencies);
   expect(reply.historyResults).toEqual([expect.objectContaining({ summary: history.summary })]);
-  expect(reply.answer).toBe("12 personer har registrerad träning.");
+  expect(reply.answer).toContain("12 unika personer med registrerad närvaro");
   expect(rpc).toHaveBeenLastCalledWith("read_activity_history", { target_team_id: teamId, category: "session", from_date: history.from, through_date: history.through, guests_only: false });
   expect(model.doGenerateCalls[0].toolChoice).toEqual({ type: "tool", toolName: "listHistoryTeams" });
   expect(model.doGenerateCalls[1].toolChoice).toEqual({ type: "tool", toolName: "readActivityHistory" });
   expect(model.doGenerateCalls[2].tools?.map(tool => "name" in tool && tool.name)).not.toContain("remember");
+});
+
+it("replaces contradictory model claims with verified leader attendance through native calls", async () => {
+  const { rpc, dependencies } = setup({ category: "session", from: "2026-10-01" }, "Johan deltog men var inte registrerad som närvarande.");
+  rpc.mockImplementation(async (name: string) => ({ data: name === "activity_history_teams" ? [{ id: teamId, canReadAttendance: true, canReadWork: false }] : { ...history, from: "2026-10-01", through: "2026-10-06", summary: { uniquePeople: 1, participationCount: 1 }, records: [{ personId: "player", name: "Tilda", activityId: "activity", startsAt: "2026-10-05T15:00:00Z", attendance: "present" }, { personId: "leader", name: "Johan", activityId: "activity", startsAt: "2026-10-05T15:00:00Z", attendance: "not_recorded" }] }, error: null } as never));
+  const builder = { select: vi.fn(), eq: vi.fn(), in: vi.fn(async () => ({ data: [], count: 0, error: null })) };
+  builder.select.mockReturnValue(builder);builder.eq.mockReturnValue(builder);
+  dependencies.supabase = { rpc, from: vi.fn(() => builder) } as unknown as AssistantDependencies["supabase"];
+  const reply = await answerTeamAssistant({ ...input, question: "Vilka ledare har tränat i oktober?" }, dependencies);
+  expect(reply.answer).toContain("Ingen registrerad närvaro");expect(reply.answer).not.toContain("Johan");
+  expect(reply.historyResults?.[0]).toMatchObject({ memberRole: "leader", summary: { uniquePeople: 0, participationCount: 0 } });
 });
 
 it("allows an explicitly selected authorized team instead of substituting the current team", async () => {

@@ -101,7 +101,7 @@ describe("answerTeamAssistant", () => {
       return { text: "30 personer", usage: {} };
     });
     const result = await answerTeamAssistant({ ...input, question: "Hur många har tränat de senaste tre veckorna?" }, { ...dependencies, supabase: { rpc } as unknown as AssistantDependencies["supabase"] });
-    expect(result.answer).toBe("30 personer");
+    expect(result.answer).toContain("30 unika personer med registrerad närvaro");
     expect(result.historyResults).toEqual([expect.objectContaining({ summary: { uniquePeople: 30, participationCount: 210 } })]);
     expect(rpc).toHaveBeenLastCalledWith("read_activity_history", expect.objectContaining({ from_date: "2026-09-11", through_date: "2026-10-01" }));
   });
