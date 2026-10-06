@@ -21,7 +21,7 @@ const schedule: DutySchedule = { isWork: true, canManage: true, types: [], peopl
     slots: [{ id: `slot${i}`, revision: 1, personId: "person", personName: "Spelare", occupied: true, mine: false, completedAt: i === 3 ? "2030-10-10T08:00:00Z" : null }],
   })),
 };
-const render = () => elements(ActivityDutySchedule({ activityId: "activity", startsAt: "2030-10-10T06:00:00Z", endsAt: "2030-10-10T16:00:00Z", timeZone: "Europe/Stockholm" }));
+const render = (readOnly = false) => elements(ActivityDutySchedule({ activityId: "activity", startsAt: "2030-10-10T06:00:00Z", endsAt: "2030-10-10T16:00:00Z", timeZone: "Europe/Stockholm", readOnly }));
 beforeEach(() => { hooks.index = 0; hooks.setters = []; hooks.values = [schedule, "", false, false, "", false, [], null]; });
 it("opens in viewing mode and requires explicit duty editing", () => {
   const tree = render();
@@ -53,4 +53,12 @@ it("previews one versioned cancellation command with affected bookings", () => {
 it("does not expose duty editing to a family", () => {
   hooks.values[0] = { ...schedule, canManage: false }; hooks.values[5] = true;
   expect(render().some(el => el.type === DutyEditor || el.props.children === "Avsluta redigering")).toBe(false);
+});
+
+it("keeps past work visible without management controls even if editing state was set", () => {
+  hooks.values[5] = true;
+  const tree = render(true);
+  expect(tree.some(el => el.type === DutyEditor || el.type === "input")).toBe(false);
+  expect(tree.filter(el => el.type === "h4")).toHaveLength(3);
+  expect(tree.filter(el => el.type === "button").map(el => el.props.children)).toEqual(["Hämta senaste schemat"]);
 });

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 type Invitation = { id:string; name:string; response:"pending"|"accepted"|"declined"; response_comment:string|null };
-export function ActivityInvitationResponse({ activityId, cancelled }: { activityId:string; cancelled:boolean }) {
+export function ActivityInvitationResponse({ activityId, cancelled, readOnly = false }: { activityId:string; cancelled:boolean; readOnly?:boolean }) {
   const [items,setItems] = useState<Invitation[]>([]);
   // Keep unsaved text separate from server state so a push cannot erase edits.
   const [drafts,setDrafts] = useState<Record<string,string>>({});
@@ -28,6 +28,7 @@ export function ActivityInvitationResponse({ activityId, cancelled }: { activity
     return ()=>controller.abort();
   },[activityId,refreshVersion,pending]);
   async function answer(item:Invitation,response:Invitation["response"]) {
+    if (readOnly || cancelled) return;
     setPending(true);setError(undefined);setSaved(undefined);
     const comment=response==="pending"?"":drafts[item.id] ?? item.response_comment ?? "";
     try {
@@ -40,6 +41,7 @@ export function ActivityInvitationResponse({ activityId, cancelled }: { activity
   }
   return <section aria-label="Dina kallelser">
     {cancelled?<p role="status">Aktiviteten är inställd.</p>:items.map(item=>{
+      if (readOnly) return <div key={item.id} className="personal-invitation-response"><strong>{item.name}</strong><p>Kallelsesvar: {{ accepted: "Kommer", declined: "Kan inte", pending: "Ej svarat" }[item.response]}</p>{item.response_comment ? <p>Kommentar: {item.response_comment}</p> : null}</div>;
       const comment=drafts[item.id] ?? item.response_comment ?? "";
       const changed=comment !== (item.response_comment ?? "");
       return <div key={item.id} className="personal-invitation-response">

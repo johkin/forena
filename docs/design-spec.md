@@ -254,3 +254,7 @@ befintliga bokningar med tidigare och nya tider i förhandsgranskningen.
 **Redigera enskilt pass** skiljs uttryckligen från hela serien. Ett genomfört
 pass låser hela serien. Datum- och nummerfält ryms inom kolumner som radbryts
 på telefon.
+
+Avslutade aktivitetsdialoger visar uppgifter, kallelsesvar och arbetsbokningar i läsläge. Läsläget börjar efter sluttiden, inte starttiden. Behöriga ledare kan fortfarande justera närvaro; historikdialogen använder behörigheten för aktivitetens eget lag.
+
+Assistentens aktivitetsnamn är klickbara direkt i svaret. Den separata expanderbara aktivitetslistan är borttagen. Om svaret inte nämner aktiviteter visas högst fem daterade aktivitetslänkar som en mening i svaret. Dubbla titlar identifieras med datum i länken.

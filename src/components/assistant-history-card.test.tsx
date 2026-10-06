@@ -23,3 +23,11 @@ it.each([
   expect(html).not.toContain("1 personer");
   expect(html).toContain("1 registrerat deltagartillfälle");
 });
+
+it("links an activity mentioned in the answer without a second collapsible list", () => {
+  const result: ActivityHistoryResult = { team: "F2016", from: "2026-10-01", through: "2026-10-07", timeZone: "Europe/Stockholm", category: "session", activityCount: 1, unreportedActivityCount: 0, truncated: false, summary: { uniquePeople: 1, participationCount: 1 }, activities: [{ id: "id", title: "Träning Örvallen", startsAt: "2026-10-05T15:00:00Z", attendanceReported: true, participationCount: 1 }] };
+  const html = renderToStaticMarkup(<AssistantHistoryCard result={result} answer="Registrerad närvaro på Träning Örvallen den 5 oktober." />);
+  expect(html).toContain('aria-label="Öppna Träning Örvallen"');
+  expect(html.match(/aria-label="Öppna/g)).toHaveLength(1);
+  expect(html).not.toContain("<details");expect(html).not.toContain("Aktiviteter:");
+});
