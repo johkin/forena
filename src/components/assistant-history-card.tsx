@@ -1,7 +1,8 @@
 import type { ActivityHistoryResult } from "@/lib/ai/activity-history-result";
 
 export function AssistantHistoryCard({ result }: { result: ActivityHistoryResult }) {
-  const date = new Intl.DateTimeFormat("sv-SE", { timeZone: result.timeZone, day: "numeric", month: "short", year: "numeric" });
+  // Period boundaries are calendar dates; UTC preserves their day in every zone.
+  const date = new Intl.DateTimeFormat("sv-SE", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" });
   const when = new Intl.DateTimeFormat("sv-SE", { timeZone: result.timeZone, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   const period = `${date.format(new Date(`${result.from}T12:00:00Z`))}–${date.format(new Date(`${result.through}T12:00:00Z`))}`;
   return <div className="assistant-history">
