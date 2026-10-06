@@ -958,6 +958,10 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .assistant-history li { display: flex; flex-direction: column; gap: 4px; padding: 10px 0; border-top: 1px solid #dfe4df; }
 .assistant-history li span, .assistant-history small { color: #557069; }
 
+.assistant-activity-link { align-self: flex-start; max-width: 100%; min-height: 44px; padding: 8px 0; border: 0; background: transparent; color: #173f35; font: inherit; font-weight: 700; text-align: left; text-decoration: underline; overflow-wrap: anywhere; cursor: pointer; }
+.assistant-activity-link:focus-visible { outline: 2px solid #173f35; outline-offset: 4px; }
+.assistant-activity-link:disabled { cursor: wait; }
+
 /* Radio glyphs stay compact; the full label remains a comfortable touch target. */
 .activity-series-scope label { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; cursor: pointer; }
 .activity-series-scope input[type="radio"] { flex: 0 0 18px; width: 18px; height: 18px; min-height: 0; margin: 0; padding: 0; accent-color: var(--ink); }
