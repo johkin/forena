@@ -219,3 +219,19 @@ Verifieringslänken öppnar en publik sida med en tydlig bekräftelseknapp och
 möjlighet till omskick även när länken gått ut. Samtliga sidor återanvänder AppShell.
 Kansliets kort visar tekniska ansökningsuppgifter under ”Ansökningsinformation”;
 tider visas i föreningens tidszon. Äldre ansökningar visar att verifiering saknas.
+
+### Uttrycklig redigering och flera uppgifter
+
+Schemat öppnas i visningsläge. **Redigera arbetsuppgifter** visar skapande,
+uppgiftsredigering, uppgiftstyper och självserviceregler. Bokning, tilldelning
+och genomförandemarkering fungerar även i visningsläge. Ändringar granskas
+och sparas separat; att avsluta redigeringen sparar inga formulärutkast.
+
+Förhandsgranskning av genererade pass visar varje intervall, antal platser och
+instruktioner före sparande. I redigeringsläget kan ledaren markera flera
+uppgifter eller **Markera alla** och **Ta bort markerade**, högst 100 åt gången.
+En gemensam förhandsgranskning visar uppgifterna och antalet bokningar som
+frigörs. Borttagningen är atomär: en ändrad revision eller ett genomförande
+stoppar hela urvalet. Genomförda uppgifter kan inte markeras. Historik och
+audit behålls, berörda ändringsförslag stängs och avbokningsnotisen köas en
+gång per mottagare för urvalet. Förslag kan dessutom få egna utgångsnotiser.

@@ -9,6 +9,7 @@ export const dutyDefinitionSchema = z.object({
 });
 export const dutyCommandSchema = z.discriminatedUnion("op", [
  z.object({ op: z.literal("edit_duty"), dutyId: z.uuid(), revision: z.number().int().positive(), definition: dutyDefinitionSchema }),
+ z.object({ op: z.literal("cancel_duties"), duties: z.array(z.object({ dutyId: z.uuid(), revision: z.number().int().positive() })).min(1).max(100).refine(items => new Set(items.map(item => item.dutyId)).size === items.length, "Välj varje uppgift högst en gång") }),
  z.object({ op: z.literal("cancel_duty"), dutyId: z.uuid(), revision: z.number().int().positive() }),
  z.object({ op: z.literal("edit_type"), dutyTypeId: z.uuid(), revision: z.number().int().positive(), name: z.string().trim().min(1).max(80), active: z.boolean() }),
  z.object({ op: z.literal("assign_batch"), assignments: z.array(z.object({ slotId: z.uuid(), personId: z.uuid(), revision: z.number().int().positive() })).min(1).max(100) }),

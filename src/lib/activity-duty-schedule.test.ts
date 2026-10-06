@@ -18,3 +18,15 @@ describe("duty schedules", () => {
  it("requires explicit person and target for a claim",()=>{expect(dutyCommandSchema.safeParse({op:"claim"}).success).toBe(false);});
  it("rejects an inverted schedule",()=>{expect(()=>createDutyIntervals("2026-10-10","18:00","08:00","Europe/Stockholm",120,3)).toThrow();});
 });
+
+ describe("bulk cancellation", () => {
+   const duty = { dutyId: "a0000000-0000-4000-8000-000000000001", revision: 2 };
+   it("accepts multiple distinct duties with revisions", () => {
+     expect(dutyCommandSchema.safeParse({ op: "cancel_duties", duties: [duty, { ...duty, dutyId: "a0000000-0000-4000-8000-000000000002" }] }).success).toBe(true);
+   });
+   it("rejects empty, duplicate, oversized and unversioned selections", () => {
+     for (const duties of [[], [duty, duty], [{ dutyId: duty.dutyId }], [{ ...duty, revision: 0 }], Array.from({ length: 101 }, (_, i) => ({ ...duty, dutyId: `a0000000-0000-4000-8000-${String(i).padStart(12, "0")}` }))]) {
+       expect(dutyCommandSchema.safeParse({ op: "cancel_duties", duties }).success).toBe(false);
+     }
+   });
+ });

@@ -5,7 +5,7 @@ import { createDutyIntervals, validateDutyBounds, type Duty, type DutyCommand, t
 import { localActivityTime } from "@/lib/activity-time-rules";
 import { FiveMinuteTimeField } from "@/components/five-minute-time-field";
 
-function timing(duty: Duty, zone: string) {
+function timing(duty: Pick<Duty, "startsAt" | "endsAt" | "dueAt">, zone: string) {
  const format = (s: string) => new Intl.DateTimeFormat("sv-SE", { timeZone: zone, month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(s));
  return duty.startsAt && duty.endsAt ? `${format(duty.startsAt)}–${format(duty.endsAt)}` : duty.dueAt ? `Lämnas senast ${format(duty.dueAt)}` : "Ingen särskild tid";
 }
@@ -15,8 +15,10 @@ export function ActivityDutySchedule({ activityId, startsAt, endsAt, timeZone }:
  const [busy, setBusy] = useState(false);
  const [refreshing, setRefreshing] = useState(false);
  const [refreshNotice, setRefreshNotice] = useState("");
+ const [editing, setEditing] = useState(false);
+ const [selected, setSelected] = useState<string[]>([]);
  const previewRef = useRef<HTMLDivElement>(null);
- const [preview, setPreview] = useState<{ command: DutyCommand; text: string } | null>(null);
+ const [preview, setPreview] = useState<{ command: DutyCommand; text: string; rows: string[] } | null>(null);
  useEffect(() => { if (preview) { previewRef.current?.focus({ preventScroll: true }); previewRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); } }, [preview]);
  useEffect(() => {
    let cancelled = false;
@@ -28,34 +30,52 @@ export function ActivityDutySchedule({ activityId, startsAt, endsAt, timeZone }:
  }, [activityId]);
  async function reload() {
    setRefreshing(true); setRefreshNotice("");
-   try { const r = await fetch(`/api/activities/${activityId}/duty-schedule`); const body = await r.json(); if (!r.ok) throw new Error(body.error); setSchedule(body); setError(""); setRefreshNotice("Schemat är uppdaterat."); }
+   try { const r = await fetch(`/api/activities/${activityId}/duty-schedule`); const body = await r.json(); if (!r.ok) throw new Error(body.error); setSchedule(body); setSelected([]); setError(""); setRefreshNotice("Schemat är uppdaterat."); }
    catch (e) { setError(e instanceof Error ? e.message : "Schemat kunde inte hämtas"); }
    finally { setRefreshing(false); }
  }
  async function confirm() {
    if (!preview) return;
    setBusy(true); setError("");
-   try { const r = await fetch(`/api/activities/${activityId}/duty-schedule`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(preview.command) }); const body = await r.json(); if (!r.ok) throw new Error(body.error); setSchedule(body); setPreview(null); setRefreshNotice("Ändringen är sparad i schemat."); }
+   try { const r = await fetch(`/api/activities/${activityId}/duty-schedule`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(preview.command) }); const body = await r.json(); if (!r.ok) throw new Error(body.error); setSchedule(body); setSelected([]); setPreview(null); setRefreshNotice("Ändringen är sparad i schemat."); }
    catch (e) { setError(e instanceof Error ? e.message : "Ändringen misslyckades"); }
    finally { setBusy(false); }
  }
  if (!schedule?.isWork) return error ? <p role="alert">{error}</p> : null;
  const allSlots = schedule.duties.flatMap(d => d.slots.map(s => ({ duty: d, slot: s })));
  const slotLabel = (id: string | null) => { const row = allSlots.find(x => x.slot.id === id); return row ? `${row.duty.name}, ${timing(row.duty, timeZone)}` : "Ingen plats"; };
- const propose = (command: DutyCommand, text: string) => setPreview({ command, text });
+ const selectedDuties = schedule.duties.filter(d => selected.includes(d.id) && !d.slots.some(s => s.completedAt));
+ const editableDuties = schedule.duties.filter(d => !d.slots.some(s => s.completedAt));
+ const propose = (command: DutyCommand, text: string) => {
+   const rows = command.op === "create" ? command.duties.map(d => `${timing(d, timeZone)} · ${d.places} platser${d.instructions ? ` · ${d.instructions}` : ""}`)
+     : command.op === "cancel_duties" ? command.duties.map(item => {
+       const duty = schedule.duties.find(d => d.id === item.dutyId)!;
+       return `${duty.name} · ${timing(duty, timeZone)} · ${duty.slots.filter(s => s.occupied).length} bokade platser frigörs`;
+     }) : [];
+   setPreview({ command, text, rows });
+ };
  return <section className="activity-invitation-add" aria-label="Arbetsuppgifter och schema"><h3>Arbetsuppgifter och schema</h3>
    <p className="overview-empty">Boka på spelarens namn. Familjen väljer vem som arbetar. En väntande ändring påverkar inte den nuvarande tilldelningen.</p>
    <button type="button" className="link-button" disabled={busy || refreshing || Boolean(preview)} onClick={() => void reload()}>{refreshing ? "Hämtar schema…" : "Hämta senaste schemat"}</button>
    <p role="status" aria-live="polite">{refreshNotice}</p>
    {error && <p role="alert">{error}</p>}
-   {preview && <div ref={previewRef} tabIndex={-1} className="duty-row" role="region" aria-label="Bekräfta ändring"><h4>Förhandsgranskning – inte sparad ännu</h4><p>{preview.text}</p><div className="modal-actions"><button type="button" className="secondary" disabled={busy} onClick={() => setPreview(null)}>Avbryt</button><button type="button" className="primary" disabled={busy} onClick={() => void confirm()}>{busy ? "Sparar…" : preview.command.op === "create" ? "Spara uppgifter" : "Bekräfta"}</button></div></div>}
+   {preview && <div ref={previewRef} tabIndex={-1} className="duty-row" role="region" aria-label="Bekräfta ändring"><h4>Förhandsgranskning – inte sparad ännu</h4><p>{preview.text}</p>{preview.rows.length > 0 && <ol>{preview.rows.map((row, index) => <li key={index}>{row}</li>)}</ol>}<div className="modal-actions"><button type="button" className="secondary" disabled={busy} onClick={() => setPreview(null)}>Avbryt</button><button type="button" className="primary" disabled={busy} onClick={() => void confirm()}>{busy ? "Sparar…" : preview.command.op === "create" ? "Spara uppgifter" : "Bekräfta"}</button></div></div>}
    <fieldset disabled={busy || refreshing || Boolean(preview)} className="duty-controls">
+   {schedule.canManage && <>
+     <button type="button" className="secondary" aria-pressed={editing} onClick={() => { setEditing(value => !value); setSelected([]); }}>{editing ? "Avsluta redigering" : "Redigera arbetsuppgifter"}</button>
+     {editing && <div className="duty-row"><p>Ändra uppgifter här. Varje ändring granskas och sparas separat. Genomförda uppgifter kan inte tas bort.</p><div className="modal-actions">
+       <button type="button" className="secondary" disabled={!editableDuties.length} onClick={() => setSelected(editableDuties.slice(0, 100).map(d => d.id))}>Markera alla</button>
+       <button type="button" className="secondary" disabled={!selected.length} onClick={() => setSelected([])}>Avmarkera alla</button>
+       <button type="button" className="danger" disabled={!selectedDuties.length} onClick={() => propose({ op: "cancel_duties", duties: selectedDuties.map(d => ({ dutyId: d.id, revision: d.revision })) }, `Ta bort ${selectedDuties.length} markerade uppgifter? Bokade platser frigörs och berörda familjer notifieras. Väntande ändringsförslag stängs. Historiken behålls.`)}>Ta bort markerade ({selectedDuties.length})</button>
+     </div>{editableDuties.length > 100 && <p>Högst 100 uppgifter kan markeras åt gången.</p>}</div>}
+   </>}
    {schedule.duties.map(d => <div className="duty-row" key={d.id}><h4>{d.name} · {d.slots.filter(s => !s.occupied).length} lediga</h4><p>{timing(d,timeZone)}</p>{d.instructions && <p className="duty-instructions">{d.instructions}</p>}
-   {schedule.canManage && <DutyEditor key={`${d.id}:${d.revision}`} duty={d} timeZone={timeZone} propose={propose} />}
+   {schedule.canManage && editing && <label className="duty-completed"><input type="checkbox" checked={selected.includes(d.id)} disabled={d.slots.some(s => Boolean(s.completedAt)) || (!selected.includes(d.id) && selected.length >= 100)} onChange={e => setSelected(ids => e.target.checked ? [...ids, d.id] : ids.filter(id => id !== d.id))} />Markera {d.name}, {timing(d, timeZone)}{d.slots.some(s => s.completedAt) ? " (genomförd – låst)" : ""}</label>}
+   {schedule.canManage && editing && <DutyEditor key={`${d.id}:${d.revision}`} duty={d} timeZone={timeZone} propose={propose} />}
    {d.slots.map((slot, index) => <SlotRow key={`${slot.id}:${slot.revision}`} slot={slot} index={index} duty={d} schedule={schedule} choices={allSlots.filter(x => x.slot.id !== slot.id && !x.slot.completedAt)} timeZone={timeZone} propose={propose} />)}</div>)}
    {!schedule.duties.length && <p>Inga arbetsuppgifter är upplagda ännu.</p>}
    {schedule.requests.length > 0 && <details open><summary>Ändringsförslag ({schedule.requests.filter(r => r.status === "pending").length} väntar)</summary>{schedule.requests.map(r => <div className="duty-row" key={r.id}><strong>{r.sourceSlotId ? r.targetSlotId ? "Flytt eller byte" : "Önskar ersättare" : "Bokningsförfrågan"}</strong><p>{slotLabel(r.sourceSlotId)} → {slotLabel(r.targetSlotId)}</p><p>{{ pending: "Väntar på godkännande", applied: "Genomförd", rejected: "Avböjd", withdrawn: "Återtagen", expired: "Inaktuell eller utgången" }[r.status]}</p>{r.status === "pending" && <><p>{r.counterpartApproved ? "Berörd familj: klart" : "Väntar på den andra familjen"}{r.managerApproved ? " · Ledare: godkänt" : ""}</p><div className="modal-actions">{r.canApprove && <><button type="button" className="primary" onClick={() => propose({ op: "approve", requestId: r.id }, "Godkänn förslaget. Ändringen genomförs när alla nödvändiga godkännanden finns.")}>Godkänn</button><button type="button" className="secondary" onClick={() => propose({ op: "reject", requestId: r.id }, "Avböj förslaget. Nuvarande tilldelning behålls.")}>Avböj</button></>}{r.mine && <button type="button" className="secondary" onClick={() => propose({ op: "withdraw", requestId: r.id }, "Återta förslaget. Nuvarande tilldelning behålls.")}>Återta</button>}</div></>}</div>)}</details>}
-   {schedule.canManage && <><DutyDistribution key={JSON.stringify(schedule.duties)} activityId={activityId} timeZone={timeZone} schedule={schedule} propose={propose} /><DutyTypes schedule={schedule} propose={propose} /><DutyHistory activityId={activityId} people={schedule.people} timeZone={timeZone} /><DutyCreator key={JSON.stringify(schedule.types)} activityId={activityId} startsAt={startsAt} endsAt={endsAt} timeZone={timeZone} propose={propose} /><DutySettings key={`${schedule.claimRequiresApproval}:${schedule.changeRequiresApproval}:${schedule.selfServiceUntil}`} schedule={schedule} timeZone={timeZone} propose={propose} /></>}
+   {schedule.canManage && <><DutyDistribution key={JSON.stringify(schedule.duties)} activityId={activityId} timeZone={timeZone} schedule={schedule} propose={propose} />{editing && <DutyTypes schedule={schedule} propose={propose} />}<DutyHistory activityId={activityId} people={schedule.people} timeZone={timeZone} />{editing && <DutyCreator key={JSON.stringify(schedule.types)} activityId={activityId} startsAt={startsAt} endsAt={endsAt} timeZone={timeZone} propose={propose} />} {editing && <DutySettings key={`${schedule.claimRequiresApproval}:${schedule.changeRequiresApproval}:${schedule.selfServiceUntil}`} schedule={schedule} timeZone={timeZone} propose={propose} />}</>}
    </fieldset>
  </section>;
 }

@@ -280,6 +280,7 @@ export interface Database {
       activity_duty_fairness: { Args: { target_activity_id: string; from_date: string }; Returns: Json };
       my_activity_duty_links: { Args: { target_organization_id: string }; Returns: { activity_id: string; team_id: string; person_id: string }[] };
       get_activity_duty_schedule: { Args: { target_activity_id: string }; Returns: Json };
+      cancel_activity_duties: { Args: { target_activity_id: string; duties: Json }; Returns: Json };
       command_activity_duty: { Args: { target_activity_id: string; command: Json }; Returns: Json };
       activity_duty_history: { Args: { target_team_id: string; target_person_id: string }; Returns: { activity_title: string; starts_at: string; duty_name: string | null; completed_at: string | null; response: string }[] };
       add_activity_participants: { Args: { target_activity_id: string; participants: Json; register_accepted?: boolean }; Returns: number };
