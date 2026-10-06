@@ -82,6 +82,7 @@ select is((select response from public.invitations where activity_id='a6000000-0
 select set_config('request.jwt.claims','{"sub":"a0000000-0000-0000-0000-000000000002","role":"authenticated"}',true);
 select throws_ok($q$select public.edit_activity_series_from('a6000000-0000-0000-0000-000000000001',current_setting('test.changes')::jsonb)$q$,'42501',null,'Guardian cannot edit series');
 reset role;
+select set_config('request.jwt.claims','{"sub":"a0000000-0000-0000-0000-000000000001","role":"authenticated"}',true);
 update public.activities set reminder_send_at=starts_at where id='a6000000-0000-0000-0000-000000000001';
 set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"a0000000-0000-0000-0000-000000000001","role":"authenticated"}',true);
