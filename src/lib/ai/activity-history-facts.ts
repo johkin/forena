@@ -35,8 +35,8 @@ export async function filterHistoryRole(supabase: AssistantDependencies["supabas
 export function verifiedHistoryAnswer(history: ActivityHistoryResult, question: string): string {
   const { uniquePeople, participationCount } = history.summary;
   const role = history.memberRole === "leader" ? " ledare" : history.memberRole === "participant" ? " spelare" : " personer";
-  const label = history.category === "work" ? "registrerat genomförda arbetsuppgifter" : "registrerad närvaro";
-  let answer = `${history.team}, ${history.from}–${history.through}: ${uniquePeople} unika${role} med ${label} och ${participationCount} registrerade deltagartillfällen.`;
+  const label = history.category === "work" ? "registrerat genomförande av arbetsuppgifter" : "registrerad närvaro";
+  let answer = `${history.team}, ${history.from}–${history.through}: ${uniquePeople}${uniquePeople === 1 ? (history.memberRole ? role : " person") : ` unika${role}`} med ${label} och ${participationCount} ${participationCount === 1 ? "registrerat deltagartillfälle" : "registrerade deltagartillfällen"}.`;
   if (/\bvilka\b/i.test(question) && history.category !== "work") {
     const people = new Map(history.records?.filter(r => r.attendance === "present").map(r => [r.personId, r.name]));
     if (people.size) answer += ` ${history.truncated ? "I den visade delen av historiken: " : "Registrerad närvaro: "}${[...people.values()].sort((a, b) => a.localeCompare(b, "sv")).join(", ")}.`;
