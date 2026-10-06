@@ -1,5 +1,6 @@
 "use client";
 
+import { useActivityClock } from "@/lib/use-activity-clock";
 import { ActivityInvitationResponse } from "./activity-invitation-response";
 import { useCallback, useEffect, useState } from "react";
 import type { Activity, Member, Organization, Team } from "@/domain/club";
@@ -74,10 +75,10 @@ export function ActivityDetailModal({ activity, organization, team, canManageAct
   const [invitees, setInvitees] = useState<ActivityInvitee[]>([]);
   const [deliveryError, setDeliveryError] = useState(false);
   const [attendanceOpen, setAttendanceOpen] = useState(false);
-  const [openedAt] = useState(() => Date.now());
-  const activityEnded = new Date(activity.endsAt).getTime() <= openedAt;
+  const now = useActivityClock(activity.startsAt, activity.endsAt);
+  const activityEnded = new Date(activity.endsAt).getTime() <= now;
   const readOnly = activityEnded || activity.status === "cancelled";
-  const activityStarted = new Date(activity.startsAt).getTime() <= openedAt;
+  const activityStarted = new Date(activity.startsAt).getTime() <= now;
   const date = new Intl.DateTimeFormat("sv-SE", { timeZone, weekday: "long", day: "numeric", month: "long" }).format(new Date(activity.startsAt));
   const time = new Intl.DateTimeFormat("sv-SE", { timeZone, hour: "2-digit", minute: "2-digit" });
 

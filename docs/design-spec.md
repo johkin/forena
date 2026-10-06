@@ -193,8 +193,9 @@ för dessa tillfällen och endast kommande påminnelser. En passerad sista svars
 
 Historiksvar visar period, lag, unika personer och registrerade deltagartillfällen.
 Kallelsesvar visar i stället källag, mottagarlag, unika spelare och kallelsetillfällen.
-Aktivitetsrader skiljer kallade, ja-svar och närvaro åt och öppnar samma dialog.
-Aktiviteter visas i en hopfällbar lista med datum, tid och registrerat antal.
+Aktivitetsnamn som nämns i svaret är klickbara och öppnar samma dialog.
+Om inga aktivitetsnamn länkas i svaret visas högst fem daterade aktivitetslänkar.
+Ingen separat hopfällbar aktivitetslista visas.
 Saknad närvarorapport visas uttryckligen och betyder inte frånvaro. En begränsad
 personlista påverkar inte databasens fullständiga summering. För mig och För laget
 är öppna från början och kan fällas ihop med tangentbord eller tryck på rubriken.

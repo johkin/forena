@@ -37,13 +37,13 @@ export function AssistantHistoryCard({ result, answer }: { result: ActivityHisto
   // Only unique titles can identify an activity unambiguously in free text.
   const unique = result.activities.filter(a => a.title && result.activities.filter(other => other.title === a.title).length === 1);
   while (remaining) {
-    const next = unique.map(activity => ({ activity, index: remaining.indexOf(activity.title) })).filter(match => match.index >= 0).sort((a, b) => a.index - b.index || b.activity.title.length - a.activity.title.length)[0];
+    const next = unique.map(activity => ({ activity, index: titleIndex(remaining, activity.title) })).filter(match => match.index >= 0).sort((a, b) => a.index - b.index || b.activity.title.length - a.activity.title.length)[0];
     if (!next) { content.push(remaining); break; }
     content.push(remaining.slice(0, next.index), link(next.activity, next.activity.title));
     mentioned.add(next.activity.id);
     remaining = remaining.slice(next.index + next.activity.title.length);
   }
-  const extra = result.activities.filter(activity => !mentioned.has(activity.id)).slice(0, 5);
+  const extra = mentioned.size ? [] : result.activities.slice(0, 5);
   return <div className="assistant-history">
     {answer ? <p>{content}</p> : null}
     {extra.length ? <p>Aktiviteter: {extra.map((activity, index) => <span key={activity.id}>{index ? "; " : ""}{link(activity, `${activity.title}, ${when.format(new Date(activity.startsAt))}`)}</span>)}{result.activities.length - mentioned.size > extra.length ? ". Begränsa perioden för fler aktiviteter." : "."}</p> : null}
@@ -58,5 +58,17 @@ export function AssistantHistoryCard({ result, answer }: { result: ActivityHisto
 }
 
 function HistoryActivityLink({ activity, label, opening, onOpen }: { activity: ActivityHistoryResult["activities"][number]; label: string; opening: boolean; onOpen: (id: string, button: HTMLButtonElement) => Promise<void> }) {
-  return <button className="assistant-activity-link" type="button" disabled={opening} aria-label={`Öppna ${activity.title}`} onClick={event => void onOpen(activity.id, event.currentTarget)}>{label}</button>;
+  return <button className="assistant-activity-link" type="button" disabled={opening} aria-label={`Öppna ${label}`} onClick={event => void onOpen(activity.id, event.currentTarget)}>{label}</button>;
+}
+
+function titleIndex(text: string, title: string): number {
+  const word = /[\p{L}\p{M}\p{N}_]/u;
+  let index = text.indexOf(title);
+  while (index >= 0) {
+    const before = [...text.slice(0, index)].at(-1) ?? "";
+    const after = [...text.slice(index + title.length)][0] ?? "";
+    if (!word.test(before) && !word.test(after)) return index;
+    index = text.indexOf(title, index + 1);
+  }
+  return -1;
 }
