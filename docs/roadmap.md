@@ -257,7 +257,7 @@ Fortsatt utveckling:
 - [ ] Beskriv krockar som varningar och ”ingen känd krock”, aldrig garanterad tillgänglighet; begränsa detaljer från andra lag
 - [x] Föreslå spelare till arbetspass utifrån få/inga genomförda pass och rotera tidigare arbetsuppgifter, exempelvis städning
 - [ ] Föreslå matchuttagning utifrån träningsnärvaro, tidigare matchfördelning och krockar
-- [ ] Hitta spelare som faktiskt rotationstränat med mottagande lag under vald period
+- [x] Hitta registrerad träningsnärvaro för spelare från andra lag under vald period (historisk lagtillhörighet, inte bevis för ett formellt rotationsupplägg)
 - [ ] Spara lagets urvalsprinciper och tidsperiod inom klubbens riktlinjer; visa underlag och motivering per kandidat
 - [ ] Ge assistenten läs- och förslagsverktyg över samma applikationskommandon; ledaren granskar och justerar innan utskick
 - [ ] Visa uppdateringsbar flödeshändelse för ordinarie ledare när spelare kallas till annat lag, svarar eller kallelsen återtas
@@ -369,3 +369,8 @@ väljer mall och visar resultatet för granskning före export eller publicering
 - [ ] Mobil tillgänglighetsgranskning
 - [ ] Pilot med ett lag
 
+
+Assistenten har läsverktyg för behöriga lags historik: träning/match via
+`attendance.manage`, arbetspass via `invitation.manage`. Frågan avgränsas till
+366 dagar och högst 200 person/aktivitetsposter med explicit begränsningsflagga.
+Automatiskt kandidaturval, närvaroprocent och fullständiga nollistor återstår.

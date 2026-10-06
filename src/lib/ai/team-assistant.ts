@@ -1,3 +1,4 @@
+import { createActivityHistoryTools } from "./activity-history-tools";
 import { createHash } from "node:crypto";
 import { generateText, gateway, isStepCount, Output, ToolLoopAgent } from "ai";
 import { activityDraftNeedsWebResearch, isActivityDraftRequest, normalizeActivityDraft, searchSourcesFromToolResults, type ActivityDraft } from "./activity-draft";
@@ -92,6 +93,7 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
       instructions: buildTeamAssistantPrompt({ assistantName: organization?.assistant_name, viewerKind: context.viewer.kind, canManageActivities, canManageInvitations }),
       tools: {
         ...createTeamAssistantTools(supabase, teamId, activityIds),
+        ...(context.viewer.kind === "leader" ? createActivityHistoryTools(supabase, memoryScope.organizationId, teamId) : {}),
         ...createAssistantMemoryTools(memoryScope, draft => memoryDrafts.push(draft)),
         ...(canManageInvitations ? createReminderTools({ supabase, teamId, activityIds,
           timeZone: context.clock.organizationTimeZone,
@@ -134,3 +136,4 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
     return { answer, source: "fallback", model };
   }
 }
+

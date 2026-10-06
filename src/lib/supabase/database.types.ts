@@ -272,6 +272,8 @@ export interface Database {
     };
     Views: Record<never, never>;
     Functions: {
+      activity_history_teams: { Args: { target_organization_id: string }; Returns: Json };
+      read_activity_history: { Args: { target_team_id: string; from_date: string; through_date: string; category: string; guests_only?: boolean }; Returns: Json };
       team_contact_directory: { Args: { target_team_id: string }; Returns: Json };
       activity_duty_fairness: { Args: { target_activity_id: string; from_date: string }; Returns: Json };
       my_activity_duty_links: { Args: { target_organization_id: string }; Returns: { activity_id: string; team_id: string; person_id: string }[] };

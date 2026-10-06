@@ -27,5 +27,6 @@ it("returns a draft without database writes even if untrusted context induces th
   expect(result.memoryDrafts).toHaveLength(1);
   expect(result.memoryDrafts?.[0].content).toBe("Proposed text from an untrusted context");
   expect(write).not.toHaveBeenCalled();
-  expect(Object.keys(mocks.options.mock.calls[0][0].tools)).toEqual(["remember"]);
+  expect(Object.keys(mocks.options.mock.calls[0][0].tools)).toEqual(["listHistoryTeams", "readActivityHistory", "remember"]);
 });
+
