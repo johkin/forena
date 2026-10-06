@@ -4,6 +4,7 @@ import type { ActivityDraftInput } from "./activity-draft";
 export const activityDraftSchema = jsonSchema<ActivityDraftInput>({
   type: "object",
   properties: {
+    activityTypeId: { type: ["string", "null"], description: "ID från context.activityTypes för efterfrågad aktivitetstyp. Träning använder category=session. null endast om ingen typ kan avgöras." },
     title: { type: "string", description: "Kort aktivitetstitel, till exempel Intresseanmälan: Aroscupen" },
     description: { type: "string", description: "Färdig text direkt till föräldrarna med verifierade fakta, vad svaret betyder och en tydlig fråga" },
     location: { type: "string", description: "Verifierad ort/plats eller Preliminärt: ej fastställt" },
@@ -22,6 +23,6 @@ export const activityDraftSchema = jsonSchema<ActivityDraftInput>({
       additionalProperties: false,
     },
   },
-  required: ["title", "description", "location", "startsOn", "startTime", "durationMinutes", "gatheringMinutesBefore", "recurrence"],
+  required: ["activityTypeId", "title", "description", "location", "startsOn", "startTime", "durationMinutes", "gatheringMinutesBefore", "recurrence"],
   additionalProperties: false,
 });

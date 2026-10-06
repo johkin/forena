@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 7659)
+Total output lines: 261
+
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState, useRef } from "react";
@@ -60,7 +63,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
   const [invitationOpen,setInvitationOpen]=useState(canManageInvitations && mode==="create");
   const [configuration,setConfiguration] = useState<ActivityConfiguration>();
   const [configurationError,setConfigurationError] = useState<string>();
-  const [activityTypeId,setActivityTypeId] = useState(activity?.activityTypeId ?? "");
+  const [activityTypeId,setActivityTypeId] = useState(activity?.activityTypeId ?? draft?.activityTypeId ?? "");
   const touched = useRef(new Set<keyof ActivityTimingRules>(mode === "edit" || draft ? ["duration","gatheringRule"] : []));
   const [touchedKeys,setTouchedKeys] = useState(new Set<keyof ActivityTimingRules>(mode === "edit" || draft ? ["duration","gatheringRule"] : []));
   const [rules,setRules] = useState<ActivityTimingRules>({ ...FALLBACK_ACTIVITY_DEFAULTS, duration:`PT${initialDuration}M`,gatheringRule:initialGathering ? `start-${initialGathering}m` : "start",reminderRules:[...FALLBACK_ACTIVITY_DEFAULTS.reminderRules] });
@@ -75,10 +78,10 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
     const controller = new AbortController();
     fetch(`/api/activity-configuration?teamId=${encodeURIComponent(team.id)}`,{signal:controller.signal})
       .then(async response=> { const result = await response.json(); if (!response.ok) throw new Error(result.error); return result as ActivityConfiguration; })
-      .then(config=> { setConfiguration(config); const type = config.types.find(t=>activity?.activityTypeId ? t.id===activity.activityTypeId : t.slug==="ovrigt" && !t.organization_id); setActivityTypeId(activity?.activityTypeId ?? type?.id ?? ""); if(mode==="create" && type) setRules(current=>applyUntouchedDefaults(current,type.defaults,touched.current)); })
+      .then(config=> { setConfiguration(config); const requestedTypeId = activity?.activityTypeId ?? draft?.activityTypeId; const type = config.types.find(t=>requestedTypeId ? t.id===requestedTypeId : t.slug==="ovrigt" && !t.organization_id); setActivityTypeId(activity?.activityTypeId ?? type?.id ?? ""); if(mode==="create" && type) setRules(current=>applyUntouchedDefaults(current,type.defaults,touched.current)); })
       .catch(error=>{if(!controller.signal.aborted)setConfigurationError(error instanceof Error ? error.message : "Inställningarna kunde inte hämtas.");});
     return ()=>controller.abort();
-  },[source,team.id,activity?.activityTypeId,mode]);
+  },[source,team.id,activity?.activityTypeId,draft?.activityTypeId,mode]);
   function invalidatePreview() {setDeletePreview(undefined);setSeriesPreview(undefined);setSeriesChanges(undefined);setPreview(undefined);setPayload(undefined);}
   function changeRule(key:keyof ActivityTimingRules,value:string|string[]) { invalidatePreview();touched.current.add(key);setTouchedKeys(new Set(touched.current));setRules(current=>({...current,[key]:value})); }
   function changeActivityType(id:string) { invalidatePreview();setActivityTypeId(id); if(mode==="create") {const defaults=configuration?.types.find(type=>type.id===id)?.defaults;if(defaults)setRules(current=>applyUntouchedDefaults(current,defaults,touched.current));} }
@@ -153,34 +156,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
     } catch(caught) { setError(caught instanceof Error?caught.message:"Förhandsgranskningen kunde inte skapas"); }
   }
 
-  async function save() {
-    if(editScope==="following" && seriesPreview && seriesChanges) {
-      setPending(true);setError(undefined);
-      try {
-        const r=await fetch(`/api/activities/${activity?.id}/series`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({preview:false,token:seriesPreview.token,changes:seriesChanges})});
-        const result=await r.json();if(!r.ok)throw new Error(result.error);
-        onNotice(`${result.count} aktiviteter uppdaterades.`);onClose();window.location.reload();
-      } catch(error) {setError(error instanceof Error?error.message:"Serien kunde inte sparas.");invalidatePreview();} finally {setPending(false);}
-      return;
-    }
-    if(!preview?.length||!payload)return;
-    setPending(true); setError(undefined);
-    if(source==="demo"){onNotice(`${String(payload.title)} förhandsgranskades i demoläge.`);onClose();return;}
-    const occurrence=preview[0], endpoint=mode==="edit"?`/api/activities/${activity?.id}`:recurring?"/api/activity-series":"/api/activities";
-    const body=mode==="edit"||!recurring?{...payload,...(mode==="edit" ? {timingRules:undefined} : {}),gatheringAt:occurrence.gatheringAt,startsAt:occurrence.startsAt,endsAt:occurrence.endsAt}:payload;
-    const response=await fetch(endpoint,{method:mode==="edit"?"PUT":"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
-    const result=await response.json(); setPending(false);
-    if(!response.ok){setError(result.error??"Aktiviteten kunde inte sparas");return;}
-    const savedActivityId=activity?.id??result.activity?.id;
-    if(savedActivityId&&invitationMode!=="none"&&mode==="edit"){
-      const invitationResponse=await fetch(`/api/activities/${savedActivityId}/invitations`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(invitationMode==="now"?{mode:"now",personIds:[...selectedPeople]}:{mode:"schedule",audience:"selection",selection:payload.invitationSelection,invitationSendMinutesBefore:payload.invitationSendMinutesBefore,responseDueRule:payload.responseDueRule,reminderMinutesBeforeDue:payload.reminderMinutesBeforeDue,reminderMinutesBeforeDueList:payload.reminderMinutesBeforeDueList,timingRules:payload.timingRules})});
-      const invitationResult=await invitationResponse.json();
-      if(!invitationResponse.ok){setError(invitationResult.error??"Aktiviteten sparades, men kallelsen kunde inte läggas till");return;}
-    }
-    onNotice(recurring?`${preview.length} aktiviteter skapades.`:mode==="edit"?"Aktiviteten uppdaterades.":"Aktiviteten skapades.");onClose();window.location.reload();
-  }
-
-  async function remove(confirmSeries=false) {
+  async functio…659 tokens truncated…e(confirmSeries=false) {
     if(!activity || source==="demo" || editScope===null || pending)return;
     if(editScope==="single" && !window.confirm("Ta bort aktiviteten? Om någon redan har svarat blir den i stället markerad som inställd."))return;
     setPending(true);setError(undefined);
@@ -259,4 +235,3 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
     </section>
   </div>;
 }
-
