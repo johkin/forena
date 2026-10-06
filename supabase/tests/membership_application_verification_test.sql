@@ -13,6 +13,9 @@ insert into public.teams (id, organization_id, section_id, slug, name, season)
 values ('a3000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'f2016', 'F2016', '2026');
 
 update auth.users set email_confirmed_at = now();
+create temp table verification_people_baseline as select
+  (select count(*) from public.people where organization_id = 'a1000000-0000-0000-0000-000000000001') as people_count,
+  (select count(*) from public.memberships where organization_id = 'a1000000-0000-0000-0000-000000000001') as membership_count;
 create temp table verification_fixture (id uuid, payload jsonb);
 grant select on verification_fixture to authenticated;
 insert into verification_fixture(payload) values (jsonb_build_object(
@@ -53,7 +56,12 @@ select lives_ok($$select public.verify_membership_application_email(repeat('b',6
 select lives_ok($$select public.verify_membership_application_email(repeat('b',64))$$, 'Repeated confirmation is idempotent');
 select is((select review_status from public.membership_applications), 'submitted', 'Application reaches office after verification');
 select is((select verified_email from public.membership_applications), 'guardian@example.se', 'Evidence belongs to first guardian');
-select is((select count(*) from public.people where organization_id = 'a1000000-0000-0000-0000-000000000001'), 0::bigint, 'Verification creates no player or membership');
+select ok(
+  (select count(*) from public.people where organization_id = 'a1000000-0000-0000-0000-000000000001') = (select people_count from verification_people_baseline)
+  and (select count(*) from public.memberships where organization_id = 'a1000000-0000-0000-0000-000000000001') = (select membership_count from verification_people_baseline)
+  and (select activated_person_id is null from public.membership_applications where id = (select id from verification_fixture)),
+  'Verification creates no player or membership'
+);
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"a0000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
 select is((select count(*) from public.membership_applications), 1::bigint, 'Office sees verified application');
