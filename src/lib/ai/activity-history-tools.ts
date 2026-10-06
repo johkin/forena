@@ -1,10 +1,11 @@
+import { filterHistoryRole, type HistoryMemberRole } from "./activity-history-facts";
 import { tool } from "ai";
 import { z } from "zod";
 import type { AssistantDependencies } from "./team-assistant-types";
 import { recentHistoryPeriod, type HistoryPeriod } from "./activity-history-period";
 import { activityHistoryResultSchema, type ActivityHistoryResult } from "./activity-history-result";
 
-export function createActivityHistoryTools(supabase: AssistantDependencies["supabase"], organizationId: string, currentTeamId: string, options?: { today: string; period?: HistoryPeriod; onResult: (result: ActivityHistoryResult) => void }) {
+export function createActivityHistoryTools(supabase: AssistantDependencies["supabase"], organizationId: string, currentTeamId: string, options?: { today: string; period?: HistoryPeriod; memberRole?: HistoryMemberRole; onResult: (result: ActivityHistoryResult) => void }) {
   return {
     listHistoryTeams: tool({
       description: "Lista lag i aktuell klubb vars historik du får läsa. Använd för att hitta ID för ett namngivet lag. Behörigheter till närvaro och arbetspass anges separat.",
@@ -35,7 +36,12 @@ export function createActivityHistoryTools(supabase: AssistantDependencies["supa
         const { data, error } = await supabase.rpc("read_activity_history", { target_team_id: teamId, from_date: period.from, through_date: period.through, category, guests_only: guestsOnly });
         if (error) return { error: error.code === "23514" ? "Välj en giltig period på högst 366 dagar." : "Historiken kunde inte hämtas. Det betyder inte att deltagande saknas." };
         const result = activityHistoryResultSchema.safeParse(data);
-        if (result.success) options?.onResult(result.data);
+        if (result.success) {
+          const verified = options?.memberRole ? await filterHistoryRole(supabase, organizationId, teamId, result.data, options.memberRole) : result.data;
+          if ("error" in verified) return verified;
+          options?.onResult(verified);
+          return verified;
+        }
         return data;
       },
     }),

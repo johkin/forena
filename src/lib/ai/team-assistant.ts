@@ -1,3 +1,4 @@
+import { historyMemberRole, verifiedHistoryAnswer } from "./activity-history-facts";
 import { createActivityHistoryTools } from "./activity-history-tools";
 import { historyPeriodFromQuestion } from "./activity-history-period";
 import { containsToolCode, hasHistoryPeriod, isActivityHistoryQuestion } from "./activity-history-intent";
@@ -106,7 +107,7 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
       instructions: buildTeamAssistantPrompt({ assistantName: organization?.assistant_name, viewerKind: context.viewer.kind, canManageActivities, canManageInvitations }),
       tools: {
         ...createTeamAssistantTools(supabase, teamId, activityIds),
-        ...(context.viewer.kind === "leader" ? createActivityHistoryTools(supabase, memoryScope.organizationId, teamId, { today: organizationToday, period: historyPeriod, onResult: result => historyResults.push(result) }) : {}),
+        ...(context.viewer.kind === "leader" ? createActivityHistoryTools(supabase, memoryScope.organizationId, teamId, { today: organizationToday, period: historyPeriod, memberRole: historyMemberRole(question), onResult: result => historyResults.push(result) }) : {}),
         ...createAssistantMemoryTools(memoryScope, draft => memoryDrafts.push(draft)),
         ...(canManageInvitations ? createReminderTools({ supabase, teamId, activityIds,
           timeZone: context.clock.organizationTimeZone,
@@ -147,8 +148,8 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
       return { answer: error ?? "Historiken kunde inte verifieras. Försök igen. Det betyder inte att registrerad närvaro saknas.", historyResults: [], source: "fallback", model };
     }
     const invalidAnswer = !result.text || containsToolCode(result.text);
-    const answer = invalidAnswer && historyResults.length
-      ? historyResults.map(history => `${history.team}, ${history.from}–${history.through}: ${history.summary.uniquePeople} unika personer och ${history.summary.participationCount} registrerade deltagartillfällen.${history.unreportedActivityCount ? ` ${history.unreportedActivityCount} aktiviteter saknar närvarorapport.` : ""}`).join("\n")
+    const answer = historyResults.length
+      ? historyResults.map(history => verifiedHistoryAnswer(history, question)).join("\n")
       : invalidAnswer ? "Jag kunde inte hämta ett verifierat svar. Försök igen och ange vilken period som avses om den saknas." : result.text;
     return { answer, memoryDrafts, reminderDrafts, historyResults, source: invalidAnswer && !historyResults.length ? "fallback" : "ai", model };
   } catch (error) {
