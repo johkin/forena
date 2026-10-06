@@ -1,16 +1,22 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { z } from "zod";
 import { NextResponse } from "next/server";
 import { sendMembershipInvitationEmail } from "@/lib/email/membership-invitation";
 import { getSiteUrl } from "@/lib/site-url";
 import { createClient } from "@/lib/supabase/server";
 
 type Props = { params: Promise<{ applicationId: string }> };
-type RequestBody = { decision?: "approved" | "rejected"; rejectionReason?: string };
+const reviewBodySchema = z.object({
+  decision: z.enum(["approved", "rejected"]),
+  rejectionReason: z.string().trim().max(1000).optional(),
+});
 
 export async function POST(request: Request, { params }: Props) {
   const { applicationId } = await params;
-  const body = (await request.json().catch(() => null)) as RequestBody | null;
-  if (!body?.decision) return NextResponse.json({ error: "Beslut saknas." }, { status: 400 });
+  const parsed = reviewBodySchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: "Beslut saknas." }, { status: 400 });
+
+  const body = parsed.data;
 
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getUser();

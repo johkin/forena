@@ -11,14 +11,14 @@ export default async function ApplicationsPage({ params }: Props) {
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getUser();
   if (!authData.user) redirect(`/login?next=${encodeURIComponent(`/o/${organizationSlug}/applications`)}`);
-  const { data: organization } = await supabase.from("organizations").select("id, name, slug, assistant_name").eq("slug", organizationSlug).maybeSingle();
+  const { data: organization } = await supabase.from("organizations").select("id, name, slug, assistant_name, time_zone").eq("slug", organizationSlug).maybeSingle();
   if (!organization) redirect("/setup");
   const { data: isAdmin } = await supabase.rpc("has_organization_role", { target_organization_id: organization.id, allowed_roles: ["owner", "admin"] });
 
   if (!isAdmin) redirect(`/o/${organizationSlug}`);
 
   const [{ data: applications }, { data: sections }, { data: teams }] = await Promise.all([
-    supabase.from("membership_applications").select("id, section_id, team_id, player_first_name, player_last_name, player_birth_date, previous_club, message, review_status, activation_status").eq("organization_id", organization.id).order("created_at", { ascending: false }),
+    supabase.from("membership_applications").select("id, section_id, team_id, player_first_name, player_last_name, player_birth_date, previous_club, message, review_status, activation_status, created_at, submission_source, email_verified_at, verified_email, reviewed_at").eq("organization_id", organization.id).order("created_at", { ascending: false }),
     supabase.from("sections").select("id, name").eq("organization_id", organization.id),
     supabase.from("teams").select("id, name, slug").eq("organization_id", organization.id),
   ]);
@@ -27,6 +27,8 @@ export default async function ApplicationsPage({ params }: Props) {
   const sectionById = new Map((sections ?? []).map((item) => [item.id, item.name]));
   const teamById = new Map((teams ?? []).map((item) => [item.id, item.name]));
   const items = (applications ?? []).map((item) => ({
+    createdAt: item.created_at, source: item.submission_source, verifiedAt: item.email_verified_at,
+    verifiedEmail: item.verified_email, reviewedAt: item.reviewed_at, timeZone: organization.time_zone,
     id: item.id, playerName: `${item.player_first_name} ${item.player_last_name}`, birthDate: item.player_birth_date,
     sectionName: sectionById.get(item.section_id) ?? "Sektion", teamName: teamById.get(item.team_id) ?? "Lag",
     guardians: (guardians ?? []).filter((guardian) => guardian.application_id === item.id).map((guardian) => ({ name: `${guardian.first_name} ${guardian.last_name}`, email: guardian.email, mobile: guardian.mobile })),

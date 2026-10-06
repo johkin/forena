@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import type { Json } from "@/lib/supabase/database.types";
+import { startMembershipApplication, resendMembershipVerification } from "@/lib/membership/verification";
 import { createClient } from "@/lib/supabase/server";
 
 function value(formData: FormData, name: string) {
@@ -50,10 +51,24 @@ export async function submitMembershipApplication(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc("submit_membership_application", { payload });
-  if (error) {
-    console.error("[membership-application] submit failed", { message: error.message });
-    redirect(`/o/${organizationSlug}/join?error=${encodeURIComponent("Ansökan kunde inte skickas. Kontrollera uppgifterna")}`);
+  const { data: authData } = await supabase.auth.getUser();
+  let result;
+  try {
+    result = await startMembershipApplication(payload, guardians[0].email, authData.user?.id);
+  } catch {
+    redirect(`/o/${encodeURIComponent(organizationSlug)}/join?error=${encodeURIComponent("Ansökan kunde inte sparas. Kontrollera uppgifterna eller vänta en minut och försök igen.")}`);
   }
-  redirect(`/o/${organizationSlug}/join?sent=1`);
+  redirect(`/o/${encodeURIComponent(organizationSlug)}/join?sent=${result.email_verified ? "1" : "verify"}&application=${result.application_id}${result.delivery_failed ? "&deliveryFailed=1" : ""}`);
+}
+
+export async function resendVerificationEmail(formData: FormData) {
+  const organizationSlug = value(formData, "organizationSlug");
+  const applicationId = value(formData, "applicationId");
+  try {
+    await resendMembershipVerification(applicationId, value(formData, "email").toLowerCase());
+  } catch {
+    console.error("[membership-verification] resend failed");
+  }
+  // Same response for unknown applications/addresses, throttling and delivery failures.
+  redirect(`/o/${encodeURIComponent(organizationSlug)}/join?sent=verify&application=${encodeURIComponent(applicationId)}&resent=1`);
 }

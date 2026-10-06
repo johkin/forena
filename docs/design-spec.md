@@ -201,3 +201,14 @@ hamburgermeny på telefon. Publika sidor ska inte ha en extra egen vänstermeny.
 Sidfoten kommer från rotlayouten och ligger efter innehållet utan att täcka det.
 Aktuell sida markeras i gemensamma menykomponenter och administrativa länkar
 visas utifrån verifierad åtkomst.
+
+### Medlemsansökans e-postverifiering
+
+Efter inskick visar sidan ”Inväntar e-postverifiering”, att ansökan är sparad,
+vilken målsman som ska bekräfta och att länken gäller i 24 timmar. Ett misslyckat
+utskick visar ett begripligt fel och omskick utan att uppgifterna behöver fyllas
+i igen. Formuläret för omskick kräver målsman 1:s adress och anger utskicksgränsen.
+Verifieringslänken öppnar en publik sida med en tydlig bekräftelseknapp och
+möjlighet till omskick även när länken gått ut. Samtliga sidor återanvänder AppShell.
+Kansliets kort visar tekniska ansökningsuppgifter under ”Ansökningsinformation”;
+tider visas i föreningens tidszon. Äldre ansökningar visar att verifiering saknas.

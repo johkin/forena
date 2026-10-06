@@ -24,17 +24,19 @@ select throws_ok(
   '42501', 'permission denied for table membership_applications',
   'Publika besökare kan inte läsa ansökningar'
 );
+reset role;
 select lives_ok(
-  $$select public.submit_membership_application(jsonb_build_object(
+  $$select public.start_membership_application(jsonb_build_object(
     'organization_id', 'a1000000-0000-0000-0000-000000000001',
     'section_id', 'a2000000-0000-0000-0000-000000000001',
     'team_id', 'a3000000-0000-0000-0000-000000000001',
     'player_first_name', 'Test', 'player_last_name', 'Spelare', 'player_birth_date', '2016-05-01',
     'guardians', jsonb_build_array(jsonb_build_object('first_name','Test','last_name','Målsman','email','guardian@example.se','mobile','0701234567'))
-  ))$$,
-  'Publika besökare kan lämna en validerad ansökan'
+  ), repeat('b', 64), null)$$,
+  'Servern kan spara en validerad ansökan inför verifiering'
 );
 
+select public.verify_membership_application_email(repeat('b', 64));
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"a0000000-0000-0000-0000-000000000003","email":"wrong@example.se","role":"authenticated"}', true);
 select results_eq(
