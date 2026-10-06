@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const activityHistoryResultSchema = z.object({
+  kind: z.enum(["attendance", "invitations"]).optional(), sourceTeam: z.string().optional(), invitationResponse: z.enum(["all", "accepted", "pending", "declined"]).optional(),
   team: z.string(), from: z.iso.date(), through: z.iso.date(), timeZone: z.string(),
   category: z.enum(["session", "competition", "work"]),
   activityCount: z.number().int().nonnegative(),

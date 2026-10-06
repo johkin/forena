@@ -28,6 +28,7 @@ export function AssistantHistoryCard({ result, answer }: { result: ActivityHisto
   // Period boundaries are calendar dates; UTC preserves their day in every zone.
   const date = new Intl.DateTimeFormat("sv-SE", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" });
   const when = new Intl.DateTimeFormat("sv-SE", { timeZone: result.timeZone, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const invitation = result.kind === "invitations";
   const period = `${date.format(new Date(`${result.from}T12:00:00Z`))}–${date.format(new Date(`${result.through}T12:00:00Z`))}`;
   const mentioned = new Set<string>();
   const link = (activity: ActivityHistoryResult["activities"][number], label: string) => <HistoryActivityLink key={`${activity.id}-${content.length}`} activity={activity} label={label} opening={!!opening} onOpen={openActivity} />;
@@ -46,7 +47,7 @@ export function AssistantHistoryCard({ result, answer }: { result: ActivityHisto
   return <div className="assistant-history">
     {answer ? <p>{content}</p> : null}
     {extra.length ? <p>Aktiviteter: {extra.map((activity, index) => <span key={activity.id}>{index ? "; " : ""}{link(activity, `${activity.title}, ${when.format(new Date(activity.startsAt))}`)}</span>)}{result.activities.length - mentioned.size > extra.length ? ". Begränsa perioden för fler aktiviteter." : "."}</p> : null}
-    <p><strong>{result.summary.uniquePeople} {result.summary.uniquePeople === 1 ? "person" : "personer"}</strong> · {result.summary.participationCount} {result.category === "work" ? (result.summary.participationCount === 1 ? "genomfört arbetstillfälle" : "genomförda arbetstillfällen") : (result.summary.participationCount === 1 ? "registrerat deltagartillfälle" : "registrerade deltagartillfällen")}</p>
+    <p><strong>{result.summary.uniquePeople} {invitation ? `spelare från ${result.sourceTeam}` : result.summary.uniquePeople === 1 ? "person" : "personer"}</strong> · {result.summary.participationCount} {invitation ? (result.summary.participationCount === 1 ? "kallelsetillfälle" : "kallelsetillfällen") : result.category === "work" ? (result.summary.participationCount === 1 ? "genomfört arbetstillfälle" : "genomförda arbetstillfällen") : (result.summary.participationCount === 1 ? "registrerat deltagartillfälle" : "registrerade deltagartillfällen")}</p>
     <p>{result.team} · {period} · {result.timeZone}</p>
     {result.unreportedActivityCount && result.category !== "work" ? <p>På {result.unreportedActivityCount} aktiviteter saknas närvarorapport. De räknas inte som frånvaro.</p> : null}
     {opening ? <p role="status">Öppnar aktivitet…</p> : null}
