@@ -86,7 +86,7 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
       team={{ id: team.id, organizationId: team.organization_id, sectionId: team.section_id, slug: team.slug, name: team.name, season: team.season ?? "" }}
       logoutDestination={`/o/${organizationSlug}/t/${teamSlug}`}
       navigation={<TeamMenu organizationSlug={organizationSlug} teamSlug={teamSlug} teamName={team.name} canManageRoster={false} leaderView={false} activeItem="members" navigationOnly />}>
-      <section className="content"><TeamContactDirectory people={teamContactsSchema.parse(contacts)} /></section>
+      <main className="content"><TeamContactDirectory people={teamContactsSchema.parse(contacts)} /></main>
     </AppShell>;
   }
   const { data: isAdmin } = await supabase.rpc("has_organization_role", {

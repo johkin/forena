@@ -58,7 +58,8 @@ export function ActivityDutySchedule({ activityId, startsAt, timeZone }: { activ
  </section>;
 }
 function SlotRow({ slot, index, duty, schedule, choices, timeZone, propose }: { slot: DutySlot; index: number; duty: Duty; schedule: DutySchedule; choices: { slot: DutySlot; duty: Duty }[]; timeZone: string; propose: (c: DutyCommand, text: string) => void }) {
- const [person, setPerson] = useState(slot.personId ?? schedule.people[0]?.id ?? "");
+ const [chosenPerson, setPerson] = useState(slot.personId ?? schedule.people[0]?.id ?? "");
+ const person = schedule.people.length === 1 ? schedule.people[0].id : schedule.people.some(p => p.id === chosenPerson) ? chosenPerson : "";
  const [target, setTarget] = useState("");
  const [openedAt] = useState(() => Date.now());
  const closed = openedAt >= new Date(schedule.selfServiceUntil).getTime();

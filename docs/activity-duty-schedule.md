@@ -110,3 +110,7 @@ En tilldelad plats är ett åtagande för spelarens familj och visas som
 En kallelse är en förfrågan, en bokning är en konkret uppgift och närvaro eller
 genomförande registreras efteråt. Tilldelning skapar inte ett påhittat
 kallelsesvar. Familjen föreslår ändringar i schemat.
+
+Caféverksamhet använder aktivitetstypen **Arbetspass**, med exempelvis
+”Café 21 september” som titel. Den äldre typen Cafépass är inaktiverad för
+nyregistrering; redan skapade aktiviteter och deras inställningar bevaras.
