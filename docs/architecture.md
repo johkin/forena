@@ -174,7 +174,6 @@ och en deterministisk rangordning. Ledaren bekräftar ändringsbara förslag gen
 samma atomära kommando som manuella tilldelningar. Schemaskrivning och köläggning
 av bemanningsnotiser sker i samma databastransaktion.
 
-
 ### Historik och relativa perioder
 
 Historikverktyget tolkar `relativeDays` från organisationens aktuella datum.
@@ -186,3 +185,27 @@ Träning/match kräver registrerad närvaro, arbete kräver genomförandemarkeri
 Fullständiga summeringar och aktivitetslistor kan visas även när personutdraget
 är begränsat. Uppgifterna returneras separat från modellens fritext; åtkomst och
 loggning följer samma kontroller som övrig aktivitetshistorik.
+
+### Notislänkar och svar i aktivitetsmodal
+
+Push för en aktivitet länkar till `/activities/{id}`. Inloggningen bevarar
+returadressen. Sidan läser aktiviteten med användarens session och öppnar
+samma detaljmodal som översikten. Befintliga appfönster navigeras och fokuseras
+vid tryck; mottagen push uppdaterar data utan att öppna en modal.
+Översikten visar svarsstatus. Svar och kommentar lämnas i modalen, vars API
+bara returnerar den egna personens och de egna barnens kallelser, även för
+ledare. Översikten uppdateras när modalen stängs.
+Ändrad kommentar kan sparas utan att välja svar igen. Inkommande push hämtar
+även om svaren i en öppen modal, utan att kasta osparad kommentarstext.
+
+### Redigering av befintlig serie
+
+Ledaren väljer ett tillfälle eller detta och kommande tillfällen. RPC:n
+förhandsgranskar och sparar samma urval atomärt med en kontrolltoken.
+Passerade, inställda, importerade och individuellt ändrade tillfällen hoppas
+över; den valda aktiviteten är utgångspunkt. Äldre skillnader i innehåll och
+tider respekteras också. Datumförskjutning sker i klubbens lokala tidszon.
+Aktivitetstyp ändras per tillfälle. Befintliga kallelsetider, svar och seriens
+ursprungliga skapandemall bevaras. Tidsändring med uppgiftsschema kräver
+separat anpassning och blockeras i seriekommandot. Nya enskilda ändringar
+markeras med `series_exception` för kommande serieredigeringar.

@@ -1,0 +1,97 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+select plan(9);
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('a0000000-0000-0000-0000-000000000001', 'manager-a@example.se', '{"display_name":"Manager A"}'),
+  ('a0000000-0000-0000-0000-000000000002', 'guardian-a@example.se', '{"display_name":"Guardian A"}'),
+  ('a0000000-0000-0000-0000-000000000003', 'member-b@example.se', '{"display_name":"Member B"}'),
+  ('a0000000-0000-0000-0000-000000000004', 'admin@example.se', '{"display_name":"Admin"}');
+
+insert into public.organizations (id, slug, name)
+values ('a1000000-0000-0000-0000-000000000001', 'duty-management-test', 'Invitation RLS test');
+
+insert into public.organization_members (organization_id, user_id, role) values
+  ('a1000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'member'),
+  ('a1000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000002', 'member'),
+  ('a1000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000003', 'member'),
+  ('a1000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000004', 'admin');
+
+insert into public.sections (id, organization_id, slug, name)
+values ('a2000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'fotboll', 'Fotboll');
+
+insert into public.teams (id, organization_id, section_id, slug, name, season) values
+  ('a3000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'team-a', 'Team A', '2026'),
+  ('a3000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'team-b', 'Team B', '2026');
+
+insert into public.team_access_assignments (organization_id, team_id, person_id, access_profile_id)
+select
+  'a1000000-0000-0000-0000-000000000001',
+  'a3000000-0000-0000-0000-000000000001',
+  person.id,
+  profile.id
+from public.people person
+join public.team_access_profiles profile
+  on profile.organization_id = person.organization_id
+ and profile.key = 'team_admin'
+where person.organization_id = 'a1000000-0000-0000-0000-000000000001'
+  and person.user_id = 'a0000000-0000-0000-0000-000000000001';
+
+insert into public.activity_types (id, organization_id, name, slug, system_category)
+values ('a4000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'Träning', 'traning', 'session');
+
+insert into public.people (id, organization_id, user_id, display_name) values
+  ('a5000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', null, 'Child A'),
+  ('a5000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000003', 'Member B')
+-- Organization membership already creates the user's person via a trigger.
+on conflict (organization_id, user_id) do update
+  set id = excluded.id, display_name = excluded.display_name;
+
+insert into public.person_guardians (organization_id, person_id, guardian_user_id)
+values ('a1000000-0000-0000-0000-000000000001', 'a5000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000002');
+
+insert into public.memberships (organization_id, person_id, team_id, role) values
+  ('a1000000-0000-0000-0000-000000000001', 'a5000000-0000-0000-0000-000000000001', 'a3000000-0000-0000-0000-000000000001', 'participant'),
+  ('a1000000-0000-0000-0000-000000000001', 'a5000000-0000-0000-0000-000000000002', 'a3000000-0000-0000-0000-000000000002', 'participant');
+
+insert into public.activities (id, organization_id, team_id, activity_type_id, title, starts_at, ends_at, location) values
+  ('a6000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'a3000000-0000-0000-0000-000000000001', 'a4000000-0000-0000-0000-000000000001', 'Activity A', now() + interval '1 day', now() + interval '1 day 1 hour', ''),
+  ('a6000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000001', 'a3000000-0000-0000-0000-000000000002', 'a4000000-0000-0000-0000-000000000001', 'Activity B', now() + interval '1 day', now() + interval '1 day 1 hour', '');
+
+insert into public.invitations (organization_id, activity_id, person_id, response, responded_at, response_comment) values
+  ('a1000000-0000-0000-0000-000000000001', 'a6000000-0000-0000-0000-000000000001', 'a5000000-0000-0000-0000-000000000001', 'declined', now(), 'Private family comment A'),
+  ('a1000000-0000-0000-0000-000000000001', 'a6000000-0000-0000-0000-000000000002', 'a5000000-0000-0000-0000-000000000002', 'accepted', now(), 'Private comment B');
+
+
+
+insert into public.activity_series(id,organization_id,team_id,activity_type_id,title,recurrence_rule,starts_on)
+values('a9000000-0000-0000-0000-000000000001','a1000000-0000-0000-0000-000000000001','a3000000-0000-0000-0000-000000000001','a4000000-0000-0000-0000-000000000001','Series','{}',current_date);
+update public.activities set series_id='a9000000-0000-0000-0000-000000000001' where id='a6000000-0000-0000-0000-000000000001';
+insert into public.activities(id,organization_id,team_id,activity_type_id,series_id,title,starts_at,ends_at,location,series_exception)
+select 'a6000000-0000-0000-0000-000000000003',organization_id,team_id,activity_type_id,series_id,title,starts_at+interval '7 days',ends_at+interval '7 days',location,true from public.activities where id='a6000000-0000-0000-0000-000000000001';
+select set_config('test.changes',jsonb_build_object('title','Updated','startsAt',now()+interval '1 day','endsAt',now()+interval '1 day 1 hour','gatheringAt',null)::text,true);
+set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"a0000000-0000-0000-0000-000000000001","role":"authenticated"}',true);
+select set_config('test.preview',public.edit_activity_series_from('a6000000-0000-0000-0000-000000000001',current_setting('test.changes')::jsonb)::text,true);
+select is(current_setting('test.preview')::jsonb->>'count','1','Only normal occurrences selected');
+select is(current_setting('test.preview')::jsonb->>'skipped','1','Individual exception skipped');
+select is((select title from public.activities where id='a6000000-0000-0000-0000-000000000001'),'Activity A','Preview does not write');
+select throws_ok($q$select public.edit_activity_series_from('a6000000-0000-0000-0000-000000000001',current_setting('test.changes')::jsonb,false,'stale')$q$,'40001',null,'Stale preview rejected');
+select public.edit_activity_series_from('a6000000-0000-0000-0000-000000000001',current_setting('test.changes')::jsonb,false,current_setting('test.preview')::jsonb->>'token');
+select is((select title from public.activities where id='a6000000-0000-0000-0000-000000000001'),'Updated','Confirmed update saved');
+select is((select response from public.invitations where activity_id='a6000000-0000-0000-0000-000000000001'),'declined','Existing answer preserved');
+select set_config('request.jwt.claims','{"sub":"a0000000-0000-0000-0000-000000000002","role":"authenticated"}',true);
+select throws_ok($q$select public.edit_activity_series_from('a6000000-0000-0000-0000-000000000001',current_setting('test.changes')::jsonb)$q$,'42501',null,'Guardian cannot edit series');
+reset role;
+select set_config('request.jwt.claims','{"sub":"a0000000-0000-0000-0000-000000000001","role":"authenticated"}',true);
+update public.activities set reminder_send_at=starts_at where id='a6000000-0000-0000-0000-000000000001';
+set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"a0000000-0000-0000-0000-000000000001","role":"authenticated"}',true);
+select throws_ok($q$select public.edit_activity_series_from('a6000000-0000-0000-0000-000000000001',current_setting('test.changes')::jsonb)$q$,'23514',null,'Legacy reminder at start rejected');
+reset role;
+update public.activities set reminder_send_at=null where id='a6000000-0000-0000-0000-000000000001';
+insert into public.activity_reminder_schedules(organization_id,activity_id,send_at)
+select organization_id,id,starts_at from public.activities where id='a6000000-0000-0000-0000-000000000001';
+set local role authenticated;
+select throws_ok($q$select public.edit_activity_series_from('a6000000-0000-0000-0000-000000000001',current_setting('test.changes')::jsonb)$q$,'23514',null,'Pending scheduled reminder at start rejected');
+select * from finish();
+rollback;

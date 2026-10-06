@@ -943,6 +943,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 
 .team-contact, .team-contact a { overflow-wrap: anywhere; }
 
+.activity-editor-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
+
 /* Keep overview headings and history disclosures usable on narrow screens. */
 .overview-details > summary { cursor: pointer; list-style: none; min-height: 44px; }
 .overview-details > summary::-webkit-details-marker { display: none; }

@@ -110,7 +110,7 @@ async function sendPushNotifications(
   const message = JSON.stringify({
     title: content.subject,
     body: content.text,
-    url: "/",
+    url: payload.activityId ? `/activities/${encodeURIComponent(payload.activityId)}` : "/",
     tag: type === "duty_update" ? outboxId : `${type}:${payload.activityId ?? "general"}`,
   });
   let delivered = 0;

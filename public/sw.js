@@ -26,13 +26,13 @@ self.addEventListener("push", (event) => {
     message = { body: event.data?.text() };
   }
   event.waitUntil(
-    self.registration.showNotification(message.title ?? "Förena", {
+    Promise.all([self.clients.matchAll({ type: "window" }).then(clients => clients.forEach(client => client.postMessage({ type: "activity-notification" }))), self.registration.showNotification(message.title ?? "Förena", {
       body: message.body ?? "Du har en ny händelse i föreningen.",
       icon: "/icon.svg",
       badge: "/icon.svg",
       tag: message.tag,
       data: { url: message.url ?? "/" },
-    }),
+    })]),
   );
 });
 
@@ -51,3 +51,4 @@ self.addEventListener("notificationclick", (event) => {
     }),
   );
 });
+
