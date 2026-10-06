@@ -350,3 +350,18 @@ Listan innehåller namn, lagroller, ledarens e-post och målsmännens namn,
 e-post och registrerade telefonnummer. Spelares konto-e-post, användar-ID,
 födelsedata och kallelsesvar ingår inte. Befintlig RLS för person- och
 målsmanstabeller breddas inte. Läsningar auditeras utan kontaktdata.
+
+## Assistentens aktivitetshistorik
+
+Historikverktygen kontrollerar lagbehörighet vid varje anrop. Träning och match
+kräver `attendance.manage`; arbetspass kräver `invitation.manage`. Assistenten
+kan bara välja tillåtna lag i aktuell klubb. RPC:n verifierar också behörighet
+själv. Kontaktuppgifter, födelsedata, svarskommentarer och konto-ID skickas inte
+till modellen. Historiska lagnamn hämtas inom samma klubb, och mottagarlagets
+händelser ger inte åtkomst till andra lags aktivitetshistorik. Läsningar
+auditeras med period och kategori, utan namn eller resultatdata.
+
+Svaret skiljer rapporterad närvaro, oregistrerad närvaro, obesvarad/ja/nej-kallelse
+och genomförda arbetsuppgifter. Saknad rapport är okänd närvaro. Högst 200
+poster returneras med totalantal och `truncated`; assistenten måste redovisa
+begränsningen. Det finns ingen skrivfunktion eller automatisk kallelse.

@@ -62,6 +62,7 @@ describe("answerTeamAssistant", () => {
     const prompt = mocks.agentOptions.mock.calls[0][0].instructions;
     expect(prompt.includes("professionellt, sakligt och tydligt")).toBe(kind === "leader");
     expect(prompt.includes("så att ett barn förstår")).toBe(kind !== "leader");
+    expect(Boolean(mocks.agentOptions.mock.calls[0][0].tools.readActivityHistory)).toBe(kind === "leader");
     expect(mocks.agentOptions.mock.calls[0][0].tools).not.toHaveProperty("proposeReminder");
   });
 
@@ -88,3 +89,4 @@ describe("answerTeamAssistant", () => {
     toolFactory.mockRestore();
   });
 });
+
