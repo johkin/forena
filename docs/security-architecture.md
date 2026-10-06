@@ -365,3 +365,30 @@ Svaret skiljer rapporterad närvaro, oregistrerad närvaro, obesvarad/ja/nej-kal
 och genomförda arbetsuppgifter. Saknad rapport är okänd närvaro. Högst 200
 poster returneras med totalantal och `truncated`; assistenten måste redovisa
 begränsningen. Det finns ingen skrivfunktion eller automatisk kallelse.
+
+## Verifiering före ansökningsgranskning
+
+Ansökningar med `review_status = draft` och deras målsmän är osynliga även för
+kansliet genom RLS. Gamla publika `submit_membership_application` är återkallad
+för `anon` och `authenticated`; serverns RPC:er kan endast köras med service role.
+Verifieringsbevis och källa kan inte ändras av kansliet genom tabell-UPDATE.
+Servern härleder identiteten från verifierad session. Undantaget för befintliga
+medlemmar kontrolleras mot `auth.users.email_confirmed_at`, adress och faktisk
+föreningstillhörighet; inga användarredigerbara metadata används.
+
+256-bitars slumpmässiga verifieringstoken skickas endast via mejl. Databasen
+lagrar SHA-256-hash, giltighetstid, förbrukning och ersättning; tabellen har RLS
+utan klientpolicyer eller klientgrants. Länkförbrukning och omskick låser ansökan
+före token för att undvika samtidiga verifieringar/rotationer. Utskicksgränsen
+serialiseras per adress/förening. Omskick ger samma publika svar för okänd ansökan,
+fel adress och överskriden gräns. Verifieringssidan skickar ingen Referer och är
+markerad för att inte indexeras. Mejlet innehåller inga barnuppgifter och loggar
+innehåller inte token, mejladress eller mejlleverantörens svarskropp.
+
+Verifiering visar tillgång till målsman 1:s adress, inte identitet eller att andra
+uppgifter är riktiga. Målsman 2 verifieras fortfarande separat vid aktivering
+efter kansliets godkännande. Äldre ansökningar undantas för att bevara redan
+påbörjad granskning och får tydlig markering om saknat verifieringsunderlag.
+Service role krävs nu även för att spara den publika ansökan. Konfigurera
+`SITE_URL` till appens kanoniska adress och behåll `RESEND_API_KEY` och
+`RESEND_FROM_EMAIL`; inga nya hemligheter behövs.

@@ -230,3 +230,24 @@ administration. Skyddade systemsidor får skalet från systemlayouten; den delad
 inställningsvyn skapar därför inget extra skal i systemläge. `AppFooter`
 renderas en gång i rotlayouten. `OrganizationMenu` och `NavigationLinks` samlar
 föreningslänkar och aktiv sidmarkering; serverkontroller avgör administrativa val.
+
+### E-postverifiering av medlemsansökan
+
+Den publika serveråtgärden sparar ansökan som `draft` och skickar en separat
+verifieringslänk till målsman 1 via Resend. `start_membership_application` är
+serverbegränsad och sparar ansökan och tokenhash i samma transaktion. En redan
+inloggad föreningsmedlem slipper verifieringen endast om Auth-databasens
+bekräftade e-postadress matchar målsman 1. Användar-ID hämtas från `getUser`,
+inte formuläret. Inget konto, spelare eller medlemskap skapas vid verifiering.
+
+Länken gäller 24 timmar och måste bekräftas med POST på en sida med det
+centrala sidskalet. GET är skrivskyddad för att hantera mejlskanning. Verifiering
+promoverar ansökan till `submitted` och sparar adress, tidpunkt och auditlogg.
+Förbrukade länkar ger samma bekräftelse vid nytt tryck. Omskick kan begäras utan
+att fylla i ansökan igen; det ersätter föregående länk och begränsas till ett
+utskick per minut och tre per timme per adress/förening, inklusive nya ansökningar.
+Misslyckad mejlleverans lämnar ansökan sparad och erbjuder omskick.
+
+Kansliet visar källa, inskickad tid, verifieringsunderlag och ansöknings-ID under
+hopfällbara detaljer. Äldre ansökningar behåller sin status och märks som
+`legacy`, utan fabricerade verifieringstidpunkter. De kan granskas som tidigare.

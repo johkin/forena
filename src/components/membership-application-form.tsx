@@ -51,18 +51,18 @@ export function MembershipApplicationForm({ organizationSlug, options, selectedS
       <section className="form-section">
         <h2>Målsman 1</h2>
         <div className="form-row"><label>Förnamn<input name="guardian1FirstName" required maxLength={80} /></label><label>Efternamn<input name="guardian1LastName" required maxLength={80} /></label></div>
-        <label>E-post<input name="guardian1Email" type="email" required autoComplete="email" /></label>
+        <label>E-post<input name="guardian1Email" type="email" required maxLength={254} autoComplete="email" /></label>
         <label>Mobil<input name="guardian1Mobile" type="tel" maxLength={40} /></label>
       </section>
 
       <section className="form-section">
         <h2>Målsman 2 <small>valfritt</small></h2>
         <div className="form-row"><label>Förnamn<input name="guardian2FirstName" maxLength={80} /></label><label>Efternamn<input name="guardian2LastName" maxLength={80} /></label></div>
-        <label>E-post<input name="guardian2Email" type="email" /></label>
+        <label>E-post<input name="guardian2Email" type="email" maxLength={254} /></label>
         <label>Mobil<input name="guardian2Mobile" type="tel" maxLength={40} /></label>
       </section>
 
-      <p className="form-help">Uppgifterna granskas av föreningens kansli. Inget konto eller medlemskap skapas innan ansökan har godkänts.</p>
+      <p className="form-help">Bekräfta e-postadressen för målsman 1 via länken i mejlet innan ansökan visas för kansliet. En inloggad medlem med samma verifierade adress slipper det steget. Inget konto eller medlemskap skapas innan ansökan har godkänts.</p>
       <button className="primary application-submit" type="submit">Skicka ansökan</button>
     </form>
   );

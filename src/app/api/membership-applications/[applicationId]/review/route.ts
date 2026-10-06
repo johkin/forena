@@ -10,7 +10,7 @@ type RequestBody = { decision?: "approved" | "rejected"; rejectionReason?: strin
 export async function POST(request: Request, { params }: Props) {
   const { applicationId } = await params;
   const body = (await request.json().catch(() => null)) as RequestBody | null;
-  if (!body?.decision) return NextResponse.json({ error: "Beslut saknas." }, { status: 400 });
+  if (body?.decision !== "approved" && body?.decision !== "rejected") return NextResponse.json({ error: "Beslut saknas." }, { status: 400 });
 
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getUser();
