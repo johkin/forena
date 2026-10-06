@@ -173,3 +173,16 @@ Bemanningsförslag använder lagavgränsad statistik via `activity_duty_fairness
 och en deterministisk rangordning. Ledaren bekräftar ändringsbara förslag genom
 samma atomära kommando som manuella tilldelningar. Schemaskrivning och köläggning
 av bemanningsnotiser sker i samma databastransaktion.
+
+
+### Historik och relativa perioder
+
+Historikverktyget tolkar `relativeDays` från organisationens aktuella datum.
+”De senaste tre veckorna” betyder 21 kalenderdagar inklusive idag; datumgränser
+räknas i organisationens tidszon och visas i svaret. Vanliga svenska relativa
+perioder förtolkas från den aktuella frågan, aldrig från äldre chattmeddelanden.
+Databasen beräknar unika personer och deltagartillfällen före 200-postersgränsen.
+Träning/match kräver registrerad närvaro, arbete kräver genomförandemarkering.
+Fullständiga summeringar och aktivitetslistor kan visas även när personutdraget
+är begränsat. Uppgifterna returneras separat från modellens fritext; åtkomst och
+loggning följer samma kontroller som övrig aktivitetshistorik.

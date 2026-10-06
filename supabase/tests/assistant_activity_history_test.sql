@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(11);
+select plan(19);
 insert into auth.users (id, email, raw_user_meta_data) values
   ('a0000000-0000-0000-0000-000000000001', 'manager-a@example.se', '{"display_name":"Manager A"}'),
   ('a0000000-0000-0000-0000-000000000002', 'guardian-a@example.se', '{"display_name":"Guardian A"}'),
@@ -83,6 +83,28 @@ select is(jsonb_array_length(public.read_activity_history('a3000000-0000-0000-00
 select ok(not (public.read_activity_history('a3000000-0000-0000-0000-000000000001',current_date-7,current_date,'session',false)::text like '%Private family comment%'),'Private response comments excluded');
 select throws_ok($q$select public.read_activity_history('a3000000-0000-0000-0000-000000000002',current_date-7,current_date,'session')$q$,'42501',null,'Other team denied');
 select throws_ok($q$select public.read_activity_history('a3000000-0000-0000-0000-000000000001',current_date-400,current_date,'session')$q$,'23514',null,'Unbounded queries denied');
+-- Totals must use actual attendance, deduplicate people and survive detail limits.
+select is(public.read_activity_history('a3000000-0000-0000-0000-000000000001',current_date-7,current_date,'session')->'summary'->>'uniquePeople','1','Only actual attendance counts, not responses');
+select is(public.read_activity_history('a3000000-0000-0000-0000-000000000001',current_date-7,current_date,'session')->'activities'->0->>'participationCount','1','Activity shows recorded attendance');
+reset role;
+insert into public.activities(id,organization_id,team_id,activity_type_id,title,starts_at,ends_at,location)
+values('a6000000-0000-0000-0000-000000000003','a1000000-0000-0000-0000-000000000001','a3000000-0000-0000-0000-000000000001','a4000000-0000-0000-0000-000000000001','Second training',now()-interval '1 day',now()-interval '1 day'+interval '1 hour','');
+insert into public.activity_attendance_reports(id,organization_id,activity_id,reported_by)
+values('a8000000-0000-0000-0000-000000000003','a1000000-0000-0000-0000-000000000001','a6000000-0000-0000-0000-000000000003','a0000000-0000-0000-0000-000000000001');
+insert into public.activity_attendance_records(organization_id,report_id,person_id)
+values('a1000000-0000-0000-0000-000000000001','a8000000-0000-0000-0000-000000000003','a5000000-0000-0000-0000-000000000002');
+set local role authenticated;
+select is(public.read_activity_history('a3000000-0000-0000-0000-000000000001',current_date-7,current_date,'session')->'summary'->>'uniquePeople','1','Same person at two trainings counts once');
+select is(public.read_activity_history('a3000000-0000-0000-0000-000000000001',current_date-7,current_date,'session')->'summary'->>'participationCount','2','Attendance at two trainings counts twice');
+reset role;
+insert into public.people(id,organization_id,display_name)
+select md5('history-summary-'||n::text)::uuid,'a1000000-0000-0000-0000-000000000001','Participant '||n::text from generate_series(1,201) n;
+insert into public.activity_attendance_records(organization_id,report_id,person_id)
+select 'a1000000-0000-0000-0000-000000000001','a8000000-0000-0000-0000-000000000003',md5('history-summary-'||n::text)::uuid from generate_series(1,201) n;
+set local role authenticated;
+select is(public.read_activity_history('a3000000-0000-0000-0000-000000000001',current_date-7,current_date,'session')->>'truncated','true','Large person detail list is truncated');
+select is(public.read_activity_history('a3000000-0000-0000-0000-000000000001',current_date-7,current_date,'session')->'summary'->>'uniquePeople','202','Unique total is complete beyond the detail limit');
+select is(public.read_activity_history('a3000000-0000-0000-0000-000000000001',current_date-7,current_date,'session')->'summary'->>'participationCount','203','Participation total is complete beyond the detail limit');
 select set_config('request.jwt.claims','{"sub":"a0000000-0000-0000-0000-000000000002","role":"authenticated"}',true);
 select throws_ok($q$select public.read_activity_history('a3000000-0000-0000-0000-000000000001',current_date-7,current_date,'session')$q$,'42501',null,'Guardian cannot read team history');
 set local role anon;
@@ -93,5 +115,6 @@ delete from public.activity_attendance_reports where id='a8000000-0000-0000-0000
 set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"a0000000-0000-0000-0000-000000000001","role":"authenticated"}',true);
 select is(public.read_activity_history('a3000000-0000-0000-0000-000000000001',current_date-7,current_date,'session')->>'unreportedActivityCount','1','Missing report is explicit');
+select is(jsonb_array_length(public.read_activity_history('a3000000-0000-0000-0000-000000000001',current_date-7,current_date,'session')->'activities'),2,'Activities without a report are included');
 select * from finish();
 rollback;

@@ -942,3 +942,16 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .duty-controls .duty-completed { display: flex; gap: .5rem; align-items: center; min-height: 44px; }
 
 .team-contact, .team-contact a { overflow-wrap: anywhere; }
+
+/* Keep overview headings and history disclosures usable on narrow screens. */
+.overview-details > summary { cursor: pointer; list-style: none; min-height: 44px; }
+.overview-details > summary::-webkit-details-marker { display: none; }
+.overview-details > summary::after { content: "▸"; margin-left: auto; }
+.overview-details[open] > summary::after { content: "▾"; }
+.overview-details:not([open]) > summary { margin-bottom: 0; }
+.overview-details > summary:focus-visible, .assistant-history summary:focus-visible { outline: 2px solid #173f35; outline-offset: 4px; }
+.assistant-history { border-top: 1px solid #dfe4df; padding-top: 8px; min-width: 0; overflow-wrap: anywhere; }
+.assistant-history summary { cursor: pointer; min-height: 44px; padding: 10px 0; }
+.assistant-history ul { padding: 0; list-style: none; }
+.assistant-history li { display: flex; flex-direction: column; gap: 4px; padding: 10px 0; border-top: 1px solid #dfe4df; }
+.assistant-history li span, .assistant-history small { color: #557069; }
