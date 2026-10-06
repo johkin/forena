@@ -73,6 +73,20 @@ describe("answerTeamAssistant", () => {
     expect(mocks.chat).not.toHaveBeenCalled();
   });
 
+  it("returns authorized history cards separately from generated text", async () => {
+    const history = { team: "Lag A", from: "2026-09-11", through: "2026-10-01", category: "session", timeZone: "Europe/Stockholm", activityCount: 6, unreportedActivityCount: 1, truncated: true, summary: { uniquePeople: 30, participationCount: 210 }, activities: [], records: [] };
+    const rpc = vi.fn(async (name: string) => ({ data: name === "activity_history_teams" ? [{ id: "team", canReadAttendance: true, canReadWork: false }] : history, error: null }));
+    mocks.chat.mockImplementationOnce(async ({ prompt }) => {
+      expect(JSON.parse(prompt).context.historyPeriod).toEqual({ from: "2026-09-11", through: "2026-10-01" });
+      await mocks.agentOptions.mock.calls[0][0].tools.readActivityHistory.execute({ category: "session", guestsOnly: false }, {});
+      return { text: "30 personer", usage: {} };
+    });
+    const result = await answerTeamAssistant({ ...input, question: "Hur många har tränat de senaste tre veckorna?" }, { ...dependencies, supabase: { rpc } as unknown as AssistantDependencies["supabase"] });
+    expect(result.answer).toBe("30 personer");
+    expect(result.historyResults).toEqual([expect.objectContaining({ summary: { uniquePeople: 30, participationCount: 210 } })]);
+    expect(rpc).toHaveBeenLastCalledWith("read_activity_history", expect.objectContaining({ from_date: "2026-09-11", through_date: "2026-10-01" }));
+  });
+
   it("offers reminder tools only for invitation managers and excludes personal memories", async () => {
     const toolFactory = vi.spyOn(reminderTools, "createReminderTools");
     mocks.context.mockResolvedValue({ organization: null, activities: [], activityIds: ["activity"], canManageActivities: false, canManageInvitations: true,

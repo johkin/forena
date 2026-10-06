@@ -25,10 +25,11 @@ export function PersonalOverview({ activities, timeZone, onAnswer, onOpenActivit
   const [comments, setComments] = useState<Record<string, string>>({});
 
   return <section className="card personal-overview" aria-labelledby="personal-overview-title">
-    <div className="card-heading">
+    <details className="overview-details" open>
+    <summary className="card-heading">
       <div><p className="eyebrow">Personligt</p><h2 id="personal-overview-title">För mig</h2></div>
       {activities.length ? <span className="badge">{activities.length}</span> : null}
-    </div>
+    </summary>
     {activities.length ? <div className="personal-activity-list">
       {activities.map((item) => {
         const dueAt = item.activity.gatheringAt ?? item.activity.startsAt;
@@ -76,6 +77,8 @@ export function PersonalOverview({ activities, timeZone, onAnswer, onOpenActivit
         </div>;
       })}
     </div> : <p className="overview-empty">Inga personliga aktiviteter kräver din uppmärksamhet just nu.</p>}
+    </details>
   </section>;
 }
+
 

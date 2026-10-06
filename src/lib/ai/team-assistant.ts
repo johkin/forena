@@ -1,4 +1,6 @@
 import { createActivityHistoryTools } from "./activity-history-tools";
+import { historyPeriodFromQuestion } from "./activity-history-period";
+import type { ActivityHistoryResult } from "./activity-history-result";
 import { createHash } from "node:crypto";
 import { generateText, gateway, isStepCount, Output, ToolLoopAgent } from "ai";
 import { activityDraftNeedsWebResearch, isActivityDraftRequest, normalizeActivityDraft, searchSourcesFromToolResults, type ActivityDraft } from "./activity-draft";
@@ -88,12 +90,14 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
 
     const memoryDrafts: AssistantMemoryDraft[] = [];
     const reminderDrafts: ReminderDraft[] = [];
+    const historyResults: ActivityHistoryResult[] = [];
+    const historyPeriod = historyPeriodFromQuestion(question, organizationToday);
     const assistant = new ToolLoopAgent({
       model,
       instructions: buildTeamAssistantPrompt({ assistantName: organization?.assistant_name, viewerKind: context.viewer.kind, canManageActivities, canManageInvitations }),
       tools: {
         ...createTeamAssistantTools(supabase, teamId, activityIds),
-        ...(context.viewer.kind === "leader" ? createActivityHistoryTools(supabase, memoryScope.organizationId, teamId) : {}),
+        ...(context.viewer.kind === "leader" ? createActivityHistoryTools(supabase, memoryScope.organizationId, teamId, { today: organizationToday, period: historyPeriod, onResult: result => historyResults.push(result) }) : {}),
         ...createAssistantMemoryTools(memoryScope, draft => memoryDrafts.push(draft)),
         ...(canManageInvitations ? createReminderTools({ supabase, teamId, activityIds,
           timeZone: context.clock.organizationTimeZone,
@@ -110,11 +114,11 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
       providerOptions: { gateway: { user: createHash("sha256").update(userId).digest("hex").slice(0, 24), tags: ["feature:team-assistant"] } },
     });
     const result = await assistant.generate({
-      prompt: JSON.stringify({ context, previousMessages: input.messages, question }),
+      prompt: JSON.stringify({ context: { ...context, historyPeriod }, previousMessages: input.messages, question }),
       abortSignal: AbortSignal.timeout(30_000),
     });
     console.info("team_assistant_completed", { teamId, model, latencyMs: Date.now() - startedAt, inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens });
-    return { answer: result.text || "Jag kunde inte formulera ett svar.", memoryDrafts, reminderDrafts, source: "ai", model };
+    return { answer: result.text || "Jag kunde inte formulera ett svar.", memoryDrafts, reminderDrafts, historyResults, source: "ai", model };
   } catch (error) {
     const gatewayError = error as Error & { statusCode?: number; cause?: { name?: string; message?: string } };
     console.warn("team_assistant_fallback", {

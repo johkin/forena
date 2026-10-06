@@ -64,10 +64,11 @@ export function TeamOverview({ teamName, activity, summary, upcomingActivities, 
   }
 
   return <section className="card team-overview" aria-labelledby="team-overview-title">
-    <div className="card-heading">
+    <details className="overview-details" open>
+    <summary className="card-heading">
       <div><p className="eyebrow">Ansvar</p><h2 id="team-overview-title">För laget</h2></div>
       {items.length ? <span className="badge">{items.length}</span> : null}
-    </div>
+    </summary>
 
     <button className="team-next-activity" onClick={() => onOpenActivity(activity)} type="button">
       <span><small>Nästa aktivitet · {teamName}</small><strong>{activity.title}</strong><span>{start} · {activity.location}</span></span><b aria-hidden="true">→</b>
@@ -92,5 +93,7 @@ export function TeamOverview({ teamName, activity, summary, upcomingActivities, 
         {item.kind === "invitation" && canManageInvitations ? <button className="secondary reminder-action" disabled={reminderPending} onClick={() => onSendReminder(activity)} type="button">{reminderPending ? "Köar…" : "Skicka påminnelse"}</button> : null}
       </div>)}
     </div> : <p className="overview-empty">Inget särskilt behöver hanteras för laget just nu.</p>}
+    </details>
   </section>;
 }
+
