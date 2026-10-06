@@ -16,7 +16,7 @@ export type TeamDashboardData = {
   organization: Organization;
   sections: Section[];
   team: Team;
-  activity: Activity;
+  activity: Activity | null;
   members: Member[];
   rosterMembers: Member[];
   upcomingActivities: Activity[];
@@ -188,7 +188,7 @@ export async function getTeamDashboard(
     if (item.team_id && !nextActivityByTeam.has(item.team_id)) nextActivityByTeam.set(item.team_id, item);
   }
 
-  const { data: upcomingActivityRows } = await supabase
+  const { data: upcomingActivityRows, error: upcomingActivitiesError } = await supabase
     .from("activities")
     .select("id, organization_id, team_id, activity_type_id, title, description_markdown, gathering_at, starts_at, ends_at, location, series_id, status, invitation_send_at, response_due_at, reminder_send_at")
     .eq("team_id", teamRow.id)
@@ -198,19 +198,24 @@ export async function getTeamDashboard(
     .limit(200);
   const activityRow = upcomingActivityRows?.[0];
 
-  if (!activityRow) {
-    return null;
-  }
+  if (upcomingActivitiesError) throw new Error("Lagets aktiviteter kunde inte hämtas.");
 
-  const invitationQuery = supabase
-    .from("invitations")
-    .select("id, organization_id, activity_id, person_id, response, responded_at, response_comment, duty_type_id")
-    .eq("activity_id", activityRow.id);
-  const { data: invitationRows } = canManageInvitations
-    ? await invitationQuery
-    : familyPersonIds.length
-      ? await invitationQuery.in("person_id", familyPersonIds)
-      : { data: [] };
+  // An empty activity list is still an authorized team workspace.
+  let invitationRows: Array<{
+    id: string; organization_id: string; activity_id: string; person_id: string;
+    response: Invitation["response"]; responded_at: string | null;
+    response_comment: string | null; duty_type_id: string | null;
+  }> = [];
+  if (activityRow && (canManageInvitations || familyPersonIds.length)) {
+    const invitationQuery = supabase
+      .from("invitations")
+      .select("id, organization_id, activity_id, person_id, response, responded_at, response_comment, duty_type_id")
+      .eq("activity_id", activityRow.id);
+    const { data } = canManageInvitations
+      ? await invitationQuery
+      : await invitationQuery.in("person_id", familyPersonIds);
+    invitationRows = data ?? [];
+  }
   const { data: rosterRows } = await supabase
     .from("memberships")
     .select("person_id, role")
@@ -256,7 +261,7 @@ export async function getTeamDashboard(
     name: teamRow.name,
     season: teamRow.season,
   };
-  const activity: Activity = {
+  const activity: Activity | null = activityRow ? {
     id: activityRow.id,
     organizationId: activityRow.organization_id,
     teamId: activityRow.team_id ?? team.id,
@@ -271,7 +276,7 @@ export async function getTeamDashboard(
     invitationSendAt: activityRow.invitation_send_at ?? undefined,
     responseDueAt: activityRow.response_due_at ?? undefined,
     reminderSendAt: activityRow.reminder_send_at ?? undefined,
-  };
+  } : null;
   const members: Member[] = (peopleRows ?? []).map((person) => ({
     id: person.id,
     organizationId: person.organization_id,

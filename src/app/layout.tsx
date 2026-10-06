@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { AppFooter } from "@/components/app-footer";
 import { PwaRegistration } from "@/components/pwa-registration";
 import "./globals.css";
 
@@ -20,7 +21,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="sv">
       <body>
         <PwaRegistration />
-        {children}
+        <div className="app-page">{children}</div>
+        <AppFooter />
       </body>
     </html>
   );

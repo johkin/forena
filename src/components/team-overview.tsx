@@ -4,7 +4,7 @@ import type { Activity, InvitationSummary, TeamTask } from "@/domain/club";
 
 type Props = {
   teamName: string;
-  activity: Activity;
+  activity: Activity | null;
   summary: InvitationSummary;
   upcomingActivities: Activity[];
   tasks: TeamTask[];
@@ -28,7 +28,7 @@ type TeamItem = {
 };
 
 export function TeamOverview({ teamName, activity, summary, upcomingActivities, tasks, timeZone, referenceTime, reminderPending, canManageInvitations, canManageAttendance, onOpenActivity, onOpenAttendance, onSendReminder, missingAttendanceActivities = [] }: Props) {
-  const start = new Intl.DateTimeFormat("sv-SE", { timeZone, weekday: "long", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(activity.gatheringAt ?? activity.startsAt));
+  const start = activity ? new Intl.DateTimeFormat("sv-SE", { timeZone, weekday: "long", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(activity.gatheringAt ?? activity.startsAt)) : undefined;
   const weekLimit = new Date(referenceTime).getTime() + 7 * 24 * 60 * 60 * 1000;
   const nextSevenDays = upcomingActivities.filter((item) => new Date(item.startsAt).getTime() <= weekLimit).length;
   const items: TeamItem[] = [];
@@ -42,7 +42,7 @@ export function TeamOverview({ teamName, activity, summary, upcomingActivities, 
     });
   }
 
-  if (canManageInvitations && summary.pending > 0) {
+  if (activity && canManageInvitations && summary.pending > 0) {
     items.push({
       id: `invitation:${activity.id}`,
       kind: "invitation",
@@ -70,12 +70,12 @@ export function TeamOverview({ teamName, activity, summary, upcomingActivities, 
       {items.length ? <span className="badge">{items.length}</span> : null}
     </summary>
 
-    <button className="team-next-activity" onClick={() => onOpenActivity(activity)} type="button">
+    {activity ? <button className="team-next-activity" onClick={() => onOpenActivity(activity)} type="button">
       <span><small>Nästa aktivitet · {teamName}</small><strong>{activity.title}</strong><span>{start} · {activity.location}</span></span><b aria-hidden="true">→</b>
-    </button>
+    </button> : <p className="overview-empty">Laget har inga kommande aktiviteter.</p>}
 
     <div className="team-status-metrics">
-      {canManageInvitations ? <>
+      {activity && canManageInvitations ? <>
         <div><strong>{summary.accepted}</strong><span>kommer</span></div>
         <div><strong>{summary.declined}</strong><span>kan inte</span></div>
         <div><strong>{summary.pending}</strong><span>ej svarat</span></div>
@@ -90,7 +90,7 @@ export function TeamOverview({ teamName, activity, summary, upcomingActivities, 
           <span className="priority-copy"><small>{item.kind === "attendance" ? "Närvaro · högsta prioritet" : item.kind === "invitation" ? "Kallelse" : "Uppgift"}</small><strong>{item.title}</strong><span>{item.meta}</span></span>
           {item.onClick ? <b aria-hidden="true">→</b> : null}
         </button>
-        {item.kind === "invitation" && canManageInvitations ? <button className="secondary reminder-action" disabled={reminderPending} onClick={() => onSendReminder(activity)} type="button">{reminderPending ? "Köar…" : "Skicka påminnelse"}</button> : null}
+        {item.kind === "invitation" && activity && canManageInvitations ? <button className="secondary reminder-action" disabled={reminderPending} onClick={() => onSendReminder(activity)} type="button">{reminderPending ? "Köar…" : "Skicka påminnelse"}</button> : null}
       </div>)}
     </div> : <p className="overview-empty">Inget särskilt behöver hanteras för laget just nu.</p>}
     </details>

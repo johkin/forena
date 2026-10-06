@@ -8,10 +8,12 @@ import { createClient } from "@/lib/supabase/server";
 
 type Props = {
   params: Promise<{ organizationSlug: string; teamSlug: string }>;
+  searchParams: Promise<{ view?: string }>;
 };
 
-export default async function TeamWorkspacePage({ params }: Props) {
+export default async function TeamWorkspacePage({ params, searchParams }: Props) {
   const { organizationSlug, teamSlug } = await params;
+  const initialPage = (await searchParams).view === "calendar" ? "calendar" : "overview";
   const databaseConfigured = isSupabaseConfigured();
 
   let signedIn = false;
@@ -36,6 +38,7 @@ export default async function TeamWorkspacePage({ params }: Props) {
 
   return (
     <ClubDashboard
+      initialPage={initialPage}
       activity={data.activity}
       initialInvitations={data.invitations}
       members={data.members}

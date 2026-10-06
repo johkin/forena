@@ -189,3 +189,15 @@ Aktiviteter visas i en hopfällbar lista med datum, tid och registrerat antal.
 Saknad närvarorapport visas uttryckligen och betyder inte frånvaro. En begränsad
 personlista påverkar inte databasens fullständiga summering. För mig och För laget
 är öppna från början och kan fällas ihop med tangentbord eller tryck på rubriken.
+
+### Tomt lag och enhetlig navigation
+
+Ett lag utan kommande aktiviteter visar lagöversikten med ett tydligt tomt läge.
+Assistenten och ”Ny aktivitet” (för användare med `activity.manage`) finns kvar.
+Tidigare aktiviteter med saknad närvaro och öppna uppgifter visas fortfarande.
+
+Alla sidtyper delar `AppShell`: vänstermeny från 768 pixlar och endast
+hamburgermeny på telefon. Publika sidor ska inte ha en extra egen vänstermeny.
+Sidfoten kommer från rotlayouten och ligger efter innehållet utan att täcka det.
+Aktuell sida markeras i gemensamma menykomponenter och administrativa länkar
+visas utifrån verifierad åtkomst.

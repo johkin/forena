@@ -18,7 +18,8 @@ import {
 } from "@/domain/club";
 
 type Props = {
-  organization: Organization; sections: Section[]; team: Team; activity: Activity; members: Member[]; rosterMembers: Member[]; upcomingActivities: Activity[];
+  initialPage?: "overview" | "calendar";
+  organization: Organization; sections: Section[]; team: Team; activity: Activity | null; members: Member[]; rosterMembers: Member[]; upcomingActivities: Activity[];
   initialInvitations: Invitation[]; initialFamilyActivities: FamilyActivity[]; workspaces: Workspace[]; tasks: TeamTask[];
   teamPermissions: TeamPermission[];
   canAdministerOrganization: boolean;
@@ -31,7 +32,7 @@ type Props = {
 
 
 
-export function ClubDashboard({ organization, sections, team, activity, members, rosterMembers, upcomingActivities, initialInvitations, initialFamilyActivities, workspaces, tasks, teamPermissions, canAdministerOrganization, accountEmail, respondablePersonIds, referenceTime, missingAttendanceActivities, source }: Props) {
+export function ClubDashboard({ initialPage = "overview", organization, sections, team, activity, members, rosterMembers, upcomingActivities, initialInvitations, initialFamilyActivities, workspaces, tasks, teamPermissions, canAdministerOrganization, accountEmail, respondablePersonIds, referenceTime, missingAttendanceActivities, source }: Props) {
   const router = useRouter();
   const currentActivity = activity;
   const canViewTeam = teamPermissions.includes("team.view");
@@ -45,7 +46,7 @@ export function ClubDashboard({ organization, sections, team, activity, members,
   const [notice, setNotice] = useState<string>();
   const [activityEditorMode, setActivityEditorMode] = useState<"create" | "edit" | null>(null);
   const [activityDraft, setActivityDraft] = useState<ActivityDraft>();
-  const [activePage, setActivePage] = useState<"overview" | "calendar">("overview");
+  const [activePage, setActivePage] = useState<"overview" | "calendar">(initialPage);
   const [selectedActivity, setSelectedActivity] = useState<Activity>();
   const [attendanceActivity, setAttendanceActivity] = useState<Activity>();
   const [pendingAttendance, setPendingAttendance] = useState(missingAttendanceActivities);
@@ -71,7 +72,7 @@ export function ClubDashboard({ organization, sections, team, activity, members,
   }
 
   return (
-    <main>
+    <>
       <AppShell
         homeHref={`/o/${organization.slug}/t/${team.slug}`}
         navigation={<TeamMenu organizationSlug={organization.slug} teamSlug={team.slug} teamName={team.name} canManageRoster={canManageRoster} leaderView={view === "leader"} activeItem={activePage} onSelectView={setActivePage} navigationOnly />}
@@ -80,8 +81,8 @@ export function ClubDashboard({ organization, sections, team, activity, members,
         logoutDestination={`/o/${organization.slug}/t/${team.slug}`}
         adminHref={canAdministerOrganization ? `/o/${organization.slug}/admin/roles` : undefined}
       >
-        <section className="content" id={activePage}>
-          <div className="welcome"><div><p className="eyebrow">{sections.length > 1 ? `${sections.find((item) => item.id === team.sectionId)?.name ?? "Sektion"} · ` : ""}{organization.name}</p><h1>{team.name}</h1><p>{activePage === "calendar" ? "Alla aktiviteter för laget." : view === "leader" ? "Det laget behöver från dig just nu." : `Det viktigaste för ${familyMember?.displayName ?? "spelaren"} just nu.`}</p></div>{view === "leader" && canManageActivities && <div className="welcome-actions"><button className="primary" onClick={() => { setActivityDraft(undefined); setActivityEditorMode("create"); }} type="button">+ Ny aktivitet</button></div>}</div>
+        <main className="content" id={activePage}>
+          <div className="welcome"><div><p className="eyebrow">{sections.length > 1 ? `${sections.find((item) => item.id === team.sectionId)?.name ?? "Sektion"} · ` : ""}{organization.name}</p><h1>{team.name}</h1><p>{activePage === "calendar" ? "Alla aktiviteter för laget." : view === "leader" ? "Det laget behöver från dig just nu." : `Det viktigaste för ${familyMember?.displayName ?? "spelaren"} just nu.`}</p></div>{canManageActivities && <div className="welcome-actions"><button className="primary" onClick={() => { setActivityDraft(undefined); setActivityEditorMode("create"); }} type="button">+ Ny aktivitet</button></div>}</div>
           {notice && <div className="toast" role="status">✓ {notice}</div>}
           {source === "demo" && <div className="demo-notice">Demoläge</div>}
 
@@ -124,12 +125,12 @@ export function ClubDashboard({ organization, sections, team, activity, members,
                   </aside>
                 </div>
               </>}
-        </section>
+        </main>
       </AppShell>
-      {activityEditorMode && canManageActivities ? <ActivityEditorModal mode={activityEditorMode} organization={organization} team={team} members={rosterMembers} activity={activityEditorMode === "edit" ? (editingActivity ?? currentActivity) : undefined} draft={activityEditorMode === "create" ? activityDraft : undefined} source={source} canManageInvitations={canManageInvitations} onClose={() => { setActivityEditorMode(null); setActivityDraft(undefined); }} onNotice={setNotice} /> : null}
+      {activityEditorMode && canManageActivities ? <ActivityEditorModal mode={activityEditorMode} organization={organization} team={team} members={rosterMembers} activity={activityEditorMode === "edit" ? (editingActivity ?? currentActivity ?? undefined) : undefined} draft={activityEditorMode === "create" ? activityDraft : undefined} source={source} canManageInvitations={canManageInvitations} onClose={() => { setActivityEditorMode(null); setActivityDraft(undefined); }} onNotice={setNotice} /> : null}
       {selectedActivity ? <ActivityDetailModal activity={selectedActivity} organization={organization} team={familyActivities.find(item => item.activity.id === selectedActivity.id)?.team ?? team} canManageActivity={selectedActivity.teamId === team.id && canManageActivities} canManageInvitations={selectedActivity.teamId === team.id && canManageInvitations} canManageAttendance={selectedActivity.teamId === team.id && canManageAttendance} rosterMembers={rosterMembers} onClose={() => { setSelectedActivity(undefined); router.refresh(); }} onEdit={(item) => { setActivityDraft(undefined); setEditingActivity(item); setSelectedActivity(undefined); setActivityEditorMode("edit"); }} /> : null}
       {attendanceActivity && canManageAttendance ? <AttendanceModal activityId={attendanceActivity.id} onClose={() => setAttendanceActivity(undefined)} onSaved={() => setPendingAttendance((current) => current.filter((item) => item.id !== attendanceActivity.id))} /> : null}
-    </main>
+    </>
   );
 }
 

@@ -2,7 +2,9 @@ import { createClient } from "@/lib/supabase/server";
 import { activitySettingsAccess } from "@/lib/activity-settings-access";
 import { resolveActivityDefaults, type ActivityDefaultsRow } from "@/lib/activity-defaults";
 import { normalizeDefaultsPatch } from "@/lib/activity-configuration";
-import { AppHeader } from "./app-header";
+import { NavigationLinks } from "./navigation-links";
+import { AppShell } from "./app-shell";
+import { notFound, redirect } from "next/navigation";
 import { saveActivityDefaults, saveActivityType, saveTargetDiscipline } from "@/app/activity-settings-actions";
 
 import { ActivityDefaultsFields } from "./activity-defaults-fields";
@@ -13,8 +15,9 @@ export async function ActivitySettingsPage({ organizationSlug = null, query }: {
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
   const { data: org } = organizationSlug ? await supabase.from("organizations").select("id, name, slug, discipline_id").eq("slug",organizationSlug).single() : { data: null };
-  if (organizationSlug && !org) return <main className="application-page">Föreningen kunde inte hittas.</main>;
-  const [sectionResult, teamResult, disciplineResult] = await Promise.all([
+  if (organizationSlug && !org) notFound();
+  const [{ data: canAdministerOrganization }, sectionResult, teamResult, disciplineResult] = await Promise.all([
+    org ? supabase.rpc("has_organization_role", { target_organization_id: org.id, allowed_roles: ["owner", "admin"] }) : Promise.resolve({ data: false }),
     org ? supabase.from("sections").select("id, name, discipline_id").eq("organization_id",org.id).order("name") : Promise.resolve({ data: [] }),
     org ? supabase.from("teams").select("id, slug, name, section_id, discipline_id").eq("organization_id",org.id).order("name") : Promise.resolve({ data: [] }),
     supabase.from("disciplines").select("id, name").order("name"),
@@ -26,7 +29,7 @@ export async function ActivitySettingsPage({ organizationSlug = null, query }: {
   }))).filter(target => target !== null);
   const requestedTeam = (teamResult.data ?? []).find(t=>t.slug===query.team);
   const selected = (requestedTeam ? targets.find(t=>t.scope==="team" && t.id===requestedTeam.id) : undefined) ?? targets.find(t => t.scope === query.scope && t.id === (query.scopeId ?? null)) ?? targets[0];
-  if (!selected) return <main className="application-page"><p>Du saknar behörighet till aktivitetsinställningarna.</p></main>;
+  if (!selected) redirect(organizationSlug ? `/o/${organizationSlug}` : "/system");
   await activitySettingsAccess(organizationSlug,selected.scope,selected.id);
   const path = organizationSlug ? `/o/${organizationSlug}/activity-settings` : "/system/activity-types";
   const selectedTeam = (teamResult.data ?? []).find(t => selected.scope === "team" && t.id === selected.id);
@@ -42,7 +45,7 @@ export async function ActivitySettingsPage({ organizationSlug = null, query }: {
   const disciplines = disciplineResult.data ?? [];
   const hidden = <><input type="hidden" name="organizationSlug" value={organizationSlug ?? ""}/><input type="hidden" name="scope" value={selected.scope}/><input type="hidden" name="scopeId" value={selected.id ?? ""}/></>;
   function typeFields(type?: typeof types[number]) { return <div className="settings-fields"><label>Namn<input name="name" required maxLength={80} defaultValue={type?.name}/></label><label>Nyckel<input name="slug" required maxLength={80} pattern="[a-z0-9]+(-[a-z0-9]+)*" defaultValue={type?.slug}/></label><label>Kategori<select name="system_category" defaultValue={type?.system_category ?? "session"}>{[["session","Träning"],["competition","Tävling"],["work","Arbetspass"],["meeting","Möte"],["education","Utbildning"],["other","Övrigt"]].map(([v,n])=><option key={v} value={v}>{n}</option>)}</select></label><label>Disciplin<select name="discipline_id" defaultValue={type?.discipline_id ?? ""}><option value="">Alla discipliner</option>{disciplines.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></label><label className="settings-checkbox"><input name="active" type="checkbox" defaultChecked={type?.active ?? true}/>Aktiv</label></div>; }
-  return <>{org ? <AppHeader homeHref={`/o/${org.slug}`} accountEmail={auth.user?.email} navigation={<nav><a href={`/o/${org.slug}`}>Översikt</a><a href={path}>Aktivitetsinställningar</a></nav>}/> : null}
+  const content = (
     <main className="application-page"><section className="application-card activity-settings"><p className="eyebrow">{org ? org.name : "System"}</p><h1>{org ? "Aktivitetsinställningar" : "Aktivitetstyper och standardvärden"}</h1><p>Förval ärvs per fält: system → klubb → sektion → lag. Ändringar gäller nya aktiviteter. Mottagare och utskick väljs i aktivitetsdialogen.</p>
     {query.saved ? <p className="auth-message" role="status">Sparat.</p> : null}{query.error ? <p className="auth-error" role="alert">{query.error}</p> : null}
     {org ? <><nav className="settings-targets" aria-label="Nivå för standardvärden">{targets.map(t=><a aria-current={t.id === selected.id && t.scope === selected.scope ? "page" : undefined} className="secondary" key={`${t.scope}${t.id}`} href={`${path}?${new URLSearchParams({ scope:t.scope,scopeId:t.id! })}`}>{sourceNames[t.scope]}: {t.name}</a>)}</nav>
@@ -56,5 +59,12 @@ export async function ActivitySettingsPage({ organizationSlug = null, query }: {
         {!org ? <details><summary>Redigera aktivitetstyp</summary><form action={saveActivityType} className="application-form"><input type="hidden" name="id" value={type.id}/>{typeFields(type)}<button className="secondary">Spara aktivitetstyp</button></form></details> : null}
         <form action={saveActivityDefaults} className="application-form">{hidden}<input type="hidden" name="activityTypeId" value={type.id}/><input type="hidden" name="revision" value={row?.revision ?? 0}/><ActivityDefaultsFields initial={row?.values ?? {}} resolved={resolved}/><button className="primary">Spara standardvärden</button></form>
       </details>;
-    })}</section></main></>;
+    })}</section></main>);
+  return org ? <AppShell homeHref={`/o/${org.slug}`} accountEmail={auth.user?.email}
+    organization={{ id: org.id, slug: org.slug, name: org.name, assistantName: "" }}
+    logoutDestination={`/o/${org.slug}`}
+    adminHref={canAdministerOrganization ? `/o/${org.slug}/admin/roles` : undefined}
+    workspaces={[{ id: org.id, kind: "organization", name: org.name, description: "Förening", href: `/o/${org.slug}`, active: !selectedTeam }, ...(teamResult.data ?? []).map(team => ({ id: team.id, kind: "team" as const, name: team.name, description: "Lag", href: `/o/${org.slug}/t/${team.slug}`, active: team.id === selectedTeam?.id }))]}
+    navigation={<NavigationLinks label="Aktivitetsinställningar" items={[{ href: path, label: "Aktivitetsinställningar" }]} />}
+  >{content}</AppShell> : content;
 }

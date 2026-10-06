@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { acceptTeamInvitation } from "./actions";
-import { AppHeader } from "@/components/app-header";
+import { AppShell } from "@/components/app-shell";
 
 type Props = {
   params: Promise<{ token: string }>;
@@ -16,8 +16,7 @@ export default async function TeamInvitationPage({ params, searchParams }: Props
 
   if (!data.user) redirect(`/login?next=${encodeURIComponent(`/invite/${token}`)}`);
 
-  return (<>
-    <AppHeader accountEmail={data.user.email} />
+  return (<AppShell accountEmail={data.user.email}>
     <main className="auth-page">
       <section className="auth-card">
         <span className="brand-mark">F</span>
@@ -31,5 +30,5 @@ export default async function TeamInvitationPage({ params, searchParams }: Props
         </form>
       </section>
     </main>
-  </>);
+  </AppShell>);
 }

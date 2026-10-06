@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { AppHeader } from "@/components/app-header";
+import { AppShell } from "@/components/app-shell";
 import { OAuthConsentButtons } from "@/components/oauth-consent-buttons";
 import { authorizationId, loadConsent } from "@/lib/mcp/consent";
 import { getMcpOAuthConfig } from "@/lib/mcp/oauth";
@@ -18,9 +18,8 @@ export default async function ConsentPage({ searchParams }: { searchParams: Prom
   if (result.kind === "login") redirect(`/login?next=${encodeURIComponent(`/oauth/consent?authorization_id=${id}`)}`);
   if (result.kind === "redirect") redirect(result.target);
   const labels: Record<string, string> = { openid: "Identifiera ditt konto", email: "Läsa din e-postadress", profile: "Läsa din profil" };
-  return <main>
-    <AppHeader accountEmail={result.kind === "consent" ? result.email : undefined} />
-    <div className="application-page connection-page"><section className="application-card connection-card">
+  return <AppShell accountEmail={result.kind === "consent" ? result.email : undefined}>
+    <main className="application-page connection-page"><section className="application-card connection-card">
       <p className="eyebrow">Integrationer</p><h1>Godkänn AI-anslutning</h1>
       {result.kind === "consent" ? <div className="connection-content">
         <p><strong>{result.details.client.name || "OAuth-klienten"}</strong> vill ansluta till Förena med ditt konto ({result.email}).</p>
@@ -39,6 +38,6 @@ export default async function ConsentPage({ searchParams }: { searchParams: Prom
         <p role="alert">{enabled ? "Anslutningen kunde inte verifieras. Länken kan ha gått ut, redan använts eller begära rättigheter som inte stöds. Starta om anslutningen från din AI-klient." : "OAuth-anslutning är inte aktiverad för den här installationen."}</p>
         <p><a href="/connect">Till anslutningsguiden</a></p>
       </>}
-    </section></div>
-  </main>;
+    </section></main>
+  </AppShell>;
 }
