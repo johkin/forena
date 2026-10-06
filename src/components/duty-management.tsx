@@ -32,7 +32,7 @@ export function DutyEditor({ duty, timeZone, propose }: { duty: Duty; timeZone: 
      propose({op:"edit_duty",dutyId:duty.id,revision:duty.revision,definition},`Ändra ${duty.name}: ${kind==="interval"?`${start.replace("T"," ")}–${end.replace("T"," ")}`:kind==="deadline"?`lämnas senast ${due.replace("T"," ")}`:"ingen särskild tid"}, ${places} platser. Instruktioner: ${instructions || "inga"}. Berörda familjer meddelas och väntande ändringsförslag för dessa platser blir inaktuella.`);
    } catch { setError("Kontrollera datum, tider och antal platser."); }
  }
- return <details><summary>Redigera uppgiften</summary>{completed?<p>Uppgiften har genomförande registrerat och behålls som historik.</p>:<>
+ return <details><summary>Redigera enskilt pass</summary>{completed?<p>Uppgiften har genomförande registrerat och behålls som historik.</p>:<>
  <div className="participant-selection"><label>Tidstyp<select value={kind} onChange={e=>setKind(e.target.value as Duty["timingKind"])}><option value="interval">Tidsintervall</option><option value="deadline">Leveransdeadline</option><option value="none">Ingen särskild tid</option></select></label><label>Antal platser<input type="number" min={1} max={50} value={places} onChange={e=>setPlaces(Number(e.target.value))}/></label></div>
  {kind==="interval"&&<div className="participant-selection"><label>Från<input type="datetime-local" step={300} value={start} onChange={e=>setStart(e.target.value)}/></label><label>Till<input type="datetime-local" step={300} value={end} onChange={e=>setEnd(e.target.value)}/></label></div>}
  {kind==="deadline"&&<label>Lämnas senast<input type="datetime-local" step={300} value={due} onChange={e=>setDue(e.target.value)}/></label>}

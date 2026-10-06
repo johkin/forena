@@ -164,8 +164,11 @@ till klubbpersoner och köa deras ordinarie mottagare; vid ledaranmälan sparas
 Namnsökningen är kopplad till en aktivitet och kräver `invitation.manage`.
 
 `activity_duty_types` är en återanvändbar katalog per lag med stabila ID:n.
-Arbetsuppgifter, platser och ändringsförslag finns i separata tabeller kopplade
-till aktiviteten. Bokning och tilldelning är fristående från kallelsesvar.
+`activity_duty_series` lagrar ett gemensamt uppgiftsupplägg inom aktiviteten;
+`activity_duties` är sparade instanser som kan regenereras med bibehållna ID:n
+för kvarvarande passnummer. Platser och ändringsförslag finns i separata
+tabeller. Seriemallar ändrar inte bokningar utan förhandsgranskning och
+genomförda uppgifter är låsta. Alla passändringar invaliderar seriens revision. Bokning och tilldelning är fristående från kallelsesvar.
 Se [bemanningsschema](activity-duty-schedule.md) för datamodell, migration,
 självservice, atomära ändringar och aktuella avgränsningar.
 

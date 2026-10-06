@@ -37,3 +37,11 @@ it("keeps single-duty cancellation on the existing RPC", async () => {
   await post(input);
   expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("command_activity_duty", { target_activity_id: activityId, command: input });
 });
+
+it.each(["create_series", "edit_series", "cancel_series"])("routes %s through one series command", async op => {
+  const input = op === "create_series" ? { op, dutyTypeId: command.duties[0].dutyId, definition: { timingKind: "none", places: 3 } }
+    : op === "edit_series" ? { op, seriesId: command.duties[0].dutyId, revision: 3, definition: { timingKind: "none", places: 3 } }
+    : { op, seriesId: command.duties[0].dutyId, revision: 3 };
+  expect((await post(input)).status).toBe(200);
+  expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("command_activity_duty_series", expect.objectContaining({ target_activity_id: activityId, command: expect.objectContaining({ op }) }));
+});

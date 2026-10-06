@@ -1,7 +1,8 @@
 "use client";
+import { DutySeriesForm, DutySeriesEditor } from "@/components/duty-series-form";
 import { DutyEditor, DutyTypes, DutyDistribution } from "@/components/duty-management";
 import { useEffect, useRef, useState } from "react";
-import { createDutyIntervals, validateDutyBounds, type Duty, type DutyCommand, type DutySchedule, type DutySlot } from "@/lib/activity-duty-schedule";
+import { expandDutySeries, type Duty, type DutyCommand, type DutySchedule, type DutySlot } from "@/lib/activity-duty-schedule";
 import { localActivityTime } from "@/lib/activity-time-rules";
 import { FiveMinuteTimeField } from "@/components/five-minute-time-field";
 
@@ -47,7 +48,12 @@ export function ActivityDutySchedule({ activityId, startsAt, endsAt, timeZone }:
  const selectedDuties = schedule.duties.filter(d => selected.includes(d.id) && !d.slots.some(s => s.completedAt));
  const editableDuties = schedule.duties.filter(d => !d.slots.some(s => s.completedAt));
  const propose = (command: DutyCommand, text: string) => {
-   const rows = command.op === "create" ? command.duties.map(d => `${timing(d, timeZone)} · ${d.places} platser${d.instructions ? ` · ${d.instructions}` : ""}`)
+   const rows = (command.op === "create_series" || command.op === "edit_series") ? expandDutySeries(command.definition).map((d, index) => {
+       const previous = command.op === "edit_series" ? schedule.duties.find(duty => duty.seriesId === command.seriesId && duty.position === index + 1) : undefined;
+       const bookings = previous?.slots.filter(slot => slot.occupied).map(slot => slot.personName ?? "Bokad plats") ?? [];
+       return `Pass ${index + 1}: ${timing(d, timeZone)} · ${d.places} platser${d.instructions ? ` · ${d.instructions}` : ""}${bookings.length ? ` · Bokningar: ${bookings.join(", ")} (tidigare ${timing(previous!, timeZone)})` : ""}`;
+     }).concat(command.op === "edit_series" ? schedule.duties.filter(d => d.seriesId === command.seriesId && (d.position ?? 1) > expandDutySeries(command.definition).length).map(d => `Pass ${d.position}: ${timing(d, timeZone)} tas bort (${d.slots.length} lediga platser).`) : []) : command.op === "cancel_series" ? schedule.duties.filter(d => d.seriesId === command.seriesId).map(d => `${d.name} · ${timing(d, timeZone)} · ${d.slots.filter(s => s.occupied).length} bokade platser frigörs`)
+     : command.op === "create" ? command.duties.map(d => `${timing(d, timeZone)} · ${d.places} platser${d.instructions ? ` · ${d.instructions}` : ""}`)
      : command.op === "cancel_duties" ? command.duties.map(item => {
        const duty = schedule.duties.find(d => d.id === item.dutyId)!;
        return `${duty.name} · ${timing(duty, timeZone)} · ${duty.slots.filter(s => s.occupied).length} bokade platser frigörs`;
@@ -59,7 +65,7 @@ export function ActivityDutySchedule({ activityId, startsAt, endsAt, timeZone }:
    <button type="button" className="link-button" disabled={busy || refreshing || Boolean(preview)} onClick={() => void reload()}>{refreshing ? "Hämtar schema…" : "Hämta senaste schemat"}</button>
    <p role="status" aria-live="polite">{refreshNotice}</p>
    {error && <p role="alert">{error}</p>}
-   {preview && <div ref={previewRef} tabIndex={-1} className="duty-row" role="region" aria-label="Bekräfta ändring"><h4>Förhandsgranskning – inte sparad ännu</h4><p>{preview.text}</p>{preview.rows.length > 0 && <ol>{preview.rows.map((row, index) => <li key={index}>{row}</li>)}</ol>}<div className="modal-actions"><button type="button" className="secondary" disabled={busy} onClick={() => setPreview(null)}>Avbryt</button><button type="button" className="primary" disabled={busy} onClick={() => void confirm()}>{busy ? "Sparar…" : preview.command.op === "create" ? "Spara uppgifter" : "Bekräfta"}</button></div></div>}
+   {preview && <div ref={previewRef} tabIndex={-1} className="duty-row" role="region" aria-label="Bekräfta ändring"><h4>Förhandsgranskning – inte sparad ännu</h4><p>{preview.text}</p>{preview.rows.length > 0 && <ol>{preview.rows.map((row, index) => <li key={index}>{row}</li>)}</ol>}<div className="modal-actions"><button type="button" className="secondary" disabled={busy} onClick={() => setPreview(null)}>Avbryt</button><button type="button" className="primary" disabled={busy} onClick={() => void confirm()}>{busy ? "Sparar…" : (preview.command.op === "create" || preview.command.op === "create_series") ? "Spara uppgifter" : "Bekräfta"}</button></div></div>}
    <fieldset disabled={busy || refreshing || Boolean(preview)} className="duty-controls">
    {schedule.canManage && <>
      <button type="button" className="secondary" aria-pressed={editing} onClick={() => { setEditing(value => !value); setSelected([]); }}>{editing ? "Avsluta redigering" : "Redigera arbetsuppgifter"}</button>
@@ -69,6 +75,7 @@ export function ActivityDutySchedule({ activityId, startsAt, endsAt, timeZone }:
        <button type="button" className="danger" disabled={!selectedDuties.length} onClick={() => propose({ op: "cancel_duties", duties: selectedDuties.map(d => ({ dutyId: d.id, revision: d.revision })) }, `Ta bort ${selectedDuties.length} markerade uppgifter? Bokade platser frigörs och berörda familjer notifieras. Väntande ändringsförslag stängs. Historiken behålls.`)}>Ta bort markerade ({selectedDuties.length})</button>
      </div>{editableDuties.length > 100 && <p>Högst 100 uppgifter kan markeras åt gången.</p>}</div>}
    </>}
+   {schedule.canManage && editing && (schedule.series ?? []).map(series => <div className="duty-row" key={series.id}><h4>{series.name} · {schedule.duties.filter(d => d.seriesId === series.id).length} pass i uppgiftsserien</h4><DutySeriesEditor key={`${series.id}:${series.revision}`} series={series} duties={schedule.duties.filter(d => d.seriesId === series.id)} startsAt={startsAt} endsAt={endsAt} timeZone={timeZone} propose={propose} /></div>)}
    {schedule.duties.map(d => <div className="duty-row" key={d.id}><h4>{d.name} · {d.slots.filter(s => !s.occupied).length} lediga</h4><p>{timing(d,timeZone)}</p>{d.instructions && <p className="duty-instructions">{d.instructions}</p>}
    {schedule.canManage && editing && <label className="duty-completed"><input type="checkbox" checked={selected.includes(d.id)} disabled={d.slots.some(s => Boolean(s.completedAt)) || (!selected.includes(d.id) && selected.length >= 100)} onChange={e => setSelected(ids => e.target.checked ? [...ids, d.id] : ids.filter(id => id !== d.id))} />Markera {d.name}, {timing(d, timeZone)}{d.slots.some(s => s.completedAt) ? " (genomförd – låst)" : ""}</label>}
    {schedule.canManage && editing && <DutyEditor key={`${d.id}:${d.revision}`} duty={d} timeZone={timeZone} propose={propose} />}
@@ -107,22 +114,13 @@ function DutyCreator({ activityId, startsAt, endsAt, timeZone, propose }: { acti
  const [types, setTypes] = useState<{id:string;name:string}[]>([]);
  const [type, setType] = useState("");
  const [newType, setNewType] = useState("");
- const [kind, setKind] = useState<"interval" | "deadline" | "none">("interval");
- const [date, setDate] = useState(new Intl.DateTimeFormat("sv-SE", {timeZone,year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(startsAt)));
- const clock = (value: string) => new Intl.DateTimeFormat("sv-SE", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(value));
- const [start, setStart] = useState(clock(startsAt)); const [end, setEnd] = useState(clock(endsAt));
- const [endDate, setEndDate] = useState(new Intl.DateTimeFormat("sv-SE", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(endsAt)));
- const [minutes,setMinutes] = useState(120); const [places,setPlaces] = useState(3);
- const [instructions,setInstructions] = useState(""); const [opening,setOpening] = useState(""); const [closing,setClosing] = useState("");
  const [error,setError] = useState(""); const [busy,setBusy] = useState(false);
  useEffect(() => { let active=true; fetch(`/api/activities/${activityId}/duties`).then(async r=>{const b=await r.json();if(!r.ok)throw new Error(b.error);return b;}).then(b=>{if(active)setTypes(b.duties);}).catch(()=>{if(active)setError("Uppgiftstyper kunde inte hämtas");});return()=>{active=false;}; },[activityId]);
  async function addType(){setBusy(true);setError("");try{const r=await fetch(`/api/activities/${activityId}/duties`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({name:newType})});const b=await r.json();if(!r.ok)throw new Error(b.error);setTypes(t=>[...t,b.duty]);setType(b.duty.id);setNewType("");}catch(e){setError(e instanceof Error?e.message:"Kunde inte skapa uppgiftstyp");}finally{setBusy(false);}}
- function preview(){setError("");try{const duties=kind==="interval"?createDutyIntervals(date,start,end,timeZone,minutes,places,instructions,opening,closing,endDate):[{timingKind:kind,startsAt:null,endsAt:null,dueAt:kind==="deadline"?localActivityTime(date,start,timeZone).toISOString():null,places,instructions}];validateDutyBounds(duties,startsAt,endsAt);propose({op:"create",dutyTypeId:type,duties},`Skapa ${duties.length} uppgiftstillfällen för ${types.find(t=>t.id===type)?.name}, med ${places} lediga platser per tillfälle. ${kind==="interval"?`${date} ${start}–${endDate} ${end}, ${minutes} minuter per pass.`:kind==="deadline"?`Lämnas senast ${date} ${start}.`:"Ingen särskild tid."}`);}catch(e){setError(e instanceof Error?e.message:"Kontrollera uppgifterna");}}
+
  return <details><summary>Skapa uppgifter och lediga platser</summary><p>Aktivitetens tider: {new Intl.DateTimeFormat("sv-SE", { timeZone, dateStyle: "short", timeStyle: "short" }).format(new Date(startsAt))}–{new Intl.DateTimeFormat("sv-SE", { timeZone, dateStyle: "short", timeStyle: "short" }).format(new Date(endsAt))}. Skapade och sparade uppgifter visas ovanför, där spelare kan tilldelas.</p><div className="participant-selection"><label>Uppgift<select value={type} onChange={e=>setType(e.target.value)}><option value="">Välj uppgift</option>{types.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></label><label>Ny uppgiftstyp<input maxLength={80} value={newType} onChange={e=>setNewType(e.target.value)} placeholder="Cafébemanning eller bakning" /></label><button type="button" className="secondary" disabled={!newType.trim()||busy} onClick={()=>void addType()}>Lägg till typ</button></div>
- <div className="participant-selection"><label>Tid<select value={kind} onChange={e=>setKind(e.target.value as typeof kind)}><option value="interval">Bemanningspass</option><option value="deadline">Deadline för leverans</option><option value="none">Ingen särskild tid</option></select></label><label>Platser per tillfälle<input type="number" min={1} max={50} value={places} onChange={e=>setPlaces(Number(e.target.value))}/></label></div>
- {kind!=="none"&&<div className="participant-selection"><label>Datum<input type="date" value={date} onChange={e=>setDate(e.target.value)}/></label><FiveMinuteTimeField name="duty-start" defaultValue={start} label={kind==="deadline"?"Lämnas senast":"Från"} onChange={setStart}/>{kind==="interval"&&<><label>Slutdatum<input type="date" min={date} value={endDate} onChange={e=>setEndDate(e.target.value)} /></label><FiveMinuteTimeField name="duty-end" defaultValue={end} label="Till" onChange={setEnd}/><label>Minuter per pass<input type="number" min={5} step={5} value={minutes} onChange={e=>setMinutes(Number(e.target.value))}/></label></>}</div>}
- <label>Instruktioner<textarea maxLength={2000} value={instructions} onChange={e=>setInstructions(e.target.value)}/></label>{kind==="interval"&&<><label>Extra instruktion för första passet<textarea maxLength={500} value={opening} onChange={e=>setOpening(e.target.value)}/></label><label>Extra instruktion för sista passet<textarea maxLength={500} value={closing} onChange={e=>setClosing(e.target.value)}/></label></>}
- {error&&<p role="alert">{error}</p>}<button type="button" className="primary" disabled={!type||busy} onClick={preview}>Granska schema</button></details>;
+ <DutySeriesForm startsAt={startsAt} endsAt={endsAt} timeZone={timeZone} disabled={!type || busy} onReview={definition => propose({ op: "create_series", dutyTypeId: type, definition }, `Skapa en ${types.find(t => t.id === type)?.name}-serie med ${expandDutySeries(definition).length} pass och ${definition.places} platser per pass?`)} />
+ {error && <p role="alert">{error}</p>}</details>;
 }
 
 function DutyHistory({ activityId, people, timeZone }: { activityId: string; people: DutySchedule["people"]; timeZone: string }) {

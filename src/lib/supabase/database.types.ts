@@ -178,6 +178,10 @@ export interface Database {
         Timestamped & OrganizationScoped & { id: string; team_id: string; activity_type_id: string; title: string; location: string; recurrence_rule: Json; starts_on: string; ends_on: string | null; status: "draft" | "published" | "ended" | "cancelled"; created_by: string | null; updated_at: string },
         OrganizationScoped & { id?: string; team_id: string; activity_type_id: string; title: string; location?: string; recurrence_rule: Json; starts_on: string; ends_on?: string | null; status?: "draft" | "published" | "ended" | "cancelled"; created_by?: string | null; created_at?: string; updated_at?: string }
       >;
+      activity_duty_series: Table<
+        OrganizationScoped & { id: string; activity_id: string; duty_type_id: string; name: string; timing_kind: "interval" | "deadline" | "none"; starts_at: string | null; ends_at: string | null; due_at: string | null; interval_minutes: number | null; places: number; instructions: string; opening_instructions: string; closing_instructions: string; revision: number; cancelled_at: string | null; legacy_singleton: boolean },
+        OrganizationScoped & { id?: string; activity_id: string; duty_type_id: string; name: string; timing_kind: "interval" | "deadline" | "none"; starts_at?: string | null; ends_at?: string | null; due_at?: string | null; interval_minutes?: number | null; places: number; instructions?: string; opening_instructions?: string; closing_instructions?: string; revision?: number; cancelled_at?: string | null; legacy_singleton?: boolean }
+      >;
       activity_duty_types: Table<
         Timestamped & OrganizationScoped & { id: string; team_id: string; name: string; active: boolean; revision: number },
         OrganizationScoped & { id?: string; team_id: string; name: string }
@@ -280,6 +284,7 @@ export interface Database {
       activity_duty_fairness: { Args: { target_activity_id: string; from_date: string }; Returns: Json };
       my_activity_duty_links: { Args: { target_organization_id: string }; Returns: { activity_id: string; team_id: string; person_id: string }[] };
       get_activity_duty_schedule: { Args: { target_activity_id: string }; Returns: Json };
+      command_activity_duty_series: { Args: { target_activity_id: string; command: Json }; Returns: Json };
       cancel_activity_duties: { Args: { target_activity_id: string; duties: Json }; Returns: Json };
       command_activity_duty: { Args: { target_activity_id: string; command: Json }; Returns: Json };
       activity_duty_history: { Args: { target_team_id: string; target_person_id: string }; Returns: { activity_title: string; starts_at: string; duty_name: string | null; completed_at: string | null; response: string }[] };

@@ -31,7 +31,9 @@ export async function POST(request: Request, { params }: Props) {
  if (!ctx.supabase) return ctx.error;
  const parsed = dutyCommandSchema.safeParse(await request.json().catch(() => null));
  if (!parsed.success) return NextResponse.json({ error: "Ogiltigt förslag. Kontrollera tider och platser." }, { status: 400 });
- const { data, error } = parsed.data.op === "cancel_duties"
+ const { data, error } = ["create_series", "edit_series", "cancel_series"].includes(parsed.data.op)
+   ? await ctx.supabase.rpc("command_activity_duty_series", { target_activity_id: ctx.activityId, command: parsed.data })
+   : parsed.data.op === "cancel_duties"
    ? await ctx.supabase.rpc("cancel_activity_duties", { target_activity_id: ctx.activityId, duties: parsed.data.duties })
    : await ctx.supabase.rpc("command_activity_duty", { target_activity_id: ctx.activityId, command: parsed.data });
  if (error) { console.error("activity_duty.command_failed", { activityId: ctx.activityId, op: parsed.data.op, code: error.code }); return failure(error.code); }

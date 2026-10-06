@@ -235,3 +235,12 @@ frigörs. Borttagningen är atomär: en ändrad revision eller ett genomförande
 stoppar hela urvalet. Genomförda uppgifter kan inte markeras. Historik och
 audit behålls, berörda ändringsförslag stängs och avbokningsnotisen köas en
 gång per mottagare för urvalet. Förslag kan dessutom få egna utgångsnotiser.
+
+Uppgiftsserier visas i redigeringsläget med namn och antal pass samt
+**Redigera hela uppgiftsserien** och **Ta bort hela uppgiftsserien**.
+Skapande och helserieredigering återanvänder samma formulär för period,
+passlängd, platser och gemensamma instruktioner. Vid serieredigering visas
+befintliga bokningar med tidigare och nya tider i förhandsgranskningen.
+**Redigera enskilt pass** skiljs uttryckligen från hela serien. Ett genomfört
+pass låser hela serien. Datum- och nummerfält ryms inom kolumner som radbryts
+på telefon.

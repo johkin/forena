@@ -7,7 +7,35 @@ export const dutyDefinitionSchema = z.object({
  const valid = d.timingKind === "interval" ? d.startsAt && d.endsAt && new Date(d.endsAt) > new Date(d.startsAt) && !d.dueAt : d.timingKind === "deadline" ? d.dueAt && !d.startsAt && !d.endsAt : !d.startsAt && !d.endsAt && !d.dueAt;
  if (!valid) ctx.addIssue({ code: "custom", message: "Ange tidsintervall, deadline eller ingen tid" });
 });
+export const dutySeriesDefinitionSchema = dutyDefinitionSchema.safeExtend({
+ intervalMinutes: z.number().int().min(5).multipleOf(5).nullable().default(null),
+ openingInstructions: z.string().max(500).default(""), closingInstructions: z.string().max(500).default(""),
+}).superRefine((d, ctx) => {
+ if (d.timingKind !== "interval" && (d.intervalMinutes !== null || d.openingInstructions || d.closingInstructions)) ctx.addIssue({ code: "custom", message: "Passlängd och öppning/stängning gäller bara tidsintervall" });
+ if (d.timingKind === "interval" && d.startsAt && d.endsAt && d.intervalMinutes && Math.ceil((Date.parse(d.endsAt) - Date.parse(d.startsAt)) / (d.intervalMinutes * 60000)) > 48) ctx.addIssue({ code: "custom", message: "Välj högst 48 pass" });
+});
+export type DutySeriesDefinition = z.infer<typeof dutySeriesDefinitionSchema>;
+export type DutySeries = { id: string; revision: number; name: string; dutyTypeId: string; definition: DutySeriesDefinition };
+
+/** Materialize a series template; SQL uses the same UTC interval splitting. */
+export function expandDutySeries(input: DutySeriesDefinition) {
+ const definition = dutySeriesDefinitionSchema.parse(input);
+ if (definition.timingKind !== "interval") return [dutyDefinitionSchema.parse(definition)];
+ const start = Date.parse(definition.startsAt!), end = Date.parse(definition.endsAt!);
+ const step = definition.intervalMinutes ? definition.intervalMinutes * 60000 : end - start;
+ const duties: z.infer<typeof dutyDefinitionSchema>[] = [];
+ for (let at = start; at < end; at += step) {
+   const stop = Math.min(end, at + step);
+   duties.push(dutyDefinitionSchema.parse({ ...definition, startsAt: new Date(at).toISOString(), endsAt: new Date(stop).toISOString(),
+     instructions: [definition.instructions, at === start ? definition.openingInstructions : "", stop === end ? definition.closingInstructions : ""].filter(Boolean).join("\n") }));
+ }
+ return duties;
+}
+
 export const dutyCommandSchema = z.discriminatedUnion("op", [
+ z.object({ op: z.literal("create_series"), dutyTypeId: z.uuid(), definition: dutySeriesDefinitionSchema }),
+ z.object({ op: z.literal("edit_series"), seriesId: z.uuid(), revision: z.number().int().positive(), definition: dutySeriesDefinitionSchema }),
+ z.object({ op: z.literal("cancel_series"), seriesId: z.uuid(), revision: z.number().int().positive() }),
  z.object({ op: z.literal("edit_duty"), dutyId: z.uuid(), revision: z.number().int().positive(), definition: dutyDefinitionSchema }),
  z.object({ op: z.literal("cancel_duties"), duties: z.array(z.object({ dutyId: z.uuid(), revision: z.number().int().positive() })).min(1).max(100).refine(items => new Set(items.map(item => item.dutyId)).size === items.length, "Välj varje uppgift högst en gång") }),
  z.object({ op: z.literal("cancel_duty"), dutyId: z.uuid(), revision: z.number().int().positive() }),
@@ -23,9 +51,9 @@ export const dutyCommandSchema = z.discriminatedUnion("op", [
 ]);
 export type DutyCommand = z.infer<typeof dutyCommandSchema>;
 export type DutySlot = { id: string; personId: string | null; personName: string | null; occupied: boolean; mine: boolean; completedAt: string | null; revision: number };
-export type Duty = { id: string; dutyTypeId: string; revision: number; name: string; timingKind: "interval" | "deadline" | "none"; startsAt: string | null; endsAt: string | null; dueAt: string | null; instructions: string; slots: DutySlot[] };
+export type Duty = { seriesId?: string; position?: number; id: string; dutyTypeId: string; revision: number; name: string; timingKind: "interval" | "deadline" | "none"; startsAt: string | null; endsAt: string | null; dueAt: string | null; instructions: string; slots: DutySlot[] };
 export type DutyRequest = { id: string; sourceSlotId: string | null; targetSlotId: string | null; status: "pending" | "applied" | "rejected" | "withdrawn" | "expired"; counterpartApproved: boolean; managerApproved: boolean; mine: boolean; canApprove: boolean; requestedAt: string };
-export type DutySchedule = { types: { id: string; name: string; active: boolean; revision: number }[]; isWork: boolean; canManage: boolean; claimRequiresApproval: boolean; changeRequiresApproval: boolean; selfServiceUntil: string; people: { id: string; name: string }[]; duties: Duty[]; requests: DutyRequest[] };
+export type DutySchedule = { series?: DutySeries[]; types: { id: string; name: string; active: boolean; revision: number }[]; isWork: boolean; canManage: boolean; claimRequiresApproval: boolean; changeRequiresApproval: boolean; selfServiceUntil: string; people: { id: string; name: string }[]; duties: Duty[]; requests: DutyRequest[] };
 
 /** Split a local interval into shifts; the last shift may be shorter. */
 export function createDutyIntervals(date: string, startTime: string, endTime: string, timeZone: string, minutes: number, places: number, instructions = "", opening = "", closing = "", endDate = date) {
