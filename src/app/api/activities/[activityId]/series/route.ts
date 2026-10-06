@@ -12,3 +12,17 @@ export async function POST(request:Request,{params}:{params:Promise<{activityId:
   if(error)return NextResponse.json({error:["23514","40001","42501"].includes(error.code)?error.message:"Serien kunde inte uppdateras."},{status:error.code==="42501"?403:error.code==="40001"?409:400});
   return NextResponse.json(data,{headers:{"Cache-Control":"no-store"}});
 }
+
+const deleteSchema=z.object({preview:z.boolean(),token:z.string().min(1).optional()})
+  .refine(body=>body.preview || Boolean(body.token));
+export async function DELETE(request:Request,{params}:{params:Promise<{activityId:string}>}) {
+  const body=deleteSchema.safeParse(await request.json().catch(()=>null));
+  const id=z.uuid().safeParse((await params).activityId);
+  if(!body.success || !id.success)return NextResponse.json({error:"Ogiltig begäran om borttagning."},{status:400});
+  const supabase=await createClient();
+  const {data:auth}=await supabase.auth.getUser();
+  if(!auth.user)return NextResponse.json({error:"Logga in för att ta bort serien."},{status:401});
+  const {data,error}=await supabase.rpc("delete_activity_series_from",{target_activity_id:id.data,preview_only:body.data.preview,expected_token:body.data.token});
+  if(error)return NextResponse.json({error:["23514","40001","42501"].includes(error.code)?error.message:"Serien kunde inte tas bort."},{status:error.code==="42501"?403:error.code==="40001"?409:400});
+  return NextResponse.json(data,{headers:{"Cache-Control":"no-store"}});
+}

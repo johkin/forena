@@ -272,6 +272,7 @@ export interface Database {
     };
     Views: Record<never, never>;
     Functions: {
+      delete_activity_series_from: { Args: { target_activity_id:string; preview_only?:boolean; expected_token?:string }; Returns:Json };
       edit_activity_series_from: { Args: { target_activity_id:string; changes:Json; preview_only?:boolean; expected_token?:string }; Returns:Json };
       activity_history_teams: { Args: { target_organization_id: string }; Returns: Json };
       read_activity_history: { Args: { target_team_id: string; from_date: string; through_date: string; category: string; guests_only?: boolean }; Returns: Json };

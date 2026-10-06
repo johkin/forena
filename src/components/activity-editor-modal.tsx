@@ -42,6 +42,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
     weekdays:draft?.recurrence?.weekdays ?? [new Date(`${initial.date}T00:00:00Z`).getUTCDay() || 7] });
   const [editScope,setEditScope]=useState<"single"|"following"|null>(activity?.seriesId ? null : "single");
   const [seriesPreview,setSeriesPreview]=useState<{token:string;count:number;skipped:number;activities:{id:string;startsAt:string;endsAt:string}[]}>();
+  const [deletePreview,setDeletePreview]=useState<{token:string;count:number;skipped:number;activities:{id:string;startsAt:string;endsAt:string}[]}>();
   const [seriesChanges,setSeriesChanges]=useState<Record<string,unknown>>();
   const [kind,setKind]=useState<"single"|"series">(draft?.recurrence?"series":"single");
   const [preview,setPreview]=useState<(ActivityOccurrence & { invitationSendAt:string;responseDueAt:string;reminderSendAts:string[] })[]>();
@@ -78,7 +79,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
       .catch(error=>{if(!controller.signal.aborted)setConfigurationError(error instanceof Error ? error.message : "Inställningarna kunde inte hämtas.");});
     return ()=>controller.abort();
   },[source,team.id,activity?.activityTypeId,mode]);
-  function invalidatePreview() {setSeriesPreview(undefined);setSeriesChanges(undefined);setPreview(undefined);setPayload(undefined);}
+  function invalidatePreview() {setDeletePreview(undefined);setSeriesPreview(undefined);setSeriesChanges(undefined);setPreview(undefined);setPayload(undefined);}
   function changeRule(key:keyof ActivityTimingRules,value:string|string[]) { invalidatePreview();touched.current.add(key);setTouchedKeys(new Set(touched.current));setRules(current=>({...current,[key]:value})); }
   function changeActivityType(id:string) { invalidatePreview();setActivityTypeId(id); if(mode==="create") {const defaults=configuration?.types.find(type=>type.id===id)?.defaults;if(defaults)setRules(current=>applyUntouchedDefaults(current,defaults,touched.current));} }
 
@@ -121,6 +122,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
 
   async function prepare(event:FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if(deletePreview || pending)return;
     const data=new FormData(event.currentTarget);
     const startsOn=String(data.get("startsOn")), startTime=String(data.get("startTime"));
     try {
@@ -178,22 +180,37 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
     onNotice(recurring?`${preview.length} aktiviteter skapades.`:mode==="edit"?"Aktiviteten uppdaterades.":"Aktiviteten skapades.");onClose();window.location.reload();
   }
 
-  async function remove() {
-    if(!activity||source==="demo"||!window.confirm("Ta bort aktiviteten? Om någon redan har svarat blir den i stället markerad som inställd."))return;
-    setPending(true);
-    const response=await fetch(`/api/activities/${activity.id}`,{method:"DELETE",headers:{"content-type":"application/json"},body:JSON.stringify({reason:"Inställd av ledare"})});
-    const result=await response.json();
-    if(!response.ok){setError(result.error??"Aktiviteten kunde inte tas bort");setPending(false);return;}
-    onNotice(result.disposition==="cancelled"?"Aktiviteten ställdes in eftersom svar redan fanns.":"Aktiviteten togs bort.");onClose();window.location.reload();
+  async function remove(confirmSeries=false) {
+    if(!activity || source==="demo" || editScope===null || pending)return;
+    if(editScope==="single" && !window.confirm("Ta bort aktiviteten? Om någon redan har svarat blir den i stället markerad som inställd."))return;
+    setPending(true);setError(undefined);
+    try {
+      const following=editScope==="following";
+      const response=await fetch(`/api/activities/${activity.id}${following?"/series":""}`,{
+        method:"DELETE",headers:{"content-type":"application/json"},
+        body:JSON.stringify(following?{preview:!confirmSeries,token:confirmSeries?deletePreview?.token:undefined}:{reason:"Inställd av ledare"})
+      });
+      const result=await response.json();
+      if(!response.ok)throw new Error(result.error??"Aktiviteten kunde inte tas bort.");
+      if(following && !confirmSeries) {
+        invalidatePreview();setDeletePreview(result);return;
+      }
+      onNotice(following?`${result.deleted} aktiviteter togs bort och ${result.cancelled} ställdes in.`:
+        result.disposition==="cancelled"?"Aktiviteten ställdes in eftersom svar redan fanns.":"Aktiviteten togs bort.");
+      onClose();window.location.reload();
+    } catch(error) {
+      setDeletePreview(undefined);setError(error instanceof Error?error.message:"Aktiviteten kunde inte tas bort.");
+    } finally {setPending(false);}
   }
 
   return <div className="modal-backdrop" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget)onClose();}}>
     <section className="modal activity-editor-modal" role="dialog" aria-modal="true" aria-labelledby="activity-editor-title">
       <div className="card-heading"><div><p className="eyebrow">{team.name}</p><h2 id="activity-editor-title">{mode==="edit"?"Redigera aktivitet":"Ny aktivitet"}</h2></div><button className="icon-button" onClick={onClose} aria-label="Stäng" type="button">✕</button></div>
       {draft?<div className="ai-draft-notice"><strong>AI-utkast för granskning</strong><span>Kontrollera särskilt datum, plats och text innan aktiviteten skapas.</span>{draft.sources.length?<div>{draft.sources.map(source=><a href={source.url} key={source.url} target="_blank" rel="noreferrer">{source.title}</a>)}</div>:<small>Inga webbkällor följde med utkastet.</small>}</div>:null}
-      {mode==="edit" && activity?.seriesId ? <fieldset disabled={pending}><legend>Vilka tillfällen vill du ändra?</legend><label><input type="radio" name="editScope" checked={editScope==="single"} onChange={()=>{setEditScope("single");invalidatePreview();}}/>Endast denna aktivitet</label><label><input type="radio" name="editScope" checked={editScope==="following"} disabled={new Date(activity.startsAt)<=new Date()} onChange={()=>{setEditScope("following");setInvitationMode("none");setActivityTypeId(activity.activityTypeId ?? "");invalidatePreview();}}/>Denna och kommande aktiviteter</label>{editScope==="following"?<p>Passerade, inställda och individuellt ändrade tillfällen hoppas över. Vald aktivitet ingår. Kallelser och svar bevaras. Datum och tider flyttas lika mycket i lokal tid.</p>:null}</fieldset>:null}
+      {mode==="edit" && activity?.seriesId ? <fieldset className="activity-series-scope" disabled={pending}><legend>Vilka tillfällen gäller ändringen?</legend><label><input type="radio" name="editScope" checked={editScope==="single"} onChange={()=>{setEditScope("single");invalidatePreview();}}/>Endast denna aktivitet</label><label><input type="radio" name="editScope" checked={editScope==="following"} disabled={new Date(activity.startsAt)<=new Date()} onChange={()=>{setEditScope("following");setInvitationMode("none");setActivityTypeId(activity.activityTypeId ?? "");invalidatePreview();}}/>Denna och kommande aktiviteter</label>{editScope==="following"?<p>Passerade, inställda och individuellt ändrade tillfällen hoppas över. Vald aktivitet ingår. Valet gäller även borttagning. Vid sparande bevaras kallelser och svar; tider flyttas lika mycket i lokal tid.</p>:null}</fieldset>:null}
       <form onSubmit={prepare} onChange={invalidatePreview}>
-        <fieldset className="activity-editor-fields" disabled={pending || editScope===null}>
+        {deletePreview?<div className="activity-preview" role="alert"><strong>Ta bort {deletePreview.count} aktiviteter?</strong><p>Tillfällen med svar markeras som inställda. Övriga tas bort. {deletePreview.skipped} tillfällen hoppas över.</p><ol>{deletePreview.activities.map(item=><li key={item.id}>{formatter.format(new Date(item.startsAt))} – {formatter.format(new Date(item.endsAt))}</li>)}</ol><button className="secondary" type="button" disabled={pending} onClick={()=>setDeletePreview(undefined)}>Tillbaka till redigering</button></div>:null}
+        <fieldset className="activity-editor-fields" hidden={Boolean(deletePreview)} disabled={pending || editScope===null}>
         {mode==="create"?<div className="activity-kind-switch" role="group" aria-label="Typ av aktivitet"><button className={kind==="single"?"selected":""} onClick={()=>changeKind("single")} type="button">En aktivitet</button><button className={kind==="series"?"selected":""} onClick={()=>changeKind("series")} type="button">Aktivitetsserie</button></div>:null}
         <section className="editor-section" aria-labelledby="editor-basics-title">
           <h3 id="editor-basics-title">Aktivitet</h3>
@@ -237,7 +254,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
         {error?<p className="auth-error" role="alert">{error}</p>:null}
         {preview?<div className="activity-preview"><p className="eyebrow">Förhandsgranskning · {preview.length} {preview.length===1?"tillfälle":"tillfällen"}</p><ol>{preview.slice(0,12).map(item=><li key={item.startsAt}><strong>{formatter.format(new Date(item.startsAt))}</strong><span>{String(payload?.location)} · Slut: {formatter.format(new Date(item.endsAt))}{item.gatheringAt ? ` · Samling: ${formatter.format(new Date(item.gatheringAt))}` : ""}</span>{invitationMode === "schedule" ? <small>Kallelse: {formatter.format(new Date(item.invitationSendAt))} · Svar: {formatter.format(new Date(item.responseDueAt))} · Påminnelser: {item.reminderSendAts.map(t=>formatter.format(new Date(t))).join(", ") || "Inga"}</small> : null}</li>)}</ol></div>:null}
         </fieldset>
-        <div className="modal-actions">{mode==="edit"?<button className="danger" disabled={pending} onClick={()=>void remove()} type="button">Ta bort</button>:null}<button className="secondary" onClick={onClose} type="button">Avbryt</button>{preview || seriesPreview?<button className="primary" disabled={pending} onClick={()=>void save()} type="button">{pending?"Sparar…":mode==="edit"?"Spara ändring":recurring?`Skapa ${preview?.length ?? 0} aktiviteter`:"Skapa aktivitet"}</button>:<button className="primary" disabled={pending || editScope===null} type="submit">Förhandsgranska</button>}</div>
+        <div className="modal-actions">{mode==="edit"?<button className="danger" disabled={pending || editScope===null || deletePreview?.count===0} onClick={()=>void remove(Boolean(deletePreview))} type="button">{deletePreview?"Bekräfta borttagning":editScope==="following"?"Ta bort kommande":"Ta bort"}</button>:null}<button className="secondary" onClick={onClose} type="button">Avbryt</button>{deletePreview?null:preview || seriesPreview?<button className="primary" disabled={pending} onClick={()=>void save()} type="button">{pending?"Sparar…":mode==="edit"?"Spara ändring":recurring?`Skapa ${preview?.length ?? 0} aktiviteter`:"Skapa aktivitet"}</button>:<button className="primary" disabled={pending || editScope===null} type="submit">Förhandsgranska</button>}</div>
       </form>
     </section>
   </div>;
