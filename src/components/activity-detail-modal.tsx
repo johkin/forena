@@ -1,5 +1,6 @@
 "use client";
 
+import { ActivityInvitationResponse } from "./activity-invitation-response";
 import { useCallback, useEffect, useState } from "react";
 import type { Activity, Member, Organization, Team } from "@/domain/club";
 import { ActivityStaffingList } from "@/components/activity-staffing-list";
@@ -134,6 +135,7 @@ export function ActivityDetailModal({ activity, organization, team, canManageAct
         {activity.seriesId ? <span className="activity-series-badge">Aktivitetsserie</span> : null}
       </div>
 
+      <ActivityInvitationResponse key={activity.id} activityId={activity.id} cancelled={activity.status === "cancelled"} />
       {canManageInvitations ? <section className="activity-staffing" aria-labelledby="activity-staffing-title">
         <div className="card-heading"><div><p className="eyebrow">Kallelser</p><h3 id="activity-staffing-title">Bemanning</h3></div></div>
         <ActivityStaffingList invitees={invitees} />

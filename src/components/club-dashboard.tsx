@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { TeamAssistantCard } from "@/components/team-assistant-card";
 import { ActivityEditorModal } from "@/components/activity-editor-modal";
@@ -12,8 +13,8 @@ import { TeamMenu } from "@/components/team-menu";
 import { AppShell } from "@/components/app-shell";
 import type { ActivityDraft } from "@/lib/ai/activity-draft";
 import {
-  respondToInvitation, summarizeInvitations, type Activity, type DashboardView, type Invitation,
-  type FamilyActivity, type InvitationResponse, type Member, type Organization, type Section, type Team, type TeamPermission, type TeamTask, type Workspace,
+  summarizeInvitations, type Activity, type DashboardView, type Invitation,
+  type FamilyActivity, type Member, type Organization, type Section, type Team, type TeamPermission, type TeamTask, type Workspace,
 } from "@/domain/club";
 
 type Props = {
@@ -28,18 +29,19 @@ type Props = {
   source: "database" | "demo";
 };
 
-const responseLabels = { accepted: "Kommer", declined: "Kan inte", pending: "Ej svarat" } as const;
+
 
 export function ClubDashboard({ organization, sections, team, activity, members, rosterMembers, upcomingActivities, initialInvitations, initialFamilyActivities, workspaces, tasks, teamPermissions, canAdministerOrganization, accountEmail, respondablePersonIds, referenceTime, missingAttendanceActivities, source }: Props) {
+  const router = useRouter();
   const currentActivity = activity;
   const canViewTeam = teamPermissions.includes("team.view");
   const canManageActivities = teamPermissions.includes("activity.manage");
   const canManageInvitations = teamPermissions.includes("invitation.manage");
   const canManageAttendance = teamPermissions.includes("attendance.manage");
   const canManageRoster = teamPermissions.includes("roster.manage");
-  const [invitations, setInvitations] = useState(initialInvitations);
+  const invitations = initialInvitations;
   const view: DashboardView = canViewTeam ? "leader" : "family";
-  const [familyActivities, setFamilyActivities] = useState(initialFamilyActivities);
+  const familyActivities = initialFamilyActivities;
   const [notice, setNotice] = useState<string>();
   const [activityEditorMode, setActivityEditorMode] = useState<"create" | "edit" | null>(null);
   const [activityDraft, setActivityDraft] = useState<ActivityDraft>();
@@ -53,18 +55,6 @@ export function ClubDashboard({ organization, sections, team, activity, members,
   const memberById = useMemo(() => new Map(members.map((member) => [member.id, member])), [members]);
   const familyInvitation = invitations.find((item) => respondablePersonIds.includes(item.memberId));
   const familyMember = familyInvitation ? memberById.get(familyInvitation.memberId) : undefined;
-
-  async function answerFamily(item: FamilyActivity, response: InvitationResponse, comment?: string) {
-    if (!item.invitation) return;
-    const updated = respondToInvitation(item.invitation, response, comment);
-    if (source === "database") {
-      const result = await fetch(`/api/invitations/${item.invitation.id}/respond`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ response, comment }) });
-      if (!result.ok) { setNotice("Svaret kunde inte sparas. Kontrollera din behörighet och försök igen."); return; }
-    }
-    setFamilyActivities((current) => current.map((candidate) => candidate.invitation?.id === item.invitation?.id ? { ...candidate, invitation: updated } : candidate));
-    setInvitations((current) => current.map((candidate) => candidate.id === item.invitation?.id ? updated : candidate));
-    setNotice(response === "pending" ? `${item.member.displayName}s svar togs bort.` : `${item.member.displayName} är registrerad som ”${responseLabels[response]}”.`);
-  }
 
   async function sendReminder(activity: Activity) {
     setSendingReminder(true);
@@ -103,7 +93,6 @@ export function ClubDashboard({ organization, sections, team, activity, members,
                     <PersonalOverview
                       activities={familyActivities}
                       timeZone={organization.timeZone ?? "Europe/Stockholm"}
-                      onAnswer={(item, response, comment) => void answerFamily(item, response, comment)}
                       onOpenActivity={(item) => setSelectedActivity(item.activity)}
                     />
                     {view === "leader" ? <TeamOverview
@@ -138,7 +127,7 @@ export function ClubDashboard({ organization, sections, team, activity, members,
         </section>
       </AppShell>
       {activityEditorMode && canManageActivities ? <ActivityEditorModal mode={activityEditorMode} organization={organization} team={team} members={rosterMembers} activity={activityEditorMode === "edit" ? (editingActivity ?? currentActivity) : undefined} draft={activityEditorMode === "create" ? activityDraft : undefined} source={source} canManageInvitations={canManageInvitations} onClose={() => { setActivityEditorMode(null); setActivityDraft(undefined); }} onNotice={setNotice} /> : null}
-      {selectedActivity ? <ActivityDetailModal activity={selectedActivity} organization={organization} team={familyActivities.find(item => item.activity.id === selectedActivity.id)?.team ?? team} canManageActivity={selectedActivity.teamId === team.id && canManageActivities} canManageInvitations={selectedActivity.teamId === team.id && canManageInvitations} canManageAttendance={selectedActivity.teamId === team.id && canManageAttendance} rosterMembers={rosterMembers} onClose={() => setSelectedActivity(undefined)} onEdit={(item) => { setActivityDraft(undefined); setEditingActivity(item); setSelectedActivity(undefined); setActivityEditorMode("edit"); }} /> : null}
+      {selectedActivity ? <ActivityDetailModal activity={selectedActivity} organization={organization} team={familyActivities.find(item => item.activity.id === selectedActivity.id)?.team ?? team} canManageActivity={selectedActivity.teamId === team.id && canManageActivities} canManageInvitations={selectedActivity.teamId === team.id && canManageInvitations} canManageAttendance={selectedActivity.teamId === team.id && canManageAttendance} rosterMembers={rosterMembers} onClose={() => { setSelectedActivity(undefined); router.refresh(); }} onEdit={(item) => { setActivityDraft(undefined); setEditingActivity(item); setSelectedActivity(undefined); setActivityEditorMode("edit"); }} /> : null}
       {attendanceActivity && canManageAttendance ? <AttendanceModal activityId={attendanceActivity.id} onClose={() => setAttendanceActivity(undefined)} onSaved={() => setPendingAttendance((current) => current.filter((item) => item.id !== attendanceActivity.id))} /> : null}
     </main>
   );

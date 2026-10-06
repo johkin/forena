@@ -40,6 +40,9 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
   const initialGathering=draft?.gatheringMinutesBefore??(activity?.gatheringAt?Math.max(0,Math.round((new Date(activity.startsAt).getTime()-new Date(activity.gatheringAt).getTime())/60000)):0);
   const [scheduleDates, setScheduleDates] = useState({ startsOn:initial.date, endsOn:draft?.recurrence ? draft.recurrence.endsOn ?? "" : initial.date, startTime:initial.time,
     weekdays:draft?.recurrence?.weekdays ?? [new Date(`${initial.date}T00:00:00Z`).getUTCDay() || 7] });
+  const [editScope,setEditScope]=useState<"single"|"following"|null>(activity?.seriesId ? null : "single");
+  const [seriesPreview,setSeriesPreview]=useState<{token:string;count:number;skipped:number;activities:{id:string;startsAt:string;endsAt:string}[]}>();
+  const [seriesChanges,setSeriesChanges]=useState<Record<string,unknown>>();
   const [kind,setKind]=useState<"single"|"series">(draft?.recurrence?"series":"single");
   const [preview,setPreview]=useState<(ActivityOccurrence & { invitationSendAt:string;responseDueAt:string;reminderSendAts:string[] })[]>();
   const [payload,setPayload]=useState<Record<string,unknown>>();
@@ -75,7 +78,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
       .catch(error=>{if(!controller.signal.aborted)setConfigurationError(error instanceof Error ? error.message : "Inställningarna kunde inte hämtas.");});
     return ()=>controller.abort();
   },[source,team.id,activity?.activityTypeId,mode]);
-  function invalidatePreview() {setPreview(undefined);setPayload(undefined);}
+  function invalidatePreview() {setSeriesPreview(undefined);setSeriesChanges(undefined);setPreview(undefined);setPayload(undefined);}
   function changeRule(key:keyof ActivityTimingRules,value:string|string[]) { invalidatePreview();touched.current.add(key);setTouchedKeys(new Set(touched.current));setRules(current=>({...current,[key]:value})); }
   function changeActivityType(id:string) { invalidatePreview();setActivityTypeId(id); if(mode==="create") {const defaults=configuration?.types.find(type=>type.id===id)?.defaults;if(defaults)setRules(current=>applyUntouchedDefaults(current,defaults,touched.current));} }
 
@@ -116,7 +119,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
   }
 
 
-  function prepare(event:FormEvent<HTMLFormElement>) {
+  async function prepare(event:FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data=new FormData(event.currentTarget);
     const startsOn=String(data.get("startsOn")), startTime=String(data.get("startTime"));
@@ -131,6 +134,17 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
       if(invitationMode==="schedule"&&!invitationSelection.roles.length&&!invitationSelection.groupIds.length&&!invitationSelection.responsibilityTypeIds.length) throw new Error("Välj minst en målgrupp.");
       if(invitationMode==="now"&&!selectedPeople.size) throw new Error("Välj minst en person att kalla.");
       if(invitationMode==="schedule") occurrences.forEach(item=>requireFutureSchedule({...item,reminderSendAt:null}));
+      if(mode==="edit" && editScope==="following") {
+        if(source==="demo")throw new Error("Serieredigering förhandsgranskas med sparade aktiviteter i ett lag.");
+        const changes={title:String(data.get("title")),description:String(data.get("description")),location:String(data.get("location")),activityTypeId:activity?.activityTypeId,startsAt:occurrences[0].startsAt,endsAt:occurrences[0].endsAt,gatheringAt:occurrences[0].gatheringAt};
+        setPending(true);
+        try {
+          const r=await fetch(`/api/activities/${activity?.id}/series`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({preview:true,changes})});
+          const result=await r.json();if(!r.ok)throw new Error(result.error);
+          setSeriesPreview(result);setSeriesChanges(changes);setError(undefined);
+        } finally {setPending(false);}
+        return;
+      }
       setPreview(occurrences);
       setPayload({teamId:team.id,activityTypeId:activityTypeId || undefined,title:String(data.get("title")),description:String(data.get("description")),location:String(data.get("location")),invitationMode,invitationAudience,invitationSelection:invitationMode==="schedule"?invitationSelection:undefined,personIds:invitationMode==="now"?[...selectedPeople]:undefined,timingRules,startsOn,startTime,timeZone,endsOn:recurring?String(data.get("endsOn")):startsOn,weekdays:recurring?data.getAll("weekdays").map(Number):[new Date(`${startsOn}T00:00:00Z`).getUTCDay()||7]});
       setError(undefined);
@@ -138,6 +152,15 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
   }
 
   async function save() {
+    if(editScope==="following" && seriesPreview && seriesChanges) {
+      setPending(true);setError(undefined);
+      try {
+        const r=await fetch(`/api/activities/${activity?.id}/series`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({preview:false,token:seriesPreview.token,changes:seriesChanges})});
+        const result=await r.json();if(!r.ok)throw new Error(result.error);
+        onNotice(`${result.count} aktiviteter uppdaterades.`);onClose();window.location.reload();
+      } catch(error) {setError(error instanceof Error?error.message:"Serien kunde inte sparas.");invalidatePreview();} finally {setPending(false);}
+      return;
+    }
     if(!preview?.length||!payload)return;
     setPending(true); setError(undefined);
     if(source==="demo"){onNotice(`${String(payload.title)} förhandsgranskades i demoläge.`);onClose();return;}
@@ -168,11 +191,13 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
     <section className="modal activity-editor-modal" role="dialog" aria-modal="true" aria-labelledby="activity-editor-title">
       <div className="card-heading"><div><p className="eyebrow">{team.name}</p><h2 id="activity-editor-title">{mode==="edit"?"Redigera aktivitet":"Ny aktivitet"}</h2></div><button className="icon-button" onClick={onClose} aria-label="Stäng" type="button">✕</button></div>
       {draft?<div className="ai-draft-notice"><strong>AI-utkast för granskning</strong><span>Kontrollera särskilt datum, plats och text innan aktiviteten skapas.</span>{draft.sources.length?<div>{draft.sources.map(source=><a href={source.url} key={source.url} target="_blank" rel="noreferrer">{source.title}</a>)}</div>:<small>Inga webbkällor följde med utkastet.</small>}</div>:null}
-      <form onSubmit={prepare} onChange={()=>{setPreview(undefined);setPayload(undefined);}}>
+      {mode==="edit" && activity?.seriesId ? <fieldset disabled={pending}><legend>Vilka tillfällen vill du ändra?</legend><label><input type="radio" name="editScope" checked={editScope==="single"} onChange={()=>{setEditScope("single");invalidatePreview();}}/>Endast denna aktivitet</label><label><input type="radio" name="editScope" checked={editScope==="following"} disabled={new Date(activity.startsAt)<=new Date()} onChange={()=>{setEditScope("following");setInvitationMode("none");setActivityTypeId(activity.activityTypeId ?? "");invalidatePreview();}}/>Denna och kommande aktiviteter</label>{editScope==="following"?<p>Passerade, inställda och individuellt ändrade tillfällen hoppas över. Vald aktivitet ingår. Kallelser och svar bevaras. Datum och tider flyttas lika mycket i lokal tid.</p>:null}</fieldset>:null}
+      <form onSubmit={prepare} onChange={invalidatePreview}>
+        <fieldset className="activity-editor-fields" disabled={pending || editScope===null}>
         {mode==="create"?<div className="activity-kind-switch" role="group" aria-label="Typ av aktivitet"><button className={kind==="single"?"selected":""} onClick={()=>changeKind("single")} type="button">En aktivitet</button><button className={kind==="series"?"selected":""} onClick={()=>changeKind("series")} type="button">Aktivitetsserie</button></div>:null}
         <section className="editor-section" aria-labelledby="editor-basics-title">
           <h3 id="editor-basics-title">Aktivitet</h3>
-          {source === "database" ? <label>Aktivitetstyp<select required value={activityTypeId} onChange={e=>changeActivityType(e.target.value)} disabled={!configuration}><option value="">Välj aktivitetstyp</option>{activity?.activityTypeId && !configuration?.types.some(t=>t.id===activity.activityTypeId) ? <option value={activity.activityTypeId}>Befintlig aktivitetstyp (inaktiv eller annan disciplin)</option> : null}{configuration?.types.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></label> : null}
+          {source === "database" ? <label>Aktivitetstyp<select required value={activityTypeId} onChange={e=>changeActivityType(e.target.value)} disabled={!configuration || editScope==="following"}><option value="">Välj aktivitetstyp</option>{activity?.activityTypeId && !configuration?.types.some(t=>t.id===activity.activityTypeId) ? <option value={activity.activityTypeId}>Befintlig aktivitetstyp (inaktiv eller annan disciplin)</option> : null}{configuration?.types.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></label> : null}
           {configurationError ? <p className="auth-error" role="alert">{configurationError}</p> : null}
           <div className="editor-fields">
             <label>Titel<input name="title" required defaultValue={draft?.title??activity?.title??""} placeholder="Träning eller match"/></label>
@@ -187,7 +212,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
           <ActivityTimingFields rules={rules} onChange={changeRule} defaults={typeDefaults} touched={touchedKeys} invitations={false} showDuration={recurring}/>
           <small>Samlingen räknas före aktivitetens start. Välj kallelse och mottagare nedan.</small>
         </section>
-        {canManageInvitations ? <details className="editor-section editor-invitation" open={invitationOpen} onToggle={event=>setInvitationOpen(event.currentTarget.open)}>
+        {canManageInvitations && editScope!=="following" ? <details className="editor-section editor-invitation" open={invitationOpen} onToggle={event=>setInvitationOpen(event.currentTarget.open)}>
           <summary>Kallelse <span>{invitationMode==="none"?"Ingen":invitationMode==="now"?"Skicka nu":"Schemalägg"}</span></summary>
           <div className="activity-kind-switch invitation-mode-switch" role="group" aria-label="Kallelse"><button className={invitationMode==="none"?"selected":""} onClick={()=>{invalidatePreview();setInvitationMode("none");}} type="button">Ingen</button><button className={invitationMode==="now"?"selected":""} onClick={()=>{invalidatePreview();setInvitationMode("now");}} disabled={recurring} title={recurring ? "Använd Schemalägg för en serie" : undefined} type="button">Skicka nu</button><button className={invitationMode==="schedule"?"selected":""} onClick={()=>{invalidatePreview();setInvitationMode("schedule");}} type="button">Schemalägg</button></div>
           {invitationMode==="now"?<div className="editor-invitation-body">
@@ -208,9 +233,11 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
             <small>Kallelse och sista svarstid räknas före aktivitetens start.</small>
           </div>:null}
         </details> : null}
+        {seriesPreview?<div className="activity-preview"><strong>{seriesPreview.count} aktiviteter ändras · {seriesPreview.skipped} hoppas över</strong><ol>{seriesPreview.activities.map(item=><li key={item.id}>{formatter.format(new Date(item.startsAt))} – {formatter.format(new Date(item.endsAt))}</li>)}</ol><p>Befintliga kallelsetider och svar ändras inte.</p></div>:null}
         {error?<p className="auth-error" role="alert">{error}</p>:null}
         {preview?<div className="activity-preview"><p className="eyebrow">Förhandsgranskning · {preview.length} {preview.length===1?"tillfälle":"tillfällen"}</p><ol>{preview.slice(0,12).map(item=><li key={item.startsAt}><strong>{formatter.format(new Date(item.startsAt))}</strong><span>{String(payload?.location)} · Slut: {formatter.format(new Date(item.endsAt))}{item.gatheringAt ? ` · Samling: ${formatter.format(new Date(item.gatheringAt))}` : ""}</span>{invitationMode === "schedule" ? <small>Kallelse: {formatter.format(new Date(item.invitationSendAt))} · Svar: {formatter.format(new Date(item.responseDueAt))} · Påminnelser: {item.reminderSendAts.map(t=>formatter.format(new Date(t))).join(", ") || "Inga"}</small> : null}</li>)}</ol></div>:null}
-        <div className="modal-actions">{mode==="edit"?<button className="danger" disabled={pending} onClick={()=>void remove()} type="button">Ta bort</button>:null}<button className="secondary" onClick={onClose} type="button">Avbryt</button>{preview?<button className="primary" disabled={pending} onClick={()=>void save()} type="button">{pending?"Sparar…":mode==="edit"?"Spara ändring":recurring?`Skapa ${preview.length} aktiviteter`:"Skapa aktivitet"}</button>:<button className="primary" type="submit">Förhandsgranska</button>}</div>
+        </fieldset>
+        <div className="modal-actions">{mode==="edit"?<button className="danger" disabled={pending} onClick={()=>void remove()} type="button">Ta bort</button>:null}<button className="secondary" onClick={onClose} type="button">Avbryt</button>{preview || seriesPreview?<button className="primary" disabled={pending} onClick={()=>void save()} type="button">{pending?"Sparar…":mode==="edit"?"Spara ändring":recurring?`Skapa ${preview?.length ?? 0} aktiviteter`:"Skapa aktivitet"}</button>:<button className="primary" disabled={pending || editScope===null} type="submit">Förhandsgranska</button>}</div>
       </form>
     </section>
   </div>;

@@ -1,12 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import type { FamilyActivity, InvitationResponse } from "@/domain/club";
+import type { FamilyActivity } from "@/domain/club";
 
 type Props = {
   activities: FamilyActivity[];
   timeZone: string;
-  onAnswer: (item: FamilyActivity, response: InvitationResponse, comment?: string) => void;
   onOpenActivity: (item: FamilyActivity) => void;
 };
 
@@ -21,8 +19,7 @@ function when(value: string, timeZone: string) {
   }).format(new Date(value));
 }
 
-export function PersonalOverview({ activities, timeZone, onAnswer, onOpenActivity }: Props) {
-  const [comments, setComments] = useState<Record<string, string>>({});
+export function PersonalOverview({ activities, timeZone, onOpenActivity }: Props) {
 
   return <section className="card personal-overview" aria-labelledby="personal-overview-title">
     <details className="overview-details" open>
@@ -34,8 +31,6 @@ export function PersonalOverview({ activities, timeZone, onAnswer, onOpenActivit
       {activities.map((item) => {
         const dueAt = item.activity.gatheringAt ?? item.activity.startsAt;
         const invitation = item.invitation;
-        const comment = invitation ? comments[invitation.id] ?? invitation.responseComment ?? "" : "";
-        const commentChanged = Boolean(invitation && invitation.response !== "pending" && comment.trim() !== (invitation.responseComment ?? ""));
         return <div className="personal-activity-row" key={`${item.member.id}:${item.activity.id}`}>
           <button className="personal-activity-main" type="button" onClick={() => onOpenActivity(item)}>
             <span className="member-avatar">{item.member.displayName.slice(0, 1)}</span>
@@ -47,38 +42,10 @@ export function PersonalOverview({ activities, timeZone, onAnswer, onOpenActivit
             </span>
             <b aria-hidden="true">→</b>
           </button>
-          {item.hasDutyAssignment ? <p className="personal-no-invitation">Bokad arbetsuppgift · Familjen väljer vem som arbetar. <button type="button" className="link-button" onClick={() => onOpenActivity(item)}>Visa uppgift eller föreslå ändring</button></p> : invitation ? <div className="personal-invitation-response">
-            <input
-              aria-label={`Kommentar till kallelsen för ${item.member.displayName}`}
-              maxLength={500}
-              onChange={(event) => setComments((current) => ({ ...current, [invitation.id]: event.target.value }))}
-              placeholder="Kommentar (valfritt)"
-              type="text"
-              value={comment}
-            />
-            <div className="personal-response" aria-label={`Svar för ${item.member.displayName}`}>
-              <button
-                className={invitation.response === "accepted" ? "selected" : ""}
-                type="button"
-                onClick={() => onAnswer(item, "accepted", comment)}
-              >Kommer</button>
-              <button
-                className={invitation.response === "declined" ? "selected" : ""}
-                type="button"
-                onClick={() => onAnswer(item, "declined", comment)}
-              >Kan inte</button>
-              {commentChanged ? <button className="secondary" type="button" onClick={() => onAnswer(item, invitation.response, comment)}>Spara kommentar</button> : null}
-              {invitation.response !== "pending" ? <button className="link-button" type="button" onClick={() => {
-                setComments((current) => ({ ...current, [invitation.id]: "" }));
-                onAnswer(item, "pending");
-              }}>Ta bort svar</button> : null}
-            </div>
-          </div> : <span className="personal-no-invitation">Ingen kallelse ännu</span>}
+          <span className="personal-no-invitation">{[item.hasDutyAssignment ? "Bokad arbetsuppgift" : undefined, invitation ? ({ accepted:"Kommer", declined:"Kan inte", pending:"Ej svarat" } as const)[invitation.response] : undefined].filter(Boolean).join(" · ") || "Ingen kallelse ännu"}</span>
         </div>;
       })}
     </div> : <p className="overview-empty">Inga personliga aktiviteter kräver din uppmärksamhet just nu.</p>}
     </details>
   </section>;
 }
-
-

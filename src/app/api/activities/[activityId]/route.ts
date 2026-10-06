@@ -56,7 +56,7 @@ export async function PUT(request: Request, { params }: Props) {
     if (body?.activityTypeId && body.activityTypeId !== current.activity_type_id) await requireActivityType(supabase, current.team_id, body.activityTypeId);
 
   } catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }
-  const { data: activity, error } = await supabase.from("activities").update({ ...(body?.activityTypeId ? { activity_type_id: body.activityTypeId } : {}), title, description_markdown: body?.description?.trim() ?? "", gathering_at: gatheringAt?.toISOString() ?? null, starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString(), location: body?.location?.trim() ?? "" }).eq("id", activityId).select("id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location, series_id, status").single();
+  const { data: activity, error } = await supabase.from("activities").update({ series_exception: true, ...(body?.activityTypeId ? { activity_type_id: body.activityTypeId } : {}), title, description_markdown: body?.description?.trim() ?? "", gathering_at: gatheringAt?.toISOString() ?? null, starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString(), location: body?.location?.trim() ?? "" }).eq("id", activityId).select("id, organization_id, team_id, title, gathering_at, starts_at, ends_at, location, series_id, status").single();
   if (error || !activity) return NextResponse.json({ error: "Aktiviteten kunde inte uppdateras" }, { status: 500 });
   return NextResponse.json({ activity });
 }
