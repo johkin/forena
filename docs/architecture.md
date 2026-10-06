@@ -177,6 +177,21 @@ och en deterministisk rangordning. Ledaren bekräftar ändringsbara förslag gen
 samma atomära kommando som manuella tilldelningar. Schemaskrivning och köläggning
 av bemanningsnotiser sker i samma databastransaktion.
 
+### Kallelser mellan lag
+
+Frågor om antal kallade och anmälda använder `listInvitationTeams` och
+`readActivityInvitations`, avskilt från närvarohistoriken. Källaget anger vilka
+spelare som räknas; mottagarlaget anger var aktiviteten hålls. Namngivna lag och
+träningskategori tolkas från aktuell fråga före modellens argument. Ingen period
+betyder pågående och kommande publicerade aktiviteter, utan påhittad historikperiod.
+En angiven månad eller relativ period använder serverns kalenderberäkning.
+Kallad omfattar alla svar; anmäld/tackat ja filtrerar `accepted`. Spelarens
+medlemskap i källaget kontrolleras på aktivitetens lokala datum, även om spelaren
+också tillhör mottagarlaget. Unika spelare och kallelsetillfällen summeras separat.
+Läsningar sidindelas så att PostgREST:s radgräns inte ger en falsk exakt total;
+för stort eller misslyckat underlag ger ett fel. Svarets antal och lista kommer
+från verifierad läsning och kan inte ersättas med modellens påståenden.
+
 ### Historik och relativa perioder
 
 Namngivna månader tolkas på servern: september utan år avser senaste förekomsten,

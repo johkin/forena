@@ -24,12 +24,13 @@ export function AssistantHistoryCard({ result }: { result: ActivityHistoryResult
       setError(caught instanceof Error ? caught.message : "Aktiviteten kunde inte öppnas.");
     } finally { setOpening(undefined); }
   }
+  const invitation = result.kind === "invitations";
   // Period boundaries are calendar dates; UTC preserves their day in every zone.
   const date = new Intl.DateTimeFormat("sv-SE", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" });
   const when = new Intl.DateTimeFormat("sv-SE", { timeZone: result.timeZone, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   const period = `${date.format(new Date(`${result.from}T12:00:00Z`))}–${date.format(new Date(`${result.through}T12:00:00Z`))}`;
   return <div className="assistant-history">
-    <p><strong>{result.summary.uniquePeople} {result.summary.uniquePeople === 1 ? "person" : "personer"}</strong> · {result.summary.participationCount} {result.category === "work" ? (result.summary.participationCount === 1 ? "genomfört arbetstillfälle" : "genomförda arbetstillfällen") : (result.summary.participationCount === 1 ? "registrerat deltagartillfälle" : "registrerade deltagartillfällen")}</p>
+    <p><strong>{result.summary.uniquePeople} {invitation ? `spelare från ${result.sourceTeam}` : result.summary.uniquePeople === 1 ? "person" : "personer"}</strong> · {result.summary.participationCount} {invitation ? (result.summary.participationCount === 1 ? "kallelsetillfälle" : "kallelsetillfällen") : result.category === "work" ? (result.summary.participationCount === 1 ? "genomfört arbetstillfälle" : "genomförda arbetstillfällen") : (result.summary.participationCount === 1 ? "registrerat deltagartillfälle" : "registrerade deltagartillfällen")}</p>
     <p>{result.team} · {period} · {result.timeZone}</p>
     {result.unreportedActivityCount && result.category !== "work" ? <p>På {result.unreportedActivityCount} aktiviteter saknas närvarorapport. De räknas inte som frånvaro.</p> : null}
     <details>
@@ -37,7 +38,7 @@ export function AssistantHistoryCard({ result }: { result: ActivityHistoryResult
       {result.activities.length ? <ul>{result.activities.map(activity => <li key={activity.id}>
         <button className="assistant-activity-link" type="button" disabled={!!opening} aria-label={`Öppna ${activity.title}`} onClick={event => void openActivity(activity.id, event.currentTarget)}>{activity.title}</button>
         <span>{when.format(new Date(activity.startsAt))} · {result.team}</span>
-        <span>{result.category !== "work" && !activity.attendanceReported ? "Närvaro ej rapporterad" : `${activity.participationCount} ${result.category === "work" ? "genomförda arbetstillfällen" : "närvarande"}`}</span>
+        <span>{!invitation && result.category !== "work" && !activity.attendanceReported ? "Närvaro ej rapporterad" : `${activity.participationCount} ${invitation ? (result.invitationResponse === "accepted" ? "har tackat ja" : result.invitationResponse === "declined" ? "har tackat nej" : result.invitationResponse === "pending" ? "obesvarade kallelser" : (activity.participationCount === 1 ? "kallad" : "kallade")) : result.category === "work" ? "genomförda arbetstillfällen" : "närvarande"}`}</span>
       </li>)}</ul> : <p>Inga aktiviteter i det valda underlaget.</p>}
     </details>
     {opening ? <p role="status">Öppnar aktivitet…</p> : null}

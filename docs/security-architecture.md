@@ -351,6 +351,16 @@ e-post och registrerade telefonnummer. Spelares konto-e-post, användar-ID,
 födelsedata och kallelsesvar ingår inte. Befintlig RLS för person- och
 målsmanstabeller breddas inte. Läsningar auditeras utan kontaktdata.
 
+## Assistentens kallelser mellan lag
+
+Kallelseläsningen kräver `invitation.manage` för både källag och mottagarlag i
+aktuell klubb, verifierat vid varje anrop. Den använder användarens Supabase-klient
+med RLS, organisationsfilter och minimerade kolumnurval. Person-ID används endast
+internt för summering; modellen får antal och aktivitetsinformation, inte
+kontaktuppgifter eller svarskommentarer. En familjs åtkomst till sitt barns
+kallelse ger inte åtkomst till ett fullständigt lagantal. Nekad åtkomst och
+misslyckad läsning rapporteras som fel, aldrig som noll kallade.
+
 ## Assistentens aktivitetshistorik
 
 Historikverktygen kontrollerar lagbehörighet vid varje anrop. Träning och match

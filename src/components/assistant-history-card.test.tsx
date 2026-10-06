@@ -23,3 +23,13 @@ it.each([
   expect(html).not.toContain("1 personer");
   expect(html).toContain("1 registrerat deltagartillfälle");
 });
+
+it("shows invitations as invitations with the source team and clickable activities", () => {
+  const result: ActivityHistoryResult = { kind: "invitations", sourceTeam: "F2016", team: "F2013", from: "2026-10-07", through: "2026-10-08", timeZone: "Europe/Stockholm", category: "session", activityCount: 1, unreportedActivityCount: null, truncated: false, summary: { uniquePeople: 1, participationCount: 1 }, activities: [{ id: "activity", title: "Träning Örvallen", startsAt: "2026-10-08T15:00:00Z", attendanceReported: false, participationCount: 1 }] };
+  const html = renderToStaticMarkup(<AssistantHistoryCard result={result} />);
+  expect(html).toContain("spelare från F2016");
+  expect(html).toContain("1 kallad");
+  expect(html).toContain('aria-label="Öppna Träning Örvallen"');
+  expect(html).not.toContain("närvarande");
+  expect(html).not.toContain("Närvaro ej rapporterad");
+});

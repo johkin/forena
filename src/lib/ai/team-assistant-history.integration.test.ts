@@ -12,6 +12,7 @@ vi.mock("ai", async importOriginal => {
     }
   } };
 });
+import { invitationFixture } from "./__fixtures__/activity-invitations";
 import { answerTeamAssistant } from "./team-assistant";
 
 const teamId = "00000000-0000-4000-8000-000000000001";
@@ -101,4 +102,22 @@ it("reads September through real SDK calls even if the model only supplies its s
   expect(reply.source).not.toBe("fallback");
   expect(reply.historyResults).toEqual([expect.objectContaining({ from: "2026-09-01", through: "2026-09-30" })]);
   expect(rpc).toHaveBeenLastCalledWith("read_activity_history", expect.objectContaining({ target_team_id: teamId, from_date: "2026-09-01", through_date: "2026-09-30" }));
+});
+
+it("answers the F2016-to-F2013 invitation question from upcoming invites, never history", async () => {
+  const { supabase, rpc } = invitationFixture();
+  state.model = new MockLanguageModelV3({ doGenerate: [toolCall("listInvitationTeams", {}), toolCall("readActivityInvitations", { sourceTeamId: otherTeamId, targetTeamId: teamId, category: "competition" }), textResult("Inga registrerade träningar senaste 366 dagarna.")] });
+  const reply = await answerTeamAssistant({ ...input, question: "Hur många från F2016 är kallade till träning med F2013?" }, { supabase, userId: "user" });
+  expect(reply.answer).toContain("3 spelare från F2016");
+  expect(reply.answer).toContain("4 kallelsetillfällen");
+  expect(reply.answer).not.toContain("366");
+  expect(reply.historyResults?.[0]).toMatchObject({ kind: "invitations", team: "F2013", activityCount: 2 });
+  expect(rpc.mock.calls.map(([name]) => name)).not.toContain("read_activity_history");
+});
+it("does not use family invitation visibility to claim a complete cross-team total", async () => {
+  const { supabase } = invitationFixture(false);
+  state.model = new MockLanguageModelV3({ doGenerate: [toolCall("listInvitationTeams", {}), toolCall("readActivityInvitations", { targetTeamId: otherTeamId, category: "session" }), textResult("Ingen är kallad.")] });
+  const reply = await answerTeamAssistant({ ...input, question: "Hur många från F2016 är kallade till träning med F2013?" }, { supabase, userId: "user" });
+  expect(reply).toMatchObject({ source: "fallback", historyResults: [] });
+  expect(reply.answer).toContain("saknar behörighet");
 });
