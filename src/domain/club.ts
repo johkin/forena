@@ -76,6 +76,7 @@ export type Activity = {
 export type DashboardView = "leader" | "family";
 
 export type FamilyActivity = {
+  hasDutyAssignment?: boolean;
   member: Member;
   team: Team;
   activity: Activity;

@@ -21,7 +21,6 @@ export function TeamMenu({
   organizationSlug,
   teamSlug,
   teamName,
-  canManageRoster,
   leaderView,
   activeItem,
   onSelectView,
@@ -51,9 +50,8 @@ export function TeamMenu({
               <a className={activeItem === "calendar" ? "active" : ""} onClick={() => setOpen(false)} href={`${teamHref}?view=calendar`}>Kalender</a>
             </>
           )}
-          <a className={activeItem === "members" ? "active" : ""} onClick={() => setOpen(false)} href={canManageRoster ? `${teamHref}/members` : "#members"}>Truppen</a>
+          <a className={activeItem === "members" ? "active" : ""} onClick={() => setOpen(false)} href={`${teamHref}/members`}>Truppen</a>
           {leaderView ? <a onClick={() => setOpen(false)} href={`/o/${organizationSlug}/activity-settings?team=${encodeURIComponent(teamSlug)}`}>Aktivitetsinställningar</a> : null}
-          <a onClick={() => setOpen(false)} href="#attendance">Närvaro</a>
         </nav>
         {leaderView ? <><p className="eyebrow">Publicering</p><nav><a onClick={() => setOpen(false)} href="#news">Nyheter</a><a onClick={() => setOpen(false)} href="#pages">Sidor</a></nav></> : null}
   </>;
@@ -79,3 +77,4 @@ export function TeamMenu({
     </>
   );
 }
+

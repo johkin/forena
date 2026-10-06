@@ -13,6 +13,8 @@ export function ActivityDutySchedule({ activityId, startsAt, timeZone }: { activ
  const [schedule, setSchedule] = useState<DutySchedule | null>(null);
  const [error, setError] = useState("");
  const [busy, setBusy] = useState(false);
+ const [refreshing, setRefreshing] = useState(false);
+ const [refreshNotice, setRefreshNotice] = useState("");
  const [preview, setPreview] = useState<{ command: DutyCommand; text: string } | null>(null);
  useEffect(() => {
    let cancelled = false;
@@ -23,8 +25,10 @@ export function ActivityDutySchedule({ activityId, startsAt, timeZone }: { activ
    return () => { cancelled = true; };
  }, [activityId]);
  async function reload() {
-   try { const r = await fetch(`/api/activities/${activityId}/duty-schedule`); const body = await r.json(); if (!r.ok) throw new Error(body.error); setSchedule(body); setError(""); }
+   setRefreshing(true); setRefreshNotice("");
+   try { const r = await fetch(`/api/activities/${activityId}/duty-schedule`); const body = await r.json(); if (!r.ok) throw new Error(body.error); setSchedule(body); setError(""); setRefreshNotice("Schemat är uppdaterat."); }
    catch (e) { setError(e instanceof Error ? e.message : "Schemat kunde inte hämtas"); }
+   finally { setRefreshing(false); }
  }
  async function confirm() {
    if (!preview) return;
@@ -39,10 +43,11 @@ export function ActivityDutySchedule({ activityId, startsAt, timeZone }: { activ
  const propose = (command: DutyCommand, text: string) => setPreview({ command, text });
  return <section className="activity-invitation-add" aria-label="Arbetsuppgifter och schema"><h3>Arbetsuppgifter och schema</h3>
    <p className="overview-empty">Boka på spelarens namn. Familjen väljer vem som arbetar. En väntande ändring påverkar inte den nuvarande tilldelningen.</p>
-   <button type="button" className="link-button" disabled={busy} onClick={() => void reload()}>Uppdatera schemat</button>
+   <button type="button" className="link-button" disabled={busy || refreshing || Boolean(preview)} onClick={() => void reload()}>{refreshing ? "Hämtar schema…" : "Hämta senaste schemat"}</button>
+   <p role="status" aria-live="polite">{refreshNotice}</p>
    {error && <p role="alert">{error}</p>}
    {preview && <div className="duty-row" role="region" aria-label="Bekräfta ändring"><h4>Bekräfta ändring</h4><p>{preview.text}</p><div className="modal-actions"><button type="button" className="secondary" disabled={busy} onClick={() => setPreview(null)}>Avbryt</button><button type="button" className="primary" disabled={busy} onClick={() => void confirm()}>{busy ? "Sparar…" : "Bekräfta"}</button></div></div>}
-   <fieldset disabled={busy || Boolean(preview)} className="duty-controls">
+   <fieldset disabled={busy || refreshing || Boolean(preview)} className="duty-controls">
    {schedule.duties.map(d => <div className="duty-row" key={d.id}><h4>{d.name} · {d.slots.filter(s => !s.occupied).length} lediga</h4><p>{timing(d,timeZone)}</p>{d.instructions && <p className="duty-instructions">{d.instructions}</p>}
    {schedule.canManage && <DutyEditor key={`${d.id}:${d.revision}`} duty={d} timeZone={timeZone} propose={propose} />}
    {d.slots.map((slot, index) => <SlotRow key={`${slot.id}:${slot.revision}`} slot={slot} index={index} duty={d} schedule={schedule} choices={allSlots.filter(x => x.slot.id !== slot.id && !x.slot.completedAt)} timeZone={timeZone} propose={propose} />)}</div>)}
@@ -53,13 +58,14 @@ export function ActivityDutySchedule({ activityId, startsAt, timeZone }: { activ
  </section>;
 }
 function SlotRow({ slot, index, duty, schedule, choices, timeZone, propose }: { slot: DutySlot; index: number; duty: Duty; schedule: DutySchedule; choices: { slot: DutySlot; duty: Duty }[]; timeZone: string; propose: (c: DutyCommand, text: string) => void }) {
- const [person, setPerson] = useState(slot.personId ?? schedule.people[0]?.id ?? "");
+ const [chosenPerson, setPerson] = useState(slot.personId ?? schedule.people[0]?.id ?? "");
+ const person = schedule.people.length === 1 ? schedule.people[0].id : schedule.people.some(p => p.id === chosenPerson) ? chosenPerson : "";
  const [target, setTarget] = useState("");
  const [openedAt] = useState(() => Date.now());
  const closed = openedAt >= new Date(schedule.selfServiceUntil).getTime();
  const title = `${duty.name} · ${timing(duty,timeZone)}`;
  return <div className="duty-slot"><strong>Plats {index+1}: {slot.personName ?? (slot.occupied ? "Bokad av annan familj" : "Ledig")}{slot.completedAt ? " · Genomförd" : ""}</strong>
-   {!slot.completedAt && (!slot.occupied || schedule.canManage) && <div className="participant-selection"><label>Spelare<select value={person} onChange={e => setPerson(e.target.value)}><option value="">Välj spelare</option>{schedule.people.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+   {!slot.completedAt && (!slot.occupied || schedule.canManage) && <div className="participant-selection">{schedule.people.length === 1 ? <span>Spelare: {schedule.people[0].name}</span> : <label>Spelare<select value={person} onChange={e => setPerson(e.target.value)}><option value="">Välj spelare</option>{schedule.people.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>}
    {!slot.occupied && <button type="button" className="primary" disabled={!person || closed} onClick={() => propose({ op: "claim", personId: person, targetSlotId: slot.id }, `Ta platsen: ${title}, för ${schedule.people.find(p => p.id===person)?.name}. ${schedule.claimRequiresApproval ? "Bokningen kräver ledarens godkännande." : "Platsen bokas direkt om den fortfarande är ledig."}`)}>Ta platsen</button>}
    {schedule.canManage && <><button type="button" className="secondary" disabled={!person} onClick={() => propose({ op: "assign", slotId: slot.id, personId: person, revision: slot.revision }, `Tilldela ${title} till ${schedule.people.find(p => p.id===person)?.name}.`)}>Tilldela</button>{slot.occupied && <button type="button" className="secondary" onClick={() => propose({ op: "assign", slotId: slot.id, personId: null, revision: slot.revision }, `Frigör platsen: ${title}.`)}>Frigör</button>}</>}
    </div>}

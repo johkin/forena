@@ -167,3 +167,16 @@ hopfällbara avsnitt. Fördelningsförslag visar period, registrerat underlag oc
 motivering per spelare, och kan justeras före gemensam förhandsgranskning.
 Förhandsgranskningen anger när familjer notifieras. Genomförd historik visas
 som låst, och ändrade platsrevisioner kräver uppdatering före nytt försök.
+
+### Familjens lagvy
+
+- Lagets publika sida ska fungera även utloggad och ha en synlig inloggningslänk
+  som återvänder till samma lag. Kontobyte laddar om sidan utan föregående kontos
+  klientcache.
+- Truppen öppnar en sökbar kontaktlista för lagets medlemmar och målsmän;
+  administration kräver fortsatt `roster.manage`.
+- Närvaro nås per aktivitet, inte från huvudmenyn.
+- Ett enda möjligt barn visas som text i platsbokningen. Flera val ger en lista.
+- Hämta senaste schemat visar laddning, klart eller fel. En tilldelning visas
+  som **Bokad arbetsuppgift** i För mig. Ändringar görs i uppgiftsschemat, inte
+  genom ett separat Kommer/Kan inte-svar.

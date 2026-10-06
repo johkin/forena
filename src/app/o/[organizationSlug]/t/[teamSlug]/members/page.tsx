@@ -1,4 +1,6 @@
-import { redirect } from "next/navigation";
+import { TeamContactDirectory } from "@/components/team-contact-directory";
+import { teamContactsSchema } from "@/lib/team-contact-directory";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { TeamMenu } from "@/components/team-menu";
 import { AppShell } from "@/components/app-shell";
@@ -74,7 +76,19 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
     target_team_id: team.id,
     target_permission: "roster.manage",
   });
-  if (!canManage) redirect(`/o/${organizationSlug}/t/${teamSlug}`);
+  if (!canManage) {
+    const { data: contacts, error: directoryError } = await supabase.rpc("team_contact_directory", { target_team_id: team.id });
+    if (directoryError?.code === "42501") notFound();
+    if (directoryError) throw new Error("Kontaktlistan kunde inte hämtas. Försök igen.");
+    return <AppShell homeHref={`/o/${organizationSlug}/t/${teamSlug}`}
+      accountEmail={authData.user.email}
+      organization={{ id: organization.id, name: organization.name, slug: organization.slug, assistantName: organization.assistant_name }}
+      team={{ id: team.id, organizationId: team.organization_id, sectionId: team.section_id, slug: team.slug, name: team.name, season: team.season ?? "" }}
+      logoutDestination={`/o/${organizationSlug}/t/${teamSlug}`}
+      navigation={<TeamMenu organizationSlug={organizationSlug} teamSlug={teamSlug} teamName={team.name} canManageRoster={false} leaderView={false} activeItem="members" navigationOnly />}>
+      <main className="content"><TeamContactDirectory people={teamContactsSchema.parse(contacts)} /></main>
+    </AppShell>;
+  }
   const { data: isAdmin } = await supabase.rpc("has_organization_role", {
     target_organization_id: organization.id,
     allowed_roles: ["owner", "admin"],
@@ -617,3 +631,4 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
     </main>
   );
 }
+

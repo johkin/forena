@@ -46,7 +46,7 @@ export function PersonalOverview({ activities, timeZone, onAnswer, onOpenActivit
             </span>
             <b aria-hidden="true">→</b>
           </button>
-          {invitation ? <div className="personal-invitation-response">
+          {item.hasDutyAssignment ? <p className="personal-no-invitation">Bokad arbetsuppgift · Familjen väljer vem som arbetar. <button type="button" className="link-button" onClick={() => onOpenActivity(item)}>Visa uppgift eller föreslå ändring</button></p> : invitation ? <div className="personal-invitation-response">
             <input
               aria-label={`Kommentar till kallelsen för ${item.member.displayName}`}
               maxLength={500}

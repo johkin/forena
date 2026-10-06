@@ -102,3 +102,15 @@ Kalenderexport av enskilda pass är uppskjuten. Automatisk krockkontroll mellan
 aktiviteter, matchurval och assistentverktyg över historiken är fortsatt
 separata roadmap-punkter. Fördelningsförslaget kontrollerar inte tillgänglighet
 mot andra aktiviteter eller fördelning mellan olika lag.
+
+### Bokning, kallelse och närvaro
+
+En tilldelad plats är ett åtagande för spelarens familj och visas som
+**Bokad arbetsuppgift** i den personliga översikten även utan en kallelserad.
+En kallelse är en förfrågan, en bokning är en konkret uppgift och närvaro eller
+genomförande registreras efteråt. Tilldelning skapar inte ett påhittat
+kallelsesvar. Familjen föreslår ändringar i schemat.
+
+Caféverksamhet använder aktivitetstypen **Arbetspass**, med exempelvis
+”Café 21 september” som titel. Den äldre typen Cafépass är inaktiverad för
+nyregistrering; redan skapade aktiviteter och deras inställningar bevaras.
