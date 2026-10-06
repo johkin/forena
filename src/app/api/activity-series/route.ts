@@ -1,5 +1,5 @@
 import { requireActivityType } from "@/lib/activity-configuration";
-import { buildInvitationSchedule, requireFutureSchedule } from "@/lib/activity-schedule";
+import { buildInvitationSchedule, prepareSeriesInvitationSchedule } from "@/lib/activity-schedule";
 import { normalizeActivityTimingRules } from "@/lib/activity-time-rules";
 import { NextResponse } from "next/server";
 import { previewRuleWeeklySeries, previewWeeklySeries, type ResponseDueRule, type SeriesPreviewInput } from "@/lib/activity-series";
@@ -87,10 +87,10 @@ export async function POST(request: Request) {
   let schedules: ReturnType<typeof buildInvitationSchedule>[] = [];
   if (invitationAudience) {
     try {
+      const now = Date.now();
       schedules = occurrences.map(item => {
         const schedule = buildInvitationSchedule(item.startsAt, timeZone, body);
-        requireFutureSchedule(schedule);
-        return schedule;
+        return prepareSeriesInvitationSchedule(schedule, now);
       });
     } catch (error) {
       return NextResponse.json({ error: error instanceof Error ? error.message : "Kallelseschemat är ogiltigt" }, { status: 400 });

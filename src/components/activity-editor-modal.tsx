@@ -12,7 +12,7 @@ import type { ActivityConfiguration } from "@/lib/activity-configuration";
 import { FALLBACK_ACTIVITY_DEFAULTS } from "@/lib/activity-defaults";
 import { applyUntouchedDefaults } from "@/lib/activity-editor-defaults";
 import { durationToMinutes, localActivityTime, normalizeActivityTimingRules, type ActivityTimingRules } from "@/lib/activity-time-rules";
-import { requireFutureSchedule } from "@/lib/activity-schedule";
+import { prepareSeriesInvitationSchedule, requireFutureSchedule } from "@/lib/activity-schedule";
 import { activityRangeDuration } from "@/lib/activity-range";
 import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
 
@@ -45,7 +45,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
   const [deletePreview,setDeletePreview]=useState<{token:string;count:number;skipped:number;activities:{id:string;startsAt:string;endsAt:string}[]}>();
   const [seriesChanges,setSeriesChanges]=useState<Record<string,unknown>>();
   const [kind,setKind]=useState<"single"|"series">(draft?.recurrence?"series":"single");
-  const [preview,setPreview]=useState<(ActivityOccurrence & { invitationSendAt:string;responseDueAt:string;reminderSendAts:string[] })[]>();
+  const [preview,setPreview]=useState<(ActivityOccurrence & { invitationSendAt:string;responseDueAt:string;reminderSendAts:string[];sendImmediately?:boolean })[]>();
   const [payload,setPayload]=useState<Record<string,unknown>>();
   const [pending,setPending]=useState(false);
   const [error,setError]=useState<string>();
@@ -129,13 +129,17 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
       if(source === "database" && (!configuration || !activityTypeId)) throw new Error(configurationError ?? "Vänta tills aktivitetstyperna har hämtats och välj en typ.");
       const timingRules=normalizeActivityTimingRules(recurring ? rules : { ...rules, duration: activityRangeDuration(startsOn, startTime, end.date, end.time, timeZone) });
       const base={startsOn,startTime,timeZone,rules:timingRules};
-      const occurrences=recurring?previewRuleWeeklySeries({...base,endsOn:String(data.get("endsOn")),weekdays:data.getAll("weekdays").map(Number)}):[previewRuleSingleActivity(base)];
+      let occurrences: NonNullable<typeof preview>=recurring?previewRuleWeeklySeries({...base,endsOn:String(data.get("endsOn")),weekdays:data.getAll("weekdays").map(Number)}):[previewRuleSingleActivity(base)];
       if(recurring && invitationMode==="now")throw new Error("Välj schemaläggning för en aktivitetsserie.");
       const invitationAudience=invitationMode==="schedule"?"selection":undefined;
       const invitationSelection={roles:[...selectedRoles],groupIds:[...selectedGroups],responsibilityTypeIds:[...selectedResponsibilities]};
       if(invitationMode==="schedule"&&!invitationSelection.roles.length&&!invitationSelection.groupIds.length&&!invitationSelection.responsibilityTypeIds.length) throw new Error("Välj minst en målgrupp.");
       if(invitationMode==="now"&&!selectedPeople.size) throw new Error("Välj minst en person att kalla.");
-      if(invitationMode==="schedule") occurrences.forEach(item=>requireFutureSchedule({...item,reminderSendAt:null}));
+      if(invitationMode==="schedule") {
+        const now = Date.now();
+        if(recurring) occurrences=occurrences.map(item=>prepareSeriesInvitationSchedule({...item,reminderSendAt:null},now));
+        else occurrences.forEach(item=>requireFutureSchedule({...item,reminderSendAt:null},now));
+      }
       if(mode==="edit" && editScope==="following") {
         if(source==="demo")throw new Error("Serieredigering förhandsgranskas med sparade aktiviteter i ett lag.");
         const changes={title:String(data.get("title")),description:String(data.get("description")),location:String(data.get("location")),activityTypeId:activity?.activityTypeId,startsAt:occurrences[0].startsAt,endsAt:occurrences[0].endsAt,gatheringAt:occurrences[0].gatheringAt};
@@ -247,12 +251,12 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
               {groups.map(group=><label key={group.id}><input type="checkbox" checked={selectedGroups.has(group.id)} onChange={()=>setSelectedGroups(current=>{const next=new Set(current);if(next.has(group.id))next.delete(group.id);else next.add(group.id);return next;})}/>{group.name}</label>)}
             </div>
             <ActivityTimingFields rules={rules} onChange={changeRule} defaults={typeDefaults} touched={touchedKeys} invitations starts={scheduleContext.starts} timeZone={timeZone} contextError={scheduleContext.error}/>
-            <small>Kallelse och sista svarstid räknas före aktivitetens start.</small>
+            <small>Kallelse och sista svarstid räknas före aktivitetens start.{recurring ? " Om kallelsetiden redan har passerat skickas kallelsen direkt vid sparande. Passerade påminnelser hoppas över." : ""}</small>
           </div>:null}
         </details> : null}
         {seriesPreview?<div className="activity-preview"><strong>{seriesPreview.count} aktiviteter ändras · {seriesPreview.skipped} hoppas över</strong><ol>{seriesPreview.activities.map(item=><li key={item.id}>{formatter.format(new Date(item.startsAt))} – {formatter.format(new Date(item.endsAt))}</li>)}</ol><p>Befintliga kallelsetider och svar ändras inte.</p></div>:null}
         {error?<p className="auth-error" role="alert">{error}</p>:null}
-        {preview?<div className="activity-preview"><p className="eyebrow">Förhandsgranskning · {preview.length} {preview.length===1?"tillfälle":"tillfällen"}</p><ol>{preview.slice(0,12).map(item=><li key={item.startsAt}><strong>{formatter.format(new Date(item.startsAt))}</strong><span>{String(payload?.location)} · Slut: {formatter.format(new Date(item.endsAt))}{item.gatheringAt ? ` · Samling: ${formatter.format(new Date(item.gatheringAt))}` : ""}</span>{invitationMode === "schedule" ? <small>Kallelse: {formatter.format(new Date(item.invitationSendAt))} · Svar: {formatter.format(new Date(item.responseDueAt))} · Påminnelser: {item.reminderSendAts.map(t=>formatter.format(new Date(t))).join(", ") || "Inga"}</small> : null}</li>)}</ol></div>:null}
+        {preview?<div className="activity-preview"><p className="eyebrow">Förhandsgranskning · {preview.length} {preview.length===1?"tillfälle":"tillfällen"}</p><ol>{preview.slice(0,12).map(item=><li key={item.startsAt}><strong>{formatter.format(new Date(item.startsAt))}</strong><span>{String(payload?.location)} · Slut: {formatter.format(new Date(item.endsAt))}{item.gatheringAt ? ` · Samling: ${formatter.format(new Date(item.gatheringAt))}` : ""}</span>{invitationMode === "schedule" ? <small>Kallelse: {item.sendImmediately ? "Direkt vid sparande" : formatter.format(new Date(item.invitationSendAt))} · Svar: {formatter.format(new Date(item.responseDueAt))} · Påminnelser: {item.reminderSendAts.map(t=>formatter.format(new Date(t))).join(", ") || "Inga"}</small> : null}</li>)}</ol></div>:null}
         </fieldset>
         <div className="modal-actions">{mode==="edit"?<button className="danger" disabled={pending || editScope===null || deletePreview?.count===0} onClick={()=>void remove(Boolean(deletePreview))} type="button">{deletePreview?"Bekräfta borttagning":editScope==="following"?"Ta bort kommande":"Ta bort"}</button>:null}<button className="secondary" onClick={onClose} type="button">Avbryt</button>{deletePreview?null:preview || seriesPreview?<button className="primary" disabled={pending} onClick={()=>void save()} type="button">{pending?"Sparar…":mode==="edit"?"Spara ändring":recurring?`Skapa ${preview?.length ?? 0} aktiviteter`:"Skapa aktivitet"}</button>:<button className="primary" disabled={pending || editScope===null} type="submit">Förhandsgranska</button>}</div>
       </form>
