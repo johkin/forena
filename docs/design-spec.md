@@ -192,7 +192,10 @@ för dessa tillfällen och endast kommande påminnelser. En passerad sista svars
 ### Assistentens historikresultat
 
 Historiksvar visar period, lag, unika personer och registrerade deltagartillfällen.
-Aktiviteter visas i en hopfällbar lista med datum, tid och registrerat antal.
+Kallelsesvar visar i stället källag, mottagarlag, unika spelare och kallelsetillfällen.
+Aktivitetsnamn som nämns i svaret är klickbara och öppnar samma dialog.
+Om inga aktivitetsnamn länkas i svaret visas högst fem daterade aktivitetslänkar.
+Ingen separat hopfällbar aktivitetslista visas.
 Saknad närvarorapport visas uttryckligen och betyder inte frånvaro. En begränsad
 personlista påverkar inte databasens fullständiga summering. För mig och För laget
 är öppna från början och kan fällas ihop med tangentbord eller tryck på rubriken.
@@ -201,6 +204,11 @@ Aktivitetsnamn i assistentens historik är tangentbordsåtkomliga knappar med
 minst 44 pixlars tryckyta. Klick öppnar den befintliga aktivitetsdialogen på
 samma sida. Under hämtningen visas laddningsstatus och vid nekad åtkomst ett
 begripligt fel. Stängning återför fokus till aktivitetsknappen.
+Dialogen monteras utanför chattens DOM-underträd så att den ljusa dialogytan
+behåller vanliga textfärger och inte begränsas av meddelandelistans scrollområde.
+Historikens knappar, sekundärtext och fokusmarkeringar ärver sin omgivnings
+textfärg och fungerar även på assistentens mörka bakgrund. Chattbubblornas
+textregler gäller endast själva meddelandet, inte nästlade kort eller dialoger.
 
 ### Tomt lag och enhetlig navigation
 
@@ -249,3 +257,7 @@ befintliga bokningar med tidigare och nya tider i förhandsgranskningen.
 **Redigera enskilt pass** skiljs uttryckligen från hela serien. Ett genomfört
 pass låser hela serien. Datum- och nummerfält ryms inom kolumner som radbryts
 på telefon.
+
+Avslutade aktivitetsdialoger visar uppgifter, kallelsesvar och arbetsbokningar i läsläge. Läsläget börjar efter sluttiden, inte starttiden. Behöriga ledare kan fortfarande justera närvaro; historikdialogen använder behörigheten för aktivitetens eget lag.
+
+Assistentens aktivitetsnamn är klickbara direkt i svaret. Den separata expanderbara aktivitetslistan är borttagen. Om svaret inte nämner aktiviteter visas högst fem daterade aktivitetslänkar som en mening i svaret. Dubbla titlar identifieras med datum i länken.

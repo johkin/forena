@@ -1,5 +1,6 @@
 "use client";
 
+import { useActivityClock } from "@/lib/use-activity-clock";
 import { ActivityInvitationResponse } from "./activity-invitation-response";
 import { useCallback, useEffect, useState } from "react";
 import type { Activity, Member, Organization, Team } from "@/domain/club";
@@ -74,8 +75,10 @@ export function ActivityDetailModal({ activity, organization, team, canManageAct
   const [invitees, setInvitees] = useState<ActivityInvitee[]>([]);
   const [deliveryError, setDeliveryError] = useState(false);
   const [attendanceOpen, setAttendanceOpen] = useState(false);
-  const [openedAt] = useState(() => Date.now());
-  const activityStarted = new Date(activity.startsAt).getTime() <= openedAt;
+  const now = useActivityClock(activity.startsAt, activity.endsAt);
+  const activityEnded = new Date(activity.endsAt).getTime() <= now;
+  const readOnly = activityEnded || activity.status === "cancelled";
+  const activityStarted = new Date(activity.startsAt).getTime() <= now;
   const date = new Intl.DateTimeFormat("sv-SE", { timeZone, weekday: "long", day: "numeric", month: "long" }).format(new Date(activity.startsAt));
   const time = new Intl.DateTimeFormat("sv-SE", { timeZone, hour: "2-digit", minute: "2-digit" });
 
@@ -135,18 +138,19 @@ export function ActivityDetailModal({ activity, organization, team, canManageAct
         {activity.seriesId ? <span className="activity-series-badge">Aktivitetsserie</span> : null}
       </div>
 
-      <ActivityInvitationResponse key={activity.id} activityId={activity.id} cancelled={activity.status === "cancelled"} />
+      {activityEnded ? <p role="status">Aktiviteten är avslutad. Uppgifterna visas i läsläge.</p> : null}
+      <ActivityInvitationResponse key={activity.id} activityId={activity.id} cancelled={activity.status === "cancelled"} readOnly={readOnly} />
       {canManageInvitations ? <section className="activity-staffing" aria-labelledby="activity-staffing-title">
         <div className="card-heading"><div><p className="eyebrow">Kallelser</p><h3 id="activity-staffing-title">Bemanning</h3></div></div>
         <ActivityStaffingList invitees={invitees} />
       </section> : null}
 
-      {canManageInvitations ? <>
+      {canManageInvitations && !readOnly ? <>
         <ActivityParticipantPicker activityId={activity.id} rosterMembers={rosterMembers} invitedIds={invitees.map(p => p.personId)} onAdded={refreshParticipation} />
 
       </> : null}
 
-      <ActivityDutySchedule key={activity.id} activityId={activity.id} startsAt={activity.startsAt} endsAt={activity.endsAt} timeZone={timeZone} />
+      <ActivityDutySchedule key={activity.id} activityId={activity.id} startsAt={activity.startsAt} endsAt={activity.endsAt} timeZone={timeZone} readOnly={readOnly} />
 
       {canManageInvitations && deliveryStatus ? <details className="delivery-status">
         <summary><span>Leveransstatus</span><small>{deliveryStatus.sent} skickade · {deliveryStatus.queued} väntar · {deliveryStatus.failed} misslyckade</small></summary>
@@ -162,7 +166,7 @@ export function ActivityDetailModal({ activity, organization, team, canManageAct
       </details> : null}
 
       {canManageInvitations && deliveryError ? <p className="overview-empty" role="status">Leveransstatus kunde inte hämtas.</p> : null}
-      <div className="modal-actions"><button className="secondary" onClick={onClose} type="button">Stäng</button>{canManageAttendance && activityStarted ? <button className="primary" onClick={() => setAttendanceOpen(true)} type="button">Rapportera närvaro</button> : null}{canManageActivity ? <button className="secondary" onClick={() => onEdit(activity)} type="button">Redigera aktivitet</button> : null}</div>
+      <div className="modal-actions"><button className="secondary" onClick={onClose} type="button">Stäng</button>{canManageAttendance && activityStarted && activity.status !== "cancelled" ? <button className="primary" onClick={() => setAttendanceOpen(true)} type="button">{activityEnded ? "Justera närvaro" : "Rapportera närvaro"}</button> : null}{canManageActivity && !readOnly ? <button className="secondary" onClick={() => onEdit(activity)} type="button">Redigera aktivitet</button> : null}</div>
     </section>
     {attendanceOpen && canManageAttendance ? <AttendanceModal activityId={activity.id} onClose={() => setAttendanceOpen(false)} /> : null}
   </div>;

@@ -140,8 +140,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .assistant-message { max-width: 92%; }
 .assistant-message.user { justify-self: end; }
 .assistant-message > span { display: block; margin-bottom: 4px; color: #a8c0b9; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .7px; }
-.assistant-message p { margin: 0; padding: 10px 12px; border-radius: 12px 12px 12px 3px; background: rgba(255,255,255,.1); color: #f5f8f7; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
-.assistant-message.user p { border-radius: 12px 12px 3px 12px; background: var(--lime); color: var(--ink); }
+.assistant-message > p { margin: 0; padding: 10px 12px; border-radius: 12px 12px 12px 3px; background: rgba(255,255,255,.1); color: #f5f8f7; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
+.assistant-message.user > p { border-radius: 12px 12px 3px 12px; background: var(--lime); color: var(--ink); }
 .assistant-thinking { margin: 13px 0 0; color: #c5d4cf; font-size: 12px; }
 .assistant-disclaimer { display: block; margin-top: 10px; color: #93aaa3; font-size: 10px; line-height: 1.4; }
 .briefing-generate { width: 100%; margin-top: 14px; border-color: var(--lime); background: var(--lime); color: var(--ink); font-weight: 800; }
@@ -621,7 +621,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .missing-person > span, .team-next-activity > span,
 .activity-history li > span:last-child, .public-match-list > a > span,
 .invitee-list > div, .attendance-row span { min-width:0; overflow-wrap:anywhere; }
-.assistant-message p { overflow-wrap:anywhere; }
+.assistant-message > p { overflow-wrap:anywhere; }
 
 @media (max-width:700px) {
   .invitee-list, .team-directory { grid-template-columns:minmax(0,1fr); }
@@ -951,15 +951,15 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .overview-details > summary::after { content: "▸"; margin-left: auto; }
 .overview-details[open] > summary::after { content: "▾"; }
 .overview-details:not([open]) > summary { margin-bottom: 0; }
-.overview-details > summary:focus-visible, .assistant-history summary:focus-visible { outline: 2px solid #173f35; outline-offset: 4px; }
+.overview-details > summary:focus-visible, .assistant-history summary:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
 .assistant-history { border-top: 1px solid #dfe4df; padding-top: 8px; min-width: 0; overflow-wrap: anywhere; }
 .assistant-history summary { cursor: pointer; min-height: 44px; padding: 10px 0; }
 .assistant-history ul { padding: 0; list-style: none; }
 .assistant-history li { display: flex; flex-direction: column; gap: 4px; padding: 10px 0; border-top: 1px solid #dfe4df; }
-.assistant-history li span, .assistant-history small { color: #557069; }
+.assistant-history li span, .assistant-history small { color: inherit; opacity: .8; }
 
-.assistant-activity-link { align-self: flex-start; max-width: 100%; min-height: 44px; padding: 8px 0; border: 0; background: transparent; color: #173f35; font: inherit; font-weight: 700; text-align: left; text-decoration: underline; overflow-wrap: anywhere; cursor: pointer; }
-.assistant-activity-link:focus-visible { outline: 2px solid #173f35; outline-offset: 4px; }
+.assistant-activity-link { align-self: flex-start; max-width: 100%; min-height: 44px; padding: 8px 0; border: 0; background: transparent; color: inherit; font: inherit; font-weight: 700; text-align: left; text-decoration: underline; overflow-wrap: anywhere; cursor: pointer; }
+.assistant-activity-link:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
 .assistant-activity-link:disabled { cursor: wait; }
 
 /* Radio glyphs stay compact; the full label remains a comfortable touch target. */

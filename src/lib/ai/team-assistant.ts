@@ -1,3 +1,4 @@
+import { createActivityInvitationTools, isActivityInvitationQuestion } from "./activity-invitation-tools";
 import { createActivityHistoryTools } from "./activity-history-tools";
 import { historyPeriodFromQuestion } from "./activity-history-period";
 import { containsToolCode, hasHistoryPeriod, isActivityHistoryQuestion } from "./activity-history-intent";
@@ -27,7 +28,8 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
   const model = process.env.AI_ASSISTANT_MODEL?.trim() || process.env.AI_FEED_MODEL?.trim() || DEFAULT_MODEL;
   const requiresActivityDraft = Boolean(canManageActivities) && isActivityDraftRequest(question);
   const requiresWebResearch = requiresActivityDraft && activityDraftNeedsWebResearch(question);
-  const requiresHistory = context.viewer.kind === "leader" && isActivityHistoryQuestion(question);
+  const requiresInvitations = isActivityInvitationQuestion(question);
+  const requiresHistory = !requiresInvitations && context.viewer.kind === "leader" && isActivityHistoryQuestion(question);
 
   try {
     if (requiresActivityDraft) {
@@ -105,6 +107,7 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
       model,
       instructions: buildTeamAssistantPrompt({ assistantName: organization?.assistant_name, viewerKind: context.viewer.kind, canManageActivities, canManageInvitations }),
       tools: {
+        ...(requiresInvitations ? createActivityInvitationTools(supabase, memoryScope.organizationId, teamId, { today: organizationToday, now: new Date().toISOString(), timeZone: context.clock?.organizationTimeZone ?? organization?.time_zone ?? "Europe/Stockholm", period: historyPeriod, periodRequired: hasHistoryPeriod(question), question, category: /träning/iu.test(question) ? "session" : /match/iu.test(question) ? "competition" : /arbetspass/iu.test(question) ? "work" : undefined, response: /tackat ja|anmäld/iu.test(question) ? "accepted" : /tackat nej/iu.test(question) ? "declined" : /obesvarad|inte svarat/iu.test(question) ? "pending" : "all", onResult: result => historyResults.push(result) }) : {}),
         ...createTeamAssistantTools(supabase, teamId, activityIds),
         ...(context.viewer.kind === "leader" ? createActivityHistoryTools(supabase, memoryScope.organizationId, teamId, { today: organizationToday, period: historyPeriod, onResult: result => historyResults.push(result) }) : {}),
         ...createAssistantMemoryTools(memoryScope, draft => memoryDrafts.push(draft)),
@@ -121,6 +124,11 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
       maxOutputTokens: 500,
       stopWhen: isStepCount(5),
       prepareStep: ({ stepNumber }) => {
+        if (requiresInvitations) {
+          if (stepNumber === 0) return { activeTools: ["listInvitationTeams"], toolChoice: { type: "tool", toolName: "listInvitationTeams" } };
+          if (stepNumber === 1) return { activeTools: ["readActivityInvitations"], toolChoice: { type: "tool", toolName: "readActivityInvitations" } };
+          return { activeTools: ["listInvitationTeams", "readActivityInvitations"] };
+        }
         if (!requiresHistory) return;
         // Require native tool calls; prose resembling a tool call cannot fetch data.
         if (stepNumber === 0) return { activeTools: ["listHistoryTeams"], toolChoice: { type: "tool", toolName: "listHistoryTeams" } };
@@ -137,9 +145,18 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
       abortSignal: AbortSignal.timeout(30_000),
     });
     console.info("team_assistant_completed", { teamId, model, latencyMs: Date.now() - startedAt, inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens,
-      mode: requiresHistory ? "activity-history" : "chat", historyResultCount: historyResults.length,
+      mode: requiresInvitations ? "activity-invitations" : requiresHistory ? "activity-history" : "chat", historyResultCount: historyResults.length,
       tools: result.steps?.flatMap(step => step.toolCalls.flatMap(call => call ? [call.toolName] : [])) ?? [],
     });
+    if (requiresInvitations) {
+      const invitations = historyResults.filter(r => r.kind === "invitations");
+      if (!invitations.length) {
+        const failure = result.steps?.flatMap(step => step.toolResults).find(item => item?.toolName === "readActivityInvitations")?.output;
+        const error = failure && typeof failure === "object" && "error" in failure && typeof failure.error === "string" ? failure.error : "Kallelserna kunde inte verifieras. Det betyder inte att kallelser saknas.";
+        return { answer: error, historyResults: [], source: "fallback", model };
+      }
+      return { answer: invitations.map(r => `${r.summary.uniquePeople} spelare från ${r.sourceTeam} ${r.invitationResponse === "accepted" ? "har tackat ja" : r.invitationResponse === "declined" ? "har tackat nej" : r.invitationResponse === "pending" ? "har obesvarade kallelser" : "har kallelser"} till ${r.activityCount} ${r.category === "session" ? (r.activityCount === 1 ? "träning" : "träningar") : (r.activityCount === 1 ? "aktivitet" : "aktiviteter")} med ${r.team}${historyPeriod ? ` under ${r.from}–${r.through}` : " bland pågående och kommande aktiviteter"}. Totalt ${r.summary.participationCount} ${r.summary.participationCount === 1 ? "kallelsetillfälle" : "kallelsetillfällen"}. Kallad betyder inte registrerad närvaro.`).join("\n"), historyResults: invitations, source: "ai", model };
+    }
     if (requiresHistory && (historyPeriod || hasHistoryPeriod(question)) && !historyResults.length) {
       const failedRead = result.steps?.flatMap(step => step.toolResults).find(item => item?.toolName === "readActivityHistory");
       const output = failedRead?.output;
@@ -165,6 +182,7 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
     if (requiresActivityDraft) {
       throw new TeamAssistantError("draft-unavailable", "Aktivitetsutkastet kunde inte tas fram just nu. Kontrollera AI Gateway och försök igen.");
     }
+    if (requiresInvitations) return { answer: "Kallelserna kunde inte hämtas. Det betyder inte att kallelser saknas. Försök igen.", source: "fallback", model };
     if (requiresHistory) return { answer: "Historiken kunde inte hämtas just nu. Det betyder inte att registrerad närvaro saknas. Försök igen.", source: "fallback", model };
     const nextActivity = activities?.[0];
     const answer = nextActivity

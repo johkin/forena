@@ -22,5 +22,5 @@ export async function GET(_request: Request, { params }: { params: Promise<{ act
   const activity: Activity = { id: a.id, organizationId: a.organization_id, teamId: t.id, activityTypeId: a.activity_type_id, title: a.title, description: a.description_markdown, startsAt: a.starts_at, endsAt: a.ends_at, gatheringAt: a.gathering_at ?? undefined, location: a.location, status: a.status, seriesId: a.series_id ?? undefined, responseDueAt: a.response_due_at ?? undefined };
   const organization: Organization = { id: o.id, slug: o.slug, name: o.name, assistantName: o.assistant_name, timeZone: o.time_zone };
   const team: Team = { id: t.id, slug: t.slug, name: t.name, organizationId: t.organization_id, sectionId: t.section_id, season: t.season };
-  return NextResponse.json({ activity, organization, team }, { headers: { "Cache-Control": "private, no-store" } });
+  return NextResponse.json({ activity, organization, team, permissions: { canManageAttendance: !permissions[1].error && permissions[1].data === true } }, { headers: { "Cache-Control": "private, no-store" } });
 }
