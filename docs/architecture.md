@@ -216,3 +216,17 @@ förhandsgranskas separat innan bekräftelse. Kontrolltoken och låsning skyddar
 mot ändrat urval; hela borttagningen sker i en transaktion med auditlogg.
 Varje tillfälle använder `delete_or_cancel_activity`: publicerade aktiviteter
 med svar ställs in, övriga tas bort. Historik och undantag lämnas kvar.
+
+### Tomma arbetsytor och gemensamt sidskal
+
+En behörig lagarbetsyta finns även utan kommande aktiviteter. Dataladdningen
+returnerar då `activity: null` och tomma aktivitets-/kallelselistor, men behåller
+behörigheter, trupp, uppgifter, familjeaktiviteter och saknad historisk närvaro.
+Översikten visar ett tomt läge med assistenten och behörighetsstyrd skapandeåtgärd.
+Ett databasfel får inte tolkas som ett tomt lag eller publik åtkomst.
+
+Alla sidtyper använder `AppShell`, även publika vyer, konto, ansökningar och
+administration. Skyddade systemsidor får skalet från systemlayouten; den delade
+inställningsvyn skapar därför inget extra skal i systemläge. `AppFooter`
+renderas en gång i rotlayouten. `OrganizationMenu` och `NavigationLinks` samlar
+föreningslänkar och aktiv sidmarkering; serverkontroller avgör administrativa val.

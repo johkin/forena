@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { AppHeader } from "@/components/app-header";
+import { AppShell } from "@/components/app-shell";
 import { createClient } from "@/lib/supabase/server";
 import { assignGuardianAccess } from "./actions";
 
@@ -57,11 +57,10 @@ export default async function ClubRolesPage({ params, searchParams }: Props) {
     responsibilitiesByPersonTeam.set(key, [...(responsibilitiesByPersonTeam.get(key) ?? []), name]);
   }
 
-  return <>
-    <AppHeader homeHref={`/o/${organizationSlug}`} accountEmail={authData.user.email}
+  return <AppShell homeHref={`/o/${organizationSlug}`} accountEmail={authData.user.email}
       organization={{ ...organization, assistantName: organization.assistant_name }} logoutDestination={`/o/${organizationSlug}`}
       workspaces={[{ id: organization.id, kind: "organization", name: organization.name, description: "Förening", href: `/o/${organizationSlug}`, active: true }, ...(teams ?? []).map((team) => ({ id: team.id, kind: "team" as const, name: team.name, description: "Lag", href: `/o/${organizationSlug}/t/${team.slug}`, active: false }))]}
-      adminHref={destination} />
+      adminHref={destination}>
     <main className="application-page"><div className="application-card review-card">
       <div className="application-page-heading"><div><p className="eyebrow">{organization.name} · Administration</p><h1>Ledare, ansvar och behörighet</h1><p>Lagrelation, ansvar och systembehörighet hanteras separat. En person kan vara ledare och till exempel tränare utan att automatiskt få full lagadministration.</p></div></div>
       {saved ? <p className="auth-message" role="status">Ansvar och behörighet har sparats.</p> : null}
@@ -84,5 +83,5 @@ export default async function ClubRolesPage({ params, searchParams }: Props) {
         })}</ul> : <p className="form-help">Inga målsmän har en lagbehörighet ännu.</p>}
       </div>
     </div></main>
-  </>;
+  </AppShell>;
 }

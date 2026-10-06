@@ -260,7 +260,7 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
   );
 
   return (
-    <main>
+    <>
       <AppShell
         homeHref={`/o/${organizationSlug}/t/${teamSlug}`}
         navigation={
@@ -293,7 +293,7 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
         logoutDestination={`/o/${organizationSlug}/t/${teamSlug}`}
         adminHref={isAdmin ? `/o/${organizationSlug}/admin/roles` : undefined}
       >
-        <section className="content">
+        <main className="content">
           <section className="application-card members-admin-card">
             <div className="application-page-heading">
               <div>
@@ -626,9 +626,9 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
               />
             )}
           </section>
-        </section>
+        </main>
       </AppShell>
-    </main>
+    </>
   );
 }
 

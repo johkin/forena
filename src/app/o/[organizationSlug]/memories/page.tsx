@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { AppHeader } from "@/components/app-header";
+import { AppShell } from "@/components/app-shell";
 import { AssistantMemoryManager } from "@/components/assistant-memory-manager";
 import { createClient } from "@/lib/supabase/server";
 
@@ -60,13 +60,12 @@ export default async function MemoriesPage({ params, searchParams }: Props) {
   ];
   const requestedScope = ["personal", "organization", "section", "team"].includes(query.scope ?? "") ? query.scope as Scope : "personal";
 
-  return <>
-    <AppHeader homeHref={`/o/${organizationSlug}`} accountEmail={authData.user.email} organization={{ ...organization, assistantName: organization.assistant_name }}
-      workspaces={workspaces} logoutDestination={`/o/${organizationSlug}`} adminHref={admin ? `/o/${organizationSlug}/admin/roles` : undefined} />
+  return <AppShell homeHref={`/o/${organizationSlug}`} accountEmail={authData.user.email} organization={{ ...organization, assistantName: organization.assistant_name }}
+      workspaces={workspaces} logoutDestination={`/o/${organizationSlug}`} adminHref={admin ? `/o/${organizationSlug}/admin/roles` : undefined}>
     <main className="application-page memory-page"><section className="application-card">
       <div className="application-page-heading"><div><p className="eyebrow">Assistent</p><h1>Minnen</h1><p>Hantera minnen på de nivåer där du har administrativ behörighet. Centrala system- och disciplinminnen hanteras separat av Förena.</p></div><a className="secondary" href={`/o/${organizationSlug}`}>Tillbaka</a></div>
       {query.saved ? <p className="auth-message">Minnet har sparats.</p> : null}{query.deleted ? <p className="auth-message">Minnet har tagits bort.</p> : null}{query.error ? <p className="auth-error">{query.error}</p> : null}
       <AssistantMemoryManager organizationSlug={organizationSlug} targets={targets} memories={(memories ?? []) as never} initialScope={requestedScope} initialScopeId={query.scopeId} />
     </section></main>
-  </>;
+  </AppShell>;
 }

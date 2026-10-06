@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { AppHeader } from "@/components/app-header";
+import { AppShell } from "@/components/app-shell";
 import { createClient } from "@/lib/supabase/server";
 import { systemAdminInvitationPath } from "@/lib/platform-admin-invitation-token";
 import { acceptSystemAdminInvitation } from "./actions";
@@ -21,8 +21,7 @@ export default async function SystemAdminInvitationPage({ params, searchParams }
     redirect(`/login?next=${encodeURIComponent(destination)}`);
   }
 
-  return (<>
-    <AppHeader accountEmail={data.user.email} />
+  return (<AppShell accountEmail={data.user.email}>
     <main className="auth-page">
       <section className="auth-card">
         <span className="brand-mark">F</span>
@@ -36,5 +35,5 @@ export default async function SystemAdminInvitationPage({ params, searchParams }
         </form>
       </section>
     </main>
-  </>);
+  </AppShell>);
 }

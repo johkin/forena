@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { AppHeader } from "@/components/app-header";
+import { AppShell } from "@/components/app-shell";
 import { CopyAddress } from "@/components/copy-address";
 import { getSiteUrl } from "@/lib/site-url";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -20,9 +20,8 @@ export default async function ConnectPage() {
     ? (await (await createClient()).auth.getUser()).data.user
     : null;
 
-  return <main>
-    <AppHeader accountEmail={user?.email} loginHref="/login?next=%2Fconnect" />
-    <div className="application-page connection-page">
+  return <AppShell accountEmail={user?.email} loginHref="/login?next=%2Fconnect">
+    <main className="application-page connection-page">
       <section className="application-card connection-card">
         <p className="eyebrow">Integrationer</p>
         <h1>Anslut AI</h1>
@@ -50,6 +49,6 @@ export default async function ConnectPage() {
           </section>
         </div>
       </section>
-    </div>
-  </main>;
+    </main>
+  </AppShell>;
 }

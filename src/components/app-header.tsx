@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Organization, Team, Workspace } from "@/domain/club";
+import { OrganizationMenu } from "./organization-menu";
+import { NavigationLinks } from "./navigation-links";
 import { LogoutButton } from "@/components/logout-button";
 import { NotificationSettings } from "@/components/notification-settings";
 import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
@@ -81,8 +83,8 @@ export function AppMenuContent({ organization, team, workspaces, navigation, acc
   return <>
         {organization && workspaces?.length ? <div className="header-menu-section"><p className="eyebrow">Arbetsyta</p><WorkspaceSwitcher organization={organization} team={team} workspaces={workspaces} /></div> : null}
         {navigation ? <div className="header-menu-section header-menu-navigation">{navigation}</div> : null}
-        {organization && accountEmail ? <div className="header-menu-section header-menu-account"><p className="eyebrow">Assistent</p><a href={`/o/${organization.slug}/memories`}>Minnen</a>{adminHref ? <a href={`/o/${organization.slug}/activity-settings`}>Aktivitetsinställningar</a> : null}</div> : null}
-        {adminHref ? <div className="header-menu-section header-menu-account"><p className="eyebrow">Förening</p><a href={adminHref}>Administrera ledare och roller</a></div> : null}
+        {organization && accountEmail ? <div className="header-menu-section header-menu-account"><p className="eyebrow">Assistent</p><NavigationLinks label="Assistent" items={[{ href: `/o/${organization.slug}/memories`, label: "Minnen" }, ...(adminHref ? [{ href: `/o/${organization.slug}/activity-settings`, label: "Aktivitetsinställningar" }] : [])]} /></div> : null}
+        {organization ? <div className="header-menu-section header-menu-account"><p className="eyebrow">Förening</p><OrganizationMenu organizationSlug={organization.slug} canAdminister={Boolean(adminHref)} /></div> : !navigation ? <div className="header-menu-section"><NavigationLinks label="Navigation" items={[{ href: homeHref, label: "Översikt" }]} /></div> : null}
         <div className="header-menu-section header-menu-account">
           {accountEmail ? <><p className="eyebrow">Konto</p><small className="header-menu-email">{accountEmail}</small><a href="/profile">Min profil</a><LogoutButton destination={logoutDestination} /></>
             : <a href={loginHref ?? `/login?next=${encodeURIComponent(homeHref)}`}>Logga in</a>}

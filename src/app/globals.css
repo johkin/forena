@@ -963,3 +963,13 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .activity-series-scope input[type="radio"] { flex: 0 0 18px; width: 18px; height: 18px; min-height: 0; margin: 0; padding: 0; accent-color: var(--ink); }
 .activity-series-scope p { margin: 8px 0 0; color: var(--ink-soft); font-size: 12px; line-height: 1.5; }
 .activity-editor-fields[hidden] { display: none; }
+
+/* Shared page frame: footer follows content and never overlays controls. */
+body { min-height:100dvh; display:flex; flex-direction:column; }
+.app-page { flex:1; min-width:0; }
+.app-footer { display:flex; flex-wrap:wrap; justify-content:space-between; gap:16px; padding:20px clamp(16px,4vw,32px); border-top:1px solid var(--line); color:var(--ink-soft); font-size:12px; line-height:1.5; }
+.app-footer nav { display:flex; flex-wrap:wrap; gap:16px; }
+.app-footer a { color:var(--ink); }
+.app-shell > .application-page, .app-shell > .auth-page { width:100%; min-width:0; min-height:0; }
+.app-sidebar a[aria-current="page"] { color:var(--ink); background:var(--mint); }
+.header-menu-panel a[aria-current="page"] { color:var(--ink); background:var(--mint); }
