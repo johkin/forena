@@ -63,8 +63,11 @@ insert into public.invitations (organization_id, activity_id, person_id, respons
 
 
 
-update public.activities set starts_at=now()-interval '2 days',ends_at=now()-interval '2 days'+interval '1 hour';
-update public.memberships set starts_on=current_date-30;
+update public.activities
+set starts_at=now()-interval '2 days', ends_at=now()-interval '2 days'+interval '1 hour'
+where organization_id='a1000000-0000-0000-0000-000000000001';
+update public.memberships set starts_on=current_date-30
+where organization_id='a1000000-0000-0000-0000-000000000001';
 insert into public.invitations(organization_id,activity_id,person_id,response)
 values('a1000000-0000-0000-0000-000000000001','a6000000-0000-0000-0000-000000000001','a5000000-0000-0000-0000-000000000002','accepted');
 insert into public.activity_attendance_reports(id,organization_id,activity_id,reported_by)
