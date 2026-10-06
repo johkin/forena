@@ -201,6 +201,11 @@ Aktivitetsnamn i assistentens historik är tangentbordsåtkomliga knappar med
 minst 44 pixlars tryckyta. Klick öppnar den befintliga aktivitetsdialogen på
 samma sida. Under hämtningen visas laddningsstatus och vid nekad åtkomst ett
 begripligt fel. Stängning återför fokus till aktivitetsknappen.
+Dialogen monteras utanför chattens DOM-underträd så att den ljusa dialogytan
+behåller vanliga textfärger och inte begränsas av meddelandelistans scrollområde.
+Historikens knappar, sekundärtext och fokusmarkeringar ärver sin omgivnings
+textfärg och fungerar även på assistentens mörka bakgrund. Chattbubblornas
+textregler gäller endast själva meddelandet, inte nästlade kort eller dialoger.
 
 ### Tomt lag och enhetlig navigation
 

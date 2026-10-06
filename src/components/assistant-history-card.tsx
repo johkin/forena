@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Activity, Organization, Team } from "@/domain/club";
 import { ActivityDetailModal } from "./activity-detail-modal";
 import type { ActivityHistoryResult } from "@/lib/ai/activity-history-result";
@@ -42,7 +43,7 @@ export function AssistantHistoryCard({ result }: { result: ActivityHistoryResult
     </details>
     {opening ? <p role="status">Öppnar aktivitet…</p> : null}
     {error ? <p role="alert">{error}</p> : null}
-    {detail ? <ActivityDetailModal activity={detail.activity} organization={detail.organization} team={detail.team} canManageActivity={false} canManageInvitations={false} canManageAttendance={false} rosterMembers={[]} onClose={() => { setDetail(undefined); trigger.current?.focus(); }} onEdit={() => {}} /> : null}
+    {detail ? createPortal(<ActivityDetailModal activity={detail.activity} organization={detail.organization} team={detail.team} canManageActivity={false} canManageInvitations={false} canManageAttendance={false} rosterMembers={[]} onClose={() => { setDetail(undefined); trigger.current?.focus(); }} onEdit={() => {}} />, document.body) : null}
     {result.truncated ? <small>Personlistan är begränsad. Summeringen och aktivitetslistan omfattar hela perioden.</small> : null}
   </div>;
 }
