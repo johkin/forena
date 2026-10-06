@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify:
+  application:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -31,25 +31,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Set up Supabase CLI
-        uses: supabase/setup-cli@v3
-        with:
-          version: 2.118.0
-
-      - name: Start local Supabase
-        run: supabase db start
-
-      - name: Recreate database from migrations
-        run: supabase db reset
-
-      - name: Run database security tests
-        run: supabase test db
-
-      - name: Generate database types
-        run: |
-          supabase gen types typescript --local --schema public > /tmp/database.types.ts
-          test -s /tmp/database.types.ts
-
       - name: Run tests
         run: npm test
 
@@ -64,3 +45,81 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
+
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_CLI_VERSION: 2.118.0
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+
+      - name: Restore Supabase Docker images
+        id: docker-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: /tmp/supabase-images.tar
+          key: supabase-images-v1-${{ runner.os }}-${{ runner.arch }}-${{ env.SUPABASE_CLI_VERSION }}-${{ hashFiles('supabase/config.toml') }}
+
+      - name: Load cached Docker images
+        if: steps.docker-cache.outputs.cache-hit == 'true'
+        run: docker load --input /tmp/supabase-images.tar
+
+      - name: Start local Supabase
+        run: supabase db start
+
+      - name: Run database security tests
+        run: supabase test db
+
+      - name: Generate database types
+        run: |
+          supabase gen types typescript --local --schema public > /tmp/database.types.ts
+          test -s /tmp/database.types.ts
+
+      # Cache images only; every run still initializes a fresh database and migrations.
+      - name: Export Supabase Docker images
+        if: steps.docker-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          mapfile -t images < <(docker image ls --format '{{.Repository}}:{{.Tag}}' | awk '/^(public\.ecr\.aws\/supabase\/|supabase\/)/ && !/:<none>$/ { print }' | sort -u)
+          if (( ${#images[@]} == 0 )); then
+            echo "::error::No Supabase images found to cache"
+            exit 1
+          fi
+          docker save --output /tmp/supabase-images.tar "${images[@]}"
+
+      - name: Save Supabase Docker images
+        if: steps.docker-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: /tmp/supabase-images.tar
+          key: ${{ steps.docker-cache.outputs.cache-primary-key }}
+
+      - name: Report database cache
+        if: always()
+        env:
+          CACHE_HIT: ${{ steps.docker-cache.outputs.cache-hit }}
+        run: |
+          echo "Supabase Docker image cache hit: ${CACHE_HIT:-false}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Compare restore/load + database start on a warm run with start + export/save on a cold run in the job timings." >> "$GITHUB_STEP_SUMMARY"
+
+  # Keep the existing required check; it must fail if either parallel job fails or skips.
+  verify:
+    needs: [application, database]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require all checks to pass
+        env:
+          APPLICATION_RESULT: ${{ needs.application.result }}
+          DATABASE_RESULT: ${{ needs.database.result }}
+        run: |
+          test "$APPLICATION_RESULT" = success
+          test "$DATABASE_RESULT" = success
