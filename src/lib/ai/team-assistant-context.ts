@@ -105,6 +105,7 @@ export async function loadTeamAssistantContext(input: TeamAssistantInput, { supa
 
   const context = {
     clock: {
+      organizationToday,
       instantUtc: now.toISOString(),
       organizationTimeZone,
       organizationLocalTime: localTime(now, organizationTimeZone),
@@ -113,6 +114,7 @@ export async function loadTeamAssistantContext(input: TeamAssistantInput, { supa
     },
     organization: organization?.name,
     team: team.name,
+    teamId: team.id,
     viewer: { kind: (canViewTeam ? "leader" : "player-or-guardian") as AssistantViewerKind, people: (ownPeople ?? []).map((item) => item.display_name) },
     activities: (activities ?? []).map((activity) => ({
       id: activity.id,

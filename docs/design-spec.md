@@ -182,6 +182,13 @@ som låst, och ändrade platsrevisioner kräver uppdatering före nytt försök.
   genom ett separat Kommer/Kan inte-svar.
 
 
+### Kallelser i nya serier
+
+Vid skapande av en serie visar kallelsedelen att passerade utskickstider innebär
+utskick direkt när serien sparas. Förhandsgranskningen visar ”Direkt vid sparande”
+för dessa tillfällen och endast kommande påminnelser. En passerad sista svarstid
+är fortsatt ett fel som kräver ett nytt val.
+
 ### Assistentens historikresultat
 
 Historiksvar visar period, lag, unika personer och registrerade deltagartillfällen.

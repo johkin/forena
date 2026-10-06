@@ -176,6 +176,24 @@ av bemanningsnotiser sker i samma databastransaktion.
 
 ### Historik och relativa perioder
 
+Lagkontexten innehåller både lagnamn och `teamId`; aktuellt lag är historikens
+förval när inget annat efterfrågas. Explicita historikfrågor kräver ett riktigt
+`listHistoryTeams`-anrop och, när en period anges, ett `readActivityHistory`-anrop
+genom SDK:ns `prepareStep`/`toolChoice`. Modellen får inte ersätta anropen med
+kodtext. Utan lyckad läsning visas ingen obekräftad historiksammanfattning.
+Historikflödet erbjuder inga minnes- eller påminnelseförslag. Metadata loggas
+med verktygsnamn och antal resultat, utan frågor eller historikdata.
+
+Aktivitetsutkast innehåller valfritt `activityTypeId` från lagets tillgängliga
+katalog. Träningsbegäranden väljer en typ med kategorin `session`, även för
+serier. Modellen kan inte föreslå ett okänt katalog-ID. Dialogen behåller typen
+vid konfigurationsladdning och tillämpar dess förval på orörda nya fält; ett
+utkast vars typ blivit otillgänglig kräver ett nytt uttryckligt typval.
+Begäranden som ”Jag vill ha träningar varje fredag” går direkt till utkastflödet.
+En serie som påbörjats men fortfarande pågår begränsas till aktuellt lokalt
+datum före förhandsgranskning; veckodagar och sluttid bevaras och ledaren ser
+att passerade datum hoppas över. Enstaka eller helt passerade serier nekas.
+
 Historikverktyget tolkar `relativeDays` från organisationens aktuella datum.
 ”De senaste tre veckorna” betyder 21 kalenderdagar inklusive idag; datumgränser
 räknas i organisationens tidszon och visas i svaret. Vanliga svenska relativa

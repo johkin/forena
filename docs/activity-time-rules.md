@@ -211,3 +211,12 @@ Längden beräknas från de två tidpunkterna i föreningens tidszon, även öve
 sommartidsbyten. Serier använder fortsatt en längd per tillfälle. Kalendern
 visar varje berörd lokal dag; ett slut exakt vid midnatt räknas inte som
 aktivitet på den nya dagen.
+
+Vid skapande av en serie kan de första tillfällenas beräknade kallelsetid redan
+ha passerat. Då sätts deras fasta utskickstid till sparögonblicket; senare
+tillfällen behåller den valda tidsregeln. Förhandsgranskningen visar ”Direkt
+vid sparande”. Passerade påminnelser hoppas över och sista svarstid måste
+fortfarande ligga framåt i tiden. Servern räknar om schemat vid sparande.
+Den ordinarie notifieringsarbetaren materialiserar målgruppen och köar dessa
+kallelser vid nästa körning, precis som övriga förfallna kallelser. Detta gäller
+nya serier; inga befintliga aktivitets- eller standardscheman skrivs om.

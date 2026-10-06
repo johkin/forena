@@ -1,4 +1,5 @@
 import { previewWeeklySeries } from "../activity-series";
+import { isActivityHistoryQuestion } from "./activity-history-intent";
 
 export const activityDurations = [30, 45, 60, 75, 90, 120, 180, 480] as const;
 export const gatheringOffsets = [0, 15, 30, 45, 60] as const;
@@ -9,6 +10,7 @@ export type ActivityDraftSource = {
 };
 
 export type ActivityDraft = {
+  activityTypeId?: string | null;
   title: string;
   description: string;
   location: string;
@@ -24,14 +26,19 @@ export type ActivityDraftInput = Omit<ActivityDraft, "sources">;
 
 export function isActivityDraftRequest(question: string) {
   const normalized = question.trim().toLocaleLowerCase("sv-SE");
-  if (/^påminn\b/.test(normalized) || /\b(?:skapa|gör|förbered|lägg till|skriv|planera|schemalägg)\s+(?:en\s+)?påminnelse(?:r)?\b/.test(normalized)) return false;
-  const action = /\b(skapa|gör|förbered|lägg till|skriv|planera|schemalägg)\b/.test(normalized);
+  if (/^påminn\b/.test(normalized) || /\b(?:skapa|gör|fixa|förbered|lägg till|lägg in|skriv|planera|schemalägg|vill ha)\s+(?:en\s+)?påminnelse(?:r)?\b/.test(normalized)) return false;
+  const action = /\b(skapa|gör|fixa|förbered|lägg till|lägg in|lägga in|skriv|planera|schemalägg)\b/.test(normalized)
+    || (/\bvill ha\s+(?:(?:en|ett|fler|nya|återkommande)\s+)*(?:aktivitet(?:er)?|träning(?:ar)?|match(?:er)?|turnering(?:ar)?|läger|intresseanmälan|kallelse(?:r)?|aktivitetsserie)\b/.test(normalized) && !isActivityHistoryQuestion(normalized));
   const activity = /\b(aktivitet(?:er)?|träning(?:ar)?|match(?:er)?|turnering(?:ar)?|läger|intresseanmälan|kallelse(?:r)?|aktivitetsserie)\b/.test(normalized) || /cup(?:en)?\b/.test(normalized);
   return action && activity;
 }
 
 export function activityDraftNeedsWebResearch(question: string) {
   return /cup(?:en)?\b|\b(turnering|läger|evenemang)\b/i.test(question);
+}
+
+export function requiresWeeklyRecurrence(question: string) {
+  return /återkommande|\bvarje\s+(?:vecka|måndag|tisdag|onsdag|torsdag|fredag|lördag|söndag)|\bpå\s+(?:måndagar|tisdagar|onsdagar|torsdagar|fredagar|lördagar|söndagar)/iu.test(question);
 }
 
 function requiredText(value: unknown, label: string, maxLength: number) {
@@ -44,6 +51,9 @@ function allowedNumber<const T extends readonly number[]>(value: unknown, allowe
 }
 
 export function normalizeActivityDraft(input: ActivityDraftInput): ActivityDraftInput {
+  if (input.activityTypeId != null && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.activityTypeId)) {
+    throw new Error("Aktivitetsutkastet har en ogiltig aktivitetstyp.");
+  }
   const startsOn = requiredText(input.startsOn, "Datum", 10);
   const startTime = requiredText(input.startTime, "Tid", 5);
   const parsedDate = new Date(`${startsOn}T00:00:00Z`);
@@ -72,6 +82,7 @@ export function normalizeActivityDraft(input: ActivityDraftInput): ActivityDraft
   }
 
   return {
+    ...(input.activityTypeId ? { activityTypeId: input.activityTypeId } : {}),
     title: requiredText(input.title, "Titel", 160),
     description: requiredText(input.description, "Beskrivning", 5_000),
     location: requiredText(input.location, "Plats", 240),

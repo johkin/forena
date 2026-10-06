@@ -73,6 +73,8 @@ describe("team assistant context access", () => {
     const { dependencies, queries } = setup({ leader: true, family: false });
     const result = await loadTeamAssistantContext(input, dependencies);
     expect(result.context.viewer.kind).toBe("leader");
+    expect(result.context.teamId).toBe("team");
+    expect(result.context.team).toBe("Laget");
     expect(result.canManageActivities).toBe(false);
     expect(queries.filter(query => query.table === "invitations")).toHaveLength(0);
     expect(result.context.activities[0].teamResponseSummary).toBeUndefined();

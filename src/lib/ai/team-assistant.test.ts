@@ -17,6 +17,7 @@ import { answerTeamAssistant } from "./team-assistant";
 const dependencies: AssistantDependencies = { supabase: {} as AssistantDependencies["supabase"], userId: "user" };
 const input = { teamId: "team", question: "Skapa träningar varje tisdag och torsdag", messages: [] };
 const draft = {
+  activityTypeId: "00000000-0000-0000-0000-000000000002",
   title: "Träning", description: "Välkomna!", location: "Planen", startsOn: "2026-10-20", startTime: "18:00",
   durationMinutes: 90, gatheringMinutesBefore: 15, recurrence: { weekdays: [2, 4], endsOn: "2026-10-29" },
 };
@@ -26,7 +27,7 @@ describe("answerTeamAssistant", () => {
     vi.clearAllMocks();
     mocks.context.mockResolvedValue({
       organization: { assistant_name: "Nova" }, activities: [], activityIds: [],
-      canManageActivities: true, memoryScope: { organizationId: "org", sectionId: "section", teamId: "team", userId: "user", disciplineId: null }, organizationToday: "2026-10-01", context: { viewer: { kind: "leader" }, memories: [] },
+      canManageActivities: true, memoryScope: { organizationId: "org", sectionId: "section", teamId: "team", userId: "user", disciplineId: null }, organizationToday: "2026-10-01", context: { viewer: { kind: "leader" }, memories: [], activityTypes: [{ id: draft.activityTypeId, name: "Träning", category: "session" }] },
     });
     mocks.generate.mockResolvedValue({ output: draft, usage: { inputTokens: 10, outputTokens: 10 } });
     mocks.chat.mockResolvedValue({ text: "Svar", usage: {} });
@@ -45,9 +46,27 @@ describe("answerTeamAssistant", () => {
     expect((await answerTeamAssistant(input, dependencies)).answer).toContain("Fyll i slutdatum");
   });
 
+  it("routes the Friday request directly to a typed training series and skips elapsed dates", async () => {
+    mocks.generate.mockResolvedValue({ output: { ...draft, location: "Ursvik IP", startsOn: "2026-09-07", startTime: "16:15", durationMinutes: 60, recurrence: { weekdays: [5], endsOn: "2026-11-30" } }, usage: {} });
+    const reply = await answerTeamAssistant({ ...input, question: "Jag vill ha träningar varje fredag på Ursvik IP kl 16:15-17:15. Start 7 september och november ut" }, dependencies);
+    expect(mocks.chat).not.toHaveBeenCalled();
+    expect(reply.activityDraft).toMatchObject({ activityTypeId: draft.activityTypeId, location: "Ursvik IP", startsOn: "2026-10-01", startTime: "16:15", durationMinutes: 60, recurrence: { weekdays: [5], endsOn: "2026-11-30" } });
+    expect(reply.answer).toContain("Passerade datum hoppas över");
+  });
+
+  it.each([null, { weekdays: [5], endsOn: "2026-09-30" }])("rejects a past single activity or entirely past series", async recurrence => {
+    mocks.generate.mockResolvedValue({ output: { ...draft, startsOn: "2026-09-07", recurrence }, usage: {} });
+    await expect(answerTeamAssistant(input, dependencies)).rejects.toMatchObject({ code: "draft-unavailable" });
+  });
+
   it("rejects invalid draft output instead of returning a single activity fallback", async () => {
     mocks.generate.mockResolvedValue({ output: { ...draft, recurrence: { weekdays: [8], endsOn: null } }, usage: {} });
     await expect(answerTeamAssistant(input, dependencies)).rejects.toMatchObject({ code: "draft-unavailable" });
+  });
+
+  it("rejects a single draft when Fridays were explicitly requested", async () => {
+    mocks.generate.mockResolvedValue({ output: { ...draft, recurrence: null }, usage: {} });
+    await expect(answerTeamAssistant({ ...input, question: "Jag vill ha träningar varje fredag" }, dependencies)).rejects.toMatchObject({ code: "draft-unavailable" });
   });
 
   it.each(["leader", "player-or-guardian"] as const)("selects the %s tone using server context", async kind => {
@@ -103,4 +122,3 @@ describe("answerTeamAssistant", () => {
     toolFactory.mockRestore();
   });
 });
-
