@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 7659)
-Total output lines: 261
-
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState, useRef } from "react";
@@ -156,7 +153,34 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
     } catch(caught) { setError(caught instanceof Error?caught.message:"Förhandsgranskningen kunde inte skapas"); }
   }
 
-  async functio…659 tokens truncated…e(confirmSeries=false) {
+  async function save() {
+    if(editScope==="following" && seriesPreview && seriesChanges) {
+      setPending(true);setError(undefined);
+      try {
+        const r=await fetch(`/api/activities/${activity?.id}/series`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({preview:false,token:seriesPreview.token,changes:seriesChanges})});
+        const result=await r.json();if(!r.ok)throw new Error(result.error);
+        onNotice(`${result.count} aktiviteter uppdaterades.`);onClose();window.location.reload();
+      } catch(error) {setError(error instanceof Error?error.message:"Serien kunde inte sparas.");invalidatePreview();} finally {setPending(false);}
+      return;
+    }
+    if(!preview?.length||!payload)return;
+    setPending(true); setError(undefined);
+    if(source==="demo"){onNotice(`${String(payload.title)} förhandsgranskades i demoläge.`);onClose();return;}
+    const occurrence=preview[0], endpoint=mode==="edit"?`/api/activities/${activity?.id}`:recurring?"/api/activity-series":"/api/activities";
+    const body=mode==="edit"||!recurring?{...payload,...(mode==="edit" ? {timingRules:undefined} : {}),gatheringAt:occurrence.gatheringAt,startsAt:occurrence.startsAt,endsAt:occurrence.endsAt}:payload;
+    const response=await fetch(endpoint,{method:mode==="edit"?"PUT":"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
+    const result=await response.json(); setPending(false);
+    if(!response.ok){setError(result.error??"Aktiviteten kunde inte sparas");return;}
+    const savedActivityId=activity?.id??result.activity?.id;
+    if(savedActivityId&&invitationMode!=="none"&&mode==="edit"){
+      const invitationResponse=await fetch(`/api/activities/${savedActivityId}/invitations`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(invitationMode==="now"?{mode:"now",personIds:[...selectedPeople]}:{mode:"schedule",audience:"selection",selection:payload.invitationSelection,invitationSendMinutesBefore:payload.invitationSendMinutesBefore,responseDueRule:payload.responseDueRule,reminderMinutesBeforeDue:payload.reminderMinutesBeforeDue,reminderMinutesBeforeDueList:payload.reminderMinutesBeforeDueList,timingRules:payload.timingRules})});
+      const invitationResult=await invitationResponse.json();
+      if(!invitationResponse.ok){setError(invitationResult.error??"Aktiviteten sparades, men kallelsen kunde inte läggas till");return;}
+    }
+    onNotice(recurring?`${preview.length} aktiviteter skapades.`:mode==="edit"?"Aktiviteten uppdaterades.":"Aktiviteten skapades.");onClose();window.location.reload();
+  }
+
+  async function remove(confirmSeries=false) {
     if(!activity || source==="demo" || editScope===null || pending)return;
     if(editScope==="single" && !window.confirm("Ta bort aktiviteten? Om någon redan har svarat blir den i stället markerad som inställd."))return;
     setPending(true);setError(undefined);
