@@ -340,3 +340,13 @@ kommandofunktionen ligger privat utan klient-EXECUTE så att inaktiverade platse
 inte kan nås via en äldre RPC. Notifieringsköer skapas i samma transaktion som
 ändringen, dedupliceras per händelse och mottagare och innehåller inga andra
 familjers namn. Avbokning sparar tidigare platser i audit-loggen.
+
+## Lagets kontaktlista
+
+`team_contact_directory` ger en avgränsad kontaktlista till inloggade
+föreningsmedlemmar med aktuellt eget lagmedlemskap, aktuell målsmanskoppling
+till lagmedlem eller `roster.manage`. Andra lag och anonyma besökare nekas.
+Listan innehåller namn, lagroller, ledarens e-post och målsmännens namn,
+e-post och registrerade telefonnummer. Spelares konto-e-post, användar-ID,
+födelsedata och kallelsesvar ingår inte. Befintlig RLS för person- och
+målsmanstabeller breddas inte. Läsningar auditeras utan kontaktdata.

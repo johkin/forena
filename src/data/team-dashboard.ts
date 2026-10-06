@@ -376,6 +376,7 @@ export async function getTeamDashboard(
     if (!person || !teamItem || !activityItem) return [];
     const invitationItem = familyInvitationByKey.get(`${person.id}:${activityItem.id}`);
     return [{
+      hasDutyAssignment: (familyDutyLinks ?? []).some(link => link.activity_id === activityItem.id && link.person_id === person.id),
       member: { id: person.id, organizationId: person.organization_id, displayName: person.display_name },
       team: { id: teamItem.id, organizationId: teamItem.organization_id, sectionId: teamItem.section_id, slug: teamItem.slug, name: teamItem.name, season: teamItem.season },
       activity: { id: activityItem.id, organizationId: activityItem.organization_id, teamId: activityItem.team_id ?? teamItem.id, title: activityItem.title, activityTypeId: activityItem.activity_type_id, gatheringAt: activityItem.gathering_at ?? undefined, startsAt: activityItem.starts_at, endsAt: activityItem.ends_at, location: activityItem.location, seriesId: activityItem.series_id ?? undefined, status: activityItem.status, invitationSendAt: activityItem.invitation_send_at ?? undefined, responseDueAt: activityItem.response_due_at ?? undefined, reminderSendAt: activityItem.reminder_send_at ?? undefined },

@@ -1,11 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export function LogoutButton({ destination = "/" }: { destination?: string }) {
-  const router = useRouter();
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -22,8 +20,8 @@ export function LogoutButton({ destination = "/" }: { destination?: string }) {
       return;
     }
 
-    router.replace(destination);
-    router.refresh();
+    // Discard the previous account’s in-memory router cache as well as cookies.
+    window.location.replace(destination);
   }
 
   return (
@@ -38,3 +36,4 @@ export function LogoutButton({ destination = "/" }: { destination?: string }) {
     </button>
   );
 }
+

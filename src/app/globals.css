@@ -940,3 +940,5 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .duty-slot { padding: .7rem 0; border-top: 1px solid #dfe4df; overflow-wrap: anywhere; }
 .duty-instructions { white-space: pre-wrap; }
 .duty-controls .duty-completed { display: flex; gap: .5rem; align-items: center; min-height: 44px; }
+
+.team-contact, .team-contact a { overflow-wrap: anywhere; }

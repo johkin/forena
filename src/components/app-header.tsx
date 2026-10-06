@@ -58,7 +58,7 @@ export function AppHeader({ homeHref = "/", navigation, organization, team, work
   return <header className="topbar">
     <a className="brand" href={homeHref} aria-label="Förena startsida"><span className="brand-mark">F</span><span>Förena</span></a>
     <div className="topbar-actions">
-      {accountEmail ? <NotificationSettings /> : null}
+      {accountEmail ? <NotificationSettings /> : <a className="secondary" href={loginHref ?? `/login?next=${encodeURIComponent(team && organization ? `/o/${organization.slug}/t/${team.slug}` : homeHref)}`}>Logga in</a>}
       <button ref={triggerRef} className={`header-menu-trigger ${sidebarNavigation ? "sidebar-menu-trigger" : ""}`} type="button" aria-label={open ? "Stäng meny" : "Öppna meny"} aria-expanded={open} aria-controls="header-menu" onClick={() => setOpen((value) => !value)}>
         <span aria-hidden="true">{open ? "×" : "☰"}</span><span>Meny</span>
       </button>
@@ -91,3 +91,4 @@ export function AppMenuContent({ organization, team, workspaces, navigation, acc
         </div>
   </>;
 }
+

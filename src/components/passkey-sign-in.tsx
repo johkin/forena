@@ -1,11 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export function PasskeySignIn({ next = "/setup" }: { next?: string }) {
-  const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
 
@@ -24,8 +22,7 @@ export function PasskeySignIn({ next = "/setup" }: { next?: string }) {
       return;
     }
 
-    router.push(next);
-    router.refresh();
+    window.location.replace(next);
   }
 
   return (
@@ -37,3 +34,4 @@ export function PasskeySignIn({ next = "/setup" }: { next?: string }) {
     </div>
   );
 }
+
