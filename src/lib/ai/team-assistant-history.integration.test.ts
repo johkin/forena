@@ -27,7 +27,7 @@ function toolCall(toolName: string, args: object) {
 function textResult(text: string) {
   return { content: [{ type: "text" as const, text }], finishReason: { unified: "stop" as const, raw: undefined }, usage, warnings: [] };
 }
-function setup(readArgs: { category: string; relativeDays: number; teamId?: string } = { category: "session", relativeDays: 21 }, text = "12 personer har registrerad träning.", allowed = true) {
+function setup(readArgs: { category: string; relativeDays?: number; from?: string; through?: string; teamId?: string } = { category: "session", relativeDays: 21 }, text = "12 personer har registrerad träning.", allowed = true) {
   const model = new MockLanguageModelV3({ doGenerate: [toolCall("listHistoryTeams", {}), toolCall("readActivityHistory", readArgs), textResult(text)] });
   state.model = model;
   const rpc = vi.fn(async (name: string) => ({ data: name === "activity_history_teams"
@@ -92,4 +92,13 @@ it("asks for a missing period without forcing the model to invent dates", async 
   const reply = await answerTeamAssistant({ ...input, question: "Hur många har registrerad träning?" }, dependencies);
   expect(reply.answer).toContain("Vilken period");
   expect(rpc.mock.calls.map(([name]) => name)).not.toContain("read_activity_history");
+});
+
+it("reads September through real SDK calls even if the model only supplies its start", async () => {
+  const { rpc, dependencies } = setup({ category: "session", from: "2026-09-01" });
+  rpc.mockImplementation(async (name: string) => ({ data: name === "activity_history_teams" ? [{ id: teamId, name: "F2016", canReadAttendance: true, canReadWork: false }] : { ...history, from: "2026-09-01", through: "2026-09-30" }, error: null }));
+  const reply = await answerTeamAssistant({ ...input, question: "Hur många har tränat i september?" }, dependencies);
+  expect(reply.source).not.toBe("fallback");
+  expect(reply.historyResults).toEqual([expect.objectContaining({ from: "2026-09-01", through: "2026-09-30" })]);
+  expect(rpc).toHaveBeenLastCalledWith("read_activity_history", expect.objectContaining({ target_team_id: teamId, from_date: "2026-09-01", through_date: "2026-09-30" }));
 });

@@ -15,13 +15,13 @@ export function createActivityHistoryTools(supabase: AssistantDependencies["supa
       },
     }),
     readActivityHistory: tool({
-      description: "Läs registrerad historik för träning (session), match (competition) eller arbetspass (work). teamId kan utelämnas för aktuellt lag; servern använder då lagets ID. Period på högst 366 dagar: använd relativeDays=21 för de senaste tre veckorna, eller from och through. Om CONTEXT.historyPeriod finns kan datum utelämnas. Fråga inte efter exakta datum när användaren angett en relativ period. summary räknas över hela perioden före detaljbegränsningen; activities är hela aktivitetslistan. guestsOnly hittar deltagare som vid aktiviteten tillhörde andra lag, men inte mottagande lag. present bevisar närvaro; ja-svar eller bokning gör inte det. Högst 200 person/aktivitetsposter; truncated kräver snävare period. Saknad registrering är inte bevisad frånvaro eller att någon aldrig arbetat.",
+      description: "Läs registrerad historik för träning (session), match (competition) eller arbetspass (work). teamId kan utelämnas för aktuellt lag; servern använder då lagets ID. Period på högst 366 dagar: använd relativeDays=21 för de senaste tre veckorna, eller from och through. CONTEXT.historyPeriod är den serverberäknade perioden från aktuell fråga och gäller framför egna datum; utelämna då datum. En namngiven månad, till exempel september, räcker. Fråga inte efter exakta datum när användaren angett en relativ period. summary räknas över hela perioden före detaljbegränsningen; activities är hela aktivitetslistan. guestsOnly hittar deltagare som vid aktiviteten tillhörde andra lag, men inte mottagande lag. present bevisar närvaro; ja-svar eller bokning gör inte det. Högst 200 person/aktivitetsposter; truncated kräver snävare period. Saknad registrering är inte bevisad frånvaro eller att någon aldrig arbetat.",
       inputSchema: z.object({ teamId: z.uuid().optional(), from: z.iso.date().optional(), through: z.iso.date().optional(), relativeDays: z.number().int().min(1).max(366).optional(), category: z.enum(["session", "competition", "work"]), guestsOnly: z.boolean().default(false) }),
       execute: async ({ teamId = currentTeamId, from, through, relativeDays, category, guestsOnly }) => {
-        if ((from && !through) || (through && !from) || (relativeDays !== undefined && (from || through))) return { error: "Ange antingen båda datumen eller relativeDays." };
+        if (!options?.period && ((from && !through) || (through && !from) || (relativeDays !== undefined && (from || through)))) return { error: "Ange antingen båda datumen eller relativeDays." };
         let period: HistoryPeriod | undefined;
         try {
-          period = from && through ? { from, through } : relativeDays !== undefined && options ? recentHistoryPeriod(options.today, relativeDays) : options?.period;
+          period = options?.period ?? (from && through ? { from, through } : relativeDays !== undefined && options ? recentHistoryPeriod(options.today, relativeDays) : undefined);
         } catch { return { error: "Välj en giltig period på högst 366 dagar." }; }
         if (!period) return { error: "Ange en period, exempelvis relativeDays=21 för de senaste tre veckorna." };
         const span = (Date.parse(period.through) - Date.parse(period.from)) / 86400000;

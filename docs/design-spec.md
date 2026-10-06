@@ -197,6 +197,11 @@ Saknad närvarorapport visas uttryckligen och betyder inte frånvaro. En begrän
 personlista påverkar inte databasens fullständiga summering. För mig och För laget
 är öppna från början och kan fällas ihop med tangentbord eller tryck på rubriken.
 
+Aktivitetsnamn i assistentens historik är tangentbordsåtkomliga knappar med
+minst 44 pixlars tryckyta. Klick öppnar den befintliga aktivitetsdialogen på
+samma sida. Under hämtningen visas laddningsstatus och vid nekad åtkomst ett
+begripligt fel. Stängning återför fokus till aktivitetsknappen.
+
 ### Tomt lag och enhetlig navigation
 
 Ett lag utan kommande aktiviteter visar lagöversikten med ett tydligt tomt läge.

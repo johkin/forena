@@ -50,3 +50,14 @@ it("rejects incomplete or conflicting periods before database access",async()=>{
  expect(await tools.readActivityHistory.execute!({from:"2026-10-01",through:"2026-10-06",relativeDays:21,category:"session",guestsOnly:false},options)).toHaveProperty("error");
  expect(rpc).not.toHaveBeenCalled();
 });
+
+it.each([
+ {from:"2026-09-01"},
+ {through:"2026-09-30"},
+ {from:"2026-10-01",through:"2026-10-06",relativeDays:21},
+])("uses the question's canonical month despite incomplete or conflicting model dates %j",async(args)=>{
+ const {rpc}=setup();
+ const tools=createActivityHistoryTools({rpc} as unknown as AssistantDependencies["supabase"],"org",team,{today:"2026-10-07",period:{from:"2026-09-01",through:"2026-09-30"},onResult:vi.fn()});
+ await tools.readActivityHistory.execute!({category:"session",guestsOnly:false,...args},options);
+ expect(rpc).toHaveBeenLastCalledWith("read_activity_history",expect.objectContaining({from_date:"2026-09-01",through_date:"2026-09-30"}));
+});

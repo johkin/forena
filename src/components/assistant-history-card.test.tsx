@@ -18,4 +18,8 @@ it.each([
   const html = renderToStaticMarkup(<AssistantHistoryCard result={result} />);
   expect(html).toContain("16 sep. 2026–6 okt. 2026");
   expect(html).toContain(activityTime);
+  expect(html).toContain('aria-label="Öppna Träning"');
+  expect(html).toContain("1 person");
+  expect(html).not.toContain("1 personer");
+  expect(html).toContain("1 registrerat deltagartillfälle");
 });

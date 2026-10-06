@@ -176,6 +176,16 @@ av bemanningsnotiser sker i samma databastransaktion.
 
 ### Historik och relativa perioder
 
+Namngivna månader tolkas på servern: september utan år avser senaste förekomsten,
+innevarande månad begränsas till dagens datum och uttryckligt år respekteras.
+Den säkert tolkade perioden från aktuell fråga gäller före modellens datumfält,
+så ett saknat slutdatum i verktygsanropet inte blockerar läsningen. Tvetydiga
+månadsintervall och enskilda datum lämnas till det explicita datumflödet.
+Historikens aktivitetsknappar hämtar aktuella detaljer med användarens session,
+RLS och ny behörighetskontroll för aktivitetens faktiska lag. Den befintliga
+aktivitetsdialogen öppnas i läsläge, liksom aktivitetslänkar från notiser, med
+aktivitetens egen förening, lag och tidszon. Chatten finns kvar bakom dialogen.
+
 Lagkontexten innehåller både lagnamn och `teamId`; aktuellt lag är historikens
 förval när inget annat efterfrågas. Explicita historikfrågor kräver ett riktigt
 `listHistoryTeams`-anrop och, när en period anges, ett `readActivityHistory`-anrop

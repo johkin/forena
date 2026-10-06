@@ -19,3 +19,18 @@ it("leaves unspecified and oversized periods unresolved", () => {
   expect(historyPeriodFromQuestion("senaste 100 veckorna", "2026-10-06")).toBeUndefined();
   expect(() => recentHistoryPeriod("2026-10-06", 0)).toThrow();
 });
+
+it.each([
+  ["Hur många har tränat i september?", "2026-10-07", "2026-09-01", "2026-09-30"],
+  ["Träning i februari 2024", "2026-10-07", "2024-02-01", "2024-02-29"],
+  ["Träning i december", "2026-01-07", "2025-12-01", "2025-12-31"],
+  ["Träning i oktober", "2026-10-07", "2026-10-01", "2026-10-07"],
+  ["Träning i september förra året", "2026-10-07", "2025-09-01", "2025-09-30"],
+  ["Träning i november i år", "2026-10-07", "2026-11-01", "2026-11-30"],
+  ["Träning förra månaden", "2026-01-07", "2025-12-01", "2025-12-31"],
+])("resolves calendar months: %s", (question, today, from, through) => {
+  expect(historyPeriodFromQuestion(question, today)).toEqual({ from, through });
+});
+it.each(["mellan september och oktober", "sedan september", "den 17 september", "september 2025 och 2026"])("leaves ambiguous or narrower dates unresolved: %s", question => {
+  expect(historyPeriodFromQuestion(question, "2026-10-07")).toBeUndefined();
+});
