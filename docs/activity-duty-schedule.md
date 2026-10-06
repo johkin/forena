@@ -1,7 +1,11 @@
 # Arbetsuppgifter och bemanningsschema
 
-En aktivitet är ramen. `activity_duties` beskriver uppgifter med tidsintervall,
-deadline eller ingen tid. Varje `activity_duty_slots` är en verklig plats som
+En aktivitet är ramen. `activity_duty_series` lagrar ett gemensamt upplägg:
+uppgiftstyp och namn, period/deadline, passlängd, antal platser, instruktioner
+samt öppnings- och stängningsinstruktioner. Serien hör till en enda aktivitet.
+Den är inte en `activity_series` över flera aktivitetsdatum.
+`activity_duties` är materialiserade instanser med `series_id` och
+`series_position`, egna tider och instruktioner som ögonblicksbild av mallen. Varje `activity_duty_slots` är en verklig plats som
 börjar tom (`person_id = null`) och kan tilldelas en spelare. Familjen väljer
 vilken vuxen som arbetar. En plats har revisionsnummer och separat genomförande.
 Samma spelare kan ha flera olika uppgifter, men inte två platser i samma behov.
@@ -121,3 +125,46 @@ förhandsgranskningen med vägledning att ändra aktivitetens tider.
 Förhandsgranskningen får fokus och måste bekräftas med **Spara uppgifter**;
 först då visas bokningsbara platser. Datum och tider i ett osparat formulär
 är inte ett skapat schema.
+
+### Uttrycklig redigering och uppgiftsserier
+
+Schemat öppnas i visningsläge. **Redigera arbetsuppgifter** visar skapande,
+uppgiftsredigering, uppgiftstyper och självserviceregler. Bokning, tilldelning
+och genomförandemarkering fungerar även i visningsläge. Ändringar granskas
+och sparas separat; att avsluta redigeringen sparar inga formulärutkast.
+
+Förhandsgranskning av genererade pass visar varje intervall, antal platser och
+instruktioner före sparande. I redigeringsläget kan ledaren markera flera
+uppgifter eller **Markera alla** och **Ta bort markerade**, högst 100 åt gången.
+En gemensam förhandsgranskning visar uppgifterna och antalet bokningar som
+frigörs. Borttagningen är atomär: en ändrad revision eller ett genomförande
+stoppar hela urvalet. Genomförda uppgifter kan inte markeras. Historik och
+audit behålls, berörda ändringsförslag stängs och avbokningsnotisen köas en
+gång per mottagare för urvalet. Förslag kan dessutom få egna utgångsnotiser.
+
+**Redigera hela uppgiftsserien** ändrar det gemensamma upplägget och regenererar
+alla instanser atomärt. Befintliga aktiva pass behåller sina ID:n och platser
+via passnumret, och därmed sina bokningar. Förhandsgranskningen visar nya tider
+samt tidigare tider och namn för berörda bokningar. Nya pass skapas när
+antalet ökar. När antalet minskar får endast obokade pass avbokas; ledaren
+måste först frigöra bokningar på pass som försvinner. Antalet platser får inte
+bli mindre än bokningarna på något kvarvarande pass. Genomförande på något
+pass låser hela serien för ändring och avbokning. **Ta bort hela
+uppgiftsserien** avbokar samtliga pass med gemensam bekräftelse och behåller
+historik och audit.
+
+Varje instans- eller bokningsändring ökar seriens revision. En gammal
+förhandsgranskning får därför inte skriva över nya bokningar eller individuella
+ändringar. **Redigera enskilt pass** kan fortfarande ändra en instans;
+helserieredigering återanvänder mallen och ersätter sådana individuella
+ändringar efter uttrycklig förhandsgranskning. Tidigare avbokade pass återkommer
+som nya instanser om mallen genererar deras passnummer igen, medan tidigare
+historik ligger kvar.
+
+Befintliga uppgifter migreras till var sin singleton-serie, eftersom det saknas
+data om vilka äldre pass som skapades tillsammans. Äldre skapa-anrop får också
+singleton-serier; nya GUI-skapanden sparar hela det genererade upplägget som
+en serie. Alla instanser har en icke-null FK till en serie inom samma aktivitet
+och förening. Tabellen har RLS och inga direkta klientgrants; endast
+behörighetskontrollerade RPC:er kan ändra serier. Familjer får inte seriens
+administrativa mall/revision i schemats svar.
