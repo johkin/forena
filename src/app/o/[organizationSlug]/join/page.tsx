@@ -36,7 +36,7 @@ export default async function JoinPage({ params, searchParams }: Props) {
       <p>Ansökan är sparad. Öppna mejlet till målsman 1 och bekräfta adressen inom 24 timmar. Därefter visas ansökan för kansliet. Inget konto eller medlemskap skapas ännu.</p>
       {query.deliveryFailed === "1" ? <p className="auth-error" role="alert">Mejlet kunde inte skickas. Du kan begära en ny länk nedan utan att fylla i ansökan igen.</p> : null}
       {query.resent === "1" ? <p role="status">Om uppgifterna stämmer och utskicksgränsen tillåter det skickas en ny länk. Kontrollera även skräpposten.</p> : null}
-      <p className="form-help">Du kan begära en ny länk efter en minut, högst tre gånger per timme. En ny länk ersätter den tidigare.</p>
+      <p className="form-help">Du kan begära en ny länk efter en minut, högst tre gånger per timme totalt över alla föreningar. Vid många samtidiga ansökningar kan du behöva försöka senare. En ny länk ersätter den tidigare.</p>
       <MembershipVerificationResendForm organizationSlug={organizationSlug} applicationId={query.application ?? ""} />
     </section></main></AppShell>;
   }

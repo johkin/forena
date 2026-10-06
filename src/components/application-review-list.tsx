@@ -22,9 +22,15 @@ export type ApplicationListItem = {
 };
 
 function ApplicationDetails({ application }: { application: ApplicationListItem }) {
-  const date = (value: string) => new Intl.DateTimeFormat("sv-SE", {
-    dateStyle: "short", timeStyle: "short", timeZone: application.timeZone,
-  }).format(new Date(value));
+  const date = (value: string) => {
+    try {
+      return new Intl.DateTimeFormat("sv-SE", {
+        dateStyle: "short", timeStyle: "short", timeZone: application.timeZone,
+      }).format(new Date(value));
+    } catch {
+      return value;
+    }
+  };
   const sources = { legacy: "Äldre ansökan", public_form: "Publikt ansökningsformulär", verified_member: "Inloggad medlem" };
   return <details><summary>Ansökningsinformation</summary><dl>
     <div><dt>Inskickad</dt><dd>{date(application.createdAt)}</dd></div>

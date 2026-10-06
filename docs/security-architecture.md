@@ -379,8 +379,8 @@ föreningstillhörighet; inga användarredigerbara metadata används.
 256-bitars slumpmässiga verifieringstoken skickas endast via mejl. Databasen
 lagrar SHA-256-hash, giltighetstid, förbrukning och ersättning; tabellen har RLS
 utan klientpolicyer eller klientgrants. Länkförbrukning och omskick låser ansökan
-före token för att undvika samtidiga verifieringar/rotationer. Utskicksgränsen
-serialiseras per adress/förening. Omskick ger samma publika svar för okänd ansökan,
+före token för att undvika samtidiga verifieringar/rotationer. Utskicksgränserna
+serialiseras gemensamt över alla föreningar. Omskick ger samma publika svar för okänd ansökan,
 fel adress och överskriden gräns. Verifieringssidan skickar ingen Referer och är
 markerad för att inte indexeras. Mejlet innehåller inga barnuppgifter och loggar
 innehåller inte token, mejladress eller mejlleverantörens svarskropp.
@@ -392,3 +392,49 @@ påbörjad granskning och får tydlig markering om saknat verifieringsunderlag.
 Service role krävs nu även för att spara den publika ansökan. Konfigurera
 `SITE_URL` till appens kanoniska adress och behåll `RESEND_API_KEY` och
 `RESEND_FROM_EMAIL`; inga nya hemligheter behövs.
+
+### Gemensam budget för verifieringsmejl
+
+`prepare_membership_application_verification` reserverar utskicket i samma
+transaktion som token. Både nya ansökningar och omskick delar ett rullande tak
+på **100 verifieringsmejl per timme för hela installationen**. Varje mottagare
+har dessutom en minuts spärr mellan utskick och högst tre per timme över alla
+föreningar. Gränserna kan inte multipliceras genom byte av klubb, mottagare,
+appinstans eller nya ansöknings-ID:n. Ett globalt transaktionslås serialiserar
+kontroll och reservation; det hålls inte under nätverksanropet till Resend.
+Misslyckade leveranser och ersatta/förbrukade länkar räknas också i budgeten.
+Inga klientuppgivna gränsvärden eller IP-adresser används. Taket är ett medvetet
+kostnads-/missbruksskydd; en eventuell höjning görs genom en granskad migration.
+Vid fullt tak skickas inget mejl och inga länkar ersätts. Ett nekat nytt inskick
+rullar tillbaka hela ansökan. Omskick behåller sitt generiska publika svar.
+
+### Driftsättning och återställning av verifieringsflödet
+
+Detta är en inkompatibel ändring för appversioner före verifieringsflödet:
+den tidigare appen anropar `submit_membership_application` med en klientroll
+som migrationen avsiktligt återkallar. Att enbart återställa den äldre appen
+återställer därför inte ansökningsfunktionen.
+
+1. Verifiera i CI både hela migrationskedjan och appbygget. Kontrollera före
+   produktionskörning att service-nyckel, Resend-konfiguration och `SITE_URL`
+   finns i servermiljön. Förbered den verifierade appversionen före cutover.
+2. Planera ett kort underhållsfönster för publika medlemsansökningar. Vid behov
+   blockeras tillfälligt POST till ansöknings- och verifieringssidorna i driftens
+   ingress/firewall. Den gamla appen är inte kompatibel mellan migration och
+   appbyte; lova inte att inskick fungerar under detta intervall. Övriga
+   medlems-/lagfunktioner berörs inte av dessa RPC-ändringar.
+3. Kör det befintliga `Deploy production`-flödet: databasjobbet applicerar
+   migrationer innan appjobbet publicerar bygget. Verifiera efteråt i avsedd
+   testmiljö att en anonym ansökan sparas osynligt, att bara mejlets bekräftelse
+   visar den för kansliet och att omskick respekterar budgeten. Ta sedan bort
+   eventuell tillfällig blockering.
+4. Om apppubliceringen misslyckas efter migrationen, behåll service-only-grants
+   och draft-isolering. Rätta felet och kör deployjobbet igen med en kompatibel
+   verifieringsversion. Återställ inte offentligt EXECUTE och gör inte utkast
+   synliga för att få den äldre appen att fungera.
+5. Efter cutover kan appen bara återställas till en version som fortfarande
+   använder verifieringsflödets server-RPC:er. Budgetmigrationen är kompatibel
+   med första verifieringsversionen (`8eb9d37`). Behöver annan äldre funktionalitet
+   återställas, backporta den med verifieringsadaptern bevarad och kör CI innan
+   publicering. Inga nedmigrationer eller raderingar av sparade ansökningar,
+   token eller verifieringsbevis ingår i återställningen.

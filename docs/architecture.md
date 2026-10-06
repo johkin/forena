@@ -245,8 +245,10 @@ centrala sidskalet. GET är skrivskyddad för att hantera mejlskanning. Verifier
 promoverar ansökan till `submitted` och sparar adress, tidpunkt och auditlogg.
 Förbrukade länkar ger samma bekräftelse vid nytt tryck. Omskick kan begäras utan
 att fylla i ansökan igen; det ersätter föregående länk och begränsas till ett
-utskick per minut och tre per timme per adress/förening, inklusive nya ansökningar.
-Misslyckad mejlleverans lämnar ansökan sparad och erbjuder omskick.
+utskick per minut och tre per timme per mottagare över alla föreningar, inklusive nya ansökningar.
+Misslyckad mejlleverans lämnar ansökan sparad och erbjuder omskick. Ett gemensamt
+tak på 100 verifieringsutskick per timme omfattar alla föreningar, mottagare och
+serverinstanser. Reservationen görs atomärt i databasen före mejlanropet.
 
 Kansliet visar källa, inskickad tid, verifieringsunderlag och ansöknings-ID under
 hopfällbara detaljer. Äldre ansökningar behåller sin status och märks som
