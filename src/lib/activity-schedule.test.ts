@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildInvitationSchedule, prepareSeriesInvitationSchedule, requireFutureSchedule } from "./activity-schedule";
+import { buildInvitationSchedule, prepareInvitationSchedule, requireFutureSchedule } from "./activity-schedule";
 import { FALLBACK_ACTIVITY_DEFAULTS } from "./activity-defaults";
 import { previewRuleWeeklySeries } from "./activity-series";
 import type { ActivityTimingRules } from "./activity-time-rules";
@@ -25,7 +25,7 @@ describe("late invitation times in new series", () => {
  const rules: ActivityTimingRules = { ...FALLBACK_ACTIVITY_DEFAULTS, invitationRule:"start-6d", responseDueRule:"start-6h", reminderRules:["deadline-5d","deadline-2d"] };
  it("sends the first occurrence immediately while retaining future occurrences across DST", () => {
   const previews = previewRuleWeeklySeries({startsOn:"2026-10-09",endsOn:"2026-10-30",weekdays:[5],startTime:"16:15",timeZone:"Europe/Stockholm",rules});
-  const schedules = previews.map(item=>prepareSeriesInvitationSchedule({...item,reminderSendAt:null},now));
+  const schedules = previews.map(item=>prepareInvitationSchedule({...item,reminderSendAt:null},now));
   expect(schedules[0]).toMatchObject({sendImmediately:true,invitationSendAt:"2026-10-06T10:00:00.000Z",reminderSendAts:["2026-10-07T08:15:00.000Z"]});
   expect(schedules[1]).toMatchObject({sendImmediately:false,invitationSendAt:"2026-10-10T14:15:00.000Z"});
   expect(schedules[3].invitationSendAt).toBe("2026-10-24T14:15:00.000Z");
@@ -33,16 +33,16 @@ describe("late invitation times in new series", () => {
  });
  it("also accepts an invitation time equal to now and removes reminders at now", () => {
   const schedule = {invitationSendAt:"2026-10-06T10:00:00Z",responseDueAt:"2026-10-07T10:00:00Z",reminderSendAt:null,reminderSendAts:["2026-10-06T10:00:00Z"]};
-  expect(prepareSeriesInvitationSchedule(schedule,now)).toMatchObject({sendImmediately:true,reminderSendAts:[]});
+  expect(prepareInvitationSchedule(schedule,now)).toMatchObject({sendImmediately:true,reminderSendAts:[]});
  });
  it("rejects an elapsed answer deadline instead of sending an unanswerable invitation", () => {
   const schedule=buildInvitationSchedule("2026-10-06T11:00:00Z","Europe/Stockholm",{timingRules:rules});
-  expect(()=>prepareSeriesInvitationSchedule(schedule,now)).toThrow("Sista svarstid har passerat");
+  expect(()=>prepareInvitationSchedule(schedule,now)).toThrow("Sista svarstid har passerat");
  });
  it("does not alter the timing rules or the original preview", () => {
   const schedule=buildInvitationSchedule("2026-10-09T14:15:00Z","Europe/Stockholm",{timingRules:rules});
   const original=structuredClone(schedule);
-  prepareSeriesInvitationSchedule(schedule,now);
+  prepareInvitationSchedule(schedule,now);
   expect(schedule).toEqual(original);
   expect(rules.invitationRule).toBe("start-6d");
  });
