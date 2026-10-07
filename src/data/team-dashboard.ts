@@ -160,9 +160,6 @@ export async function getTeamDashboard(
   const { data: familyInvitationRows } = familyPersonIds.length
     ? await supabase.from("invitations").select("id, organization_id, activity_id, person_id, response, responded_at, response_comment, duty_type_id").in("person_id", familyPersonIds)
     : { data: [] };
-  const { data: familyMembershipRows } = familyPersonIds.length
-    ? await supabase.from("memberships").select("person_id, team_id").in("person_id", familyPersonIds).in("role", ["participant", "leader"]).is("ends_on", null)
-    : { data: [] };
   const familyInvitedActivityIds = [...new Set((familyInvitationRows ?? []).map(i => i.activity_id))];
   const { data: invitedActivities } = familyInvitedActivityIds.length
     ? await supabase.from("activities").select("id, team_id").in("id", familyInvitedActivityIds).neq("status", "cancelled").gte("ends_at", referenceTime)
@@ -170,7 +167,7 @@ export async function getTeamDashboard(
   const invitationTeamByActivity = new Map((invitedActivities ?? []).map(a => [a.id, a.team_id]));
   // A personal invitation creates an activity link, never a team membership or team permission.
   const { data: familyDutyLinks } = await supabase.rpc("my_activity_duty_links", { target_organization_id: organizationRow.id });
-  const familyLinks = [...(familyDutyLinks ?? []).map(link => ({ person_id: link.person_id, team_id: link.team_id, activityId: link.activity_id })),...(familyMembershipRows ?? []).map(m => ({ ...m, activityId: undefined as string | undefined })),
+  const familyLinks = [...(familyDutyLinks ?? []).map(link => ({ person_id: link.person_id, team_id: link.team_id, activityId: link.activity_id })),
     ...(familyInvitationRows ?? []).flatMap(i => {
       const teamId = invitationTeamByActivity.get(i.activity_id);
       return teamId ? [{ person_id: i.person_id, team_id: teamId, activityId: i.activity_id }] : [];
@@ -183,10 +180,6 @@ export async function getTeamDashboard(
     familyTeamIds.length ? supabase.from("teams").select("id, organization_id, section_id, slug, name, season").in("id", familyTeamIds) : Promise.resolve({ data: [] }),
     familyTeamIds.length ? supabase.from("activities").select("id, organization_id, team_id, activity_type_id, title, gathering_at, starts_at, ends_at, location, series_id, status, invitation_send_at, response_due_at, reminder_send_at").in("team_id", familyTeamIds).neq("status", "cancelled").gte("ends_at", referenceTime).order("starts_at") : Promise.resolve({ data: [] }),
   ]);
-  const nextActivityByTeam = new Map<string, NonNullable<typeof familyActivityRows>[number]>();
-  for (const item of familyActivityRows ?? []) {
-    if (item.team_id && !nextActivityByTeam.has(item.team_id)) nextActivityByTeam.set(item.team_id, item);
-  }
 
   const { data: upcomingActivityRows, error: upcomingActivitiesError } = await supabase
     .from("activities")
@@ -374,18 +367,18 @@ export async function getTeamDashboard(
     if (!membership.team_id) return [];
     const person = familyPeopleById.get(membership.person_id);
     const teamItem = familyTeamsById.get(membership.team_id);
-    const activityItem = membership.activityId ? (familyActivityRows ?? []).find(a => a.id === membership.activityId) : (familyActivityRows ?? []).find((candidate) =>
-      candidate.team_id === membership.team_id
-      && familyInvitationByKey.has(`${person?.id}:${candidate.id}`),
-    ) ?? nextActivityByTeam.get(membership.team_id);
+    const activityItem = (familyActivityRows ?? []).find(a => a.id === membership.activityId && a.team_id === membership.team_id);
     if (!person || !teamItem || !activityItem) return [];
     const invitationItem = familyInvitationByKey.get(`${person.id}:${activityItem.id}`);
+    const hasDutyAssignment = (familyDutyLinks ?? []).some(link => link.activity_id === activityItem.id && link.person_id === person.id);
+    const invitationVisible = Boolean(invitationItem && (!activityItem.invitation_send_at || Date.parse(activityItem.invitation_send_at) <= Date.parse(referenceTime)));
+    if (!invitationVisible && !hasDutyAssignment) return [];
     return [{
-      hasDutyAssignment: (familyDutyLinks ?? []).some(link => link.activity_id === activityItem.id && link.person_id === person.id),
+      hasDutyAssignment,
       member: { id: person.id, organizationId: person.organization_id, displayName: person.display_name },
       team: { id: teamItem.id, organizationId: teamItem.organization_id, sectionId: teamItem.section_id, slug: teamItem.slug, name: teamItem.name, season: teamItem.season },
       activity: { id: activityItem.id, organizationId: activityItem.organization_id, teamId: activityItem.team_id ?? teamItem.id, title: activityItem.title, activityTypeId: activityItem.activity_type_id, gatheringAt: activityItem.gathering_at ?? undefined, startsAt: activityItem.starts_at, endsAt: activityItem.ends_at, location: activityItem.location, seriesId: activityItem.series_id ?? undefined, status: activityItem.status, invitationSendAt: activityItem.invitation_send_at ?? undefined, responseDueAt: activityItem.response_due_at ?? undefined, reminderSendAt: activityItem.reminder_send_at ?? undefined },
-      invitation: invitationItem && (!activityItem.invitation_send_at || new Date(activityItem.invitation_send_at) <= new Date()) ? { id: invitationItem.id, organizationId: invitationItem.organization_id, activityId: invitationItem.activity_id, memberId: invitationItem.person_id, response: invitationItem.response, respondedAt: invitationItem.responded_at ?? undefined, responseComment: invitationItem.response_comment ?? undefined, dutyName: dutyNameById.get(invitationItem.duty_type_id ?? "") } : undefined,
+      invitation: invitationItem && invitationVisible ? { id: invitationItem.id, organizationId: invitationItem.organization_id, activityId: invitationItem.activity_id, memberId: invitationItem.person_id, response: invitationItem.response, respondedAt: invitationItem.responded_at ?? undefined, responseComment: invitationItem.response_comment ?? undefined, dutyName: dutyNameById.get(invitationItem.duty_type_id ?? "") } : undefined,
     }];
   });
 
