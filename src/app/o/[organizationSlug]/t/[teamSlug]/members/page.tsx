@@ -1,3 +1,4 @@
+import { FootballFields } from "@/components/football-fields";
 import { TeamContactDirectory } from "@/components/team-contact-directory";
 import { teamContactsSchema } from "@/lib/team-contact-directory";
 import { notFound, redirect } from "next/navigation";
@@ -372,6 +373,7 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
                     {edit ? "Visa profil" : "Redigera medlem"}
                   </Link>
                 </div>
+                {member.roles.includes("participant") ? <FootballFields teamId={team.id} scope="teamMembership" personId={member.id}/> : null}
                 {edit ? (
                   <form
                     action={

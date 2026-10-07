@@ -465,3 +465,12 @@ Kontaktuppgifter, konto-ID, födelsedata, målsmanskopplingar och svar ingår in
 Saknade personuppgifter under RLS ger fel i stället för en ofullständig lista.
 Läsningar loggas på servern med verktyg, användare, organisation och antal utan
 namn, söktext eller resultatdata.
+
+## Fotbollens disciplinvärden
+
+`private.football_values` har RLS och saknar klientgrants. Säkerhetsdefinierad
+RPC med tom `search_path` härleder klubb från lag, verifierar sektion/disciplin,
+objekt och hanteringsbehörighet även för läsning. Schemat valideras i databasen
+och lagkaptensval kontrolleras mot aktuella spelarmedlemskap eller accepterade
+spelarinbjudningar. Revision hindrar överskrivning från inaktuella formulär.
+Klientens klubb-ID eller kandidatlista används aldrig som behörighetsunderlag.

@@ -1,3 +1,4 @@
+import { FootballFields } from "./football-fields";
 import { packageForSection } from "@/lib/disciplines";
 import { DisciplinePackageSummary } from "./discipline-package-summary";
 import { createClient } from "@/lib/supabase/server";
@@ -53,6 +54,7 @@ export async function ActivitySettingsPage({ organizationSlug = null, query }: {
     {query.saved ? <p className="auth-message" role="status">Sparat.</p> : null}{query.error ? <p className="auth-error" role="alert">{query.error}</p> : null}
     {org ? <><nav className="settings-targets" aria-label="Nivå för standardvärden">{targets.map(t=><a aria-current={t.id === selected.id && t.scope === selected.scope ? "page" : undefined} className="secondary" key={`${t.scope}${t.id}`} href={`${path}?${new URLSearchParams({ scope:t.scope,scopeId:t.id! })}`}>{sourceNames[t.scope]}: {t.name}</a>)}</nav>
     <form action={saveTargetDiscipline} className="application-form">{hidden}<label>Disciplin för {selected.name}<select name="discipline_id" defaultValue={selected.discipline_id ?? ""}><option value="">{selected.scope === "organization" ? "Ingen disciplin" : "Ärv från överordnad nivå"}</option>{disciplines.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></label><small>Aktuell disciplin: {disciplines.find(d=>d.id===disciplineId)?.name ?? "Ingen"}. Gemensamma aktivitetstyper är alltid tillgängliga.</small><button className="secondary">Spara disciplin</button></form></> : <details className="settings-item"><summary>Ny aktivitetstyp</summary><form action={saveActivityType} className="application-form">{typeFields()}<button className="primary">Skapa aktivitetstyp</button></form></details>}
+    {disciplinePackage && selectedTeam ? <FootballFields teamId={selectedTeam.id} scope="team"/> : null}
     {disciplinePackage ? <DisciplinePackageSummary discipline={disciplinePackage}/> : null}
     <h2>Standardvärden för {selected.name}</h2><p>Välj ett förval eller ärv från överordnad nivå. Ta bort alla påminnelser för att stänga av dem.</p>
     {types.map(type=>{

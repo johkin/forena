@@ -33,8 +33,10 @@ export const footballSchemas = {
   section: z.strictObject({}),
   team: z.strictObject({
     gameFormat: format.optional(),
-    targetTeamSize: z.number().int().min(1).max(100).meta({ title: "Önskad matchtrupp", description: "Planeringsmål inklusive avbytare, inte antal spelare på planen." }).optional(),
+    targetTeamSize: z.number().int().min(1).max(100).meta({ title: "Önskad matchtrupp" }).optional(),
     requiredGoalkeepers: z.number().int().min(0).max(10).meta({ title: "Önskat antal målvakter" }).optional(),
+    periods: z.number().int().min(1).max(10).meta({ title: "Antal perioder" }).optional(),
+    periodMinutes: z.number().int().min(1).max(120).meta({ title: "Minuter per period" }).optional(),
   }),
   teamMembership: z.strictObject({
     shirtNumber: shirtNumber.optional(),
@@ -42,6 +44,8 @@ export const footballSchemas = {
   }),
   activity: z.strictObject({
     gameFormat: format.optional(),
+    targetTeamSize: z.number().int().min(1).max(100).meta({ title: "Önskad matchtrupp" }).optional(),
+    requiredGoalkeepers: z.number().int().min(0).max(10).meta({ title: "Önskat antal målvakter" }).optional(),
     periods: z.number().int().min(1).max(10).meta({ title: "Antal perioder" }).optional(),
     periodMinutes: z.number().int().min(1).max(120).meta({ title: "Minuter per period" }).optional(),
     captainPersonId: z.string().uuid().meta({ title: "Lagkapten", "x-player-reference": captainReference }).optional(),
@@ -66,9 +70,9 @@ export const footballPackage = {
   fieldRules: { activity: { captainPersonId: captainReference } },
   ui: {
     section: { fields: [] },
-    team: { fields: ["gameFormat", "targetTeamSize", "requiredGoalkeepers"] },
+    team: { fields: ["gameFormat", "targetTeamSize", "requiredGoalkeepers", "periods", "periodMinutes"] },
     teamMembership: { fields: ["shirtNumber", "positions"] },
-    activity: { fields: ["gameFormat", "periods", "periodMinutes", "venue", "captainPersonId"], categories: ["competition"] },
+    activity: { fields: ["gameFormat", "targetTeamSize", "requiredGoalkeepers", "periods", "periodMinutes", "venue", "captainPersonId"], categories: ["competition"] },
     activityParticipation: { fields: ["shirtNumber", "position"], categories: ["competition"] },
   },
 } as const;

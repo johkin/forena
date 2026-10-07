@@ -288,3 +288,12 @@ på telefon.
 Avslutade aktivitetsdialoger visar uppgifter, kallelsesvar och arbetsbokningar i läsläge. Läsläget börjar efter sluttiden, inte starttiden. Behöriga ledare kan fortfarande justera närvaro; historikdialogen använder behörigheten för aktivitetens eget lag.
 
 Assistentens aktivitetsnamn är klickbara direkt i svaret. Den separata expanderbara aktivitetslistan är borttagen. Om svaret inte nämner aktiviteter visas högst fem daterade aktivitetslänkar som en mening i svaret. Dubbla titlar identifieras med datum i länken.
+
+## Disciplinfält och tillägg
+
+Disciplinens ordinarie fält integreras i befintliga vyer med vanliga rubriker
+och formulär, exempelvis Matchförval, Spelaruppgifter och Matchuppgifter.
+Tekniska scheman och paketversioner hör till administrationens paketöversikt.
+Framtida plugins visas däremot som namngivna tillägg i avgränsade paneler/flikar.
+Konflikter vid sparande behåller utkastet; omladdning av servervärden är ett
+uttryckligt val. Spelarväljare visar bara serverns tillåtna urval.

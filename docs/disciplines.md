@@ -34,38 +34,63 @@ sektionens/lagets aktivitetsinställningar.
 | Objekt | Fält |
 | --- | --- |
 | Sektion | Inga extrafält ännu |
-| Lag | Spelform, önskad matchtrupp (`targetTeamSize`), önskat antal målvakter |
+| Lag | Matchförval: spelform, önskad matchtrupp (`targetTeamSize`), målvakter, perioder och minuter per period |
 | Lagmedlemskap | Tröjnummer och positioner |
-| Matchtillfälle | Spelform, perioder, minuter per period, hemma/borta/neutral, lagkapten (`captainPersonId`) |
+| Matchtillfälle | Kopierade matchförval samt hemma/borta/neutral och lagkapten (`captainPersonId`) |
 | Aktivitetsdeltagande | Matchens tröjnummer och position |
 
 Zod-definitioner är gemensam källa för typ-/fältvalidering och exporterade
 JSON Schema. `validateDisciplineData` kräver explicit paketversion och lägger
 därtill domänkontroller för truppstorlek, målvaktsbehov och dubbla positioner.
-Validering ger ingen behörighet; framtida skrivkommandon måste kontrollera
-klubb, objekt och användare separat.
+Validering ger ingen behörighet; databasens RPC kontrollerar dessutom klubb,
+objekt, användare och aktuellt spelarurval vid varje anrop.
 
 Alla fält är valfria. Paketet sätter inga automatiska åldersregler, periodtider
 eller truppstorlekar. Antal spelare på planen är skilt från önskad matchtrupp.
 Nummerintervallet 0–999 är en teknisk inmatningsgräns, ingen tävlingsregel.
 Närvaro och avstängningar ingår inte i dessa extrafält.
 
-## Leveransens gräns och nästa steg
+## Lagring och native-formulär
 
-Denna version levererar paket, validering, JSON Schema, sektionsuppslag och
-inspektion i befintligt GUI. Den inför inte lagring eller redigeringsformulär
-för extravärden och ändrar inga aktiviteter eller personuppgifter. Assistenten
-får inte anta att ett lag spelar 7v7 bara för att formatet finns i paketet.
+`private.football_values` lagrar versionsrefererad JSONB per lag, lagmedlemskap,
+match eller matchdeltagare. Medlemskapets värden är förankrade i lag + person;
+personens övriga lag får egna värden. Tabellen har RLS och saknar direkta
+klienträttigheter. Den är fotbollens lagring, inte en generell plugininstallation.
 
-Nästa steg är versionsrefererad lagring med behörighetskontroller och formulär
-för lagets värden, därefter lagmedlemskap och aktiviteter. Vid aktivitetskapande
-ska förval kopieras uttryckligen, inte läsas dynamiskt så att gamla matcher
-ändras. Äldre paketversioner ska behållas så länge sparade data använder dem;
-nuvarande version är en katalogdefinition, inte en migrering av sparade värden.
+`GET/PUT /api/football-fields` använder den inloggade användarens Supabase-klient
+och RPC:n `football_fields`. RPC:n härleder klubben från laget och verifierar
+sektion, disciplin, objekt, behörighet, schemavärden och spelarreferenser.
+Lagförval kräver lagets behörighet för aktivitetsförval, spelaruppgifter kräver
+`roster.manage` och match-/deltagaruppgifter kräver `activity.manage`.
+Dessa första formulär är hanteringsvyer, även vid läsning. Ingen extra åtkomst
+ges till vanliga medlemmar eller via assistenten/MCP.
 
-Admin-GUI för paket ska främst stödja val, konfiguration och uppgraderingar.
-En generell editor för godtyckliga schemastrukturer är uppskjuten. Ingen extern
-pluginkod eller MCP-funktionalitet installeras av detta paket.
+Varje skrivning skickar den revision som visades i formuläret. En samtidig
+ändring ger konflikt utan att skriva över sparade värden. GUI:t behåller utkastet
+och erbjuder uttrycklig omladdning. Skrivningar loggas med objekt, aktör och
+revision; själva fältvärdena kopieras inte till loggen.
+
+Fälten visas som vanliga formulär i befintliga vyer:
+
+- **Matchförval** under lagets aktivitetsinställningar.
+- **Spelaruppgifter** på spelarens profil i lagets medlemsvy.
+- **Matchuppgifter** i matchens detaljvy, med lagkaptensval.
+- **Spelarnas matchuppgifter** i samma detaljvy för matchens tröjnummer/position.
+
+Databasens insert-trigger kopierar lagets förval en gång till varje ny match,
+även vid generering av en serie. Befintliga matcher fylls inte retroaktivt och
+ändras inte när lagförval ändras. Matchens värden kan sedan redigeras separat;
+ändringen markerar tillfället som ett serieundantag. Importerade, inställda och
+avslutade aktiviteter är skrivskyddade. Matchfält visas bara för `match-tavling`
+i kategorin `competition`, inte för träning.
+
+Pluginfunktioner är fortfarande planerade och ska visas som tydligt namngivna
+tillägg, exempelvis i en tilläggspanel/flik. Disciplinens ordinarie fält ska inte
+kräva att användaren förstår paketscheman eller plugininstallationer. Gröna kortet
+är uppskjutet som möjlig första plugin; inget sådant fält ingår här.
+
+Paketversioner måste behållas så länge lagrade värden använder dem. En generell
+schemaeditor, paketuppgraderingsflöden, pluginlagring och plugin-MCP återstår.
 
 ## Spelarreferenser och villkorade fält
 
@@ -91,9 +116,7 @@ formuläret eller modellen. Databasadaptern ska verifiera klubb/lag, deltagarrol
 och svar vid sparandet; en tidigare laddad lista räcker inte. En lagkapten som
 senare tackar nej behöver uttrycklig omprövning, inte en tyst ersättare.
 
-Den här leveransen implementerar deklaration, fältval och validering. Den
-hämtar inte personlistor eller visar en fungerande spelare-väljare ännu; dessa
-kopplas på tillsammans med lagringen av extrafälten. Ett sparat val kan då
-visas som exempelvis ”Tilda – lagkapten” via behörigt personuppslag.
-Namnbytet till `targetTeamSize` görs före första publicering av paketet; det
-finns ännu inga lagrade disciplinvärden att migrera.
+Spelarlistorna hämtas med samma behörighetskontroll som värdena. Ett val som inte
+längre är tillåtet behålls synligt men måste bytas eller tas bort innan sparande.
+Servern verifierar urvalet på nytt; tom lista utökas aldrig automatiskt.
+Namnbytet till `targetTeamSize` görs före första publicering och lagring.

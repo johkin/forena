@@ -14,6 +14,6 @@ export function DisciplinePackageSummary({ discipline }: { discipline: Disciplin
         <dd>{discipline.ui[scope].fields.map(field => (typeof properties[field] === "object" ? properties[field].title : null) ?? field).join(", ") || "Inga extra fält i den här versionen."}</dd>
       </div>;
     })}</dl>
-    <p>Fältdefinitionerna är versionshanterade i Förena. Registrering av dessa extra värden i spelar- och aktivitetsformulären kommer i nästa steg.</p>
+    <p>Lagets matchförval finns i aktivitetsinställningarna, spelaruppgifter i truppen och matchuppgifter i matchens detaljvy.</p>
   </details>;
 }
