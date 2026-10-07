@@ -33,6 +33,12 @@ export async function answerWorkspaceAssistant(input: WorkspaceAssistantInput, d
   let delegated: WorkspaceAssistantReply | undefined;
   let attemptedTeam = false;
   const memberAnswers: string[] = [];
+  let memberFailure: string | undefined;
+  function memberReply(): WorkspaceAssistantReply | undefined {
+    const answer = memberAnswers.length ? memberAnswers.join("\n\n") : memberFailure;
+    if (!answer) return undefined;
+    return delegated ? { ...delegated, answer: `${answer}\n\n${delegated.answer}` } : { answer, source: "ai", model };
+  }
   const assistant = new ToolLoopAgent({
     model,
     instructions: [
@@ -44,7 +50,7 @@ export async function answerWorkspaceAssistant(input: WorkspaceAssistantInput, d
       "Ingen skrivning sker i chatten. Utkast granskas separat. Anropa askTeamAssistant högst en gång per fråga. Behörighetsfel ska förklaras, aldrig kringgås genom att byta lag.",
     ].join("\n"),
     tools: {
-      ...createWorkspaceMemberTools(dependencies, { organizationId: organization.id, organizationName: organization.name, sectionName: section?.name, teams, today: activityDateKey(new Date().toISOString(), organization.time_zone) }, answer => { if (!memberAnswers.includes(answer)) memberAnswers.push(answer); }),
+      ...createWorkspaceMemberTools(dependencies, { organizationId: organization.id, organizationName: organization.name, sectionName: section?.name, teams, today: activityDateKey(new Date().toISOString(), organization.time_zone) }, answer => { if (!memberAnswers.includes(answer)) memberAnswers.push(answer); }, error => { memberFailure = error; }),
       readWorkspaceActivities: tool({ description: "Läs de första 60 publicerade kommande aktiviteterna inom aktuell klubb eller sektion.", inputSchema: z.object({}), execute: async () => {
         if (!teams.length) return { activities: [], hasMore: false };
         const result = await supabase.from("activities").select("id, team_id, title, starts_at, ends_at, location").in("team_id", teams.map(team => team.id)).eq("status", "published").gte("ends_at", new Date().toISOString()).order("starts_at").limit(61);
@@ -64,16 +70,8 @@ export async function answerWorkspaceAssistant(input: WorkspaceAssistantInput, d
   });
   try {
     const result = await assistant.generate({ prompt: JSON.stringify({ organization: organization.name, section: section?.name, teams, page: input.page, previousMessages: input.messages, question: input.question }), abortSignal: AbortSignal.timeout(40_000) });
-    if (memberAnswers.length) {
-      const answer = memberAnswers.join("\n\n");
-      return delegated ? { ...delegated, answer: `${answer}\n\n${delegated.answer}` } : { answer, source: "ai", model };
-    }
-    return delegated ?? { answer: result.text || "Vilket lag eller vilken aktivitet gäller frågan?", source: "ai", model };
+    return memberReply() ?? delegated ?? { answer: result.text || "Vilket lag eller vilken aktivitet gäller frågan?", source: "ai", model };
   } catch {
-    if (memberAnswers.length) {
-      const answer = memberAnswers.join("\n\n");
-      return delegated ? { ...delegated, answer: `${answer}\n\n${delegated.answer}` } : { answer, source: "ai", model };
-    }
-    return delegated ?? { answer: "Assistenten kunde inte svara just nu. Försök igen.", source: "fallback", model };
+    return memberReply() ?? delegated ?? { answer: "Assistenten kunde inte svara just nu. Försök igen.", source: "fallback", model };
   }
 }

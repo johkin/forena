@@ -10,11 +10,11 @@ const org = "00000000-0000-4000-8000-000000000001";
 const team = "00000000-0000-4000-8000-000000000002";
 const section = "00000000-0000-4000-8000-000000000003";
 const input = { organizationId: org, question: "Vad händer i klubben?", messages: [] };
-function setup(member = true, activities: unknown[] = []) {
+function setup(member = true, activities: unknown[] = [], memberships: unknown[] = []) {
   const queries: { table: string; filters: [string, unknown][] }[] = [];
   const supabase = { rpc: vi.fn(async () => ({ data: member, error: null })), from: vi.fn((table: string) => {
     const record = { table, filters: [] as [string, unknown][] }; queries.push(record);
-    const data = table === "organizations" ? { id: org, name: "Klubben", slug: "club", time_zone: "Europe/Stockholm" } : table === "sections" ? { id: section, name: "Fotboll" } : table === "teams" ? [{ id: team, name: "F2016", slug: "f2016", section_id: section }] : activities;
+    const data = table === "organizations" ? { id: org, name: "Klubben", slug: "club", time_zone: "Europe/Stockholm" } : table === "sections" ? { id: section, name: "Fotboll" } : table === "teams" ? [{ id: team, name: "F2016", slug: "f2016", section_id: section }] : table === "memberships" ? memberships : table === "activities" ? activities : [];
     const query = { select: vi.fn(), eq: vi.fn((key: string, value: unknown) => { record.filters.push([key, value]); return query; }), in: vi.fn((key: string, value: unknown) => { record.filters.push([key, value]); return query; }), lte: vi.fn(), or: vi.fn(), range: vi.fn(async () => ({ data: Array.isArray(data) ? data : [], error: null, count: Array.isArray(data) ? data.length : 0 })), gte: vi.fn(), order: vi.fn(), limit: vi.fn(), maybeSingle: vi.fn(async () => ({ data, error: null })), then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data, error: null }).then(resolve) };
     for (const key of ["select", "lte", "or", "gte", "order", "limit"] as const) query[key].mockReturnValue(query);
     return query;
@@ -76,15 +76,48 @@ it("reads a bounded published activity list without private roster or invitation
   expect(supabase.from.mock.calls.map(([table]) => table)).not.toContain("invitations");
 });
 
+const memberRows = [
+  { id: "m1", person_id: "person-1", team_id: team, role: "participant" },
+  { id: "m2", person_id: "person-2", team_id: team, role: "leader" },
+];
+
 it("uses verified member counts instead of fabricated model prose for club questions", async () => {
-  const { dependencies } = setup();
+  const { dependencies } = setup(true, [], memberRows);
   state.generate.mockImplementationOnce(async () => {
     await state.options.mock.calls[0][0].tools.readWorkspaceMembers.execute({ mode: "summary" });
     return { text: "Det finns 11 spelare och inga ledare i laget." };
   });
   const reply = await answerWorkspaceAssistant({ ...input, question: "Hur många ledare respektive spelare har klubben?" }, dependencies);
   expect(reply.answer).toContain("Klubben");
-  expect(reply.answer).toContain("0 spelare och 0 ledare");
+  expect(reply.answer).toContain("1 spelare och 1 ledare");
   expect(reply.answer).not.toContain("11 spelare");
   expect(state.team).not.toHaveBeenCalled();
 });
+
+for (const generationFails of [false, true]) {
+  it(`omits an earlier member-tool error after a verified retry, generationFails=${generationFails}`, async () => {
+    const { dependencies } = setup(true, [], memberRows);
+    state.generate.mockImplementationOnce(async () => {
+      const execute = state.options.mock.calls[0][0].tools.readWorkspaceMembers.execute;
+      expect(await execute({ mode: "summary", responsibilityTypeId: "unknown" })).toHaveProperty("error");
+      expect(await execute({ mode: "summary" })).toHaveProperty("summary");
+      if (generationFails) throw new Error("generation failed");
+      return { text: "Felaktig modelltext" };
+    });
+    const reply = await answerWorkspaceAssistant(input, dependencies);
+    expect(reply.answer).toContain("1 spelare och 1 ledare");
+    expect(reply.answer).not.toContain("kunde inte läsas");
+    expect(reply.answer).not.toContain("Felaktig modelltext");
+  });
+  it(`returns the member-tool error when no verified read succeeds, generationFails=${generationFails}`, async () => {
+    const { dependencies } = setup();
+    state.generate.mockImplementationOnce(async () => {
+      await state.options.mock.calls[0][0].tools.readWorkspaceMembers.execute({ mode: "summary", responsibilityTypeId: "unknown" });
+      if (generationFails) throw new Error("generation failed");
+      return { text: "Det finns inga spelare." };
+    });
+    const reply = await answerWorkspaceAssistant(input, dependencies);
+    expect(reply.answer).toContain("kunde inte läsas");
+    expect(reply.answer).not.toContain("inga spelare");
+  });
+}

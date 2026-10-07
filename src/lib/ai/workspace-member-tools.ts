@@ -20,7 +20,7 @@ async function allRows<T>(query: { range: (from: number, through: number) => Pro
   throw new Error("Read limit exceeded");
 }
 
-export function createWorkspaceMemberTools({ supabase, userId }: AssistantDependencies, scope: Scope, onAnswer: (answer: string) => void) {
+export function createWorkspaceMemberTools({ supabase, userId }: AssistantDependencies, scope: Scope, onAnswer: (answer: string) => void, onFailure?: (error: string) => void) {
   const scopeName = scope.sectionName ? `${scope.sectionName} i ${scope.organizationName}` : scope.organizationName;
   async function allowedTeams(teamId?: string) {
     const member = await supabase.rpc("is_organization_member", { target_organization_id: scope.organizationId });
@@ -48,7 +48,7 @@ export function createWorkspaceMemberTools({ supabase, userId }: AssistantDepend
   }
   const failure = () => {
     const error = "Medlemsuppgifterna kunde inte läsas med din behörighet. Det betyder inte att medlemmar eller uppdrag saknas.";
-    onAnswer(error);
+    onFailure?.(error);
     return { error };
   };
   return {
