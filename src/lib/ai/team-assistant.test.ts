@@ -46,6 +46,22 @@ describe("answerTeamAssistant", () => {
     expect((await answerTeamAssistant(input, dependencies)).answer).toContain("Fyll i slutdatum");
   });
 
+  it("routes the reported request to a Friday draft instead of history", async () => {
+    const fridayDraft = { ...draft, title: "Spela mera F2014-2016", startsOn: "2026-10-07", startTime: "16:15", durationMinutes: 60, recurrence: { weekdays: [5], endsOn: "2026-11-30" } };
+    mocks.generate.mockResolvedValue({ output: fridayDraft, usage: {} });
+    const reply = await answerTeamAssistant({ ...input, question: 'kan du lägga till träning "Spela mera F2014-2016" på fredagar kl 16:15-17:15 med slut sista november' }, dependencies);
+    expect(reply.activityDraft).toEqual({ ...fridayDraft, sources: [] });
+    expect(mocks.generate).toHaveBeenCalledOnce();
+    expect(mocks.chat).not.toHaveBeenCalled();
+    expect(mocks.agentOptions).not.toHaveBeenCalled();
+  });
+
+  it("reports a draft failure rather than a history failure for the reported request", async () => {
+    mocks.generate.mockRejectedValue(new Error("provider unavailable"));
+    await expect(answerTeamAssistant({ ...input, question: 'kan du lägga till träning "Spela mera F2014-2016" på fredagar kl 16:15-17:15 med slut sista november' }, dependencies)).rejects.toMatchObject({ code: "draft-unavailable" });
+    expect(mocks.chat).not.toHaveBeenCalled();
+  });
+
   it("routes the Friday request directly to a typed training series and skips elapsed dates", async () => {
     mocks.generate.mockResolvedValue({ output: { ...draft, location: "Ursvik IP", startsOn: "2026-09-07", startTime: "16:15", durationMinutes: 60, recurrence: { weekdays: [5], endsOn: "2026-11-30" } }, usage: {} });
     const reply = await answerTeamAssistant({ ...input, question: "Jag vill ha träningar varje fredag på Ursvik IP kl 16:15-17:15. Start 7 september och november ut" }, dependencies);

@@ -1,6 +1,9 @@
+import { hasExplicitActivityCreationAction, isReminderCreationRequest, mentionsDraftActivity } from "./activity-creation-intent";
+
 /** Route explicit history questions without treating upcoming planning as history. */
 export function isActivityHistoryQuestion(question: string) {
   const text = question.toLocaleLowerCase("sv-SE");
+  if (hasExplicitActivityCreationAction(text) && mentionsDraftActivity(text) && !isReminderCreationRequest(text)) return false;
   const activity = /\b(?:träning(?:ar|en|arna)?|tränat|tränade|match(?:er|en|erna)?|arbetspass|arbetat|närvaro|deltagit|deltog|historik(?:en)?)\b/u.test(text);
   const past = /\b(?:historik(?:en)?|registrerad|registrerade|rapporterad|senaste|sista|förra|tidigare|tränat|tränade|deltagit|deltog|arbetat)\b/u.test(text);
   return activity && past;

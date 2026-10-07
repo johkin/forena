@@ -1,5 +1,6 @@
 import { previewWeeklySeries } from "../activity-series";
 import { isActivityHistoryQuestion } from "./activity-history-intent";
+import { hasExplicitActivityCreationAction, isReminderCreationRequest, mentionsDraftActivity } from "./activity-creation-intent";
 
 export const activityDurations = [30, 45, 60, 75, 90, 120, 180, 480] as const;
 export const gatheringOffsets = [0, 15, 30, 45, 60] as const;
@@ -26,10 +27,10 @@ export type ActivityDraftInput = Omit<ActivityDraft, "sources">;
 
 export function isActivityDraftRequest(question: string) {
   const normalized = question.trim().toLocaleLowerCase("sv-SE");
-  if (/^påminn\b/.test(normalized) || /\b(?:skapa|gör|fixa|förbered|lägg till|lägg in|skriv|planera|schemalägg|vill ha)\s+(?:en\s+)?påminnelse(?:r)?\b/.test(normalized)) return false;
-  const action = /\b(skapa|gör|fixa|förbered|lägg till|lägg in|lägga in|skriv|planera|schemalägg)\b/.test(normalized)
+  if (isReminderCreationRequest(normalized)) return false;
+  const action = hasExplicitActivityCreationAction(normalized)
     || (/\bvill ha\s+(?:(?:en|ett|fler|nya|återkommande)\s+)*(?:aktivitet(?:er)?|träning(?:ar)?|match(?:er)?|turnering(?:ar)?|läger|intresseanmälan|kallelse(?:r)?|aktivitetsserie)\b/.test(normalized) && !isActivityHistoryQuestion(normalized));
-  const activity = /\b(aktivitet(?:er)?|träning(?:ar)?|match(?:er)?|turnering(?:ar)?|läger|intresseanmälan|kallelse(?:r)?|aktivitetsserie)\b/.test(normalized) || /cup(?:en)?\b/.test(normalized);
+  const activity = mentionsDraftActivity(normalized);
   return action && activity;
 }
 

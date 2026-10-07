@@ -113,6 +113,9 @@ aktivitetsvyn. Ingen modell har ett verktyg för själva köningen. Se
 aktivitetsdialogen i serieläge. Saknas slutdatum måste ledaren ange det innan
 förhandsgranskningen. Utkastet valideras mot samma serieregler som dialogen och
 sparas först efter ledarens granskning.
+Explicit skapande, även infinitiv som ”kan du lägga till”, prioriteras framför
+historikens datumord. ”Sista november” i en skapandebegäran anger seriens
+slutdatum; faktiska historikfrågor som ”de sista tre veckorna” förblir läsningar.
 
 Assistenten översätter naturligt språk till typade verktygsanrop. Varje anrop
 kontrolleras mot användarens roll och aktiv förening. Namn, avatar och tonalitet

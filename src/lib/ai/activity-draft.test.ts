@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { activityDraftNeedsWebResearch, isActivityDraftRequest, normalizeActivityDraft, searchSourcesFromToolResults } from "./activity-draft";
 import { previewWeeklySeries } from "../activity-series";
+import { isActivityHistoryQuestion } from "./activity-history-intent";
 
 const trainingDraft = {
   title: "Träning", description: "Välkomna!", location: "Ursviks IP",
@@ -8,7 +9,7 @@ const trainingDraft = {
 } as const;
 
 describe("activity draft intent", () => {
-  it.each(["Skapa en påminnelse till nästa match", "Lägg till påminnelse för träning", "Påminn alla som inte svarat på vår match", "Jag vill ha en påminnelse för träning", "Fixa en påminnelse för match"])("routes reminder requests to the assistant tools: %s", question => {
+  it.each(["Skapa en påminnelse till nästa match", "Lägg till påminnelse för träning", "Kan du lägga till en påminnelse för träning", "Påminn alla som inte svarat på vår match", "Jag vill ha en påminnelse för träning", "Fixa en påminnelse för match"])("routes reminder requests to the assistant tools: %s", question => {
     expect(isActivityDraftRequest(question)).toBe(false);
   });
   it("keeps requests for training history in the read-only flow", () => {
@@ -24,9 +25,18 @@ describe("activity draft intent", () => {
     "Skapa matcher varje lördag",
     "Schemalägg återkommande träningar varje tisdag",
     "Skapa en träning och påminn oss innan",
+    'kan du lägga till träning "Spela mera F2014-2016" på fredagar kl 16:15-17:15 med slut sista november',
+    "Kan du lägga in träningar på fredagar till sista november?",
+    "Kan du göra en träning på fredag med slut sista november?",
+    "Kan du schemalägga träningar på fredagar till sista november?",
   ])("recognizes recurring creation requests: %s", question => {
     expect(isActivityDraftRequest(question)).toBe(true);
+    expect(isActivityHistoryQuestion(question)).toBe(false);
     expect(activityDraftNeedsWebResearch(question)).toBe(false);
+  });
+  it.each(["Hur många har tränat de sista tre veckorna?", "Vilka deltog på sista träningen i november?", "Jag vill ha historik för träningar de senaste tre veckorna"])("preserves actual history requests: %s", question => {
+    expect(isActivityDraftRequest(question)).toBe(false);
+    expect(isActivityHistoryQuestion(question)).toBe(true);
   });
   it("recognizes explicit creation requests and external events", () => {
     expect(isActivityDraftRequest("Skapa en intresseanmälan för att vara med på Aroscupen")).toBe(true);
