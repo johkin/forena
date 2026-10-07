@@ -1,5 +1,8 @@
 import { z } from "zod";
 import { localActivityTime } from "@/lib/activity-time-rules";
+// PostgreSQL UUID columns also contain seeded/imported GUIDs without RFC version/variant bits.
+// Shape validation is separate from the RPC's authorization and revision checks.
+const storedId = z.guid();
 const instant = z.iso.datetime({ offset: true });
 export const dutyDefinitionSchema = z.object({
  timingKind: z.enum(["interval", "deadline", "none"]), startsAt: instant.nullable().default(null), endsAt: instant.nullable().default(null), dueAt: instant.nullable().default(null), instructions: z.string().max(2000).default(""), places: z.number().int().min(1).max(50),
@@ -33,21 +36,21 @@ export function expandDutySeries(input: DutySeriesDefinition) {
 }
 
 export const dutyCommandSchema = z.discriminatedUnion("op", [
- z.object({ op: z.literal("create_series"), dutyTypeId: z.uuid(), definition: dutySeriesDefinitionSchema }),
- z.object({ op: z.literal("edit_series"), seriesId: z.uuid(), revision: z.number().int().positive(), definition: dutySeriesDefinitionSchema }),
- z.object({ op: z.literal("cancel_series"), seriesId: z.uuid(), revision: z.number().int().positive() }),
- z.object({ op: z.literal("edit_duty"), dutyId: z.uuid(), revision: z.number().int().positive(), definition: dutyDefinitionSchema }),
- z.object({ op: z.literal("cancel_duties"), duties: z.array(z.object({ dutyId: z.uuid(), revision: z.number().int().positive() })).min(1).max(100).refine(items => new Set(items.map(item => item.dutyId)).size === items.length, "Välj varje uppgift högst en gång") }),
- z.object({ op: z.literal("cancel_duty"), dutyId: z.uuid(), revision: z.number().int().positive() }),
- z.object({ op: z.literal("edit_type"), dutyTypeId: z.uuid(), revision: z.number().int().positive(), name: z.string().trim().min(1).max(80), active: z.boolean() }),
- z.object({ op: z.literal("assign_batch"), assignments: z.array(z.object({ slotId: z.uuid(), personId: z.uuid(), revision: z.number().int().positive() })).min(1).max(100) }),
- z.object({ op: z.literal("create"), dutyTypeId: z.uuid(), duties: z.array(dutyDefinitionSchema).min(1).max(48) }),
+ z.object({ op: z.literal("create_series"), dutyTypeId: storedId, definition: dutySeriesDefinitionSchema }),
+ z.object({ op: z.literal("edit_series"), seriesId: storedId, revision: z.number().int().positive(), definition: dutySeriesDefinitionSchema }),
+ z.object({ op: z.literal("cancel_series"), seriesId: storedId, revision: z.number().int().positive() }),
+ z.object({ op: z.literal("edit_duty"), dutyId: storedId, revision: z.number().int().positive(), definition: dutyDefinitionSchema }),
+ z.object({ op: z.literal("cancel_duties"), duties: z.array(z.object({ dutyId: storedId, revision: z.number().int().positive() })).min(1).max(100).refine(items => new Set(items.map(item => item.dutyId)).size === items.length, "Välj varje uppgift högst en gång") }),
+ z.object({ op: z.literal("cancel_duty"), dutyId: storedId, revision: z.number().int().positive() }),
+ z.object({ op: z.literal("edit_type"), dutyTypeId: storedId, revision: z.number().int().positive(), name: z.string().trim().min(1).max(80), active: z.boolean() }),
+ z.object({ op: z.literal("assign_batch"), assignments: z.array(z.object({ slotId: storedId, personId: storedId, revision: z.number().int().positive() })).min(1).max(100) }),
+ z.object({ op: z.literal("create"), dutyTypeId: storedId, duties: z.array(dutyDefinitionSchema).min(1).max(48) }),
  z.object({ op: z.literal("settings"), claimRequiresApproval: z.boolean(), changeRequiresApproval: z.boolean(), selfServiceUntil: instant.nullable() }),
- z.object({ op: z.literal("claim"), personId: z.uuid(), targetSlotId: z.uuid() }),
- z.object({ op: z.literal("propose"), personId: z.uuid(), sourceSlotId: z.uuid(), targetSlotId: z.uuid().nullable() }),
- z.object({ op: z.enum(["approve", "reject", "withdraw"]), requestId: z.uuid() }),
- z.object({ op: z.literal("assign"), slotId: z.uuid(), personId: z.uuid().nullable(), revision: z.number().int().positive() }),
- z.object({ op: z.literal("complete"), slotId: z.uuid(), completed: z.boolean(), revision: z.number().int().positive() }),
+ z.object({ op: z.literal("claim"), personId: storedId, targetSlotId: storedId }),
+ z.object({ op: z.literal("propose"), personId: storedId, sourceSlotId: storedId, targetSlotId: storedId.nullable() }),
+ z.object({ op: z.enum(["approve", "reject", "withdraw"]), requestId: storedId }),
+ z.object({ op: z.literal("assign"), slotId: storedId, personId: storedId.nullable(), revision: z.number().int().positive() }),
+ z.object({ op: z.literal("complete"), slotId: storedId, completed: z.boolean(), revision: z.number().int().positive() }),
 ]);
 export type DutyCommand = z.infer<typeof dutyCommandSchema>;
 export type DutySlot = { id: string; personId: string | null; personName: string | null; occupied: boolean; mine: boolean; completedAt: string | null; revision: number };

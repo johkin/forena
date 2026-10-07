@@ -1,4 +1,6 @@
 "use client";
+import { DutyAssignmentPreview } from "@/components/duty-assignment-preview";
+import { formatDutyTiming as timing } from "@/lib/duty-presentation";
 import { DutySeriesForm, DutySeriesEditor } from "@/components/duty-series-form";
 import { DutyEditor, DutyTypes, DutyDistribution } from "@/components/duty-management";
 import { useEffect, useRef, useState } from "react";
@@ -6,10 +8,6 @@ import { expandDutySeries, type Duty, type DutyCommand, type DutySchedule, type 
 import { localActivityTime } from "@/lib/activity-time-rules";
 import { FiveMinuteTimeField } from "@/components/five-minute-time-field";
 
-function timing(duty: Pick<Duty, "startsAt" | "endsAt" | "dueAt">, zone: string) {
- const format = (s: string) => new Intl.DateTimeFormat("sv-SE", { timeZone: zone, month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(s));
- return duty.startsAt && duty.endsAt ? `${format(duty.startsAt)}–${format(duty.endsAt)}` : duty.dueAt ? `Lämnas senast ${format(duty.dueAt)}` : "Ingen särskild tid";
-}
 export function ActivityDutySchedule({ activityId, startsAt, endsAt, timeZone, readOnly = false }: { activityId: string; startsAt: string; endsAt: string; timeZone: string; readOnly?: boolean }) {
  const [schedule, setSchedule] = useState<DutySchedule | null>(null);
  const [error, setError] = useState("");
@@ -31,13 +29,13 @@ export function ActivityDutySchedule({ activityId, startsAt, endsAt, timeZone, r
  }, [activityId]);
  async function reload() {
    setRefreshing(true); setRefreshNotice("");
-   try { const r = await fetch(`/api/activities/${activityId}/duty-schedule`); const body = await r.json(); if (!r.ok) throw new Error(body.error); setSchedule(body); setSelected([]); setError(""); setRefreshNotice("Schemat är uppdaterat."); }
+   try { const r = await fetch(`/api/activities/${activityId}/duty-schedule`); const body = await r.json(); if (!r.ok) throw new Error(body.error); setSchedule(body); setSelected([]); setError(""); setRefreshNotice("Senaste schemat har hämtats."); }
    catch (e) { setError(e instanceof Error ? e.message : "Schemat kunde inte hämtas"); }
    finally { setRefreshing(false); }
  }
  async function confirm() {
    if (!preview || readOnly) return;
-   setBusy(true); setError("");
+   setBusy(true); setError(""); setRefreshNotice("");
    try { const r = await fetch(`/api/activities/${activityId}/duty-schedule`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(preview.command) }); const body = await r.json(); if (!r.ok) throw new Error(body.error); setSchedule(body); setSelected([]); setPreview(null); setRefreshNotice("Ändringen är sparad i schemat."); }
    catch (e) { setError(e instanceof Error ? e.message : "Ändringen misslyckades"); }
    finally { setBusy(false); }
@@ -49,6 +47,8 @@ export function ActivityDutySchedule({ activityId, startsAt, endsAt, timeZone, r
  const editableDuties = schedule.duties.filter(d => !d.slots.some(s => s.completedAt));
  const propose = (command: DutyCommand, text: string) => {
    if (readOnly) return;
+   setRefreshNotice("");
+   setError("");
    const rows = (command.op === "create_series" || command.op === "edit_series") ? expandDutySeries(command.definition).map((d, index) => {
        const previous = command.op === "edit_series" ? schedule.duties.find(duty => duty.seriesId === command.seriesId && duty.position === index + 1) : undefined;
        const bookings = previous?.slots.filter(slot => slot.occupied).map(slot => slot.personName ?? "Bokad plats") ?? [];
@@ -66,7 +66,7 @@ export function ActivityDutySchedule({ activityId, startsAt, endsAt, timeZone, r
    <button type="button" className="link-button" disabled={busy || refreshing || Boolean(preview)} onClick={() => void reload()}>{refreshing ? "Hämtar schema…" : "Hämta senaste schemat"}</button>
    <p role="status" aria-live="polite">{refreshNotice}</p>
    {error && <p role="alert">{error}</p>}
-   {!readOnly && preview && <div ref={previewRef} tabIndex={-1} className="duty-row" role="region" aria-label="Bekräfta ändring"><h4>Förhandsgranskning – inte sparad ännu</h4><p>{preview.text}</p>{preview.rows.length > 0 && <ol>{preview.rows.map((row, index) => <li key={index}>{row}</li>)}</ol>}<div className="modal-actions"><button type="button" className="secondary" disabled={busy} onClick={() => setPreview(null)}>Avbryt</button><button type="button" className="primary" disabled={busy} onClick={() => void confirm()}>{busy ? "Sparar…" : (preview.command.op === "create" || preview.command.op === "create_series") ? "Spara uppgifter" : "Bekräfta"}</button></div></div>}
+   {!readOnly && preview && <div ref={previewRef} tabIndex={-1} className="duty-row" role="region" aria-label="Bekräfta ändring"><h4>Förhandsgranskning – inte sparad ännu</h4><p>{preview.text}</p>{preview.command.op === "assign_batch" && <DutyAssignmentPreview assignments={preview.command.assignments} schedule={schedule} timeZone={timeZone} />}{preview.rows.length > 0 && <ol>{preview.rows.map((row, index) => <li key={index}>{row}</li>)}</ol>}<div className="modal-actions"><button type="button" className="secondary" disabled={busy} onClick={() => { setPreview(null); setError(""); }}>Avbryt</button><button type="button" className="primary" disabled={busy} onClick={() => void confirm()}>{busy ? "Sparar…" : (preview.command.op === "create" || preview.command.op === "create_series") ? "Spara uppgifter" : "Bekräfta"}</button></div></div>}
    <fieldset disabled={busy || refreshing || Boolean(preview)} className="duty-controls">
    {!readOnly && schedule.canManage && <>
      <button type="button" className="secondary" aria-pressed={editing} onClick={() => { setEditing(value => !value); setSelected([]); }}>{editing ? "Avsluta redigering" : "Redigera arbetsuppgifter"}</button>

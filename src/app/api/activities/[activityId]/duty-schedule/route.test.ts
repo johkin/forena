@@ -45,3 +45,45 @@ it.each(["create_series", "edit_series", "cancel_series"])("routes %s through on
   expect((await post(input)).status).toBe(200);
   expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("command_activity_duty_series", expect.objectContaining({ target_activity_id: activityId, command: expect.objectContaining({ op }) }));
 });
+
+const assignment = { slotId: "a1000000-0000-4000-8000-000000000001", personId: "b2000000-0000-7000-3000-000000000001", revision: 1 };
+it("accepts stored PostgreSQL GUIDs for a complete assignment proposal", async () => {
+  const input = { op: "assign_batch", assignments: [assignment, { ...assignment, slotId: "a1000000-0000-0000-0000-000000000002", personId: "b2000000-0000-0000-0000-000000000002" }] };
+  expect((await post(input)).status).toBe(200);
+  expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("command_activity_duty", { target_activity_id: activityId, command: input });
+});
+it.each(["assign", "claim"])("also accepts the same person IDs for %s", async op => {
+  const input = op === "assign" ? { op, ...assignment } : { op, personId: assignment.personId, targetSlotId: assignment.slotId };
+  expect((await post(input)).status).toBe(200);
+});
+it.each([
+  [{ ...assignment, personId: "not-an-id" }, "Spelarreferensen"],
+  [{ ...assignment, slotId: "bad-slot" }, "Platsreferensen"],
+  [{ ...assignment, revision: 0 }, "versionsuppgift"],
+  [{ ...assignment, revision: undefined }, "versionsuppgift"],
+])("rejects malformed assignments with an actionable error", async (invalid, detail) => {
+  const log = vi.spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    const response = await post({ op: "assign_batch", assignments: [invalid] });
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error).toContain(detail);
+    expect(body.error).toContain("Inget har sparats");
+    expect(body.error).not.toContain("tider");
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(JSON.stringify(log.mock.calls)).not.toContain(assignment.personId);
+  } finally { log.mockRestore(); }
+});
+it("requires authentication for batch assignment", async () => {
+  mocks.getUser.mockResolvedValue({ data: { user: null } });
+  expect((await post({ op: "assign_batch", assignments: [assignment] })).status).toBe(401);
+  expect(mocks.rpc).not.toHaveBeenCalled();
+});
+it.each([["42501", 403], ["40001", 409]])("preserves permission and revision rejection for assignments: %s", async (code, status) => {
+  const log = vi.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    mocks.rpc.mockResolvedValue({ data: null, error: { code } });
+    expect((await post({ op: "assign_batch", assignments: [assignment] })).status).toBe(status);
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+  } finally { log.mockRestore(); }
+});

@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { dutyDefinitionSchema, type Duty, type DutyCommand, type DutySchedule } from "@/lib/activity-duty-schedule";
+import { formatDutyTiming } from "@/lib/duty-presentation";
 import { localActivityTime } from "@/lib/activity-time-rules";
 import { suggestDutyAssignments, type DutyCandidate, type DutySuggestion } from "@/lib/duty-fairness";
 type Propose = (command: DutyCommand, text: string) => void;
@@ -59,11 +60,11 @@ export function DutyDistribution({ activityId, schedule, timeZone, propose }: { 
    catch(e){setError(e instanceof Error?e.message:"Förslaget kunde inte hämtas");}finally{setBusy(false);}
  }
  const selected=rows.filter(r=>r.personId);
- const label=(d: Duty)=>`${d.name} · ${d.startsAt ? `${localValue(d.startsAt,timeZone).replace("T"," ")}–${localValue(d.endsAt,timeZone).replace("T"," ")}` : d.dueAt ? `lämnas senast ${localValue(d.dueAt,timeZone).replace("T"," ")}` : "ingen särskild tid"}`;
+ const label = (d: Duty) => `${d.name} · ${formatDutyTiming(d, timeZone)}`;
  return <details><summary>Föreslå rättvis fördelning</summary><p>Färre genomförda uppgifter prioriteras. Vid lika antal prioriteras variation från senaste uppgiften, därefter färre av samma typ. Förslaget ger högst en ny uppgift per spelare och behåller befintliga bokningar. Saknad registrering betyder inte säkert att personen aldrig arbetat. Krockar med andra aktiviteter kontrolleras inte ännu.</p>
  <label>Räkna genomförda uppgifter från<input type="date" value={from} onChange={e=>{setFrom(e.target.value);setRows([]);setLoaded(false);}}/></label><button type="button" className="secondary" disabled={busy||!from} onClick={()=>void suggest()}>{busy?"Hämtar…":"Ta fram förslag"}</button>
  {error&&<p role="alert">{error}</p>}{loaded&&<p>{rows.length} platser föreslagna. Övriga lediga platser lämnas för manuell tilldelning.</p>}
  {rows.map(row=>{const duty=schedule.duties.find(d=>d.id===row.dutyId)!;const person=candidates.find(p=>p.personId===row.personId);return <div className="duty-row" key={row.slotId}><strong>{label(duty)} · plats {duty.slots.findIndex(s=>s.id===row.slotId)+1}</strong><label>Spelare<select value={row.personId} onChange={e=>setRows(old=>old.map(x=>x.slotId===row.slotId?{...x,personId:e.target.value,reason:"Manuellt ändrat av ledaren."}:x))}><option value="">Hoppa över</option>{schedule.people.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><p>{row.reason}</p>{person&&<small>Vald spelare: {person.completed} genomförda, {person.byType[duty.dutyTypeId]??0} av denna typ under perioden.</small>}</div>;})}
- {selected.length>0&&<button type="button" className="primary" onClick={()=>propose({op:"assign_batch",assignments:selected.map(({slotId,personId,revision})=>({slotId,personId,revision}))},`Tilldela ${selected.length} platser: ${selected.map(r=>`${label(schedule.duties.find(d=>d.id===r.dutyId)!)}, plats ${(schedule.duties.find(d=>d.id===r.dutyId)?.slots.findIndex(s=>s.id===r.slotId)??0)+1}: ${schedule.people.find(p=>p.id===r.personId)?.name}`).join("; ")}. Berörda familjer meddelas. Om någon plats har ändrats sparas ingen av tilldelningarna.`)}>Granska tilldelningar</button>}
+ {selected.length>0&&<button type="button" className="primary" onClick={()=>propose({op:"assign_batch",assignments:selected.map(({slotId,personId,revision})=>({slotId,personId,revision}))},`Tilldela ${selected.length} platser enligt tabellen. Berörda familjer meddelas när du bekräftar. Om någon plats har ändrats sparas ingen av tilldelningarna.`)}>Granska tilldelningar</button>}
  </details>;
 }

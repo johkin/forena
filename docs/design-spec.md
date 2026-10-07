@@ -179,8 +179,12 @@ schemagenerering och självserviceregler. Alla kontroller radbryts på telefon.
 Bemanningsschemats redigering, uppgiftstyper och fördelningsförslag ligger i
 hopfällbara avsnitt. Fördelningsförslag visar period, registrerat underlag och
 motivering per spelare, och kan justeras före gemensam förhandsgranskning.
-Förhandsgranskningen anger när familjer notifieras. Genomförd historik visas
-som låst, och ändrade platsrevisioner kräver uppdatering före nytt försök.
+Förhandsgranskningen anger när familjer notifieras. Tilldelningsförslag visas
+i en tabell per datum med tid, uppgift och spelare (med platsnummer). Samma dag
+visas bara klockslagen i raderna; vid dygnsbyte visas båda datumen. Namn och
+kolumner radbryts utan horisontell sidskroll. Gamla statusmeddelanden rensas
+när en ny ändring granskas eller sparas; hämtat schema betyder inte sparat förslag.
+Genomförd historik visas som låst, och ändrade platsrevisioner kräver uppdatering före nytt försök.
 
 ### Familjens lagvy
 
