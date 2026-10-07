@@ -3,6 +3,18 @@ import { createActivityHistoryTools } from "./activity-history-tools";
 import type { AssistantDependencies } from "./team-assistant-types";
 const team="00000000-0000-0000-0000-000000000001";
 const options={} as never;
+it.each(["session", "competition", "work"] as const)("enforces classified %s category for both permissions and the query", async category => {
+ const rpc=vi.fn(async(name:string)=>name==="activity_history_teams"?{data:[{id:team,canReadAttendance:category!=="work",canReadWork:category==="work"}],error:null}:{data:{records:[],truncated:false},error:null});
+ const tools=createActivityHistoryTools({rpc} as unknown as AssistantDependencies["supabase"],"org",team,{today:"2026-10-07",category,onResult:vi.fn()});
+ await tools.readActivityHistory.execute!({from:"2026-09-01",through:"2026-09-30",category:category==="work"?"session":"work",guestsOnly:false},options);
+ expect(rpc).toHaveBeenLastCalledWith("read_activity_history",expect.objectContaining({category}));
+});
+it("cannot bypass work permission using a downstream session category", async () => {
+ const rpc=vi.fn(async()=>({data:[{id:team,canReadAttendance:true,canReadWork:false}],error:null}));
+ const tools=createActivityHistoryTools({rpc} as unknown as AssistantDependencies["supabase"],"org",team,{today:"2026-10-07",category:"work",onResult:vi.fn()});
+ expect(await tools.readActivityHistory.execute!({from:"2026-09-01",through:"2026-09-30",category:"session",guestsOnly:false},options)).toHaveProperty("error");
+ expect(rpc).toHaveBeenCalledTimes(1);
+});
 function setup(attendance=true,work=true) {
  const rpc=vi.fn(async(name:string)=>name==="activity_history_teams"?{data:[{id:team,canReadAttendance:attendance,canReadWork:work}],error:null}:{data:{records:[],truncated:false},error:null});
  const tools=createActivityHistoryTools({rpc} as unknown as AssistantDependencies["supabase"],"org",team);

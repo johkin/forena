@@ -56,6 +56,15 @@ it("executes native calls through the real SDK and defaults to the current team'
   expect(model.doGenerateCalls[2].tools?.map(tool => "name" in tool && tool.name)).not.toContain("remember");
 });
 
+it("keeps classified work history even when the downstream model requests training", async () => {
+  const { rpc, dependencies } = setup({ category: "session", relativeDays: 21 });
+  state.intent.mockImplementationOnce(async request => ({ mode: "activity-history", question: request.question, periodRequested: true, category: "work" }));
+  rpc.mockImplementation(async (name: string) => ({ data: name === "activity_history_teams" ? [{ id: teamId, canReadAttendance: false, canReadWork: true }] : { ...history, category: "work" }, error: null } as never));
+  const reply = await answerTeamAssistant({ ...input, question: "Hur många har arbetat de senaste tre veckorna?" }, dependencies);
+  expect(rpc).toHaveBeenLastCalledWith("read_activity_history", expect.objectContaining({ category: "work" }));
+  expect(reply.historyResults?.[0].category).toBe("work");
+});
+
 it("replaces contradictory model claims with verified leader attendance through native calls", async () => {
   const { rpc, dependencies } = setup({ category: "session", from: "2026-10-01" }, "Johan deltog men var inte registrerad som närvarande.");
   rpc.mockImplementation(async (name: string) => ({ data: name === "activity_history_teams" ? [{ id: teamId, canReadAttendance: true, canReadWork: false }] : { ...history, from: "2026-10-01", through: "2026-10-06", summary: { uniquePeople: 1, participationCount: 1 }, records: [{ personId: "player", name: "Tilda", activityId: "activity", startsAt: "2026-10-05T15:00:00Z", attendance: "present" }, { personId: "leader", name: "Johan", activityId: "activity", startsAt: "2026-10-05T15:00:00Z", attendance: "not_recorded" }] }, error: null } as never));

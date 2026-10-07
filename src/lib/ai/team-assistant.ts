@@ -123,7 +123,7 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
       tools: {
         ...(requiresInvitations ? createActivityInvitationTools(supabase, memoryScope.organizationId, teamId, { today: organizationToday, now: new Date().toISOString(), timeZone: context.clock?.organizationTimeZone ?? organization?.time_zone ?? "Europe/Stockholm", period: historyPeriod, periodRequired: intent.periodRequested, question, category: intent.category ?? undefined, response: intent.response, onResult: result => historyResults.push(result) }) : {}),
         ...createTeamAssistantTools(supabase, teamId, activityIds),
-        ...(context.viewer.kind === "leader" ? createActivityHistoryTools(supabase, memoryScope.organizationId, teamId, { today: organizationToday, period: historyPeriod, memberRole: intent.memberRole ?? undefined, onResult: result => historyResults.push(result) }) : {}),
+        ...(context.viewer.kind === "leader" ? createActivityHistoryTools(supabase, memoryScope.organizationId, teamId, { today: organizationToday, period: historyPeriod, category: intent.category ?? undefined, memberRole: intent.memberRole ?? undefined, onResult: result => historyResults.push(result) }) : {}),
         ...createAssistantMemoryTools(memoryScope, draft => memoryDrafts.push(draft)),
         ...(canManageInvitations ? createReminderTools({ supabase, teamId, activityIds,
           timeZone: context.clock.organizationTimeZone,
