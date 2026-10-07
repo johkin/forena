@@ -474,3 +474,10 @@ objekt och hanteringsbehörighet även för läsning. Schemat valideras i databa
 och lagkaptensval kontrolleras mot aktuella spelarmedlemskap eller accepterade
 spelarinbjudningar. Revision hindrar överskrivning från inaktuella formulär.
 Klientens klubb-ID eller kandidatlista används aldrig som behörighetsunderlag.
+
+Kallelseanknutna fotbollsuppgifter kräver dessutom `invitation.manage`: kandidatlistor
+från matchen, lagkapten och deltagarnas matchuppgifter. Utan denna behörighet
+returneras tomma matchlistor och lagkapten/källa döljs. Direkta försök att läsa
+deltagaruppgifter eller ange en lagkapten nekas innan spelarurval kontrolleras.
+Övriga matchfält kan fortfarande ändras med `activity.manage`; den dolda
+lagkaptenen och dess källa bevaras vid sådan skrivning utan svarskontroll.

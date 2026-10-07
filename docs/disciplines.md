@@ -120,3 +120,10 @@ Spelarlistorna hämtas med samma behörighetskontroll som värdena. Ett val som 
 längre är tillåtet behålls synligt men måste bytas eller tas bort innan sparande.
 Servern verifierar urvalet på nytt; tom lista utökas aldrig automatiskt.
 Namnbytet till `targetTeamSize` görs före första publicering och lagring.
+
+Kallelseanknutna fotbollsuppgifter kräver dessutom `invitation.manage`: kandidatlistor
+från matchen, lagkapten och deltagarnas matchuppgifter. Utan denna behörighet
+returneras tomma matchlistor och lagkapten/källa döljs. Direkta försök att läsa
+deltagaruppgifter eller ange en lagkapten nekas innan spelarurval kontrolleras.
+Övriga matchfält kan fortfarande ändras med `activity.manage`; den dolda
+lagkaptenen och dess källa bevaras vid sådan skrivning utan svarskontroll.

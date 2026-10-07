@@ -7,7 +7,7 @@ import type { PlayerSource } from "@/lib/disciplines/field-rules";
 type Scope = Exclude<DisciplineScope, "section">;
 type Values = Record<string, string | number | string[]>;
 type Player = { id: string; name: string };
-type Result = { enabled: boolean; editable: boolean; values: Values; revision: number; captainSource: PlayerSource; teamPlayers: Player[]; acceptedPlayers: Player[]; participants: Player[] };
+type Result = { canManageInvitations: boolean; enabled: boolean; editable: boolean; values: Values; revision: number; captainSource: PlayerSource; teamPlayers: Player[]; acceptedPlayers: Player[]; participants: Player[] };
 type Props = { teamId: string; scope: Scope; activityId?: string; personId?: string; readOnly?: boolean };
 const titles = { team: "Matchförval", teamMembership: "Spelaruppgifter", activity: "Matchuppgifter", activityParticipation: "Spelarens matchuppgifter" };
 const labels: Record<string, string> = { ...Object.fromEntries(footballPositions.map(p => [p.id, p.name])), ...Object.fromEntries(footballPackage.gameFormats.map(f => [f.id, f.name])), home: "Hemma", away: "Borta", neutral: "Neutral plan" };
@@ -38,7 +38,7 @@ function FootballEditor({ teamId, scope, activityId, personId, readOnly = false 
     }).catch(cause => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Uppgifterna kunde inte hämtas."); });
     return () => controller.abort();
   }, [query, reload]);
-  const fields = footballPackage.ui[scope].fields;
+  const fields = footballPackage.ui[scope].fields.filter(field => field !== "captainPersonId" || result?.canManageInvitations === true);
   const properties = footballPackage.schemas[scope].properties ?? {};
   const candidates = (source === "teamPlayers" ? result?.teamPlayers : result?.acceptedPlayers) ?? [];
   const invalidCaptain = Boolean(values.captainPersonId && !candidates.some(p => p.id === values.captainPersonId));

@@ -69,7 +69,7 @@ create function public.football_fields(
   expected_revision integer default null, selected_source text default 'acceptedActivityPlayers'
 ) returns jsonb language plpgsql security definer set search_path='' as $$
 declare t public.teams%rowtype; a public.activities%rowtype; r private.football_values%rowtype;
-  permitted boolean; enabled boolean; editable boolean := true; day date; org_zone text;
+  permitted boolean; can_manage_invitations boolean; enabled boolean; editable boolean := true; day date; org_zone text;
   team_players jsonb := '[]'; accepted_players jsonb := '[]'; participants jsonb := '[]';
   candidate jsonb; captain uuid; captain_role text; activity_slug text; activity_category text;
 begin
@@ -82,6 +82,12 @@ begin
     when target_scope='teamMembership' then public.has_team_permission(t.id,'roster.manage')
     else public.has_team_permission(t.id,'activity.manage') end;
   if not coalesce(permitted,false) then raise exception 'Permission denied' using errcode='42501'; end if;
+  can_manage_invitations := coalesce(public.has_team_permission(t.id,'invitation.manage'),false);
+  -- Reject before looking up any invitation/person: errors must not reveal eligibility.
+  if not can_manage_invitations and (target_scope='activityParticipation'
+    or (target_scope='activity' and new_values ? 'captainPersonId')) then
+    raise exception 'Invitation permission required' using errcode='42501';
+  end if;
   if (target_scope in ('team','teamMembership') and target_activity_id is not null)
     or (target_scope in ('team','activity') and target_person_id is not null)
     or (target_scope in ('activity','activityParticipation') and target_activity_id is null)
@@ -111,11 +117,13 @@ begin
   if target_scope in ('activity','activityParticipation') then
     select coalesce(jsonb_agg(jsonb_build_object('id',p.id,'name',p.display_name) order by p.display_name,p.id),'[]') into team_players
       from public.people p where p.organization_id=t.organization_id and exists(select 1 from public.memberships m where m.person_id=p.id and m.team_id=t.id and m.organization_id=t.organization_id and m.role='participant' and m.starts_on<=day and (m.ends_on is null or m.ends_on>=day));
+    if can_manage_invitations then
     select coalesce(jsonb_agg(jsonb_build_object('id',p.id,'name',p.display_name) order by p.display_name,p.id),'[]') into participants
       from public.people p join public.invitations i on i.person_id=p.id where i.activity_id=a.id and i.organization_id=t.organization_id and p.organization_id=t.organization_id
       and (i.activity_role='participant' or (i.activity_role is null and exists(select 1 from jsonb_array_elements(team_players) x where x->>'id'=p.id::text)));
     select coalesce(jsonb_agg(x),'[]') into accepted_players from jsonb_array_elements(participants) x
       where exists(select 1 from public.invitations i where i.activity_id=a.id and i.person_id=(x->>'id')::uuid and i.response='accepted');
+    end if;
     if jsonb_array_length(team_players)>500 or jsonb_array_length(participants)>500 then raise exception 'Too many players' using errcode='54000'; end if;
   end if;
   select * into r from private.football_values where team_id=t.id and scope=target_scope and activity_id is not distinct from target_activity_id and person_id is not distinct from target_person_id;
@@ -141,6 +149,14 @@ begin
         if not found then raise exception 'Captain eligibility changed' using errcode='40001'; end if;
       end if;
     end if;
+    -- A restricted editor replaces only visible fields. Keep the hidden captain
+    -- without revalidating its invitation state (which would be an oracle).
+    if target_scope='activity' and not can_manage_invitations then
+      if r.values ? 'captainPersonId' then
+        new_values := new_values || jsonb_build_object('captainPersonId',r.values->'captainPersonId');
+      end if;
+      selected_source := coalesce(r.captain_source,'acceptedActivityPlayers');
+    end if;
     insert into private.football_values(organization_id,team_id,scope,activity_id,person_id,values,captain_source)
       values(t.organization_id,t.id,target_scope,target_activity_id,target_person_id,new_values,selected_source)
       on conflict (team_id,scope,activity_id,person_id) do update set values=excluded.values,captain_source=excluded.captain_source,revision=private.football_values.revision+1,updated_at=now()
@@ -149,8 +165,9 @@ begin
     insert into public.audit_log(organization_id,actor_user_id,action,entity_type,entity_id,details)
       values(t.organization_id,auth.uid(),'football_values.saved','football_values',r.id::text,jsonb_build_object('scope',target_scope,'revision',r.revision));
   end if;
-  return jsonb_build_object('enabled',true,'editable',editable,'version','1.0.0','values',coalesce(r.values,'{}'),'revision',coalesce(r.revision,0),
-    'captainSource',coalesce(r.captain_source,'acceptedActivityPlayers'),'teamPlayers',team_players,'acceptedPlayers',accepted_players,'participants',participants);
+  return jsonb_build_object('enabled',true,'editable',editable,'version','1.0.0','canManageInvitations',can_manage_invitations,
+    'values',case when target_scope='activity' and not can_manage_invitations then coalesce(r.values,'{}')-'captainPersonId' else coalesce(r.values,'{}') end,'revision',coalesce(r.revision,0),
+    'captainSource',case when can_manage_invitations then coalesce(r.captain_source,'acceptedActivityPlayers') else 'teamPlayers' end,'teamPlayers',team_players,'acceptedPlayers',accepted_players,'participants',participants);
 end;
 $$;
 revoke all on function public.football_fields(uuid,text,uuid,uuid,jsonb,integer,text) from public,anon;

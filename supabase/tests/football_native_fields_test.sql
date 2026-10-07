@@ -69,5 +69,38 @@ select throws_ok($$select public.football_fields('fc300000-0000-4000-8000-000000
 select throws_ok($$select public.football_fields('fc300000-0000-4000-8000-000000000001','team',new_values=>'{}',expected_revision=>2)$$,'42501',null,'Ordinary member cannot write management data');
 select set_config('request.jwt.claim.sub','',true);
 select throws_ok($$select public.football_fields('fc300000-0000-4000-8000-000000000001','team')$$,'42501',null,'Missing identity denied');
+
+-- Separate activity-only profile: no invitation visibility or eligibility oracle.
+reset role;
+insert into auth.users(id,email) values ('fc000000-0000-4000-8000-000000000003','football-editor@example.test');
+insert into public.organization_members(organization_id,user_id,role) values ('fc100000-0000-4000-8000-000000000001','fc000000-0000-4000-8000-000000000003','member');
+insert into public.team_access_profiles(id,organization_id,key,name) values ('fc700000-0000-4000-8000-000000000001','fc100000-0000-4000-8000-000000000001','activity_only','Activity only');
+insert into public.team_access_profile_permissions(organization_id,access_profile_id,permission_key) values ('fc100000-0000-4000-8000-000000000001','fc700000-0000-4000-8000-000000000001','activity.manage');
+insert into public.team_access_assignments(organization_id,team_id,person_id,access_profile_id)
+select organization_id,'fc300000-0000-4000-8000-000000000001',id,'fc700000-0000-4000-8000-000000000001' from public.people where user_id='fc000000-0000-4000-8000-000000000003';
+insert into public.activities(id,organization_id,team_id,activity_type_id,title,starts_at,ends_at)
+select 'fc600000-0000-4000-8000-000000000003',organization_id,team_id,activity_type_id,'Restricted editor match',now()+interval '1 day',now()+interval '2 days' from public.activities where id='fc600000-0000-4000-8000-000000000001';
+insert into public.invitations(organization_id,activity_id,person_id,activity_role,response,responded_at) values ('fc100000-0000-4000-8000-000000000001','fc600000-0000-4000-8000-000000000003','fc500000-0000-4000-8000-000000000001','participant','accepted',now());
+set local role authenticated;
+select set_config('request.jwt.claim.sub','fc000000-0000-4000-8000-000000000001',true);
+select lives_ok($$select public.football_fields('fc300000-0000-4000-8000-000000000001','activity','fc600000-0000-4000-8000-000000000003',new_values=>' {"captainPersonId":"fc500000-0000-4000-8000-000000000001"}',expected_revision=>1)$$,'Invitation manager can select accepted captain');
+select set_config('request.jwt.claim.sub','fc000000-0000-4000-8000-000000000003',true);
+select ok(public.has_team_permission('fc300000-0000-4000-8000-000000000001','activity.manage') and not public.has_team_permission('fc300000-0000-4000-8000-000000000001','invitation.manage'),'Fixture has only activity management');
+select is(public.football_fields('fc300000-0000-4000-8000-000000000001','activity','fc600000-0000-4000-8000-000000000003')->'participants','[]'::jsonb,'Activity-only editor cannot list invitees');
+select is(public.football_fields('fc300000-0000-4000-8000-000000000001','activity','fc600000-0000-4000-8000-000000000003')->'acceptedPlayers','[]'::jsonb,'Activity-only editor cannot list accepted players');
+select ok(not ((public.football_fields('fc300000-0000-4000-8000-000000000001','activity','fc600000-0000-4000-8000-000000000003')->'values') ? 'captainPersonId'),'Saved captain is hidden');
+select is(public.football_fields('fc300000-0000-4000-8000-000000000001','activity','fc600000-0000-4000-8000-000000000003')->>'canManageInvitations','false','GUI receives explicit permission');
+select is(public.football_fields('fc300000-0000-4000-8000-000000000001','activity','fc600000-0000-4000-8000-000000000003')->>'captainSource','teamPlayers','Saved acceptance-based source is hidden');
+select throws_ok(format('select public.football_fields(%L,%L,%L,%L)', 'fc300000-0000-4000-8000-000000000001','activityParticipation','fc600000-0000-4000-8000-000000000003',p),'42501',null,'Cannot probe participant existence') from unnest(array['fc500000-0000-4000-8000-000000000001','fc500000-0000-4000-8000-000000000002']) p;
+select throws_ok($$select public.football_fields('fc300000-0000-4000-8000-000000000001','activityParticipation','fc600000-0000-4000-8000-000000000003','fc500000-0000-4000-8000-000000000001','{"shirtNumber":99}',0)$$,'42501',null,'Cannot write participant fields');
+select throws_ok(format('select public.football_fields(%L,%L,%L,new_values=>%L,expected_revision=>2,selected_source=>%L)', 'fc300000-0000-4000-8000-000000000001','activity','fc600000-0000-4000-8000-000000000003','{"captainPersonId":"fc500000-0000-4000-8000-000000000001"}',source),'42501',null,'Cannot probe or replace captain through either source') from unnest(array['teamPlayers','acceptedActivityPlayers']) source;
+reset role;
+update public.invitations set response='declined' where activity_id='fc600000-0000-4000-8000-000000000003';
+set local role authenticated;
+select is(public.football_fields('fc300000-0000-4000-8000-000000000001','activity','fc600000-0000-4000-8000-000000000003',new_values=>'{"periods":2}',expected_revision=>2)->'values','{"periods":2}'::jsonb,'Other fields remain writable without exposing or validating hidden captain');
+select set_config('request.jwt.claim.sub','fc000000-0000-4000-8000-000000000001',true);
+select is(public.football_fields('fc300000-0000-4000-8000-000000000001','activity','fc600000-0000-4000-8000-000000000003')->'values'->>'captainPersonId','fc500000-0000-4000-8000-000000000001','Restricted save preserves captain');
+select is(public.football_fields('fc300000-0000-4000-8000-000000000001','activity','fc600000-0000-4000-8000-000000000003')->>'captainSource','acceptedActivityPlayers','Restricted save preserves source');
+
 select * from finish();
 rollback;
