@@ -448,3 +448,20 @@ som migrationen avsiktligt återkallar. Att enbart återställa den äldre appen
    återställas, backporta den med verifieringsadaptern bevarad och kör CI innan
    publicering. Inga nedmigrationer eller raderingar av sparade ansökningar,
    token eller verifieringsbevis ingår i återställningen.
+
+## Assistentens medlems- och uppdragsverktyg
+
+Klubb- och sektionsverktygen verifierar föreningsmedlemskap och `roster.manage`
+för varje läst lag vid varje anrop. Arbetsytans serverhämtade laglista begränsar
+modellens lagval. Alla läsningar använder användarens klient med RLS och explicita
+organisationsfilter; inga grants eller policyer breddas. Partiell lagåtkomst
+redovisas med omfattning och får inte beskrivas som en total för klubben.
+Läsningar sidindelas med exakt radantal och stabil sortering; fel eller för stort
+underlag ger okänt resultat, aldrig noll.
+
+Summering läser inga namn. Listor returnerar högst 200 person/lag-poster med
+visningsnamn, medlemsroll och aktuella uppdrag; person-ID används internt.
+Kontaktuppgifter, konto-ID, födelsedata, målsmanskopplingar och svar ingår inte.
+Saknade personuppgifter under RLS ger fel i stället för en ofullständig lista.
+Läsningar loggas på servern med verktyg, användare, organisation och antal utan
+namn, söktext eller resultatdata.

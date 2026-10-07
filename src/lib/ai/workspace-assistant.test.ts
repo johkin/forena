@@ -15,8 +15,8 @@ function setup(member = true, activities: unknown[] = []) {
   const supabase = { rpc: vi.fn(async () => ({ data: member, error: null })), from: vi.fn((table: string) => {
     const record = { table, filters: [] as [string, unknown][] }; queries.push(record);
     const data = table === "organizations" ? { id: org, name: "Klubben", slug: "club", time_zone: "Europe/Stockholm" } : table === "sections" ? { id: section, name: "Fotboll" } : table === "teams" ? [{ id: team, name: "F2016", slug: "f2016", section_id: section }] : activities;
-    const query = { select: vi.fn(), eq: vi.fn((key: string, value: unknown) => { record.filters.push([key, value]); return query; }), in: vi.fn((key: string, value: unknown) => { record.filters.push([key, value]); return query; }), gte: vi.fn(), order: vi.fn(), limit: vi.fn(), maybeSingle: vi.fn(async () => ({ data, error: null })), then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data, error: null }).then(resolve) };
-    for (const key of ["select", "gte", "order", "limit"] as const) query[key].mockReturnValue(query);
+    const query = { select: vi.fn(), eq: vi.fn((key: string, value: unknown) => { record.filters.push([key, value]); return query; }), in: vi.fn((key: string, value: unknown) => { record.filters.push([key, value]); return query; }), lte: vi.fn(), or: vi.fn(), range: vi.fn(async () => ({ data: Array.isArray(data) ? data : [], error: null, count: Array.isArray(data) ? data.length : 0 })), gte: vi.fn(), order: vi.fn(), limit: vi.fn(), maybeSingle: vi.fn(async () => ({ data, error: null })), then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data, error: null }).then(resolve) };
+    for (const key of ["select", "lte", "or", "gte", "order", "limit"] as const) query[key].mockReturnValue(query);
     return query;
   }) };
   return { dependencies: { supabase: supabase as unknown as AssistantDependencies["supabase"], userId: "user" }, queries, supabase };
@@ -74,4 +74,17 @@ it("reads a bounded published activity list without private roster or invitation
   await answerWorkspaceAssistant(input, dependencies);
   expect(queries.find(query => query.table === "activities")?.filters).toEqual([["team_id", [team]], ["status", "published"]]);
   expect(supabase.from.mock.calls.map(([table]) => table)).not.toContain("invitations");
+});
+
+it("uses verified member counts instead of fabricated model prose for club questions", async () => {
+  const { dependencies } = setup();
+  state.generate.mockImplementationOnce(async () => {
+    await state.options.mock.calls[0][0].tools.readWorkspaceMembers.execute({ mode: "summary" });
+    return { text: "Det finns 11 spelare och inga ledare i laget." };
+  });
+  const reply = await answerWorkspaceAssistant({ ...input, question: "Hur många ledare respektive spelare har klubben?" }, dependencies);
+  expect(reply.answer).toContain("Klubben");
+  expect(reply.answer).toContain("0 spelare och 0 ledare");
+  expect(reply.answer).not.toContain("11 spelare");
+  expect(state.team).not.toHaveBeenCalled();
 });

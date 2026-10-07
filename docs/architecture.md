@@ -101,8 +101,16 @@ exempelvis kalender. Detta är grunden för framtida sidanknutna verktyg.
 och sektion. Klubb- och sektionsassistenten kan läsa en begränsad lista av
 publicerade kommande aktiviteter utan uppställning eller kallelsesvar. Ett
 uttryckligt lagval delegeras till lagassistenten med förnyad lagbehörighetskontroll.
-Privata frågor över flera lag kräver i denna version att användaren väljer ett
-lag; inget obestyrkt klubbtotal presenteras. Aktivitetsutkast öppnar den gemensamma
+Medlems- och uppdragsfrågor använder `readWorkspaceMembers` över klubbens eller
+sektionens lag, med förnyad `roster.manage`-kontroll för varje lag. Uppdragstyper
+hämtas från `listWorkspaceResponsibilityTypes`. Summering räknar unika personer
+per medlemsroll; uppdrag som kassör är separata från behörighetsprofiler.
+Endast aktiva tilldelningar på klubbens lokala datum ingår. Om åtkomsten är
+begränsad anges antalet lästa lag och svaret är uttryckligen ingen klubbtotal.
+Omfattningen är laganknutna personer, inte klubbmedlemskap utan lag eller
+målsmans-/kontoroller. Andra privata frågor över flera lag kräver att användaren
+väljer ett lag. Medlemssvar formuleras från verifierade resultat på servern;
+modelltext kan inte ersätta antal, namn eller omfattning. Aktivitetsutkast öppnar den gemensamma
 redigeraren med serverhämtad lagkontext och sparas först efter granskning.
 Redigerarens truppdata skickas inte till modellen.
 
