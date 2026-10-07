@@ -62,3 +62,37 @@ it("keeps past work visible without management controls even if editing state wa
   expect(tree.filter(el => el.type === "h4")).toHaveLength(3);
   expect(tree.filter(el => el.type === "button").map(el => el.props.children)).toEqual(["Hämta senaste schemat"]);
 });
+
+it("clears previous success and errors when proposing a new change", () => {
+  hooks.values[4] = "Ändringen är sparad i schemat.";
+  hooks.values[1] = "Ett gammalt fel";
+  hooks.values[5] = true; hooks.values[6] = [schedule.duties[0].id];
+  const button = render().find(el => el.type === "button" && el.props.className === "danger");
+  (button!.props.onClick as () => void)();
+  expect(hooks.setters[4]).toHaveBeenCalledWith("");
+  expect(hooks.setters[1]).toHaveBeenCalledWith("");
+});
+it("keeps a rejected preview open and clears stale success when saving fails", async () => {
+  const preview = { command: { op: "assign_batch", assignments: [{ slotId: "slot1", personId: "person", revision: 1 }] }, text: "Tilldela 1 plats", rows: [] };
+  hooks.values[7] = preview; hooks.values[4] = "Senaste schemat har hämtats.";
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: "Schemat har ändrats" }), { status: 409 })));
+  try {
+    const button = render().find(el => el.type === "button" && el.props.children === "Bekräfta");
+    (button!.props.onClick as () => void)();
+    await vi.waitFor(() => expect(hooks.setters[1]).toHaveBeenCalledWith("Schemat har ändrats"));
+    expect(hooks.setters[4]).toHaveBeenCalledExactlyOnceWith("");
+    expect(hooks.setters[7]).not.toHaveBeenCalled();
+    expect(fetch).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ method: "POST", body: JSON.stringify(preview.command) }));
+  } finally { vi.unstubAllGlobals(); }
+});
+it("only reports saved after a successful response and closes the preview", async () => {
+  hooks.values[7] = { command: { op: "assign_batch", assignments: [] }, text: "Tilldela", rows: [] };
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify(schedule))));
+  try {
+    const button = render().find(el => el.type === "button" && el.props.children === "Bekräfta");
+    (button!.props.onClick as () => void)();
+    await vi.waitFor(() => expect(hooks.setters[4]).toHaveBeenLastCalledWith("Ändringen är sparad i schemat."));
+    expect(hooks.setters[7]).toHaveBeenCalledWith(null);
+    expect(hooks.setters[0]).toHaveBeenCalledWith(schedule);
+  } finally { vi.unstubAllGlobals(); }
+});

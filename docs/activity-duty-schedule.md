@@ -97,6 +97,11 @@ avgörs med namn/ID. Redan tilldelade personer hoppas över och varje person få
 högst en ny plats i automatförslaget. Högst 100 platser föreslås åt gången;
 övriga lämnas lediga. Ledaren kan justera eller hoppa över varje tilldelning.
 En uttrycklig förhandsgranskning visar mottagarna före sparande och notifiering.
+Tilldelningarna visas i en tabell per lokalt datum med tid, uppgift, spelare och
+platsnummer. Datumet står i tabellrubriken; pass över midnatt visar båda datumen.
+Tabellen bygger på exakt de tilldelningar som bekräftas, inklusive manuella
+val och överhoppade platser. Hämtning och sparande har separata statusmeddelanden;
+ett nytt förslag eller sparförsök rensar tidigare status.
 Tilldelningarna sparas atomärt med nya behörighets- och revisionskontroller;
 en ändrad plats gör att hela förslaget måste granskas på nytt.
 
@@ -168,3 +173,11 @@ en serie. Alla instanser har en icke-null FK till en serie inom samma aktivitet
 och förening. Tabellen har RLS och inga direkta klientgrants; endast
 behörighetskontrollerade RPC:er kan ändra serier. Familjer får inte seriens
 administrativa mall/revision i schemats svar.
+
+### ID-validering vid sparande
+
+Bemanningskommandon accepterar databasens kanoniska GUID-format även för
+importerade/testskapade ID:n utan RFC-version eller variant. Formen valideras
+fortfarande; RPC:erna verifierar behörighet, aktivitet, person och revision
+som tidigare. Ogiltiga kommandon ger begripliga fel innan databas-anropet.
+Valideringsloggen innehåller endast fältsökväg och felkod, inga ID:n eller namn.

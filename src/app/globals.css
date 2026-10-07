@@ -1014,3 +1014,19 @@ body { min-height:100dvh; display:flex; flex-direction:column; }
 body:has(.modal-backdrop) .assistant-launcher, body:has(.header-menu-backdrop) .assistant-launcher { visibility:hidden; }
 body:has(.squad-save-bar) .assistant-launcher { bottom:calc(84px + env(safe-area-inset-bottom)); }
 .app-shell.has-assistant { padding-bottom:80px; }
+
+/* Fixed columns and wrapping keep the review readable without horizontal scrolling. */
+.duty-assignment-preview { min-width: 0; }
+.duty-assignment-table { width: 100%; table-layout: fixed; border-collapse: collapse; margin-block: 1rem; font-size: .9rem; }
+.duty-assignment-table caption { text-align: left; font-weight: 700; padding-bottom: .6rem; }
+.duty-assignment-table .duty-assignment-time { width: 29%; }
+.duty-assignment-table .duty-assignment-task { width: 27%; }
+.duty-assignment-table th, .duty-assignment-table td { text-align: left; vertical-align: top; padding: .55rem .3rem; border-bottom: 1px solid #dfe4df; overflow-wrap: anywhere; }
+.duty-assignment-table tbody th { font-weight: 500; }
+.duty-assignment-table ul { list-style: none; padding: 0; margin: 0; }
+.duty-assignment-table li + li { margin-top: .5rem; }
+.duty-assignment-table small { display: block; color: #557069; }
+@media (min-width: 768px) {
+  .duty-assignment-table { font-size: 1rem; }
+  .duty-assignment-table th, .duty-assignment-table td { padding: .65rem .5rem; }
+}

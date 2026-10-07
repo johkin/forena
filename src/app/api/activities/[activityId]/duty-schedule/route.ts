@@ -12,6 +12,18 @@ async function context(activityId: string) {
 function failure(code: string) {
  return NextResponse.json({ error: code === "42501" ? "Du saknar behörighet" : code === "40001" ? "Schemat eller förslaget har ändrats. Uppdatera schemat och försök igen." : "Ändringen kunde inte genomföras. Kontrollera tider, tilldelning och om självservice fortfarande är öppen." }, { status: code === "42501" ? 403 : code === "P0002" ? 404 : ["23514", "40001", "23505"].includes(code) ? 409 : 500 });
 }
+function invalidProposal(error: z.ZodError) {
+ const issue = error.issues[0];
+ const field = issue?.path.at(-1);
+ const row = issue?.path[0] === "assignments" && typeof issue.path[1] === "number" ? ` i tilldelning ${issue.path[1] + 1}` : "";
+ const detail = field === "personId" ? `Spelarreferensen${row} är ogiltig.`
+   : field === "slotId" || field === "targetSlotId" || field === "sourceSlotId" ? `Platsreferensen${row} är ogiltig.`
+   : field === "revision" ? `Förslagets versionsuppgift${row} saknas eller är ogiltig.`
+   : "Förslaget innehåller ogiltiga eller saknade uppgifter.";
+ // Log only schema paths/codes, never the payload, IDs or names.
+ console.warn("activity_duty.invalid_command", { issues: error.issues.slice(0, 10).map(item => ({ path: item.path.join("."), code: item.code })) });
+ return NextResponse.json({ error: `${detail} Inget har sparats. Ta fram ett nytt förslag och försök igen.` }, { status: 400 });
+}
 export async function GET(request: Request, { params }: Props) {
  const ctx = await context((await params).activityId);
  if (!ctx.supabase) return ctx.error;
@@ -30,7 +42,7 @@ export async function POST(request: Request, { params }: Props) {
  const ctx = await context((await params).activityId);
  if (!ctx.supabase) return ctx.error;
  const parsed = dutyCommandSchema.safeParse(await request.json().catch(() => null));
- if (!parsed.success) return NextResponse.json({ error: "Ogiltigt förslag. Kontrollera tider och platser." }, { status: 400 });
+ if (!parsed.success) return invalidProposal(parsed.error);
  const { data, error } = ["create_series", "edit_series", "cancel_series"].includes(parsed.data.op)
    ? await ctx.supabase.rpc("command_activity_duty_series", { target_activity_id: ctx.activityId, command: parsed.data })
    : parsed.data.op === "cancel_duties"
