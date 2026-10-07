@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { TeamAssistantCard } from "@/components/team-assistant-card";
 import { ActivityEditorModal } from "@/components/activity-editor-modal";
 import { TeamCalendar } from "@/components/team-calendar";
 import { PersonalOverview } from "@/components/personal-overview";
@@ -74,6 +73,7 @@ export function ClubDashboard({ initialPage = "overview", organization, sections
   return (
     <>
       <AppShell
+        assistantOptions={{ demo: source === "demo", canCreateActivity: canManageActivities, pageTitle: activePage === "calendar" ? "Lagkalender" : "Lagöversikt", onActivityDraft: draft => { setActivityDraft(draft); setEditingActivity(undefined); setActivityEditorMode("create"); } }}
         homeHref={`/o/${organization.slug}/t/${team.slug}`}
         navigation={<TeamMenu organizationSlug={organization.slug} teamSlug={team.slug} teamName={team.name} canManageRoster={canManageRoster} leaderView={view === "leader"} activeItem={activePage} onSelectView={setActivePage} navigationOnly />}
         accountEmail={accountEmail}
@@ -113,16 +113,7 @@ export function ClubDashboard({ initialPage = "overview", organization, sections
                       missingAttendanceActivities={canManageAttendance ? pendingAttendance : []}
                     /> : null}
                   </div>
-                  <aside className="overview-assistant">
-                    <TeamAssistantCard
-                      teamId={team.id}
-                      teamName={team.name}
-                      assistantName={organization.assistantName}
-                      demo={source === "demo"}
-                      canCreateActivity={canManageActivities}
-                      onActivityDraft={(draft) => { setActivityDraft(draft); setEditingActivity(undefined); setActivityEditorMode("create"); }}
-                    />
-                  </aside>
+
                 </div>
               </>}
         </main>

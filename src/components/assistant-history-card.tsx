@@ -6,7 +6,7 @@ import type { Activity, Organization, Team } from "@/domain/club";
 import { ActivityDetailModal } from "./activity-detail-modal";
 import type { ActivityHistoryResult } from "@/lib/ai/activity-history-result";
 
-export function AssistantHistoryCard({ result, answer }: { result: ActivityHistoryResult; answer?: string }) {
+export function AssistantHistoryCard({ result, answer, onOpenActivity }: { result: ActivityHistoryResult; answer?: string; onOpenActivity?: () => void }) {
   const [detail, setDetail] = useState<{ activity: Activity; organization: Organization; team: Team; permissions?: { canManageAttendance: boolean } }>();
   const [opening, setOpening] = useState<string>();
   const [error, setError] = useState<string>();
@@ -20,6 +20,7 @@ export function AssistantHistoryCard({ result, answer }: { result: ActivityHisto
       const response = await fetch(`/api/activities/${encodeURIComponent(id)}/detail`, { cache: "no-store" });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Aktiviteten kunde inte öppnas.");
+      onOpenActivity?.();
       setDetail(body);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Aktiviteten kunde inte öppnas.");

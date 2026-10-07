@@ -80,7 +80,7 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
           schema: activityDraftSchema,
         }),
         system: buildActivityDraftPrompt(),
-        prompt: JSON.stringify({ context, previousMessages: input.messages, question, webResearch: researchToolResults }),
+        prompt: JSON.stringify({ context, page: input.page, previousMessages: input.messages, question, webResearch: researchToolResults }),
         maxOutputTokens: 700,
         providerOptions: { gateway: { user: createHash("sha256").update(userId).digest("hex").slice(0, 24), tags: ["feature:team-assistant", "step:activity-draft"] } },
         abortSignal: AbortSignal.timeout(20_000),
@@ -155,7 +155,7 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
       providerOptions: { gateway: { user: createHash("sha256").update(userId).digest("hex").slice(0, 24), tags: ["feature:team-assistant"] } },
     });
     const result = await assistant.generate({
-      prompt: JSON.stringify({ context: { ...context, historyPeriod }, previousMessages: input.messages, question }),
+      prompt: JSON.stringify({ context: { ...context, historyPeriod }, page: input.page, previousMessages: input.messages, question }),
       abortSignal: AbortSignal.timeout(30_000),
     });
     console.info("team_assistant_completed", { teamId, model, latencyMs: Date.now() - startedAt, inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens,
