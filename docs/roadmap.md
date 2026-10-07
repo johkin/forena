@@ -22,6 +22,9 @@
 - [x] Sökbar trupp med medlemsprofiler, namnredigering och mobilanpassade undergrupper
 - [ ] Komplettera medlemsprofil med bildhantering och administration av verifierade målsmanskopplingar
 - [x] Gemensam aktivitetstypskatalog med disciplinspecifika typer och systemadministration
+- [x] Kodägt fotbollspaket v1 med separata objektscheman, sektionsuppslag och paketöversikt; se [disciplinpaket](disciplines.md)
+- [x] Lagra och redigera fotbollens versionsrefererade värden för lag, lagmedlemskap, match och deltagande med native-formulär, behörighetskontroll och kopierade matchförval
+- [ ] Flytta kvarvarande disciplinöverstyrningar till sektion efter konfliktkontroll; paketdefinitioner versionshanteras i kod, administration väljer och konfigurerar paket
 - [x] Administrera aktivitetsförval med fältvis arv system/klubb/sektion/lag och revisionskontroll
 - [x] Läsbara listval för relativa tider och valbara alternativ i activity-defaults med separat arv
 - [x] Läs förval i aktivitetsdialog och ledarassistent; visa ursprung och bevara egna val
@@ -315,9 +318,9 @@ cupanmälan. Den skickar inte kallelser eller anmäler laget externt på egen ha
 ### Plugins, disciplinscheman och utökningar
 
 Planerad riktning: Förena ska kunna utökas av både egna och externa plugins
-med data, funktionalitet och GUI. Börja med deklarativa utökningar och en
-förstapartsplugin för spelarutveckling som använder samma kontrakt som framtida
-externa tillägg. Exekverbar tredjepartskod kräver separat isolering och ett
+med data, funktionalitet och GUI. Börja med deklarativa utökningar och ett litet
+förstapartstillägg som använder samma kontrakt som framtida externa tillägg.
+Gröna kortet är en möjlig första kandidat; spelarutveckling är ett större exempel. Exekverbar tredjepartskod kräver separat isolering och ett
 begränsat API; den ska inte få direkt databasåtkomst eller köras med Förena-
 applikationens fulla rättigheter.
 
@@ -336,9 +339,10 @@ identifierare. Ett nytt fält ger inte automatiskt ny domänlogik. Avstängninga
 som påverkar uttagning behöver exempelvis en egen modell för giltighet och
 omfattning, inte enbart ett extra datumfält.
 
-Disciplinadministrationen ska erbjuda fälteditor, förhandsgranskning,
-utkast/publicering och versionshistorik. Systemadministratören äger inledningsvis
-schemat; klubbarna väljer förval och fyller i värden. Schema per objekttyp ska
+Disciplinpaket och scheman versionshanteras i källkod och ändras genom granskade
+leveranser. Administrationen ska erbjuda paketval, konfiguration,
+förhandsgranskning och kontrollerade uppgraderingar; klubbarna väljer förval
+och fyller i värden. En generell schemaeditor är uppskjuten. Schema per objekttyp ska
 skiljas från arv av förval. Exempelvis kopieras lagets normala spelform till en
 ny match; ändrade lagförval eller publicerade scheman skriver aldrig automatiskt
 om befintliga aktiviteter.
@@ -388,7 +392,14 @@ förhandsgranskning/bekräftelse. Pluginverktyg får inte kringgå dessa via GUI
 assistent eller MCP. Planera revisionslogg, anropsgränser, timeout och återkallning
 av åtkomst när en installation inaktiveras.
 
-#### Första exempel: spelarutveckling
+#### Första exempel
+
+Gröna kortet är en möjlig liten första plugin: val av spelare på en match,
+med separat aktivering och tydlig tilläggspanel. Den är uttryckligen uppskjuten
+och ingår inte i fotbollsdisciplinens native-fält. Disciplinfält integreras i
+ordinarie formulär; plugins visar namn och ursprung som tillägg.
+
+Spelarutveckling är ett större efterföljande exempel.
 
 En förstapartsplugin definierar färdigheter och skalor per disciplin, registrerar
 daterade bedömningar och visar radardiagram (spider-diagram) samt utveckling över
@@ -402,8 +413,8 @@ Förslagen visar underlag, osäkerhet och ledarens valda mål; ledaren granskar
 och beslutar före eventuell uttagning eller kallelse.
 
 - [ ] Definiera pluginmanifest, stabila ID:n, kompatibilitet och installation per klubb
-- [ ] Definiera disciplinpaket med separata objektscheman, UI-metadata och uttryckliga förval
-- [ ] Bygg schemaeditor i disciplinadministrationen med förhandsgranskning och versionshanterad publicering
+- [x] Definiera första kodägda disciplinpaketet (fotboll) med separata objektscheman, UI-metadata och uttryckliga förval
+- [ ] Bygg paketadministration för val, konfiguration och uppgraderingar; schemaändringar levereras via granskad källkod
 - [ ] Inför extension-lagring och API med verifierade objektreferenser, schema-/dataversion och klubb-/lagisolering
 - [ ] Definiera kontrollerade GUI-platser för flikar, paneler och actions; återanvänd mobile-first-komponenter
 - [ ] Definiera typade pluginverktyg som delar kommandon med GUI och assistent
@@ -412,7 +423,7 @@ och beslutar före eventuell uttagning eller kallelse.
 - [ ] Bygg installationsadministration för aktivering, behörigheter, uppgraderingar och inaktivering
 - [ ] Definiera migrering, bakåtkompatibilitet, återställning samt export/radering vid avinstallation
 - [ ] Verifiera isolering mellan klubbar och plugins samt nekade verktygsanrop efter återkallad åtkomst
-- [ ] Implementera spelarutveckling med historiska bedömningar och radardiagram som första plugin
+- [ ] Implementera spelarutveckling med historiska bedömningar och radardiagram som större pluginexempel
 - [ ] Lägg därefter till förslag på spelarkombinationer med synligt underlag och ledarbeslut
 
 ### Brand Kit och AI Content Studio

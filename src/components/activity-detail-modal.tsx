@@ -1,5 +1,6 @@
 "use client";
 
+import { FootballFields } from "./football-fields";
 import { useActivityClock } from "@/lib/use-activity-clock";
 import { ActivityInvitationResponse } from "./activity-invitation-response";
 import { useCallback, useEffect, useState } from "react";
@@ -139,6 +140,7 @@ export function ActivityDetailModal({ activity, organization, team, canManageAct
       </div>
 
       {activityEnded ? <p role="status">Aktiviteten är avslutad. Uppgifterna visas i läsläge.</p> : null}
+      {canManageActivity ? <FootballFields teamId={team.id} scope="activity" activityId={activity.id} readOnly={readOnly}/> : null}
       <ActivityInvitationResponse key={activity.id} activityId={activity.id} cancelled={activity.status === "cancelled"} readOnly={readOnly} />
       {canManageInvitations ? <section className="activity-staffing" aria-labelledby="activity-staffing-title">
         <div className="card-heading"><div><p className="eyebrow">Kallelser</p><h3 id="activity-staffing-title">Bemanning</h3></div></div>

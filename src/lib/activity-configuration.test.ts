@@ -23,3 +23,40 @@ describe("activity configuration",()=>{
  });
  it("accepts sparse overrides and explicit no reminders",()=>expect(normalizeDefaultsPatch({duration:null,reminderRules:[]})).toEqual({duration:null,reminderRules:[]}));
 });
+
+import { vi } from "vitest";
+import { loadActivityConfiguration } from "./activity-configuration";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "./supabase/database.types";
+
+function configurationClient(catalogueError = false, override: string | null = null) {
+ const data: Record<string, unknown> = {
+  teams:{id:"team",organization_id:"club",section_id:"section",discipline_id:override},
+  organizations:{discipline_id:null,time_zone:"Europe/Stockholm"},
+  sections:{discipline_id:"football-id"},
+  disciplines:[{id:"football-id",key:"football"}],
+  activity_types:[{id:"generic",active:true,discipline_id:null,slug:"ovrigt"},{id:"match",active:true,discipline_id:"football-id"},{id:"other",active:true,discipline_id:"floorball-id"}],
+  activity_defaults:[],
+ };
+ return {from:vi.fn((table:string)=>{
+  const result = {data:data[table],error:table==="disciplines" && catalogueError ? {message:"failure"}:null};
+  const query: Record<string, unknown> = {then:(resolve:(value:unknown)=>unknown)=>Promise.resolve(result).then(resolve)};
+  for (const method of ["select","eq","single","order","or"]) query[method]=()=>query;
+  return query;
+ })} as unknown as SupabaseClient<Database>;
+}
+describe("section discipline integration",()=>{
+ it("loads the section's code package and retains generic activity types",async()=>{
+  const config=await loadActivityConfiguration(configurationClient(),"team");
+  expect(config.disciplinePackage?.key).toBe("football");
+  expect(config.types.map(t=>t.id)).toEqual(["generic","match"]);
+ });
+ it("does not attach football schemas to a conflicting legacy override",async()=>{
+  const config=await loadActivityConfiguration(configurationClient(false,"floorball-id"),"team");
+  expect(config.disciplinePackage).toBeNull();
+  expect(config.types.map(t=>t.id)).toEqual(["generic","other"]);
+ });
+ it("fails closed when the discipline catalogue cannot be read",async()=>{
+  await expect(loadActivityConfiguration(configurationClient(true),"team")).rejects.toThrow();
+ });
+});

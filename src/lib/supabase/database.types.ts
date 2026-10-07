@@ -276,6 +276,10 @@ export interface Database {
     };
     Views: Record<never, never>;
     Functions: {
+      football_fields: {
+        Args: { target_team_id: string; target_scope: string; target_activity_id?: string | null; target_person_id?: string | null; new_values?: Json; expected_revision?: number; selected_source?: string };
+        Returns: Json;
+      };
       delete_activity_series_from: { Args: { target_activity_id:string; preview_only?:boolean; expected_token?:string }; Returns:Json };
       edit_activity_series_from: { Args: { target_activity_id:string; changes:Json; preview_only?:boolean; expected_token?:string }; Returns:Json };
       activity_history_teams: { Args: { target_organization_id: string }; Returns: Json };
