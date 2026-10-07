@@ -4,11 +4,6 @@ import type { AssistantDependencies } from "./team-assistant-types";
 import type { ActivityHistoryResult } from "./activity-history-result";
 
 export type HistoryMemberRole = "leader" | "participant";
-export function historyMemberRole(question: string): HistoryMemberRole | undefined {
-  if (/\bledare\b/i.test(question)) return "leader";
-  if (/\bspelare\b/i.test(question)) return "participant";
-}
-
 // A membership must cover the activity date, including former team members.
 export async function filterHistoryRole(supabase: AssistantDependencies["supabase"], organizationId: string, teamId: string, history: ActivityHistoryResult, role: HistoryMemberRole): Promise<ActivityHistoryResult | { error: string }> {
   if (history.category === "work") return { error: "Rollfiltrering stöds för registrerad närvaro på träningar och matcher." };

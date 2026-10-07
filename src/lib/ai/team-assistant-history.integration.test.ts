@@ -2,7 +2,8 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { MockLanguageModelV3 } from "ai/test";
 import type { AssistantDependencies } from "./team-assistant-types";
 
-const state = vi.hoisted(() => ({ model: undefined as unknown, context: vi.fn() }));
+const state = vi.hoisted(() => ({ model: undefined as unknown, context: vi.fn(), intent: vi.fn() }));
+vi.mock("./team-assistant-intent", () => ({ classifyTeamAssistantIntent: state.intent }));
 vi.mock("./team-assistant-context", () => ({ loadTeamAssistantContext: state.context }));
 vi.mock("ai", async importOriginal => {
   const original = await importOriginal<typeof import("ai")>();
@@ -37,6 +38,8 @@ function setup(readArgs: { category: string; relativeDays?: number; from?: strin
   return { model, rpc, dependencies: { supabase: { rpc } as unknown as AssistantDependencies["supabase"], userId: "user" } };
 }
 beforeEach(() => {
+  state.intent.mockReset();
+  state.intent.mockImplementation(async request => ({ mode: "activity-history", question: request.question, periodRequested: true, memberRole: null }));
   state.context.mockResolvedValue({ organization: null, activities: [], activityIds: [], canManageActivities: false, canManageInvitations: false,
     memoryScope: { organizationId: "org", sectionId: "section", teamId, userId: "user", disciplineId: null }, organizationToday: "2026-10-06",
     context: { team: "F2016", teamId, viewer: { kind: "leader" }, memories: [] } });
@@ -59,6 +62,7 @@ it("replaces contradictory model claims with verified leader attendance through 
   const builder = { select: vi.fn(), eq: vi.fn(), in: vi.fn(async () => ({ data: [], count: 0, error: null })) };
   builder.select.mockReturnValue(builder);builder.eq.mockReturnValue(builder);
   dependencies.supabase = { rpc, from: vi.fn(() => builder) } as unknown as AssistantDependencies["supabase"];
+  state.intent.mockImplementationOnce(async request => ({ mode: "activity-history", question: request.question, periodRequested: true, memberRole: "leader" }));
   const reply = await answerTeamAssistant({ ...input, question: "Vilka ledare har tränat i oktober?" }, dependencies);
   expect(reply.answer).toContain("Ingen registrerad närvaro");expect(reply.answer).not.toContain("Johan");
   expect(reply.historyResults?.[0]).toMatchObject({ memberRole: "leader", summary: { uniquePeople: 0, participationCount: 0 } });
@@ -101,6 +105,7 @@ it("asks for a missing period without forcing the model to invent dates", async 
   model.doGenerate = vi.fn()
     .mockResolvedValueOnce(toolCall("listHistoryTeams", {}))
     .mockResolvedValueOnce(textResult("Vilken period vill du se registrerad träning för?"));
+  state.intent.mockImplementationOnce(async request => ({ mode: "activity-history", question: request.question, periodRequested: false }));
   const reply = await answerTeamAssistant({ ...input, question: "Hur många har registrerad träning?" }, dependencies);
   expect(reply.answer).toContain("Vilken period");
   expect(rpc.mock.calls.map(([name]) => name)).not.toContain("read_activity_history");
@@ -118,6 +123,7 @@ it("reads September through real SDK calls even if the model only supplies its s
 it("answers the F2016-to-F2013 invitation question from upcoming invites, never history", async () => {
   const { supabase, rpc } = invitationFixture();
   state.model = new MockLanguageModelV3({ doGenerate: [toolCall("listInvitationTeams", {}), toolCall("readActivityInvitations", { sourceTeamId: otherTeamId, targetTeamId: teamId, category: "competition" }), textResult("Inga registrerade träningar senaste 366 dagarna.")] });
+  state.intent.mockImplementationOnce(async request => ({ mode: "activity-invitations", question: request.question, periodRequested: false, category: "session", response: "all" }));
   const reply = await answerTeamAssistant({ ...input, question: "Hur många från F2016 är kallade till träning med F2013?" }, { supabase, userId: "user" });
   expect(reply.answer).toContain("3 spelare från F2016");
   expect(reply.answer).toContain("4 kallelsetillfällen");
@@ -128,6 +134,7 @@ it("answers the F2016-to-F2013 invitation question from upcoming invites, never 
 it("does not use family invitation visibility to claim a complete cross-team total", async () => {
   const { supabase } = invitationFixture(false);
   state.model = new MockLanguageModelV3({ doGenerate: [toolCall("listInvitationTeams", {}), toolCall("readActivityInvitations", { targetTeamId: otherTeamId, category: "session" }), textResult("Ingen är kallad.")] });
+  state.intent.mockImplementationOnce(async request => ({ mode: "activity-invitations", question: request.question, periodRequested: false, category: "session", response: "all" }));
   const reply = await answerTeamAssistant({ ...input, question: "Hur många från F2016 är kallade till träning med F2013?" }, { supabase, userId: "user" });
   expect(reply).toMatchObject({ source: "fallback", historyResults: [] });
   expect(reply.answer).toContain("saknar behörighet");

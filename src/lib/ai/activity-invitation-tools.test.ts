@@ -1,15 +1,9 @@
 import { expect, it, vi } from "vitest";
-import { createActivityInvitationTools, isActivityInvitationQuestion } from "./activity-invitation-tools";
+import { createActivityInvitationTools } from "./activity-invitation-tools";
 import { invitationFixture } from "./__fixtures__/activity-invitations";
 const source = "00000000-0000-4000-8000-000000000001", target = "00000000-0000-4000-8000-000000000002";
 const options = {} as never;
 
-it("routes invitation reads without taking over attendance or reminder questions", () => {
-  expect(isActivityInvitationQuestion("Hur många från F2016 är kallade till träning med F2013?")).toBe(true);
-  expect(isActivityInvitationQuestion("Vilka har tackat ja till träning?")).toBe(false);
-  expect(isActivityInvitationQuestion("Hur många kallade har tränat i september?")).toBe(false);
-  expect(isActivityInvitationQuestion("Vilka kallade bör vi påminna?")).toBe(false);
-});
 it("counts unique source players and all responses across upcoming host-team trainings", async () => {
   const { tools, onResult } = invitationFixture();
   const result = await tools.readActivityInvitations.execute!({ targetTeamId: target, category: "session", response: "all" }, options);

@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AssistantDependencies } from "./team-assistant-types";
 import * as reminderTools from "./reminder-tools";
 
-const mocks = vi.hoisted(() => ({ context: vi.fn(), generate: vi.fn(), chat: vi.fn(), agentOptions: vi.fn() }));
+const mocks = vi.hoisted(() => ({ context: vi.fn(), generate: vi.fn(), chat: vi.fn(), agentOptions: vi.fn(), intent: vi.fn() }));
+vi.mock("./team-assistant-intent", () => ({ classifyTeamAssistantIntent: mocks.intent }));
 vi.mock("./team-assistant-context", () => ({ loadTeamAssistantContext: mocks.context }));
 vi.mock("ai", async importOriginal => ({
   ...await importOriginal<typeof import("ai")>(),
@@ -25,6 +26,7 @@ const draft = {
 describe("answerTeamAssistant", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.intent.mockImplementation(async (request) => ({ mode: "activity-draft", question: request.question, weeklyRecurrence: true, webResearch: false, periodRequested: false, category: "session", response: "all", memberRole: null, clarification: null }));
     mocks.context.mockResolvedValue({
       organization: { assistant_name: "Nova" }, activities: [], activityIds: [],
       canManageActivities: true, memoryScope: { organizationId: "org", sectionId: "section", teamId: "team", userId: "user", disciplineId: null }, organizationToday: "2026-10-01", context: { viewer: { kind: "leader" }, memories: [], activityTypes: [{ id: draft.activityTypeId, name: "Träning", category: "session" }] },
@@ -91,6 +93,7 @@ describe("answerTeamAssistant", () => {
       memoryScope: { organizationId: "org", sectionId: "section", teamId: "team", userId: "user", disciplineId: null },
       organizationToday: "2026-10-01", context: { viewer: { kind }, memories: [] },
     });
+    mocks.intent.mockImplementationOnce(async request => ({ mode: "chat", question: request.question }));
     const result = await answerTeamAssistant(input, dependencies);
     expect(result.activityDraft).toBeUndefined();
     expect(mocks.generate).not.toHaveBeenCalled();
@@ -99,6 +102,41 @@ describe("answerTeamAssistant", () => {
     expect(prompt.includes("så att ett barn förstår")).toBe(kind !== "leader");
     expect(Boolean(mocks.agentOptions.mock.calls[0][0].tools.readActivityHistory)).toBe(kind === "leader");
     expect(mocks.agentOptions.mock.calls[0][0].tools).not.toHaveProperty("proposeReminder");
+  });
+
+
+  it("fails closed when intent classification fails, without a regex fallback", async () => {
+    mocks.intent.mockRejectedValueOnce(new Error("unavailable"));
+    const reply = await answerTeamAssistant(input, dependencies);
+    expect(reply).toMatchObject({ source: "fallback" });
+    expect(reply.answer).toContain("tolka din begäran");
+    expect(mocks.generate).not.toHaveBeenCalled();
+    expect(mocks.chat).not.toHaveBeenCalled();
+  });
+
+  it("uses the model's resolved follow-up and research choice", async () => {
+    const question = "Skapa träningar på fredagar 16:15-17:15 till sista november";
+    mocks.intent.mockResolvedValueOnce({ mode: "activity-draft", question, weeklyRecurrence: true, webResearch: false });
+    await answerTeamAssistant({ ...input, question: "Ja, till sista november", messages: [{ role: "user", content: "Vi vill träna på fredagar 16:15-17:15" }] }, dependencies);
+    expect(JSON.parse(mocks.generate.mock.calls[0][0].prompt).question).toBe(question);
+    expect(mocks.generate).toHaveBeenCalledOnce();
+    expect(mocks.chat).not.toHaveBeenCalled();
+  });
+
+  it("returns a clarification without calling downstream models", async () => {
+    mocks.intent.mockResolvedValueOnce({ mode: "clarify", clarification: "Vilken aktivitet menar du?" });
+    expect((await answerTeamAssistant({ ...input, question: "Ändra den" }, dependencies)).answer).toBe("Vilken aktivitet menar du?");
+    expect(mocks.generate).not.toHaveBeenCalled();
+    expect(mocks.chat).not.toHaveBeenCalled();
+  });
+
+  it("cannot grant activity creation permissions through a model decision", async () => {
+    const context = await mocks.context();
+    mocks.context.mockResolvedValueOnce({ ...context, canManageActivities: false });
+    const reply = await answerTeamAssistant(input, dependencies);
+    expect(reply.answer).toContain("saknar behörighet");
+    expect(mocks.generate).not.toHaveBeenCalled();
+    expect(mocks.chat).not.toHaveBeenCalled();
   });
 
   it("propagates team access rejection before calling AI", async () => {
@@ -116,6 +154,7 @@ describe("answerTeamAssistant", () => {
       await mocks.agentOptions.mock.calls[0][0].tools.readActivityHistory.execute({ category: "session", guestsOnly: false }, {});
       return { text: "30 personer", usage: {} };
     });
+    mocks.intent.mockImplementationOnce(async request => ({ mode: "activity-history", question: request.question, periodRequested: true }));
     const result = await answerTeamAssistant({ ...input, question: "Hur många har tränat de senaste tre veckorna?" }, { ...dependencies, supabase: { rpc } as unknown as AssistantDependencies["supabase"] });
     expect(result.answer).toContain("30 unika personer med registrerad närvaro");
     expect(result.historyResults).toEqual([expect.objectContaining({ summary: { uniquePeople: 30, participationCount: 210 } })]);
@@ -130,6 +169,7 @@ describe("answerTeamAssistant", () => {
         { scope: "personal", content: "Privat preferens", subject: "Privat", disciplineId: null },
         { scope: "team", content: "Nio spelare", subject: "Match", disciplineId: null },
       ] } });
+    mocks.intent.mockImplementationOnce(async request => ({ mode: "reminder", question: request.question }));
     await answerTeamAssistant({ ...input, question: "Behöver vi påminna?" }, dependencies);
     expect(mocks.agentOptions.mock.calls[0][0].tools).toHaveProperty("assessReminder");
     expect(mocks.agentOptions.mock.calls[0][0].tools).toHaveProperty("proposeReminder");

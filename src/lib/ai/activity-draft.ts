@@ -1,6 +1,4 @@
 import { previewWeeklySeries } from "../activity-series";
-import { isActivityHistoryQuestion } from "./activity-history-intent";
-import { hasExplicitActivityCreationAction, isReminderCreationRequest, mentionsDraftActivity } from "./activity-creation-intent";
 
 export const activityDurations = [30, 45, 60, 75, 90, 120, 180, 480] as const;
 export const gatheringOffsets = [0, 15, 30, 45, 60] as const;
@@ -24,23 +22,6 @@ export type ActivityDraft = {
 };
 
 export type ActivityDraftInput = Omit<ActivityDraft, "sources">;
-
-export function isActivityDraftRequest(question: string) {
-  const normalized = question.trim().toLocaleLowerCase("sv-SE");
-  if (isReminderCreationRequest(normalized)) return false;
-  const action = hasExplicitActivityCreationAction(normalized)
-    || (/\bvill ha\s+(?:(?:en|ett|fler|nya|återkommande)\s+)*(?:aktivitet(?:er)?|träning(?:ar)?|match(?:er)?|turnering(?:ar)?|läger|intresseanmälan|kallelse(?:r)?|aktivitetsserie)\b/.test(normalized) && !isActivityHistoryQuestion(normalized));
-  const activity = mentionsDraftActivity(normalized);
-  return action && activity;
-}
-
-export function activityDraftNeedsWebResearch(question: string) {
-  return /cup(?:en)?\b|\b(turnering|läger|evenemang)\b/i.test(question);
-}
-
-export function requiresWeeklyRecurrence(question: string) {
-  return /återkommande|\bvarje\s+(?:vecka|måndag|tisdag|onsdag|torsdag|fredag|lördag|söndag)|\bpå\s+(?:måndagar|tisdagar|onsdagar|torsdagar|fredagar|lördagar|söndagar)/iu.test(question);
-}
 
 function requiredText(value: unknown, label: string, maxLength: number) {
   if (typeof value !== "string" || !value.trim()) throw new Error(`${label} saknas i aktivitetsutkastet.`);
