@@ -12,7 +12,7 @@ import type { ActivityConfiguration } from "@/lib/activity-configuration";
 import { FALLBACK_ACTIVITY_DEFAULTS } from "@/lib/activity-defaults";
 import { applyUntouchedDefaults } from "@/lib/activity-editor-defaults";
 import { durationToMinutes, localActivityTime, normalizeActivityTimingRules, type ActivityTimingRules } from "@/lib/activity-time-rules";
-import { prepareSeriesInvitationSchedule, requireFutureSchedule } from "@/lib/activity-schedule";
+import { prepareInvitationSchedule, requireFutureSchedule } from "@/lib/activity-schedule";
 import { activityRangeDuration } from "@/lib/activity-range";
 import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
 
@@ -137,7 +137,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
       if(invitationMode==="now"&&!selectedPeople.size) throw new Error("Välj minst en person att kalla.");
       if(invitationMode==="schedule") {
         const now = Date.now();
-        if(recurring) occurrences=occurrences.map(item=>prepareSeriesInvitationSchedule({...item,reminderSendAt:null},now));
+        if(mode==="create") occurrences=occurrences.map(item=>prepareInvitationSchedule({...item,reminderSendAt:null},now));
         else occurrences.forEach(item=>requireFutureSchedule({...item,reminderSendAt:null},now));
       }
       if(mode==="edit" && editScope==="following") {
@@ -251,7 +251,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
               {groups.map(group=><label key={group.id}><input type="checkbox" checked={selectedGroups.has(group.id)} onChange={()=>setSelectedGroups(current=>{const next=new Set(current);if(next.has(group.id))next.delete(group.id);else next.add(group.id);return next;})}/>{group.name}</label>)}
             </div>
             <ActivityTimingFields rules={rules} onChange={changeRule} defaults={typeDefaults} touched={touchedKeys} invitations starts={scheduleContext.starts} timeZone={timeZone} contextError={scheduleContext.error}/>
-            <small>Kallelse och sista svarstid räknas före aktivitetens start.{recurring ? " Om kallelsetiden redan har passerat skickas kallelsen direkt vid sparande. Passerade påminnelser hoppas över." : ""}</small>
+            <small>Kallelse och sista svarstid räknas före aktivitetens start.{mode==="create" ? " Om kallelsetiden redan har passerat skickas kallelsen direkt vid sparande. Passerade påminnelser hoppas över." : ""}</small>
           </div>:null}
         </details> : null}
         {seriesPreview?<div className="activity-preview"><strong>{seriesPreview.count} aktiviteter ändras · {seriesPreview.skipped} hoppas över</strong><ol>{seriesPreview.activities.map(item=><li key={item.id}>{formatter.format(new Date(item.startsAt))} – {formatter.format(new Date(item.endsAt))}</li>)}</ol><p>Befintliga kallelsetider och svar ändras inte.</p></div>:null}

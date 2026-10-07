@@ -17,8 +17,8 @@ export function requireFutureSchedule(schedule: ReturnType<typeof buildInvitatio
   if (Date.parse(schedule.invitationSendAt) <= now) throw new Error("Kallelsetiden har passerat. Välj Skicka nu eller en framtida tid.");
 }
 
-/** For a newly created series, elapsed send times become due immediately. */
-export function prepareSeriesInvitationSchedule<T extends ReturnType<typeof buildInvitationSchedule>>(schedule: T, now = Date.now()) {
+/** Elapsed send times become due immediately; elapsed reminders are skipped. */
+export function prepareInvitationSchedule<T extends ReturnType<typeof buildInvitationSchedule>>(schedule: T, now = Date.now()) {
   const send = Date.parse(schedule.invitationSendAt);
   const due = Date.parse(schedule.responseDueAt);
   if (!Number.isFinite(send) || !Number.isFinite(due) || !Number.isFinite(now) || due <= now || send >= due) {

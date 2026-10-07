@@ -105,7 +105,9 @@ Kallelse ska ligga före svarstid, påminnelser strikt mellan dem och svarstiden
 senast vid aktivitetsstart. Påminnelser sorteras efter beräknad tidpunkt;
 dubbletter avvisas även om uttrycken skiljer sig (t.ex. `-2h` och `-120m`).
 `inspectScheduleAgainstNow` flaggar passerade tider men flyttar eller skickar
-inte någonting. Ett passerat schema behöver ett uttryckligt användarbeslut.
+inte någonting. Vid skapande flyttas en passerad kallelsetid till nu i förhandsgranskningen
+och vid sparande. Passerade påminnelser hoppas över; sista svarstid måste
+fortfarande ligga i framtiden.
 
 ## Bakåtkompatibilitet
 
@@ -135,8 +137,12 @@ regressionsfall i den fristående testkörningen.
   och sparade aktiviteter bevaras. Förhandsgranskning visar riktiga tider för
   samling, slut, kallelse, svarstid och alla påminnelser.
 - Ingen kallelse eller målgrupp förväljs. Saknad målgrupp blir aldrig alla.
-  För serier används schemaläggning; omedelbart utskick gäller enstaka aktiviteter.
-  Passerad kallelsetid måste ändras eller ersättas av ett explicit Skicka nu.
+  För serier används schemaläggning; läget Skicka nu med personval gäller enstaka aktiviteter.
+  Vid skapande av både enstaka aktiviteter och serier blir en passerad
+  kallelsetid direktutskick till valda målgrupper. Förhandsgranskningen visar
+  ”Direkt vid sparande”. Utskicket blir omedelbart förfallet och hanteras av
+  den ordinarie notifieringsarbetaren. Omschemaläggning av en befintlig aktivitet
+  kräver fortsatt en framtida tid eller ett explicit Skicka nu.
 - Servern validerar regler och beräknar varje serietillfälle separat i föreningens
   tidszon. Aktiviteter, serietillfällen och kallelser lagrar enbart de beräknade
   tidpunkterna; inga kopior av tidsuttrycken sparas på aktiviteten eller serien.
@@ -212,11 +218,11 @@ sommartidsbyten. Serier använder fortsatt en längd per tillfälle. Kalendern
 visar varje berörd lokal dag; ett slut exakt vid midnatt räknas inte som
 aktivitet på den nya dagen.
 
-Vid skapande av en serie kan de första tillfällenas beräknade kallelsetid redan
-ha passerat. Då sätts deras fasta utskickstid till sparögonblicket; senare
+Vid skapande av enstaka aktiviteter eller serier kan den beräknade kallelsetiden redan
+ha passerat. Då sätts den fasta utskickstiden till sparögonblicket; senare
 tillfällen behåller den valda tidsregeln. Förhandsgranskningen visar ”Direkt
 vid sparande”. Passerade påminnelser hoppas över och sista svarstid måste
 fortfarande ligga framåt i tiden. Servern räknar om schemat vid sparande.
 Den ordinarie notifieringsarbetaren materialiserar målgruppen och köar dessa
 kallelser vid nästa körning, precis som övriga förfallna kallelser. Detta gäller
-nya serier; inga befintliga aktivitets- eller standardscheman skrivs om.
+nya aktiviteter och serier; inga befintliga aktivitets- eller standardscheman skrivs om.
