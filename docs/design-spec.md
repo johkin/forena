@@ -170,10 +170,14 @@ som låst, och ändrade platsrevisioner kräver uppdatering före nytt försök.
 
 ### Familjens lagvy
 
-- **För mig** visar bara aktiviteter där den aktuella personen har en skickad
-  kallelse eller en bokad arbetsuppgift. Lagmedlemskap räcker inte för att visa
-  lagets nästa aktivitet. Varje rad behåller personens och aktivitetens identitet;
-  kallelser till andra familjemedlemmar skapar inte en rad för personen.
+- **För mig** visar bara aktiviteter där personen har en skickad kallelse eller
+  en bokad arbetsuppgift. Lagmedlemskap räcker inte för att visa lagets nästa
+  aktivitet; en familjemedlems kallelse gör inte andra personer kallade.
+- Familjens kallelser och bokade arbetsuppgifter samlas i en rad per aktivitet.
+  Visa lag, aktivitet och tid en gång samt namn och svarstatus för varje berörd
+  person. Räknaren visar antalet aktiviteter. Klick öppnar den gemensamma
+  aktivitetsdialogen där varje kallad person har eget svar och kommentar.
+
 
 - Lagets publika sida ska fungera även utloggad och ha en synlig inloggningslänk
   som återvänder till samma lag. Kontobyte laddar om sidan utan föregående kontos

@@ -426,13 +426,18 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .overview-assistant { min-width:0; position:sticky; top:98px; }
 .personal-overview, .team-overview { width:100%; }
 .personal-activity-list { display:grid; margin-top:14px; border-top:1px solid var(--line); }
-.personal-activity-row { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--line); }
+.personal-activity-row { display:grid; grid-template-columns:minmax(0,1fr); align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--line); }
 .personal-activity-row:last-child { border-bottom:0; }
 .personal-activity-main { min-width:0; display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:12px; padding:4px 0; border:0; background:transparent; color:var(--ink); text-align:left; cursor:pointer; }
 .personal-activity-copy { min-width:0; display:grid; gap:3px; }
 .personal-activity-copy small { color:var(--ink-soft); font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.6px; }
 .personal-activity-copy strong { font-size:14px; }
 .personal-activity-copy span { overflow:hidden; color:var(--ink-soft); font-size:12px; text-overflow:ellipsis; white-space:nowrap; }
+.personal-activity-copy .personal-activity-people { display:grid; gap:5px; margin-top:7px; white-space:normal; overflow:visible; }
+.personal-activity-copy .personal-activity-person { display:flex; flex-wrap:wrap; gap:3px 8px; white-space:normal; overflow:visible; }
+.personal-activity-copy .personal-activity-person > span { white-space:normal; overflow:visible; overflow-wrap:anywhere; }
+.personal-activity-person > span:first-child { font-weight:700; }
+
 .personal-response { display:flex; gap:6px; }
 .personal-response button { padding:7px 9px; border:1px solid var(--line); border-radius:8px; background:white; color:var(--ink); font-size:11px; cursor:pointer; }
 .personal-no-invitation { color:var(--ink-soft); font-size:11px; }
