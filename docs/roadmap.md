@@ -312,6 +312,109 @@ cupanmälan. Den skickar inte kallelser eller anmäler laget externt på egen ha
 - [ ] Implementera intresseanmälan till cup som första genomgående exempel
 
 
+### Plugins, disciplinscheman och utökningar
+
+Planerad riktning: Förena ska kunna utökas av både egna och externa plugins
+med data, funktionalitet och GUI. Börja med deklarativa utökningar och en
+förstapartsplugin för spelarutveckling som använder samma kontrakt som framtida
+externa tillägg. Exekverbar tredjepartskod kräver separat isolering och ett
+begränsat API; den ska inte få direkt databasåtkomst eller köras med Förena-
+applikationens fulla rättigheter.
+
+#### Scheman och administration
+
+Ett versionshanterat disciplinpaket innehåller separata JSON Schema-definitioner
+för sektion, lag, lagmedlemskap, aktivitet och aktivitetsdeltagande. Deltagande
+kan innehålla matchposition och tröjnummer före matchen; faktisk närvaro är en
+separat uppgift. Personer hålls klubbavgränsade och återanvänds mellan klubbens
+lag; tröjnummer och ordinarie position hör normalt till lagmedlemskapet.
+
+JSON Schema beskriver typer och validering. UI-metadata beskriver ordning,
+etiketter och komponenter; serverstyrda applikationsregler hanterar behörighet,
+förval och betydelsen för beräkningar. Spelformer och roller behöver stabila
+identifierare. Ett nytt fält ger inte automatiskt ny domänlogik. Avstängningar
+som påverkar uttagning behöver exempelvis en egen modell för giltighet och
+omfattning, inte enbart ett extra datumfält.
+
+Disciplinadministrationen ska erbjuda fälteditor, förhandsgranskning,
+utkast/publicering och versionshistorik. Systemadministratören äger inledningsvis
+schemat; klubbarna väljer förval och fyller i värden. Schema per objekttyp ska
+skiljas från arv av förval. Exempelvis kopieras lagets normala spelform till en
+ny match; ändrade lagförval eller publicerade scheman skriver aldrig automatiskt
+om befintliga aktiviteter.
+
+#### Installationer, data och versioner
+
+Varje klubb aktiverar en egen plugininstallation med konfiguration, beviljade
+behörigheter, aktiverade funktioner och migreringsstatus. Utgångspunkten är
+gemensamma extension-tabeller med separata namnutrymmen per plugin och klubb,
+validerad JSONB och verifierade kopplingar till berörda objekt. En post anger
+installation, datatyp, schemaversion, objekt, tidpunkt och avsändare. Kontrollera
+både objektets existens, klubbtillhörighet och anroparens åtkomst; ett fritt
+objekt-id är inte tillräckligt. Egna tabeller kan senare motiveras av särskilda
+sök- eller volymbehov.
+
+Första versionen kör en kodversion per plugin och Förena-instans, med uttryckligt
+stöd för flera schema-/dataversioner. Klubbar kan använda olika konfigurationer
+och migreras stegvis inom kodens stödda versioner. Manifestet anger kompatibla
+Förena-API- och schemaversioner. Parallella kodversioner skjuts upp tills det finns
+ett konkret behov. Återställning av kod återställer inte migrerade data.
+
+#### Verktyg och MCP
+
+Plugins ska kunna registrera typade läs-, analys- och förslagsverktyg i ett
+gemensamt verktygsregister. Manifestet anger stabila verktygsnamn med pluginens
+namnutrymme, in-/utdatascheman, nödvändiga rättigheter och eventuella sidoeffekter.
+GUI och assistent använder samma applikationskommandon. Tillgängliga verktyg
+filtreras efter aktiv installation, arbetsyta och användarbehörighet; varje
+anrop kontrolleras på nytt på servern.
+
+Utvalda verktyg ska även kunna exponeras genom Förena-MCP enligt
+[MCP-serverns behörighetsmodell](mcp.md). Tools är funktionernas kontrakt och
+MCP är ett sätt att göra dem åtkomliga för externa klienter; varje plugin behöver
+inte en egen MCP-server. MCP-exponering väljs uttryckligen och får inte automatiskt
+göra all intern plugindata tillgänglig. Befintligt MCP-stöd för läsning och utkast
+utökas först när motsvarande behörighets- och bekräftelseflöden finns.
+
+Utvärdera separat möjligheten att ansluta en extern plugins MCP-server som
+verktygsleverantör till Förena. Sådana anslutningar behöver godkända endpoints,
+separata begränsade autentiseringsuppgifter och tydliga regler för vilka data
+som får lämna klubben. Förena-token eller privilegierade databasnycklar får
+inte vidarebefordras. Verktygsresultat behandlas som data, inte instruktioner
+som kan ändra behörigheter eller godkännandekrav.
+
+Skrivningar och utskick följer Förena-kommandonas validering och krav på
+förhandsgranskning/bekräftelse. Pluginverktyg får inte kringgå dessa via GUI,
+assistent eller MCP. Planera revisionslogg, anropsgränser, timeout och återkallning
+av åtkomst när en installation inaktiveras.
+
+#### Första exempel: spelarutveckling
+
+En förstapartsplugin definierar färdigheter och skalor per disciplin, registrerar
+daterade bedömningar och visar radardiagram (spider-diagram) samt utveckling över
+tid. Bedömningar lagras som historiska poster med bedömare och version av
+färdighetsmodellen. Ändrade skalor får inte ge sken av direkt jämförbara värden.
+Synlighet för bedömningar styrs separat från åtkomst till den vanliga truppen.
+
+Pluginen kan bidra med en utvecklingsflik på spelarprofilen, en lagvy och
+verktyg för att läsa utveckling och föreslå kompletterande spelarkombinationer.
+Förslagen visar underlag, osäkerhet och ledarens valda mål; ledaren granskar
+och beslutar före eventuell uttagning eller kallelse.
+
+- [ ] Definiera pluginmanifest, stabila ID:n, kompatibilitet och installation per klubb
+- [ ] Definiera disciplinpaket med separata objektscheman, UI-metadata och uttryckliga förval
+- [ ] Bygg schemaeditor i disciplinadministrationen med förhandsgranskning och versionshanterad publicering
+- [ ] Inför extension-lagring och API med verifierade objektreferenser, schema-/dataversion och klubb-/lagisolering
+- [ ] Definiera kontrollerade GUI-platser för flikar, paneler och actions; återanvänd mobile-first-komponenter
+- [ ] Definiera typade pluginverktyg som delar kommandon med GUI och assistent
+- [ ] Exponera uttryckligen godkända pluginverktyg via Förena-MCP med samma åtkomst- och bekräftelsekrav
+- [ ] Utvärdera externa MCP-servrar som isolerade verktygsleverantörer med begränsad dataåtkomst
+- [ ] Bygg installationsadministration för aktivering, behörigheter, uppgraderingar och inaktivering
+- [ ] Definiera migrering, bakåtkompatibilitet, återställning samt export/radering vid avinstallation
+- [ ] Verifiera isolering mellan klubbar och plugins samt nekade verktygsanrop efter återkallad åtkomst
+- [ ] Implementera spelarutveckling med historiska bedömningar och radardiagram som första plugin
+- [ ] Lägg därefter till förslag på spelarkombinationer med synligt underlag och ledarbeslut
+
 ### Brand Kit och AI Content Studio
 
 När CMS-liknande innehåll och visuell identitet finns på plats ska Förena kunna
