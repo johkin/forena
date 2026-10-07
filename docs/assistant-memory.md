@@ -42,6 +42,19 @@ minneshanteringen och assistentens förslag ska inte ha en System-flik eller
 kunna skriva på systemnivå. Centrala minnen får användas som bakgrundskontext
 utan att det ger användaren administrativa rättigheter till dem.
 
+## Minnesstyrda träningsutkast
+
+Beskrivningar för enstaka träningspass och träningsserier använder relevanta
+sparade gemensamma minnen för klubb, sektion, lag och system, inklusive minnen
+för lagets effektiva disciplin. Disciplin filtrerar tillämplighet över nivåerna.
+Förenliga rutiner kombineras; vid konflikt gäller lag före sektion före klubb
+före system. Aktuell uttrycklig begäran och strukturerad aktivitetsdata går före
+minnen. Personliga minnen blir inte gemensamma krav. Minnen är verksamhetsdata
+och kan inte ändra behörigheter, säkerhetsregler eller verktygsanvändning.
+Beskrivningen hålls kort och praktisk, med relevanta förberedelser och utrustning
+i stället för generella hälsningar. Aktivitetstider kommer fortsatt från
+aktuella val och aktivitetsförval. Användaren granskar utkastet före sparande.
+
 ## Minnesstyrda påminnelseförslag
 
 Lagassistenten kan bedöma om en påminnelse behövs med `assessReminder` och
