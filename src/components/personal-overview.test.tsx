@@ -39,3 +39,23 @@ it("opens the grouped activity on click", () => {
   rows[0].props.children.props.onClick();
   expect(opened?.activity.id).toBe("a");
 });
+it("shows a booked duty without inventing an invitation response", () => {
+  const item = { member: { id: "child", displayName: "Tilda" }, team: { name: "F2016" }, activity: { id: "a", title: "Café", startsAt: "2030-01-01T10:00:00Z", location: "Ursvik IP" }, hasDutyAssignment: true } as FamilyActivity;
+  const html = renderToStaticMarkup(createElement(PersonalOverview, { activities: [item], timeZone: "Europe/Stockholm", onOpenActivity: () => {} }));
+  expect(html).toContain("Tilda</span><span>Bokad arbetsuppgift");
+  expect(html).toContain('class="badge">1</span>');
+  expect(html).not.toMatch(/Kommer|Kan inte|Ej svarat|Ingen kallelse ännu/);
+});
+it("groups a duty-only person with an invited person and keeps their statuses separate", () => {
+  const base = { team: { name: "F2016" }, activity: { id: "a", title: "Café", startsAt: "2030-01-01T10:00:00Z", location: "Ursvik IP" } };
+  const activities = [
+    { ...base, member: { id: "leader", displayName: "Johan" }, hasDutyAssignment: true },
+    { ...base, member: { id: "child", displayName: "Tilda" }, invitation: { response: "pending" } },
+  ] as FamilyActivity[];
+  const html = renderToStaticMarkup(createElement(PersonalOverview, { activities, timeZone: "Europe/Stockholm", onOpenActivity: () => {} }));
+  expect(html.match(/class="personal-activity-row"/g)).toHaveLength(1);
+  expect(html.match(/class="personal-activity-person"/g)).toHaveLength(2);
+  expect(html).toContain("Johan</span><span>Bokad arbetsuppgift");
+  expect(html).toContain("Tilda</span><span>Ej svarat");
+  expect(html).not.toContain("Bokad arbetsuppgift · Ej svarat");
+});
