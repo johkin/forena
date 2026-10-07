@@ -221,6 +221,7 @@ personliga arbetsytan. Skillnaden är att användaren själv uttrycker sin inten
 i naturligt språk. AI:n får föreslå typade kommandon, men behörighetskontroll,
 validering och krav på förhandsgranskning ligger alltid i applikationslagret.
 
+- [ ] Inför gemensam rate limit för assistenten per användare och förening, över klubb-, sektions- och lagingångar och serverinstanser. Utvärdera även token-/kostnadsbudgetar; kontrollera gränser före modell-anrop och ge tydlig återkoppling om när användaren kan försöka igen.
 - [x] Behörighetskontrollerade läsverktyg för laglista och anmälda deltagare
 - [x] Skapa aktivitet som utkast, med webbsökning för externa evenemang
 - [ ] Lista obesvarade kallelser via gemensamt applikationskommando

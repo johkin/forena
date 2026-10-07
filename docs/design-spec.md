@@ -51,6 +51,20 @@ länkar är korrekta och att ingen horisontell sidskroll uppstår.
 
 ## Formulär och dialoger
 
+### Flytande föreningsassistent
+
+- Inloggade klubb-, sektions- och lagsidor använder samma pratbubbla från
+  sidskalet. Publika och systemadministrativa sidor visar inte assistenten.
+- Mobil öppnar en dialog nära full skärm; från 768 px visas en kompakt panel
+  nere till höger. Safe area och tangentbordets synliga viewport respekteras.
+- Rubriken visar assistentens namn, arbetsyta och aktuell sida. Samtalet
+  bevaras vid minimering; ett nytt svar markeras på knappen.
+- Dialogen låser bakgrundens scroll, håller tangentbordsfokus inom dialogen,
+  stängs med Escape och återför fokus till knappen. Aktivitetsdialoger öppnas
+  efter att assistenten minimerats, så att två dialoger inte konkurrerar.
+- Konversationen scrollar; skrivfält och stängknappar förblir nåbara. Knappen
+  får inte täcka sidans fasta sparåtgärder eller andra öppna dialoger.
+
 - Dela långa formulär i namngivna delar. Aktivitetens grunduppgifter och tid
   ligger först; kallelsen är en hopfällbar del vid redigering.
 - Placera kort hjälp bakom en `?` intill den uppgift den förklarar. Fältets namn,

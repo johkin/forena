@@ -12,6 +12,7 @@ export type TeamAssistantInput = {
   question: string;
   messages: ChatMessage[];
   timeZone?: unknown;
+  page?: { path: string; title: string };
 };
 export type AssistantDependencies = { supabase: SupabaseClient<Database>; userId: string };
 export type TeamAssistantReply = {

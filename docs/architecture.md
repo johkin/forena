@@ -90,6 +90,22 @@ ska aldrig exponeras som en `NEXT_PUBLIC_`-variabel eller skickas till PWA:n.
 
 ## Assistenten
 
+Inloggade klubb-, sektions- och lagsidor visar en gemensam flytande assistent
+via `AppShell` och `FloatingAssistant`. Dialogen bevarar samtalet vid minimering
+och markerar nya svar. Byte av arbetsyta startar ett separat samtal; aktuell
+sidrutt och en kort sidetikett skickas som kontexthint, aldrig sidans DOM,
+personuppgifter eller en behörighetsgrund. Sidor kan ange en tydligare etikett,
+exempelvis kalender. Detta är grunden för framtida sidanknutna verktyg.
+
+`/api/ai/workspace-assistant` verifierar medlemskap och arbetsytans organisation
+och sektion. Klubb- och sektionsassistenten kan läsa en begränsad lista av
+publicerade kommande aktiviteter utan uppställning eller kallelsesvar. Ett
+uttryckligt lagval delegeras till lagassistenten med förnyad lagbehörighetskontroll.
+Privata frågor över flera lag kräver i denna version att användaren väljer ett
+lag; inget obestyrkt klubbtotal presenteras. Aktivitetsutkast öppnar den gemensamma
+redigeraren med serverhämtad lagkontext och sparas först efter granskning.
+Redigerarens truppdata skickas inte till modellen.
+
 Lagassistentens HTTP-adapter i `src/app/api/ai/team-assistant/route.ts` hanterar
 request-validering och HTTP-svar. `withAuthenticatedRoute` verifierar sessionen
 och ger anropet en användaridentitet och en Supabase-klient. `proxy.ts` uppdaterar
