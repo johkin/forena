@@ -14,7 +14,7 @@ eller ett översatt namn. Systemvyn visar paketdefinitionen skrivskyddad och
 serveråtgärden nekar försök att redigera dess katalogmetadata.
 
 Sektionens `discipline_id` kopplar dess lag till paketet. Vid kontroll av UIK
-2026-10-08 var fotbollssektionen redan kopplad till `football`; F2016 och F2013
+2026-10-08 (Europe/Stockholm, 2026-10-07 UTC) var fotbollssektionen redan kopplad till `football`; F2016 och F2013
 hade inga egna disciplinöverskrivningar. Ingen dataskrivning behövdes.
 Kopplingen gäller det nya paketet när appversionen driftsätts.
 
@@ -34,10 +34,10 @@ sektionens/lagets aktivitetsinställningar.
 | Objekt | Fält |
 | --- | --- |
 | Sektion | Inga extrafält ännu |
-| Lag | Spelform, önskad matchtrupp, önskat antal målvakter |
+| Lag | Spelform, önskad matchtrupp (`targetTeamSize`), önskat antal målvakter |
 | Lagmedlemskap | Tröjnummer och positioner |
-| Matchtillfälle | Spelform, perioder, minuter per period, hemma/borta/neutral |
-| Aktivitetsdeltagande | Matchens tröjnummer, position och lagkapten |
+| Matchtillfälle | Spelform, perioder, minuter per period, hemma/borta/neutral, lagkapten (`captainPersonId`) |
+| Aktivitetsdeltagande | Matchens tröjnummer och position |
 
 Zod-definitioner är gemensam källa för typ-/fältvalidering och exporterade
 JSON Schema. `validateDisciplineData` kräver explicit paketversion och lägger
@@ -66,3 +66,34 @@ nuvarande version är en katalogdefinition, inte en migrering av sparade värden
 Admin-GUI för paket ska främst stödja val, konfiguration och uppgraderingar.
 En generell editor för godtyckliga schemastrukturer är uppskjuten. Ingen extern
 pluginkod eller MCP-funktionalitet installeras av detta paket.
+
+## Spelarreferenser och villkorade fält
+
+`captainPersonId` är ett valfritt person-UUID på aktiviteten, inte ett namn eller
+flera separata deltagarflaggor. Fältets `x-player-reference` i JSON Schema och
+paketets `fieldRules` beskriver målobjekt, spelarurval och tillämpning.
+`teamPlayers` betyder lagets spelare; `acceptedActivityPlayers` betyder spelare
+som tackat ja till just aktiviteten och är förvalt urval. Det senare kan även
+omfatta behörigt inbjudna spelare från andra lag i samma klubb. Ledare och
+målsmän ska inte ingå bara för att de tackat ja. Tom lista ska förbli tom,
+inte automatiskt utökas till hela truppen.
+
+Lagkapten gäller den befintliga katalogtypen `match-tavling` i kategorin
+`competition`. En annan tävlingstyp blir inte automatiskt en match. Villkoret
+använder stabil slug och kategori, inte visningsnamnet. Ytterligare matchtyper
+kan läggas till uttryckligen i paketets regel.
+
+`footballFieldsForActivity` väljer synliga fält. Vid validering av en lagkapten
+krävs dessutom `PlayerReferenceContext`: serverhämtad aktivitetstyp, vald tillåten
+källa och aktuella behörighetsfiltrerade kandidat-ID:n. Typ, källa och vald person
+kontrolleras igen även om ett dolt fält skickats. Kontexten får aldrig komma från
+formuläret eller modellen. Databasadaptern ska verifiera klubb/lag, deltagarroll
+och svar vid sparandet; en tidigare laddad lista räcker inte. En lagkapten som
+senare tackar nej behöver uttrycklig omprövning, inte en tyst ersättare.
+
+Den här leveransen implementerar deklaration, fältval och validering. Den
+hämtar inte personlistor eller visar en fungerande spelare-väljare ännu; dessa
+kopplas på tillsammans med lagringen av extrafälten. Ett sparat val kan då
+visas som exempelvis ”Tilda – lagkapten” via behörigt personuppslag.
+Namnbytet till `targetTeamSize` görs före första publicering av paketet; det
+finns ännu inga lagrade disciplinvärden att migrera.

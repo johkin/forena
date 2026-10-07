@@ -1,3 +1,4 @@
+import type { PlayerReferenceContext } from "./field-rules";
 import { footballPackage, validateFootballData, type DisciplineScope } from "./football";
 
 export { disciplineScopeNames, type DisciplineScope } from "./football";
@@ -10,9 +11,9 @@ export function getDisciplinePackage(key: string, version = "1.0.0"): Discipline
   return key === footballPackage.key && version === footballPackage.version ? footballPackage : null;
 }
 
-export function validateDisciplineData(key: string, version: string, scope: DisciplineScope, input: unknown) {
+export function validateDisciplineData(key: string, version: string, scope: DisciplineScope, input: unknown, context?: PlayerReferenceContext) {
   if (!getDisciplinePackage(key, version)) throw new Error("Disciplinversionen stöds inte.");
-  return validateFootballData(scope, input);
+  return validateFootballData(scope, input, context);
 }
 
 export function packageForSection(
