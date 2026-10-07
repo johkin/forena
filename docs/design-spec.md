@@ -170,6 +170,11 @@ som låst, och ändrade platsrevisioner kräver uppdatering före nytt försök.
 
 ### Familjens lagvy
 
+- **För mig** visar bara aktiviteter där den aktuella personen har en skickad
+  kallelse eller en bokad arbetsuppgift. Lagmedlemskap räcker inte för att visa
+  lagets nästa aktivitet. Varje rad behåller personens och aktivitetens identitet;
+  kallelser till andra familjemedlemmar skapar inte en rad för personen.
+
 - Lagets publika sida ska fungera även utloggad och ha en synlig inloggningslänk
   som återvänder till samma lag. Kontobyte laddar om sidan utan föregående kontos
   klientcache.
