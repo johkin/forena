@@ -1,3 +1,5 @@
+import { packageForSection } from "@/lib/disciplines";
+import { DisciplinePackageSummary } from "./discipline-package-summary";
 import { createClient } from "@/lib/supabase/server";
 import { activitySettingsAccess } from "@/lib/activity-settings-access";
 import { resolveActivityDefaults, type ActivityDefaultsRow } from "@/lib/activity-defaults";
@@ -20,7 +22,7 @@ export async function ActivitySettingsPage({ organizationSlug = null, query }: {
     org ? supabase.rpc("has_organization_role", { target_organization_id: org.id, allowed_roles: ["owner", "admin"] }) : Promise.resolve({ data: false }),
     org ? supabase.from("sections").select("id, name, discipline_id").eq("organization_id",org.id).order("name") : Promise.resolve({ data: [] }),
     org ? supabase.from("teams").select("id, slug, name, section_id, discipline_id").eq("organization_id",org.id).order("name") : Promise.resolve({ data: [] }),
-    supabase.from("disciplines").select("id, name").order("name"),
+    supabase.from("disciplines").select("id, key, name").order("name"),
   ]);
   const candidates = org ? [{ scope: "organization" as const, id: org.id, name: org.name, discipline_id: org.discipline_id }, ...(sectionResult.data ?? []).map(s => ({ ...s, scope: "section" as const })), ...(teamResult.data ?? []).map(t => ({ ...t, scope: "team" as const }))] : [{ scope: "system" as const, id: null, name: "System", discipline_id: null }];
   const targets = (await Promise.all(candidates.map(async target => {
@@ -43,6 +45,7 @@ export async function ActivitySettingsPage({ organizationSlug = null, query }: {
   const types = (typesResult.data ?? []).filter(t => !org || !t.discipline_id || t.discipline_id === disciplineId);
   const rows: ActivityDefaultsRow[] = (rowsResult.data ?? []).map(r => ({ id:r.id,activityTypeId:r.activity_type_id,scope:r.scope,organizationId:r.organization_id,scopeId:r.scope_id,revision:r.revision,values:normalizeDefaultsPatch(r.values) }));
   const disciplines = disciplineResult.data ?? [];
+  const disciplinePackage = packageForSection(selectedSection?.discipline_id ?? null, disciplineId, disciplines);
   const hidden = <><input type="hidden" name="organizationSlug" value={organizationSlug ?? ""}/><input type="hidden" name="scope" value={selected.scope}/><input type="hidden" name="scopeId" value={selected.id ?? ""}/></>;
   function typeFields(type?: typeof types[number]) { return <div className="settings-fields"><label>Namn<input name="name" required maxLength={80} defaultValue={type?.name}/></label><label>Nyckel<input name="slug" required maxLength={80} pattern="[a-z0-9]+(-[a-z0-9]+)*" defaultValue={type?.slug}/></label><label>Kategori<select name="system_category" defaultValue={type?.system_category ?? "session"}>{[["session","Träning"],["competition","Tävling"],["work","Arbetspass"],["meeting","Möte"],["education","Utbildning"],["other","Övrigt"]].map(([v,n])=><option key={v} value={v}>{n}</option>)}</select></label><label>Disciplin<select name="discipline_id" defaultValue={type?.discipline_id ?? ""}><option value="">Alla discipliner</option>{disciplines.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></label><label className="settings-checkbox"><input name="active" type="checkbox" defaultChecked={type?.active ?? true}/>Aktiv</label></div>; }
   const content = (
@@ -50,6 +53,7 @@ export async function ActivitySettingsPage({ organizationSlug = null, query }: {
     {query.saved ? <p className="auth-message" role="status">Sparat.</p> : null}{query.error ? <p className="auth-error" role="alert">{query.error}</p> : null}
     {org ? <><nav className="settings-targets" aria-label="Nivå för standardvärden">{targets.map(t=><a aria-current={t.id === selected.id && t.scope === selected.scope ? "page" : undefined} className="secondary" key={`${t.scope}${t.id}`} href={`${path}?${new URLSearchParams({ scope:t.scope,scopeId:t.id! })}`}>{sourceNames[t.scope]}: {t.name}</a>)}</nav>
     <form action={saveTargetDiscipline} className="application-form">{hidden}<label>Disciplin för {selected.name}<select name="discipline_id" defaultValue={selected.discipline_id ?? ""}><option value="">{selected.scope === "organization" ? "Ingen disciplin" : "Ärv från överordnad nivå"}</option>{disciplines.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></label><small>Aktuell disciplin: {disciplines.find(d=>d.id===disciplineId)?.name ?? "Ingen"}. Gemensamma aktivitetstyper är alltid tillgängliga.</small><button className="secondary">Spara disciplin</button></form></> : <details className="settings-item"><summary>Ny aktivitetstyp</summary><form action={saveActivityType} className="application-form">{typeFields()}<button className="primary">Skapa aktivitetstyp</button></form></details>}
+    {disciplinePackage ? <DisciplinePackageSummary discipline={disciplinePackage}/> : null}
     <h2>Standardvärden för {selected.name}</h2><p>Välj ett förval eller ärv från överordnad nivå. Ta bort alla påminnelser för att stänga av dem.</p>
     {types.map(type=>{
       const row = rows.find(r=>r.activityTypeId===type.id && r.scope===selected.scope && r.scopeId===selected.id && r.organizationId===(org?.id ?? null));

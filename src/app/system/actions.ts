@@ -1,5 +1,6 @@
 "use server";
 
+import { getDisciplinePackage } from "@/lib/disciplines";
 import { createHash, randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -35,6 +36,9 @@ export async function updateDiscipline(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const category = String(formData.get("category") ?? "").trim() || null;
   if (!id || !name || name.length > 120) redirect("/system/disciplines?error=Ogiltig+disciplin");
+  const { data: discipline, error: readError } = await supabase.from("disciplines").select("key").eq("id", id).single();
+  if (readError || !discipline) redirect("/system/disciplines?error=Disciplinen+kunde+inte+hittas");
+  if (getDisciplinePackage(discipline.key)) redirect("/system/disciplines?error=Disciplinen+versionshanteras+i+källkoden");
   const { data, error } = await supabase.from("disciplines").update({ name, category, updated_at: new Date().toISOString() }).eq("id", id).select("id").maybeSingle();
   if (error || !data) redirect("/system/disciplines?error=Disciplinen+kunde+inte+uppdateras");
   revalidatePath("/system/disciplines");

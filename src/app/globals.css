@@ -1030,3 +1030,7 @@ body:has(.squad-save-bar) .assistant-launcher { bottom:calc(84px + env(safe-area
   .duty-assignment-table { font-size: 1rem; }
   .duty-assignment-table th, .duty-assignment-table td { padding: .65rem .5rem; }
 }
+
+.discipline-package-summary { min-width: 0; overflow-wrap: anywhere; }
+.discipline-package-summary dl { display: grid; gap: 12px; }
+.discipline-package-summary dd { margin: 4px 0 0; }

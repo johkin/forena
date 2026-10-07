@@ -22,6 +22,9 @@
 - [x] Sökbar trupp med medlemsprofiler, namnredigering och mobilanpassade undergrupper
 - [ ] Komplettera medlemsprofil med bildhantering och administration av verifierade målsmanskopplingar
 - [x] Gemensam aktivitetstypskatalog med disciplinspecifika typer och systemadministration
+- [x] Kodägt fotbollspaket v1 med separata objektscheman, sektionsuppslag och paketöversikt; se [disciplinpaket](disciplines.md)
+- [ ] Lagra och redigera versionsrefererade disciplinvärden för lag, lagmedlemskap, aktivitet och deltagande
+- [ ] Flytta kvarvarande disciplinöverstyrningar till sektion efter konfliktkontroll; paketdefinitioner versionshanteras i kod, administration väljer och konfigurerar paket
 - [x] Administrera aktivitetsförval med fältvis arv system/klubb/sektion/lag och revisionskontroll
 - [x] Läsbara listval för relativa tider och valbara alternativ i activity-defaults med separat arv
 - [x] Läs förval i aktivitetsdialog och ledarassistent; visa ursprung och bevara egna val
@@ -336,9 +339,10 @@ identifierare. Ett nytt fält ger inte automatiskt ny domänlogik. Avstängninga
 som påverkar uttagning behöver exempelvis en egen modell för giltighet och
 omfattning, inte enbart ett extra datumfält.
 
-Disciplinadministrationen ska erbjuda fälteditor, förhandsgranskning,
-utkast/publicering och versionshistorik. Systemadministratören äger inledningsvis
-schemat; klubbarna väljer förval och fyller i värden. Schema per objekttyp ska
+Disciplinpaket och scheman versionshanteras i källkod och ändras genom granskade
+leveranser. Administrationen ska erbjuda paketval, konfiguration,
+förhandsgranskning och kontrollerade uppgraderingar; klubbarna väljer förval
+och fyller i värden. En generell schemaeditor är uppskjuten. Schema per objekttyp ska
 skiljas från arv av förval. Exempelvis kopieras lagets normala spelform till en
 ny match; ändrade lagförval eller publicerade scheman skriver aldrig automatiskt
 om befintliga aktiviteter.
@@ -403,7 +407,7 @@ och beslutar före eventuell uttagning eller kallelse.
 
 - [ ] Definiera pluginmanifest, stabila ID:n, kompatibilitet och installation per klubb
 - [ ] Definiera disciplinpaket med separata objektscheman, UI-metadata och uttryckliga förval
-- [ ] Bygg schemaeditor i disciplinadministrationen med förhandsgranskning och versionshanterad publicering
+- [ ] Bygg paketadministration för val, konfiguration och uppgraderingar; schemaändringar levereras via granskad källkod
 - [ ] Inför extension-lagring och API med verifierade objektreferenser, schema-/dataversion och klubb-/lagisolering
 - [ ] Definiera kontrollerade GUI-platser för flikar, paneler och actions; återanvänd mobile-first-komponenter
 - [ ] Definiera typade pluginverktyg som delar kommandon med GUI och assistent

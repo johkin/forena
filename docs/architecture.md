@@ -337,3 +337,13 @@ hopfällbara detaljer. Äldre ansökningar behåller sin status och märks som
 `legacy`, utan fabricerade verifieringstidpunkter. De kan granskas som tidigare.
 
 Historiksvar formuleras från verifierade summeringar, inte modellens slutsatser om fysisk närvaro. Namn hämtas endast från `attendance=present`. Frågor om ledare/spelare filtreras med medlemsrollen på aktivitetens lokala datum, inom samma organisation och lag med anroparens RLS. Rollsummeringar kräver kompletta detaljposter och komplett medlemsuppslag; vid trunkering ombeds användaren begränsa perioden. Saknad närvaroregistrering är inte bevisad frånvaro.
+
+## Kodägda disciplinpaket
+
+Fotboll har ett versionshanterat paket med separata schemastrukturer för sektion,
+lag, lagmedlemskap, aktivitet och deltagande. Paketet kopplas via sektionens
+katalognyckel och exponeras i aktivitetskonfigurationen. Systemadministrationen
+visar kodägda definitioner skrivskyddade. Befintliga katalogdiscipliner och
+äldre överstyrningar fungerar fortsatt; en konflikt mellan sektion och effektiv
+lagdisciplin ger inget paket. Se [disciplinpaket](disciplines.md) för leveransens
+omfattning och den verifierade UIK-kopplingen. Lagring av extravärden återstår.
