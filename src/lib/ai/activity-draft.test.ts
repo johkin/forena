@@ -1,40 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { activityDraftNeedsWebResearch, isActivityDraftRequest, normalizeActivityDraft, searchSourcesFromToolResults } from "./activity-draft";
+import { normalizeActivityDraft, searchSourcesFromToolResults } from "./activity-draft";
 import { previewWeeklySeries } from "../activity-series";
 
 const trainingDraft = {
   title: "Träning", description: "Välkomna!", location: "Ursviks IP",
   startsOn: "2026-10-20", startTime: "18:00", durationMinutes: 90, gatheringMinutesBefore: 15,
 } as const;
-
-describe("activity draft intent", () => {
-  it.each(["Skapa en påminnelse till nästa match", "Lägg till påminnelse för träning", "Påminn alla som inte svarat på vår match", "Jag vill ha en påminnelse för träning", "Fixa en påminnelse för match"])("routes reminder requests to the assistant tools: %s", question => {
-    expect(isActivityDraftRequest(question)).toBe(false);
-  });
-  it("keeps requests for training history in the read-only flow", () => {
-    expect(isActivityDraftRequest("Jag vill ha historik för träningar de senaste tre veckorna")).toBe(false);
-    expect(isActivityDraftRequest("Jag vill ha information om nästa träning")).toBe(false);
-  });
-  it.each([
-    "Skapa återkommande aktiviteter varje tisdag och torsdag",
-    "Fixa återkommande träningar varje tisdag",
-    "Jag vill ha träningar varje fredag på Ursvik IP kl 16:15-17:15. Start 7 september och november ut",
-    "Lägg till träningar på måndagar under oktober",
-    "Förbered en aktivitetsserie varje vecka",
-    "Skapa matcher varje lördag",
-    "Schemalägg återkommande träningar varje tisdag",
-    "Skapa en träning och påminn oss innan",
-  ])("recognizes recurring creation requests: %s", question => {
-    expect(isActivityDraftRequest(question)).toBe(true);
-    expect(activityDraftNeedsWebResearch(question)).toBe(false);
-  });
-  it("recognizes explicit creation requests and external events", () => {
-    expect(isActivityDraftRequest("Skapa en intresseanmälan för att vara med på Aroscupen")).toBe(true);
-    expect(activityDraftNeedsWebResearch("Skapa en intresseanmälan för Aroscupen")).toBe(true);
-    expect(isActivityDraftRequest("Vad händer på nästa träning?")).toBe(false);
-    expect(activityDraftNeedsWebResearch("Skapa en träning på torsdag")).toBe(false);
-  });
-});
 
 describe("normalizeActivityDraft", () => {
   it("preserves weekdays and period through normalization and series preview across DST", () => {

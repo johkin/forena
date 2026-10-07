@@ -1,13 +1,14 @@
-import { createActivityInvitationTools, isActivityInvitationQuestion } from "./activity-invitation-tools";
+import { classifyTeamAssistantIntent } from "./team-assistant-intent";
+import { createActivityInvitationTools } from "./activity-invitation-tools";
 import { createActivityHistoryTools } from "./activity-history-tools";
 import { historyPeriodFromQuestion } from "./activity-history-period";
-import { containsToolCode, hasHistoryPeriod, isActivityHistoryQuestion } from "./activity-history-intent";
+import { containsToolCode } from "./activity-history-intent";
 import { resolveDraftActivityType } from "./activity-draft-type";
 import type { ActivityHistoryResult } from "./activity-history-result";
-import { historyMemberRole, verifiedHistoryAnswer } from "./activity-history-facts";
+import { verifiedHistoryAnswer } from "./activity-history-facts";
 import { createHash } from "node:crypto";
 import { generateText, gateway, isStepCount, Output, ToolLoopAgent } from "ai";
-import { activityDraftNeedsWebResearch, isActivityDraftRequest, normalizeActivityDraft, requiresWeeklyRecurrence, searchSourcesFromToolResults, type ActivityDraft } from "./activity-draft";
+import { normalizeActivityDraft, searchSourcesFromToolResults, type ActivityDraft } from "./activity-draft";
 import { activityDraftSchema } from "./activity-draft-schema";
 import { loadTeamAssistantContext } from "./team-assistant-context";
 import { buildActivityDraftPrompt, buildEventResearchPrompt, buildTeamAssistantPrompt } from "./team-assistant-prompts";
@@ -23,14 +24,26 @@ const DEFAULT_MODEL = "google/gemini-2.5-flash-lite";
 
 export async function answerTeamAssistant(input: TeamAssistantInput, dependencies: AssistantDependencies): Promise<TeamAssistantReply> {
   const startedAt = Date.now();
-  const { teamId, question } = input;
+  const { teamId } = input;
   const { supabase, userId } = dependencies;
   const { organization, activities, activityIds, canManageActivities, canManageInvitations, memoryScope, context, organizationToday } = await loadTeamAssistantContext(input, dependencies);
   const model = process.env.AI_ASSISTANT_MODEL?.trim() || process.env.AI_FEED_MODEL?.trim() || DEFAULT_MODEL;
-  const requiresActivityDraft = Boolean(canManageActivities) && isActivityDraftRequest(question);
-  const requiresWebResearch = requiresActivityDraft && activityDraftNeedsWebResearch(question);
-  const requiresInvitations = isActivityInvitationQuestion(question);
-  const requiresHistory = !requiresInvitations && context.viewer.kind === "leader" && isActivityHistoryQuestion(question);
+  let intent;
+  try {
+    intent = await classifyTeamAssistantIntent(input, { model, userId, today: organizationToday });
+  } catch {
+    console.warn("team_assistant_intent_failed", { teamId, model });
+    return { answer: "Jag kunde inte tolka din begäran just nu. Försök igen.", source: "fallback", model };
+  }
+  if (intent.mode === "clarify") return { answer: intent.clarification!, source: "ai", model };
+  if (intent.mode === "activity-draft" && !canManageActivities) return { answer: "Du saknar behörighet att skapa aktiviteter i laget.", source: "fallback", model };
+  if (intent.mode === "activity-history" && context.viewer.kind !== "leader") return { answer: "Du saknar behörighet att läsa lagets närvarohistorik.", source: "fallback", model };
+  if (intent.mode === "reminder" && !canManageInvitations) return { answer: "Du saknar behörighet att föreslå utskick av påminnelser i laget.", source: "fallback", model };
+  const question = intent.question;
+  const requiresActivityDraft = intent.mode === "activity-draft";
+  const requiresWebResearch = requiresActivityDraft && intent.webResearch;
+  const requiresInvitations = intent.mode === "activity-invitations";
+  const requiresHistory = intent.mode === "activity-history";
 
   try {
     if (requiresActivityDraft) {
@@ -74,7 +87,7 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
       });
 
       let normalized = normalizeActivityDraft(draftResult.output);
-      if (requiresWeeklyRecurrence(question) && !normalized.recurrence) throw new Error("En återkommande begäran måste ge ett serieutkast.");
+      if (intent.weeklyRecurrence && !normalized.recurrence) throw new Error("En återkommande begäran måste ge ett serieutkast.");
       const skipsPastDates = normalized.startsOn < organizationToday && Boolean(normalized.recurrence);
       if (skipsPastDates && normalized.recurrence && (!normalized.recurrence.endsOn || normalized.recurrence.endsOn >= organizationToday)) {
         normalized = normalizeActivityDraft({ ...normalized, startsOn: organizationToday });
@@ -108,9 +121,9 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
       model,
       instructions: buildTeamAssistantPrompt({ assistantName: organization?.assistant_name, viewerKind: context.viewer.kind, canManageActivities, canManageInvitations }),
       tools: {
-        ...(requiresInvitations ? createActivityInvitationTools(supabase, memoryScope.organizationId, teamId, { today: organizationToday, now: new Date().toISOString(), timeZone: context.clock?.organizationTimeZone ?? organization?.time_zone ?? "Europe/Stockholm", period: historyPeriod, periodRequired: hasHistoryPeriod(question), question, category: /träning/iu.test(question) ? "session" : /match/iu.test(question) ? "competition" : /arbetspass/iu.test(question) ? "work" : undefined, response: /tackat ja|anmäld/iu.test(question) ? "accepted" : /tackat nej/iu.test(question) ? "declined" : /obesvarad|inte svarat/iu.test(question) ? "pending" : "all", onResult: result => historyResults.push(result) }) : {}),
+        ...(requiresInvitations ? createActivityInvitationTools(supabase, memoryScope.organizationId, teamId, { today: organizationToday, now: new Date().toISOString(), timeZone: context.clock?.organizationTimeZone ?? organization?.time_zone ?? "Europe/Stockholm", period: historyPeriod, periodRequired: intent.periodRequested, question, category: intent.category ?? undefined, response: intent.response, onResult: result => historyResults.push(result) }) : {}),
         ...createTeamAssistantTools(supabase, teamId, activityIds),
-        ...(context.viewer.kind === "leader" ? createActivityHistoryTools(supabase, memoryScope.organizationId, teamId, { today: organizationToday, period: historyPeriod, memberRole: historyMemberRole(question), onResult: result => historyResults.push(result) }) : {}),
+        ...(context.viewer.kind === "leader" ? createActivityHistoryTools(supabase, memoryScope.organizationId, teamId, { today: organizationToday, period: historyPeriod, category: intent.category ?? undefined, memberRole: intent.memberRole ?? undefined, onResult: result => historyResults.push(result) }) : {}),
         ...createAssistantMemoryTools(memoryScope, draft => memoryDrafts.push(draft)),
         ...(canManageInvitations ? createReminderTools({ supabase, teamId, activityIds,
           timeZone: context.clock.organizationTimeZone,
@@ -133,7 +146,7 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
         if (!requiresHistory) return;
         // Require native tool calls; prose resembling a tool call cannot fetch data.
         if (stepNumber === 0) return { activeTools: ["listHistoryTeams"], toolChoice: { type: "tool", toolName: "listHistoryTeams" } };
-        if (stepNumber === 1 && (historyPeriod || hasHistoryPeriod(question))) {
+        if (stepNumber === 1 && (historyPeriod || intent.periodRequested)) {
           return { activeTools: ["readActivityHistory"], toolChoice: { type: "tool", toolName: "readActivityHistory" } };
         }
         // History is data for this answer and must never become a memory proposal.
@@ -158,7 +171,7 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
       }
       return { answer: invitations.map(r => `${r.summary.uniquePeople} spelare från ${r.sourceTeam} ${r.invitationResponse === "accepted" ? "har tackat ja" : r.invitationResponse === "declined" ? "har tackat nej" : r.invitationResponse === "pending" ? "har obesvarade kallelser" : "har kallelser"} till ${r.activityCount} ${r.category === "session" ? (r.activityCount === 1 ? "träning" : "träningar") : (r.activityCount === 1 ? "aktivitet" : "aktiviteter")} med ${r.team}${historyPeriod ? ` under ${r.from}–${r.through}` : " bland pågående och kommande aktiviteter"}. Totalt ${r.summary.participationCount} ${r.summary.participationCount === 1 ? "kallelsetillfälle" : "kallelsetillfällen"}. Kallad betyder inte registrerad närvaro.`).join("\n"), historyResults: invitations, source: "ai", model };
     }
-    if (requiresHistory && (historyPeriod || hasHistoryPeriod(question)) && !historyResults.length) {
+    if (requiresHistory && (historyPeriod || intent.periodRequested) && !historyResults.length) {
       const failedRead = result.steps?.flatMap(step => step.toolResults).find(item => item?.toolName === "readActivityHistory");
       const output = failedRead?.output;
       const error = output && typeof output === "object" && "error" in output && typeof output.error === "string" ? output.error : undefined;

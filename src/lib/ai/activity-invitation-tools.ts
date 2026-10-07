@@ -5,12 +5,6 @@ import type { AssistantDependencies } from "./team-assistant-types";
 import type { ActivityHistoryResult } from "./activity-history-result";
 import type { HistoryPeriod } from "./activity-history-period";
 
-export function isActivityInvitationQuestion(question: string) {
-  return /\bhur många\b/iu.test(question)
-    && /\b(?:kallad(?:e|s)?|kallas|kallelser?|anmäld(?:a)?|tackat (?:ja|nej)|obesvarad(?:e)?)\b/iu.test(question)
-    && !/\b(?:skicka|påminn(?:else|elser|a)?|skapa|tränat|tränade|närvaro|deltagit|deltog)\b/iu.test(question);
-}
-
 // PostgREST's row limit must not silently turn a partial read into an exact total.
 async function allRows<T>(query: { range: (from: number, through: number) => PromiseLike<{ data: T[] | null; error: unknown }> }): Promise<T[]> {
   const rows: T[] = [];

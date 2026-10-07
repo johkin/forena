@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { filterHistoryRole, historyMemberRole, verifiedHistoryAnswer } from "./activity-history-facts";
+import { filterHistoryRole, verifiedHistoryAnswer } from "./activity-history-facts";
 import type { ActivityHistoryResult } from "./activity-history-result";
 import type { AssistantDependencies } from "./team-assistant-types";
 const history: ActivityHistoryResult = { team: "F2016", from: "2026-10-01", through: "2026-10-07", timeZone: "Europe/Stockholm", category: "session", activityCount: 1, unreportedActivityCount: 0, truncated: false,
@@ -42,5 +42,4 @@ it.each([true, false])("rejects failed or partial membership lookups (error %s)"
 });
 it("formats a verified answer without turning invitations into attendance", () => {
   const answer = verifiedHistoryAnswer(history, "Vilka har tränat?");expect(answer).toContain("Tilda");expect(answer).not.toContain("Johan");
-  expect(historyMemberRole("Vilka ledare har tränat i oktober?")).toBe("leader");expect(historyMemberRole("Hur många spelare tränade?")).toBe("participant");
 });

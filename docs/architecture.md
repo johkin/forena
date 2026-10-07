@@ -113,6 +113,18 @@ aktivitetsvyn. Ingen modell har ett verktyg för själva köningen. Se
 aktivitetsdialogen i serieläge. Saknas slutdatum måste ledaren ange det innan
 förhandsgranskningen. Utkastet valideras mot samma serieregler som dialogen och
 sparas först efter ledarens granskning.
+Arbetsflödet väljs av ett separat strukturerat modellanrop i
+`team-assistant-intent.ts`, med aktuell fråga och samtalshistorik. Modellen väljer
+aktivitetsutkast, kallelser, närvarohistorik, påminnelse, vanlig dialog eller
+följdfråga och kan göra ett kort följdsvar självständigt med samtalets uppgifter.
+Servern validerar resultatet och tillämpar behörigheter innan nästa steg.
+Klassificeringen får inga medlemsdata, minnen eller skrivverktyg. Vid fel görs
+ingen regexbaserad reservklassificering och inget efterföljande verktygsanrop.
+Veckoupprepning och behov av extern evenemangsresearch väljs i samma anrop.
+Kalenderberäkning och validering av datumformat förblir deterministiska.
+Det extra anropets tid och tokenförbrukning loggas separat utan samtalstext.
+Jev kan senare utvärderas som alternativ klassificerare mot svenska testfall;
+den här versionen använder samma modell som resten av assistenten.
 
 Assistenten översätter naturligt språk till typade verktygsanrop. Varje anrop
 kontrolleras mot användarens roll och aktiv förening. Namn, avatar och tonalitet

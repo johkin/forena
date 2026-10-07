@@ -1,6 +1,7 @@
 import { expect, it, vi } from "vitest";
 import type { AssistantDependencies } from "./team-assistant-types";
 const mocks = vi.hoisted(() => ({ context: vi.fn(), tools: vi.fn(), options: vi.fn() }));
+vi.mock("./team-assistant-intent", () => ({ classifyTeamAssistantIntent: async (request: { question: string }) => ({ mode: "chat", question: request.question }) }));
 vi.mock("./team-assistant-context", () => ({ loadTeamAssistantContext: mocks.context }));
 vi.mock("./team-assistant-tools", () => ({ createTeamAssistantTools: mocks.tools }));
 vi.mock("ai", async importOriginal => ({
