@@ -52,8 +52,8 @@ select lives_ok($$select public.football_fields('fc300000-0000-4000-8000-0000000
 select throws_ok($$select public.football_fields('fc300000-0000-4000-8000-000000000001','activity','fc600000-0000-4000-8000-000000000001',new_values=>'{"captainPersonId":"fc500000-0000-4000-8000-000000000002"}',expected_revision=>2)$$,'22023',null,'Leader cannot be captain');
 select lives_ok($$select public.football_fields('fc300000-0000-4000-8000-000000000001','activityParticipation','fc600000-0000-4000-8000-000000000001','fc500000-0000-4000-8000-000000000001','{"shirtNumber":12,"position":"goalkeeper"}',0)$$,'Save match-specific player values');
 select is(public.football_fields('fc300000-0000-4000-8000-000000000001','teamMembership',target_person_id=>'fc500000-0000-4000-8000-000000000001')->'values'->>'shirtNumber','7','Ordinary shirt number unchanged');
-select ok(not has_table_privilege('authenticated','private.football_values','SELECT'),'No direct table access');
 reset role;
+select ok(not has_table_privilege('authenticated','private.football_values','SELECT'),'No direct table access');
 update public.invitations set response='declined' where activity_id='fc600000-0000-4000-8000-000000000001' and person_id='fc500000-0000-4000-8000-000000000001';
 set local role authenticated;
 select is(jsonb_array_length(public.football_fields('fc300000-0000-4000-8000-000000000001','activity','fc600000-0000-4000-8000-000000000001')->'acceptedPlayers'),0,'Empty accepted list does not fall back to team');
