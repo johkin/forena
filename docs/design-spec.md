@@ -297,3 +297,6 @@ Tekniska scheman och paketversioner hör till administrationens paketöversikt.
 Framtida plugins visas däremot som namngivna tillägg i avgränsade paneler/flikar.
 Konflikter vid sparande behåller utkastet; omladdning av servervärden är ett
 uttryckligt val. Spelarväljare visar bara serverns tillåtna urval.
+
+
+Disciplinformulär ägs av respektive paketkatalog och bäddas in via den gemensamma `DisciplineFields`-komponenten. De använder samma native formulärutseende och responsiva `discipline-*`-klasser; ingen extra pluginpanel införs.

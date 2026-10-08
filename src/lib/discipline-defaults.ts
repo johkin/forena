@@ -4,8 +4,8 @@ import { commonActivityProfile } from "./disciplines/common-activities";
 import { getDisciplinePackage } from "./disciplines";
 
 export type DisciplineDefaultsScope = "section" | "team";
-export type TeamSizeSettings = { notificationsEnabled: boolean; notificationHours: number[] };
-export type CapabilityDefaultsPatch = { targetTeamSize?: Partial<{ notificationsEnabled: boolean | null; notificationHours: number[] | null }> | null };
+export type CapabilityNotificationSettings = { notificationsEnabled: boolean; notificationHours: number[] };
+export type CapabilityDefaultsPatch = Record<string, Partial<{ notificationsEnabled: boolean | null; notificationHours: number[] | null }> | null>;
 export type DisciplineDefaultsPatch = { [K in keyof ActivityTimingRules]?: ActivityTimingRules[K] | null } & { options?: TimingOptionsPatch | null; capabilities?: CapabilityDefaultsPatch | null };
 export type DisciplineDefaultsRow = {
   id: string; activityTypeId: string; scope: DisciplineDefaultsScope; organizationId: string;
@@ -20,18 +20,15 @@ export type ResolvedDisciplineDefaults = {
   rules: ActivityTimingRules; options: TimingOptions;
   sources: Record<keyof ActivityTimingRules, DefaultsSource>;
   optionSources: Record<keyof ActivityTimingRules, DefaultsSource>;
-  capabilities: { targetTeamSize?: TeamSizeSettings };
-  capabilitySources: Partial<Record<keyof TeamSizeSettings, DefaultsSource>>;
+  capabilities: Record<string, CapabilityNotificationSettings>;
+  capabilityDefinitions: import("../../supabase/functions/_shared/capability-types").ActivityCapabilityDefinition[];
+  capabilitySources: Record<string,Record<keyof CapabilityNotificationSettings,DefaultsSource>>;
 };
 export const BASE_DISCIPLINE_DEFAULTS = commonActivityProfile.defaults;
 
-function teamSizeCapability(context: DisciplineDefaultsContext) {
-  return context.disciplineKey ? getDisciplinePackage(context.disciplineKey)?.capabilities.find(capability => capability.id === "targetTeamSize") : undefined;
-}
-export function supportsTeamSize(context: DisciplineDefaultsContext) {
-  const rule = teamSizeCapability(context);
-  return !!rule && rule.appliesTo.activityTypeSlugs.includes(context.activityTypeSlug ?? "")
-    && rule.appliesTo.categories.includes(context.activityCategory ?? "");
+export function supportedCapabilities(context: DisciplineDefaultsContext) {
+  return (context.disciplineKey ? getDisciplinePackage(context.disciplineKey)?.capabilities ?? [] : []).filter(rule =>
+    rule.appliesTo.activityTypeSlugs.includes(context.activityTypeSlug ?? "") && rule.appliesTo.categories.includes(context.activityCategory ?? ""));
 }
 export function normalizeDefaultsPatch(value: unknown, context?: DisciplineDefaultsContext): DisciplineDefaultsPatch {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Ogiltiga disciplinförval.");
@@ -43,9 +40,9 @@ export function normalizeDefaultsPatch(value: unknown, context?: DisciplineDefau
   if (patch.capabilities != null) {
     if (typeof patch.capabilities !== "object" || Array.isArray(patch.capabilities)) throw new Error("Ogiltiga förmågor.");
     for (const [key, settings] of Object.entries(patch.capabilities)) {
-      if (key !== "targetTeamSize" || !context || !supportsTeamSize(context)) throw new Error("Förmågan gäller inte denna disciplin och aktivitetstyp.");
+      if (!context || !supportedCapabilities(context).some(rule=>rule.id===key)) throw new Error("Förmågan gäller inte denna disciplin och aktivitetstyp.");
       if (settings == null) continue;
-      if (typeof settings !== "object" || Array.isArray(settings)) throw new Error("Ogiltiga inställningar för lagstorlek.");
+      if (typeof settings !== "object" || Array.isArray(settings)) throw new Error("Ogiltiga inställningar för förmågan.");
       for (const [field, input] of Object.entries(settings)) {
         if (field === "notificationsEnabled") {
           if (input != null && typeof input !== "boolean") throw new Error("Ogiltig aktivering.");
@@ -62,15 +59,16 @@ export function normalizeDefaultsPatch(value: unknown, context?: DisciplineDefau
 /** Field-wise inheritance: code-owned discipline → section → team. */
 export function resolveDisciplineDefaults(context: DisciplineDefaultsContext, rows: readonly DisciplineDefaultsRow[]): ResolvedDisciplineDefaults {
   const profile = (context.disciplineKey ? getDisciplinePackage(context.disciplineKey)?.activityProfile : null) ?? commonActivityProfile;
-  const capability = teamSizeCapability(context);
+  const capabilities = supportedCapabilities(context);
   const source: DefaultsSource = { scope: "discipline", id: context.disciplineId ?? null, revision: null };
   const result: ResolvedDisciplineDefaults = {
     rules: { ...profile.defaults, reminderRules: [...profile.defaults.reminderRules] },
     options: Object.fromEntries(TIMING_FIELDS.map(key => [key, [...profile.options[key]]])) as TimingOptions,
     sources: Object.fromEntries(TIMING_FIELDS.map(key => [key, source])) as ResolvedDisciplineDefaults["sources"],
     optionSources: Object.fromEntries(TIMING_FIELDS.map(key => [key, source])) as ResolvedDisciplineDefaults["optionSources"],
-    capabilities: supportsTeamSize(context) ? { targetTeamSize: { notificationsEnabled: capability!.defaults.notificationsEnabled, notificationHours: [...capability!.notifications.beforeStartHours] } } : {},
-    capabilitySources: supportsTeamSize(context) ? { notificationsEnabled: source, notificationHours: source } : {},
+    capabilities: Object.fromEntries(capabilities.map(rule=>[rule.id,{notificationsEnabled:rule.defaults.notificationsEnabled,notificationHours:[...rule.notifications.beforeStartHours]}])),
+    capabilityDefinitions: capabilities,
+    capabilitySources: Object.fromEntries(capabilities.map(rule=>[rule.id,{notificationsEnabled:source,notificationHours:source}])),
   };
   for (const scope of ["section", "team"] as const) {
     const matches = rows.filter(row => row.activityTypeId === context.activityTypeId && row.scope === scope
@@ -79,7 +77,7 @@ export function resolveDisciplineDefaults(context: DisciplineDefaultsContext, ro
     if (matches.length > 1) throw new Error(`Duplicate defaults for ${scope}.`);
     const row = matches[0];
     if (!row) continue;
-    if (row.version !== "1.0.0" || !Number.isSafeInteger(row.revision) || row.revision < 1) throw new Error("Disciplinförvalens version eller revision stöds inte.");
+    if (row.version !== (getDisciplinePackage(context.disciplineKey ?? "")?.version ?? profile.version) || !Number.isSafeInteger(row.revision) || row.revision < 1) throw new Error("Disciplinförvalens version eller revision stöds inte.");
     normalizeDefaultsPatch(row.values, context);
     const origin: DefaultsSource = { scope, id: row.id, revision: row.revision };
     for (const field of TIMING_FIELDS) {
@@ -93,15 +91,15 @@ export function resolveDisciplineDefaults(context: DisciplineDefaultsContext, ro
       const choices = row.values.options?.[field];
       if (choices != null) { result.options[field] = [...choices]; result.optionSources[field] = origin; }
     }
-    const settings = row.values.capabilities?.targetTeamSize;
-    if (settings && result.capabilities.targetTeamSize) {
-      if (settings.notificationsEnabled != null) {
-        result.capabilities.targetTeamSize.notificationsEnabled = settings.notificationsEnabled;
-        result.capabilitySources.notificationsEnabled = origin;
-      }
-      if (settings.notificationHours != null) {
-        result.capabilities.targetTeamSize.notificationHours = [...settings.notificationHours];
-        result.capabilitySources.notificationHours = origin;
+    for (const capability of capabilities) {
+      const settings = row.values.capabilities?.[capability.id];
+      if (!settings) continue;
+      for (const field of ["notificationsEnabled","notificationHours"] as const) {
+        const value=settings[field];
+        if (value == null) continue;
+        if (field === "notificationHours") result.capabilities[capability.id].notificationHours=[...settings.notificationHours!];
+        else result.capabilities[capability.id].notificationsEnabled=settings.notificationsEnabled!;
+        result.capabilitySources[capability.id][field]=origin;
       }
     }
   }

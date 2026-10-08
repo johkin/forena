@@ -279,6 +279,13 @@ export interface Database {
     };
     Views: Record<never, never>;
     Functions: {
+      discipline_fields: {
+        Args: { target_team_id:string; target_scope:string; target_activity_id?:string|null; target_person_id?:string|null; new_values?:Json; expected_revision?:number; expected_discipline_key?:string };
+        Returns:Json;
+      };
+      claim_discipline_activity_events: { Args:{batch_size?:number};Returns:Json };
+      apply_discipline_activity_event: { Args:{event_id:number;lease_token:string;operations:Json};Returns:boolean };
+      fail_discipline_activity_event: { Args:{event_id:number;lease_token:string};Returns:boolean };
       football_fields: {
         Args: { target_team_id: string; target_scope: string; target_activity_id?: string | null; target_person_id?: string | null; new_values?: Json; expected_revision?: number; selected_source?: string };
         Returns: Json;

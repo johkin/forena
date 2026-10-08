@@ -72,7 +72,7 @@ export default async function SetupPage({ searchParams }: Props) {
           />
 
           <label htmlFor="sectionName">Sektion</label>
-          <input id="sectionName" name="sectionName" defaultValue="Fotboll" maxLength={120} required />
+          <input id="sectionName" name="sectionName" placeholder="Sektionens namn" maxLength={120} required />
 
           <label htmlFor="teamName">Första laget</label>
           <input id="teamName" name="teamName" defaultValue="F2016" maxLength={120} required />

@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { processDisciplineActivityEvents } from "../_shared/discipline-event-worker.ts";
 import { collectCapabilityNotifications } from "../_shared/discipline-capabilities.ts";
 
 // Business evaluation is independent of notification delivery and its retries.
@@ -15,6 +16,7 @@ Deno.serve(async (request: Request) => {
   if (authError || authorized !== true) return Response.json({ error: "Unauthorized" }, { status: 401 });
   let evaluation: { proposals: Awaited<ReturnType<typeof collectCapabilityNotifications>> } | { error: string };
   try {
+    await processDisciplineActivityEvents(supabase);
     const proposals = await collectCapabilityNotifications(async (afterActivityId, afterCapabilityId) => {
       const { data, error } = await supabase.rpc("load_capability_contexts", {
         after_activity_id: afterActivityId, after_capability_id: afterCapabilityId, batch_size: 100,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getDisciplinePackage, packageForSection, validateDisciplineData } from "./index";
+import { getDisciplinePackage, packageForSection, validateDisciplineData } from "@/lib/disciplines";
 
 const validate = (scope: Parameters<typeof validateDisciplineData>[2], input: unknown) => validateDisciplineData("football", "1.0.0", scope, input);
 describe("football discipline package", () => {
@@ -44,8 +44,8 @@ describe("football discipline package", () => {
   });
 });
 
-import { captainReference, footballFieldsForActivity } from "./football";
-import { validatePlayerReference, type PlayerReferenceContext } from "./field-rules";
+import { captainReference, footballFieldsForActivity } from "./definition";
+import { validatePlayerReference, type PlayerReferenceContext } from "@/lib/disciplines/field-rules";
 const tilda = "e3000000-0000-4000-8000-000000000001";
 const other = "e3000000-0000-4000-8000-000000000002";
 const match: PlayerReferenceContext = {

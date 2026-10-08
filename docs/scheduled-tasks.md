@@ -64,3 +64,6 @@ Vid uppgradering till capability-implementationer fortsätter äldre arbetare
 kallelse- och påminnelseuppgifter, men lämnar disciplinuppgiften förfallen tills
 nya arbetaren är driftsatt. Gamla profilarrayer kan inte köa notifieringar eller
 förbruka disciplinuppgiftens schema. Inga redan köade meddelanden ändras.
+
+
+Disciplinuppgiften konsumerar först `private.discipline_activity_events`. Registrerad `onActivity` returnerar atomärt applicerade värde- och schemaoperationer; därefter laddas förfallna `private.discipline_operations` för capability-utvärdering. Händelser för samma aktivitet är ordnade och leased; fem fel kräver återställning av operatör. Andra aktiviteters arbete fortsätter. Se [disciplinernas livscykel](disciplines.md#disciplinkatalog-och-aktivitetshändelser).

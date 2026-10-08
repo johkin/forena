@@ -1,7 +1,10 @@
 import { z } from "zod";
-import { commonActivityProfile } from "./common-activities";
-import { footballCapabilities, targetTeamSizeSchema } from "./capabilities";
-import { validatePlayerReference, playerFieldApplies, type PlayerReferenceRule, type PlayerReferenceContext, type ActivityFieldContext } from "./field-rules";
+import { commonActivityProfile } from "@/lib/disciplines/common-activities";
+import { targetTeamSizeSchema } from "@/lib/disciplines/capabilities";
+import { validatePlayerReference, playerFieldApplies, type PlayerReferenceRule, type PlayerReferenceContext, type ActivityFieldContext } from "@/lib/disciplines/field-rules";
+
+import { footballCapabilityProfile } from "../../../supabase/functions/_shared/disciplines/football";
+import type { DisciplineScope } from "@/lib/disciplines/types";
 
 // Planning formats, not age/competition rules or recommended squad sizes.
 export const footballFormats = [
@@ -59,7 +62,6 @@ export const footballSchemas = {
     position: position.meta({ title: "Position i matchen" }).optional(),
   }),
 };
-export type DisciplineScope = keyof typeof footballSchemas;
 export const disciplineScopeNames: Record<DisciplineScope, string> = {
   section: "Sektion", team: "Lag", teamMembership: "Lagmedlemskap",
   activity: "Matchtillfälle", activityParticipation: "Aktivitetsdeltagande",
@@ -67,12 +69,26 @@ export const disciplineScopeNames: Record<DisciplineScope, string> = {
 export const footballPackage = {
   key: "football", version: "1.0.0", name: "Fotboll", category: "sport",
   assignmentScope: "section",
-  capabilities: footballCapabilities,
+  capabilities: footballCapabilityProfile.capabilities,
   activityProfile: commonActivityProfile,
   gameFormats: footballFormats,
   positions: footballPositions,
+  presentation: {
+    description:"Spelformen anger antal spelare på planen. Önskad matchtrupp väljs separat. Inga åldersregler eller matchtider väljs automatiskt.",
+    groups:[{label:"Spelformer",values:footballFormats.map(format=>format.name)},{label:"Positioner",values:footballPositions.map(position=>position.name)}],
+  },
   schemas: Object.fromEntries(Object.entries(footballSchemas).map(([scope, schema]) => [scope, z.toJSONSchema(schema)])),
   fieldRules: { activity: { captainPersonId: captainReference } },
+  storage: {
+    appliesTo: captainReference.appliesTo,
+    invitationFields: ["captainPersonId","captainSource"],
+    activityReference: {field:"captainPersonId",sourceField:"captainSource",...captainReference},
+    initialization:{scope:"activity",fromScope:"team",copyFields:["gameFormat","targetTeamSize","requiredGoalkeepers","periods","periodMinutes"],defaults:{captainSource:"acceptedActivityPlayers"}},
+    constraints:[
+      {scopes:["team","activity"],left:"targetTeamSize",operator:"gte",lookup:{field:"gameFormat",values:Object.fromEntries(footballFormats.map(format=>[format.id,format.playersOnPitch]))}},
+      {scopes:["team","activity"],left:"requiredGoalkeepers",operator:"lte",right:"targetTeamSize"},
+    ],
+  },
   ui: {
     section: { fields: [] },
     team: { fields: ["gameFormat", "targetTeamSize", "requiredGoalkeepers", "periods", "periodMinutes"] },

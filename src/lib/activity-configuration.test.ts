@@ -68,8 +68,8 @@ describe("capability defaults inheritance", () => {
   expect(resolveDisciplineDefaults(match,[]).capabilities.targetTeamSize).toEqual({notificationsEnabled:false,notificationHours:[72,24]});
   const resolved=resolveDisciplineDefaults(match,[settings("section",{targetTeamSize:{notificationsEnabled:true,notificationHours:[168,72]}}),settings("team",{targetTeamSize:{notificationsEnabled:false,notificationHours:null}})]);
   expect(resolved.capabilities.targetTeamSize).toEqual({notificationsEnabled:false,notificationHours:[168,72]});
-  expect(resolved.capabilitySources.notificationHours?.scope).toBe("section");
-  expect(resolved.capabilitySources.notificationsEnabled?.scope).toBe("team");
+  expect(resolved.capabilitySources.targetTeamSize.notificationHours?.scope).toBe("section");
+  expect(resolved.capabilitySources.targetTeamSize.notificationsEnabled?.scope).toBe("team");
  });
  it("treats null as inheritance, empty lists as no checks, and ignores another discipline's rows", () => {
   const resolved=resolveDisciplineDefaults(match,[settings("section",{targetTeamSize:{notificationsEnabled:true}}),settings("team",{targetTeamSize:{notificationsEnabled:null,notificationHours:[]}})]);

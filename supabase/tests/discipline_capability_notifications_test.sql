@@ -46,6 +46,12 @@ insert into public.invitations(organization_id,activity_id,person_id,activity_ro
  ('fa100000-0000-4000-8000-000000000001','fa600000-0000-4000-8000-000000000001','fa500000-0000-4000-8000-000000000003','leader','accepted',now()),
  ('fa100000-0000-4000-8000-000000000001','fa600000-0000-4000-8000-000000000001','fa500000-0000-4000-8000-000000000004','participant','pending',null);
 
+-- Acknowledge the created event with the schedule proposed by its capability.
+create temporary table lifecycle_claim as select (e->>'id')::bigint id,(e->>'leaseToken')::uuid token,e
+ from jsonb_array_elements(public.claim_discipline_activity_events()) e;
+select public.apply_discipline_activity_event(id,token,(select jsonb_agg(jsonb_build_object('kind','schedule','definition',r,
+ 'beforeStartHours',h::integer,'runAt',(e#>>'{current,startsAt}')::timestamptz-h::integer*interval '1 hour'))
+ from jsonb_array_elements(e->'savedRules') r cross join lateral jsonb_array_elements_text(r#>'{notifications,beforeStartHours}') h)) from lifecycle_claim;
 -- Read infrastructure facts without evaluating shortage, applicability or text.
 create temporary table loaded_contexts as select public.load_capability_contexts() as contexts;
 select is((select jsonb_array_length(contexts) from loaded_contexts),1,'Loads due creation-time rules');

@@ -495,3 +495,6 @@ medlemsdata. Mottagarbehörighet kontrolleras när uppgiften beslutar om köläg
 Leveransen omprövar inte beslutet: redan beslutade meddelanden kan skickas efter
 ett senare behörighetsbyte. API-läsning kräver fortfarande aktuell behörighet.
 Schemalagda uppgifter har RLS, saknar klientgrants och körs bara via service role.
+
+
+Den generella disciplin-RPC:n härleder paketidentitet från den behörighetskontrollerade sektionen och validerar installerade JSON-scheman. Händelsekö, paketmanifest och schemalagda operationer är privata med RLS och utan klientåtkomst. Claim/apply/fail-RPC:er är endast för service role. Lease-token och revisionskontroll begränsar återförsök. Notifieringsmottagarnas aktuella behörighet kontrolleras vid köläggningen; leverans och transportåterförsök kontrollerar inte affärsbehörighet.

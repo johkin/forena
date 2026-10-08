@@ -373,3 +373,6 @@ Disciplinernas värden lagras versionsrefererat i `private.discipline_values` me
 disciplinreferens, objektankare, validerande och behörighetskontrollerad RPC samt optimistisk
 revision. Matchförval kopieras av en insert-trigger; äldre tillfällen förändras
 inte av nya lagförval. Se [disciplinpaket](disciplines.md) för API och native-vyer.
+
+
+Disciplinernas editors och definitioner ligger i `src/disciplines/<key>`. Generella vyer och API:er väljer registrerat paket utan sportvillkor. Aktivitetens generella databashändelse anropar disciplinens runtime via schemaläggningsarbetaren; bounded operations sparar värden och flyttar/avbryter capability-kontroller atomärt. Se [discipliner](disciplines.md#disciplinkatalog-och-aktivitetshändelser).
