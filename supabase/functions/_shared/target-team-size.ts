@@ -77,6 +77,8 @@ export const targetTeamSizeImplementation: ActivityCapabilityImplementation = {
     if (!Number.isFinite(now) || !Number.isFinite(startsAt) || startsAt <= now) return null;
     const target = context.values[rule.field.key];
     if (!this.validateValue(target) || context.invitedPlayers === 0 || context.acceptedPlayers >= (target as number)) return null;
+    // A shortage becomes actionable at the first configured checkpoint.
+    if (!rule.notifications.beforeStartHours.some(hours => startsAt - hours * 3_600_000 <= now)) return null;
     const deadlinePassed = context.responseDueAt !== null && Date.parse(context.responseDueAt) <= now;
     const lastReminder = context.lastReminderAt ? Date.parse(context.lastReminderAt) : NaN;
     const canRemind = context.pendingPlayers > 0 && !deadlinePassed
@@ -91,6 +93,27 @@ export const targetTeamSizeImplementation: ActivityCapabilityImplementation = {
       actions: [...(canRemind ? [{ id: "remind-unanswered" as const, label: "Påminn obesvarade" }] : []),
         { id: "invite-more-players", label: "Kalla fler spelare" }],
     };
+  },
+  nextSignalEvaluationAt(context) {
+    const rule = context.definition;
+    const now = Date.parse(context.evaluatedAt);
+    const start = Date.parse(context.startsAt);
+    if (rule.id !== this.id || rule.version !== this.version
+      || context.currentDisciplineKey !== context.disciplineKey
+      || context.status !== "published" || context.sourceKind === "imported"
+      || !rule.appliesTo.activityTypeSlugs.includes(context.activityTypeSlug)
+      || !rule.appliesTo.categories.includes(context.category)
+      || !this.validateValue(context.values[rule.field.key]) || context.invitedPlayers === 0
+      || !Number.isFinite(now) || !Number.isFinite(start) || start <= now) return null;
+    const candidates = rule.notifications.beforeStartHours.map(hours => start - hours * 3_600_000);
+    // Time-dependent signal presentation/actions only matter while there is a shortage.
+    if (this.evaluateSignal(context)) {
+      candidates.push(start - 24 * 3_600_000, start);
+      if (context.responseDueAt) candidates.push(Date.parse(context.responseDueAt));
+      if (context.lastReminderAt) candidates.push(Date.parse(context.lastReminderAt) + 3_600_000);
+    }
+    const future = candidates.filter(time => Number.isFinite(time) && time > now && time <= start);
+    return future.length ? new Date(Math.min(...future)).toISOString() : null;
   },
   evaluate(context) {
     const signal = this.evaluateSignal(context);

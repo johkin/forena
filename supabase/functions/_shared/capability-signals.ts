@@ -8,6 +8,7 @@ export type SignalEvaluationContext = {
 };
 
 export function evaluateActivitySignals(input: SignalEvaluationContext) {
+  const nextEvaluations: string[] = [];
   const signals = input.contexts.flatMap(context => {
     const runtime = disciplineRuntimes.find(item => item.definition.key === context.disciplineKey
       && item.definition.version === context.disciplineVersion);
@@ -17,11 +18,20 @@ export function evaluateActivitySignals(input: SignalEvaluationContext) {
       && item.version === context.definition.version);
     // Unsupported code is a failed evaluation, not proof that a problem is solved.
     if (!registered || !capability) throw new Error("Unsupported signal capability");
+    const next = capability.nextSignalEvaluationAt(context);
+    if (next !== null) {
+      if (!Number.isFinite(Date.parse(next)) || Date.parse(next) <= Date.parse(context.evaluatedAt)) {
+        throw new Error("Invalid signal evaluation time");
+      }
+      nextEvaluations.push(next);
+    }
     const signal: CapabilitySignal | null = capability.evaluateSignal(context);
     return signal ? [{ ...signal, disciplineKey: context.disciplineKey,
       disciplineVersion: context.disciplineVersion }] : [];
   });
-  return { activityId: input.activityId, revision: input.revision, keepEvaluating: input.contexts.length > 0, signals };
+  const nextEvaluationAt = nextEvaluations.length
+    ? new Date(Math.min(...nextEvaluations.map(value => Date.parse(value)))).toISOString() : null;
+  return { activityId: input.activityId, revision: input.revision, nextEvaluationAt, signals };
 }
 
 type Result = { data: unknown; error: unknown };
@@ -29,6 +39,8 @@ export interface SignalClient { rpc(name: string, args: Record<string, unknown>)
 
 /** Bounded claims with durable cooldowns; write failures leave work retryable. */
 export async function processCapabilitySignals(client: SignalClient) {
+  const events = await client.rpc("consume_signal_domain_events", { batch_size: 500 });
+  if (events.error) throw new Error("Could not consume signal events");
   let processed = 0;
   for (let page = 0; page < 5; page++) {
     const claimed = await client.rpc("claim_signal_contexts", { batch_size: 100 });

@@ -39,16 +39,41 @@ describe("capability signals", () => {
     expect(() => evaluate({ disciplineVersion: "unknown" })).toThrow("Unsupported signal capability");
     expect(evaluateActivitySignals({ activityId: "match", revision: 9, contexts: [] }).signals).toEqual([]);
   });
+  it("waits for the first checkpoint before raising a shortage", () => {
+    const result = evaluate({ startsAt: "2026-11-08T12:00:00Z" });
+    expect(result.signals).toEqual([]);
+    expect(result.nextEvaluationAt).toBe("2026-11-05T12:00:00.000Z");
+  });
+  it("schedules deadline, urgency, cooldown and start boundaries without minute polling", () => {
+    expect(evaluate().nextEvaluationAt).toBe("2026-10-09T12:00:00.000Z");
+    expect(evaluate({ lastReminderAt: "2026-10-08T11:30:00Z" }).nextEvaluationAt).toBe("2026-10-08T12:30:00.000Z");
+    expect(evaluate({ responseDueAt: "2026-10-08T14:00:00Z" }).nextEvaluationAt).toBe("2026-10-08T14:00:00.000Z");
+    expect(evaluate({ evaluatedAt: "2026-10-10T11:00:00Z" }).nextEvaluationAt).toBe("2026-10-10T12:00:00.000Z");
+  });
+  it.each([{ values: {} }, { invitedPlayers: 0 }, { status: "cancelled" }, { sourceKind: "imported" },
+    { startsAt: context.evaluatedAt }, { activityTypeSlug: "traning" }])(
+    "leaves inert activities idle: %j", overrides => expect(evaluate(overrides).nextEvaluationAt).toBeNull(),
+  );
+  it("waits for input changes when solved after the final checkpoint", () => {
+    expect(evaluate({ acceptedPlayers: 9, evaluatedAt: "2026-10-10T11:00:00Z" }).nextEvaluationAt).toBeNull();
+  });
   it("persists empty decisions too, continues after empty signal pages, and bounds work", async () => {
     const rpc = vi.fn(async (name: string) => name === "claim_signal_contexts"
       ? { data: [{ activityId: "match", revision: 7, contexts: [{ ...context, acceptedPlayers: 9 }] }], error: null }
       : { data: 1, error: null });
     expect(await processCapabilitySignals({ rpc })).toEqual({ processed: 5 });
-    expect(rpc).toHaveBeenCalledWith("apply_signal_evaluations", { evaluations: [{ activityId: "match", revision: 7, keepEvaluating: true, signals: [] }] });
-    expect(rpc).toHaveBeenCalledTimes(10);
+    expect(rpc.mock.calls[0]).toEqual(["consume_signal_domain_events", { batch_size: 500 }]);
+    expect(rpc).toHaveBeenCalledWith("apply_signal_evaluations", { evaluations: [{ activityId: "match", revision: 7, nextEvaluationAt: "2026-10-09T12:00:00.000Z", signals: [] }] });
+    expect(rpc).toHaveBeenCalledTimes(11);
+  });
+  it("leaves failed event consumption retryable instead of evaluating incomplete work", async () => {
+    const rpc = vi.fn(async () => ({ data: null, error: new Error("unavailable") }));
+    await expect(processCapabilitySignals({ rpc })).rejects.toThrow("Could not consume signal events");
+    expect(rpc).toHaveBeenCalledTimes(1);
   });
   it("propagates persistence failure so claimed work can retry", async () => {
-    const rpc = vi.fn(async (name: string) => name === "claim_signal_contexts"
+    const rpc = vi.fn(async (name: string) => name === "consume_signal_domain_events"
+      ? { data: 0, error: null } : name === "claim_signal_contexts"
       ? { data: [{ activityId: "match", revision: 7, contexts: [context] }], error: null }
       : { data: null, error: new Error("unavailable") });
     await expect(processCapabilitySignals({ rpc })).rejects.toThrow("Could not persist signals");

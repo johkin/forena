@@ -37,7 +37,7 @@ create policy "Invitation managers read signal actions" on public.signal_actions
 -- One durable, revisioned evaluation slot per activity; input changes invalidate claims.
 create table private.signal_evaluation_queue (
  activity_id uuid primary key references public.activities(id) on delete cascade,
- revision bigint not null default 1, next_evaluation_at timestamptz not null default now()
+ revision bigint not null default 1, next_evaluation_at timestamptz default now()
 );
 alter table private.signal_evaluation_queue enable row level security;
 revoke all on private.signal_evaluation_queue from public,anon,authenticated;
@@ -55,6 +55,10 @@ begin
    is not distinct from (to_jsonb(old)-array['updated_at','invitation_materialized_at','invitation_notifications_queued_at']) then return null; end if;
   target:=new.id;
  else
+  if tg_table_name='invitations' and tg_op='UPDATE' then
+   if (old.activity_id,old.organization_id,old.person_id,old.activity_role,old.response)
+    is not distinct from (new.activity_id,new.organization_id,new.person_id,new.activity_role,new.response) then return null; end if;
+  end if;
   target:=case when tg_op='DELETE' then old.activity_id else new.activity_id end;
   if tg_op='UPDATE' and old.activity_id is distinct from new.activity_id then perform private.dirty_activity_signals(old.activity_id); end if;
  end if;
@@ -87,6 +91,52 @@ create trigger dirty_section_signals after update on public.sections for each ro
 create trigger dirty_team_signals after update on public.teams for each row execute function private.dirty_team_signals();
 create trigger dirty_membership_signals after insert or update or delete on public.memberships for each row execute function private.dirty_team_signals();
 insert into private.signal_evaluation_queue(activity_id) select id from public.activities where team_id is not null and starts_at>now();
+
+-- Transactional domain events: response writes and publication commit together.
+-- Existing input triggers invalidate revisions immediately, before async consumption.
+create table private.activity_domain_events (
+ id uuid primary key default gen_random_uuid(),
+ activity_id uuid not null references public.activities(id) on delete cascade,
+ event_type text not null check(event_type='activity.invitation_response_changed'),
+ payload jsonb not null check(jsonb_typeof(payload)='object'),
+ created_at timestamptz not null default now(), signal_processed_at timestamptz
+);
+alter table private.activity_domain_events enable row level security;
+revoke all on private.activity_domain_events from public,anon,authenticated;
+create index activity_domain_events_pending_idx on private.activity_domain_events(created_at,id) where signal_processed_at is null;
+create index activity_domain_events_processed_idx on private.activity_domain_events(signal_processed_at,id) where signal_processed_at is not null;
+create function private.publish_invitation_response_event() returns trigger
+language plpgsql security definer set search_path='' as $$
+begin
+ insert into private.activity_domain_events(activity_id,event_type,payload)
+ values(new.activity_id,'activity.invitation_response_changed',jsonb_build_object(
+  'invitationId',new.id,'personId',new.person_id,'previousResponse',old.response,'response',new.response));
+ return null;
+end $$;
+revoke all on function private.publish_invitation_response_event() from public,anon,authenticated;
+create trigger publish_invitation_response_event after update of response on public.invitations
+ for each row when (old.response is distinct from new.response) execute function private.publish_invitation_response_event();
+
+-- Signal subscriber: enqueue and acknowledgement are atomic; retries cannot lose work.
+-- Other subscribers can add their own checkpoint without sharing this acknowledgement.
+create function public.consume_signal_domain_events(batch_size integer default 500) returns integer
+language plpgsql security definer set search_path='' as $$
+declare event private.activity_domain_events%rowtype; consumed integer:=0;
+begin
+ for event in select * from private.activity_domain_events where signal_processed_at is null
+  order by created_at,id limit greatest(1,least(batch_size,500)) for update skip locked loop
+  perform 1 from public.activities where id=event.activity_id for update;
+  perform private.dirty_activity_signals(event.activity_id);
+  update private.activity_domain_events set signal_processed_at=now() where id=event.id;
+  consumed:=consumed+1;
+ end loop;
+ delete from private.activity_domain_events where id in (
+  select id from private.activity_domain_events where signal_processed_at<now()-interval '7 days'
+  order by signal_processed_at,id limit 500 for update skip locked);
+ return consumed;
+end $$;
+revoke all on function public.consume_signal_domain_events(integer) from public,anon,authenticated;
+grant execute on function public.consume_signal_domain_events(integer) to service_role;
 
 -- Authorized data adapter supplies facts, regardless of notification enablement/checkpoints.
 create function private.signal_contexts_for_activity(target uuid) returns jsonb
@@ -197,9 +247,15 @@ begin
    where s.activity_id=a.id and s.status<>'resolved' and not exists(
     select 1 from jsonb_array_elements(evaluation->'signals') item where item->>'disciplineKey'=s.discipline_key
      and item->>'capabilityId'=s.capability_id and item->>'type'=s.type);
-  -- Keep future work for deadline/severity/cooldown changes, even with no active problem.
-  if a.starts_at<=now() or evaluation->>'keepEvaluating'='false' then delete from private.signal_evaluation_queue where activity_id=a.id;
-  else update private.signal_evaluation_queue set next_evaluation_at=least(a.starts_at,now()+interval '1 minute') where activity_id=a.id; end if;
+  -- A successful evaluation schedules only its next boundary. Keep the idle revision
+  -- slot to avoid resetting input revisions (and to allow fresh action checks).
+  if evaluation->>'nextEvaluationAt' is not null and
+   ((evaluation->>'nextEvaluationAt')::timestamptz<=now() or
+    (evaluation->>'nextEvaluationAt')::timestamptz>a.starts_at) then
+   raise exception 'Invalid signal evaluation time' using errcode='22023'; end if;
+  update private.signal_evaluation_queue set next_evaluation_at=
+   case when a.starts_at>now() then (evaluation->>'nextEvaluationAt')::timestamptz else null end
+   where activity_id=a.id;
   applied:=applied+1;
  end loop;
  return applied;

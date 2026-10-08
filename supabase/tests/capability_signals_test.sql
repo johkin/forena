@@ -72,12 +72,44 @@ select ok(not has_table_privilege('authenticated','public.signal_actions','INSER
 select ok(not has_function_privilege('authenticated','public.claim_signal_contexts(integer)','EXECUTE'),'Clients cannot claim work');
 select ok(not has_function_privilege('authenticated','public.apply_signal_evaluations(jsonb)','EXECUTE'),'Clients cannot forge evaluations');
 reset role;
+-- Successful evaluation waits for a real boundary; idle slots retain revisions.
+select is(public.apply_signal_evaluations(jsonb_build_array(jsonb_build_object(
+ 'activityId','fc600000-0000-4000-8000-000000000001',
+ 'revision',(select revision from private.signal_evaluation_queue where activity_id='fc600000-0000-4000-8000-000000000001'),
+ 'nextEvaluationAt',now()+interval '6 hours','signals',jsonb_build_array((select value from signal_proposal))))),1,'Schedules next boundary');
+select is((select next_evaluation_at from private.signal_evaluation_queue where activity_id='fc600000-0000-4000-8000-000000000001'),
+ now()+interval '6 hours','No one-minute requeue after success');
+select is(jsonb_array_length(public.claim_signal_contexts()),0,'Future boundary is not claimed each minute');
+select is(pg_temp.apply_signals('[]'),1,'No signal and no boundary leaves an idle revision slot');
+select ok((select next_evaluation_at is null from private.signal_evaluation_queue where activity_id='fc600000-0000-4000-8000-000000000001'),'Idle work is not polled');
+select is(jsonb_array_length(public.claim_signal_contexts()),0,'Idle activity is not claimed');
+-- Response publication is durable, excludes unchanged answers, and rolls back with writes.
+create temporary table event_count as select count(*) n from private.activity_domain_events;
+savepoint response_write;
+update public.invitations set response='accepted' where activity_id='fc600000-0000-4000-8000-000000000001'
+ and person_id='fc500000-0000-4000-8000-000000000001';
+rollback to response_write;
+select is((select count(*) from private.activity_domain_events),(select n from event_count),'Rollback also removes event');
+update public.invitations set response='accepted' where activity_id='fc600000-0000-4000-8000-000000000001'
+ and person_id='fc500000-0000-4000-8000-000000000001';
+select is((select count(*) from private.activity_domain_events),(select n+1 from event_count),'Answer publishes one event');
+select ok(exists(select 1 from private.activity_domain_events where activity_id='fc600000-0000-4000-8000-000000000001'
+ and event_type='activity.invitation_response_changed' and payload->>'previousResponse'='pending' and payload->>'response'='accepted'),
+ 'Response event carries identity and old/new answer');
+update public.invitations set response='accepted' where activity_id='fc600000-0000-4000-8000-000000000001'
+ and person_id='fc500000-0000-4000-8000-000000000001';
+select is((select count(*) from private.activity_domain_events),(select n+1 from event_count),'Unchanged answer does not publish');
+select is(public.consume_signal_domain_events(),1,'Signal subscriber consumes answer event');
+select is(public.consume_signal_domain_events(),0,'Consumption is idempotent');
+select ok((select next_evaluation_at<=now() from private.signal_evaluation_queue where activity_id='fc600000-0000-4000-8000-000000000001'),'Answer wakes idle evaluation');
+select ok(not has_function_privilege('authenticated','public.consume_signal_domain_events(integer)','EXECUTE'),'Families cannot consume domain events');
+select ok(not has_table_privilege('authenticated','private.activity_domain_events','SELECT'),'Domain events are not exposed to clients');
 -- Role reset preserves JWT claims; restore the manager for the activity mutation.
 select set_config('request.jwt.claim.sub','fc000000-0000-4000-8000-000000000001',true);
 update public.activities set starts_at=now()-interval '2 hours',ends_at=now()-interval '1 hour',response_due_at=now()-interval '3 hours'
  where id='fc600000-0000-4000-8000-000000000001';
 update private.discipline_activity_events set status='processed',processed_at=now() where activity_id='fc600000-0000-4000-8000-000000000001';
 select is(pg_temp.apply_signals('[]'),1,'Activity start resolves signals');
-select is((select count(*)::integer from private.signal_evaluation_queue where activity_id='fc600000-0000-4000-8000-000000000001'),0,'Past activities leave the evaluation queue');
+select ok((select next_evaluation_at is null from private.signal_evaluation_queue where activity_id='fc600000-0000-4000-8000-000000000001'),'Past activities stop scheduled evaluation');
 select * from finish();
 rollback;

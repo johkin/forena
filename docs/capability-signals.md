@@ -8,7 +8,8 @@ eller räknar fram spelarbrist med AI.
 
 `targetTeamSize` är första implementationen. En publicerad, framtida match med
 önskad truppstorlek och spelarkallelser ger en signal när för få spelare tackat
-ja. Importerade aktiviteter och andra aktivitetstyper undantas. Inlånade
+ja och den första konfigurerade kontrolltidpunkten har passerat. Importerade
+aktiviteter och andra aktivitetstyper undantas. Inlånade
 spelare med explicit deltagarroll ingår. Signalen fungerar även när
 notifieringar är avstängda och efter att notifieringscheckpoints har förbrukats.
 Den blir en varning under sista dygnet; tidigare visas den som information.
@@ -43,18 +44,37 @@ sektionens disciplinändringar markerar aktivitetens enda beständiga
 utvärderingsplats i `private.signal_evaluation_queue`. Befintliga framtida
 aktiviteter inkluderas vid migreringen. Inga notifieringsregler skapas för dem.
 
-`scheduled-task-worker` behandlar disciplinhändelser och därefter högst 500
-signalaktiviteter per anrop, i batcher om högst 100. Cooldown gör att nästa
-anrop fortsätter med andra aktiviteter. Framtida tillämpliga aktiviteter
-utvärderas även periodiskt för svarstid, allvarlighetsgrad och åtgärdscooldown.
-Startade aktiviteter och aktiviteter utan tillämpliga capabilities lämnar
-kön. Senare förändringar kan lägga tillbaka dem.
+Ändrade kallelsesvar publicerar `activity.invitation_response_changed` i
+`private.activity_domain_events` i samma transaktion som svaret. Payload innehåller
+kallelse/person-ID och föregående/nytt svar, inga kommentarer. Oförändrade svar
+publicerar inget event. Skrivningen invalidierar också pågående utvärderingar
+omedelbart genom indatas revision; den väntar inte på eventkonsumenten.
+
+`scheduled-task-worker` behandlar disciplinhändelser och konsumerar därefter högst
+500 svarshändelser. Signalprenumerantens köläggning och kvittens är atomära i
+`consume_signal_domain_events`; misslyckade transaktioner lämnar händelserna
+obehandlade. Varje händelse har en separat `signal_processed_at`, inte en global
+kvittens för framtida prenumeranter. Denna första prenumerant använder en privat
+Postgres-tabell; Realtime och extern meddelandebroker ingår inte. Behandlade
+händelser rensas efter sju dagar i batcher om högst 500; obehandlade bevaras.
+
+Arbetaren utvärderar högst 500 signalaktiviteter per anrop, i batcher om högst
+100. Flera ändringar samlas i samma aktivitetsplats och capabilityn läser aktuella
+fakta. Minutkörningen plockar endast upp förfallet arbete. Efter lyckad utvärdering
+anger capabilityn `nextSignalEvaluationAt(context)`: nästa kontrolltidpunkt,
+varningsnivå, svarstid, slut på påminnelsens spärrtid eller aktivitetens start.
+Ingen utvärdering bokas varje minut. Aktiviteter utan målantal eller spelarkallelser
+får ingen ny kontroll förrän underlaget ändras. Lösta signaler efter sista
+kontrolltidpunkten väntar också på ändringar. Nästa tid kan vara `null`; en tom
+revisionsplats bevaras för att förhindra att revisionen återställs och för att
+stödja färska åtgärdskontroller.
 
 Dataadaptern levererar aktuella, behörigt lästa fakta och det versionsbundna
 paketets definition. Capabilityn bedömer dessa utan databasåtkomst. En tom
 lyckad utvärdering avslutar tidigare signaler för aktiviteten. Saknad runtime
 eller misslyckad läsning/sparning är ett fel, aldrig bevis på ett löst problem;
-claimens cooldown lämnar arbetet möjligt att försöka igen.
+claimens enminutslease lämnar arbetet möjligt att försöka igen. Denna lease
+är en återförsökstid vid avbruten körning, inte periodisk domänutvärdering.
 
 Ändrade indata och nya claims ökar utvärderingsrevisionen. Sparandet avvisar
 äldre resultat atomärt. Påminnelseknappen utvärderar capabilityn igen på servern;

@@ -290,6 +290,7 @@ export interface Database {
     Views: Record<never, never>;
     Functions: {
       read_team_signals: { Args: { target_team_id: string }; Returns: Json };
+      consume_signal_domain_events: { Args: { batch_size?: number }; Returns: number };
       dismiss_capability_signal: { Args: { target_signal_id: string; expected_revision: number }; Returns: undefined };
       capability_signal_action_context: { Args: { target_signal_id: string }; Returns: Json };
       remind_capability_signal: { Args: { target_signal_id: string; expected_signal_revision: number; expected_input_revision: number }; Returns: number };

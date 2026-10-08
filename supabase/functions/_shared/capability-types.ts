@@ -64,4 +64,6 @@ export interface ActivityCapabilityImplementation {
   validateValue(value: unknown): boolean;
   evaluate(context: CapabilityContext): CapabilityNotification | null;
   evaluateSignal(context: CapabilityContext): CapabilitySignal | null;
+  /** Next time-dependent change; null means wait for changed inputs. */
+  nextSignalEvaluationAt(context: CapabilityContext): string | null;
 }
