@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { processDisciplineActivityEvents } from "../_shared/discipline-event-worker.ts";
 import { collectCapabilityNotifications } from "../_shared/discipline-capabilities.ts";
+import { processCapabilitySignals } from "../_shared/capability-signals.ts";
 
 // Business evaluation is independent of notification delivery and its retries.
 Deno.serve(async (request: Request) => {
@@ -17,6 +18,13 @@ Deno.serve(async (request: Request) => {
   let evaluation: { proposals: Awaited<ReturnType<typeof collectCapabilityNotifications>> } | { error: string };
   try {
     await processDisciplineActivityEvents(supabase);
+    try {
+      const signals = await processCapabilitySignals(supabase);
+      console.info("scheduled_task_worker.signals_complete", { runId, ...signals });
+    } catch {
+      // Signal retries must not block existing invitation/capability scheduling.
+      console.error("scheduled_task_worker.signal_evaluation_failed", { runId });
+    }
     const proposals = await collectCapabilityNotifications(async () => {
       const { data, error } = await supabase.rpc("claim_capability_contexts", {
         batch_size: 100,

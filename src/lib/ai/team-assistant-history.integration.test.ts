@@ -1,4 +1,4 @@
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { MockLanguageModelV3 } from "ai/test";
 import type { AssistantDependencies } from "./team-assistant-types";
 
@@ -37,7 +37,11 @@ function setup(readArgs: { category: string; relativeDays?: number; from?: strin
     : history, error: null }));
   return { model, rpc, dependencies: { supabase: { rpc } as unknown as AssistantDependencies["supabase"], userId: "user" } };
 }
+// Invitation fixtures have fixed dates; keep their upcoming status independent of wall clock.
+afterEach(() => vi.useRealTimers());
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-07T10:00:00Z"));
   state.intent.mockReset();
   state.intent.mockImplementation(async request => ({ mode: "activity-history", question: request.question, periodRequested: true, memberRole: null }));
   state.context.mockResolvedValue({ organization: null, activities: [], activityIds: [], canManageActivities: false, canManageInvitations: false,

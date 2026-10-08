@@ -31,6 +31,18 @@ export type CapabilityContext = {
   pendingPlayers: number;
   invitedPlayers: number;
   completedCheckpoints: readonly number[];
+  lastReminderAt?: string | null;
+};
+
+/** Actions refer to existing application commands, never arbitrary endpoints. */
+export type CapabilitySignal = {
+  capabilityId: string;
+  type: string;
+  severity: "info" | "warning";
+  title: string;
+  text: string;
+  facts: Record<string, unknown>;
+  actions: { id: "remind-unanswered" | "invite-more-players"; label: string }[];
 };
 
 export type CapabilityNotification = {
@@ -51,4 +63,5 @@ export interface ActivityCapabilityImplementation {
   readonly version: string;
   validateValue(value: unknown): boolean;
   evaluate(context: CapabilityContext): CapabilityNotification | null;
+  evaluateSignal(context: CapabilityContext): CapabilitySignal | null;
 }

@@ -27,16 +27,25 @@ function setup({ leader = false, family = true, team = true, invitationManager =
     return builder;
   });
   const rpc = vi.fn((_name: string, { target_permission }: { target_permission: string }) => Promise.resolve({
-    data: target_permission === "team.view" ? leader : target_permission === "invitation.manage" ? invitationManager : false,
+    data: _name === "read_team_signals" ? [] : target_permission === "team.view" ? leader : target_permission === "invitation.manage" ? invitationManager : false,
     error: null,
   }));
   const dependencies: AssistantDependencies = { supabase: { from, rpc } as unknown as AssistantDependencies["supabase"], userId: "user" };
-  return { dependencies, from, queries };
+  return { dependencies, from, queries, rpc };
 }
 
 const input = { teamId: "team", question: "Hej", messages: [] };
 
 describe("team assistant context access", () => {
+  it("loads structured signals only with invitation permission", async () => {
+    const allowed = setup({ leader: true, invitationManager: true });
+    const result = await loadTeamAssistantContext(input, allowed.dependencies);
+    expect(allowed.rpc).toHaveBeenCalledWith("read_team_signals", { target_team_id: "team" });
+    expect(result.context.capabilitySignals).toEqual({ available: true, items: [], truncated: false });
+    const denied = setup();
+    expect((await loadTeamAssistantContext(input, denied.dependencies)).context.capabilitySignals).toBeUndefined();
+    expect(denied.rpc).not.toHaveBeenCalledWith("read_team_signals", expect.anything());
+  });
   it("uses the section discipline for memory filtering even with a legacy team override", async () => {
     const {dependencies}=setup({legacyDiscipline:true});
     const result=await loadTeamAssistantContext(input,dependencies);

@@ -62,7 +62,7 @@ export const targetTeamSizeImplementation: ActivityCapabilityImplementation = {
   validateValue(value) {
     return typeof value === "number" && Number.isInteger(value) && value >= targetTeamSizeField.min && value <= targetTeamSizeField.max;
   },
-  evaluate(context) {
+  evaluateSignal(context) {
     const rule = context.definition;
     if (rule.id !== this.id || rule.version !== this.version
       || rule.field.key !== "targetTeamSize"
@@ -77,6 +77,28 @@ export const targetTeamSizeImplementation: ActivityCapabilityImplementation = {
     if (!Number.isFinite(now) || !Number.isFinite(startsAt) || startsAt <= now) return null;
     const target = context.values[rule.field.key];
     if (!this.validateValue(target) || context.invitedPlayers === 0 || context.acceptedPlayers >= (target as number)) return null;
+    const deadlinePassed = context.responseDueAt !== null && Date.parse(context.responseDueAt) <= now;
+    const lastReminder = context.lastReminderAt ? Date.parse(context.lastReminderAt) : NaN;
+    const canRemind = context.pendingPlayers > 0 && !deadlinePassed
+      && (!Number.isFinite(lastReminder) || now - lastReminder >= 3_600_000);
+    return {
+      capabilityId: this.id, type: "team_size_shortage",
+      severity: startsAt - now <= 24 * 3_600_000 ? "warning" : "info",
+      title: "Få spelare anmälda till matchen",
+      text: `${context.acceptedPlayers} av önskade ${target} spelare har tackat ja. ${context.pendingPlayers} spelare har ännu inte svarat.`,
+      facts: { acceptedPlayers: context.acceptedPlayers, targetTeamSize: target,
+        pendingPlayers: context.pendingPlayers, responseDeadlinePassed: deadlinePassed },
+      actions: [...(canRemind ? [{ id: "remind-unanswered" as const, label: "Påminn obesvarade" }] : []),
+        { id: "invite-more-players", label: "Kalla fler spelare" }],
+    };
+  },
+  evaluate(context) {
+    const signal = this.evaluateSignal(context);
+    if (!signal) return null;
+    const rule = context.definition;
+    const now = Date.parse(context.evaluatedAt);
+    const startsAt = Date.parse(context.startsAt);
+    const target = context.values[rule.field.key];
     // Choose the closest due checkpoint before checking deduplication: never
     // replay an older alert when the closest checkpoint has already been queued.
     const due = rule.notifications.beforeStartHours.filter(hours => startsAt - hours * 3_600_000 <= now);

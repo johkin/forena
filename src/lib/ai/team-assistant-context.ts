@@ -1,4 +1,6 @@
 import { loadActivityConfiguration } from "../activity-configuration";
+import { teamSignalSchema } from "../capability-signals";
+import { z } from "zod";
 import { formatDateTimeInZone } from "../date-time";
 import { TeamAssistantError, type AssistantDependencies, type AssistantViewerKind, type TeamAssistantInput } from "./team-assistant-types";
 
@@ -59,7 +61,7 @@ export async function loadTeamAssistantContext(input: TeamAssistantInput, { supa
   const activityIds = (activities ?? []).map((item) => item.id);
   const activityTypeIds = [...new Set((activities ?? []).map((item) => item.activity_type_id))];
 
-  const [{ data: personalInvitations }, { data: teamInvitations }, { data: documentLinks }, { data: tasks }] = await Promise.all([
+  const [{ data: personalInvitations }, { data: teamInvitations }, { data: documentLinks }, { data: tasks }, signalResult] = await Promise.all([
     activityIds.length && personalIds.length
       ? supabase.from("invitations").select("activity_id, person_id, response, response_comment").in("activity_id", activityIds).in("person_id", personalIds)
       : Promise.resolve({ data: [] }),
@@ -72,7 +74,11 @@ export async function loadTeamAssistantContext(input: TeamAssistantInput, { supa
     canManageTasks
       ? supabase.from("team_tasks").select("title, description, due_at").eq("team_id", teamId).eq("status", "open").order("due_at").limit(8)
       : Promise.resolve({ data: [] }),
+    canManageInvitations
+      ? supabase.rpc("read_team_signals", { target_team_id: teamId })
+      : Promise.resolve({ data: [], error: null }),
   ]);
+  const parsedSignals = z.array(teamSignalSchema).safeParse(signalResult.data);
 
   const documentIds = [...new Set((documentLinks ?? []).map((item) => item.document_id))];
   const { data: documents } = documentIds.length
@@ -115,6 +121,11 @@ export async function loadTeamAssistantContext(input: TeamAssistantInput, { supa
     organization: organization?.name,
     team: team.name,
     teamId: team.id,
+    capabilitySignals: canManageInvitations ? {
+      available: !signalResult.error && parsedSignals.success,
+      items: parsedSignals.success ? parsedSignals.data.slice(0, 20) : [],
+      truncated: parsedSignals.success && parsedSignals.data.length > 20,
+    } : undefined,
     viewer: { kind: (canViewTeam ? "leader" : "player-or-guardian") as AssistantViewerKind, people: (ownPeople ?? []).map((item) => item.display_name) },
     activities: (activities ?? []).map((activity) => ({
       id: activity.id,

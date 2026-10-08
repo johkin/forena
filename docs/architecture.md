@@ -376,3 +376,11 @@ inte av nya lagförval. Se [disciplinpaket](disciplines.md) för API och native-
 
 
 Disciplinernas editors och definitioner ligger i `src/disciplines/<key>`. Generella vyer och API:er väljer registrerat paket utan sportvillkor. Aktivitetens generella databashändelse anropar disciplinens runtime via schemaläggningsarbetaren; bounded operations sparar värden och flyttar/avbryter capability-kontroller atomärt. Se [discipliner](disciplines.md#disciplinkatalog-och-aktivitetshändelser).
+
+
+## Beständiga capability-signaler
+
+Capabilities kan lämna strukturerade signaler separat från notifieringsförslag.
+Gemensam lagring hanterar aktiv/löst/avfärdad status, återkomst, revisionskontroll
+och åtgärdshistorik. Utvärderingen körs genom schemaläggningsarbetaren, och
+outbox ansvarar fortsatt endast för leverans. Se [signalernas modell och flöde](capability-signals.md).
