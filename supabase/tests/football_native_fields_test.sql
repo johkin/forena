@@ -53,7 +53,7 @@ select throws_ok($$select public.football_fields('fc300000-0000-4000-8000-000000
 select lives_ok($$select public.football_fields('fc300000-0000-4000-8000-000000000001','activityParticipation','fc600000-0000-4000-8000-000000000001','fc500000-0000-4000-8000-000000000001','{"shirtNumber":12,"position":"goalkeeper"}',0)$$,'Save match-specific player values');
 select is(public.football_fields('fc300000-0000-4000-8000-000000000001','teamMembership',target_person_id=>'fc500000-0000-4000-8000-000000000001')->'values'->>'shirtNumber','7','Ordinary shirt number unchanged');
 reset role;
-select ok(not has_table_privilege('authenticated','private.football_values','SELECT'),'No direct table access');
+select ok(not has_table_privilege('authenticated','private.discipline_values','SELECT'),'No direct table access');
 update public.invitations set response='declined' where activity_id='fc600000-0000-4000-8000-000000000001' and person_id='fc500000-0000-4000-8000-000000000001';
 set local role authenticated;
 select is(jsonb_array_length(public.football_fields('fc300000-0000-4000-8000-000000000001','activity','fc600000-0000-4000-8000-000000000001')->'acceptedPlayers'),0,'Empty accepted list does not fall back to team');
@@ -102,5 +102,23 @@ select set_config('request.jwt.claim.sub','fc000000-0000-4000-8000-000000000001'
 select is(public.football_fields('fc300000-0000-4000-8000-000000000001','activity','fc600000-0000-4000-8000-000000000003')->'values'->>'captainPersonId','fc500000-0000-4000-8000-000000000001','Restricted save preserves captain');
 select is(public.football_fields('fc300000-0000-4000-8000-000000000001','activity','fc600000-0000-4000-8000-000000000003')->>'captainSource','acceptedActivityPlayers','Restricted save preserves source');
 
+reset role;
+select ok(to_regclass('private.football_values') is null,'Old storage is replaced');
+select ok(not exists(select 1 from information_schema.columns where table_schema='private' and table_name='discipline_values' and column_name='captain_source'),'Generic storage has no football metadata column');
+select is((select values->>'captainSource' from private.discipline_values where activity_id='fc600000-0000-4000-8000-000000000003' and scope='activity'),'acceptedActivityPlayers','Captain source belongs to structured activity values');
+select is((select d.key from private.discipline_values v join public.disciplines d on d.id=v.discipline_id where v.activity_id='fc600000-0000-4000-8000-000000000003' and v.scope='activity'),'football','Stored values carry their discipline');
+select throws_ok($$insert into private.discipline_values(discipline_id,organization_id,team_id,scope,person_id) values
+ ((select id from public.disciplines where key='football'),'fc100000-0000-4000-8000-000000000001','fc300000-0000-4000-8000-000000000001','teamMembership','fc500000-0000-4000-8000-000000000003')$$,'23503',null,'Storage itself rejects cross-tenant person');
+insert into private.discipline_values(discipline_id,organization_id,team_id,scope,version,values) values
+ ((select id from public.disciplines where key='swimming'),'fc100000-0000-4000-8000-000000000001','fc300000-0000-4000-8000-000000000001','team','2.0.0','{"lane":3}');
+select is((select count(*)::integer from private.discipline_values where team_id='fc300000-0000-4000-8000-000000000001' and scope='team'),2,'Different disciplines can share an object without overwriting each other');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','fc000000-0000-4000-8000-000000000001',true);
+select is(public.football_fields('fc300000-0000-4000-8000-000000000001','team')->'values'->>'targetTeamSize','12','Football adapter never reads another discipline');
+select lives_ok($$select public.football_fields('fc300000-0000-4000-8000-000000000001','activity','fc600000-0000-4000-8000-000000000003',new_values=>'{"captainPersonId":"fc500000-0000-4000-8000-000000000001","captainSource":"teamPlayers"}',expected_revision=>3)$$,'Structured source chooses current team eligibility');
+select throws_ok($$select public.football_fields('fc300000-0000-4000-8000-000000000001','activity','fc600000-0000-4000-8000-000000000003',new_values=>'{"captainSource":"invalid"}',expected_revision=>4)$$,'22023',null,'Invalid structured source rejected');
+select set_config('request.jwt.claim.sub','fc000000-0000-4000-8000-000000000003',true);
+select ok(not (public.football_fields('fc300000-0000-4000-8000-000000000001','activity','fc600000-0000-4000-8000-000000000003')->'values' ? 'captainSource'),'Structured source is hidden from activity-only editor');
+select throws_ok($$select public.football_fields('fc300000-0000-4000-8000-000000000001','activity','fc600000-0000-4000-8000-000000000003',new_values=>'{"captainSource":"teamPlayers"}',expected_revision=>4)$$,'42501',null,'Activity-only editor cannot change source');
 select * from finish();
 rollback;

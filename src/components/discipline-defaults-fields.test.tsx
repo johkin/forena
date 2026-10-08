@@ -5,7 +5,7 @@ import { resolveDisciplineDefaults } from "@/lib/discipline-defaults";
 const context={activityTypeId:"match",organizationId:"club",sectionId:"section",teamId:"team",disciplineId:"football",disciplineKey:"football",activityTypeSlug:"match-tavling",activityCategory:"competition"};
 it("offers separate inherited activation and checkpoint settings on football matches",()=>{
  const html=renderToStaticMarkup(<DisciplineDefaultsFields initial={{}} resolved={resolveDisciplineDefaults(context,[])}/>);
- expect(html).toContain("notifiering vid spelarbrist");
+ expect(html).toContain("Önskad matchtrupp · notifieringar");
  expect(html).toContain("Ärv · Av");
  expect(html).toContain("Ärv kontrolltider");
  expect(html).toContain("3 dagar, 1 dag");
@@ -23,6 +23,6 @@ it("shows chosen checkpoints and serializes explicit off and no checks",()=>{
 it("does not offer match-shortage controls for swimming or training",()=>{
  for(const override of [{disciplineKey:"swimming"},{activityTypeSlug:"traning"}]) {
   const html=renderToStaticMarkup(<DisciplineDefaultsFields initial={{}} resolved={resolveDisciplineDefaults({...context,...override},[])}/>);
-  expect(html).not.toContain("notifiering vid spelarbrist");
+  expect(html).not.toContain("Önskad matchtrupp · notifieringar");
  }
 });

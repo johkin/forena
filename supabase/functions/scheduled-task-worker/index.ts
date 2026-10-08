@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { disciplineCapabilityProfiles } from "../_shared/discipline-capabilities.ts";
+import { processDisciplineActivityEvents } from "../_shared/discipline-event-worker.ts";
+import { collectCapabilityNotifications } from "../_shared/discipline-capabilities.ts";
 
 // Business evaluation is independent of notification delivery and its retries.
 Deno.serve(async (request: Request) => {
@@ -13,8 +14,24 @@ Deno.serve(async (request: Request) => {
     provided_token: request.headers.get("x-forena-cron-token") ?? "",
   });
   if (authError || authorized !== true) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  let evaluation: { proposals: Awaited<ReturnType<typeof collectCapabilityNotifications>> } | { error: string };
+  try {
+    await processDisciplineActivityEvents(supabase);
+    const proposals = await collectCapabilityNotifications(async () => {
+      const { data, error } = await supabase.rpc("claim_capability_contexts", {
+        batch_size: 100,
+      });
+      if (error) throw error;
+      return data ?? [];
+    });
+    evaluation = { proposals };
+  } catch {
+    // Persist this handler's retry without preventing invitation/reminder work.
+    console.error("scheduled_task_worker.capability_evaluation_failed", { runId });
+    evaluation = { error: "capability_evaluation_failed" };
+  }
   const { data, error } = await supabase.rpc("run_due_scheduled_tasks", {
-    profiles: disciplineCapabilityProfiles, batch_size: 10,
+    profiles: evaluation, batch_size: 10,
   });
   if (error) {
     console.error("scheduled_task_worker.failed", { runId, code: error.code });

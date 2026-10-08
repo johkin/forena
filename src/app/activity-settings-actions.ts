@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { activitySettingsAccess } from "@/lib/activity-settings-access";
 import { normalizeDefaultsPatch, loadDefaultsDefinition } from "@/lib/activity-configuration";
 import type { DisciplineDefaultsScope } from "@/lib/discipline-defaults";
+import { getDisciplinePackage } from "@/lib/disciplines";
 import { isUuid } from "@/lib/ai/assistant-memory-draft";
 
 function target(form: FormData) {
@@ -26,9 +27,11 @@ export async function saveDisciplineDefaults(form: FormData) {
     const revision = Number(form.get("revision"));
     if (!isUuid(typeId) || !Number.isSafeInteger(revision) || revision < 0) throw new Error("Ogiltiga standardvärden.");
     const definition = await loadDefaultsDefinition(supabase, t.scope, t.scopeId!, typeId);
-    if (form.get("disciplineId") !== definition.disciplineId || form.get("version") !== "1.0.0") throw new Error("Disciplinen har ändrats. Ladda om sidan.");
+    const version = getDisciplinePackage(definition.disciplineKey)?.version;
+    if (!version) throw new Error("Disciplinpaketet är inte installerat.");
+    if (form.get("disciplineId") !== definition.disciplineId || form.get("version") !== version) throw new Error("Disciplinen har ändrats. Ladda om sidan.");
     const patch = normalizeDefaultsPatch(JSON.parse(String(form.get("values") ?? "{}")), definition);
-    const { error } = await supabase.rpc("save_discipline_defaults", { target_type_id: typeId, target_scope: t.scope, target_organization_id: organization?.id ?? null, target_scope_id: t.scopeId, expected_revision: revision, expected_discipline_id: definition.disciplineId, expected_version: "1.0.0", patch });
+    const { error } = await supabase.rpc("save_discipline_defaults", { target_type_id: typeId, target_scope: t.scope, target_organization_id: organization?.id ?? null, target_scope_id: t.scopeId, expected_revision: revision, expected_discipline_id: definition.disciplineId, expected_version: version, patch });
     if (error) throw new Error(error.code === "40001" ? "Inställningarna har ändrats. Ladda om sidan och försök igen." : "Standardvärdena kunde inte sparas.");
   } catch (error) { unstable_rethrow(error); errorMessage = error instanceof Error ? error.message : "Standardvärdena kunde inte sparas."; }
   t.query.set(errorMessage ? "error" : "saved", errorMessage ?? "1");

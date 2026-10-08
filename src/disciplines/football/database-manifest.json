@@ -1,0 +1,294 @@
+{
+  "key": "football",
+  "version": "1.0.0",
+  "schemas": {
+    "section": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "team": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "gameFormat": {
+          "type": "string",
+          "enum": [
+            "3v3",
+            "5v5",
+            "7v7",
+            "9v9",
+            "11v11"
+          ],
+          "title": "Spelform"
+        },
+        "targetTeamSize": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "title": "Önskad matchtrupp"
+        },
+        "requiredGoalkeepers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "title": "Önskat antal målvakter"
+        },
+        "periods": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "title": "Antal perioder"
+        },
+        "periodMinutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120,
+          "title": "Minuter per period"
+        }
+      },
+      "additionalProperties": false
+    },
+    "teamMembership": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "shirtNumber": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 999,
+          "title": "Tröjnummer",
+          "description": "Lagets nummer; tävlingens regler kontrolleras separat."
+        },
+        "positions": {
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "goalkeeper",
+              "defender",
+              "midfielder",
+              "forward"
+            ]
+          },
+          "title": "Positioner",
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "activity": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "gameFormat": {
+          "type": "string",
+          "enum": [
+            "3v3",
+            "5v5",
+            "7v7",
+            "9v9",
+            "11v11"
+          ],
+          "title": "Spelform"
+        },
+        "targetTeamSize": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "title": "Önskad matchtrupp"
+        },
+        "requiredGoalkeepers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "title": "Önskat antal målvakter"
+        },
+        "periods": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "title": "Antal perioder"
+        },
+        "periodMinutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120,
+          "title": "Minuter per period"
+        },
+        "captainSource": {
+          "type": "string",
+          "enum": [
+            "teamPlayers",
+            "acceptedActivityPlayers"
+          ],
+          "title": "Spelarurval för lagkapten"
+        },
+        "captainPersonId": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "title": "Lagkapten",
+          "x-player-reference": {
+            "entity": "person",
+            "role": "player",
+            "defaultSource": "acceptedActivityPlayers",
+            "allowedSources": [
+              "teamPlayers",
+              "acceptedActivityPlayers"
+            ],
+            "appliesTo": {
+              "activityTypeSlugs": [
+                "match-tavling"
+              ],
+              "categories": [
+                "competition"
+              ]
+            }
+          }
+        },
+        "venue": {
+          "type": "string",
+          "enum": [
+            "home",
+            "away",
+            "neutral"
+          ],
+          "title": "Hemma/borta"
+        }
+      },
+      "additionalProperties": false
+    },
+    "activityParticipation": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "shirtNumber": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 999,
+          "title": "Tröjnummer",
+          "description": "Lagets nummer; tävlingens regler kontrolleras separat."
+        },
+        "position": {
+          "type": "string",
+          "enum": [
+            "goalkeeper",
+            "defender",
+            "midfielder",
+            "forward"
+          ],
+          "title": "Position i matchen"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "capabilities": [
+    {
+      "id": "targetTeamSize",
+      "version": "1.0.0",
+      "defaults": {
+        "notificationsEnabled": false
+      },
+      "field": {
+        "key": "targetTeamSize",
+        "label": "Önskad matchtrupp",
+        "min": 1,
+        "max": 100
+      },
+      "appliesTo": {
+        "activityTypeSlugs": [
+          "match-tavling"
+        ],
+        "categories": [
+          "competition"
+        ]
+      },
+      "notifications": {
+        "type": "team_size_shortage",
+        "beforeStartHours": [
+          72,
+          24
+        ],
+        "recipients": "teamInvitationManagers"
+      }
+    }
+  ],
+  "appliesTo": {
+    "activityTypeSlugs": [
+      "match-tavling"
+    ],
+    "categories": [
+      "competition"
+    ]
+  },
+  "invitationFields": [
+    "captainPersonId",
+    "captainSource"
+  ],
+  "activityReference": {
+    "field": "captainPersonId",
+    "sourceField": "captainSource",
+    "entity": "person",
+    "role": "player",
+    "defaultSource": "acceptedActivityPlayers",
+    "allowedSources": [
+      "teamPlayers",
+      "acceptedActivityPlayers"
+    ],
+    "appliesTo": {
+      "activityTypeSlugs": [
+        "match-tavling"
+      ],
+      "categories": [
+        "competition"
+      ]
+    }
+  },
+  "initialization": {
+    "scope": "activity",
+    "fromScope": "team",
+    "copyFields": [
+      "gameFormat",
+      "targetTeamSize",
+      "requiredGoalkeepers",
+      "periods",
+      "periodMinutes"
+    ],
+    "defaults": {
+      "captainSource": "acceptedActivityPlayers"
+    }
+  },
+  "constraints": [
+    {
+      "scopes": [
+        "team",
+        "activity"
+      ],
+      "left": "targetTeamSize",
+      "operator": "gte",
+      "lookup": {
+        "field": "gameFormat",
+        "values": {
+          "3v3": 3,
+          "5v5": 5,
+          "7v7": 7,
+          "9v9": 9,
+          "11v11": 11
+        }
+      }
+    },
+    {
+      "scopes": [
+        "team",
+        "activity"
+      ],
+      "left": "requiredGoalkeepers",
+      "operator": "lte",
+      "right": "targetTeamSize"
+    }
+  ]
+}

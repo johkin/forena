@@ -164,7 +164,7 @@ export interface Database {
         OrganizationScoped & { group_id: string; person_id: string; created_at?: string }
       >;
       activities: Table<
-        Timestamped & OrganizationScoped & { id: string; team_id: string | null; activity_type_id: string; series_exception: boolean; series_id: string | null; title: string; description_markdown: string; reminder_send_ats: string[] | null; gathering_at: string | null; starts_at: string; ends_at: string; location: string; status: "draft" | "published" | "cancelled"; cancelled_at: string | null; cancellation_reason: string | null; invitation_send_at: string | null; response_due_at: string | null; reminder_send_at: string | null; invitation_audience_kind: "players" | "leaders" | "group" | "selection" | null; invitation_group_id: string | null; invitation_audience_roles: string[]; invitation_audience_group_ids: string[]; invitation_audience_responsibility_type_ids: string[]; invitation_materialized_at: string | null; invitation_notifications_queued_at: string | null; source_kind: "manual" | "imported"; external_source: string | null; external_id: string | null; created_by: string | null; updated_at: string },
+        Timestamped & OrganizationScoped & { id: string; team_id: string | null; activity_type_id: string; series_exception: boolean; series_id: string | null; title: string; discipline_generation: number; description_markdown: string; reminder_send_ats: string[] | null; gathering_at: string | null; starts_at: string; ends_at: string; location: string; status: "draft" | "published" | "cancelled"; cancelled_at: string | null; cancellation_reason: string | null; invitation_send_at: string | null; response_due_at: string | null; reminder_send_at: string | null; invitation_audience_kind: "players" | "leaders" | "group" | "selection" | null; invitation_group_id: string | null; invitation_audience_roles: string[]; invitation_audience_group_ids: string[]; invitation_audience_responsibility_type_ids: string[]; invitation_materialized_at: string | null; invitation_notifications_queued_at: string | null; source_kind: "manual" | "imported"; external_source: string | null; external_id: string | null; created_by: string | null; updated_at: string },
         OrganizationScoped & { id?: string; team_id?: string | null; activity_type_id: string; series_exception?: boolean; series_id?: string | null; title: string; description_markdown?: string; reminder_send_ats?: string[] | null; gathering_at?: string | null; starts_at: string; ends_at: string; location?: string; status?: "draft" | "published" | "cancelled"; cancelled_at?: string | null; cancellation_reason?: string | null; invitation_send_at?: string | null; response_due_at?: string | null; reminder_send_at?: string | null; invitation_audience_kind?: "players" | "leaders" | "group" | "selection" | null; invitation_group_id?: string | null; invitation_audience_roles?: string[]; invitation_audience_group_ids?: string[]; invitation_audience_responsibility_type_ids?: string[]; invitation_materialized_at?: string | null; invitation_notifications_queued_at?: string | null; source_kind?: "manual" | "imported"; external_source?: string | null; external_id?: string | null; created_by?: string | null; created_at?: string; updated_at?: string }
       >;
       activity_types: Table<
@@ -279,6 +279,14 @@ export interface Database {
     };
     Views: Record<never, never>;
     Functions: {
+      discipline_fields: {
+        Args: { target_team_id:string; target_scope:string; target_activity_id?:string|null; target_person_id?:string|null; new_values?:Json; expected_revision?:number; expected_discipline_key?:string };
+        Returns:Json;
+      };
+      claim_capability_contexts: { Args:{batch_size?:number};Returns:Json };
+      claim_discipline_activity_events: { Args:{batch_size?:number};Returns:Json };
+      apply_discipline_activity_event: { Args:{event_id:number;lease_token:string;operations:Json};Returns:boolean };
+      fail_discipline_activity_event: { Args:{event_id:number;lease_token:string};Returns:boolean };
       football_fields: {
         Args: { target_team_id: string; target_scope: string; target_activity_id?: string | null; target_person_id?: string | null; new_values?: Json; expected_revision?: number; selected_source?: string };
         Returns: Json;
@@ -327,6 +335,7 @@ export interface Database {
       materialize_due_activity_invitations: { Args: { batch_size?: number }; Returns: number };
       queue_due_activity_invitations: { Args: { batch_size?: number }; Returns: number };
       schedule_task: { Args: { task_key: string; task_kind: string; scheduled_for: string; recurrence_seconds?: number }; Returns: string };
+      load_capability_contexts: { Args: { after_activity_id?: string | null; after_capability_id?: string; batch_size?: number }; Returns: Json };
       run_due_scheduled_tasks: { Args: { profiles: Json; batch_size?: number }; Returns: Json };
       claim_notification_outbox: { Args: { batch_size?: number }; Returns: Database["public"]["Tables"]["notification_outbox"]["Row"][] };
       get_activity_delivery_status: { Args: { target_activity_id: string }; Returns: Json };

@@ -1035,12 +1035,12 @@ body:has(.squad-save-bar) .assistant-launcher { bottom:calc(84px + env(safe-area
 .discipline-package-summary dl { display: grid; gap: 12px; }
 .discipline-package-summary dd { margin: 4px 0 0; }
 
-.football-fields { min-width: 0; padding-block: 16px; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
-.football-values { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 12px; }
-.football-values dd { margin: 4px 0 0; font-weight: 600; }
-.football-form-fields { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
-.football-fields label { display: grid; gap: 6px; min-width: 0; }
-.football-fields input:not([type="checkbox"]), .football-fields select { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; min-height: 44px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: white; color: var(--ink); font: inherit; }
-.football-fields .settings-checkbox { display: flex; align-items: center; min-height: 44px; }
-.football-fields input[type="checkbox"] { width: 20px; min-height: 20px; flex-shrink: 0; }
-.football-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.discipline-fields { min-width: 0; padding-block: 16px; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
+.discipline-values { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 12px; }
+.discipline-values dd { margin: 4px 0 0; font-weight: 600; }
+.discipline-form-fields { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+.discipline-fields label { display: grid; gap: 6px; min-width: 0; }
+.discipline-fields input:not([type="checkbox"]), .discipline-fields select { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; min-height: 44px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: white; color: var(--ink); font: inherit; }
+.discipline-fields .settings-checkbox { display: flex; align-items: center; min-height: 44px; }
+.discipline-fields input[type="checkbox"] { width: 20px; min-height: 20px; flex-shrink: 0; }
+.discipline-actions { display: flex; gap: 8px; flex-wrap: wrap; }

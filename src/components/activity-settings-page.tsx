@@ -1,4 +1,4 @@
-import { FootballFields } from "./football-fields";
+import { DisciplineFields } from "./discipline-fields";
 import { packageForSection } from "@/lib/disciplines";
 import { DisciplinePackageSummary } from "./discipline-package-summary";
 import { createClient } from "@/lib/supabase/server";
@@ -46,7 +46,7 @@ export async function ActivitySettingsPage({ organizationSlug = null, query }: {
   const types = (typesResult.data ?? []).filter(t => !org || (t.active && (!t.discipline_id || t.discipline_id === disciplineId)));
   const rows = org && selectedSection ? await loadDisciplineDefaults(supabase, org.id, selectedSection.id, selectedTeam?.id) : [];
   const disciplinePackage = packageForSection(disciplineId, disciplineId, disciplines);
-  const hidden = <><input type="hidden" name="organizationSlug" value={organizationSlug ?? ""}/><input type="hidden" name="scope" value={selected?.scope ?? ""}/><input type="hidden" name="scopeId" value={selected?.id ?? ""}/><input type="hidden" name="disciplineId" value={disciplineId ?? ""}/><input type="hidden" name="version" value="1.0.0"/></>;
+  const hidden = <><input type="hidden" name="organizationSlug" value={organizationSlug ?? ""}/><input type="hidden" name="scope" value={selected?.scope ?? ""}/><input type="hidden" name="scopeId" value={selected?.id ?? ""}/><input type="hidden" name="disciplineId" value={disciplineId ?? ""}/><input type="hidden" name="version" value={disciplinePackage?.version ?? ""}/></>;
   function typeFields(type?: typeof types[number]) { return <div className="settings-fields"><label>Namn<input name="name" required maxLength={80} defaultValue={type?.name}/></label><label>Nyckel<input name="slug" required maxLength={80} pattern="[a-z0-9]+(-[a-z0-9]+)*" defaultValue={type?.slug}/></label><label>Kategori<select name="system_category" defaultValue={type?.system_category ?? "session"}>{[["session","Träning"],["competition","Tävling"],["work","Arbetspass"],["meeting","Möte"],["education","Utbildning"],["other","Övrigt"]].map(([v,n])=><option key={v} value={v}>{n}</option>)}</select></label><label>Disciplin<select name="discipline_id" defaultValue={type?.discipline_id ?? ""}><option value="">Alla discipliner</option>{disciplines.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></label><label className="settings-checkbox"><input name="active" type="checkbox" defaultChecked={type?.active ?? true}/>Aktiv</label></div>; }
   const content = <main className="application-page"><section className="application-card activity-settings">
     <p className="eyebrow">{org ? org.name : "System"}</p><h1>{org ? "Disciplinförval" : "Aktivitetstyper"}</h1>
@@ -55,7 +55,7 @@ export async function ActivitySettingsPage({ organizationSlug = null, query }: {
     {org ? <><nav className="settings-targets" aria-label="Nivå för disciplinförval">{targets.map(t => <a className="secondary" aria-current={t.id === selected?.id && t.scope === selected.scope ? "page" : undefined} key={`${t.scope}${t.id}`} href={`${path}?${new URLSearchParams({ scope:t.scope,scopeId:t.id })}`}>{sourceNames[t.scope]}: {t.name}</a>)}</nav>
       {selected?.scope === "section" ? <form action={saveTargetDiscipline} className="application-form">{hidden}<label>Disciplin för {selected.name}<select name="discipline_id" defaultValue={disciplineId ?? ""}><option value="">Ingen disciplin</option>{disciplines.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></label><small>Disciplinen gäller sektionens samtliga lag. Förval för tidigare disciplin används inte efter byte.</small><button className="secondary">Spara disciplin</button></form> : <p>Disciplin från {selectedSection?.name}: {disciplines.find(d => d.id === disciplineId)?.name ?? "Ingen"}.</p>}
     </> : <details className="settings-item"><summary>Ny aktivitetstyp</summary><form action={saveActivityType} className="application-form">{typeFields()}<button className="primary">Skapa aktivitetstyp</button></form></details>}
-    {disciplinePackage && selectedTeam ? <FootballFields teamId={selectedTeam.id} scope="team"/> : null}
+    {disciplinePackage && selectedTeam ? <DisciplineFields disciplineKey={disciplinePackage.key} teamId={selectedTeam.id} scope="team"/> : null}
     {disciplinePackage ? <DisciplinePackageSummary discipline={disciplinePackage}/> : null}
     {org && !disciplineId ? <p>Välj en disciplin på sektionen för att kunna spara förval. Gemensamma aktivitetstyper kan fortfarande användas.</p> : null}
     {org && selected ? <h2>Förval för {selected.name}</h2> : null}

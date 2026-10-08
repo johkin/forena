@@ -1,7 +1,7 @@
 # Kodägda discipliner
 
 Fotboll är det första kodägda disciplinpaketet, `football` version `1.0.0`,
-i `src/lib/disciplines/football.ts`. Paketet definierar spelformer 3v3, 5v5,
+i `src/disciplines/football/definition.ts`. Paketet definierar spelformer 3v3, 5v5,
 7v7, 9v9 och 11v11 samt stabila positionsidentifierare. Dessa är planeringsval,
 inte en katalog över förbundens ålders- eller tävlingsregler.
 
@@ -56,13 +56,19 @@ Närvaro och avstängningar ingår inte i dessa extrafält.
 
 ## Lagring och native-formulär
 
-`private.football_values` lagrar versionsrefererad JSONB per lag, lagmedlemskap,
+`private.discipline_values` lagrar versionsrefererad JSONB per lag, lagmedlemskap,
 match eller matchdeltagare. Medlemskapets värden är förankrade i lag + person;
 personens övriga lag får egna värden. Tabellen har RLS och saknar direkta
-klienträttigheter. Den är fotbollens lagring, inte en generell plugininstallation.
+klienträttigheter. Varje rad har `discipline_id`, paketversion och revision.
+Unik nyckel omfattar disciplin och objekt, så olika discipliner kan lagra värden
+för samma objekt utan att skriva över varandra. Sammansatta främmande nycklar
+hindrar kopplingar till person, lag eller aktivitet från en annan klubb.
+Migreringen byter namn på den befintliga tabellen och behåller ID:n, värden och
+revisioner. `section_discipline_defaults` och `team_discipline_defaults` är fortsatt
+separata tabeller för ärvda inställningar.
 
-`GET/PUT /api/football-fields` använder den inloggade användarens Supabase-klient
-och RPC:n `football_fields`. RPC:n härleder klubben från laget och verifierar
+`GET/PUT /api/discipline-fields` använder den inloggade användarens Supabase-klient
+och RPC:n `discipline_fields`. RPC:n härleder klubben från laget och verifierar
 sektion, disciplin, objekt, behörighet, schemavärden och spelarreferenser.
 Lagförval kräver lagets behörighet för aktivitetsförval, spelaruppgifter kräver
 `roster.manage` och match-/deltagaruppgifter kräver `activity.manage`.
@@ -94,9 +100,15 @@ kräva att användaren förstår paketscheman eller plugininstallationer. Gröna
 är uppskjutet som möjlig första plugin; inget sådant fält ingår här.
 
 Paketversioner måste behållas så länge lagrade värden använder dem. En generell
-schemaeditor, paketuppgraderingsflöden, pluginlagring och plugin-MCP återstår.
+schemaeditor, paketuppgraderingsflöden och externa tilläggsgränssnitt återstår.
 
 ## Spelarreferenser och villkorade fält
+
+`captainSource` är ett fotbollsfält i aktivitetens `values`, tillsammans med
+`captainPersonId`. Den generella tabellen har ingen `captain_source`-kolumn.
+Endast aktivitetsschemat accepterar fältet. RPC:ns äldre `selected_source`-argument
+och toppnivåfält `captainSource` i svaret finns tillfälligt för kompatibilitet;
+nya formulär skickar och läser källan i `values`.
 
 `captainPersonId` är ett valfritt person-UUID på aktiviteten, inte ett namn eller
 flera separata deltagarflaggor. Fältets `x-player-reference` i JSON Schema och
@@ -136,16 +148,27 @@ lagkaptenen och dess källa bevaras vid sådan skrivning utan svarskontroll.
 
 Ett disciplinpaket kan komponera återanvändbara `capabilities`. Första förmågan
 är `targetTeamSize`: fältdefinition, valideringsgränser, aktivitetstillämplighet
-och en deklarativ notifieringsregel. Fotboll aktiverar den för `match-tavling`
+och implementation av kontroller och notifieringsförslag. Fotboll aktiverar den för `match-tavling`
 i kategorin `competition`. Innebandy kan använda samma fabrik för sina matchtyper;
 dess lagring och paketkoppling behöver då också införas. Ingen annan disciplin
 aktiveras automatiskt av ett liknande fältnamn eller en tävlingskategori.
 
 Den beroendefria definitionen finns i
-`supabase/functions/_shared/discipline-capabilities.ts` och används både av
+`supabase/functions/_shared/target-team-size.ts` och används både av
 fotbollspaketets TypeScript-DSL och notifieringsarbetaren. Appens Zod-fält hämtar
-sina gränser från samma capability. Databasens privata värdeadapter kopplar
-fotbollens befintliga lagring till den gemensamma regelmotorn.
+sina gränser från samma capability. `ActivityCapabilityDefinition` är serialiserbar och lagras som ögonblicksbild.
+`ActivityCapabilityImplementation` erbjuder `validateValue` och `evaluate(context)`.
+`targetTeamSizeImplementation` äger truppbrist, tillämplighet, aktivitetsstatus,
+framtida start, närmast förfallna kontroll, tidigare kontroller, deadline och
+meddelandetext. `evaluate` returnerar ett komplett notifieringsförslag eller `null`.
+Runtime-implementationer registreras separat från definitionerna; funktioner
+skickas aldrig till formulär eller lagras i JSON.
+
+`load_capability_contexts` levererar paginerade fakta om disciplinvärden,
+aktivitet, sparad regel, kallelser och kontrollmarkeringar. Spelarroller och lokala
+medlemskapsdatum tolkas av den behöriga dataadaptern. Capabilityn läser inga tabeller
+och utför ingen leverans. Arbetaren fortsätter efter sidor utan notifieringsförslag,
+så fyllda trupper inte blockerar senare matcher.
 
 Notifieringen är avstängd i capability-definitionens grundförval. Sektion eller
 lag kan aktivera den och välja högst fem kontrolltider, 1–720 förflutna timmar före
@@ -169,7 +192,7 @@ Träningar, importerade/inställda/opublicerade/passerade aktiviteter, matcher u
 
 Notifieringsregeln kopieras vid matchens skapande till
 `private.activity_capability_rules` om den är aktiverad och har kontrolltider.
-SQL-definitionen speglar TypeScript-capability:n och ett paritetstest bevakar dem.
+Paketets installerade manifest speglar TypeScript-definitionen; ett paritetstest bevakar JSON-filen och migrationsdata.
 Senare profil-, sektions- och lagförval ändrar inte kopian. Arbetaren skapar inga
 regler för befintliga matcher. Redigering av matchens start flyttar kontrolltiderna
 enligt den sparade regeln; en redan notifierad kontroll körs inte igen. Sena matcher
@@ -183,8 +206,13 @@ utskick. Nya kontroller använder aktuella värden. Text, länk och push-tag ska
 vid köläggning; leveransarbetaren konsumerar ett färdigt meddelande.
 
 Utvärderingen körs av `scheduled-task-worker`, separat från leverans. Dess
-registrerade disciplinuppgift anropar `queue_due_capability_notifications` med
-kodägda profiler. RPC:n är service-only; ingen användar- eller assistentfritext
+registrerade disciplinuppgift kör de kodägda capability-implementationerna.
+`run_due_scheduled_tasks` tar därefter emot deras förslag (det kompatibla
+argumentnamnet är fortfarande `profiles`). Den privata enqueue-adaptern
+verifierar sparad regel/kontrolltid och löser aktuella behöriga mottagare.
+Meddelande, kontrollmarkering och audit skrivs atomärt. Databasen bedömer inte
+truppbrist eller skapar matchtruppstext. Den äldre SQL-utvärderaren är avvecklad.
+Service-RPC:erna kan inte anropas av användare eller assistenten; ingen fritext
 används som regelkonfiguration. Privata regler och kontrollmarkeringar har RLS
 utan klienträttigheter. Se [schemalagda uppgifter](scheduled-tasks.md).
 
@@ -192,3 +220,82 @@ Notifieringsköns läspolicy ger användaren tillgång till egna rader. För
 `team_size_shortage` krävs dessutom aktuell `invitation.manage` och aktiv
 laganknytning vid varje API-läsning; indragen åtkomst gäller direkt, innan nästa
 arbetarkörning. Vanliga egna kallelser följer den tidigare mottagarregeln.
+
+## Utökning av projektet
+
+Nya discipliner kan använda samma lagring och komponera registrerade capabilities.
+Ett tillägg bidrar med kodägd paketdefinition, schemasäkert/behörighetskontrollerat
+skrivgränssnitt och vid behov runtime-implementation. Förena tillhandahåller
+kontext, mottagarbehörighet, schemaläggning, deduplicering och transport.
+Detta är början på ett API för att utöka opensource-projektet. Dynamisk installation
+eller körning av godtycklig tredjepartskod ingår inte.
+
+
+## Disciplinkatalog och aktivitetshändelser
+
+`src/disciplines/football` äger formulär, fält, scheman, presentation och den äldre
+HTTP-adaptern. Gemensamma vyer använder `DisciplineFields` och UI-registret;
+servern använder paketregistret. Okända paket får ingen fotbollsreserv.
+Den äldre `/api/football-fields` och `football_fields` finns endast som
+kompatibilitetsadaptrar för redan öppna klienter.
+
+Databasen installerar versionerade paketmanifest i `private.discipline_packages`.
+`discipline_fields` väljer manifest från lagets sektion, validerar via
+`pg_jsonschema` och tolkar deklarerade fältrelationer och spelarreferenser.
+Fotbollens schema och tillämplighet är registreringsdata, inte sportgrenar i
+kärnans SQL. Manifestet ligger i paketkatalogen och kontrolleras mot kod och
+migration. Ändrade paketversioner kräver en uttrycklig datamigrering.
+
+En generell transaktionell trigger registrerar `activity.created` och
+`activity.updated` i `private.discipline_activity_events`. Händelsen innehåller
+föregående/aktuellt aktivitetstillstånd och fångade lagvärden och förval.
+Paketets deklarativa initialvärden och aktiverade regel kopieras i samma
+aktivitetstransaktion, så att formulär kan läsa dem direkt. Egna sparade
+aktivitetsvärden skrivs aldrig över av initialisering.
+
+`scheduled-task-worker` behandlar händelser före notifieringskontrollerna och
+anropar rätt registrerade runtimes `onActivity(event, api)`. Det sker normalt
+vid nästa minutkörning. Det avgränsade API:t erbjuder `initializeValues`,
+`saveValues` med revision, `schedule` och `cancel`. Det ger inte SQL, godtyckliga
+mottagar-ID:n eller externa endpoints. Operationer och kvittering skrivs atomärt.
+Schemaläggningen refererar till aktivitetens sparade capabilityregel och lagras i
+`private.discipline_operations`. `targetTeamSize` äger både omplanering och själva
+utvärderingen; fotbollspaketet komponerar den.
+
+Händelser behandlas i ordning per aktivitet med två minuters lease och en unik
+lease-token. Fel försöks igen med backoff; efter fem försök krävs operatörsåtgärd.
+En misslyckad händelse stoppar senare händelser och kontroller för samma aktivitet,
+men inte andra aktiviteter. Återställ den felande händelsen till `pending`, med
+`attempts=0`, `run_at=now()` och tömd lease, först efter att felet rättats i kod.
+Startändringar flyttar väntande kontroller; inställda/importerade eller
+icke tillämpliga aktiviteter avbryter dem. Beständiga notifieringsmarkeringar
+förhindrar dubbla utskick. Redan köade notifieringar ändras inte.
+
+För en ny disciplin: skapa paketdefinition, scheman och eventuell editor i en egen
+katalog, registrera paket och UI, registrera dess beroendefria runtime i Edge
+Function-registret och installera samma versionerade manifest med en migration.
+Capabilities återanvänds genom komposition. Detta är ett kodägt utökningsgränssnitt
+för projektet; dynamisk plugininstallation ingår inte.
+
+
+Disciplinernas bakgrundsarbete är begränsat till 500 utvärderade kontexter per
+arbetarkörning, även när ingen ger en notifiering. Service-RPC:n
+`claim_capability_contexts` väljer högst 100 åt gången och sparar nästa möjliga
+utvärderingstid på regeln. Äldst väntande arbete väljs först; fortsättning kräver
+inte en cursor som börjar om från samma första sida. Aktuell disciplin filtreras
+innan spelarantal räknas. Ingen spelarbristlogik har flyttats till SQL.
+
+Varje aktivitetsändring får en serverägd generation. Förslaget bär generation,
+disciplin och version; enqueue verifierar dem under aktivitetslåset samt att
+operationen fortfarande väntar och att inga äldre livscykelhändelser återstår.
+Inaktuella förslag avvisas utan checkpoint eller outbox-rad. Kallelsesvar och
+mottagarbehörighet kan fortfarande ändras efter beslutet; färdiga outbox-meddelanden
+omprövas inte.
+
+En lagkö tillåter högst 500 nya händelser per minut och 2 000 obehandlade
+händelser. Kontrollen serialiseras per lag och avvisar hela aktivitetsändringen
+om gränsen nås; redan mottagna händelser tappas inte eller slås ihop. Databasen
+rensar behandlade händelser efter sju dagar och endast `discipline_activity.handled`
+audit efter 30 dagar, i begränsade batcher. Rensning sker vid händelseclaim och
+via ett dagligt cron-jobb. Väntande/misslyckade händelser, disciplinvärden och
+beständiga notifieringscheckpoints bevaras. Lagflytt stöds inte av denna ändring.

@@ -369,7 +369,10 @@ visar kodägda definitioner skrivskyddade. Befintliga katalogdiscipliner och
 lagdisciplin ger inget paket. Se [disciplinpaket](disciplines.md) för leveransens
 omfattning och den verifierade UIK-kopplingen.
 
-Fotbollens värden lagras nu versionsrefererat i `private.football_values` med
-objektankare, validerande och behörighetskontrollerad RPC samt optimistisk
+Disciplinernas värden lagras versionsrefererat i `private.discipline_values` med
+disciplinreferens, objektankare, validerande och behörighetskontrollerad RPC samt optimistisk
 revision. Matchförval kopieras av en insert-trigger; äldre tillfällen förändras
 inte av nya lagförval. Se [disciplinpaket](disciplines.md) för API och native-vyer.
+
+
+Disciplinernas editors och definitioner ligger i `src/disciplines/<key>`. Generella vyer och API:er väljer registrerat paket utan sportvillkor. Aktivitetens generella databashändelse anropar disciplinens runtime via schemaläggningsarbetaren; bounded operations sparar värden och flyttar/avbryter capability-kontroller atomärt. Se [discipliner](disciplines.md#disciplinkatalog-och-aktivitetshändelser).

@@ -1,0 +1,37 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+select no_plan();
+-- A second installed package exercises the kernel without football field names.
+insert into public.disciplines(key,name) values('lifecycle-test','Lifecycle test');
+insert into private.discipline_packages(discipline_key,version,manifest) values('lifecycle-test','2.0.0',
+ '{"schemas":{"team":{"type":"object","properties":{"rounds":{"type":"integer","minimum":1}},"additionalProperties":false},"activity":{"type":"object","properties":{"rounds":{"type":"integer","minimum":1}},"additionalProperties":false}},"capabilities":[],"appliesTo":{"activityTypeSlugs":["ovrigt"],"categories":["other"]},"initialization":{"scope":"activity","fromScope":"team","copyFields":["rounds"],"defaults":{}}}');
+insert into auth.users(id,email) values('fb000000-0000-4000-8000-000000000001','lifecycle@example.test');
+insert into public.organizations(id,slug,name) values('fb100000-0000-4000-8000-000000000001','lifecycle-test','Lifecycle test');
+insert into public.organization_members(organization_id,user_id,role) values('fb100000-0000-4000-8000-000000000001','fb000000-0000-4000-8000-000000000001','owner');
+insert into public.sections(id,organization_id,slug,name,discipline_id) values('fb200000-0000-4000-8000-000000000001','fb100000-0000-4000-8000-000000000001','test','Test',(select id from public.disciplines where key='lifecycle-test'));
+insert into public.teams(id,organization_id,section_id,slug,name) values('fb300000-0000-4000-8000-000000000001','fb100000-0000-4000-8000-000000000001','fb200000-0000-4000-8000-000000000001','test','Test');
+select set_config('request.jwt.claim.sub','fb000000-0000-4000-8000-000000000001',true);
+select is(public.discipline_fields('fb300000-0000-4000-8000-000000000001','team',null,null,'{"rounds":3}',0,'lifecycle-test')->>'version','2.0.0','Generic field RPC uses the registered package version');
+select throws_ok($$select public.discipline_fields('fb300000-0000-4000-8000-000000000001','team',null,null,'{"gameFormat":"7v7"}',1,'lifecycle-test')$$,'22023','Invalid discipline values','Another package does not accept football data');
+select lives_ok($$select public.save_discipline_defaults((select id from public.activity_types where slug='ovrigt' and organization_id is null),'team','fb100000-0000-4000-8000-000000000001','fb300000-0000-4000-8000-000000000001',0,(select id from public.disciplines where key='lifecycle-test'),'2.0.0','{}')$$,'Defaults accept another registered package version');
+insert into public.activities(id,organization_id,team_id,activity_type_id,title,starts_at,ends_at,status) values('fb600000-0000-4000-8000-000000000001','fb100000-0000-4000-8000-000000000001','fb300000-0000-4000-8000-000000000001',(select id from public.activity_types where slug='ovrigt' and organization_id is null),'Test',now()+interval '4 days',now()+interval '4 days 1 hour','published');
+select is((select values from private.discipline_values where activity_id='fb600000-0000-4000-8000-000000000001'),' {"rounds":3}'::jsonb,'Generic declaration initializes activity data');
+update public.activities set starts_at=starts_at+interval '1 day',ends_at=ends_at+interval '1 day' where id='fb600000-0000-4000-8000-000000000001';
+select is((select count(*)::integer from private.discipline_activity_events where activity_id='fb600000-0000-4000-8000-000000000001'),2,'Creation and update both capture events');
+create temporary table claimed as select e from jsonb_array_elements(public.claim_discipline_activity_events()) e where e#>>'{current,id}'='fb600000-0000-4000-8000-000000000001';
+select is((select count(*)::integer from claimed),1,'Only the oldest event for an activity is claimed');
+select is(jsonb_array_length(public.claim_discipline_activity_events()),0,'A live lease prevents a second claim');
+select ok(not public.apply_discipline_activity_event((select (e->>'id')::bigint from claimed),gen_random_uuid(),'[]'),'Stale lease cannot acknowledge work');
+select ok(public.apply_discipline_activity_event((select (e->>'id')::bigint from claimed),(select (e->>'leaseToken')::uuid from claimed),'[{"kind":"initializeValues","values":{"rounds":8}}]'),'Applying operations and acknowledging succeeds atomically');
+select is((select values from private.discipline_values where activity_id='fb600000-0000-4000-8000-000000000001'),'{"rounds":3}'::jsonb,'Initialization never overwrites saved activity data');
+select ok(not public.apply_discipline_activity_event((select (e->>'id')::bigint from claimed),(select (e->>'leaseToken')::uuid from claimed),'[]'),'Acknowledgement is idempotent');
+create temporary table next_claim as select e from jsonb_array_elements(public.claim_discipline_activity_events()) e where e#>>'{current,id}'='fb600000-0000-4000-8000-000000000001';
+select is((select e->>'kind' from next_claim),'activity.updated','Update becomes available after creation acknowledgement');
+select ok((select e->'previous' is not null and e#>>'{previous,startsAt}'<>e#>>'{current,startsAt}' from next_claim),'Update carries previous and current state');
+select ok(public.fail_discipline_activity_event((select (e->>'id')::bigint from next_claim),(select (e->>'leaseToken')::uuid from next_claim)),'Failure releases the lease with retry backoff');
+select is(jsonb_array_length(public.claim_discipline_activity_events()),0,'Retry respects backoff');
+select ok(not has_function_privilege('authenticated','public.claim_discipline_activity_events(integer)','EXECUTE'),'Clients cannot consume events');
+select ok(not has_function_privilege('authenticated','public.apply_discipline_activity_event(bigint,uuid,jsonb)','EXECUTE'),'Clients cannot submit handler operations');
+select ok(not has_table_privilege('authenticated','private.discipline_operations','SELECT'),'Scheduled operations remain private');
+select * from finish();
+rollback;

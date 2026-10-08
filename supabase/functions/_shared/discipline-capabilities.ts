@@ -1,64 +1,37 @@
-/** Portable, declarative DSL shared by the app and the notification worker. */
-export type TargetTeamSizeCapability = {
-  id: "targetTeamSize";
-  version: "1.0.0";
-  defaults: { notificationsEnabled: boolean };
-  field: { key: "targetTeamSize"; label: string; min: number; max: number };
-  appliesTo: { activityTypeSlugs: readonly string[]; categories: readonly string[] };
-  notifications: {
-    type: "team_size_shortage";
-    beforeStartHours: readonly number[];
-    recipients: "teamInvitationManagers";
-  };
-};
-
-export function targetTeamSize(options: {
-  activityTypeSlugs: readonly string[];
-  categories: readonly string[];
-  beforeStartHours?: readonly number[];
-}): TargetTeamSizeCapability {
-  const hours = options.beforeStartHours ?? [72, 24];
-  if (!hours.length || hours.length > 5 || new Set(hours).size !== hours.length
-    || hours.some(hour => !Number.isInteger(hour) || hour < 1 || hour > 720)) {
-    throw new Error("Ogiltiga kontrolltider för önskad lagstorlek.");
-  }
-  if (!options.activityTypeSlugs.length || !options.categories.length) {
-    throw new Error("Förmågan måste kopplas till aktivitetstyper.");
-  }
-  return {
-    id: "targetTeamSize", version: "1.0.0", defaults: { notificationsEnabled: false },
-    field: { key: "targetTeamSize", label: "Önskad matchtrupp", min: 1, max: 100 },
-    appliesTo: { activityTypeSlugs: [...options.activityTypeSlugs], categories: [...options.categories] },
-    notifications: { type: "team_size_shortage", beforeStartHours: [...hours].sort((a, b) => b - a), recipients: "teamInvitationManagers" },
-  };
+import type { CapabilityContext, CapabilityNotification } from "./capability-types.ts";
+import { disciplineRuntimes } from "./disciplines/registry.ts";
+export * from "./capability-types.ts";
+export { targetTeamSize, targetTeamSizeImplementation, teamSizeNotificationContent, type TargetTeamSizeCapability } from "./target-team-size.ts";
+export const disciplineCapabilityProfiles = disciplineRuntimes.map(runtime => runtime.definition);
+const capabilityImplementations = disciplineRuntimes.flatMap(runtime => runtime.capabilities);
+export function evaluateDisciplineCapability(context: CapabilityContext): CapabilityNotification | null {
+  const profile = disciplineCapabilityProfiles.find(item => item.key === context.disciplineKey && item.version === context.disciplineVersion);
+  if (!profile?.capabilities.some(item => item.id === context.definition.id && item.version === context.definition.version)) return null;
+  const proposal=capabilityImplementations.find(item => item.id === context.definition.id && item.version === context.definition.version)?.evaluate(context);
+  return proposal ? { ...proposal,activityGeneration:context.activityGeneration,disciplineKey:context.disciplineKey,disciplineVersion:context.disciplineVersion } : null;
 }
 
-// Binding belongs to the discipline, not to the generic notification engine.
-// Keep this module dependency-free so Deno and Next.js use the same definition.
-export const footballCapabilityProfile = {
-  key: "football", version: "1.0.0",
-  capabilities: [targetTeamSize({ activityTypeSlugs: ["match-tavling"], categories: ["competition"] })],
-} as const;
-
-export const disciplineCapabilityProfiles = [footballCapabilityProfile] as const;
-
-export type TeamSizeNotificationPayload = {
-  title?: string;
-  acceptedPlayers?: number;
-  targetTeamSize?: number;
-  pendingPlayers?: number;
-  responseDeadlinePassed?: boolean;
-};
-
-export function teamSizeNotificationContent(payload: TeamSizeNotificationPayload) {
-  const accepted = payload.acceptedPlayers ?? 0;
-  const target = payload.targetTeamSize ?? 0;
-  const pending = payload.pendingPlayers ?? 0;
-  const action = pending > 0 && !payload.responseDeadlinePassed
-    ? `${pending} spelare har inte svarat. Öppna matchen i Förena för att påminna dem eller kalla fler spelare.`
-    : "Öppna matchen i Förena för att kalla fler spelare.";
-  return {
-    subject: `Matchtruppen behöver fler spelare: ${payload.title || "Match"}`,
-    text: `${accepted} av önskade ${target} spelare har tackat ja. Det saknas ${Math.max(0, target - accepted)} spelare. ${action}`,
-  };
+/** Pagination must progress even when an entire page produces no notifications. */
+export async function collectCapabilityNotifications(
+  load: (afterActivityId: string | null, afterCapabilityId: string) => Promise<CapabilityContext[]>,
+): Promise<CapabilityNotification[]> {
+  const proposals: CapabilityNotification[] = [];
+  let afterActivityId: string | null = null;
+  let afterCapabilityId = "";
+  let examined = 0;
+  while (examined < 500) {
+    const contexts = await load(afterActivityId, afterCapabilityId);
+    if (!contexts.length) break;
+    for (const context of contexts) {
+      examined++;
+      const proposal = evaluateDisciplineCapability(context);
+      if (proposal) proposals.push(proposal);
+      if (examined === 500) return proposals;
+    }
+    const last = contexts[contexts.length - 1];
+    if (last.activityId === afterActivityId && last.definition.id === afterCapabilityId) throw new Error("Capability cursor did not advance");
+    afterActivityId = last.activityId;
+    afterCapabilityId = last.definition.id;
+  }
+  return proposals;
 }
