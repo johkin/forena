@@ -544,7 +544,7 @@ alter table public.section_discipline_defaults add constraint section_discipline
 alter table public.team_discipline_defaults add constraint team_discipline_defaults_version_check check(length(version) between 1 and 80);
 create or replace function public.save_discipline_defaults(target_type_id uuid,target_scope text,target_organization_id uuid,target_scope_id uuid,expected_revision integer,expected_discipline_id uuid,expected_version text,patch jsonb)
 returns uuid language plpgsql security definer set search_path='' as $$
-declare result uuid; section_id uuid; actual_discipline uuid; discipline_key text; t public.activity_types; table_name text; scope_column text;
+declare result uuid; section_id uuid; actual_discipline uuid; v_discipline_key text; t public.activity_types; table_name text; scope_column text;
 begin
  if not coalesce(public.can_manage_discipline_defaults(target_scope,target_organization_id,target_scope_id),false) then raise exception 'Forbidden' using errcode='42501'; end if;
  if target_scope='team' then
@@ -552,12 +552,12 @@ begin
  else section_id:=target_scope_id; end if;
  select s.discipline_id into actual_discipline from public.sections s where s.id=section_id and s.organization_id=target_organization_id for share;
  if actual_discipline is null or actual_discipline is distinct from expected_discipline_id then raise exception 'Discipline changed; reload' using errcode='40001'; end if;
- select key into discipline_key from public.disciplines where id=actual_discipline;
- if not exists(select 1 from private.discipline_packages p where p.discipline_key=save_discipline_defaults.discipline_key and p.version=expected_version and p.active) then raise exception 'Discipline changed; reload' using errcode='40001'; end if;
+ select key into v_discipline_key from public.disciplines where id=actual_discipline;
+ if not exists(select 1 from private.discipline_packages p where p.discipline_key=v_discipline_key and p.version=expected_version and p.active) then raise exception 'Discipline changed; reload' using errcode='40001'; end if;
  select * into t from public.activity_types where id=target_type_id for share;
  if t.id is null or not t.active or (t.organization_id is not null and t.organization_id is distinct from target_organization_id)
  or (t.discipline_id is not null and t.discipline_id is distinct from actual_discipline)
- or expected_revision is null or expected_revision<0 or not public.validate_discipline_defaults_patch(patch,discipline_key,t.slug,t.system_category)
+ or expected_revision is null or expected_revision<0 or not public.validate_discipline_defaults_patch(patch,v_discipline_key,t.slug,t.system_category)
  then raise exception 'Invalid defaults' using errcode='22023'; end if;
  -- Identifiers derive exclusively from the two authorized scopes, never input.
  table_name:=target_scope||'_discipline_defaults'; scope_column:=target_scope||'_id';
