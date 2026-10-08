@@ -481,3 +481,12 @@ returneras tomma matchlistor och lagkapten/källa döljs. Direkta försök att l
 deltagaruppgifter eller ange en lagkapten nekas innan spelarurval kontrolleras.
 Övriga matchfält kan fortfarande ändras med `activity.manage`; den dolda
 lagkaptenen och dess källa bevaras vid sådan skrivning utan svarskontroll.
+
+## Matchtruppsnotiser
+
+`notification_outbox` kan läsas via Data API av den inloggade mottagaren. För
+`team_size_shortage` räcker inte radens `user_id`: RLS kräver aktuell
+`invitation.manage` och aktiv laganknytning för aktivitetens klubb/lag. En privat,
+auth-bunden policyfunktion gör denna kontroll utan att öppna ett publikt RPC för
+medlemsdata. Avbrutna notiser rensas på svarsräknare, målantal och deadlineflagga.
+Leveransens behörighetskontroll finns kvar som ytterligare skydd.

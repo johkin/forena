@@ -4,7 +4,7 @@ vi.mock("@/lib/activity-settings-access", () => ({ activitySettingsAccess: mocks
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect, unstable_rethrow: mocks.rethrow }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }));
 import { saveTargetDiscipline } from "./activity-settings-actions";
-function form() { const f = new FormData(); for (const [k,v] of Object.entries({ organizationSlug:"club", scope:"team", scopeId:"e3000000-0000-0000-0000-000000000001", discipline_id:"e4000000-0000-0000-0000-000000000001" })) f.set(k,v); return f; }
+function form() { const f = new FormData(); for (const [k,v] of Object.entries({ organizationSlug:"club", scope:"section", scopeId:"e2000000-0000-0000-0000-000000000001", discipline_id:"e4000000-0000-0000-0000-000000000001" })) f.set(k,v); return f; }
 beforeEach(() => { vi.clearAllMocks(); mocks.access.mockResolvedValue({ supabase:{ rpc:mocks.rpc }, organization:{ id:"org" } }); mocks.rpc.mockResolvedValue({ error:null }); mocks.rethrow.mockImplementation(() => {}); });
 describe("discipline action status", () => {
   it.each([["organizationSlug","../invalid"],["scope","unknown"]])("handles invalid %s with a safe redirect",async (key,value)=>{const f=form();f.set(key,value);await expect(saveTargetDiscipline(f)).rejects.toThrow("/?error=");expect(mocks.rpc).not.toHaveBeenCalled();expect(mocks.access).not.toHaveBeenCalled();});

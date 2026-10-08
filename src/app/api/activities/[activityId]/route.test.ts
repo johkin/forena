@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { FALLBACK_ACTIVITY_DEFAULTS } from "@/lib/activity-defaults";
+import { BASE_DISCIPLINE_DEFAULTS } from "@/lib/discipline-defaults";
 import { scheduleActivityTimes } from "@/lib/activity-time-rules";
 const mocks=vi.hoisted(()=>({client:vi.fn(),update:vi.fn(),type:vi.fn()}));
 vi.mock("@/lib/supabase/server",()=>({createClient:mocks.client}));
 vi.mock("@/lib/activity-configuration",()=>({requireActivityType:mocks.type}));
 import { PUT } from "./route";
-const rules={...FALLBACK_ACTIVITY_DEFAULTS, duration:"PT60M", gatheringRule:"start", invitationRule:"start-6d", responseDueRule:"start-6h", reminderRules:["deadline-2h"]};
+const rules={...BASE_DISCIPLINE_DEFAULTS, duration:"PT60M", gatheringRule:"start", invitationRule:"start-6d", responseDueRule:"start-6h", reminderRules:["deadline-2h"]};
 const start="2030-10-20T16:00:00Z";
 const times=scheduleActivityTimes(start,"Europe/Stockholm",rules);
 let current: Record<string,unknown>;

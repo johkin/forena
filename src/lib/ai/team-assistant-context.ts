@@ -14,7 +14,7 @@ function validTimeZone(value: unknown, fallback: string) {
 
 export async function loadTeamAssistantContext(input: TeamAssistantInput, { supabase, userId }: AssistantDependencies) {
   const { teamId } = input;
-  const { data: team } = await supabase.from("teams").select("id, organization_id, section_id, discipline_id, name").eq("id", teamId).maybeSingle();
+  const { data: team } = await supabase.from("teams").select("id, organization_id, section_id, name").eq("id", teamId).maybeSingle();
   if (!team) throw new TeamAssistantError("team-not-found", "Laget kunde inte hittas.");
 
   const [
@@ -39,7 +39,7 @@ export async function loadTeamAssistantContext(input: TeamAssistantInput, { supa
   if (!canViewTeam && !(personalMemberships ?? []).length) throw new TeamAssistantError("team-forbidden", "Du saknar åtkomst till laget.");
 
   const [{ data: organization }, { data: activities }, { data: section }, { data: memories }] = await Promise.all([
-    supabase.from("organizations").select("name, assistant_name, time_zone, discipline_id").eq("id", team.organization_id).single(),
+    supabase.from("organizations").select("name, assistant_name, time_zone").eq("id", team.organization_id).single(),
     supabase.from("activities").select("id, activity_type_id, title, description_markdown, gathering_at, starts_at, ends_at, location").eq("team_id", teamId).neq("status", "cancelled").gte("ends_at", new Date().toISOString()).order("starts_at").limit(5),
     supabase.from("sections").select("discipline_id, name").eq("id", team.section_id).maybeSingle(),
     supabase.from("assistant_memories")
@@ -49,7 +49,7 @@ export async function loadTeamAssistantContext(input: TeamAssistantInput, { supa
       .order("updated_at", { ascending: false })
       .limit(80),
   ]);
-  const disciplineId = team.discipline_id ?? section?.discipline_id ?? organization?.discipline_id ?? null;
+  const disciplineId = section?.discipline_id ?? null;
   const relevantMemories = (memories ?? [])
     .filter((memory) => memory.discipline_id === null || memory.discipline_id === disciplineId)
     .slice(0, 40);

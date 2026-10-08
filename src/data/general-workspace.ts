@@ -44,7 +44,7 @@ export async function getGeneralWorkspace(organizationSlug: string, sectionSlug?
 
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getUser();
-  const { data: organizationRow } = await supabase.from("organizations").select("id, slug, name, assistant_name, time_zone, discipline_id").eq("slug", organizationSlug).maybeSingle();
+  const { data: organizationRow } = await supabase.from("organizations").select("id, slug, name, assistant_name, time_zone").eq("slug", organizationSlug).maybeSingle();
   if (!organizationRow) return null;
   const { data: organizationMembership } = authData.user
     ? await supabase.from("organization_members").select("role").eq("organization_id", organizationRow.id).eq("user_id", authData.user.id).maybeSingle()
@@ -52,13 +52,13 @@ export async function getGeneralWorkspace(organizationSlug: string, sectionSlug?
 
   const [{ data: sectionRows }, { data: teamRows }, { data: activityTypes }] = await Promise.all([
     supabase.from("sections").select("id, organization_id, slug, name, discipline_id").eq("organization_id", organizationRow.id).order("name"),
-    supabase.from("teams").select("id, organization_id, section_id, slug, name, season, discipline_id").eq("organization_id", organizationRow.id).order("name"),
+    supabase.from("teams").select("id, organization_id, section_id, slug, name, season").eq("organization_id", organizationRow.id).order("name"),
     supabase.from("activity_types").select("id, system_category").or(`organization_id.is.null,organization_id.eq.${organizationRow.id}`),
   ]);
   const sections: Section[] = (sectionRows ?? []).map((row) => ({ id: row.id, organizationId: row.organization_id, slug: row.slug, name: row.name, disciplineId: row.discipline_id ?? undefined }));
   const section = sectionSlug ? sections.find((item) => item.slug === sectionSlug) : undefined;
   if (sectionSlug && !section) return null;
-  const teams: Team[] = (teamRows ?? []).filter((row) => !section || row.section_id === section.id).map((row) => ({ id: row.id, organizationId: row.organization_id, sectionId: row.section_id, slug: row.slug, name: row.name, season: row.season, disciplineId: row.discipline_id ?? undefined }));
+  const teams: Team[] = (teamRows ?? []).filter((row) => !section || row.section_id === section.id).map((row) => ({ id: row.id, organizationId: row.organization_id, sectionId: row.section_id, slug: row.slug, name: row.name, season: row.season, disciplineId: sections.find(item => item.id === row.section_id)?.disciplineId }));
   const teamIds = teams.map((team) => team.id);
   const now = new Date().toISOString();
   const horizon = new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString();
@@ -71,7 +71,7 @@ export async function getGeneralWorkspace(organizationSlug: string, sectionSlug?
     const team = row.team_id ? teamById.get(row.team_id) : undefined;
     return team ? [{ id: row.id, teamId: team.id, teamName: team.name, teamSlug: team.slug, title: row.title, startsAt: row.starts_at, endsAt: row.ends_at, location: row.location, isMatch: matchTypeIds.has(row.activity_type_id) }] : [];
   });
-  const organization: Organization = { id: organizationRow.id, slug: organizationRow.slug, name: organizationRow.name, assistantName: organizationRow.assistant_name, timeZone: organizationRow.time_zone, disciplineId: organizationRow.discipline_id ?? undefined };
+  const organization: Organization = { id: organizationRow.id, slug: organizationRow.slug, name: organizationRow.name, assistantName: organizationRow.assistant_name, timeZone: organizationRow.time_zone };
   const showSections = sections.length > 1;
   const workspaces: Workspace[] = [
     { id: organization.id, kind: "organization", name: organization.name, description: "Föreningsnivå", href: `/o/${organization.slug}`, active: !section },

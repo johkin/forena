@@ -2,21 +2,21 @@
 import { redirect, unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { activitySettingsAccess } from "@/lib/activity-settings-access";
-import { normalizeDefaultsPatch } from "@/lib/activity-configuration";
-import type { ActivityDefaultsScope } from "@/lib/activity-defaults";
+import { normalizeDefaultsPatch, loadDefaultsDefinition } from "@/lib/activity-configuration";
+import type { DisciplineDefaultsScope } from "@/lib/discipline-defaults";
 import { isUuid } from "@/lib/ai/assistant-memory-draft";
 
 function target(form: FormData) {
   const slug = String(form.get("organizationSlug") ?? "") || null;
   if (slug && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) throw new Error("Ogiltig förening.");
   const scope = String(form.get("scope"));
-  if (!["system","organization","section","team"].includes(scope)) throw new Error("Ogiltig nivå.");
+  if (!["section","team"].includes(scope)) throw new Error("Ogiltig nivå.");
   const scopeId = String(form.get("scopeId") ?? "") || null;
   const path = slug ? `/o/${slug}/activity-settings` : "/system/activity-types";
   const query = new URLSearchParams({ scope, ...(scopeId ? { scopeId } : {}) });
-  return { slug, scope: scope as ActivityDefaultsScope, scopeId, path, query };
+  return { slug, scope: scope as DisciplineDefaultsScope, scopeId, path, query };
 }
-export async function saveActivityDefaults(form: FormData) {
+export async function saveDisciplineDefaults(form: FormData) {
   const t = target(form);
   t.query.set("typeId",String(form.get("activityTypeId") ?? ""));
   let errorMessage: string | undefined;
@@ -25,8 +25,10 @@ export async function saveActivityDefaults(form: FormData) {
     const typeId = String(form.get("activityTypeId"));
     const revision = Number(form.get("revision"));
     if (!isUuid(typeId) || !Number.isSafeInteger(revision) || revision < 0) throw new Error("Ogiltiga standardvärden.");
-    const patch = normalizeDefaultsPatch(JSON.parse(String(form.get("values") ?? "{}")));
-    const { error } = await supabase.rpc("save_activity_defaults", { target_type_id: typeId, target_scope: t.scope, target_organization_id: organization?.id ?? null, target_scope_id: t.scopeId, expected_revision: revision, patch });
+    const definition = await loadDefaultsDefinition(supabase, t.scope, t.scopeId!, typeId);
+    if (form.get("disciplineId") !== definition.disciplineId || form.get("version") !== "1.0.0") throw new Error("Disciplinen har ändrats. Ladda om sidan.");
+    const patch = normalizeDefaultsPatch(JSON.parse(String(form.get("values") ?? "{}")), definition);
+    const { error } = await supabase.rpc("save_discipline_defaults", { target_type_id: typeId, target_scope: t.scope, target_organization_id: organization?.id ?? null, target_scope_id: t.scopeId, expected_revision: revision, expected_discipline_id: definition.disciplineId, expected_version: "1.0.0", patch });
     if (error) throw new Error(error.code === "40001" ? "Inställningarna har ändrats. Ladda om sidan och försök igen." : "Standardvärdena kunde inte sparas.");
   } catch (error) { unstable_rethrow(error); errorMessage = error instanceof Error ? error.message : "Standardvärdena kunde inte sparas."; }
   t.query.set(errorMessage ? "error" : "saved", errorMessage ?? "1");
@@ -55,7 +57,7 @@ export async function saveTargetDiscipline(form: FormData) {
     const { supabase, organization } = await activitySettingsAccess(t.slug, t.scope, t.scopeId);
     const disciplineId = String(form.get("discipline_id") ?? "") || null;
     if (disciplineId && !isUuid(disciplineId)) throw new Error("Ogiltig disciplin.");
-    if (t.scope === "system" || !organization || !t.scopeId) throw new Error("Ogiltigt mål.");
+    if (t.scope !== "section" || !organization || !t.scopeId) throw new Error("Ogiltigt mål.");
     const { error } = await supabase.rpc("set_activity_discipline", { target_scope: t.scope, target_organization_id: organization.id, target_scope_id: t.scopeId, target_discipline_id: disciplineId });
     if (error) throw new Error("Disciplinen kunde inte sparas.");
   } catch (error) {
