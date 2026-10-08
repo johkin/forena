@@ -24,5 +24,14 @@ select ok((select attempts=1 and last_error='22023' and run_at>now() from privat
 update private.scheduled_tasks set attempts=4,run_at=now() where task_key='invalid-profile';
 select public.run_due_scheduled_tasks('{}');
 select is((select status from private.scheduled_tasks where task_key='invalid-profile'),'failed','Five failed attempts stop execution');
+select public.schedule_task('rolling-worker','discipline_notifications',now());
+select is((public.run_due_scheduled_tasks('[]')->>'completed')::integer,0,'Old profile worker does not consume discipline schedule');
+select ok((select status='pending' and attempts=0 and run_at<=now() from private.scheduled_tasks where task_key='rolling-worker'),'Old worker leaves work due without failure');
+select is((public.run_due_scheduled_tasks('{"proposals":[]}')->>'completed')::integer,1,'Evaluated empty batch completes normally');
+select public.schedule_task('evaluation-error','discipline_notifications',now());
+select public.schedule_task('healthy-after-error','activity_reminders',now());
+select is((public.run_due_scheduled_tasks('{"error":"context_read_failed"}')->>'failed')::integer,1,'External evaluation error gets durable retry');
+select is((select last_error from private.scheduled_tasks where task_key='evaluation-error'),'58000','Evaluation failure is recorded without sensitive details');
+select is((select status from private.scheduled_tasks where task_key='healthy-after-error'),'completed','Context read failure does not prevent other handlers');
 select * from finish();
 rollback;

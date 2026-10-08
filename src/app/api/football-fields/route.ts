@@ -8,7 +8,7 @@ const target = z.object({
   teamId: z.uuid(), scope: z.enum(["team", "teamMembership", "activity", "activityParticipation"]),
   activityId: z.uuid().optional(), personId: z.uuid().optional(),
 });
-const change = target.extend({ values: z.unknown(), revision: z.number().int().min(0), captainSource: z.enum(["teamPlayers", "acceptedActivityPlayers"]) });
+const change = target.extend({ values: z.unknown(), revision: z.number().int().min(0), captainSource: z.enum(["teamPlayers", "acceptedActivityPlayers"]).optional() });
 const headers = { "Cache-Control": "private, no-store" };
 const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers });
 
@@ -26,12 +26,16 @@ async function handle(request: Request, save: boolean) {
   if (changeInput) {
     const validated = footballSchemas[input.scope].safeParse(changeInput.values);
     if (!validated.success) return json({ error: "Kontrollera fälten och försök igen." }, 400);
+    const source = input.scope === "activity" && "captainSource" in validated.data ? validated.data.captainSource : undefined;
+    if (source && changeInput.captainSource && source !== changeInput.captainSource) return json({ error: "Motstridiga spelarurval." }, 400);
+    // The RPC accepts the old selected_source argument during deployment,
+    // while new forms keep the source in the discipline-owned activity values.
     values = validated.data as Json;
   }
   const { data, error } = await supabase.rpc("football_fields", {
     target_team_id: input.teamId, target_scope: input.scope,
     target_activity_id: input.activityId ?? null, target_person_id: input.personId ?? null,
-    ...(changeInput ? { new_values: values!, expected_revision: changeInput.revision, selected_source: changeInput.captainSource } : {}),
+    ...(changeInput ? { new_values: values!, expected_revision: changeInput.revision, selected_source: changeInput.captainSource ?? "acceptedActivityPlayers" } : {}),
   });
   if (error) {
     const messages: Record<string, [number, string]> = {

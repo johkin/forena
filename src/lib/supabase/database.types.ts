@@ -327,6 +327,7 @@ export interface Database {
       materialize_due_activity_invitations: { Args: { batch_size?: number }; Returns: number };
       queue_due_activity_invitations: { Args: { batch_size?: number }; Returns: number };
       schedule_task: { Args: { task_key: string; task_kind: string; scheduled_for: string; recurrence_seconds?: number }; Returns: string };
+      load_capability_contexts: { Args: { after_activity_id?: string | null; after_capability_id?: string; batch_size?: number }; Returns: Json };
       run_due_scheduled_tasks: { Args: { profiles: Json; batch_size?: number }; Returns: Json };
       claim_notification_outbox: { Args: { batch_size?: number }; Returns: Database["public"]["Tables"]["notification_outbox"]["Row"][] };
       get_activity_delivery_status: { Args: { target_activity_id: string }; Returns: Json };

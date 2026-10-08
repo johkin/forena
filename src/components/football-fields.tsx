@@ -7,7 +7,7 @@ import type { PlayerSource } from "@/lib/disciplines/field-rules";
 type Scope = Exclude<DisciplineScope, "section">;
 type Values = Record<string, string | number | string[]>;
 type Player = { id: string; name: string };
-type Result = { canManageInvitations: boolean; enabled: boolean; editable: boolean; values: Values; revision: number; captainSource: PlayerSource; teamPlayers: Player[]; acceptedPlayers: Player[]; participants: Player[] };
+type Result = { canManageInvitations: boolean; enabled: boolean; editable: boolean; values: Values; revision: number; teamPlayers: Player[]; acceptedPlayers: Player[]; participants: Player[] };
 type Props = { teamId: string; scope: Scope; activityId?: string; personId?: string; readOnly?: boolean };
 const titles = { team: "Matchförval", teamMembership: "Spelaruppgifter", activity: "Matchuppgifter", activityParticipation: "Spelarens matchuppgifter" };
 const labels: Record<string, string> = { ...Object.fromEntries(footballPositions.map(p => [p.id, p.name])), ...Object.fromEntries(footballPackage.gameFormats.map(f => [f.id, f.name])), home: "Hemma", away: "Borta", neutral: "Neutral plan" };
@@ -34,7 +34,7 @@ function FootballEditor({ teamId, scope, activityId, personId, readOnly = false 
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Uppgifterna kunde inte hämtas.");
       if (controller.signal.aborted) return;
-      setResult(data); setValues(data.values ?? {}); setSource(data.captainSource ?? "acceptedActivityPlayers"); setEditing(false); setError("");
+      setResult(data); setValues(data.values ?? {}); setSource((data.values?.captainSource as PlayerSource) ?? "acceptedActivityPlayers"); setEditing(false); setError("");
     }).catch(cause => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Uppgifterna kunde inte hämtas."); });
     return () => controller.abort();
   }, [query, reload]);
@@ -50,10 +50,10 @@ function FootballEditor({ teamId, scope, activityId, personId, readOnly = false 
     if (!result || busy || readOnly || !result.editable || invalidCaptain) return;
     setBusy(true); setError(""); setNotice("");
     try {
-      const response = await fetch("/api/football-fields", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ teamId, scope, activityId, personId, values, revision: result.revision, captainSource: source }) });
+      const response = await fetch("/api/football-fields", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ teamId, scope, activityId, personId, values: scope === "activity" && result.canManageInvitations ? { ...values, captainSource: source } : values, revision: result.revision }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Uppgifterna kunde inte sparas.");
-      setResult(data); setValues(data.values); setSource(data.captainSource); setEditing(false); setNotice("Sparat.");
+      setResult(data); setValues(data.values); setSource((data.values.captainSource as PlayerSource) ?? "acceptedActivityPlayers"); setEditing(false); setNotice("Sparat.");
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Uppgifterna kunde inte sparas."); }
     finally { setBusy(false); }
   }
@@ -90,7 +90,7 @@ function FootballEditor({ teamId, scope, activityId, personId, readOnly = false 
           return <label key={field}>{schema.title}{schema.enum ? <select aria-label={schema.title} value={String(values[field] ?? "")} onChange={event => setValue(field, event.target.value || undefined)}><option value="">Inte angivet</option>{schema.enum.map(option => <option key={String(option)} value={String(option)}>{labels[String(option)] ?? String(option)}</option>)}</select> : <input type="number" min={schema.minimum} max={schema.maximum} step={1} value={String(values[field] ?? "")} onChange={event => setValue(field, event.target.value === "" ? undefined : Number(event.target.value))}/>}</label>;
         })}
       </fieldset>
-      <div className="football-actions"><button type="submit" className="primary" disabled={busy || invalidCaptain || readOnly || !result.editable}>{busy ? "Sparar…" : "Spara"}</button><button type="button" className="secondary" disabled={busy} onClick={() => { setValues(result.values); setSource(result.captainSource); setEditing(false); setError(""); }}>Avbryt</button></div>
+      <div className="football-actions"><button type="submit" className="primary" disabled={busy || invalidCaptain || readOnly || !result.editable}>{busy ? "Sparar…" : "Spara"}</button><button type="button" className="secondary" disabled={busy} onClick={() => { setValues(result.values); setSource((result.values.captainSource as PlayerSource) ?? "acceptedActivityPlayers"); setEditing(false); setError(""); }}>Avbryt</button></div>
     </form> : null}
     {scope === "activity" && result && result.participants.length ? <details className="settings-item"><summary>Spelarnas matchuppgifter</summary><label>Spelare<select aria-label="Spelare" value={selectedPlayer} onChange={event => setSelectedPlayer(event.target.value)}><option value="">Välj spelare</option>{result.participants.map(player => <option key={player.id} value={player.id}>{player.name}</option>)}</select></label>{selectedPlayer ? <FootballFields teamId={teamId} scope="activityParticipation" activityId={activityId} personId={selectedPlayer} readOnly={readOnly}/> : null}</details> : null}
   </section>;

@@ -50,6 +50,7 @@ export const footballSchemas = {
     requiredGoalkeepers: z.number().int().min(0).max(10).meta({ title: "Önskat antal målvakter" }).optional(),
     periods: z.number().int().min(1).max(10).meta({ title: "Antal perioder" }).optional(),
     periodMinutes: z.number().int().min(1).max(120).meta({ title: "Minuter per period" }).optional(),
+    captainSource: z.enum(captainReference.allowedSources).meta({ title: "Spelarurval för lagkapten" }).optional(),
     captainPersonId: z.string().uuid().meta({ title: "Lagkapten", "x-player-reference": captainReference }).optional(),
     venue: z.enum(["home", "away", "neutral"]).meta({ title: "Hemma/borta" }).optional(),
   }),
@@ -84,6 +85,9 @@ export const footballPackage = {
 export function validateFootballData(scope: DisciplineScope, input: unknown, context?: PlayerReferenceContext) {
   const parsed = footballSchemas[scope].parse(input);
   if ("captainPersonId" in parsed && parsed.captainPersonId !== undefined) {
+    if ("captainSource" in parsed && parsed.captainSource !== undefined && parsed.captainSource !== context?.source) {
+      throw new Error("Spelarurvalet matchar inte den verifierade kontexten.");
+    }
     validatePlayerReference(parsed.captainPersonId, captainReference, context);
   }
   if ("positions" in parsed && parsed.positions && new Set(parsed.positions).size !== parsed.positions.length) {

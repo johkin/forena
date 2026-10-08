@@ -56,10 +56,16 @@ Närvaro och avstängningar ingår inte i dessa extrafält.
 
 ## Lagring och native-formulär
 
-`private.football_values` lagrar versionsrefererad JSONB per lag, lagmedlemskap,
+`private.discipline_values` lagrar versionsrefererad JSONB per lag, lagmedlemskap,
 match eller matchdeltagare. Medlemskapets värden är förankrade i lag + person;
 personens övriga lag får egna värden. Tabellen har RLS och saknar direkta
-klienträttigheter. Den är fotbollens lagring, inte en generell plugininstallation.
+klienträttigheter. Varje rad har `discipline_id`, paketversion och revision.
+Unik nyckel omfattar disciplin och objekt, så olika discipliner kan lagra värden
+för samma objekt utan att skriva över varandra. Sammansatta främmande nycklar
+hindrar kopplingar till person, lag eller aktivitet från en annan klubb.
+Migreringen byter namn på den befintliga tabellen och behåller ID:n, värden och
+revisioner. `section_discipline_defaults` och `team_discipline_defaults` är fortsatt
+separata tabeller för ärvda inställningar.
 
 `GET/PUT /api/football-fields` använder den inloggade användarens Supabase-klient
 och RPC:n `football_fields`. RPC:n härleder klubben från laget och verifierar
@@ -94,9 +100,15 @@ kräva att användaren förstår paketscheman eller plugininstallationer. Gröna
 är uppskjutet som möjlig första plugin; inget sådant fält ingår här.
 
 Paketversioner måste behållas så länge lagrade värden använder dem. En generell
-schemaeditor, paketuppgraderingsflöden, pluginlagring och plugin-MCP återstår.
+schemaeditor, paketuppgraderingsflöden och externa tilläggsgränssnitt återstår.
 
 ## Spelarreferenser och villkorade fält
+
+`captainSource` är ett fotbollsfält i aktivitetens `values`, tillsammans med
+`captainPersonId`. Den generella tabellen har ingen `captain_source`-kolumn.
+Endast aktivitetsschemat accepterar fältet. RPC:ns äldre `selected_source`-argument
+och toppnivåfält `captainSource` i svaret finns tillfälligt för kompatibilitet;
+nya formulär skickar och läser källan i `values`.
 
 `captainPersonId` är ett valfritt person-UUID på aktiviteten, inte ett namn eller
 flera separata deltagarflaggor. Fältets `x-player-reference` i JSON Schema och
@@ -136,7 +148,7 @@ lagkaptenen och dess källa bevaras vid sådan skrivning utan svarskontroll.
 
 Ett disciplinpaket kan komponera återanvändbara `capabilities`. Första förmågan
 är `targetTeamSize`: fältdefinition, valideringsgränser, aktivitetstillämplighet
-och en deklarativ notifieringsregel. Fotboll aktiverar den för `match-tavling`
+och implementation av kontroller och notifieringsförslag. Fotboll aktiverar den för `match-tavling`
 i kategorin `competition`. Innebandy kan använda samma fabrik för sina matchtyper;
 dess lagring och paketkoppling behöver då också införas. Ingen annan disciplin
 aktiveras automatiskt av ett liknande fältnamn eller en tävlingskategori.
@@ -144,8 +156,19 @@ aktiveras automatiskt av ett liknande fältnamn eller en tävlingskategori.
 Den beroendefria definitionen finns i
 `supabase/functions/_shared/discipline-capabilities.ts` och används både av
 fotbollspaketets TypeScript-DSL och notifieringsarbetaren. Appens Zod-fält hämtar
-sina gränser från samma capability. Databasens privata värdeadapter kopplar
-fotbollens befintliga lagring till den gemensamma regelmotorn.
+sina gränser från samma capability. `ActivityCapabilityDefinition` är serialiserbar och lagras som ögonblicksbild.
+`ActivityCapabilityImplementation` erbjuder `validateValue` och `evaluate(context)`.
+`targetTeamSizeImplementation` äger truppbrist, tillämplighet, aktivitetsstatus,
+framtida start, närmast förfallna kontroll, tidigare kontroller, deadline och
+meddelandetext. `evaluate` returnerar ett komplett notifieringsförslag eller `null`.
+Runtime-implementationer registreras separat från definitionerna; funktioner
+skickas aldrig till formulär eller lagras i JSON.
+
+`load_capability_contexts` levererar paginerade fakta om disciplinvärden,
+aktivitet, sparad regel, kallelser och kontrollmarkeringar. Spelarroller och lokala
+medlemskapsdatum tolkas av den behöriga dataadaptern. Capabilityn läser inga tabeller
+och utför ingen leverans. Arbetaren fortsätter efter sidor utan notifieringsförslag,
+så fyllda trupper inte blockerar senare matcher.
 
 Notifieringen är avstängd i capability-definitionens grundförval. Sektion eller
 lag kan aktivera den och välja högst fem kontrolltider, 1–720 förflutna timmar före
@@ -183,8 +206,13 @@ utskick. Nya kontroller använder aktuella värden. Text, länk och push-tag ska
 vid köläggning; leveransarbetaren konsumerar ett färdigt meddelande.
 
 Utvärderingen körs av `scheduled-task-worker`, separat från leverans. Dess
-registrerade disciplinuppgift anropar `queue_due_capability_notifications` med
-kodägda profiler. RPC:n är service-only; ingen användar- eller assistentfritext
+registrerade disciplinuppgift kör de kodägda capability-implementationerna.
+`run_due_scheduled_tasks` tar därefter emot deras förslag (det kompatibla
+argumentnamnet är fortfarande `profiles`). Den privata enqueue-adaptern
+verifierar sparad regel/kontrolltid och löser aktuella behöriga mottagare.
+Meddelande, kontrollmarkering och audit skrivs atomärt. Databasen bedömer inte
+truppbrist eller skapar matchtruppstext. Den äldre SQL-utvärderaren är avvecklad.
+Service-RPC:erna kan inte anropas av användare eller assistenten; ingen fritext
 används som regelkonfiguration. Privata regler och kontrollmarkeringar har RLS
 utan klienträttigheter. Se [schemalagda uppgifter](scheduled-tasks.md).
 
@@ -192,3 +220,12 @@ Notifieringsköns läspolicy ger användaren tillgång till egna rader. För
 `team_size_shortage` krävs dessutom aktuell `invitation.manage` och aktiv
 laganknytning vid varje API-läsning; indragen åtkomst gäller direkt, innan nästa
 arbetarkörning. Vanliga egna kallelser följer den tidigare mottagarregeln.
+
+## Utökning av projektet
+
+Nya discipliner kan använda samma lagring och komponera registrerade capabilities.
+Ett tillägg bidrar med kodägd paketdefinition, schemasäkert/behörighetskontrollerat
+skrivgränssnitt och vid behov runtime-implementation. Förena tillhandahåller
+kontext, mottagarbehörighet, schemaläggning, deduplicering och transport.
+Detta är början på ett API för att utöka opensource-projektet. Dynamisk installation
+eller körning av godtycklig tredjepartskod ingår inte.

@@ -28,9 +28,17 @@ Direkta manuella utskick fattar beslut i användarens skrivtransaktion.
 `scheduled-task-worker` och `notification-worker` anropas av två oberoende
 pg_cron/pg_net-jobb med samma befintliga Vault-token. Leveransen väntar aldrig
 på lyckad domänutvärdering. Uppgifter låses med FOR UPDATE SKIP LOCKED. Varje
-handler körs i en subtransaktion; fel rullar tillbaka dess domänändringar och
+SQL-handler körs i en subtransaktion; fel rullar tillbaka dess domänändringar och
 outbox-INSERT men hindrar inte andra uppgifter. Ett avbrutet RPC rullar tillbaka
-hela transaktionen och frigör låsen; inga processing-rader lämnas kvar.
+hela enqueue-transaktionen och frigör låsen; inga processing-rader lämnas kvar.
+Disciplinernas rena capability-utvärdering sker i TypeScript före detta RPC.
+Den läser fakta via service-only `load_capability_contexts`, följer dess cursor
+och skickar högst 500 färdiga förslag. Lästa fakta är beslutsunderlaget; svar eller
+behörighet kan ändras därefter. Enqueue-adaptern kontrollerar aktuell mottagarbehörighet
+innan notifieringen skapas. Den försöker inte åstadkomma transaktionsisolering
+mellan TypeScript-utvärderingen och senare ändrade kallelsesvar.
+Misslyckad kontexthämtning eller utvärdering skickas som handlerfel till scheduler-RPC:n,
+så disciplinuppgiften får beständig backoff medan andra uppgifter kan köras.
 
 Misslyckade uppgifter får exponentiell backoff, högst fem försök. Därefter är
 status failed och drift behöver undersöka last_error (SQLSTATE), rätta orsaken
@@ -51,3 +59,8 @@ lyckad migration och från samma CI-verifierade commit. Det separata
 worker-workflowet finns som manuell återställningsväg från main.
 Inga nya hemligheter behövs. pg_cron ger upp till cirka en minut till utvärdering
 plus cirka en minut till leverans när de oberoende jobben kör i omvänd ordning.
+
+Vid uppgradering till capability-implementationer fortsätter äldre arbetare
+kallelse- och påminnelseuppgifter, men lämnar disciplinuppgiften förfallen tills
+nya arbetaren är driftsatt. Gamla profilarrayer kan inte köa notifieringar eller
+förbruka disciplinuppgiftens schema. Inga redan köade meddelanden ändras.
