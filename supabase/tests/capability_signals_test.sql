@@ -72,6 +72,8 @@ select ok(not has_table_privilege('authenticated','public.signal_actions','INSER
 select ok(not has_function_privilege('authenticated','public.claim_signal_contexts(integer)','EXECUTE'),'Clients cannot claim work');
 select ok(not has_function_privilege('authenticated','public.apply_signal_evaluations(jsonb)','EXECUTE'),'Clients cannot forge evaluations');
 reset role;
+-- Role reset preserves JWT claims; restore the manager for the activity mutation.
+select set_config('request.jwt.claim.sub','fc000000-0000-4000-8000-000000000001',true);
 update public.activities set starts_at=now()-interval '2 hours',ends_at=now()-interval '1 hour',response_due_at=now()-interval '3 hours'
  where id='fc600000-0000-4000-8000-000000000001';
 update private.discipline_activity_events set status='processed',processed_at=now() where activity_id='fc600000-0000-4000-8000-000000000001';
