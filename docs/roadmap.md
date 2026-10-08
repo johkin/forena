@@ -43,6 +43,7 @@
 - [x] Lista obesvarade kallelser och köa manuell påminnelse
 - [x] Logga kallelse-, påminnelse- och svarshändelser i aktivitetshistoriken
 - [x] Worker för notification outbox med claim, retries och backoff
+- [x] Separat beständig schemaläggning för affärsuppgifter; outbox levererar färdiga meddelanden utan omprövning
 - [x] Rensa avslutade notifieringar och leveransdetaljer efter 90 dagar när aktiviteten också har avslutats; behåll historikevent
 - [ ] Före uppskalning: dimensionera notifieringskön för samtidiga utskick till stora föreningar (nu högst 25 mottagare per minut), parallella workers, lämpliga köindex och övervakning av köfördröjning
 - [x] Kör notification worker i Supabase Edge Function
@@ -232,7 +233,7 @@ validering och krav på förhandsgranskning ligger alltid i applikationslagret.
 - [x] Använd tillämpliga sparade delade minnen i assistentens påminnelseförslag och visa minneskällorna före bekräftelse
 - [ ] Återanvänd minnesstyrd påminnelsebedömning i Signal Engine och den proaktiva lagöversikten
 - [ ] Stöd uttryckligen aktiverade strukturerade regler för automatiska kontextkänsliga påminnelser; fritextminnen aktiverar aldrig utskick
-- [x] Återanvändbar `targetTeamSize`-capability: notifiera fotbollslagets kallelsehanterare vid för få ja-svar; ärvd aktivering och valbara kontrolltider från disciplin → sektion → lag, snapshot vid skapande, deduplicering och omprövning före leverans
+- [x] Återanvändbar `targetTeamSize`-capability: notifiera fotbollslagets kallelsehanterare vid för få ja-svar; ärvd aktivering och valbara kontrolltider från disciplin → sektion → lag, snapshot vid skapande, deduplicering och utvärdering före köläggning
 - [ ] Anpassningsbart namn och visuell identitet
 - [ ] Återanvänd Signal Engine och arbetsytekontext i assistenten
 - [ ] Låt UI och assistent anropa samma typade applikationskommandon

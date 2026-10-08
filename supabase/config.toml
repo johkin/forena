@@ -7,6 +7,9 @@ project_id = "forena"
 [functions.notification-worker]
 verify_jwt = false
 
+[functions.scheduled-task-worker]
+verify_jwt = false
+
 [api]
 enabled = true
 # Port to use for the API URL.

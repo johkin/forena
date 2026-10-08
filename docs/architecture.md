@@ -202,6 +202,16 @@ Skrivkommandot kontrollerar mål och behörighet på både server- och databasni
 aktivitetsskrivning. Se [aktiviteters tidsregler](activity-time-rules.md).
 
 
+## Schemalagda uppgifter och utgående kö
+
+`private.scheduled_tasks` lagrar när registrerade uppgifter ska köras.
+`scheduled-task-worker` utvärderar kallelser, påminnelser och disciplinregler
+oberoende av leveransarbetaren. Beslut och köläggning sker atomärt; texten
+materialiseras vid INSERT i outbox. `notification-worker` läser det generiska
+`message`-fältet och hanterar transport och återförsök utan domänläsningar eller
+omprövning. `scheduled_at` i outbox gäller enbart transportens återförsök.
+Se [schemalagda uppgifter](scheduled-tasks.md).
+
 ## Deltagande och arbetsuppgifter
 
 `invitations.activity_role` beskriver rollen i just aktiviteten och ger aldrig
