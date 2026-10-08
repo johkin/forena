@@ -1044,3 +1044,13 @@ body:has(.squad-save-bar) .assistant-launcher { bottom:calc(84px + env(safe-area
 .discipline-fields .settings-checkbox { display: flex; align-items: center; min-height: 44px; }
 .discipline-fields input[type="checkbox"] { width: 20px; min-height: 20px; flex-shrink: 0; }
 .discipline-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.capability-signal-list { display: grid; gap: 12px; margin-top: 16px; min-width: 0; }
+.capability-signal { display: grid; gap: 8px; min-width: 0; padding: 16px; border: 1px solid var(--line, #dfe4df); border-radius: 14px; overflow-wrap: anywhere; }
+.capability-signal[data-severity="warning"] { border-left: 4px solid #ad751e; }
+.capability-signal p { margin: 0; }
+.capability-signal small { color: #557069; }
+.signal-activity-link { background: transparent; border: 0; padding: 4px 0; min-height: 44px; text-align: left; color: inherit; text-decoration: underline; }
+.signal-actions { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.signal-actions > * { min-height: 44px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.signal-confirmation { display: grid; gap: 10px; border-top: 1px solid #dfe4df; padding-top: 12px; }

@@ -1,6 +1,8 @@
 "use client";
 
 import type { Activity, InvitationSummary, TeamTask } from "@/domain/club";
+import type { TeamSignal } from "@/lib/capability-signals";
+import { CapabilitySignalList } from "./capability-signal-list";
 
 type Props = {
   teamName: string;
@@ -8,6 +10,7 @@ type Props = {
   summary: InvitationSummary;
   upcomingActivities: Activity[];
   tasks: TeamTask[];
+  signals?: TeamSignal[];
   timeZone: string;
   referenceTime: string;
   reminderPending: boolean;
@@ -27,7 +30,8 @@ type TeamItem = {
   onClick?: () => void;
 };
 
-export function TeamOverview({ teamName, activity, summary, upcomingActivities, tasks, timeZone, referenceTime, reminderPending, canManageInvitations, canManageAttendance, onOpenActivity, onOpenAttendance, onSendReminder, missingAttendanceActivities = [] }: Props) {
+export function TeamOverview({ teamName, activity, summary, upcomingActivities, tasks, signals = [], timeZone, referenceTime, reminderPending, canManageInvitations, canManageAttendance, onOpenActivity, onOpenAttendance, onSendReminder, missingAttendanceActivities = [] }: Props) {
+  const visibleSignals = canManageInvitations ? signals : [];
   const start = activity ? new Intl.DateTimeFormat("sv-SE", { timeZone, weekday: "long", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(activity.gatheringAt ?? activity.startsAt)) : undefined;
   const weekLimit = new Date(referenceTime).getTime() + 7 * 24 * 60 * 60 * 1000;
   const nextSevenDays = upcomingActivities.filter((item) => new Date(item.startsAt).getTime() <= weekLimit).length;
@@ -42,7 +46,7 @@ export function TeamOverview({ teamName, activity, summary, upcomingActivities, 
     });
   }
 
-  if (activity && canManageInvitations && summary.pending > 0) {
+  if (activity && canManageInvitations && summary.pending > 0 && !visibleSignals.some(signal => signal.activityId === activity.id)) {
     items.push({
       id: `invitation:${activity.id}`,
       kind: "invitation",
@@ -67,7 +71,7 @@ export function TeamOverview({ teamName, activity, summary, upcomingActivities, 
     <details className="overview-details" open>
     <summary className="card-heading">
       <div><p className="eyebrow">Ansvar</p><h2 id="team-overview-title">För laget</h2></div>
-      {items.length ? <span className="badge">{items.length}</span> : null}
+      {items.length + visibleSignals.length ? <span className="badge">{items.length + visibleSignals.length}</span> : null}
     </summary>
 
     {activity ? <button className="team-next-activity" onClick={() => onOpenActivity(activity)} type="button">
@@ -92,7 +96,8 @@ export function TeamOverview({ teamName, activity, summary, upcomingActivities, 
         </button>
         {item.kind === "invitation" && activity && canManageInvitations ? <button className="secondary reminder-action" disabled={reminderPending} onClick={() => onSendReminder(activity)} type="button">{reminderPending ? "Köar…" : "Skicka påminnelse"}</button> : null}
       </div>)}
-    </div> : <p className="overview-empty">Inget särskilt behöver hanteras för laget just nu.</p>}
+    </div> : !visibleSignals.length ? <p className="overview-empty">Inget särskilt behöver hanteras för laget just nu.</p> : null}
+    {visibleSignals.length ? <CapabilitySignalList signals={visibleSignals} activities={upcomingActivities} timeZone={timeZone} onOpenActivity={onOpenActivity} /> : null}
     </details>
   </section>;
 }

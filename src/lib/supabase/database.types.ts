@@ -228,6 +228,16 @@ export interface Database {
           created_at?: string;
         }
       >;
+      capability_signals: Table<
+        OrganizationScoped & { id: string; team_id: string; activity_id: string; discipline_key: string; discipline_version: string;
+          capability_id: string; type: string; status: "active" | "resolved" | "dismissed"; severity: "info" | "warning";
+          title: string; message: string; facts: Json; actions: Json; episode: number; revision: number;
+          detected_at: string; evaluated_at: string; resolved_at: string | null; dismissed_at: string | null; dismissed_by: string | null }
+      >;
+      signal_actions: Table<
+        Timestamped & OrganizationScoped & { id: string; signal_id: string; episode: number; action_id: string;
+          actor_user_id: string | null; result: Json; source_key: string | null }
+      >;
       team_tasks: Table<
         Timestamped & OrganizationScoped & { id: string; team_id: string; title: string; description: string; due_at: string; status: "open" | "completed"; created_by: string | null; completed_by: string | null; completed_at: string | null; updated_at: string },
         OrganizationScoped & { id?: string; team_id: string; title: string; description?: string; due_at: string; status?: "open" | "completed"; created_by?: string | null; completed_by?: string | null; completed_at?: string | null; created_at?: string; updated_at?: string }
@@ -279,6 +289,12 @@ export interface Database {
     };
     Views: Record<never, never>;
     Functions: {
+      read_team_signals: { Args: { target_team_id: string }; Returns: Json };
+      consume_signal_domain_events: { Args: { batch_size?: number }; Returns: number };
+      dismiss_capability_signal: { Args: { target_signal_id: string; expected_revision: number }; Returns: undefined };
+      capability_signal_action_context: { Args: { target_signal_id: string }; Returns: Json };
+      remind_capability_signal: { Args: { target_signal_id: string; expected_signal_revision: number; expected_input_revision: number }; Returns: number };
+
       discipline_fields: {
         Args: { target_team_id:string; target_scope:string; target_activity_id?:string|null; target_person_id?:string|null; new_values?:Json; expected_revision?:number; expected_discipline_key?:string };
         Returns:Json;

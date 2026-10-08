@@ -49,6 +49,7 @@ export default async function TeamWorkspacePage({ params, searchParams }: Props)
       source={data.source}
       team={data.team}
       tasks={data.tasks}
+      signals={data.signals}
       initialFamilyActivities={data.familyActivities}
       teamPermissions={data.teamPermissions}
       canAdministerOrganization={data.canAdministerOrganization}

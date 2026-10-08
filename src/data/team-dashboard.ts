@@ -1,3 +1,5 @@
+import { teamSignalSchema, type TeamSignal } from "@/lib/capability-signals";
+import { z } from "zod";
 import {
   activity as demoActivity,
   invitations as demoInvitations,
@@ -23,6 +25,7 @@ export type TeamDashboardData = {
   invitations: Invitation[];
   workspaces: Workspace[];
   tasks: TeamTask[];
+  signals: TeamSignal[];
   familyActivities: FamilyActivity[];
   canManageTeam: boolean;
   teamPermissions: TeamPermission[];
@@ -46,6 +49,7 @@ function demoDashboard(): TeamDashboardData {
     invitations: demoInvitations,
     workspaces: demoWorkspaces,
     tasks: demoTasks,
+    signals: [],
     familyActivities: [],
     canManageTeam: true,
     teamPermissions: ["team.view", "team.manage", "activity.manage", "invitation.manage", "attendance.manage", "roster.manage", "responsibility.manage", "task.manage"],
@@ -319,6 +323,12 @@ export async function getTeamDashboard(
     responseDueAt: item.response_due_at ?? undefined, reminderSendAt: item.reminder_send_at ?? undefined,
   }));
 
+  const signalResult = canManageInvitations
+    ? await supabase.rpc("read_team_signals", { target_team_id: team.id })
+    : { data: [], error: null };
+  if (signalResult.error) throw new Error("Lagets uppgifter kunde inte hämtas.");
+  const signals = z.array(teamSignalSchema).parse(signalResult.data ?? []);
+
   const tasks: TeamTask[] = (taskRows ?? []).map((task) => ({
     id: task.id,
     organizationId: task.organization_id,
@@ -382,6 +392,6 @@ export async function getTeamDashboard(
     }];
   });
 
-  return { organization, sections: sectionList, team, activity, members, rosterMembers, upcomingActivities, invitations, workspaces, tasks, familyActivities: [...new Map(familyActivities.map(item => [`${item.member.id}:${item.activity.id}`, item])).values()], canManageTeam: canManageCurrentTeam, teamPermissions, canAdministerOrganization: ["owner", "admin"].includes(organizationMembership?.role ?? ""), accountEmail: authData.user.email, respondablePersonIds: familyPersonIds, referenceTime, missingAttendanceActivities, source: "database" };
+  return { organization, sections: sectionList, team, activity, members, rosterMembers, upcomingActivities, invitations, workspaces, tasks, signals, familyActivities: [...new Map(familyActivities.map(item => [`${item.member.id}:${item.activity.id}`, item])).values()], canManageTeam: canManageCurrentTeam, teamPermissions, canAdministerOrganization: ["owner", "admin"].includes(organizationMembership?.role ?? ""), accountEmail: authData.user.email, respondablePersonIds: familyPersonIds, referenceTime, missingAttendanceActivities, source: "database" };
 }
 

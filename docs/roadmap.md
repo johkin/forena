@@ -233,6 +233,7 @@ validering och krav på förhandsgranskning ligger alltid i applikationslagret.
 - [x] Använd tillämpliga sparade delade minnen i assistentens påminnelseförslag och visa minneskällorna före bekräftelse
 - [ ] Återanvänd minnesstyrd påminnelsebedömning i Signal Engine och den proaktiva lagöversikten
 - [ ] Stöd uttryckligen aktiverade strukturerade regler för automatiska kontextkänsliga påminnelser; fritextminnen aktiverar aldrig utskick
+- [x] Beständiga capability-signaler med aktiv/löst/avfärdad status, återaktivering, åtgärdshistorik och revisionskontroll; första signalen gäller matchtrupp, visas under För laget och läses av behörig lagassistent
 - [x] Återanvändbar `targetTeamSize`-capability: notifiera fotbollslagets kallelsehanterare vid för få ja-svar; ärvd aktivering och valbara kontrolltider från disciplin → sektion → lag, snapshot vid skapande, deduplicering och utvärdering före köläggning
 - [ ] Anpassningsbart namn och visuell identitet
 - [ ] Återanvänd Signal Engine och arbetsytekontext i assistenten

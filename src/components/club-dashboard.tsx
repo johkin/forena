@@ -1,5 +1,7 @@
 "use client";
 
+import type { TeamSignal } from "@/lib/capability-signals";
+
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { ActivityEditorModal } from "@/components/activity-editor-modal";
@@ -20,6 +22,7 @@ type Props = {
   initialPage?: "overview" | "calendar";
   organization: Organization; sections: Section[]; team: Team; activity: Activity | null; members: Member[]; rosterMembers: Member[]; upcomingActivities: Activity[];
   initialInvitations: Invitation[]; initialFamilyActivities: FamilyActivity[]; workspaces: Workspace[]; tasks: TeamTask[];
+  signals?: TeamSignal[];
   teamPermissions: TeamPermission[];
   canAdministerOrganization: boolean;
   accountEmail?: string;
@@ -31,7 +34,7 @@ type Props = {
 
 
 
-export function ClubDashboard({ initialPage = "overview", organization, sections, team, activity, members, rosterMembers, upcomingActivities, initialInvitations, initialFamilyActivities, workspaces, tasks, teamPermissions, canAdministerOrganization, accountEmail, respondablePersonIds, referenceTime, missingAttendanceActivities, source }: Props) {
+export function ClubDashboard({ initialPage = "overview", organization, sections, team, activity, members, rosterMembers, upcomingActivities, initialInvitations, initialFamilyActivities, workspaces, tasks, signals = [], teamPermissions, canAdministerOrganization, accountEmail, respondablePersonIds, referenceTime, missingAttendanceActivities, source }: Props) {
   const router = useRouter();
   const currentActivity = activity;
   const canViewTeam = teamPermissions.includes("team.view");
@@ -102,6 +105,7 @@ export function ClubDashboard({ initialPage = "overview", organization, sections
                       summary={summary}
                       upcomingActivities={upcomingActivities}
                       tasks={tasks}
+                      signals={signals}
                       timeZone={organization.timeZone ?? "Europe/Stockholm"}
                       referenceTime={referenceTime}
                       reminderPending={sendingReminder}

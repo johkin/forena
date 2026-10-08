@@ -90,3 +90,17 @@ rensar behandlade händelser efter sju dagar och endast `discipline_activity.han
 audit efter 30 dagar, i begränsade batcher. Rensning sker vid händelseclaim och
 via ett dagligt cron-jobb. Väntande/misslyckade händelser, disciplinvärden och
 beständiga notifieringscheckpoints bevaras. Lagflytt stöds inte av denna ändring.
+
+
+## Beständiga capability-signaler
+
+Capabilities kan lämna strukturerade signaler separat från notifieringsförslag.
+Gemensam lagring hanterar aktiv/löst/avfärdad status, återkomst, revisionskontroll
+och åtgärdshistorik. Utvärderingen körs genom schemaläggningsarbetaren, och
+outbox ansvarar fortsatt endast för leverans. Se [signalernas modell och flöde](capability-signals.md).
+
+Signalernas lyckade utvärderingar schemalägger endast nästa tidsgräns;
+minutjobbet plockar förfallna jobb. Ändrade kallelsesvar publicerar det privata,
+beständiga eventet `activity.invitation_response_changed` i skrivtransaktionen.
+Signalprenumeranten kvitterar och kölägger atomärt; RPC:n är service-only och
+händelsetabellen har RLS utan klientgrants. Se [signalflödet](capability-signals.md).
