@@ -48,7 +48,8 @@ insert into public.invitations(organization_id,activity_id,person_id,activity_ro
 
 -- Acknowledge the created event with the schedule proposed by its capability.
 create temporary table lifecycle_claim as select (e->>'id')::bigint id,(e->>'leaseToken')::uuid token,e
- from jsonb_array_elements(public.claim_discipline_activity_events()) e;
+ from jsonb_array_elements(public.claim_discipline_activity_events()) e
+ where e#>>'{current,id}'='fa600000-0000-4000-8000-000000000001';
 select public.apply_discipline_activity_event(id,token,(select jsonb_agg(jsonb_build_object('kind','schedule','definition',r,
  'beforeStartHours',h::integer,'runAt',(e#>>'{current,startsAt}')::timestamptz-h::integer*interval '1 hour'))
  from jsonb_array_elements(e->'savedRules') r cross join lateral jsonb_array_elements_text(r#>'{notifications,beforeStartHours}') h)) from lifecycle_claim;

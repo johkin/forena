@@ -233,7 +233,7 @@ cross join lateral jsonb_array_elements_text(r.definition#>'{notifications,befor
 create function private.discipline_activity_state(a public.activities) returns jsonb language sql stable set search_path='' as $$
  select jsonb_build_object('id',(a).id,'teamId',(a).team_id,'organizationId',(a).organization_id,'title',(a).title,
  'startsAt',(a).starts_at,'endsAt',(a).ends_at,'status',(a).status,'sourceKind',(a).source_kind,
- 'description',(a).description,'location',(a).location,'responseDueAt',(a).response_due_at,'gatheringAt',(a).gathering_at,'invitationSendAt',(a).invitation_send_at,
+ 'description',(a).description_markdown,'location',(a).location,'responseDueAt',(a).response_due_at,'gatheringAt',(a).gathering_at,'invitationSendAt',(a).invitation_send_at,
  'activityTypeSlug',at.slug,'category',at.system_category) from public.activity_types at where at.id=(a).activity_type_id;
 $$;
 -- Generic transactional capture; package data declares initialization and applicability.
