@@ -121,7 +121,7 @@ grant execute on function public.load_capability_contexts(uuid,text,integer) to 
 
 -- A persistent cooldown provides continuation/fairness without resetting a cursor
 -- to the same first non-notifying page every minute. Claims are at most 100 facts.
-alter table private.activity_capability_rules add column next_evaluation_at timestamptz not null default '-infinity';
+alter table private.activity_capability_rules add column next_evaluation_at timestamptz not null default now();
 create index capability_rules_evaluation_idx on private.activity_capability_rules(next_evaluation_at,activity_id,capability_id);
 create function public.claim_capability_contexts(batch_size integer default 100) returns jsonb
 language sql security definer set search_path='' as $$

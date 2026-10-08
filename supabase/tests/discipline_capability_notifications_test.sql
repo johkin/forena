@@ -136,8 +136,16 @@ update public.section_discipline_defaults set values='{}' where section_id='fa20
 update public.team_discipline_defaults set values='{}' where team_id='fa300000-0000-4000-8000-000000000001';
 select is((select definition#>'{notifications,beforeStartHours}' from private.activity_capability_rules where activity_id='fa600000-0000-4000-8000-000000000012'),'[48]'::jsonb,'Defaults changes preserve existing checkpoint snapshot');
 
-select throws_ok($$select private.queue_evaluated_capability_notifications('{"proposals":[{"activityId":"fa600000-0000-4000-8000-000000000012","capabilityId":"targetTeamSize","beforeStartHours":48,"type":"team_size_shortage","message":{"subject":"broken"}}]}')$$,'22023','Invalid outgoing message','Enqueue failure rolls back the decision');
+-- Use a valid claimed operation to reach the intentional outgoing-message failure.
+create temporary table rollback_claim as select e from jsonb_array_elements(public.claim_discipline_activity_events()) e
+ where e#>>'{current,id}'='fa600000-0000-4000-8000-000000000012';
+select public.apply_discipline_activity_event((e->>'id')::bigint,(e->>'leaseToken')::uuid,
+ (select jsonb_agg(jsonb_build_object('kind','schedule','definition',r,'beforeStartHours',h::integer,
+ 'runAt',(e#>>'{current,startsAt}')::timestamptz-h::integer*interval '1 hour'))
+ from jsonb_array_elements(e->'savedRules') r cross join lateral jsonb_array_elements_text(r#>'{notifications,beforeStartHours}') h)) from rollback_claim;
+select throws_ok($$select private.queue_evaluated_capability_notifications('{"proposals":[{"activityId":"fa600000-0000-4000-8000-000000000012","activityGeneration":0,"disciplineKey":"football","disciplineVersion":"1.0.0","capabilityId":"targetTeamSize","beforeStartHours":48,"type":"team_size_shortage","message":{"subject":"broken"}}]}')$$,'22023','Invalid outgoing message','Enqueue failure rolls back the decision');
 select ok(not exists(select 1 from private.capability_notification_checks where activity_id='fa600000-0000-4000-8000-000000000012'),'Failed message does not consume checkpoint');
+select is(jsonb_array_length(public.claim_capability_contexts(100)),1,'Rolled-back decision leaves work claimable');
 
 -- The app uses the selected-recipient overload. Future decisions belong to the
 -- activity schedule, regardless of which public queue API a client calls.
