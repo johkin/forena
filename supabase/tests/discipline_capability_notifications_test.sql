@@ -136,5 +136,36 @@ insert into public.invitations(organization_id,activity_id,person_id,activity_ro
  ('fa100000-0000-4000-8000-000000000002','fa600000-0000-4000-8000-000000000010','fa500000-0000-4000-8000-000000000005','participant','pending');
 select is(public.queue_due_capability_notifications((select profiles from capability_test_config)),0,'Other club shortage cannot notify first club managers');
 
+-- The app uses the selected-recipient overload. Future decisions belong to the
+-- activity schedule, regardless of which public queue API a client calls.
+insert into public.invitations(organization_id,activity_id,person_id,activity_role)
+select organization_id,'fa600000-0000-4000-8000-000000000001',id,'leader'
+from public.people where user_id='fa000000-0000-4000-8000-000000000001'
+  and organization_id='fa100000-0000-4000-8000-000000000001';
+update public.activities set invitation_send_at=now()+interval '1 hour'
+where id='fa600000-0000-4000-8000-000000000001';
+set local role authenticated;
+select set_config('request.jwt.claim.sub','fa000000-0000-4000-8000-000000000001',true);
+select throws_ok($$select public.queue_activity_invitation('fa600000-0000-4000-8000-000000000001',
+ array[(select id from public.people where user_id='fa000000-0000-4000-8000-000000000001'
+  and organization_id='fa100000-0000-4000-8000-000000000001')])$$,
+ '22023','Use the activity invitation schedule for future invitations','Selected-recipient API cannot send a future invitation immediately');
+select throws_ok($$select public.queue_activity_invitation('fa600000-0000-4000-8000-000000000001')$$,
+ '22023','Use the activity invitation schedule for future invitations','All-recipient API has the same guard');
+reset role;
+select is((select count(*)::integer from public.notification_outbox where type='activity_invitation'
+ and payload->>'activityId'='fa600000-0000-4000-8000-000000000001'),0,'Rejected future requests enqueue nothing');
+update public.activities set invitation_send_at=now()-interval '1 minute'
+where id='fa600000-0000-4000-8000-000000000001';
+set local role authenticated;
+select set_config('request.jwt.claim.sub','fa000000-0000-4000-8000-000000000001',true);
+select is(public.queue_activity_invitation('fa600000-0000-4000-8000-000000000001',
+ array[(select id from public.people where user_id='fa000000-0000-4000-8000-000000000001'
+  and organization_id='fa100000-0000-4000-8000-000000000001')]),1,'Due selected invitation is still queued immediately');
+select is(public.queue_activity_invitation('fa600000-0000-4000-8000-000000000001',
+ array[(select id from public.people where user_id='fa000000-0000-4000-8000-000000000001'
+  and organization_id='fa100000-0000-4000-8000-000000000001')]),0,'Selected-recipient API retains deduplication');
+reset role;
+
 select * from finish();
 rollback;

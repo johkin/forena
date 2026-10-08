@@ -436,3 +436,83 @@ begin
   return queued_count;
 end;
 $$;
+
+-- Apply the same domain scheduling guard to the selected-recipient API used by the app.
+create or replace function public.queue_activity_invitation(
+  target_activity_id uuid,
+  target_person_ids uuid[]
+)
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  target_activity public.activities%rowtype;
+  queued_count integer := 0;
+begin
+  select * into target_activity
+  from public.activities
+  where id = target_activity_id;
+
+  if target_activity.id is null or target_activity.team_id is null then
+    raise exception 'Activity not found';
+  end if;
+  if not public.has_team_permission(target_activity.team_id, 'invitation.manage') then
+    raise exception 'Not allowed';
+  end if;
+
+  if target_activity.invitation_send_at>now() then
+    raise exception 'Use the activity invitation schedule for future invitations' using errcode='22023';
+  end if;
+
+  with invited_people as (
+    select distinct invitation.person_id
+    from public.invitations invitation
+    where invitation.activity_id = target_activity_id
+      and invitation.person_id = any(target_person_ids)
+  ),
+  recipients as (
+    select distinct person.user_id
+    from invited_people invited
+    join public.people person on person.id = invited.person_id
+    where person.user_id is not null
+    union
+    select distinct guardian.guardian_user_id
+    from invited_people invited
+    join public.person_guardians guardian on guardian.person_id = invited.person_id
+  ),
+  inserted as (
+    insert into public.notification_outbox (
+      organization_id, user_id, type, payload, scheduled_at, status
+    )
+    select
+      target_activity.organization_id,
+      recipient.user_id,
+      'activity_invitation',
+      jsonb_build_object(
+        'activityId', target_activity.id,
+        'teamId', target_activity.team_id,
+        'title', target_activity.title,
+        'startsAt', target_activity.starts_at,
+        'location', target_activity.location
+      ),
+      now(),
+      'pending'
+    from recipients recipient
+    where not exists (
+      select 1
+      from public.notification_outbox existing
+      where existing.user_id = recipient.user_id
+        and existing.type = 'activity_invitation'
+        and existing.payload ->> 'activityId' = target_activity.id::text
+        and existing.status <> 'cancelled'
+        and not (existing.status = 'failed' and existing.attempts >= 5)
+    )
+    returning id
+  )
+  select count(*) into queued_count from inserted;
+
+  return queued_count;
+end;
+$function$;
