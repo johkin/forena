@@ -62,7 +62,7 @@ describe("team-size notification content", () => {
 describe("targetTeamSize runtime", () => {
   const context: CapabilityContext = {
     activityId: "activity", teamId: "team", organizationId: "club", disciplineKey: "football",
-    disciplineVersion: "1.0.0", currentDisciplineKey: "football", definition: footballPackage.capabilities[0],
+    disciplineVersion: "1.0.0", activityGeneration: 7, currentDisciplineKey: "football", definition: footballPackage.capabilities[0],
     values: { targetTeamSize: 10 }, evaluatedAt: "2026-10-08T12:00:00Z", title: "Match",
     startsAt: "2026-10-10T12:00:00Z", responseDueAt: "2026-10-09T12:00:00Z",
     status: "published", sourceKind: "manual", activityTypeSlug: "match-tavling", category: "competition",
@@ -111,6 +111,16 @@ describe("targetTeamSize runtime", () => {
       definition: targetTeamSize({ activityTypeSlugs: ["floorball-match"], categories: ["competition"] }) };
     expect(targetTeamSizeImplementation.evaluate(other)?.payload.targetTeamSize).toBe(10);
     expect(evaluateDisciplineCapability(other)).toBeNull(); // Not registered as a package yet.
+  });
+  it("attaches trusted lifecycle identity outside capability business code",()=>{
+    expect(evaluateDisciplineCapability(context)).toMatchObject({activityGeneration:7,disciplineKey:"football",disciplineVersion:"1.0.0"});
+  });
+  it("bounds work even if no examined activity produces a notification", async () => {
+    let pages=0;
+    const result=await collectCapabilityNotifications(async()=>Array.from({length:100},(_,index)=>({
+      ...context,activityId:`${++pages}-${index}`,acceptedPlayers:100,
+    })));
+    expect(result).toEqual([]);expect(pages).toBe(500);
   });
   it("paginates past a non-notifying page and preserves its cursor", async () => {
     const calls: unknown[] = [];

@@ -67,3 +67,26 @@ förbruka disciplinuppgiftens schema. Inga redan köade meddelanden ändras.
 
 
 Disciplinuppgiften konsumerar först `private.discipline_activity_events`. Registrerad `onActivity` returnerar atomärt applicerade värde- och schemaoperationer; därefter laddas förfallna `private.discipline_operations` för capability-utvärdering. Händelser för samma aktivitet är ordnade och leased; fem fel kräver återställning av operatör. Andra aktiviteters arbete fortsätter. Se [disciplinernas livscykel](disciplines.md#disciplinkatalog-och-aktivitetshändelser).
+
+
+Disciplinernas bakgrundsarbete är begränsat till 500 utvärderade kontexter per
+arbetarkörning, även när ingen ger en notifiering. Service-RPC:n
+`claim_capability_contexts` väljer högst 100 åt gången och sparar nästa möjliga
+utvärderingstid på regeln. Äldst väntande arbete väljs först; fortsättning kräver
+inte en cursor som börjar om från samma första sida. Aktuell disciplin filtreras
+innan spelarantal räknas. Ingen spelarbristlogik har flyttats till SQL.
+
+Varje aktivitetsändring får en serverägd generation. Förslaget bär generation,
+disciplin och version; enqueue verifierar dem under aktivitetslåset samt att
+operationen fortfarande väntar och att inga äldre livscykelhändelser återstår.
+Inaktuella förslag avvisas utan checkpoint eller outbox-rad. Kallelsesvar och
+mottagarbehörighet kan fortfarande ändras efter beslutet; färdiga outbox-meddelanden
+omprövas inte.
+
+En lagkö tillåter högst 500 nya händelser per minut och 2 000 obehandlade
+händelser. Kontrollen serialiseras per lag och avvisar hela aktivitetsändringen
+om gränsen nås; redan mottagna händelser tappas inte eller slås ihop. Databasen
+rensar behandlade händelser efter sju dagar och endast `discipline_activity.handled`
+audit efter 30 dagar, i begränsade batcher. Rensning sker vid händelseclaim och
+via ett dagligt cron-jobb. Väntande/misslyckade händelser, disciplinvärden och
+beständiga notifieringscheckpoints bevaras. Lagflytt stöds inte av denna ändring.

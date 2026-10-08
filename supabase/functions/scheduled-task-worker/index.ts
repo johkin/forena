@@ -17,9 +17,9 @@ Deno.serve(async (request: Request) => {
   let evaluation: { proposals: Awaited<ReturnType<typeof collectCapabilityNotifications>> } | { error: string };
   try {
     await processDisciplineActivityEvents(supabase);
-    const proposals = await collectCapabilityNotifications(async (afterActivityId, afterCapabilityId) => {
-      const { data, error } = await supabase.rpc("load_capability_contexts", {
-        after_activity_id: afterActivityId, after_capability_id: afterCapabilityId, batch_size: 100,
+    const proposals = await collectCapabilityNotifications(async () => {
+      const { data, error } = await supabase.rpc("claim_capability_contexts", {
+        batch_size: 100,
       });
       if (error) throw error;
       return data ?? [];

@@ -7,7 +7,8 @@ const capabilityImplementations = disciplineRuntimes.flatMap(runtime => runtime.
 export function evaluateDisciplineCapability(context: CapabilityContext): CapabilityNotification | null {
   const profile = disciplineCapabilityProfiles.find(item => item.key === context.disciplineKey && item.version === context.disciplineVersion);
   if (!profile?.capabilities.some(item => item.id === context.definition.id && item.version === context.definition.version)) return null;
-  return capabilityImplementations.find(item => item.id === context.definition.id && item.version === context.definition.version)?.evaluate(context) ?? null;
+  const proposal=capabilityImplementations.find(item => item.id === context.definition.id && item.version === context.definition.version)?.evaluate(context);
+  return proposal ? { ...proposal,activityGeneration:context.activityGeneration,disciplineKey:context.disciplineKey,disciplineVersion:context.disciplineVersion } : null;
 }
 
 /** Pagination must progress even when an entire page produces no notifications. */
@@ -17,13 +18,15 @@ export async function collectCapabilityNotifications(
   const proposals: CapabilityNotification[] = [];
   let afterActivityId: string | null = null;
   let afterCapabilityId = "";
-  while (proposals.length < 500) {
+  let examined = 0;
+  while (examined < 500) {
     const contexts = await load(afterActivityId, afterCapabilityId);
     if (!contexts.length) break;
     for (const context of contexts) {
+      examined++;
       const proposal = evaluateDisciplineCapability(context);
       if (proposal) proposals.push(proposal);
-      if (proposals.length === 500) return proposals;
+      if (examined === 500) return proposals;
     }
     const last = contexts[contexts.length - 1];
     if (last.activityId === afterActivityId && last.definition.id === afterCapabilityId) throw new Error("Capability cursor did not advance");

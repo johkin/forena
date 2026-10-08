@@ -11,6 +11,7 @@ export type ActivityCapabilityDefinition = {
 /** Facts supplied by authorized infrastructure, never by a form or assistant. */
 export type CapabilityContext = {
   activityId: string;
+  activityGeneration?: number;
   teamId: string;
   organizationId: string;
   disciplineKey: string;
@@ -34,6 +35,9 @@ export type CapabilityContext = {
 
 export type CapabilityNotification = {
   activityId: string;
+  activityGeneration?: number;
+  disciplineKey?: string;
+  disciplineVersion?: string;
   capabilityId: string;
   beforeStartHours: number;
   type: string;

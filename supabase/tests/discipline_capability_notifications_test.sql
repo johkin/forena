@@ -53,6 +53,13 @@ create temporary table lifecycle_claim as select (e->>'id')::bigint id,(e->>'lea
 select public.apply_discipline_activity_event(id,token,(select jsonb_agg(jsonb_build_object('kind','schedule','definition',r,
  'beforeStartHours',h::integer,'runAt',(e#>>'{current,startsAt}')::timestamptz-h::integer*interval '1 hour'))
  from jsonb_array_elements(e->'savedRules') r cross join lateral jsonb_array_elements_text(r#>'{notifications,beforeStartHours}') h)) from lifecycle_claim;
+-- Retained values from another discipline must not duplicate a cursor key.
+insert into public.disciplines(key,name) values('capability-other','Other test discipline');
+insert into private.discipline_values(discipline_id,organization_id,team_id,scope,activity_id,values)
+select d.id,a.organization_id,a.team_id,'activity',a.id,'{}' from public.disciplines d cross join public.activities a
+where d.key='capability-other' and a.id='fa600000-0000-4000-8000-000000000001';
+select is(jsonb_array_length(public.claim_capability_contexts(1)),1,'Claim gets only the current discipline');
+select is(jsonb_array_length(public.claim_capability_contexts(1)),0,'Cooldown avoids repeated non-notifying work in the same run');
 -- Read infrastructure facts without evaluating shortage, applicability or text.
 create temporary table loaded_contexts as select public.load_capability_contexts() as contexts;
 select is((select jsonb_array_length(contexts) from loaded_contexts),1,'Loads due creation-time rules');
@@ -68,7 +75,7 @@ select throws_ok($$select public.queue_due_capability_notifications('[]')$$,'220
 
 -- Proposal fixture represents a decision made by the registered implementation.
 create temporary table capability_proposals(evaluation jsonb);
-insert into capability_proposals values ('{"proposals":[{"activityId":"fa600000-0000-4000-8000-000000000001","capabilityId":"targetTeamSize","beforeStartHours":72,"type":"team_size_shortage","payload":{"acceptedPlayers":2,"pendingPlayers":1,"targetTeamSize":3},"message":{"subject":"Matchtruppen behöver fler spelare: Match","text":"Capability-owned content","url":"/activities/fa600000-0000-4000-8000-000000000001","tag":"shortage"}}]}');
+insert into capability_proposals values ('{"proposals":[{"activityId":"fa600000-0000-4000-8000-000000000001","activityGeneration":0,"disciplineKey":"football","disciplineVersion":"1.0.0","capabilityId":"targetTeamSize","beforeStartHours":72,"type":"team_size_shortage","payload":{"acceptedPlayers":2,"pendingPlayers":1,"targetTeamSize":3},"message":{"subject":"Matchtruppen behöver fler spelare: Match","text":"Capability-owned content","url":"/activities/fa600000-0000-4000-8000-000000000001","tag":"shortage"}}]}');
 select is(private.queue_evaluated_capability_notifications((select evaluation from capability_proposals)),1,'Only current invitation manager receives the proposal');
 select is(private.queue_evaluated_capability_notifications((select evaluation from capability_proposals)),0,'Repeated proposal is idempotent');
 select is((select message->>'text' from public.notification_outbox where type='team_size_shortage'),'Capability-owned content','Infrastructure preserves capability text');
@@ -82,6 +89,16 @@ select is(private.queue_evaluated_capability_notifications((select evaluation fr
 -- The next proposal may use another saved checkpoint; recipient authority is fresh.
 update public.activities set starts_at=now()+interval '20 hours',ends_at=now()+interval '21 hours' where id='fa600000-0000-4000-8000-000000000001';
 update capability_proposals set evaluation=jsonb_set(evaluation,'{proposals,0,beforeStartHours}','24');
+select is(private.queue_evaluated_capability_notifications((select evaluation from capability_proposals)),0,'Old generation cannot enqueue after a reschedule');
+create temporary table reschedule_claim as select e from jsonb_array_elements(public.claim_discipline_activity_events()) e
+ where e#>>'{current,id}'='fa600000-0000-4000-8000-000000000001';
+select public.apply_discipline_activity_event((e->>'id')::bigint,(e->>'leaseToken')::uuid,
+ (select jsonb_agg(jsonb_build_object('kind','schedule','definition',r,'beforeStartHours',h::integer,
+ 'runAt',(e#>>'{current,startsAt}')::timestamptz-h::integer*interval '1 hour'))
+ from jsonb_array_elements(e->'savedRules') r cross join lateral jsonb_array_elements_text(r#>'{notifications,beforeStartHours}') h)) from reschedule_claim;
+update capability_proposals set evaluation=jsonb_set(evaluation,'{proposals,0,activityGeneration}',
+ (select to_jsonb(discipline_generation) from public.activities where id='fa600000-0000-4000-8000-000000000001'));
+
 update public.team_access_assignments set ends_on=current_date-1,starts_on=current_date-2 where team_id='fa300000-0000-4000-8000-000000000001';
 select is(private.queue_evaluated_capability_notifications((select evaluation from capability_proposals)),0,'Removed manager is rejected before enqueue');
 select ok(not exists(select 1 from private.capability_notification_checks where before_start_hours=24),'No checkpoint consumed without recipients');
@@ -98,7 +115,7 @@ reset role;
 select is((select status from public.claim_notification_outbox(100) where type='team_size_shortage'),'processing','Delivery does not recheck revoked authority');
 select set_config('request.jwt.claim.sub','',true);
 update public.team_access_assignments set ends_on=null where team_id='fa300000-0000-4000-8000-000000000001';
-select throws_ok($$select private.queue_evaluated_capability_notifications('{"proposals":[{"activityId":"fa600000-0000-4000-8000-000000000001","capabilityId":"targetTeamSize","beforeStartHours":12,"type":"team_size_shortage"}]}')$$,'22023','Invalid capability proposal','Unsaved checkpoint rejected');
+select throws_ok($$select private.queue_evaluated_capability_notifications('{"proposals":[{"activityId":"fa600000-0000-4000-8000-000000000001","activityGeneration":0,"disciplineKey":"football","disciplineVersion":"1.0.0","capabilityId":"targetTeamSize","beforeStartHours":12,"type":"team_size_shortage"}]}')$$,'22023','Invalid capability proposal','Unsaved checkpoint rejected');
 select throws_ok($$insert into public.notification_outbox(organization_id,user_id,type,payload) values
  ('fa100000-0000-4000-8000-000000000001','fa000000-0000-4000-8000-000000000001','team_size_shortage','{}')$$,'22023','Capability notifications require a ready message','SQL transport trigger has no capability renderer');
 select throws_ok($$insert into public.notification_outbox(organization_id,user_id,type,payload,scheduled_at) values
@@ -153,5 +170,27 @@ select is(public.queue_activity_invitation('fa600000-0000-4000-8000-000000000001
   and organization_id='fa100000-0000-4000-8000-000000000001')]),0,'Selected-recipient API retains deduplication');
 reset role;
 
+-- A later non-notifying activity still gets work when an earlier one is on cooldown.
+insert into public.activities(id,organization_id,team_id,activity_type_id,title,starts_at,ends_at,status)
+select 'fa600000-0000-4000-8000-000000000021',organization_id,team_id,activity_type_id,'Fair continuation',starts_at,ends_at,'published'
+ from public.activities where id='fa600000-0000-4000-8000-000000000001';
+insert into private.activity_capability_rules(activity_id,capability_id,definition)
+select 'fa600000-0000-4000-8000-000000000021',capability_id,definition from private.activity_capability_rules
+ where activity_id='fa600000-0000-4000-8000-000000000001'
+ on conflict(activity_id,capability_id) do update set definition=excluded.definition;
+create temporary table fair_claim as select e from jsonb_array_elements(public.claim_discipline_activity_events()) e
+ where e#>>'{current,id}'='fa600000-0000-4000-8000-000000000021';
+select public.apply_discipline_activity_event((e->>'id')::bigint,(e->>'leaseToken')::uuid,
+ (select jsonb_agg(jsonb_build_object('kind','schedule','definition',r,'beforeStartHours',h::integer,
+ 'runAt',(e#>>'{current,startsAt}')::timestamptz-h::integer*interval '1 hour'))
+ from jsonb_array_elements(e->'savedRules') r cross join lateral jsonb_array_elements_text(r#>'{notifications,beforeStartHours}') h)) from fair_claim;
+create temporary table fair_context as select public.claim_capability_contexts(1) as contexts;
+select is((select contexts->0->>'activityId' from fair_context),'fa600000-0000-4000-8000-000000000021','Claims continue to later work instead of repeating the first page');
+update public.activities set status='cancelled',cancelled_at=now() where id='fa600000-0000-4000-8000-000000000021';
+select is(private.queue_evaluated_capability_notifications(jsonb_build_object('proposals',jsonb_build_array(
+ jsonb_build_object('activityId','fa600000-0000-4000-8000-000000000021','capabilityId','targetTeamSize','beforeStartHours',24,
+ 'type','team_size_shortage','activityGeneration',(select contexts->0->'activityGeneration' from fair_context),
+ 'disciplineKey','football','disciplineVersion','1.0.0','message',jsonb_build_object('subject','Obsolete','text','Obsolete','url','/','tag','test'))))),0,'Cancellation invalidates an earlier loaded proposal');
+select ok(not exists(select 1 from private.capability_notification_checks where activity_id='fa600000-0000-4000-8000-000000000021'),'Obsolete proposal consumes no checkpoint');
 select * from finish();
 rollback;
