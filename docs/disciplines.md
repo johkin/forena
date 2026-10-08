@@ -177,8 +177,12 @@ får bara närmast förfallna kontroll, inte flera historiska notiser på en gå
 
 Köläggning och beständig kontrollmarkering sker i samma transaktion, med låsning
 och unik nyckel per match/förmåga/kontrolltid. Markeringen överlever rensning av
-outbox. En full trupp förbrukar inte kontrollen; en senare brist i samma tidsfönster
-kan fortfarande notifieras. Precis före leverans och vid varje försök kontrolleras
+outbox. Ett utskick som avbryts för full trupp eller flyttad match kan frigöra
+kontrollen när alla mottagarnas utskick avbrutits av dessa orsaker och ingen har
+fått notisen. En senare brist eller åter förfallen kontrolltid kan då notifieras.
+Pågående, misslyckade eller redan levererade utskick samt avbrott för indragen
+behörighet behåller markeringen. Leveransmarkeringen bevaras även efter
+outbox-rensning. Precis före leverans och vid varje försök kontrolleras
 match, lagstorlek, svar och mottagarbehörighet igen. Inaktuella notiser avbryts.
 Push och mejlreserv använder befintlig transport och länkar till matchdialogen.
 Notifieringen loggas i auditloggen och förväxlas inte med en skickad kallelse.
@@ -187,3 +191,9 @@ De två interna RPC:erna kan endast anropas av `service_role`. Ingen capability
 eller fritext från användare/assistent får användas som regelkonfiguration till
 arbetaren. Privata regelkopior och kontrollmarkeringar har RLS och saknar
 klienträttigheter. Andra disciplinadaptrar och generell paketuppgradering återstår.
+
+Notifieringsköns läspolicy ger användaren tillgång till egna rader. För
+`team_size_shortage` krävs dessutom aktuell `invitation.manage` och aktiv
+laganknytning vid varje API-läsning; indragen åtkomst gäller direkt, innan nästa
+arbetarkörning. Vid avbruten leverans tas svarsräknare och önskat antal bort ur
+payloaden. Vanliga egna kallelser följer den tidigare mottagarregeln.

@@ -43,7 +43,7 @@ export async function ActivitySettingsPage({ organizationSlug = null, query }: {
   const disciplineKey = disciplines.find(d => d.id === disciplineId)?.key ?? null;
   const typesResult = await supabase.from("activity_types").select("id, name, slug, system_category, discipline_id, organization_id, active").or(org ? `organization_id.is.null,organization_id.eq.${org.id}` : "organization_id.is.null").order("name");
   if (typesResult.error) throw new Error("Aktivitetstyperna kunde inte hämtas.");
-  const types = (typesResult.data ?? []).filter(t => !org || !t.discipline_id || t.discipline_id === disciplineId);
+  const types = (typesResult.data ?? []).filter(t => !org || (t.active && (!t.discipline_id || t.discipline_id === disciplineId)));
   const rows = org && selectedSection ? await loadDisciplineDefaults(supabase, org.id, selectedSection.id, selectedTeam?.id) : [];
   const disciplinePackage = packageForSection(disciplineId, disciplineId, disciplines);
   const hidden = <><input type="hidden" name="organizationSlug" value={organizationSlug ?? ""}/><input type="hidden" name="scope" value={selected?.scope ?? ""}/><input type="hidden" name="scopeId" value={selected?.id ?? ""}/><input type="hidden" name="disciplineId" value={disciplineId ?? ""}/><input type="hidden" name="version" value="1.0.0"/></>;

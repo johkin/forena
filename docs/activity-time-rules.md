@@ -176,8 +176,9 @@ Kör `node tests/run-activity-timing.mjs` från repots rot. Det använder repots
 TypeScript-kompilator (eller `tsc` i PATH), strikt typkontrollerar kärnan,
 kompilerar till en temporär katalog och kör samma testfall som Vitest-wrappern.
 Wrappern `src/lib/activity-time-rules.test.ts` ingår i vanliga `npm test`.
-Ingen npm-installation eller nätverksåtkomst används av den fristående
-körningen om TypeScript redan finns.
+Projektets beroenden måste vara installerade med `npm ci` före körningen.
+Skriptet använder befintliga `node_modules` och installerar ingenting eller
+använder nätverket under själva testkörningen.
 
 Kör även `supabase db reset --local` och `supabase test db` mot en lokal teststack.
 `discipline_defaults_test.sql` verifierar revisionskonflikter, scope/tenant-isolering,
