@@ -76,7 +76,7 @@ update private.football_values set values='{"targetTeamSize":3}' where team_id='
 insert into public.invitations(organization_id,activity_id,person_id,activity_role,response)
 select organization_id,id,'fa500000-0000-4000-8000-000000000004','participant','pending' from public.activities
 where title like 'Excluded %' and title<>'Excluded 7';
-update public.activities set status='cancelled' where title='Excluded 2';
+update public.activities set status='cancelled',cancelled_at=now() where title='Excluded 2';
 update public.activities set source_kind='imported',external_source='capability-test',external_id='imported-match' where title='Excluded 3';
 update public.activities set activity_type_id=(select id from public.activity_types where organization_id is null and slug='traning') where title='Excluded 4';
 update public.activities set starts_at=now()-interval '2 hours',ends_at=now()-interval '1 hour' where title='Excluded 5';
