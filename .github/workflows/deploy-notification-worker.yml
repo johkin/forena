@@ -1,14 +1,6 @@
 name: Deploy notification worker
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "supabase/functions/notification-worker/**"
-      - "supabase/functions/_shared/**"
-      - "supabase/config.toml"
-      - ".github/workflows/deploy-notification-worker.yml"
   workflow_dispatch:
 
 permissions:
@@ -20,6 +12,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: production
@@ -30,6 +23,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
 
       - name: Check required secrets
         shell: bash
@@ -47,6 +42,9 @@ jobs:
         uses: supabase/setup-cli@v3
         with:
           version: 2.118.0
+
+      - name: Deploy scheduled task worker
+        run: supabase functions deploy scheduled-task-worker --project-ref "$SUPABASE_PROJECT_ID"
 
       - name: Deploy notification worker
         run: supabase functions deploy notification-worker --project-ref "$SUPABASE_PROJECT_ID"

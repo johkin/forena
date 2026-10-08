@@ -1,0 +1,28 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+select no_plan();
+-- Existing seeded recurring work is isolated from these synthetic schedules.
+delete from private.scheduled_tasks;
+select ok(not has_table_privilege('authenticated','private.scheduled_tasks','SELECT'),'Tasks are private');
+select ok(not has_function_privilege('anon','public.schedule_task(text,text,timestamptz,integer)','EXECUTE'),'Anonymous callers cannot schedule work');
+select ok(not has_function_privilege('authenticated','public.run_due_scheduled_tasks(jsonb,integer)','EXECUTE'),'Members cannot run privileged jobs');
+select throws_ok($$select public.schedule_task('bad','sql',now(),null)$$,'22023','Invalid scheduled task','Executable job kinds rejected');
+select throws_ok($$select public.schedule_task('bad','activity_invitations',now(),1)$$,'22023','Invalid scheduled task','Recurrence bounded');
+select is(public.schedule_task('once','activity_reminders',now()-interval '1 minute'),
+  public.schedule_task('once','activity_reminders',now()+interval '1 day'),'Key deduplicates schedules');
+select public.schedule_task('future','activity_reminders',now()+interval '1 day');
+select public.schedule_task('repeat','activity_invitations',now()-interval '10 minutes',60);
+select is((public.run_due_scheduled_tasks('[]')->>'completed')::integer,2,'Only due tasks execute');
+select is((select status from private.scheduled_tasks where task_key='once'),'completed','One-off completes');
+select ok((select run_at>now() and run_at<=now()+interval '60 seconds' from private.scheduled_tasks where task_key='repeat'),'Missed repeats jump to next interval');
+select is((public.run_due_scheduled_tasks('[]')->>'completed')::integer,0,'Immediate repeat creates no duplicate run');
+select public.schedule_task('invalid-profile','discipline_notifications',now());
+select public.schedule_task('healthy','activity_reminders',now());
+select is((public.run_due_scheduled_tasks('{}')->>'failed')::integer,1,'Failure recorded independently');
+select is((select status from private.scheduled_tasks where task_key='healthy'),'completed','Other handler still completes');
+select ok((select attempts=1 and last_error='22023' and run_at>now() from private.scheduled_tasks where task_key='invalid-profile'),'Retry stores SQLSTATE and future time');
+update private.scheduled_tasks set attempts=4,run_at=now() where task_key='invalid-profile';
+select public.run_due_scheduled_tasks('{}');
+select is((select status from private.scheduled_tasks where task_key='invalid-profile'),'failed','Five failed attempts stop execution');
+select * from finish();
+rollback;

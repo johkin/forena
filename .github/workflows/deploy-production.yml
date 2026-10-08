@@ -63,6 +63,12 @@ jobs:
       - name: Apply database migrations
         run: supabase db push --linked --yes
 
+      - name: Deploy scheduled task worker after migrations
+        run: supabase functions deploy scheduled-task-worker --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Deploy notification transport after migrations
+        run: supabase functions deploy notification-worker --project-ref "$SUPABASE_PROJECT_ID"
+
   deploy:
     needs: migrate
     runs-on: ubuntu-latest

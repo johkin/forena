@@ -177,23 +177,18 @@ får bara närmast förfallna kontroll, inte flera historiska notiser på en gå
 
 Köläggning och beständig kontrollmarkering sker i samma transaktion, med låsning
 och unik nyckel per match/förmåga/kontrolltid. Markeringen överlever rensning av
-outbox. Ett utskick som avbryts för full trupp eller flyttad match kan frigöra
-kontrollen när alla mottagarnas utskick avbrutits av dessa orsaker och ingen har
-fått notisen. En senare brist eller åter förfallen kontrolltid kan då notifieras.
-Pågående, misslyckade eller redan levererade utskick samt avbrott för indragen
-behörighet behåller markeringen. Leveransmarkeringen bevaras även efter
-outbox-rensning. Precis före leverans och vid varje försök kontrolleras
-match, lagstorlek, svar och mottagarbehörighet igen. Inaktuella notiser avbryts.
-Push och mejlreserv använder befintlig transport och länkar till matchdialogen.
-Notifieringen loggas i auditloggen och förväxlas inte med en skickad kallelse.
+outbox. Markeringen gäller beslutet att köa, även om transporten misslyckas.
+Senare svar, flyttad match eller disciplinbyte ändrar inte ett redan beslutat
+utskick. Nya kontroller använder aktuella värden. Text, länk och push-tag skapas
+vid köläggning; leveransarbetaren konsumerar ett färdigt meddelande.
 
-De två interna RPC:erna kan endast anropas av `service_role`. Ingen capability
-eller fritext från användare/assistent får användas som regelkonfiguration till
-arbetaren. Privata regelkopior och kontrollmarkeringar har RLS och saknar
-klienträttigheter. Andra disciplinadaptrar och generell paketuppgradering återstår.
+Utvärderingen körs av `scheduled-task-worker`, separat från leverans. Dess
+registrerade disciplinuppgift anropar `queue_due_capability_notifications` med
+kodägda profiler. RPC:n är service-only; ingen användar- eller assistentfritext
+används som regelkonfiguration. Privata regler och kontrollmarkeringar har RLS
+utan klienträttigheter. Se [schemalagda uppgifter](scheduled-tasks.md).
 
 Notifieringsköns läspolicy ger användaren tillgång till egna rader. För
 `team_size_shortage` krävs dessutom aktuell `invitation.manage` och aktiv
 laganknytning vid varje API-läsning; indragen åtkomst gäller direkt, innan nästa
-arbetarkörning. Vid avbruten leverans tas svarsräknare och önskat antal bort ur
-payloaden. Vanliga egna kallelser följer den tidigare mottagarregeln.
+arbetarkörning. Vanliga egna kallelser följer den tidigare mottagarregeln.
