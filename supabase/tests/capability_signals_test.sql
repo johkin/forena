@@ -86,17 +86,17 @@ select is(jsonb_array_length(public.claim_signal_contexts()),0,'Idle activity is
 -- Response publication is durable, excludes unchanged answers, and rolls back with writes.
 create temporary table event_count as select count(*) n from private.activity_domain_events;
 savepoint response_write;
-update public.invitations set response='accepted' where activity_id='fc600000-0000-4000-8000-000000000001'
+update public.invitations set response='accepted',responded_at=now() where activity_id='fc600000-0000-4000-8000-000000000001'
  and person_id='fc500000-0000-4000-8000-000000000001';
 rollback to response_write;
 select is((select count(*) from private.activity_domain_events),(select n from event_count),'Rollback also removes event');
-update public.invitations set response='accepted' where activity_id='fc600000-0000-4000-8000-000000000001'
+update public.invitations set response='accepted',responded_at=now() where activity_id='fc600000-0000-4000-8000-000000000001'
  and person_id='fc500000-0000-4000-8000-000000000001';
 select is((select count(*) from private.activity_domain_events),(select n+1 from event_count),'Answer publishes one event');
 select ok(exists(select 1 from private.activity_domain_events where activity_id='fc600000-0000-4000-8000-000000000001'
  and event_type='activity.invitation_response_changed' and payload->>'previousResponse'='pending' and payload->>'response'='accepted'),
  'Response event carries identity and old/new answer');
-update public.invitations set response='accepted' where activity_id='fc600000-0000-4000-8000-000000000001'
+update public.invitations set response='accepted',responded_at=now() where activity_id='fc600000-0000-4000-8000-000000000001'
  and person_id='fc500000-0000-4000-8000-000000000001';
 select is((select count(*) from private.activity_domain_events),(select n+1 from event_count),'Unchanged answer does not publish');
 select is(public.consume_signal_domain_events(),1,'Signal subscriber consumes answer event');
