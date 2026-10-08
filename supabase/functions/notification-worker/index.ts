@@ -3,6 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
 
 import { dutyNotificationContent } from "../_shared/duty-notification.ts";
+import { disciplineCapabilityProfiles, teamSizeNotificationContent } from "../_shared/discipline-capabilities.ts";
 
 type OutboxPayload = {
   reason?: string;
@@ -11,6 +12,10 @@ type OutboxPayload = {
   title?: string;
   startsAt?: string;
   location?: string;
+  acceptedPlayers?: number;
+  targetTeamSize?: number;
+  pendingPlayers?: number;
+  responseDeadlinePassed?: boolean;
 };
 
 type PushSubscriptionRow = {
@@ -36,6 +41,7 @@ function adminClient() {
 function notificationContent(type: string, payload: OutboxPayload) {
   const title = payload.title || "Aktivitet";
   if (type === "duty_update") return dutyNotificationContent(title, payload.reason);
+  if (type === "team_size_shortage") return teamSizeNotificationContent(payload);
   const when = payload.startsAt
     ? new Intl.DateTimeFormat("sv-SE", { dateStyle: "full", timeStyle: "short", timeZone: "Europe/Stockholm" }).format(new Date(payload.startsAt))
     : "";
@@ -166,19 +172,38 @@ Deno.serve(async (request: Request) => {
     return Response.json({ error: "Kunde inte materialisera schemalagda påminnelser." }, { status: 500 });
   }
 
+  const { data: queuedCapabilities, error: capabilityError } = await supabase.rpc("queue_due_capability_notifications", {
+    profiles: disciplineCapabilityProfiles, batch_size: 100,
+  });
+  if (capabilityError) {
+    console.error("discipline_notification_materialization_failed", { runId, code: capabilityError.code, message: capabilityError.message });
+    return Response.json({ error: "Kunde inte köa disciplinens notifieringar." }, { status: 500 });
+  }
+
   const { data: rows, error: claimError } = await supabase.rpc("claim_notification_outbox", { batch_size: 25 });
   if (claimError) {
     console.error("notification_claim_failed", { runId, code: claimError.code, message: claimError.message });
     return Response.json({ error: "Kunde inte hämta notifieringar." }, { status: 500 });
   }
-  console.info("notification_worker.batch", { runId, queuedInvitations, queuedReminders, claimed: rows?.length ?? 0 });
+  console.info("notification_worker.batch", { runId, queuedInvitations, queuedReminders, queuedCapabilities, claimed: rows?.length ?? 0 });
 
   let sent = 0;
   let failed = 0;
   const sentGroups = new Map<string, { organizationId: string; activityId: string; type: string; channel: "push" | "email"; count: number }>();
 
   for (const row of rows ?? []) {
-    const payload = (row.payload ?? {}) as OutboxPayload;
+    let payload = (row.payload ?? {}) as OutboxPayload;
+    if (row.type === "team_size_shortage") {
+      const { data: currentPayload, error: preparationError } = await supabase.rpc("prepare_capability_notification", { target_outbox_id: row.id });
+      if (preparationError) {
+        console.error("capability_notification_validation_failed", { runId, outboxId: row.id, code: preparationError.code });
+        await supabase.from("notification_outbox").update({ status: "failed", scheduled_at: new Date(Date.now() + 5 * 60_000).toISOString(), last_error: "capability_validation_failed" }).eq("id", row.id);
+        failed += 1;
+        continue;
+      }
+      if (!currentPayload) continue;
+      payload = currentPayload as OutboxPayload;
+    }
     const attemptedAt = new Date().toISOString();
     const { data: subscriptionRows, error: subscriptionError } = await supabase
       .from("push_subscriptions")
@@ -243,7 +268,7 @@ Deno.serve(async (request: Request) => {
     if (deliveredChannel) {
       sent += 1;
       await supabase.from("notification_outbox").update({ status: "sent", sent_at: new Date().toISOString(), last_error: null }).eq("id", row.id);
-      if (payload.activityId && row.type !== "duty_update") {
+      if (payload.activityId && (row.type === "activity_invitation" || row.type === "invitation_reminder")) {
         const key = `${payload.activityId}:${row.type}:${deliveredChannel}`;
         const current = sentGroups.get(key);
         sentGroups.set(key, {

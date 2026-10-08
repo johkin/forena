@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { footballCapabilities, targetTeamSizeSchema } from "./capabilities";
 import { validatePlayerReference, playerFieldApplies, type PlayerReferenceRule, type PlayerReferenceContext, type ActivityFieldContext } from "./field-rules";
 
 // Planning formats, not age/competition rules or recommended squad sizes.
@@ -33,7 +34,7 @@ export const footballSchemas = {
   section: z.strictObject({}),
   team: z.strictObject({
     gameFormat: format.optional(),
-    targetTeamSize: z.number().int().min(1).max(100).meta({ title: "Önskad matchtrupp" }).optional(),
+    targetTeamSize: targetTeamSizeSchema,
     requiredGoalkeepers: z.number().int().min(0).max(10).meta({ title: "Önskat antal målvakter" }).optional(),
     periods: z.number().int().min(1).max(10).meta({ title: "Antal perioder" }).optional(),
     periodMinutes: z.number().int().min(1).max(120).meta({ title: "Minuter per period" }).optional(),
@@ -44,7 +45,7 @@ export const footballSchemas = {
   }),
   activity: z.strictObject({
     gameFormat: format.optional(),
-    targetTeamSize: z.number().int().min(1).max(100).meta({ title: "Önskad matchtrupp" }).optional(),
+    targetTeamSize: targetTeamSizeSchema,
     requiredGoalkeepers: z.number().int().min(0).max(10).meta({ title: "Önskat antal målvakter" }).optional(),
     periods: z.number().int().min(1).max(10).meta({ title: "Antal perioder" }).optional(),
     periodMinutes: z.number().int().min(1).max(120).meta({ title: "Minuter per period" }).optional(),
@@ -64,6 +65,7 @@ export const disciplineScopeNames: Record<DisciplineScope, string> = {
 export const footballPackage = {
   key: "football", version: "1.0.0", name: "Fotboll", category: "sport",
   assignmentScope: "section",
+  capabilities: footballCapabilities,
   gameFormats: footballFormats,
   positions: footballPositions,
   schemas: Object.fromEntries(Object.entries(footballSchemas).map(([scope, schema]) => [scope, z.toJSONSchema(schema)])),

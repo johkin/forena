@@ -133,6 +133,14 @@ innan `queueActivityReminder` köar utskicket. Samma skrivkommando används av
 aktivitetsvyn. Ingen modell har ett verktyg för själva köningen. Se
 [assistentminne](assistant-memory.md) för omfattning och skydd.
 
+Kodägda disciplinpaket kan komponera deklarativa `capabilities`. Förmågan
+`targetTeamSize` används av fotboll för matchtruppsnotiser till lagets
+kallelsehanterare vid spelarbrist. Samma beroendefria TypeScript-definition används
+av paketet och Supabase-arbetaren; databasadaptern verifierar disciplin, aktivitet,
+aktuella spelarroller och mottagarbehörigheter. Regelkopior och beständig
+deduplicering lagras privat. Notiserna föreslår åtgärder men skickar inga extra
+spelarpåminnelser utan ledarens bekräftelse. Se [discipliner](disciplines.md).
+
 Återkommande aktivitetsutkast innehåller veckodagar och slutdatum och öppnar
 aktivitetsdialogen i serieläge. Saknas slutdatum måste ledaren ange det innan
 förhandsgranskningen. Utkastet valideras mot samma serieregler som dialogen och

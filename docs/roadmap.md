@@ -232,6 +232,7 @@ validering och krav på förhandsgranskning ligger alltid i applikationslagret.
 - [x] Använd tillämpliga sparade delade minnen i assistentens påminnelseförslag och visa minneskällorna före bekräftelse
 - [ ] Återanvänd minnesstyrd påminnelsebedömning i Signal Engine och den proaktiva lagöversikten
 - [ ] Stöd uttryckligen aktiverade strukturerade regler för automatiska kontextkänsliga påminnelser; fritextminnen aktiverar aldrig utskick
+- [x] Återanvändbar `targetTeamSize`-capability: notifiera fotbollslagets kallelsehanterare vid för få ja-svar 72/24 timmar före match; deduplicera och ompröva före leverans
 - [ ] Anpassningsbart namn och visuell identitet
 - [ ] Återanvänd Signal Engine och arbetsytekontext i assistenten
 - [ ] Låt UI och assistent anropa samma typade applikationskommandon

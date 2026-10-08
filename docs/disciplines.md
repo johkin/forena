@@ -127,3 +127,55 @@ returneras tomma matchlistor och lagkapten/källa döljs. Direkta försök att l
 deltagaruppgifter eller ange en lagkapten nekas innan spelarurval kontrolleras.
 Övriga matchfält kan fortfarande ändras med `activity.manage`; den dolda
 lagkaptenen och dess källa bevaras vid sådan skrivning utan svarskontroll.
+
+## Förmågor (capabilities) och matchtruppsnotiser
+
+Ett disciplinpaket kan komponera återanvändbara `capabilities`. Första förmågan
+är `targetTeamSize`: fältdefinition, valideringsgränser, aktivitetstillämplighet
+och en deklarativ notifieringsregel. Fotboll aktiverar den för `match-tavling`
+i kategorin `competition`. Innebandy kan använda samma fabrik för sina matchtyper;
+dess lagring och paketkoppling behöver då också införas. Ingen annan disciplin
+aktiveras automatiskt av ett liknande fältnamn eller en tävlingskategori.
+
+Den beroendefria definitionen finns i
+`supabase/functions/_shared/discipline-capabilities.ts` och används både av
+fotbollspaketets TypeScript-DSL och notifieringsarbetaren. Appens Zod-fält hämtar
+sina gränser från samma capability. Databasens privata värdeadapter kopplar
+fotbollens befintliga lagring till den gemensamma regelmotorn.
+
+Arbetaren kontrollerar matcher **72 och 24 förflutna timmar före start**.
+När färre spelare har tackat ja än matchens sparade `targetTeamSize` notifieras
+personer med aktiv laganknuten behörighet `invitation.manage`. Klubbadministration
+ensam gör inte en person till mottagare för samtliga lag. Notisen visar ja-svar,
+önskat antal och obesvarade spelarkallelser. Före svarstid föreslås påminnelse
+eller fler kallelser; efter svarstid eller när alla svarat föreslås fler kallelser.
+Inga extra utskick till spelare eller målsmän görs automatiskt. Ledaren granskar
+och skickar genom det befintliga påminnelsekommandot.
+
+Spelarantal utgår från `invitations.activity_role='participant'`, inklusive
+inlånade spelare. Äldre kallelser utan aktivitetsroll använder lagmedlemskapet
+på matchens lokala datum. En explicit ledarroll överstyr spelarens lagmedlemskap.
+Träningar, importerade/inställda/opublicerade/passerade aktiviteter, matcher utan
+önskad lagstorlek och matcher utan spelarkallelser ger ingen notis. Lagets senare
+ändrade matchförval används aldrig som ersättning för matchens sparade värde.
+
+Notifieringsregeln kopieras vid arbetarens första observation av matchen till
+`private.activity_capability_rules`. Senare profilförval ändrar inte den kopian.
+Redigering av matchens start flyttar kontrolltiderna enligt den sparade regeln;
+en redan notifierad kontroll körs inte igen. Vid första driftsättning omfattas
+även befintliga kommande matcher med sparad lagstorlek. Sena matcher får bara
+närmast förfallna kontroll, inte flera historiska notiser på en gång.
+
+Köläggning och beständig kontrollmarkering sker i samma transaktion, med låsning
+och unik nyckel per match/förmåga/kontrolltid. Markeringen överlever rensning av
+outbox. En full trupp förbrukar inte kontrollen; en senare brist i samma tidsfönster
+kan fortfarande notifieras. Precis före leverans och vid varje försök kontrolleras
+match, lagstorlek, svar och mottagarbehörighet igen. Inaktuella notiser avbryts.
+Push och mejlreserv använder befintlig transport och länkar till matchdialogen.
+Notifieringen loggas i auditloggen och förväxlas inte med en skickad kallelse.
+
+De två interna RPC:erna kan endast anropas av `service_role`. Ingen capability
+eller fritext från användare/assistent får användas som regelkonfiguration till
+arbetaren. Privata regelkopior och kontrollmarkeringar har RLS och saknar
+klienträttigheter. Allmän capability-administration och andra disciplinadaptrar
+återstår.
