@@ -2,11 +2,11 @@ import { expect, it } from "vitest";
 import { activitiesByDate, activityRangeDuration } from "./activity-range";
 import { createDutyIntervals, validateDutyBounds } from "./activity-duty-schedule";
 import { previewRuleSingleActivity } from "./activity-series";
-import { FALLBACK_ACTIVITY_DEFAULTS } from "./activity-defaults";
+import { BASE_DISCIPLINE_DEFAULTS } from "./discipline-defaults";
 const zone = "Europe/Stockholm";
 it("creates an 08–18 activity and five assignable two-hour shifts", () => {
  const duration = activityRangeDuration("2026-10-13", "08:00", "2026-10-13", "18:00", zone);
- const activity = previewRuleSingleActivity({ startsOn:"2026-10-13", startTime:"08:00", timeZone:zone, rules:{ ...FALLBACK_ACTIVITY_DEFAULTS, reminderRules:[], duration } });
+ const activity = previewRuleSingleActivity({ startsOn:"2026-10-13", startTime:"08:00", timeZone:zone, rules:{ ...BASE_DISCIPLINE_DEFAULTS, reminderRules:[], duration } });
  const duties = createDutyIntervals("2026-10-13","08:00","18:00",zone,120,3);
  expect(duties).toHaveLength(5);
  expect(() => validateDutyBounds(duties,activity.startsAt,activity.endsAt)).not.toThrow();
@@ -15,7 +15,7 @@ it("creates an 08–18 activity and five assignable two-hour shifts", () => {
 it("resolves a Friday–Sunday cup across the autumn clock change", () => {
  const duration=activityRangeDuration("2026-10-23","18:00","2026-10-25","18:00",zone);
  expect(duration).toBe("PT2940M");
- const activity=previewRuleSingleActivity({startsOn:"2026-10-23",startTime:"18:00",timeZone:zone,rules:{...FALLBACK_ACTIVITY_DEFAULTS,reminderRules:[],duration}});
+ const activity=previewRuleSingleActivity({startsOn:"2026-10-23",startTime:"18:00",timeZone:zone,rules:{...BASE_DISCIPLINE_DEFAULTS,reminderRules:[],duration}});
  expect(activity.endsAt).toBe("2026-10-25T17:00:00.000Z");
  expect([...activitiesByDate([activity],zone,2026,10).keys()]).toEqual(["2026-10-23","2026-10-24","2026-10-25"]);
 });

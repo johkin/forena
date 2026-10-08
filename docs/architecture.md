@@ -137,8 +137,8 @@ Kodägda disciplinpaket kan komponera deklarativa `capabilities`. Förmågan
 `targetTeamSize` används av fotboll för matchtruppsnotiser till lagets
 kallelsehanterare vid spelarbrist. Samma beroendefria TypeScript-definition används
 av paketet och Supabase-arbetaren; databasadaptern verifierar disciplin, aktivitet,
-aktuella spelarroller och mottagarbehörigheter. Regelkopior och beständig
-deduplicering lagras privat. Notiserna föreslår åtgärder men skickar inga extra
+aktuella spelarroller och mottagarbehörigheter. Aktivering och kontrolltider ärvs genom disciplinförval och kopieras vid
+aktivitetens skapande. Regelkopior och beständig deduplicering lagras privat. Notiserna föreslår åtgärder men skickar inga extra
 spelarpåminnelser utan ledarens bekräftelse. Se [discipliner](disciplines.md).
 
 Återkommande aktivitetsutkast innehåller veckodagar och slutdatum och öppnar
@@ -189,11 +189,14 @@ med valfri `discipline_id`; äldre lokala specialtyper förblir föreningsägda.
 Typreferenser använder identitet, medan en databas-trigger kontrollerar lokalt
 ägarskap och lagets effektiva disciplin. Dokumentkopplingar förblir tenantbundna.
 
-`activity_defaults` lagrar sparsamma override-värden, regelversion och revision.
+Disciplinens TypeScript-profil äger grundförval. `section_discipline_defaults` och
+`team_discipline_defaults` lagrar sparsamma överstyrningar med riktiga mål-FK:er,
+disciplinidentitet, paketversion och revision. Arvet är disciplin → sektion → lag;
+klubb- och systemförval finns inte. Sektionen är ensam källa till lagets disciplin.
 `values.options` lagrar valbara interna tidsvärden per fält; listorna ärvs
 oberoende av valda förval och ersätts helt vid lokal override.
 `loadActivityConfiguration` är den gemensamma läsvägen för dialog och assistent;
-`resolveActivityDefaults` är den rena domänfunktionen för fältvis arv.
+`resolveDisciplineDefaults` är den rena domänfunktionen för fältvis arv.
 Skrivkommandot kontrollerar mål och behörighet på både server- och databasnivå.
 `reminder_send_ats` materialiseras atomärt till påminnelsescheman vid samma
 aktivitetsskrivning. Se [aktiviteters tidsregler](activity-time-rules.md).

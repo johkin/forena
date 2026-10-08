@@ -1,9 +1,9 @@
 "use client";
 import { useState } from "react";
-import { type ActivityDefaultsPatch, type ResolvedActivityDefaults } from "@/lib/activity-defaults";
+import { type DisciplineDefaultsPatch, type ResolvedDisciplineDefaults } from "@/lib/discipline-defaults";
 import { normalizeTimingOptions, TIMING_FIELDS, TIMING_LABELS, timingChoices, timingLabel, type TimingField } from "@/lib/activity-timing-options";
 import { ReminderChoices } from "./activity-timing-fields";
-const sources = { system:"System",organization:"Klubb",section:"Sektion",team:"Lag",fallback:"Grundvärde" };
+const sources = { discipline:"Disciplin",section:"Sektion",team:"Lag" };
 
 function ChoiceListEditor({ field, values, onChange }: { field: TimingField; values: string[]; onChange: (values: string[]) => void }) {
   const [amount, setAmount] = useState(field === "duration" ? "90" : "1");
@@ -28,10 +28,17 @@ function ChoiceListEditor({ field, values, onChange }: { field: TimingField; val
   </div>;
 }
 
-export function ActivityDefaultsFields({ initial, resolved }: { initial: ActivityDefaultsPatch; resolved: ResolvedActivityDefaults }) {
+export function DisciplineDefaultsFields({ initial, resolved }: { initial: DisciplineDefaultsPatch; resolved: ResolvedDisciplineDefaults }) {
   const [patch, setPatch] = useState(initial);
   function change(field: TimingField, value: string | string[] | null) { setPatch(current => ({ ...current, [field]: value })); }
-  const options = Object.fromEntries(TIMING_FIELDS.map(field => [field, patch.options?.[field] ?? resolved.options[field]])) as ResolvedActivityDefaults["options"];
+  const [extraHours, setExtraHours] = useState("96");
+  const settings = patch.capabilities?.targetTeamSize;
+  const inherited = resolved.capabilities.targetTeamSize;
+  function changeCapability(field: "notificationsEnabled" | "notificationHours", value: boolean | number[] | null) {
+    setPatch(current => ({ ...current, capabilities: { ...current.capabilities, targetTeamSize: { ...current.capabilities?.targetTeamSize, [field]: value } } }));
+  }
+  const hours = settings?.notificationHours ?? inherited?.notificationHours ?? [];
+  const options = Object.fromEntries(TIMING_FIELDS.map(field => [field, patch.options?.[field] ?? resolved.options[field]])) as ResolvedDisciplineDefaults["options"];
   return <>
     <input type="hidden" name="values" value={JSON.stringify(patch)}/>
     <div className="settings-fields">{TIMING_FIELDS.map(field => {
@@ -43,6 +50,18 @@ export function ActivityDefaultsFields({ initial, resolved }: { initial: Activit
       <small>Gäller: {field === "reminderRules" ? ((current ?? resolved.rules.reminderRules) as string[]).map(value => timingLabel(field, value)).join(", ") || "Inga påminnelser" : timingLabel(field, (current ?? resolved.rules[field]) as string)} · {current == null ? sources[resolved.sources[field].scope] : "Eget förval"}</small>
       </div>;
     })}</div>
+    {inherited ? <fieldset><legend>Önskad matchtrupp · notifiering vid spelarbrist</legend>
+      <p>Kontrollera hur många spelare som tackat ja och meddela lagets kallelseansvariga om truppen är för liten. Inställningen sparas på nya matcher.</p>
+      <label>Aktivering<select value={settings?.notificationsEnabled == null ? "inherit" : String(settings.notificationsEnabled)} onChange={event => changeCapability("notificationsEnabled", event.target.value === "inherit" ? null : event.target.value === "true")}><option value="inherit">Ärv · {inherited.notificationsEnabled ? "På" : "Av"}</option><option value="true">På</option><option value="false">Av</option></select></label>
+      <small>Ärvs från {sources[resolved.capabilitySources.notificationsEnabled!.scope]}.</small>
+      <label className="settings-checkbox"><input type="checkbox" checked={settings?.notificationHours == null} onChange={event => changeCapability("notificationHours", event.target.checked ? null : [...inherited.notificationHours])}/>Ärv kontrolltider · {sources[resolved.capabilitySources.notificationHours!.scope]}</label>
+      {settings?.notificationHours != null ? <>
+        {[...new Set([24,48,72,168,...hours])].sort((a,b) => b-a).map(hour => <label className="settings-checkbox" key={hour}><input type="checkbox" checked={hours.includes(hour)} disabled={!hours.includes(hour) && hours.length >= 5} onChange={event => changeCapability("notificationHours", event.target.checked ? [...hours,hour] : hours.filter(value => value !== hour))}/>{hour % 24 === 0 ? `${hour/24} ${hour === 24 ? "dag" : "dagar"}` : `${hour} timmar`} före matchstart</label>)}
+        <label>Egen kontrolltid i timmar<input type="number" min={1} max={720} step={1} value={extraHours} onChange={event => setExtraHours(event.target.value)}/></label>
+        <button type="button" className="secondary" disabled={hours.length >= 5 || !Number.isInteger(Number(extraHours)) || Number(extraHours)<1 || Number(extraHours)>720 || hours.includes(Number(extraHours))} onClick={() => changeCapability("notificationHours", [...hours,Number(extraHours)])}>Lägg till kontrolltid</button>
+      </> : <p>{hours.map(hour => hour % 24 === 0 ? `${hour/24} ${hour === 24 ? "dag" : "dagar"}` : `${hour} timmar`).join(", ")} före matchstart.</p>}
+      {!hours.length ? <p>Inga kontrolltider valda. Ingen notifiering skickas.</p> : null}
+    </fieldset> : null}
     <details><summary>Valbara tider</summary><p>Listorna ärvs per fält. Egna listor ersätter överordnad nivå. Ett tidigare valt värde behålls även om det tas bort ur listan. Påminnelser räknas före sista svarstid; övriga tider före start.</p>
       {TIMING_FIELDS.map(field => <fieldset key={field}><legend>{TIMING_LABELS[field]}</legend><label className="settings-checkbox"><input type="checkbox" checked={patch.options?.[field] == null} onChange={event => setPatch(current => ({ ...current, options: { ...current.options, [field]: event.target.checked ? null : [...resolved.options[field]] } }))}/>Ärv valbara tider · {sources[resolved.optionSources[field].scope]}</label>
         {patch.options?.[field] != null ? <ChoiceListEditor field={field} values={options[field]} onChange={values => setPatch(current => ({ ...current, options: { ...current.options, [field]: values } }))}/> : <p>{options[field].map(value => timingLabel(field, value)).join(", ")}</p>}

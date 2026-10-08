@@ -2,16 +2,16 @@ import { describe, expect, it, vi } from "vitest";
 import { loadTeamAssistantContext } from "./team-assistant-context";
 import type { AssistantDependencies } from "./team-assistant-types";
 
-function setup({ leader = false, family = true, team = true, invitationManager = false } = {}) {
+function setup({ leader = false, family = true, team = true, invitationManager = false, legacyDiscipline = false } = {}) {
   const queries: { table: string; select: ReturnType<typeof vi.fn>; in: ReturnType<typeof vi.fn>; or: ReturnType<typeof vi.fn> }[] = [];
   const from = vi.fn((table: string) => {
     const data = {
-      teams: team ? { id: "team", organization_id: "org", section_id: "section", discipline_id: null, name: "Laget" } : null,
+      teams: team ? { id: "team", organization_id: "org", section_id: "section", discipline_id: legacyDiscipline ? "other" : null, name: "Laget" } : null,
       people: family ? [{ id: "own-person", display_name: "Barn" }] : [],
       person_guardians: [],
       memberships: family ? [{ person_id: "own-person" }] : [],
       organizations: { name: "Klubb", assistant_name: "Nova", time_zone: "Europe/Stockholm", discipline_id: null },
-      sections: { discipline_id: null },
+      sections: { discipline_id: legacyDiscipline ? "football" : null },
       activities: [{ id: "activity", activity_type_id: "training", title: "Träning", description_markdown: "Info",
         gathering_at: null, starts_at: "2026-10-20T16:00:00Z", ends_at: "2026-10-20T17:30:00Z", location: "Plan" }],
       invitations: [], activity_type_documents: [], team_tasks: [], assistant_memories: [],
@@ -37,6 +37,11 @@ function setup({ leader = false, family = true, team = true, invitationManager =
 const input = { teamId: "team", question: "Hej", messages: [] };
 
 describe("team assistant context access", () => {
+  it("uses the section discipline for memory filtering even with a legacy team override", async () => {
+    const {dependencies}=setup({legacyDiscipline:true});
+    const result=await loadTeamAssistantContext(input,dependencies);
+    expect(result.memoryScope.disciplineId).toBe("football");
+  });
   it("rejects missing teams before fetching any personal context", async () => {
     const { dependencies, from } = setup({ team: false });
     await expect(loadTeamAssistantContext(input, dependencies)).rejects.toMatchObject({ code: "team-not-found" });

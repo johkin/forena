@@ -3,7 +3,7 @@ create extension if not exists pgtap with schema extensions;
 select no_plan();
 
 create temporary table capability_test_config(profiles jsonb);
-insert into capability_test_config values ('[{"key":"football","version":"1.0.0","capabilities":[{"id":"targetTeamSize","version":"1.0.0","field":{"key":"targetTeamSize","label":"Önskad matchtrupp","min":1,"max":100},"appliesTo":{"activityTypeSlugs":["match-tavling"],"categories":["competition"]},"notifications":{"type":"team_size_shortage","beforeStartHours":[72,24],"recipients":"teamInvitationManagers"}}]}]');
+insert into capability_test_config values ('[{"key":"football","version":"1.0.0","capabilities":[{"id":"targetTeamSize","version":"1.0.0","defaults":{"notificationsEnabled":false},"field":{"key":"targetTeamSize","label":"Önskad matchtrupp","min":1,"max":100},"appliesTo":{"activityTypeSlugs":["match-tavling"],"categories":["competition"]},"notifications":{"type":"team_size_shortage","beforeStartHours":[72,24],"recipients":"teamInvitationManagers"}}]}]');
 
 insert into auth.users(id,email) values
  ('fa000000-0000-4000-8000-000000000001','capability-leader@example.test'),
@@ -33,6 +33,9 @@ insert into public.people(id,organization_id,display_name) values
 insert into public.memberships(organization_id,team_id,person_id,role,starts_on) values
  ('fa100000-0000-4000-8000-000000000001','fa300000-0000-4000-8000-000000000001','fa500000-0000-4000-8000-000000000001','participant',current_date-1),
  ('fa100000-0000-4000-8000-000000000001','fa300000-0000-4000-8000-000000000001','fa500000-0000-4000-8000-000000000003','participant',current_date-1);
+insert into public.section_discipline_defaults(organization_id,section_id,discipline_id,activity_type_id,values)
+select s.organization_id,s.id,s.discipline_id,at.id,'{"capabilities":{"targetTeamSize":{"notificationsEnabled":true}}}'::jsonb
+from public.sections s cross join public.activity_types at where s.id::text like 'fa200000-%' and at.organization_id is null and at.slug='match-tavling';
 -- The leader is also a team player; the explicit activity role must win.
 insert into public.activities(id,organization_id,team_id,activity_type_id,title,starts_at,ends_at,status) values
  ('fa600000-0000-4000-8000-000000000001','fa100000-0000-4000-8000-000000000001','fa300000-0000-4000-8000-000000000001',(select id from public.activity_types where organization_id is null and slug='match-tavling'),'Match',now()+interval '2 days',now()+interval '2 days 1 hour','published');
@@ -88,9 +91,25 @@ update public.invitations set response='accepted',responded_at=now() where activ
 update private.football_values set values='{"targetTeamSize":1}' where activity_id=(select id from public.activities where title='Excluded 8');
 select is(public.queue_due_capability_notifications((select profiles from capability_test_config)),1,'Only late active match with invitations and shortage notifies');
 select is((select count(*)::integer from private.capability_notification_checks where activity_id=(select id from public.activities where title='Excluded 9')),1,'Late match creates one checkpoint, not a burst');
-update public.teams set discipline_id=(select id from public.disciplines where key='swimming') where id='fa300000-0000-4000-8000-000000000001';
-select is(public.prepare_capability_notification((select id from public.notification_outbox where type='team_size_shortage' and payload->>'activityId'=(select id::text from public.activities where title='Excluded 9'))),null::jsonb,'Discipline override cancels alert');
-select is(public.queue_due_capability_notifications((select profiles from capability_test_config)),0,'Swimming override never uses football capability');
+-- Team fields inherit separately: off overrides section on, timing remains section-owned.
+insert into public.team_discipline_defaults(organization_id,team_id,discipline_id,activity_type_id,values)
+select 'fa100000-0000-4000-8000-000000000001','fa300000-0000-4000-8000-000000000001',s.discipline_id,at.id,'{"capabilities":{"targetTeamSize":{"notificationsEnabled":false,"notificationHours":[48]}}}'::jsonb
+from public.sections s cross join public.activity_types at where s.id='fa200000-0000-4000-8000-000000000001' and at.organization_id is null and at.slug='match-tavling';
+insert into public.activities(id,organization_id,team_id,activity_type_id,title,starts_at,ends_at,status)
+select 'fa600000-0000-4000-8000-000000000011',organization_id,team_id,activity_type_id,'Disabled snapshot',starts_at,ends_at,'published' from public.activities where title='Excluded 9';
+select ok(not exists(select 1 from private.activity_capability_rules where activity_id='fa600000-0000-4000-8000-000000000011'),'Explicit team off wins over section on');
+update public.team_discipline_defaults set values='{"capabilities":{"targetTeamSize":{"notificationsEnabled":null,"notificationHours":[48]}}}' where team_id='fa300000-0000-4000-8000-000000000001';
+insert into public.activities(id,organization_id,team_id,activity_type_id,title,starts_at,ends_at,status)
+select 'fa600000-0000-4000-8000-000000000012',organization_id,team_id,activity_type_id,'Inherited snapshot',starts_at,ends_at,'published' from public.activities where title='Excluded 9';
+select is((select definition#>'{notifications,beforeStartHours}' from private.activity_capability_rules where activity_id='fa600000-0000-4000-8000-000000000012'),'[48]'::jsonb,'Null inherits activation while team replaces control times');
+update public.section_discipline_defaults set values='{}' where section_id='fa200000-0000-4000-8000-000000000001';
+update public.team_discipline_defaults set values='{}' where team_id='fa300000-0000-4000-8000-000000000001';
+select is((select definition#>'{notifications,beforeStartHours}' from private.activity_capability_rules where activity_id='fa600000-0000-4000-8000-000000000012'),'[48]'::jsonb,'Defaults changes preserve existing checkpoint snapshot');
+select is(public.queue_due_capability_notifications((select profiles from capability_test_config)),0,'Worker never activates a previously disabled match');
+select ok(not exists(select 1 from private.activity_capability_rules where activity_id='fa600000-0000-4000-8000-000000000011'),'Disabled match remains without a rule after worker run');
+update public.sections set discipline_id=(select id from public.disciplines where key='swimming') where id='fa200000-0000-4000-8000-000000000001';
+select is(public.prepare_capability_notification((select id from public.notification_outbox where type='team_size_shortage' and payload->>'activityId'=(select id::text from public.activities where title='Excluded 9'))),null::jsonb,'Section discipline change cancels alert');
+select is(public.queue_due_capability_notifications((select profiles from capability_test_config)),0,'Swimming section never uses football capability');
 
 insert into public.people(id,organization_id,display_name) values
  ('fa500000-0000-4000-8000-000000000005','fa100000-0000-4000-8000-000000000002','Other club player');

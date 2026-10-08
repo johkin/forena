@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildInvitationSchedule, prepareInvitationSchedule, requireFutureSchedule } from "./activity-schedule";
-import { FALLBACK_ACTIVITY_DEFAULTS } from "./activity-defaults";
+import { BASE_DISCIPLINE_DEFAULTS } from "./discipline-defaults";
 import { previewRuleWeeklySeries } from "./activity-series";
 import type { ActivityTimingRules } from "./activity-time-rules";
 describe("persistable activity schedules",()=>{
@@ -8,7 +8,7 @@ describe("persistable activity schedules",()=>{
   const result=buildInvitationSchedule("2026-11-05T17:00:00Z","Europe/Stockholm",{reminderMinutesBeforeDueList:[1440,120]});expect(result.reminderSendAts).toHaveLength(2);expect(result.reminderSendAt).toBeNull();
  });
  it("computes rule times separately across winter time",()=>{
-  const rules={...FALLBACK_ACTIVITY_DEFAULTS,reminderRules:[...FALLBACK_ACTIVITY_DEFAULTS.reminderRules]};
+  const rules={...BASE_DISCIPLINE_DEFAULTS,reminderRules:[...BASE_DISCIPLINE_DEFAULTS.reminderRules]};
   const dates=previewRuleWeeklySeries({startsOn:"2026-10-20",endsOn:"2026-10-27",weekdays:[2],startTime:"18:00",timeZone:"Europe/Stockholm",rules});
   expect(dates.map(d=>d.startsAt)).toEqual(["2026-10-20T16:00:00.000Z","2026-10-27T17:00:00.000Z"]);
   expect(dates.map(d=>d.invitationSendAt)).toEqual(["2026-10-14T16:00:00.000Z","2026-10-21T16:00:00.000Z"]);
@@ -22,7 +22,7 @@ describe("persistable activity schedules",()=>{
 
 describe("late invitation times in new series", () => {
  const now = Date.parse("2026-10-06T10:00:00Z");
- const rules: ActivityTimingRules = { ...FALLBACK_ACTIVITY_DEFAULTS, invitationRule:"start-6d", responseDueRule:"start-6h", reminderRules:["deadline-5d","deadline-2d"] };
+ const rules: ActivityTimingRules = { ...BASE_DISCIPLINE_DEFAULTS, invitationRule:"start-6d", responseDueRule:"start-6h", reminderRules:["deadline-5d","deadline-2d"] };
  it("sends the first occurrence immediately while retaining future occurrences across DST", () => {
   const previews = previewRuleWeeklySeries({startsOn:"2026-10-09",endsOn:"2026-10-30",weekdays:[5],startTime:"16:15",timeZone:"Europe/Stockholm",rules});
   const schedules = previews.map(item=>prepareInvitationSchedule({...item,reminderSendAt:null},now));

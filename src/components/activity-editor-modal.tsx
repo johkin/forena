@@ -9,7 +9,7 @@ import type { AudienceRole } from "@/lib/invitation-audience";
 import { FiveMinuteTimeField } from "./five-minute-time-field";
 import { ActivityTimingFields } from "./activity-timing-fields";
 import type { ActivityConfiguration } from "@/lib/activity-configuration";
-import { FALLBACK_ACTIVITY_DEFAULTS } from "@/lib/activity-defaults";
+import { BASE_DISCIPLINE_DEFAULTS } from "@/lib/discipline-defaults";
 import { applyUntouchedDefaults } from "@/lib/activity-editor-defaults";
 import { durationToMinutes, localActivityTime, normalizeActivityTimingRules, type ActivityTimingRules } from "@/lib/activity-time-rules";
 import { prepareInvitationSchedule, requireFutureSchedule } from "@/lib/activity-schedule";
@@ -63,7 +63,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
   const [activityTypeId,setActivityTypeId] = useState(activity?.activityTypeId ?? draft?.activityTypeId ?? "");
   const touched = useRef(new Set<keyof ActivityTimingRules>(mode === "edit" || draft ? ["duration","gatheringRule"] : []));
   const [touchedKeys,setTouchedKeys] = useState(new Set<keyof ActivityTimingRules>(mode === "edit" || draft ? ["duration","gatheringRule"] : []));
-  const [rules,setRules] = useState<ActivityTimingRules>({ ...FALLBACK_ACTIVITY_DEFAULTS, duration:`PT${initialDuration}M`,gatheringRule:initialGathering ? `start-${initialGathering}m` : "start",reminderRules:[...FALLBACK_ACTIVITY_DEFAULTS.reminderRules] });
+  const [rules,setRules] = useState<ActivityTimingRules>({ ...BASE_DISCIPLINE_DEFAULTS, duration:`PT${initialDuration}M`,gatheringRule:initialGathering ? `start-${initialGathering}m` : "start",reminderRules:[...BASE_DISCIPLINE_DEFAULTS.reminderRules] });
   const [explicitEnd, setExplicitEnd] = useState<{ date: string; time: string } | null>(activity ? localParts(activity.endsAt, timeZone) : null);
   const end = explicitEnd ?? (() => {
     try { return localParts(new Date(localActivityTime(scheduleDates.startsOn, scheduleDates.startTime, timeZone).getTime() + durationToMinutes(rules.duration) * 60000).toISOString(), timeZone); }

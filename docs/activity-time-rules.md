@@ -6,9 +6,11 @@ en disciplin och administreras under `/system/activity-types`. Lokala specialtyp
 behåller sin föreningsägare; oförändrade tidigare standardtyper migreras till den
 gemensamma katalogen med bibehållna aktivitets- och dokumentkopplingar.
 
-Standardvärden lagras i `activity_defaults` och administreras på system-, klubb-,
-sektions- och lagnivå. Föreningens vy finns under `/o/<slug>/activity-settings`.
-Samma sida låter behöriga användare välja eller återställa ärvd disciplin.
+Grundförval och valbara tider definieras i disciplinens TypeScript-profil.
+Sektionen väljer disciplin; dess lag ärver samma disciplin. Sektionens och lagets
+sparsamma överstyrningar lagras i `section_discipline_defaults` respektive
+`team_discipline_defaults`. Klubben och systemadministrationen har inga egna
+förval. Föreningens vy finns under `/o/<slug>/activity-settings`.
 Disciplinkatalogen administreras fortsatt under `/system/disciplines`.
 
 ## Tidsregler och varaktighet
@@ -55,36 +57,39 @@ nödvändigtvis det i tidszoner där midnatt hoppas över.
 
 Regelmotorn använder `Intl` och verifierar möjliga lokala tider genom
 rundresor till lokal tid. Datumintervallet är 1900–9999. Ändra inte dessa
-semantiska regler utan ny regelversion och migrationsbeslut. Förvalsregler
-ska lagra `ACTIVITY_TIME_RULE_VERSION` tillsammans med värdena.
+semantiska regler utan ny regelversion och migrationsbeslut. Förvalsrader lagrar disciplinens paketversion (`1.0.0`) tillsammans med värdena;
+tidsgrammatiken är fortfarande version 1.
 
 ## Standardvärden
 
-`resolveActivityDefaults` är en ren funktion som tar en behörighetskontrollerad
+`resolveDisciplineDefaults` är en ren funktion som tar en behörighetskontrollerad
 kontext och redan hämtade rader. Den returnerar regler och ursprung per fält.
 Den gör inga databasfrågor och är inte en behörighetskontroll.
 
 ```text
-Lag > Sektion > Klubb > System > reservvärde
+Lag > Sektion > disciplinens kodägda grundförval
 ```
 
 - `null` och utelämnat fält betyder ärv.
 - `start` eller `start-0m` är uttryckliga nollavstånd, inte ärv.
 - `[]` betyder inga påminnelser. En lista ersätter hela den ärvda listan.
-- Varje rad avser exakt en aktivitetstyp och ett organisatoriskt mål.
+- Varje rad avser en disciplin, paketversion, aktivitetstyp och en sektion eller ett lag.
+- Målet har en riktig främmande nyckel, inklusive föreningens ID.
 - Rader från annan förening, sektion, lag eller typ används inte.
 - Flera matchande rader på samma nivå är ett fel, inte en godtycklig prioritering.
 - Resultatet innehåller rad-ID, nivå och revision för varje fält.
 - `invitationMode` och målgrupper ingår inte bland standardvärdena.
 
-Disciplinen hör till aktivitetstypens tillämplighet. Den är inte ytterligare
-en nivå i arvet. Personliga preferenser ingår inte i gemensamma aktivitetsförval.
+Disciplinen äger grundförval och capability-definitioner. Fotboll komponerar den
+gemensamma aktivitetsprofilen `commonActivityProfile`; andra discipliner kan
+komponera samma profil. Katalogdiscipliner utan kodpaket använder denna gemensamma
+grund. Personliga preferenser ingår inte i disciplinförval.
 
 ## Exempel för UI och assistent
 
 ```ts
-const resolved = resolveActivityDefaults(
-  { activityTypeId, organizationId, sectionId, teamId },
+const resolved = resolveDisciplineDefaults(
+  { activityTypeId, organizationId, sectionId, teamId, disciplineId, disciplineKey, activityTypeSlug, activityCategory },
   authorisedDefaultRows,
 );
 const preview = previewRuleSingleActivity({
@@ -124,14 +129,15 @@ regressionsfall i den fristående testkörningen.
 
 ## Appintegration och behörighet
 
-- Systemadmin administrerar gemensamma typer och systemförval. Klubbadmin
-  administrerar klubbförval, sektionsadmin sin sektion och lag med
-  `activity.manage` sina lagförval. Plattformens roll ger inte klubbbehörighet.
+- Systemadmin administrerar gemensamma typer. Klubbadmin och sektionsadmin kan
+  administrera sektionens förval; `activity.manage` ger rätt att ändra lagets
+  förval. Klubben har ingen egen förvalsnivå. Plattformens roll ger inte klubbbehörighet.
 - Sparning använder en smal RPC med serverkontroll, databaskontroll, målvalidering
-  och förväntad revision. En samtidig ändring ger konflikt och kräver omladdning.
+  och förväntad revision, disciplinidentitet och paketversion. En samtidig ändring
+  eller ett disciplinbyte ger konflikt och kräver omladdning.
 - Tomt förvalsfält återställer arv. `[]` stänger av påminnelser. GUI:t visar varje
-  upplöst värde och dess ursprung. Disciplinen begränsar tillgängliga typer, inte
-  organisationsarvet. Typer utan disciplin gäller alla verksamheter.
+  upplöst värde och dess ursprung. Disciplinen ägs av sektionen och begränsar
+  tillgängliga typer. Typer utan disciplin gäller alla verksamheter.
 - Aktivitetsdialogen hämtar lagets tillgängliga typer och förval. Vid byte av typ
   ändras enbart orörda fält på nya aktiviteter. Explicit längd/samling i AI-utkast
   och sparade aktiviteter bevaras. Förhandsgranskning visar riktiga tider för
@@ -174,18 +180,17 @@ Ingen npm-installation eller nätverksåtkomst används av den fristående
 körningen om TypeScript redan finns.
 
 Kör även `supabase db reset --local` och `supabase test db` mot en lokal teststack.
-`activity_defaults_test.sql` verifierar revisionskonflikter, scope/tenant-isolering,
+`discipline_defaults_test.sql` verifierar revisionskonflikter, scope/tenant-isolering,
 rollgränser, disciplintillämplighet, historik och atomära påminnelseskrivningar.
 
 ## Valbara tider
 
-`activity_defaults.values.options` innehåller valbara tider för `duration`,
+Förvalstabellernas `values.options` innehåller valbara tider för `duration`,
 `gatheringRule`, `invitationRule`, `responseDueRule` och `reminderRules`.
 Varje lista har 1–32 unika giltiga värden med fältets ankare. Utelämnat fält
 eller `null` ärver listan; en lokal lista ersätter hela den överordnade listan.
-Förval och listor har separata ursprung i `resolveActivityDefaults`.
-Systemlistorna seedas för gemensamma typer; kodens grundlistor används när data
-saknas, exempelvis för en ny typ. Behörigheter och revisionskontroll är desamma
+Förval och listor har separata ursprung i `resolveDisciplineDefaults`.
+Grundlistorna är kodägda och seedas inte i databasen. Behörigheter och revisionskontroll är desamma
 som för övriga aktivitetsförval.
 
 UI visar ”6 dagar innan” för `start-6d`, ”2 timmar innan” för `deadline-2h`
@@ -226,3 +231,19 @@ fortfarande ligga framåt i tiden. Servern räknar om schemat vid sparande.
 Den ordinarie notifieringsarbetaren materialiserar målgruppen och köar dessa
 kallelser vid nästa körning, precis som övriga förfallna kallelser. Detta gäller
 nya aktiviteter och serier; inga befintliga aktivitets- eller standardscheman skrivs om.
+
+## Capability-inställningar
+
+`values.capabilities.targetTeamSize` gäller bara fotbollens matchtyp och innehåller
+`notificationsEnabled` samt `notificationHours`. Fälten ärvs separat: `null` eller
+utelämnat fält ärver, `false` stänger av, och `[]` väljer bort samtliga kontroller.
+Grundförvalet är avstängt med 72/24 förflutna timmar före matchstart; GUI:t visar
+kontrolltider som dagar eller timmar. Högst fem unika heltal 1–720 timmar tillåts.
+Databasen verifierar disciplin och aktivitetstyp även vid direkta RPC-anrop.
+
+Aktivering och kontrolltider kopieras av en insert-trigger till matchens privata
+capability-regel. Ändrade förval påverkar bara nya aktiviteter, inklusive nya
+serietillfällen. Arbetaren fyller aldrig i regler retroaktivt. Vid disciplinbyte
+ignoreras överstyrningar med tidigare `discipline_id`; historiska aktiviteter och
+fasta tidsstämplar skrivs inte om. Den tidigare tabellen `activity_defaults` tas
+bort före drift utan kopiering av värden.

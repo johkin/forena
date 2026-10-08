@@ -1,5 +1,5 @@
 import { ActivityTimingError, durationToMinutes, evaluateTimeRule, inspectScheduleAgainstNow, localActivityTime, normalizeActivityTimingRules, parseActivityInstant, parseTimeRule, scheduleActivityTimes, type ActivityTimingRules } from "../src/lib/activity-time-rules";
-import { resolveActivityDefaults, type ActivityDefaultsRow, type ActivityDefaultsPatch } from "../src/lib/activity-defaults";
+import { resolveDisciplineDefaults, type DisciplineDefaultsRow, type DisciplineDefaultsPatch } from "../src/lib/discipline-defaults";
 import { invitationScheduleForOccurrence, previewRuleWeeklySeries, previewRuleSingleActivity, previewWeeklySeries } from "../src/lib/activity-series";
 
 export type TimingCase = { name: string; run: () => void };
@@ -100,32 +100,30 @@ add("flags past sends without rescheduling", () => {
   equal(JSON.stringify(schedule), before);
 });
 
-const target = { activityTypeId: "type", organizationId: "org", sectionId: "section", teamId: "team" };
-const row = (scope: ActivityDefaultsRow["scope"], values: ActivityDefaultsPatch): ActivityDefaultsRow => ({ id: scope, scope,
-  organizationId: scope === "system" ? null : "org", scopeId: scope === "system" ? null : scope === "organization" ? "org" : scope,
-  activityTypeId: "type", revision: 1, values });
+const target = { activityTypeId: "type", organizationId: "org", sectionId: "section", teamId: "team", disciplineId: "football" };
+const row = (scope: DisciplineDefaultsRow["scope"], values: DisciplineDefaultsPatch): DisciplineDefaultsRow => ({id:scope,scope,organizationId:"org",scopeId:scope,disciplineId:"football",version:"1.0.0",activityTypeId:"type",revision:1,values});
 add("field-wise defaults and provenance", () => {
-  const resolved = resolveActivityDefaults(target, [row("team", { gatheringRule: "start-10m", duration: null }), row("system", { duration: "PT1H", gatheringRule: "start-15m" }), row("organization", { duration: "PT90M" })]);
+  const resolved = resolveDisciplineDefaults(target, [row("team", { gatheringRule: "start-10m", duration: null }), row("section", { duration: "PT90M", gatheringRule: "start-15m" })]);
   equal(resolved.rules.duration, "PT90M"); equal(resolved.rules.gatheringRule, "start-10m");
-  equal(resolved.sources.duration.scope, "organization"); equal(resolved.sources.gatheringRule.scope, "team");
+  equal(resolved.sources.duration.scope, "section"); equal(resolved.sources.gatheringRule.scope, "team");
 });
-add("empty reminder list disables inherited list", () => equal(resolveActivityDefaults(target, [row("team", { reminderRules: [] })]).rules.reminderRules, []));
-add("NULL reminder list inherits", () => equal(resolveActivityDefaults(target, [row("team", { reminderRules: null })]).rules.reminderRules, ["deadline-1d", "deadline-2h"]));
-add("local reminder list replaces instead of merges", () => equal(resolveActivityDefaults(target, [row("system", { reminderRules: ["deadline-1d"] }), row("team", { reminderRules: ["deadline-1h"] })]).rules.reminderRules, ["deadline-1h"]));
-add("zero offset overrides instead of inheriting", () => equal(resolveActivityDefaults(target, [row("team", { gatheringRule: "start-0m" })]).rules.gatheringRule, "start-0m"));
-add("other tenant rows do not affect defaults", () => equal(resolveActivityDefaults(target, [{ ...row("team", { duration: "PT30M" }), organizationId: "other" }]).rules.duration, "PT90M"));
-add("other team rows do not affect defaults", () => equal(resolveActivityDefaults(target, [{ ...row("team", { duration: "PT30M" }), scopeId: "other" }]).rules.duration, "PT90M"));
-add("other type rows do not affect defaults", () => equal(resolveActivityDefaults(target, [{ ...row("system", { duration: "PT30M" }), activityTypeId: "other" }]).rules.duration, "PT90M"));
-add("invalid system target does not affect defaults", () => equal(resolveActivityDefaults(target, [{ ...row("system", { duration: "PT30M" }), scopeId: "system" }]).rules.duration, "PT90M"));
-add("duplicate rows fail instead of non-deterministic last write", () => throws(() => resolveActivityDefaults(target, [row("team", {}), row("team", {})])));
-add("unknown defaults fields fail", () => throws(() => resolveActivityDefaults(target, [row("team", { invitationMode: "now" } as ActivityDefaultsPatch)])));
+add("empty reminder list disables inherited list", () => equal(resolveDisciplineDefaults(target, [row("team", { reminderRules: [] })]).rules.reminderRules, []));
+add("NULL reminder list inherits", () => equal(resolveDisciplineDefaults(target, [row("team", { reminderRules: null })]).rules.reminderRules, ["deadline-1d", "deadline-2h"]));
+add("local reminder list replaces instead of merges", () => equal(resolveDisciplineDefaults(target, [row("section", { reminderRules: ["deadline-1d"] }), row("team", { reminderRules: ["deadline-1h"] })]).rules.reminderRules, ["deadline-1h"]));
+add("zero offset overrides instead of inheriting", () => equal(resolveDisciplineDefaults(target, [row("team", { gatheringRule: "start-0m" })]).rules.gatheringRule, "start-0m"));
+add("other tenant rows do not affect defaults", () => equal(resolveDisciplineDefaults(target, [{ ...row("team", { duration: "PT30M" }), organizationId: "other" }]).rules.duration, "PT90M"));
+add("other team rows do not affect defaults", () => equal(resolveDisciplineDefaults(target, [{ ...row("team", { duration: "PT30M" }), scopeId: "other" }]).rules.duration, "PT90M"));
+add("other type rows do not affect defaults", () => equal(resolveDisciplineDefaults(target, [{ ...row("section", { duration: "PT30M" }), activityTypeId: "other" }]).rules.duration, "PT90M"));
+add("other section target does not affect defaults", () => equal(resolveDisciplineDefaults(target, [{ ...row("section", { duration: "PT30M" }), scopeId: "other" }]).rules.duration, "PT90M"));
+add("duplicate rows fail instead of non-deterministic last write", () => throws(() => resolveDisciplineDefaults(target, [row("team", {}), row("team", {})])));
+add("unknown defaults fields fail", () => throws(() => resolveDisciplineDefaults(target, [row("team", { invitationMode: "now" } as DisciplineDefaultsPatch)])));
 add("inherited combination checked on actual date", () => {
-  const resolved = resolveActivityDefaults(target, [row("team", { invitationRule: "start-1h" })]);
+  const resolved = resolveDisciplineDefaults(target, [row("team", { invitationRule: "start-1h" })]);
   throws(() => scheduleActivityTimes(start, zone, resolved.rules), "ordering");
 });
 add("returned reminder array cannot mutate next resolution", () => {
-  const first = resolveActivityDefaults(target, []); first.rules.reminderRules.length = 0;
-  equal(resolveActivityDefaults(target, []).rules.reminderRules.length, 2);
+  const first = resolveDisciplineDefaults(target, []); first.rules.reminderRules.length = 0;
+  equal(resolveDisciplineDefaults(target, []).rules.reminderRules.length, 2);
 });
 
 add("weekly rule preview recalculates each DST occurrence", () => {

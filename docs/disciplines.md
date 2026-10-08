@@ -18,13 +18,17 @@ Sektionens `discipline_id` kopplar dess lag till paketet. Vid kontroll av UIK
 hade inga egna disciplinöverskrivningar. Ingen dataskrivning behövdes.
 Kopplingen gäller det nya paketet när appversionen driftsätts.
 
-Äldre klubb-/lagöverstyrningar finns kvar av kompatibilitetsskäl. Om en sådan
-överstyrning avviker från sektionen laddas inget sektionspaket. Denna ändring
-migrerar inte andra klubbars disciplinval. Ett framtida steg kan flytta alla
-kopplingar till sektionsnivå efter kontroll av konflikter.
+Disciplinen väljs endast på sektionen och ärvs av alla dess lag. Äldre nullable
+klubb-/lagkolumner finns kvar för andra läsvägar, men de används inte av förvals-,
+aktivitetstyp- eller fotbollsfältsresolvrarna och kan inte ändras via disciplin-RPC:n.
+Disciplinens profil komponerar `commonActivityProfile` för gemensamma aktivitetsfält,
+grundförval och valbara tider. Sparsamma förval lagras i två separata tabeller:
+`section_discipline_defaults` och `team_discipline_defaults`. Radens disciplin och
+paketversion måste matcha aktuell sektion. Klubben har ingen egen förvalsnivå.
+Tidigare `activity_defaults` tas bort utan värdemigrering före systemets drift.
 
 `loadActivityConfiguration` returnerar ett serialiserbart `disciplinePackage`
-för sektionen när kopplingen är entydig. Befintlig API-behörighet, RLS och
+för sektionens disciplin. Befintlig API-behörighet, RLS och
 filtrering av aktivitetstyper gäller fortfarande; generella typer finns kvar.
 Samma paketöversikt visas i systemets disciplinadministration och under
 sektionens/lagets aktivitetsinställningar.
@@ -143,7 +147,11 @@ fotbollspaketets TypeScript-DSL och notifieringsarbetaren. Appens Zod-fält häm
 sina gränser från samma capability. Databasens privata värdeadapter kopplar
 fotbollens befintliga lagring till den gemensamma regelmotorn.
 
-Arbetaren kontrollerar matcher **72 och 24 förflutna timmar före start**.
+Notifieringen är avstängd i capability-definitionens grundförval. Sektion eller
+lag kan aktivera den och välja högst fem kontrolltider, 1–720 förflutna timmar före
+start. Grundtiderna är **72 och 24 timmar**. Aktivering och tider ärvs var för sig
+i `values.capabilities.targetTeamSize`; `null` ärver, `false` stänger av och `[]`
+ger inga kontroller. Formuläret visar dagar/timmar före matchstart.
 När färre spelare har tackat ja än matchens sparade `targetTeamSize` notifieras
 personer med aktiv laganknuten behörighet `invitation.manage`. Klubbadministration
 ensam gör inte en person till mottagare för samtliga lag. Notisen visar ja-svar,
@@ -159,12 +167,13 @@ Träningar, importerade/inställda/opublicerade/passerade aktiviteter, matcher u
 önskad lagstorlek och matcher utan spelarkallelser ger ingen notis. Lagets senare
 ändrade matchförval används aldrig som ersättning för matchens sparade värde.
 
-Notifieringsregeln kopieras vid arbetarens första observation av matchen till
-`private.activity_capability_rules`. Senare profilförval ändrar inte den kopian.
-Redigering av matchens start flyttar kontrolltiderna enligt den sparade regeln;
-en redan notifierad kontroll körs inte igen. Vid första driftsättning omfattas
-även befintliga kommande matcher med sparad lagstorlek. Sena matcher får bara
-närmast förfallna kontroll, inte flera historiska notiser på en gång.
+Notifieringsregeln kopieras vid matchens skapande till
+`private.activity_capability_rules` om den är aktiverad och har kontrolltider.
+SQL-definitionen speglar TypeScript-capability:n och ett paritetstest bevakar dem.
+Senare profil-, sektions- och lagförval ändrar inte kopian. Arbetaren skapar inga
+regler för befintliga matcher. Redigering av matchens start flyttar kontrolltiderna
+enligt den sparade regeln; en redan notifierad kontroll körs inte igen. Sena matcher
+får bara närmast förfallna kontroll, inte flera historiska notiser på en gång.
 
 Köläggning och beständig kontrollmarkering sker i samma transaktion, med låsning
 och unik nyckel per match/förmåga/kontrolltid. Markeringen överlever rensning av
@@ -177,5 +186,4 @@ Notifieringen loggas i auditloggen och förväxlas inte med en skickad kallelse.
 De två interna RPC:erna kan endast anropas av `service_role`. Ingen capability
 eller fritext från användare/assistent får användas som regelkonfiguration till
 arbetaren. Privata regelkopior och kontrollmarkeringar har RLS och saknar
-klienträttigheter. Allmän capability-administration och andra disciplinadaptrar
-återstår.
+klienträttigheter. Andra disciplinadaptrar och generell paketuppgradering återstår.

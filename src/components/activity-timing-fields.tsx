@@ -1,10 +1,10 @@
 "use client";
 import { useMemo } from "react";
 import type { ActivityTimingRules } from "@/lib/activity-time-rules";
-import type { ResolvedActivityDefaults } from "@/lib/activity-defaults";
+import type { ResolvedDisciplineDefaults } from "@/lib/discipline-defaults";
 import { createTimingChoiceFilter, FALLBACK_TIMING_OPTIONS, timingChoices, type TimingField } from "@/lib/activity-timing-options";
-const sources = { system:"System",organization:"Klubb",section:"Sektion",team:"Lag",fallback:"Grundvärde" };
-type Props = { rules: ActivityTimingRules; onChange: (key: keyof ActivityTimingRules, value: string | string[]) => void; defaults?: ResolvedActivityDefaults; touched: ReadonlySet<keyof ActivityTimingRules>; invitations: boolean; showDuration?: boolean; starts?: readonly string[]; timeZone?: string; contextError?: string };
+const sources = { discipline:"Disciplin",section:"Sektion",team:"Lag" };
+type Props = { rules: ActivityTimingRules; onChange: (key: keyof ActivityTimingRules, value: string | string[]) => void; defaults?: ResolvedDisciplineDefaults; touched: ReadonlySet<keyof ActivityTimingRules>; invitations: boolean; showDuration?: boolean; starts?: readonly string[]; timeZone?: string; contextError?: string };
 
 export function ReminderChoices({ values, options, onChange, isAllowed = () => true, disabled = false }: { values: string[]; options: string[]; onChange: (values: string[]) => void; isAllowed?: (value: string, others: string[]) => boolean; disabled?: boolean }) {
   const choices = timingChoices("reminderRules", options, values);

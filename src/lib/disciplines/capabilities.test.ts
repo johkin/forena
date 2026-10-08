@@ -19,6 +19,11 @@ describe("discipline capabilities", () => {
     expect(fixture).toBeDefined();
     expect(JSON.parse(fixture!)).toEqual(disciplineCapabilityProfiles);
   });
+  it("keeps the database creation snapshot aligned with the code definition", () => {
+    const sql = readFileSync("supabase/migrations/20261008062459_section_team_discipline_defaults.sql", "utf8");
+    const definition = sql.match(/definition jsonb := '([^']+)'::jsonb/)?.[1];
+    expect(JSON.parse(definition!)).toEqual(footballPackage.capabilities[0]);
+  });
   it("can be composed by another discipline without a team-sport base class", () => {
     const floorball = { key: "floorball", capabilities: [targetTeamSize({ activityTypeSlugs: ["floorball-match"], categories: ["competition"] })] };
     expect(floorball.capabilities[0].notifications).toEqual(footballPackage.capabilities[0].notifications);

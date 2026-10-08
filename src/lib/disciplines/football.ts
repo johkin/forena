@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { commonActivityProfile } from "./common-activities";
 import { footballCapabilities, targetTeamSizeSchema } from "./capabilities";
 import { validatePlayerReference, playerFieldApplies, type PlayerReferenceRule, type PlayerReferenceContext, type ActivityFieldContext } from "./field-rules";
 
@@ -66,6 +67,7 @@ export const footballPackage = {
   key: "football", version: "1.0.0", name: "Fotboll", category: "sport",
   assignmentScope: "section",
   capabilities: footballCapabilities,
+  activityProfile: commonActivityProfile,
   gameFormats: footballFormats,
   positions: footballPositions,
   schemas: Object.fromEntries(Object.entries(footballSchemas).map(([scope, schema]) => [scope, z.toJSONSchema(schema)])),

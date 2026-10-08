@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { FALLBACK_ACTIVITY_DEFAULTS } from "@/lib/activity-defaults";
+import { BASE_DISCIPLINE_DEFAULTS } from "@/lib/discipline-defaults";
 
 const mocks = vi.hoisted(() => ({ client: vi.fn(), type: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.client }));
@@ -28,7 +28,7 @@ function setup() {
   return inserts;
 }
 const body = { teamId: "team", activityTypeId: "training", title: "Träning", startsAt: "2026-10-09T14:15:00Z", endsAt: "2026-10-09T15:15:00Z",
-  invitationMode: "schedule", invitationAudience: "players", timingRules: { ...FALLBACK_ACTIVITY_DEFAULTS,
+  invitationMode: "schedule", invitationAudience: "players", timingRules: { ...BASE_DISCIPLINE_DEFAULTS,
     duration: "PT60M", gatheringRule: "start", invitationRule: "start-6d", responseDueRule: "start-6h", reminderRules: ["deadline-5d", "deadline-2d"] } };
 const request = (value: object) => new Request("http://localhost/api/activities", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(value) });
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-06T10:00:00Z")); });

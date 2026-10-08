@@ -171,8 +171,11 @@ export interface Database {
         Timestamped & { id: string; organization_id: string | null; discipline_id: string | null; name: string; slug: string; system_category: "session" | "competition" | "work" | "meeting" | "education" | "other"; color: string | null; icon: string | null; active: boolean; updated_at: string },
         { id?: string; organization_id?: string | null; discipline_id?: string | null; name: string; slug: string; system_category: "session" | "competition" | "work" | "meeting" | "education" | "other"; color?: string | null; icon?: string | null; active?: boolean }
       >;
-      activity_defaults: Table<
-        { id: string; activity_type_id: string; scope: "system" | "organization" | "section" | "team"; organization_id: string | null; scope_id: string | null; revision: number; rule_version: number; values: Json; updated_at: string }
+      section_discipline_defaults: Table<
+        { id: string; organization_id: string; section_id: string; discipline_id: string; activity_type_id: string; version: string; revision: number; values: Json; updated_at: string }
+      >;
+      team_discipline_defaults: Table<
+        { id: string; organization_id: string; team_id: string; discipline_id: string; activity_type_id: string; version: string; revision: number; values: Json; updated_at: string }
       >;
       activity_series: Table<
         Timestamped & OrganizationScoped & { id: string; team_id: string; activity_type_id: string; title: string; location: string; recurrence_rule: Json; starts_on: string; ends_on: string | null; status: "draft" | "published" | "ended" | "cancelled"; created_by: string | null; updated_at: string },
@@ -295,8 +298,8 @@ export interface Database {
       add_activity_participants: { Args: { target_activity_id: string; participants: Json; register_accepted?: boolean }; Returns: number };
       set_activity_discipline: { Args: { target_scope: string; target_organization_id: string; target_scope_id: string; target_discipline_id: string | null }; Returns: undefined };
 
-      can_manage_activity_defaults: { Args: { target_scope: string; target_organization_id: string | null; target_scope_id: string | null }; Returns: boolean };
-      save_activity_defaults: { Args: { target_type_id: string; target_scope: string; target_organization_id: string | null; target_scope_id: string | null; expected_revision: number; patch: Json }; Returns: string };
+      can_manage_discipline_defaults: { Args: { target_scope: string; target_organization_id: string | null; target_scope_id: string | null }; Returns: boolean };
+      save_discipline_defaults: { Args: { target_type_id: string; target_scope: string; target_organization_id: string | null; target_scope_id: string | null; expected_revision: number; expected_discipline_id: string; expected_version: string; patch: Json }; Returns: string };
 
       is_organization_member: { Args: { target_organization_id: string; target_user_id?: string }; Returns: boolean };
       has_organization_role: { Args: { target_organization_id: string; allowed_roles: string[]; target_user_id?: string }; Returns: boolean };

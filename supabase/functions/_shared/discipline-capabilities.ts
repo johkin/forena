@@ -2,6 +2,7 @@
 export type TargetTeamSizeCapability = {
   id: "targetTeamSize";
   version: "1.0.0";
+  defaults: { notificationsEnabled: boolean };
   field: { key: "targetTeamSize"; label: string; min: number; max: number };
   appliesTo: { activityTypeSlugs: readonly string[]; categories: readonly string[] };
   notifications: {
@@ -25,7 +26,7 @@ export function targetTeamSize(options: {
     throw new Error("Förmågan måste kopplas till aktivitetstyper.");
   }
   return {
-    id: "targetTeamSize", version: "1.0.0",
+    id: "targetTeamSize", version: "1.0.0", defaults: { notificationsEnabled: false },
     field: { key: "targetTeamSize", label: "Önskad matchtrupp", min: 1, max: 100 },
     appliesTo: { activityTypeSlugs: [...options.activityTypeSlugs], categories: [...options.categories] },
     notifications: { type: "team_size_shortage", beforeStartHours: [...hours].sort((a, b) => b - a), recipients: "teamInvitationManagers" },

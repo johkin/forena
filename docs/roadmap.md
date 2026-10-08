@@ -26,7 +26,7 @@
 - [x] Lagra och redigera fotbollens versionsrefererade värden för lag, lagmedlemskap, match och deltagande med native-formulär, behörighetskontroll och kopierade matchförval
 - [ ] Flytta kvarvarande disciplinöverstyrningar till sektion efter konfliktkontroll; paketdefinitioner versionshanteras i kod, administration väljer och konfigurerar paket
 - [x] Administrera aktivitetsförval med fältvis arv system/klubb/sektion/lag och revisionskontroll
-- [x] Läsbara listval för relativa tider och valbara alternativ i activity-defaults med separat arv
+- [x] Läsbara listval för relativa tider och valbara alternativ i disciplinförval med separat arv
 - [x] Läs förval i aktivitetsdialog och ledarassistent; visa ursprung och bevara egna val
 - [x] Spara alla schemalagda påminnelser atomärt för nya aktiviteter och serier
 - [ ] Bekräftat assistentkommando för att ändra aktivitetsförval
@@ -232,7 +232,7 @@ validering och krav på förhandsgranskning ligger alltid i applikationslagret.
 - [x] Använd tillämpliga sparade delade minnen i assistentens påminnelseförslag och visa minneskällorna före bekräftelse
 - [ ] Återanvänd minnesstyrd påminnelsebedömning i Signal Engine och den proaktiva lagöversikten
 - [ ] Stöd uttryckligen aktiverade strukturerade regler för automatiska kontextkänsliga påminnelser; fritextminnen aktiverar aldrig utskick
-- [x] Återanvändbar `targetTeamSize`-capability: notifiera fotbollslagets kallelsehanterare vid för få ja-svar 72/24 timmar före match; deduplicera och ompröva före leverans
+- [x] Återanvändbar `targetTeamSize`-capability: notifiera fotbollslagets kallelsehanterare vid för få ja-svar; ärvd aktivering och valbara kontrolltider från disciplin → sektion → lag, snapshot vid skapande, deduplicering och omprövning före leverans
 - [ ] Anpassningsbart namn och visuell identitet
 - [ ] Återanvänd Signal Engine och arbetsytekontext i assistenten
 - [ ] Låt UI och assistent anropa samma typade applikationskommandon
@@ -490,3 +490,5 @@ Assistenten har läsverktyg för behöriga lags historik: träning/match via
 `attendance.manage`, arbetspass via `invitation.manage`. Frågan avgränsas till
 366 dagar och högst 200 person/aktivitetsposter med explicit begränsningsflagga.
 Automatiskt kandidaturval, närvaroprocent och fullständiga nollistor återstår.
+
+- [x] Ersätt `activity_defaults` med kodägda disciplingrundförval och separata sektions-/lagtabeller med mål-FK, disciplinversion och revisionskontroll; ingen värdemigrering före drift.
