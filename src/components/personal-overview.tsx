@@ -6,6 +6,9 @@ type Props = {
   activities: FamilyActivity[];
   timeZone: string;
   onOpenActivity: (item: FamilyActivity) => void;
+  title?: string;
+  id?: string;
+  emptyMessage?: string;
 };
 
 function when(value: string, timeZone: string) {
@@ -19,7 +22,7 @@ function when(value: string, timeZone: string) {
   }).format(new Date(value));
 }
 
-export function PersonalOverview({ activities, timeZone, onOpenActivity }: Props) {
+export function PersonalOverview({ activities, timeZone, onOpenActivity, title = "För mig", id = "personal-overview-title", emptyMessage = "Inga personliga aktiviteter kräver din uppmärksamhet just nu." }: Props) {
 
   const grouped = new Map<string, FamilyActivity[]>();
   for (const item of activities) {
@@ -28,10 +31,10 @@ export function PersonalOverview({ activities, timeZone, onOpenActivity }: Props
     grouped.set(item.activity.id, group);
   }
 
-  return <section className="card personal-overview" aria-labelledby="personal-overview-title">
+  return <section className="card personal-overview" aria-labelledby={id}>
     <details className="overview-details" open>
     <summary className="card-heading">
-      <div><p className="eyebrow">Personligt</p><h2 id="personal-overview-title">För mig</h2></div>
+      <div><p className="eyebrow">Personligt</p><h2 id={id}>{title}</h2></div>
       {grouped.size ? <span className="badge">{grouped.size}</span> : null}
     </summary>
     {grouped.size ? <div className="personal-activity-list">
@@ -42,10 +45,10 @@ export function PersonalOverview({ activities, timeZone, onOpenActivity }: Props
           <button className="personal-activity-main" type="button" onClick={() => onOpenActivity(item)}>
             <span className="member-avatar">{item.team.name.slice(0, 1)}</span>
             <span className="personal-activity-copy">
-              <small>{item.team.name}</small>
+              <small>{[item.organization?.name, item.team.name].filter(Boolean).join(" · ")}</small>
               <strong>{item.activity.title}</strong>
 
-              <span>{when(dueAt, timeZone)} · {item.activity.location}</span>
+              <span>{when(dueAt, item.organization?.timeZone ?? timeZone)} · {item.activity.location}</span>
               <span className="personal-activity-people">{people.map(person => <span className="personal-activity-person" key={person.member.id}>
                 <span>{person.member.displayName}</span>
                 <span>{[person.hasDutyAssignment ? "Bokad arbetsuppgift" : undefined, person.invitation ? ({ accepted:"Kommer", declined:"Kan inte", pending:"Ej svarat" } as const)[person.invitation.response] : undefined].filter(Boolean).join(" · ") || "Ingen kallelse ännu"}</span>
@@ -55,7 +58,7 @@ export function PersonalOverview({ activities, timeZone, onOpenActivity }: Props
           </button>
         </div>;
       })}
-    </div> : <p className="overview-empty">Inga personliga aktiviteter kräver din uppmärksamhet just nu.</p>}
+    </div> : <p className="overview-empty">{emptyMessage}</p>}
     </details>
   </section>;
 }

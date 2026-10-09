@@ -1,5 +1,33 @@
 # Förena – gränssnittets designregler
 
+## Personlig startsida
+
+`/` är den inloggade användarens Förena-brandade **Min översikt**, utan vald
+klubb. Visa först **Behöver svar**, därefter hela familjens kommande aktiviteter
+och sist **Mina lag och föreningar** med användarens roller. Agenda är grundläge
+på mobil; kalender är ett uttryckligt alternativ och visar samtliga familjens
+aktiviteter oavsett lag, klubb eller disciplin. Ett arbetsyteval begränsar aldrig
+den personliga sidan. Visa även aktiviteter med nej-svar; en aktivitet förekommer
+en gång med separata namn/svar för berörda familjemedlemmar.
+
+Klubb och lag framgår på varje aktivitetsrad. Agendan och aktivitetsdialogen
+visar klubbens lokala tid; familjekalendern använder uttryckligen svensk tid för
+att kunna jämföra aktiviteter från klubbar i olika tidszoner. Dialogen använder
+aktivitetens egen klubb och lag, inte någon tidigare vald arbetsyta. Familjen
+ser bara skickade kallelser eller bokade arbetsuppgifter, aldrig lagets samtliga
+aktiviteter enbart genom medlemskap. Oanropade aktiviteter, utkast, inställda
+och avslutade aktiviteter ingår inte i denna kommande-vy.
+
+**Min översikt** finns i den gemensamma inloggade menyn även på klubb-/lagsidor.
+Inloggning utan uttrycklig returadress går hit; djupa länkar behåller sitt mål.
+Nya konton får ett tomt läge med vägledning, inte en godtyckligt vald klubb.
+Föreningslänkarna visar användarens föreningsroll även utan lagroll. En koppling
+via ett barn utan eget föreningsmedlemskap märks inte med en påhittad roll.
+Offline visas en statisk Förena-sida med ”Du är offline” och ”Försök igen”,
+utan föregående kontos aktiviteter eller namn.
+Föreningsassistenten förblir knuten till klubb/sektion/lag; en personlig
+assistent över flera klubbar ingår inte i denna version.
+
 ## Grundform
 
 Utgå från en telefon på 320–390 CSS-pixlar. Visa först det användaren behöver

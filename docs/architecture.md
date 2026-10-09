@@ -64,6 +64,26 @@ menyer, header och footer.
 
 ## Persistens
 
+### Personlig arbetsyta över föreningar
+
+Rotrutten `/` använder `getPersonalDashboard` och det centrala `AppShell` utan
+organisationskontext. Den autentiserade användarens egna personposter och
+`person_guardians` härleder familjen över samtliga föreningar. Läsningen filtrerar
+kallelser uttryckligen på familjens person-ID:n även om användaren är ledare och
+RLS tillåter mer. Aktiviteter hämtas via dessa kallelser och auth-bundna
+`my_activity_duty_links`, inte via ett valt lag. Sidindelning med exakt radantal
+och batchade ID-uppslag hindrar tyst trunkering vid PostgREST:s radgräns.
+Fel ger inte en falskt tom kalender. Inga service credentials, nya grants eller
+ändrade RLS-policyer används.
+
+Lagen under Mina lag härleds från aktiva familjemedlemskap och egna
+åtkomsttilldelningar på klubbens lokala datum. En kallelse till ett annat lag
+gör aktiviteten synlig men ger varken lagmedlemskap eller nya behörigheter.
+Föreningsgenvägar bygger på egna föreningsmedlemskap och familjens kopplingar.
+Aktivitetsdialogen återanvänds i familjeläge med aktivitetens verkliga klubb,
+lag och tidszon; administration sker inne på lagets sida. Stängning, push och
+återgång till appen uppdaterar serverunderlaget.
+
 PostgreSQL körs genom Supabase. Lokalt startar Supabase CLI en containerbaserad
 stack med databas, Auth, Storage och Studio. Schemat hanteras med SQL-migrationer
 i `supabase/migrations` och kan återskapas deterministiskt med `npm run db:reset`.

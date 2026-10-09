@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 
 type Status = "checking" | "available" | "registering" | "registered" | "unsupported";
 
-export function PasskeyEnrollment({ next = "/setup" }: { next?: string }) {
+export function PasskeyEnrollment({ next = "/" }: { next?: string }) {
   const router = useRouter();
   const [status, setStatus] = useState<Status>("checking");
   const [error, setError] = useState("");

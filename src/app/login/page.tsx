@@ -13,7 +13,7 @@ export default async function LoginPage({ searchParams }: Props) {
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
 
-  const safeNext = next?.startsWith("/") && !next.startsWith("//") ? next : "/setup";
+  const safeNext = next?.startsWith("/") && !next.startsWith("//") ? next : "/";
   if (data.user) redirect(safeNext);
 
   return (<AppShell homeHref="/">

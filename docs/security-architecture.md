@@ -190,6 +190,14 @@ och annan EXIF-information när sådan metadata inte uttryckligen behövs.
 
 ## Autentisering och sessionssäkerhet
 
+Service workern lagrar endast den kontofria statiska `/offline.html` och ikonen.
+Personliga dokument, API-svar och RSC-payloads sparas aldrig i Cache Storage.
+Offline-navigation visar den generiska sidan, oavsett föregående konto eller
+utloggning. `forena-v3` rensar äldre Förena-cacher (inklusive den tidigare
+cachade rotadressen) innan den tar kontroll över öppna appfönster. Uppdateringen
+måste först installeras online; en redan offline enhet kan inte få den nya
+workern och rensningen förrän den återansluter. Inga privata offline-data stöds.
+
 Inför pilot med riktiga användare bör minst följande finnas:
 
 - MFA eller passkeys för privilegierade roller,

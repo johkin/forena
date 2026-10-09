@@ -81,10 +81,11 @@ function MenuScrollLock({ children }: { children: ReactNode }) {
 
 export function AppMenuContent({ organization, team, workspaces, navigation, accountEmail, adminHref, loginHref, homeHref = "/", logoutDestination = "/" }: AppHeaderProps) {
   return <>
+        {accountEmail ? <div className="header-menu-section"><NavigationLinks label="Personligt" items={[{ href: "/", label: "Min översikt" }]} /></div> : null}
         {organization && workspaces?.length ? <div className="header-menu-section"><p className="eyebrow">Arbetsyta</p><WorkspaceSwitcher organization={organization} team={team} workspaces={workspaces} /></div> : null}
         {navigation ? <div className="header-menu-section header-menu-navigation">{navigation}</div> : null}
         {organization && accountEmail ? <div className="header-menu-section header-menu-account"><p className="eyebrow">Assistent</p><NavigationLinks label="Assistent" items={[{ href: `/o/${organization.slug}/memories`, label: "Minnen" }, ...(adminHref ? [{ href: `/o/${organization.slug}/activity-settings`, label: "Aktivitetsinställningar" }] : [])]} /></div> : null}
-        {organization ? <div className="header-menu-section header-menu-account"><p className="eyebrow">Förening</p><OrganizationMenu organizationSlug={organization.slug} canAdminister={Boolean(adminHref)} /></div> : !navigation ? <div className="header-menu-section"><NavigationLinks label="Navigation" items={[{ href: homeHref, label: "Översikt" }]} /></div> : null}
+        {organization ? <div className="header-menu-section header-menu-account"><p className="eyebrow">Förening</p><OrganizationMenu organizationSlug={organization.slug} canAdminister={Boolean(adminHref)} /></div> : !navigation && !accountEmail ? <div className="header-menu-section"><NavigationLinks label="Navigation" items={[{ href: homeHref, label: "Översikt" }]} /></div> : null}
         <div className="header-menu-section header-menu-account">
           {accountEmail ? <><p className="eyebrow">Konto</p><small className="header-menu-email">{accountEmail}</small><a href="/profile">Min profil</a><LogoutButton destination={logoutDestination} /></>
             : <a href={loginHref ?? `/login?next=${encodeURIComponent(homeHref)}`}>Logga in</a>}

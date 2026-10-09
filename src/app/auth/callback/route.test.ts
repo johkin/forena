@@ -11,7 +11,7 @@ it("returns to the team that initiated login", async () => {
   const result = await GET(new Request(`https://forena.test/auth/callback?code=test&next=${encodeURIComponent(next)}`));
   expect(result.headers.get("location")).toBe(`https://forena.test${next}`);
 });
-it("uses setup when login has no destination", async () => {
+it("uses the personal home when login has no destination", async () => {
   const result = await GET(new Request("https://forena.test/auth/callback?code=test"));
-  expect(result.headers.get("location")).toBe("https://forena.test/setup");
+  expect(result.headers.get("location")).toBe("https://forena.test/");
 });
