@@ -39,6 +39,17 @@ it("renders useful empty states without choosing a default club", () => {
   expect(html).toContain("Inga kommande kallelser");
   expect(html).not.toContain("Ursvik");
 });
+it.each([
+  ["owner", "Ägare"], ["admin", "Föreningsadministratör"], ["leader", "Ledare"], ["member", "Medlem"],
+] as const)("shows the %s organization role without any team role", (role, label) => {
+  const html = renderToStaticMarkup(<PersonalDashboard data={{ accountEmail: "member@example.test", referenceTime: "2030-01-01T00:00:00Z", activities: [], teams: [], organizations: [{ ...organization, role }] }} />);
+  expect(html).toContain(`class="personal-organization-role">${label}</p>`);
+  expect(html).toContain(`href="/o/${organization.slug}"`);
+});
+it("does not invent an organization role for a guardian-only organization link", () => {
+  const html = renderToStaticMarkup(<PersonalDashboard data={{ accountEmail: "guardian@example.test", referenceTime: "2030-01-01T00:00:00Z", activities: [], teams: [], organizations: [organization] }} />);
+  expect(html).not.toContain('class="personal-organization-role"');
+});
 it("shows every family event even when more than four share a day, with contextual accessible labels", () => {
   const events = Array.from({ length: 6 }, (_, index) => ({ ...activity, id: `a${index}`, title: `Match ${index}` }));
   const html = renderToStaticMarkup(<TeamCalendar activities={events} timeZone="Europe/Stockholm" heading="Familjens kalender" showAllEvents eventLabel={item => `${item.title} · AIK · Elsa`} onSelectActivity={() => {}} />);

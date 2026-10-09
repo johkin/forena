@@ -9,6 +9,8 @@ import { PersonalOverview } from "./personal-overview";
 import { TeamCalendar } from "./team-calendar";
 import { ActivityDetailModal } from "./activity-detail-modal";
 
+const organizationRoleLabels = { owner: "Ägare", admin: "Föreningsadministratör", leader: "Ledare", member: "Medlem" } as const;
+
 export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
   const router = useRouter();
   const [view, setView] = useState<"agenda" | "calendar">("agenda");
@@ -56,6 +58,7 @@ export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
         <h2 id="my-teams-title">Mina lag och föreningar</h2>
         <div className="personal-workspaces">{data.organizations.map(organization => <div key={organization.id}>
           <h3><a href={`/o/${organization.slug}`}>{organization.name}</a></h3>
+          {organization.role ? <p className="personal-organization-role">{organizationRoleLabels[organization.role]}</p> : null}
           {data.teams.filter(item => item.organization.id === organization.id).map(({ team, roles }) => <a className="personal-team-link" key={team.id} href={`/o/${organization.slug}/t/${team.slug}`}><strong>{team.name}</strong><span>{roles.join(" · ")}</span><span aria-hidden="true">→</span></a>)}
         </div>)}</div>
         {!data.organizations.length ? <p>Du är inte ansluten till någon förening ännu. Be din förening om en ansöknings- eller inbjudningslänk.</p> : null}

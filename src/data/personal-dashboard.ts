@@ -4,11 +4,12 @@ import { activityDateKey } from "@/lib/activity-range";
 
 export type PersonalActivity = FamilyActivity & { organization: Organization };
 export type PersonalTeam = { team: Team; organization: Organization; roles: string[] };
+export type PersonalOrganization = Organization & { role?: "owner" | "admin" | "leader" | "member" };
 export type PersonalDashboardData = {
   accountEmail?: string;
   activities: PersonalActivity[];
   teams: PersonalTeam[];
-  organizations: Organization[];
+  organizations: PersonalOrganization[];
   referenceTime: string;
 };
 
@@ -94,5 +95,7 @@ export async function getPersonalDashboard(): Promise<PersonalDashboardData | nu
     if (access.some(a => a.team_id === team.id && active(a))) roles.add("Lagåtkomst");
     return roles.size ? [{ team, organization, roles: [...roles] }] : [];
   }).sort((a, b) => a.organization.name.localeCompare(b.organization.name, "sv") || a.team.name.localeCompare(b.team.name, "sv"));
-  return { accountEmail: auth.user.email, activities, teams, organizations: [...organizationById.values()].sort((a, b) => a.name.localeCompare(b.name, "sv")), referenceTime };
+  const organizationRoleById = new Map(organizationMemberships.map(membership => [membership.organization_id, membership.role]));
+  const personalOrganizations: PersonalOrganization[] = [...organizationById.values()].map(organization => ({ ...organization, role: organizationRoleById.get(organization.id) }));
+  return { accountEmail: auth.user.email, activities, teams, organizations: personalOrganizations.sort((a, b) => a.name.localeCompare(b.name, "sv")), referenceTime };
 }

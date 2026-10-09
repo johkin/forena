@@ -41,6 +41,14 @@ beforeEach(() => {
 });
 
 describe("personal cross-club dashboard", () => {
+  it("preserves a club role without a team role and does not infer roles from guardian links", async () => {
+    state.tables.organization_members = [{ organization_id: "uik", user_id: "user", role: "admin" }];
+    state.tables.memberships = [];
+    const data = await getPersonalDashboard();
+    expect(data?.teams).toEqual([]);
+    expect(data?.organizations.find(o => o.id === "uik")?.role).toBe("admin");
+    expect(data?.organizations.find(o => o.id === "aik")?.role).toBeUndefined();
+  });
   it("loads own and guarded people's activities across clubs, never teammates' responses", async () => {
     const data = await getPersonalDashboard();
     expect(data?.organizations.map(o => o.name)).toEqual(["AIK", "UIK"]);

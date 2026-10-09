@@ -21,6 +21,10 @@ och avslutade aktiviteter ingår inte i denna kommande-vy.
 **Min översikt** finns i den gemensamma inloggade menyn även på klubb-/lagsidor.
 Inloggning utan uttrycklig returadress går hit; djupa länkar behåller sitt mål.
 Nya konton får ett tomt läge med vägledning, inte en godtyckligt vald klubb.
+Föreningslänkarna visar användarens föreningsroll även utan lagroll. En koppling
+via ett barn utan eget föreningsmedlemskap märks inte med en påhittad roll.
+Offline visas en statisk Förena-sida med ”Du är offline” och ”Försök igen”,
+utan föregående kontos aktiviteter eller namn.
 Föreningsassistenten förblir knuten till klubb/sektion/lag; en personlig
 assistent över flera klubbar ingår inte i denna version.
 
