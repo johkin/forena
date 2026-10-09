@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-export function PasskeySignIn({ next = "/setup" }: { next?: string }) {
+export function PasskeySignIn({ next = "/" }: { next?: string }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
 

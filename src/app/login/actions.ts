@@ -36,7 +36,7 @@ export async function requestMagicLink(formData: FormData) {
 
 function getSafeNext(formData: FormData) {
   const requestedNext = String(formData.get("next") ?? "");
-  return requestedNext.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : "/setup";
+  return requestedNext.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : "/";
 }
 
 export async function signInWithPassword(formData: FormData) {
