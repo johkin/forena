@@ -91,7 +91,7 @@ select throws_ok($q$update public.invitations set duty_type_id='a7000000-0000-00
 select throws_ok($q$select public.activity_duty_history('a3000000-0000-0000-0000-000000000002', 'a5000000-0000-0000-0000-000000000002')$q$, '42501', null, 'Manager cannot read another team history');
 select set_config('request.jwt.claims', '{"sub":"a0000000-0000-0000-0000-000000000002","role":"authenticated"}', true);
 select throws_ok($q$update public.invitations set activity_role='leader' where person_id='a5000000-0000-0000-0000-000000000001'$q$, '42501', null, 'Guardian cannot change activity role');
-select lives_ok($q$update public.invitations set response='accepted', responded_at=now() where person_id='a5000000-0000-0000-0000-000000000001'$q$, 'Guardian can still answer');
+select throws_ok($q$update public.invitations set response='accepted', responded_at=now() where person_id='a5000000-0000-0000-0000-000000000001'$q$, '23514', 'Activity is read-only', 'Guardian cannot change an answer after the activity ended');
 select throws_ok($q$update public.invitations set duty_type_id='a7000000-0000-0000-0000-000000000001' where person_id='a5000000-0000-0000-0000-000000000001'$q$, '42501', null, 'Guardian cannot assign duties');
 select throws_ok($q$select public.add_activity_participants('a6000000-0000-0000-0000-000000000001',
  '[{"personId":"a5000000-0000-0000-0000-000000000002","role":"participant"}]', false)$q$, '42501', null, 'Guardian cannot call people');
