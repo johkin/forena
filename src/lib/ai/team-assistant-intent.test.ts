@@ -26,6 +26,7 @@ it.each([
   ["activity-history", "Kan du göra en sammanställning av träningar de senaste tre veckorna?"],
   ["activity-invitations", "Vilka har tackat ja till fredagens träning?"],
   ["reminder", "Kan du lägga till en påminnelse för träningen?"],
+  ["activity-duties", "Lägg sekretariat med två platser på alla importerade hemmamatcher"],
   ["chat", "Kom ihåg att vi brukar samlas femton minuter före"],
 ])("consumes a validated %s decision through the real SDK", async (mode, question) => {
   const expected = { ...base, mode, question, weeklyRecurrence: mode === "activity-draft" };

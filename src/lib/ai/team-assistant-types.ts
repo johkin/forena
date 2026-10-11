@@ -4,6 +4,7 @@ import type { ActivityDraft } from "./activity-draft";
 import type { AssistantMemoryDraft } from "./assistant-memory-draft";
 import type { ReminderDraft } from "./reminder-draft";
 import type { ActivityHistoryResult } from "./activity-history-result";
+import type { ActivityDutyDraft } from "./activity-duty-draft";
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 export type AssistantViewerKind = "leader" | "player-or-guardian";
@@ -20,6 +21,7 @@ export type TeamAssistantReply = {
   activityDraft?: ActivityDraft;
   memoryDrafts?: AssistantMemoryDraft[];
   reminderDrafts?: ReminderDraft[];
+  dutyDrafts?: ActivityDutyDraft[];
   historyResults?: ActivityHistoryResult[];
   source: "ai" | "fallback";
   model: string;

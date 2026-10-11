@@ -249,6 +249,13 @@ genomförda uppgifter är låsta. Alla passändringar invaliderar seriens revisi
 Se [bemanningsschema](activity-duty-schedule.md) för datamodell, migration,
 självservice, atomära ändringar och aktuella avgränsningar.
 
+Uppgiftsschemat gäller alla lagaktiviteter, inklusive importerade matcher.
+Assistentens `activity-duties`-flöde läser ett verifierat aktivitetsurval och
+föreslår en uppgift per aktivitet. Endast separat knappbekräftelse får anropa
+det atomära batchkommandot; kvitton för återförsök ligger privat utan klientgrants.
+Lokala uppgifter kan följa ändrade aktivitetstider utan att importen eller
+kallelserna skrivs om. Batch-ID förbereder framtida gemensam redigering.
+
 Bemanningsförslag använder lagavgränsad statistik via `activity_duty_fairness`
 och en deterministisk rangordning. Ledaren bekräftar ändringsbara förslag genom
 samma atomära kommando som manuella tilldelningar. Schemaskrivning och köläggning

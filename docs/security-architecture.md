@@ -341,6 +341,15 @@ familjeidentiteter, verifierar rätt att boka för personen och låser aktivitet
 under varje ändring. Förslag gäller specifika platsrevisioner och kan inte
 återanvändas mot senare tilldelningar. Se [bemanningsschema](activity-duty-schedule.md).
 
+Assistentens uppgiftsverktyg har bara läsning och förhandsgranskning. Masskapande
+bekräftas via autentiserat serveranrop; databasen verifierar `invitation.manage`,
+exakt lag/aktivitetsurval, framtida start och snapshot under aktivitetslås.
+Ett främmande, inställt eller inaktuellt tillfälle stoppar hela transaktionen.
+Idempotenskvitton ligger i en privat RLS-tabell utan klientgrants. Livscykeltriggern
+ändrar endast lokala uppgifter och auditerar tidigare bokningar; den ger inte
+nya rättigheter till import eller kallelsesvar. Matchurval läser bara aktivitetens
+venue från aktuell disciplin, aldrig kaptens-/deltagarvärden eller familjenamn.
+
 Bemanningsändringar och fördelningsförslag använder explicita lagbehörigheter,
 aktivitetslås och revisionskontroller. Statistik lämnas bara till ledare för
 aktuellt lag och räknar enbart dess genomförda uppgifter. Den tidigare

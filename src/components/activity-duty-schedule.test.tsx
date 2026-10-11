@@ -23,6 +23,14 @@ const schedule: DutySchedule = { isWork: true, canManage: true, types: [], peopl
 };
 const render = (readOnly = false) => elements(ActivityDutySchedule({ activityId: "activity", startsAt: "2030-10-10T06:00:00Z", endsAt: "2030-10-10T16:00:00Z", timeZone: "Europe/Stockholm", readOnly }));
 beforeEach(() => { hooks.index = 0; hooks.setters = []; hooks.values = [schedule, "", false, false, "", false, [], null]; });
+it("shows duties on matches and training without relabeling them as work", () => {
+  hooks.values[0] = { ...schedule, isWork: false, supportsDuties: true };
+  expect(render().some(el => el.props["aria-label"] === "Arbetsuppgifter och schema")).toBe(true);
+});
+it("does not show an empty duty panel to families", () => {
+  hooks.values[0] = { ...schedule, isWork: false, supportsDuties: true, canManage: false, duties: [] };
+  expect(render()).toEqual([]);
+});
 it("opens in viewing mode and requires explicit duty editing", () => {
   const tree = render();
   expect(tree.some(el => el.type === DutyEditor)).toBe(false);

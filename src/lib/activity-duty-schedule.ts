@@ -56,7 +56,7 @@ export type DutyCommand = z.infer<typeof dutyCommandSchema>;
 export type DutySlot = { id: string; personId: string | null; personName: string | null; occupied: boolean; mine: boolean; completedAt: string | null; revision: number };
 export type Duty = { seriesId?: string; position?: number; id: string; dutyTypeId: string; revision: number; name: string; timingKind: "interval" | "deadline" | "none"; startsAt: string | null; endsAt: string | null; dueAt: string | null; instructions: string; slots: DutySlot[] };
 export type DutyRequest = { id: string; sourceSlotId: string | null; targetSlotId: string | null; status: "pending" | "applied" | "rejected" | "withdrawn" | "expired"; counterpartApproved: boolean; managerApproved: boolean; mine: boolean; canApprove: boolean; requestedAt: string };
-export type DutySchedule = { series?: DutySeries[]; types: { id: string; name: string; active: boolean; revision: number }[]; isWork: boolean; canManage: boolean; claimRequiresApproval: boolean; changeRequiresApproval: boolean; selfServiceUntil: string; people: { id: string; name: string }[]; duties: Duty[]; requests: DutyRequest[] };
+export type DutySchedule = { supportsDuties?: boolean; series?: DutySeries[]; types: { id: string; name: string; active: boolean; revision: number }[]; isWork: boolean; canManage: boolean; claimRequiresApproval: boolean; changeRequiresApproval: boolean; selfServiceUntil: string; people: { id: string; name: string }[]; duties: Duty[]; requests: DutyRequest[] };
 
 /** Split a local interval into shifts; the last shift may be shorter. */
 export function createDutyIntervals(date: string, startTime: string, endTime: string, timeZone: string, minutes: number, places: number, instructions = "", opening = "", closing = "", endDate = date) {

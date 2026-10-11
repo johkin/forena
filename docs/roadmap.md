@@ -272,6 +272,9 @@ Fortsatt utveckling:
 - [ ] Bestäm utlånets giltighetsperiod, godkännande, återkallning och synlighet; utlån ska varken vara automatisk kallelse eller lagbehörighet
 - [x] Separata uppgifter med tidsintervall, deadline eller ingen tid samt lediga platser
 - [x] Generera bemanningsschema med passlängd, antal platser och öppnings-/stängningsinstruktioner
+- [x] Uppgifter på alla lagaktiviteter, inklusive importerade matcher; assistentförslag med exakt urval och separat atomär bekräftelse
+- [x] Aktivitetskopplade uppgiftstider följer ändrad matchtid och ej genomförda uppgifter avbokas vid inställd aktivitet
+- [ ] Gemensam redigering av uppgiftsbatch över flera aktiviteter och uttryckligt aktiverade regler för framtida importer
 - [x] Familjer kan boka för egna barn och föreslå ändring genom ActivityDutyChangeRequest
 - [x] Atomära byten, valbart ledargodkännande, självservicegräns, återtagning och revisionskontroll
 - [x] Notifiera berörda familjer och ledare om ändringsförslag och beslut

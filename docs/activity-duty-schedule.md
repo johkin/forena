@@ -4,6 +4,10 @@ En aktivitet är ramen. `activity_duty_series` lagrar ett gemensamt upplägg:
 uppgiftstyp och namn, period/deadline, passlängd, antal platser, instruktioner
 samt öppnings- och stängningsinstruktioner. Serien hör till en enda aktivitet.
 Den är inte en `activity_series` över flera aktivitetsdatum.
+Uppgifter kan användas på alla lagaktiviteter, inte bara Arbetspass: exempelvis
+sekretariat på match, materialansvar på träning och bakning inför avslutning.
+Importerade aktiviteter får lokala uppgifter utan att importfält eller
+kallelsesvar ändras. Lagets befintliga `invitation.manage` gäller även här.
 `activity_duties` är materialiserade instanser med `series_id` och
 `series_position`, egna tider och instruktioner som ögonblicksbild av mallen. Varje `activity_duty_slots` är en verklig plats som
 börjar tom (`person_id = null`) och kan tilldelas en spelare. Familjen väljer
@@ -108,7 +112,7 @@ en ändrad plats gör att hela förslaget måste granskas på nytt.
 ## Återstående arbete
 
 Kalenderexport av enskilda pass är uppskjuten. Automatisk krockkontroll mellan
-aktiviteter, matchurval och assistentverktyg över historiken är fortsatt
+aktiviteter och assistentverktyg över historiken är fortsatt
 separata roadmap-punkter. Fördelningsförslaget kontrollerar inte tillgänglighet
 mot andra aktiviteter eller fördelning mellan olika lag.
 
@@ -173,6 +177,38 @@ en serie. Alla instanser har en icke-null FK till en serie inom samma aktivitet
 och förening. Tabellen har RLS och inga direkta klientgrants; endast
 behörighetskontrollerade RPC:er kan ändra serier. Familjer får inte seriens
 administrativa mall/revision i schemats svar.
+
+### Assistentens massåtgärd på befintliga aktiviteter
+
+Exempel: ”Lägg sekretariat med två platser på alla hemmamatcher i den
+importerade serien”. `listDutyActivities` läser högst 200 kommande aktiviteter
+med kategori, importkälla, serie och strukturerad `venue` från aktuell disciplin.
+Hemmamatch kräver kategorin competition och venue=home. Saknad hemma/borta
+redovisas som okänd; titel och plats är inte bevis. Flera möjliga serier eller
+saknat antal platser kräver förtydligande. En importkälla är inte en serie.
+
+`proposeActivityDuties` skapar endast ett granskningskort med exakt urval,
+namn, platser och instruktioner. Högst 100 aktiviteter bekräftas samtidigt.
+Det separata serveranropet `confirmAssistantDuties` autentiserar på nytt och
+anropar ett atomärt databas-kommando med snapshot-fingeravtryck. Alla aktiviteter
+låses i stabil ordning och urval/behörighet kontrolleras igen före skrivning.
+Ändrade aktiviteter eller befintliga uppgifter kräver nytt förslag. Kvittot
+gör samma bekräftelse idempotent, även efter ett förlorat nätverkssvar.
+Befintliga aktiva uppgifter med samma namn (trim/case-insensitive) hoppas över;
+de skrivs inte över och deras kapacitet eller bokningar ändras inte.
+
+Nya uppgifter gäller hela aktivitetens start–slut och får tomma platser. Ingen
+person tilldelas och inga kallelser eller kallelsesvar skapas. Serierna får ett
+gemensamt `batch_id` som grund för framtida gemensam redigering. Gränssnitt för
+massredigering över aktiviteter och automatisk regel för framtida importer ingår
+inte. Andra tider, exempelvis 30 minuter före start, ställs fortsatt in separat.
+
+`follows_activity` gör att aktivitetens ändrade start/slut uppdaterar uppgiften
+och dess mall med bevarade ID:n och bokningar. Revisionsnummer ökas, väntande
+ändringsförslag stängs och ändringsnotiser köas. Ett individuellt tidsval eller
+en annan passindelning släpper tidskopplingen. Genomförd historik flyttas inte.
+Inställd aktivitet avbokar ej genomförda uppgifter med audit och notifiering;
+genomförda uppgifter behålls och en återaktivering öppnar inte gamla platser.
 
 ### ID-validering vid sparande
 
