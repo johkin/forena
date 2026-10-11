@@ -15,7 +15,7 @@ implementation eller en källa till verksamhetsregler.
 | Rättvis fördelning | Avgränsat ledarverktyg med befintliga statistikregler och granskning |
 | Boka arbetspass | Kapacitetsöversikt, tidkort, lediga platser och markering av eget pass |
 | Hantera/byt arbetspass | Hopfällbart hanteringsavsnitt med befintligt byte/ersättarflöde |
-| Flerlagsöversikt | Aktivitetskort med klubb/lag, svar per person och samlad agenda |
+| Flerlagsöversikt | Aktivitetskort med klubb/lag, direkta svar per person och samlad agenda |
 
 LOK-stöd/signering, provspelare, tränarloggbok, passmallar, automatiska
 före-/eftermatchstider, nya rättviseregler, meddelanden mellan föräldrar,
@@ -25,3 +25,7 @@ och plus/minus-reglage kopieras inte.
 
 Gemensamt sidskal, behörigheter och bekräftelseflöden återanvänds.
 Sidorna laddar inga skript från skissfilerna.
+
+Skissen i `stitch_f_rena (3).zip` preciserar lagöversikten: två paneler på
+desktop och en separat svarrad per kallad person. Den gemensamma
+`PersonalOverview` visar samma kort i lagets och familjens översikt.

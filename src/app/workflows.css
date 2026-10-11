@@ -21,10 +21,10 @@
 .personal-dashboard .personal-activity-copy strong { font-size:16px; line-height:1.4; }
 .personal-dashboard .personal-activity-copy > span { white-space:normal; overflow:visible; overflow-wrap:anywhere; font-size:13px; }
 .personal-dashboard .personal-activity-people { padding:12px; border-radius:12px; background:var(--surface-low); }
-.personal-activity-person [data-response] { display:inline-flex; width:fit-content; padding:3px 8px; border-radius:9999px; font-size:11px; }
-.personal-activity-person [data-response=accepted] { background:var(--positive-surface); color:var(--positive); }
-.personal-activity-person [data-response=declined] { background:var(--negative-surface); color:var(--negative); }
-.personal-activity-person [data-response=pending] { background:var(--pending-surface); color:var(--pending); }
+.personal-activity-person > span[data-response] { display:inline-flex; width:fit-content; padding:3px 8px; border-radius:9999px; font-size:11px; }
+.personal-activity-person > span[data-response=accepted] { background:var(--positive-surface); color:var(--positive); }
+.personal-activity-person > span[data-response=declined] { background:var(--negative-surface); color:var(--negative); }
+.personal-activity-person > span[data-response=pending] { background:var(--pending-surface); color:var(--pending); }
 .personal-dashboard .personal-workspaces { margin-top:20px; }
 .personal-dashboard .personal-workspaces > div { padding:16px; border-radius:12px; background:var(--surface-low); }
 .personal-dashboard .personal-workspaces h3 { margin-top:0; }
@@ -155,4 +155,43 @@
   .duty-card-heading { align-items:start; flex-wrap:wrap; }
   .duty-series-form .participant-selection { grid-template-columns:minmax(0,1fr); }
   .workflow-section-heading { align-items:start; flex-wrap:wrap; }
+}
+
+/* Overview reference: oat activity cards and one independent reply row per person. */
+.personal-overview .personal-activity-list { display:grid; grid-template-columns:minmax(0,1fr); gap:16px; border:0; }
+.personal-overview .personal-activity-row { padding:20px; border:1px solid var(--line); border-radius:16px; background:var(--surface-low); box-shadow:none; }
+.personal-overview .personal-activity-main { width:100%; display:grid; grid-template-columns:52px minmax(0,1fr) auto; align-items:center; gap:14px; padding:0 0 16px; min-height:64px; border-bottom:1px solid var(--line); }
+.personal-overview .overview-date-badge { display:grid; gap:2px; place-content:center; width:52px; min-height:58px; text-align:center; background:var(--surface-container); border:1px solid var(--line); border-radius:12px; }
+.personal-overview .overview-date-badge small { text-transform:uppercase; font-size:11px; color:var(--ink-soft); }
+.personal-overview .overview-date-badge strong { font-size:22px; line-height:26px; color:var(--primary); }
+.personal-overview .personal-activity-copy { gap:6px; }
+.personal-overview .personal-activity-copy strong { font-size:16px; line-height:1.4; }
+.personal-overview .personal-activity-copy > span { white-space:normal; overflow:visible; overflow-wrap:anywhere; line-height:1.5; }
+.personal-overview .personal-activity-people { display:grid; gap:10px; padding:0; margin:0; background:transparent; }
+.personal-overview .personal-activity-person { display:grid; grid-template-columns:36px minmax(0,1fr) auto; gap:12px; align-items:center; padding:12px; background:var(--paper); border:1px solid var(--line); border-radius:12px; }
+.overview-person-avatar { display:grid; place-items:center; width:36px; height:36px; border-radius:50%; background:#c5edc1; color:var(--primary); font-weight:700; }
+.overview-person-copy { min-width:0; display:grid; gap:3px; overflow-wrap:anywhere; }
+.overview-person-copy strong { font-size:13px; }
+.overview-person-copy > span { font-size:11px; color:var(--ink-soft); }
+.overview-response-actions { display:flex; gap:8px; }
+.overview-response-actions button { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:44px; padding:10px 12px; border:1px solid transparent; border-radius:12px; background:var(--surface-container); color:var(--ink); font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; }
+.overview-response-actions button:hover:not(:disabled) { border-color:var(--primary); }
+.overview-response-actions button[data-response=accepted][aria-pressed=true] { background:var(--primary); color:white; }
+.overview-response-actions button[data-response=declined][aria-pressed=true] { background:var(--negative-surface); color:var(--negative); border-color:var(--negative); }
+.overview-response-feedback { grid-column:2 / -1; color:var(--ink-soft); overflow-wrap:anywhere; }
+.overview-response-feedback[role=alert] { color:var(--negative); }
+@media (min-width:1100px) {
+  #overview .overview-main { grid-template-columns:minmax(0,1.3fr) minmax(0,1fr); align-items:start; }
+}
+@media (max-width:767px) {
+  .personal-overview .personal-activity-row { padding:16px; }
+  .personal-overview .personal-activity-main { grid-template-columns:44px minmax(0,1fr) auto; gap:10px; }
+  .personal-overview .overview-date-badge { width:44px; }
+  .personal-overview .personal-activity-person { grid-template-columns:36px minmax(0,1fr); gap:10px; }
+  .overview-response-actions { grid-column:1 / -1; }
+  .overview-response-actions button { flex:1; font-size:13px; }
+  .overview-response-feedback { grid-column:1 / -1; }
+}
+@media (min-width:768px) and (max-width:1099px) {
+  .personal-overview .personal-activity-person { grid-template-columns:36px minmax(0,1fr) auto; }
 }

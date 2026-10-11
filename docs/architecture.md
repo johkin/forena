@@ -38,6 +38,19 @@ Primär åtgärdsfärg är separat från textfärg. Rotlayouten laddar lokalt pa
 Newsreader och Plus Jakarta Sans. Se [designreglerna](design-spec.md) för hur
 skillnader mellan referensens YAML, text och HTML har lösts.
 
+### Direkta kallelsesvar i översikten
+
+`PersonalOverview` grupperar familjens serverfiltrerade aktiviteter och renderar
+`OverviewInvitationResponse` per person. Samma kort används i lag- och
+familjeöversikten. Endast aktivitetsrubriken öppnar detaljer. Varje svar går till
+det befintliga autentiserade `respond`-API:t med exakt kallelse-ID; utelämnad
+kommentar bevarar den tidigare kommentaren. API:t kontrollerar att en rad faktiskt
+uppdaterades innan det returnerar framgång. Familjeavgränsningen behålls. Befintlig RLS styr åtkomsten och en privat
+trigger nekar svar/kommentarer för inställda eller avslutade aktiviteter;
+triggerns aktivitetslås skyddar även samtidiga livscykeländringar.
+Bekräftade svar visas lokalt och föräldravyn uppdateras från servern. Väntande
+skrivning och fel är avgränsade till personens rad.
+
 ### Gemensamma komponenter
 
 Menyer, header och footer ska implementeras som centrala, återanvändbara
