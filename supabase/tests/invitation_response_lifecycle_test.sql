@@ -28,19 +28,19 @@ update public.activities set status='cancelled',cancelled_at=now(),cancellation_
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub','b0000000-0000-0000-0000-000000000001',true);
-select results_eq($$update public.invitations set response='accepted' where activity_id='b6000000-0000-0000-0000-000000000001' returning response$$,array['accepted'::text],'Guardian can reply to a future activity');
-select results_eq($$update public.invitations set response='declined' where activity_id='b6000000-0000-0000-0000-000000000004' returning response$$,array['declined'::text],'Activity start does not prematurely lock replies');
-select results_eq($$update public.invitations set response='accepted' where activity_id='b6000000-0000-0000-0000-000000000002' returning response$$,array[]::text[],'Guardian cannot reply to cancelled activity');
-select results_eq($$update public.invitations set response='accepted' where activity_id='b6000000-0000-0000-0000-000000000003' returning response$$,array[]::text[],'Guardian cannot reply to ended activity');
+select results_eq($$update public.invitations set response='accepted',responded_at=now() where activity_id='b6000000-0000-0000-0000-000000000001' returning response$$,array['accepted'::text],'Guardian can reply to a future activity');
+select results_eq($$update public.invitations set response='declined',responded_at=now() where activity_id='b6000000-0000-0000-0000-000000000004' returning response$$,array['declined'::text],'Activity start does not prematurely lock replies');
+select throws_ok($$update public.invitations set response='accepted',responded_at=now() where activity_id='b6000000-0000-0000-0000-000000000002' returning response$$,'23514','Activity is read-only','Guardian cannot reply to cancelled activity');
+select throws_ok($$update public.invitations set response='accepted',responded_at=now() where activity_id='b6000000-0000-0000-0000-000000000003' returning response$$,'23514','Activity is read-only','Guardian cannot reply to ended activity');
 select set_config('request.jwt.claim.sub','b0000000-0000-0000-0000-000000000002',true);
-select results_eq($$update public.invitations set response='accepted' where activity_id='b6000000-0000-0000-0000-000000000002' returning response$$,array[]::text[],'Admin cannot bypass cancellation');
-select results_eq($$update public.invitations set response='accepted' where activity_id='b6000000-0000-0000-0000-000000000003' returning response$$,array[]::text[],'Admin cannot bypass end time');
+select throws_ok($$update public.invitations set response='accepted',responded_at=now() where activity_id='b6000000-0000-0000-0000-000000000002' returning response$$,'23514','Activity is read-only','Admin cannot bypass cancellation');
+select throws_ok($$update public.invitations set response='accepted',responded_at=now() where activity_id='b6000000-0000-0000-0000-000000000003' returning response$$,'23514','Activity is read-only','Admin cannot bypass end time');
 select set_config('request.jwt.claim.sub','b0000000-0000-0000-0000-000000000003',true);
-select results_eq($$update public.invitations set response='declined' where activity_id='b6000000-0000-0000-0000-000000000001' returning response$$,array[]::text[],'Lifecycle policy grants no additional identity permissions');
+select results_eq($$update public.invitations set response='declined',responded_at=now() where activity_id='b6000000-0000-0000-0000-000000000001' returning response$$,array[]::text[],'Lifecycle guard grants no additional identity permissions');
 reset role;
 select is((select response from public.invitations where activity_id='b6000000-0000-0000-0000-000000000003'),'pending','Ended answer remains unchanged');
-select throws_ok($$update public.invitations set response='accepted' where activity_id='b6000000-0000-0000-0000-000000000003'$$,'23514','Activity is read-only','Trigger protects reply even when RLS is bypassed');
-select throws_ok($$update public.invitations set response='declined',response_comment='Late change' where activity_id='b6000000-0000-0000-0000-000000000002'$$,'23514','Activity is read-only','Trigger protects comment changes on cancellation');
+select throws_ok($$update public.invitations set response='accepted',responded_at=now() where activity_id='b6000000-0000-0000-0000-000000000003'$$,'23514','Activity is read-only','Trigger protects reply even when RLS is bypassed');
+select throws_ok($$update public.invitations set response='declined',responded_at=now(),response_comment='Late change' where activity_id='b6000000-0000-0000-0000-000000000002'$$,'23514','Activity is read-only','Trigger protects comment changes on cancellation');
 select throws_ok($$update public.invitations set responded_at=now() where activity_id='b6000000-0000-0000-0000-000000000003'$$,'23514','Activity is read-only','Trigger also protects reply timestamps');
 select lives_ok($$update public.invitations set response=response where activity_id='b6000000-0000-0000-0000-000000000003'$$,'Unchanged historical values do not fail the trigger');
 select ok(not has_function_privilege('authenticated','private.guard_invitation_response_lifecycle()','EXECUTE'),'Authenticated role cannot call private trigger function');

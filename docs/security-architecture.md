@@ -555,9 +555,9 @@ händelsetabellen har RLS utan klientgrants. Se [signalflödet](capability-signa
 
 ### Kallelsesvar efter inställning eller slut
 
-En restriktiv UPDATE-policy på `invitations` kräver att aktiviteten inte är
-inställd och att sluttiden inte har passerat. Befintliga person-/målsmans- och
-lagbehörigheter gäller fortfarande. API:t gör samma kontroll för ett begripligt
+Befintliga person-/målsmans- och lagbehörigheter i RLS gäller fortfarande.
+Livscykeln kontrolleras för ändrade svarsfält, så historiska roll- och
+arbetsuppgiftsändringar kan behålla sina egna integritetskontroller. API:t gör samma kontroll för ett begripligt
 409-svar; en saknad/otillgänglig kallelse ger inte framgång.
 
 En privat trigger låser aktivitetsraden `FOR SHARE` vid ändring av svar,
