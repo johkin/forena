@@ -31,16 +31,19 @@ export async function PUT(request: Request, { params }: Props) {
   }
 
   const isPending = response === "pending";
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("invitations")
     .update({
       response: response as "pending" | "accepted" | "declined",
       responded_at: isPending ? null : new Date().toISOString(),
-      response_comment: isPending ? null : (comment || null),
+      // Quick replies omit comment; only explicit comment edits replace it.
+      ...(isPending ? { response_comment:null } : rawComment !== undefined ? { response_comment:comment || null } : {}),
     })
-    .eq("id", invitationId);
+    .eq("id", invitationId)
+    .select("id")
+    .maybeSingle();
 
-  if (error) {
+  if (error || !updated) {
     return NextResponse.json({ error: "Kallelsesvaret kunde inte sparas" }, { status: 403 });
   }
 

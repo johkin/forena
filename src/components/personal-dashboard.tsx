@@ -18,7 +18,8 @@ export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
   // Cross-club calendar uses one explicit display zone; modal uses the host club's zone.
   const timeZone = "Europe/Stockholm";
   const now = Date.parse(data.referenceTime);
-  const pending = data.activities.filter(item => item.invitation?.response === "pending" && Date.parse(item.activity.startsAt) > now && (!item.activity.responseDueAt || Date.parse(item.activity.responseDueAt) > now));
+  const pendingActivityIds = new Set(data.activities.filter(item => item.invitation?.response === "pending" && Date.parse(item.activity.startsAt) > now && (!item.activity.responseDueAt || Date.parse(item.activity.responseDueAt) > now)).map(item => item.activity.id));
+  const pending = data.activities.filter(item => pendingActivityIds.has(item.activity.id));
   const unique = [...new Map(data.activities.map(item => [item.activity.id, item])).values()];
   const byId = new Map(unique.map(item => [item.activity.id, item]));
   function open(item: FamilyActivity) { setSelected(byId.get(item.activity.id)); }
@@ -38,13 +39,13 @@ export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
   return <AppShell accountEmail={data.accountEmail}>
     <main className="content personal-dashboard">
       <div className="welcome"><div><p className="eyebrow">Förena · Personligt</p><h1>Min översikt</h1><p>Din och barnens vardag – alla lag och föreningar på samma plats.</p></div></div>
-      <PersonalOverview activities={pending} timeZone={timeZone} onOpenActivity={open} title="Behöver svar" id="pending-activities-title" emptyMessage="Alla aktuella kallelser är besvarade." />
+      <PersonalOverview onAnswered={() => router.refresh()} referenceTime={data.referenceTime} activities={pending} timeZone={timeZone} onOpenActivity={open} title="Behöver svar" id="pending-activities-title" emptyMessage="Alla aktuella kallelser är besvarade." />
       <div className="personal-calendar-section">
         <div className="personal-view-switch segmented-control" role="group" aria-label="Visning av familjens aktiviteter">
           <button type="button" className={view === "agenda" ? "primary" : "secondary"} aria-pressed={view === "agenda"} onClick={() => setView("agenda")}>Agenda</button>
           <button type="button" className={view === "calendar" ? "primary" : "secondary"} aria-pressed={view === "calendar"} onClick={() => setView("calendar")}>Kalender</button>
         </div>
-        {view === "agenda" ? <PersonalOverview activities={data.activities} timeZone={timeZone} onOpenActivity={open} title="Kommande aktiviteter" id="upcoming-activities-title" emptyMessage="Inga kommande kallelser eller bokade arbetsuppgifter för familjen." /> : <>
+        {view === "agenda" ? <PersonalOverview onAnswered={() => router.refresh()} referenceTime={data.referenceTime} activities={data.activities} timeZone={timeZone} onOpenActivity={open} title="Kommande aktiviteter" id="upcoming-activities-title" emptyMessage="Inga kommande kallelser eller bokade arbetsuppgifter för familjen." /> : <>
           <p className="personal-calendar-zone">Familjens kalender · tider i svensk tid. Alla föreningar visas.</p>
           <TeamCalendar activities={unique.map(item => item.activity)} timeZone={timeZone} heading="Familjens kalender" showAllEvents onSelectActivity={activity => { setSelected(byId.get(activity.id)); }} eventLabel={activity => {
             const item = byId.get(activity.id)!;
