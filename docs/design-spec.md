@@ -369,8 +369,11 @@ eller externa scripts läggs till i produktionskomponenterna.
 - Aktivitetsredigeraren har kort för detaljer, tid/samling och kallelse.
   Den kompletterande skissen i `stitch_f_rena (4).zip` används för en staplad
   kortlayout på både mobil och desktop: konfigurerade aktivitetstyper som knappar,
-  inline-kalender, start/slut med femminutersreglage, passlängd och samlingsval.
-  Kalendern har tangentbordsnavigation och ett datumfält som alternativ.
+  kompakt veckoremsa, start/slut med femminutersreglage, passlängd och samlingsval.
+  Veckoremsan har veckonavigering, minst 44 px breda datumknappar,
+  tangentbordsnavigation och ett datumfält som alternativ. På smala skärmar
+  rullas bara veckoremsan i sidled. Flerdagars / Cup öppnar det befintliga
+  slutdatumfältet. Samlingsstapeln visar verkliga tider och minuter i rätt proportion.
   Andra längder och samlingstider finns i ett utfällbart avsnitt; befintliga
   minutvärden, slutdatum, tidszoner, serieval och förhandsgranskning bevaras.
 - Närvaro visar faktiska antal, sökning och en filtrerbar enkolumnslista på

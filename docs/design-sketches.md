@@ -21,7 +21,7 @@ LOK-stöd/signering, provspelare, tränarloggbok, passmallar, automatiska
 före-/eftermatchstider, nya rättviseregler, meddelanden mellan föräldrar,
 kalenderexport, byte mellan aktiviteter och bottennavigation ingår inte.
 Den kompletterande skissen `stitch_f_rena (4).zip` styr aktivitetsredigerarens
-inline-kalender och plus/minus-reglage. De skriver till samma lokala datum och
+kompakta veckoremsa och plus/minus-reglage. De skriver till samma lokala datum och
 femminutersval som tidigare. Konfigurerade typer blir valbara knappar; längd och
 samling får snabbval med andra befintliga val i ett utfällbart avsnitt.
 Slutdatum och serieregler behålls. Tidslinjen visar verkliga tider;

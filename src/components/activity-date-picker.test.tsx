@@ -1,10 +1,9 @@
 import { expect, it } from "vitest";
-import { monthCells, shiftCalendarDate } from "./activity-date-picker";
+import { weekDates, shiftCalendarDate } from "./activity-date-picker";
 import { stepActivityTime } from "./activity-time-stepper";
-it("uses Monday-first rows and includes leap day", () => {
- const cells = monthCells("2028-02");
- expect(cells[0]).toBe(null); expect(cells[1]).toBe("2028-02-01");
- expect(cells.filter(Boolean)).toHaveLength(29); expect(cells.length % 7).toBe(0);
+it("shows Monday through Sunday across month and year boundaries", () => {
+ expect(weekDates("2027-01-01")).toEqual(["2026-12-28","2026-12-29","2026-12-30","2026-12-31","2027-01-01","2027-01-02","2027-01-03"]);
+ expect(weekDates("2028-02-29")[1]).toBe("2028-02-29");
 });
 it("moves calendar selection across month and year boundaries", () => {
  expect(shiftCalendarDate("2028-02-28",1)).toBe("2028-02-29");

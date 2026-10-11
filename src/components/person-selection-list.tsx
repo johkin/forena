@@ -22,7 +22,7 @@ export function PersonSelectionList({ people, groups, selected, onToggle, disabl
         {matching.map(person => <label key={person.id} className="person-selection-row" data-selected={selected.has(person.id)}>
           <span className="person-selection-avatar" aria-hidden="true">{person.name.trim().split(/\s+/).slice(0, 2).map(part => Array.from(part)[0]).join("")}</span>
           <span className="person-selection-copy"><strong>{person.name}</strong>{person.detail ? <small>{person.detail}</small> : null}</span>
-          <input type="checkbox" aria-label={`${person.name}, ${label.toLocaleLowerCase("sv-SE")}`} checked={selected.has(person.id)} disabled={disabled} onChange={() => onToggle(person.id)} />
+          <input type="checkbox" checked={selected.has(person.id)} disabled={disabled} onChange={() => onToggle(person.id)} />
         </label>)}
       </section>;
     })}
