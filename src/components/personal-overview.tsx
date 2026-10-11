@@ -41,7 +41,7 @@ export function PersonalOverview({ activities, timeZone, onOpenActivity, title =
       {[...grouped.values()].map((people) => {
         const item = people[0];
         const dueAt = item.activity.gatheringAt ?? item.activity.startsAt;
-        return <div className="personal-activity-row" key={item.activity.id}>
+        return <div className="personal-activity-row" data-response={people.some(person => person.invitation?.response === "pending") ? "pending" : undefined} key={item.activity.id}>
           <button className="personal-activity-main" type="button" onClick={() => onOpenActivity(item)}>
             <span className="member-avatar">{item.team.name.slice(0, 1)}</span>
             <span className="personal-activity-copy">
@@ -51,7 +51,7 @@ export function PersonalOverview({ activities, timeZone, onOpenActivity, title =
               <span>{when(dueAt, item.organization?.timeZone ?? timeZone)} · {item.activity.location}</span>
               <span className="personal-activity-people">{people.map(person => <span className="personal-activity-person" key={person.member.id}>
                 <span>{person.member.displayName}</span>
-                <span>{[person.hasDutyAssignment ? "Bokad arbetsuppgift" : undefined, person.invitation ? ({ accepted:"Kommer", declined:"Kan inte", pending:"Ej svarat" } as const)[person.invitation.response] : undefined].filter(Boolean).join(" · ") || "Ingen kallelse ännu"}</span>
+                <span data-response={person.invitation?.response}>{[person.hasDutyAssignment ? "Bokad arbetsuppgift" : undefined, person.invitation ? ({ accepted:"Kommer", declined:"Kan inte", pending:"Ej svarat" } as const)[person.invitation.response] : undefined].filter(Boolean).join(" · ") || "Ingen kallelse ännu"}</span>
               </span>)}</span>
             </span>
             <b aria-hidden="true">→</b>

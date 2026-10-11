@@ -54,6 +54,9 @@ och [mobilexempel](../public/design/components-mobile.html) är designreferenser
 PNG-bilderna finns bredvid HTML-filerna. `/components` visar produktionskomponenter
 med samma tokens och länkar till referenserna. HTML-filerna bevaras och använder
 externa CDN-resurser; appen använder egen CSS och lokalt paketerade typsnitt.
+Referenserna får CSP-sandbox utan `allow-same-origin`, med blockerade
+nätverksanrop och formulär. De får inte använda appens session eller lagring.
+Mobilreferensen tillåter zoom.
 
 Källmaterialet skiljer sig mellan YAML, löptext och HTML. Appens beslut är
 bakgrund `#faf9f3` och lime `#e0eb78` från HTML, skogsgrön åtgärd `#1e3f20`,
@@ -351,3 +354,24 @@ uttryckligt val. Spelarväljare visar bara serverns tillåtna urval.
 
 
 Disciplinformulär ägs av respektive paketkatalog och bäddas in via den gemensamma `DisciplineFields`-komponenten. De använder samma native formulärutseende och responsiva `discipline-*`-klasser; ingen extra pluginpanel införs.
+
+## Sidskisser: befintliga arbetsflöden
+
+Skisserna i `stitch_f_rena (2).zip` styr layouten för familjens översikt,
+aktivitetsredigering, närvaro och bemanningsscheman. [Mappningen](design-sketches.md)
+anger vad som används. `workflows.css` innehåller dessa avgränsade sidstilar och
+återanvänder tokens från `globals.css`. Inga skisspecifika verksamhetsregler
+eller externa scripts läggs till i produktionskomponenterna.
+
+- Familjens översikt visar ett kort per aktivitet, med klubb/lag och separata
+  svar per familjemedlem. Ej svarat får bärnstensmarkering. Kortet öppnar samma
+  aktivitetsdialog som tidigare. Svarsknapparna ligger kvar i dialogen.
+- Aktivitetsredigeraren har kort för detaljer, tid/samling och kallelse.
+  Befintliga datumfält, femminutersval, serieval och förhandsgranskning används.
+- Närvaro visar faktiska antal, sökning och en filtrerbar enkolumnslista på
+  mobil. På desktop visas de befintliga två listorna. Sökning/filtrering ändrar
+  aldrig urvalet eller antalet sparade personer; båda layouter delar urval.
+- Bemanning visar kapacitet från registrerade platser och ett kort per uppgift.
+  Egna bokningar markeras och byte/ersättare öppnas i ”Hantera ditt pass”. Andra
+  familjer förblir anonymiserade. Ledarverktyg, skapa/ändra uppgifter och regler
+  hålls i hopfällbara avsnitt. Samtliga skrivningar behåller förhandsgranskning.
