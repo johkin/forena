@@ -61,7 +61,7 @@ select ok((select d.starts_at=a.starts_at and d.ends_at=a.ends_at from public.ac
 select is((select source_kind from public.activities where id='d6000000-0000-0000-0000-000000000001'),'imported','Local duties do not change import ownership');
 update public.activity_duties set starts_at=starts_at+interval '10 minutes' where activity_id='d6000000-0000-0000-0000-000000000002';
 select ok((select not follows_activity from public.activity_duty_series where activity_id='d6000000-0000-0000-0000-000000000002'),'Explicit individual timing opts out');
-update public.activities set status='cancelled' where id='d6000000-0000-0000-0000-000000000001';
+update public.activities set status='cancelled', cancelled_at=now(), cancellation_reason='Cancelled by test leader' where id='d6000000-0000-0000-0000-000000000001';
 select ok((select cancelled_at is not null from public.activity_duties where activity_id='d6000000-0000-0000-0000-000000000001'),'Cancelled match closes duties');
 select is((select count(*)::integer from public.activity_duty_slots where activity_id='d6000000-0000-0000-0000-000000000001' and retired_at is null),0,'Cancelled slots cannot be booked');
 select ok(not has_table_privilege('authenticated','private.activity_duty_batches','SELECT'),'Receipts are private');
