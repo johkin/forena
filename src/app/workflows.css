@@ -70,7 +70,6 @@
 .attendance-actions .secondary { background:var(--lime); color:var(--primary); border:0; }
 .attendance-search { display:grid; gap:8px; margin:20px 0 12px; font-weight:600; }
 .attendance-search input { background:var(--paper); }
-.attendance-mobile-filter, .attendance-mobile-list { display:none; }
 .attendance-modal .attendance-column { border:0; border-radius:16px; background:var(--paper); }
 .attendance-modal .attendance-person { border:1px solid var(--line); border-radius:12px; margin-block:8px; box-shadow:var(--shadow); }
 .attendance-modal .attendance-person strong { font-size:14px; }
@@ -133,20 +132,15 @@
 
 @media (min-width:1024px) {
   .personal-dashboard .personal-activity-list { grid-template-columns:repeat(2,minmax(0,1fr)); }
-  .activity-editor-fields { grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; }
+  .activity-editor-fields { grid-template-columns:minmax(0,1fr); }
   .activity-editor-fields > .activity-kind-switch, .activity-editor-fields > .editor-invitation, .activity-editor-fields > .activity-preview, .activity-editor-fields > .auth-error { grid-column:1 / -1; }
-  .activity-editor-modal { width:min(960px,100%); }
+  .activity-editor-modal { width:min(640px,100%); }
 }
 @media (max-width:767px) {
   .activity-editor-modal, .attendance-modal { padding:16px; }
   .activity-editor-modal .editor-section { padding:20px; }
   .activity-editor-modal .editor-fields { grid-template-columns:minmax(0,1fr); }
   .activity-editor-modal .invitation-mode-switch button { padding:8px 6px; font-size:12px; }
-  .attendance-mobile-filter { display:flex; }
-  .attendance-mobile-filter button { flex:1 1 auto; padding:8px; font-size:12px; }
-  .attendance-mobile-list { display:block; }
-  .attendance-desktop-columns { display:none; }
-  .attendance-mobile-list .attendance-person { min-height:64px; }
   .attendance-modal .modal-actions { flex-wrap:wrap; }
   .attendance-modal .modal-actions .primary { flex:1 1 100%; order:-1; }
   .personal-dashboard .personal-activity-row, .duty-card, .workflow-disclosure { padding:16px !important; }
@@ -156,3 +150,85 @@
   .duty-series-form .participant-selection { grid-template-columns:minmax(0,1fr); }
   .workflow-section-heading { align-items:start; flex-wrap:wrap; }
 }
+
+/* Activity sketch: a continuous column from details through invitation rules. */
+.activity-editor-modal { width:min(640px,100%); }
+.activity-editor-modal .editor-fields { grid-template-columns:minmax(0,1fr); gap:16px; }
+.activity-editor-modal .editor-optional { margin-top:16px; }
+.activity-editor-modal .activity-type-picker { border:0; padding:0; margin:0 0 20px; min-width:0; }
+.activity-type-picker legend { margin-bottom:10px; font-size:12px; font-weight:600; color:var(--ink-soft); }
+.activity-type-picker > div { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+.activity-type-picker button { display:grid; justify-items:center; align-content:center; gap:8px; min-height:80px; padding:10px 6px; border:1px solid var(--line); border-radius:12px; background:var(--surface-low); color:var(--ink); font:inherit; font-size:12px; overflow-wrap:anywhere; cursor:pointer; }
+.activity-type-picker button > span { font-size:24px; line-height:1; }
+.activity-type-picker button[aria-pressed=true] { background:var(--primary); border-color:var(--primary); color:white; }
+.activity-type-picker:disabled button { cursor:default; opacity:.6; }
+.activity-date-picker { padding:16px; border-radius:12px; background:var(--surface-low); }
+.activity-calendar-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; text-transform:capitalize; }
+.activity-calendar-heading > div { display:flex; }
+.activity-calendar-weekdays, .activity-calendar-days { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); text-align:center; gap:2px; }
+.activity-calendar-weekdays { margin-top:12px; font-size:11px; color:var(--ink-soft); }
+.activity-calendar-weekdays span { padding:8px 0; }
+.activity-calendar-days button { min-height:44px; padding:4px; border:0; border-radius:50%; background:transparent; color:var(--ink); font:inherit; cursor:pointer; }
+.activity-calendar-days button[aria-pressed=true] { background:var(--primary); color:white; }
+.activity-calendar-selected { display:grid; grid-template-columns:1fr minmax(0,150px); align-items:center; margin-top:12px; }
+.editor-time-steppers { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-top:20px; }
+.activity-time-stepper { min-width:0; padding:12px 8px; border-radius:12px; background:var(--surface-low); text-align:center; }
+.activity-time-controls { display:flex; justify-content:space-between; align-items:center; gap:4px; }
+.activity-time-controls > button { flex:0 0 32px; min-height:44px; border:0; background:transparent; color:var(--primary); font-size:22px; cursor:pointer; }
+.activity-time-controls details { min-width:0; }
+.activity-time-controls summary { list-style:none; min-height:44px; display:grid; place-items:center; font-size:22px; font-weight:700; cursor:pointer; }
+.activity-time-controls summary::-webkit-details-marker { display:none; }
+.activity-time-options { padding:8px 0; }
+.activity-time-options .editor-time-field { width:100%; }
+.activity-time-options select { width:100%; }
+.activity-editor-modal .editor-end-date, .activity-editor-modal .editor-series-end { display:grid; grid-template-columns:1fr minmax(0,150px); align-items:center; margin-top:12px; }
+.editor-duration-choices, .editor-gathering-choices { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:16px; }
+.editor-duration-choices > span { font-size:12px; color:var(--ink-soft); margin-right:auto; }
+.editor-duration-choices button, .editor-gathering-choices button { padding:8px 12px; min-height:44px; border:1px solid var(--line); border-radius:9999px; background:var(--surface-low); color:var(--ink); font:inherit; font-size:12px; cursor:pointer; }
+.editor-duration-choices button[aria-pressed=true], .editor-gathering-choices button[aria-pressed=true] { background:var(--primary); color:white; border-color:#aad1a6; }
+.editor-gathering { margin-top:20px; padding:16px; background:var(--surface-low); border-radius:12px; }
+.editor-gathering > p { display:flex; justify-content:space-between; margin:0; font-size:13px; }
+.editor-gathering-choices { margin-top:12px; }
+.editor-timeline { margin-top:20px; }
+.editor-timeline > div:first-child { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; font-size:11px; color:var(--ink-soft); }
+.editor-timeline-bar { display:flex; height:8px; margin-top:8px; border-radius:9999px; overflow:hidden; }
+.editor-timeline-bar span:first-child { flex:1; background:var(--lime); }
+.editor-timeline-bar span:last-child { flex:4; background:var(--primary); }
+.editor-time-advanced { margin-top:16px; }
+.editor-time-advanced > summary { min-height:44px; cursor:pointer; font-size:12px; color:var(--ink-soft); }
+.activity-editor-modal .editor-invitation .settings-fields { grid-template-columns:minmax(0,1fr); margin-top:20px; gap:16px; }
+.activity-editor-modal .editor-invitation .settings-fields > label { grid-template-columns:minmax(0,1fr) minmax(0,170px); align-items:center; }
+.activity-editor-modal .editor-invitation .settings-fields > label small { grid-column:1 / -1; font-weight:400; }
+.activity-editor-modal .timing-choice-row { display:flex; align-items:center; gap:8px; }
+.activity-editor-modal .timing-choice-row label { flex:1; min-width:0; }
+.activity-editor-modal .editor-invitation > summary > span:last-child { font-size:12px; }
+@media (max-width:400px) {
+ .activity-editor-modal .editor-section { padding:16px; }
+ .activity-date-picker { padding:8px; }
+ .activity-time-stepper { padding:8px 4px; }
+ .activity-time-controls summary { font-size:18px; }
+ .activity-time-controls > button { flex-basis:24px; }
+ .activity-editor-modal .editor-invitation .settings-fields > label { grid-template-columns:minmax(0,1fr); }
+}
+
+.activity-editor-modal .editor-section h3 { font-family:var(--font-heading); font-size:22px; font-weight:500; margin:0; }
+
+/* One checked-person list in attendance and invitation recipient selection. */
+.person-selection-list { display:grid; gap:20px; margin:16px 0; }
+.person-selection-group h4 { display:flex; align-items:center; gap:8px; margin:0 0 10px; font-size:14px; }
+.person-selection-group h4 > span { padding:2px 8px; background:var(--surface-container); border-radius:9999px; font-size:11px; font-weight:500; }
+.person-selection-list .person-selection-row { display:grid; grid-template-columns:36px minmax(0,1fr) 36px; align-items:center; gap:12px; min-height:64px; margin:8px 0; padding:12px; border:1px solid var(--line); border-radius:12px; background:var(--paper); cursor:pointer; }
+.person-selection-row[data-selected=true] { border-color:#aad1a6; }
+.person-selection-avatar { display:grid; place-items:center; width:36px; height:36px; border-radius:50%; background:var(--positive-surface); color:var(--primary); font-size:12px; font-weight:700; }
+.person-selection-copy { display:grid; gap:4px; min-width:0; }
+.person-selection-copy strong { color:var(--ink); font-size:14px; font-weight:600; overflow-wrap:anywhere; }
+.person-selection-copy small { color:var(--ink-soft); font-size:11px; font-weight:400; }
+.person-selection-row input[type=checkbox] { appearance:none; -webkit-appearance:none; width:36px; height:36px; min-height:36px; margin:0; border:1px solid var(--line); border-radius:9px; background:var(--surface-container); cursor:pointer; }
+.person-selection-row input[type=checkbox]:checked { border-color:var(--primary); background-color:var(--primary); background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m6 12 4 4 8-8' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+.person-selection-row:has(input:focus-visible) { outline:2px solid var(--primary); outline-offset:3px; }
+.person-selection-row:has(input:disabled) { cursor:wait; opacity:.65; }
+.attendance-list-filter { margin:0 0 16px; }
+.attendance-list-filter button { flex:1; padding:8px; font-size:12px; }
+.editor-recipient-count { color:var(--ink-soft); font-size:12px; }
+.activity-editor-modal .editor-invitation .workflow-summary-title { flex:1; font-family:var(--font-heading); font-size:22px; color:var(--ink); font-weight:500; }
+.activity-editor-modal .editor-help summary { min-height:24px; width:24px; height:24px; }

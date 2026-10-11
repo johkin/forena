@@ -425,3 +425,8 @@ minutjobbet plockar förfallna jobb. Ändrade kallelsesvar publicerar det privat
 beständiga eventet `activity.invitation_response_changed` i skrivtransaktionen.
 Signalprenumeranten kvitterar och kölägger atomärt; RPC:n är service-only och
 händelsetabellen har RLS utan klientgrants. Se [signalflödet](capability-signals.md).
+
+Aktivitetsredigerarens datum- och tidsreglage återanvänder lokala datum,
+femminutersval och befintliga tidsregler. `PersonSelectionList` är den gemensamma
+kontrollerade listan för kallelsemottagare och närvaro. Varje vy äger sitt urval
+och skickar fullständiga person-ID:n; filtrering ändrar bara synliga rader.

@@ -13,7 +13,7 @@ function elements(node:unknown):ReactElement<Record<string,unknown>>[] {
  if(!node || typeof node!=="object" || !("props" in node))return [];
  const el=node as ReactElement<Record<string,unknown>>;return [el,...elements(el.props.children)];
 }
-const render=()=>elements(ActivityEditorModal({mode:"edit",organization,team,activity:{...activity,seriesId:"series",startsAt:"2030-10-20T16:00:00Z",endsAt:"2030-10-20T17:00:00Z"},members:[],source:"database",canManageInvitations:false,onClose:vi.fn(),onNotice:vi.fn()}));
+const render=()=>elements(ActivityEditorModal({mode:"edit",organization,team,activity:{...activity,seriesId:"series",startsAt:"2030-10-20T16:00:00Z",endsAt:"2030-10-20T17:00:00Z",gatheringAt:"2030-10-20T15:30:00Z"},members:[],source:"database",canManageInvitations:false,onClose:vi.fn(),onNotice:vi.fn()}));
 beforeEach(()=>{vi.unstubAllGlobals();hooks.index=0;hooks.values=[];hooks.setters=[];vi.stubGlobal("window",{confirm:vi.fn(()=>true),location:{reload:vi.fn()}});});
 it("requires a scope before deletion",()=>{
  const button=render().find(el=>el.type==="button"&&el.props.children==="Ta bort");expect(button?.props.disabled).toBe(true);
