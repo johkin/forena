@@ -16,6 +16,8 @@ import { createTeamAssistantTools } from "./team-assistant-tools";
 import { createAssistantMemoryTools } from "./assistant-memory-tools";
 import type { AssistantMemoryDraft } from "./assistant-memory-draft";
 import { createReminderTools } from "./reminder-tools";
+import { createActivityDutyTools } from "./activity-duty-tools";
+import type { ActivityDutyDraft } from "./activity-duty-draft";
 import type { ReminderDraft } from "./reminder-draft";
 import { TeamAssistantError, type AssistantDependencies, type TeamAssistantInput, type TeamAssistantReply } from "./team-assistant-types";
 
@@ -39,6 +41,7 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
   if (intent.mode === "activity-draft" && !canManageActivities) return { answer: "Du saknar behörighet att skapa aktiviteter i laget.", source: "fallback", model };
   if (intent.mode === "activity-history" && context.viewer.kind !== "leader") return { answer: "Du saknar behörighet att läsa lagets närvarohistorik.", source: "fallback", model };
   if (intent.mode === "reminder" && !canManageInvitations) return { answer: "Du saknar behörighet att föreslå utskick av påminnelser i laget.", source: "fallback", model };
+  if (intent.mode === "activity-duties" && !canManageInvitations) return { answer: "Du saknar behörighet att hantera uppgifter i laget.", source: "fallback", model };
   const question = intent.question;
   const requiresActivityDraft = intent.mode === "activity-draft";
   const requiresWebResearch = requiresActivityDraft && intent.webResearch;
@@ -115,12 +118,14 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
 
     const memoryDrafts: AssistantMemoryDraft[] = [];
     const reminderDrafts: ReminderDraft[] = [];
+    const dutyDrafts: ActivityDutyDraft[] = [];
     const historyResults: ActivityHistoryResult[] = [];
     const historyPeriod = historyPeriodFromQuestion(question, organizationToday);
     const assistant = new ToolLoopAgent({
       model,
       instructions: buildTeamAssistantPrompt({ assistantName: organization?.assistant_name, viewerKind: context.viewer.kind, canManageActivities, canManageInvitations }),
       tools: {
+        ...(canManageInvitations ? createActivityDutyTools({ supabase, teamId, timeZone: context.clock.organizationTimeZone, onDraft: draft => { dutyDrafts.splice(0, dutyDrafts.length, draft); } }) : {}),
         ...(requiresInvitations ? createActivityInvitationTools(supabase, memoryScope.organizationId, teamId, { today: organizationToday, now: new Date().toISOString(), timeZone: context.clock?.organizationTimeZone ?? organization?.time_zone ?? "Europe/Stockholm", period: historyPeriod, periodRequired: intent.periodRequested, question, category: intent.category ?? undefined, response: intent.response, onResult: result => historyResults.push(result) }) : {}),
         ...createTeamAssistantTools(supabase, teamId, activityIds),
         ...(context.viewer.kind === "leader" ? createActivityHistoryTools(supabase, memoryScope.organizationId, teamId, { today: organizationToday, period: historyPeriod, category: intent.category ?? undefined, memberRole: intent.memberRole ?? undefined, onResult: result => historyResults.push(result) }) : {}),
@@ -138,6 +143,10 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
       maxOutputTokens: 500,
       stopWhen: isStepCount(5),
       prepareStep: ({ stepNumber }) => {
+        if (intent.mode === "activity-duties") {
+          if (stepNumber === 0) return { activeTools: ["listDutyActivities"], toolChoice: { type: "tool", toolName: "listDutyActivities" } };
+          return { activeTools: ["listDutyActivities", "proposeActivityDuties"] };
+        }
         if (requiresInvitations) {
           if (stepNumber === 0) return { activeTools: ["listInvitationTeams"], toolChoice: { type: "tool", toolName: "listInvitationTeams" } };
           if (stepNumber === 1) return { activeTools: ["readActivityInvitations"], toolChoice: { type: "tool", toolName: "readActivityInvitations" } };
@@ -178,10 +187,11 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
       return { answer: error ?? "Historiken kunde inte verifieras. Försök igen. Det betyder inte att registrerad närvaro saknas.", historyResults: [], source: "fallback", model };
     }
     const invalidAnswer = !result.text || containsToolCode(result.text);
+    if (dutyDrafts.length) return { answer: "Här är ett uppgiftsförslag för granskning. Inget har sparats; använd Spara uppgifter för att bekräfta.", dutyDrafts, source: "ai", model };
     const answer = historyResults.length
       ? historyResults.map(history => verifiedHistoryAnswer(history, question)).join("\n")
       : invalidAnswer ? "Jag kunde inte hämta ett verifierat svar. Försök igen och ange vilken period som avses om den saknas." : result.text;
-    return { answer, memoryDrafts, reminderDrafts, historyResults, source: invalidAnswer && !historyResults.length ? "fallback" : "ai", model };
+    return { answer, memoryDrafts, reminderDrafts, dutyDrafts, historyResults, source: invalidAnswer && !historyResults.length ? "fallback" : "ai", model };
   } catch (error) {
     const gatewayError = error as Error & { statusCode?: number; cause?: { name?: string; message?: string } };
     console.warn("team_assistant_fallback", {
@@ -198,6 +208,7 @@ export async function answerTeamAssistant(input: TeamAssistantInput, dependencie
     }
     if (requiresInvitations) return { answer: "Kallelserna kunde inte hämtas. Det betyder inte att kallelser saknas. Försök igen.", source: "fallback", model };
     if (requiresHistory) return { answer: "Historiken kunde inte hämtas just nu. Det betyder inte att registrerad närvaro saknas. Försök igen.", source: "fallback", model };
+    if (intent.mode === "activity-duties") return { answer: "Uppgiftsförslaget kunde inte tas fram. Inget har sparats. Försök igen.", source: "fallback", model };
     const nextActivity = activities?.[0];
     const answer = nextActivity
       ? `Jag kan inte formulera ett AI-svar just nu. Nästa aktivitet är ${nextActivity.title} på ${nextActivity.location || "plats som ännu inte angetts"}.`

@@ -195,8 +195,13 @@ högst 30 träffar), fullständiga namn och aktuella lag för att skilja persone
 Valda personer ligger kvar när sökningen ändras. Spelare föreslås som spelare;
 övriga kräver uttryckligt rollval. Kallelse och ledaranmälan har var sin tydlig
 förhandsgranskning. Redan kallade döljs och dubbleringar nekas på servern.
-Arbetsuppgifter visas hopfällbart för arbetspass, med separat markering för
+Arbetsuppgifter visas för alla lagaktiviteter, med separat markering för
 utfört arbete, och visas för familjen i den personliga kallelsen.
+En tom uppgiftspanel visas bara för behörig hanterare. Assistentens massförslag
+visar exakt aktivitetslista med datum, tid, import/hemma-markering, kapacitet och
+vilka uppgifter som redan finns. Spara uppgifter och Avvisa är separata knappar;
+varken modelltext eller ja i chatten sparar. Kortet radbryts på telefon och
+anger att tidskopplingen gäller hela aktiviteten, inte framtida importer.
 
 Bemanningsschema visar uppgifter som rader med tid/deadline och lediga platser.
 Familjer väljer barn före bokning och granskar varje ändring. Andra familjer

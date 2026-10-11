@@ -40,7 +40,7 @@ export function ActivityDutySchedule({ activityId, startsAt, endsAt, timeZone, r
    catch (e) { setError(e instanceof Error ? e.message : "Ändringen misslyckades"); }
    finally { setBusy(false); }
  }
- if (!schedule?.isWork) return error ? <p role="alert">{error}</p> : null;
+ if (!schedule || !(schedule.supportsDuties ?? schedule.isWork) || (!schedule.canManage && !schedule.duties.length)) return error ? <p role="alert">{error}</p> : null;
  const allSlots = schedule.duties.flatMap(d => d.slots.map(s => ({ duty: d, slot: s })));
  const slotLabel = (id: string | null) => { const row = allSlots.find(x => x.slot.id === id); return row ? `${row.duty.name}, ${timing(row.duty, timeZone)}` : "Ingen plats"; };
  const selectedDuties = schedule.duties.filter(d => selected.includes(d.id) && !d.slots.some(s => s.completedAt));
