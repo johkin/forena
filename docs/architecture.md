@@ -45,7 +45,9 @@ skillnader mellan referensens YAML, text och HTML har lösts.
 familjeöversikten. Endast aktivitetsrubriken öppnar detaljer. Varje svar går till
 det befintliga autentiserade `respond`-API:t med exakt kallelse-ID; utelämnad
 kommentar bevarar den tidigare kommentaren. API:t kontrollerar att en rad faktiskt
-uppdaterades innan det returnerar framgång. RLS och familjeavgränsning ändras inte.
+uppdaterades innan det returnerar framgång. Familjeavgränsningen behålls. En restriktiv UPDATE-policy och en privat
+trigger nekar svar/kommentarer för inställda eller avslutade aktiviteter;
+triggerns aktivitetslås skyddar även samtidiga livscykeländringar.
 Bekräftade svar visas lokalt och föräldravyn uppdateras från servern. Väntande
 skrivning och fel är avgränsade till personens rad.
 

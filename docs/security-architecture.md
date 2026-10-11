@@ -552,3 +552,19 @@ minutjobbet plockar förfallna jobb. Ändrade kallelsesvar publicerar det privat
 beständiga eventet `activity.invitation_response_changed` i skrivtransaktionen.
 Signalprenumeranten kvitterar och kölägger atomärt; RPC:n är service-only och
 händelsetabellen har RLS utan klientgrants. Se [signalflödet](capability-signals.md).
+
+### Kallelsesvar efter inställning eller slut
+
+En restriktiv UPDATE-policy på `invitations` kräver att aktiviteten inte är
+inställd och att sluttiden inte har passerat. Befintliga person-/målsmans- och
+lagbehörigheter gäller fortfarande. API:t gör samma kontroll för ett begripligt
+409-svar; en saknad/otillgänglig kallelse ger inte framgång.
+
+En privat trigger låser aktivitetsraden `FOR SHARE` vid ändring av svar,
+kommentar eller svarstid. Inställning och tidsändring måste därför vänta på
+skrivningen, eller göra att svaret nekas om de hunnit före. Kontroll mot
+`clock_timestamp()` görs efter låset, även om transaktionen startade före slut.
+Triggern skyddar också skrivningar som kringgår RLS. Den använder en privat
+definer enbart för att låsa raden utan att ge målsmän aktivitetsbehörighet;
+extern exekvering är indragen. Leveransmetadata och nya historikrader påverkas
+inte av triggern. Närvarorapportering har sitt separata ändringsflöde.
