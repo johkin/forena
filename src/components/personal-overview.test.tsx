@@ -21,8 +21,8 @@ it("groups leader and children under one activity with separate response statuse
   expect(html.match(/class="personal-activity-row"/g)).toHaveLength(1);
   expect(html.match(/<button/g)).toHaveLength(1);
   expect(html).toContain('class="badge">1</span>');
-  expect(html).toContain("Johan</span><span>Kommer");
-  expect(html).toContain("Tilda</span><span>Ej svarat");
+  expect(html).toContain("Johan</span><span data-response=\"accepted\">Kommer");
+  expect(html).toContain("Tilda</span><span data-response=\"pending\">Ej svarat");
 });
 it("keeps different activities with the same title separate and avoids repeating a person", () => {
   const item = { member: { id: "child", displayName: "Tilda" }, team: { name: "F2016" }, activity: { id: "a", title: "Träning", startsAt: "2030-01-01T10:00:00Z", location: "Pitch" }, invitation: { response: "declined" } } as FamilyActivity;
@@ -56,6 +56,6 @@ it("groups a duty-only person with an invited person and keeps their statuses se
   expect(html.match(/class="personal-activity-row"/g)).toHaveLength(1);
   expect(html.match(/class="personal-activity-person"/g)).toHaveLength(2);
   expect(html).toContain("Johan</span><span>Bokad arbetsuppgift");
-  expect(html).toContain("Tilda</span><span>Ej svarat");
+  expect(html).toContain("Tilda</span><span data-response=\"pending\">Ej svarat");
   expect(html).not.toContain("Bokad arbetsuppgift · Ej svarat");
 });

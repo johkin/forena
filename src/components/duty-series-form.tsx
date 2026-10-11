@@ -33,11 +33,13 @@ export function DutySeriesForm({ initial, startsAt, endsAt, timeZone, disabled =
      onReview(definition);
    } catch (e) { setError(e instanceof Error && !("issues" in e) ? e.message : "Kontrollera datum, tider, instruktioner och antal platser. Välj högst 48 pass."); }
  }
- return <div>
+ return <div className="duty-series-form">
+   <div className="workflow-section-heading"><div><p className="eyebrow">Schema &amp; platser</p><h4>Tid och bemanning</h4></div></div>
    <div className="participant-selection"><label>Tid<select value={kind} onChange={e => setKind(e.target.value as typeof kind)}><option value="interval">Bemanningspass</option><option value="deadline">Deadline för leverans</option><option value="none">Ingen särskild tid</option></select></label><label>Platser per tillfälle<input type="number" min={1} max={50} value={places} onChange={e => setPlaces(Number(e.target.value))} /></label></div>
    {kind !== "none" && <div className="participant-selection"><label>Datum<input type="date" value={date} onChange={e => setDate(e.target.value)} /></label><FiveMinuteTimeField name={`${id}-start`} defaultValue={start} label={kind === "deadline" ? "Lämnas senast" : "Från"} onChange={setStart} />{kind === "interval" && <><label>Slutdatum<input type="date" min={date} value={endDate} onChange={e => setEndDate(e.target.value)} /></label><FiveMinuteTimeField name={`${id}-end`} defaultValue={end} label="Till" onChange={setEnd} /><label>Minuter per pass<input type="number" min={5} step={5} value={minutes} onChange={e => setMinutes(Number(e.target.value))} /></label></>}</div>}
-   <label>Gemensamma instruktioner<textarea maxLength={2000} value={instructions} onChange={e => setInstructions(e.target.value)} /></label>
+   <div className="duty-instruction-fields"><p className="eyebrow">Praktisk information</p><label>Gemensamma instruktioner<textarea maxLength={2000} value={instructions} onChange={e => setInstructions(e.target.value)} /></label>
    {kind === "interval" && <><label>Extra instruktion för första passet<textarea maxLength={500} value={opening} onChange={e => setOpening(e.target.value)} /></label><label>Extra instruktion för sista passet<textarea maxLength={500} value={closing} onChange={e => setClosing(e.target.value)} /></label></>}
+   </div>
    {error && <p role="alert">{error}</p>}<button type="button" className="primary" disabled={disabled} onClick={review}>{buttonLabel}</button>
  </div>;
 }
@@ -45,7 +47,7 @@ export function DutySeriesEditor({ series, duties, startsAt, endsAt, timeZone, p
  series: DutySeries; duties: Duty[]; startsAt: string; endsAt: string; timeZone: string; propose: Propose;
 }) {
  const completed = duties.some(d => d.slots.some(s => s.completedAt));
- return <details><summary>Redigera hela uppgiftsserien</summary>{completed ? <p>Serien innehåller genomförda uppgifter och behålls som historik.</p> : <>
+ return <details className="workflow-disclosure"><summary>Redigera hela uppgiftsserien</summary>{completed ? <p>Serien innehåller genomförda uppgifter och behålls som historik.</p> : <>
    <p>Ändringen gäller alla pass i serien, även individuellt redigerade pass. Bokningar behålls på samma passnummer. Bokningar på pass som försvinner måste frigöras först.</p>
    <DutySeriesForm initial={series.definition} startsAt={startsAt} endsAt={endsAt} timeZone={timeZone} buttonLabel="Granska serieändring" onReview={definition => {
      const definitions = expandDutySeries(definition);

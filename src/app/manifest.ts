@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Den öppna plattformen för föreningslivet",
     start_url: "/",
     display: "standalone",
-    background_color: "#f7f5ed",
-    theme_color: "#173f35",
+    background_color: "#faf9f3",
+    theme_color: "#1e3f20",
     lang: "sv",
     icons: [{ src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" }],
   };

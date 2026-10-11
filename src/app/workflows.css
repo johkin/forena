@@ -1,0 +1,158 @@
+/* Page sketches adapt existing workflows; commands and permissions live in components. */
+.workflow-section-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:20px; }
+.workflow-section-heading > div { min-width:0; }
+.workflow-section-heading h3, .workflow-section-heading h4 { margin:0; font-family:var(--font-heading); font-weight:500; font-size:22px; line-height:1.25; }
+.workflow-section-heading .eyebrow { margin-bottom:6px; }
+.workflow-section-heading .badge { flex-shrink:0; height:auto; padding:4px 10px; }
+.segmented-control { display:flex; flex-wrap:wrap; gap:4px; padding:4px; background:var(--surface-container); border-radius:12px; }
+.segmented-control button { flex:1; min-height:44px; padding:8px 12px; border:0; border-radius:9px; background:transparent; color:var(--ink); font-weight:600; cursor:pointer; }
+.segmented-control button.selected, .segmented-control button[aria-pressed=true] { background:var(--paper); color:var(--primary); box-shadow:var(--shadow); }
+
+/* Family overview: one card per activity, retaining each person's own answer. */
+.personal-dashboard .welcome { padding-block:8px; }
+.personal-dashboard .personal-overview { background:transparent; border:0; border-radius:0; padding:0; box-shadow:none; }
+.personal-dashboard .personal-overview .card-heading { margin-bottom:16px; }
+.personal-dashboard .personal-activity-list { border:0; display:grid; gap:16px; }
+.personal-dashboard .personal-activity-row { border:1px solid var(--line); border-radius:16px; padding:20px; background:var(--paper); box-shadow:var(--shadow); }
+.personal-dashboard .personal-activity-row[data-response=pending] { border-left:3px solid #d97706; }
+.personal-dashboard .personal-activity-main { gap:12px; align-items:start; min-height:48px; }
+.personal-dashboard .member-avatar { border-radius:12px; background:var(--mint); color:var(--primary); width:40px; height:40px; }
+.personal-dashboard .personal-activity-copy { gap:8px; }
+.personal-dashboard .personal-activity-copy strong { font-size:16px; line-height:1.4; }
+.personal-dashboard .personal-activity-copy > span { white-space:normal; overflow:visible; overflow-wrap:anywhere; font-size:13px; }
+.personal-dashboard .personal-activity-people { padding:12px; border-radius:12px; background:var(--surface-low); }
+.personal-activity-person [data-response] { display:inline-flex; width:fit-content; padding:3px 8px; border-radius:9999px; font-size:11px; }
+.personal-activity-person [data-response=accepted] { background:var(--positive-surface); color:var(--positive); }
+.personal-activity-person [data-response=declined] { background:var(--negative-surface); color:var(--negative); }
+.personal-activity-person [data-response=pending] { background:var(--pending-surface); color:var(--pending); }
+.personal-dashboard .personal-workspaces { margin-top:20px; }
+.personal-dashboard .personal-workspaces > div { padding:16px; border-radius:12px; background:var(--surface-low); }
+.personal-dashboard .personal-workspaces h3 { margin-top:0; }
+.personal-dashboard .personal-view-switch { width:fit-content; margin-bottom:20px; }
+
+/* Activity editor: separate cards for details, time and invitation rules. */
+.activity-editor-modal { background:var(--cream); }
+.activity-editor-modal > .card-heading { padding-bottom:16px; border-bottom:1px solid var(--line); }
+.activity-editor-modal #activity-editor-title { font-family:var(--font-heading); font-size:28px; font-weight:500; }
+.activity-editor-fields { display:grid; gap:20px; }
+.activity-editor-fields[hidden] { display:none; }
+.activity-editor-modal .editor-section { padding:24px; border-radius:16px; background:var(--paper); box-shadow:var(--shadow); }
+.activity-editor-modal .editor-section > label, .activity-editor-modal .editor-fields label, .activity-editor-modal .editor-date-row label { gap:8px; font-weight:600; font-size:12px; }
+.activity-editor-modal .editor-section :is(input:not([type=checkbox]):not([type=radio]),select,textarea) { background:var(--surface-low); }
+.activity-editor-modal .activity-kind-switch { display:flex; gap:4px; margin:0; padding:4px; border:0; background:var(--surface-container); border-radius:12px; }
+.activity-editor-modal .activity-kind-switch button { flex:1; min-height:44px; font-weight:600; border-radius:9px; }
+.activity-editor-modal .activity-kind-switch button.selected { background:var(--paper); color:var(--primary); }
+.activity-editor-modal .invitation-mode-switch { margin-top:16px; }
+.activity-editor-modal .invitation-mode-switch button.selected { background:var(--primary); color:white; }
+.activity-editor-modal .editor-optional { padding:12px; border-radius:12px; background:var(--surface-low); }
+.activity-editor-modal .editor-optional summary { min-height:44px; display:flex; align-items:center; }
+.activity-editor-modal .editor-invitation > summary { min-height:44px; gap:12px; }
+.workflow-summary-title { font-family:var(--font-heading); font-size:22px; font-weight:500; }
+.activity-editor-modal .audience-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.activity-editor-modal .audience-options label { display:flex; align-items:center; gap:10px; min-height:48px; padding:12px; border:1px solid var(--line); border-radius:12px; background:var(--surface-low); color:var(--ink); overflow-wrap:anywhere; }
+.activity-editor-modal .audience-options label:has(input:checked) { background:#c5edc1; border-color:#aad1a6; color:var(--primary); }
+.activity-editor-modal .audience-options input { flex:0 0 18px; width:18px; min-height:18px; }
+.activity-editor-modal .settings-fields fieldset { border:0; padding:16px; background:var(--surface-low); border-radius:12px; }
+.activity-editor-modal .timing-choice-row { padding-block:8px; border-bottom:1px solid var(--line); }
+.activity-editor-modal .activity-preview { background:var(--positive-surface); border-color:#c5edc1; border-radius:16px; }
+.activity-editor-modal .modal-actions { margin-top:16px; padding:16px 0 max(8px,env(safe-area-inset-bottom)); background:var(--cream); }
+
+/* Attendance: action summary plus single-column mobile roster, shared selection state. */
+.attendance-modal { background:var(--cream); }
+.attendance-modal #attendance-title { font-family:var(--font-heading); font-weight:500; font-size:28px; }
+.attendance-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:20px; }
+.attendance-summary > div { display:grid; gap:4px; text-align:center; padding:16px 8px; background:var(--surface-container); border-radius:12px; }
+.attendance-summary > div:first-child { background:var(--positive-surface); }
+.attendance-summary strong { font-size:26px; line-height:32px; font-weight:700; color:var(--primary); }
+.attendance-summary span { font-size:11px; color:var(--ink-soft); overflow-wrap:anywhere; }
+.attendance-actions { display:grid; gap:12px; padding:20px; border-radius:16px; background:var(--primary); color:white; }
+.attendance-actions span { color:white; font-weight:500; }
+.attendance-actions .secondary { background:var(--lime); color:var(--primary); border:0; }
+.attendance-search { display:grid; gap:8px; margin:20px 0 12px; font-weight:600; }
+.attendance-search input { background:var(--paper); }
+.attendance-mobile-filter, .attendance-mobile-list { display:none; }
+.attendance-modal .attendance-column { border:0; border-radius:16px; background:var(--paper); }
+.attendance-modal .attendance-person { border:1px solid var(--line); border-radius:12px; margin-block:8px; box-shadow:var(--shadow); }
+.attendance-modal .attendance-person strong { font-size:14px; }
+.attendance-modal .attendance-person small { font-size:12px; }
+.attendance-modal .attendance-person[aria-pressed=true] .attendance-person-state { background:var(--primary); color:white; }
+.attendance-modal .person-picker-group h4 { margin:16px 0 8px; font-size:13px; }
+.attendance-modal .attendance-roster { padding:12px; }
+.attendance-modal .modal-actions { background:var(--cream); }
+
+/* Duties: capacity summary, time cards, slot insets and explicit review panel. */
+.duty-schedule { padding:24px 0; }
+.duty-capacity { display:grid; gap:12px; padding:16px; margin:16px 0 24px; background:var(--surface-low); border-radius:12px; }
+.duty-capacity > div { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.duty-capacity span { color:var(--ink-soft); font-size:12px; }
+.duty-capacity progress { appearance:none; width:100%; height:8px; border:0; border-radius:9999px; overflow:hidden; background:var(--surface-container); accent-color:var(--primary); }
+.duty-capacity progress::-webkit-progress-bar { background:var(--surface-container); }
+.duty-capacity progress::-webkit-progress-value { background:var(--primary); border-radius:9999px; }
+.duty-capacity progress::-moz-progress-bar { background:var(--primary); }
+.duty-card { padding:20px; margin-block:16px; border:1px solid var(--line); border-radius:16px; background:var(--paper); box-shadow:var(--shadow); }
+.duty-card-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.duty-card-heading > div { min-width:0; }
+.duty-card-heading .eyebrow { margin:0 0 6px; }
+.duty-card-heading h4 { margin:0; font-size:18px; line-height:1.4; color:var(--primary); }
+.duty-card-heading .status { flex-shrink:0; }
+.duty-card-heading .status[data-state=available] { background:var(--lime); color:var(--primary); }
+.duty-card-heading .status[data-state=full] { background:var(--surface-container); color:var(--ink-soft); }
+.duty-card .duty-instructions { margin-block:16px; padding:12px; background:var(--surface-low); border-radius:12px; font-size:13px; }
+.duty-slot { padding:12px; margin-top:12px; border:0; border-radius:12px; background:var(--surface-low); }
+.duty-slot[data-state=mine] { background:var(--positive-surface); border:1px solid #c5edc1; }
+.duty-slot-heading { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.duty-slot-heading strong { flex:1; min-width:100px; font-size:13px; }
+.duty-slot-number { display:grid; place-items:center; flex-shrink:0; width:32px; height:32px; background:var(--surface-container); border-radius:50%; color:var(--primary); font-weight:700; }
+.duty-slot[data-state=available] .duty-slot-number { background:var(--lime); }
+.duty-slot .participant-selection { margin:12px 0 0; }
+.duty-slot .participant-selection > label { font-size:12px; font-weight:600; }
+.duty-slot .primary, .duty-slot .secondary { padding:10px 14px; font-size:13px; }
+.duty-change { padding-top:12px; margin-top:12px; border-top:1px solid var(--line); }
+.duty-change summary { cursor:pointer; min-height:44px; display:flex; align-items:center; font-weight:600; }
+.duty-change summary::after { content:"⌄"; margin-left:auto; }
+.workflow-disclosure { min-width:0; margin-top:16px; padding:20px !important; border:1px solid var(--line); border-radius:16px; background:var(--paper); }
+.workflow-disclosure > summary { cursor:pointer; min-height:44px; font-weight:700; line-height:1.4; }
+.workflow-disclosure > p { color:var(--ink-soft); font-size:13px; }
+.workflow-disclosure label, .duty-series-form label { display:grid; gap:8px; min-width:0; font-weight:600; font-size:13px; }
+.workflow-disclosure :is(input:not([type=checkbox]):not([type=radio]),select,textarea), .duty-series-form :is(input:not([type=checkbox]):not([type=radio]),select,textarea) { padding:12px; min-height:44px; border:1px solid var(--line); border-radius:12px; background:var(--surface-low); color:var(--ink); font:inherit; }
+.workflow-disclosure .duty-completed { display:flex; gap:12px; min-height:48px; }
+.workflow-disclosure input[type=checkbox] { width:20px; height:20px; min-height:20px; flex-shrink:0; }
+.duty-series-form { display:grid; gap:20px; margin-top:20px; }
+.duty-series-form .workflow-section-heading { margin:0; }
+.duty-series-form .participant-selection { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; margin:0; gap:12px; }
+.duty-instruction-fields { display:grid; gap:16px; padding:16px; border-radius:12px; background:var(--surface-low); }
+.duty-instruction-fields textarea { background:var(--paper); min-height:88px; resize:vertical; }
+.duty-review { padding:20px; border:1px solid #aad1a6; border-radius:16px; background:var(--positive-surface); margin:16px 0; }
+.duty-review h4 { margin:0; font-size:18px; }
+.duty-review ol { padding:0; list-style:none; counter-reset:duty-preview; display:grid; gap:8px; }
+.duty-review li { counter-increment:duty-preview; padding:12px; background:var(--paper); border-radius:12px; overflow-wrap:anywhere; }
+.duty-review li::before { content:counter(duty-preview) ". "; color:var(--primary); font-weight:700; }
+.duty-distribution-row { margin-top:16px; padding:16px; border:0; border-radius:12px; background:var(--surface-low); }
+.duty-distribution-row label { margin-top:12px; }
+.duty-distribution-row p { font-size:13px; color:var(--ink-soft); }
+
+@media (min-width:1024px) {
+  .personal-dashboard .personal-activity-list { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .activity-editor-fields { grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; }
+  .activity-editor-fields > .activity-kind-switch, .activity-editor-fields > .editor-invitation, .activity-editor-fields > .activity-preview, .activity-editor-fields > .auth-error { grid-column:1 / -1; }
+  .activity-editor-modal { width:min(960px,100%); }
+}
+@media (max-width:767px) {
+  .activity-editor-modal, .attendance-modal { padding:16px; }
+  .activity-editor-modal .editor-section { padding:20px; }
+  .activity-editor-modal .editor-fields { grid-template-columns:minmax(0,1fr); }
+  .activity-editor-modal .invitation-mode-switch button { padding:8px 6px; font-size:12px; }
+  .attendance-mobile-filter { display:flex; }
+  .attendance-mobile-filter button { flex:1 1 auto; padding:8px; font-size:12px; }
+  .attendance-mobile-list { display:block; }
+  .attendance-desktop-columns { display:none; }
+  .attendance-mobile-list .attendance-person { min-height:64px; }
+  .attendance-modal .modal-actions { flex-wrap:wrap; }
+  .attendance-modal .modal-actions .primary { flex:1 1 100%; order:-1; }
+  .personal-dashboard .personal-activity-row, .duty-card, .workflow-disclosure { padding:16px !important; }
+  .personal-dashboard .personal-activity-main { grid-template-columns:32px minmax(0,1fr) auto; gap:10px; }
+  .personal-dashboard .member-avatar { width:32px; height:32px; }
+  .duty-card-heading { align-items:start; flex-wrap:wrap; }
+  .duty-series-form .participant-selection { grid-template-columns:minmax(0,1fr); }
+  .workflow-section-heading { align-items:start; flex-wrap:wrap; }
+}

@@ -37,14 +37,35 @@ utan att ändra arbetsflödet. Ingen vy får kräva horisontell sidskroll.
 
 | Del | Regel |
 | --- | --- |
-| Bakgrund | Varm ljus yta `#f7f5ed`; kort och dialoger `#fffefa` |
-| Text | Mörk grön `#173f35`; sekundär text `#557069` |
-| Linjer | `#dfe4df`, tunna och konsekventa |
-| Primär knapp | Fylld mörkgrön, vit text, 10 px hörnradie |
-| Sekundär knapp | Vit med tunn linje, mörkgrön text, 10 px hörnradie |
-| Destruktiv åtgärd | Ljus röd yta och röd text, samma 10 px hörnradie; separat från primär åtgärd |
-| Fält | Vit yta, tunn linje, minst 9–10 px hörnradie och tydlig fokusmarkering |
-| Kort/dialog | 14–18 px hörnradie; dialogens innehåll får scrolla utan att bakgrunden rör sig |
+| Bakgrund | Varm ljus yta `#faf9f3`; kort och dialoger `#ffffff` |
+| Text | `#19231a`; sekundär `#5f6861`; primär åtgärd `#1e3f20` |
+| Linjer | `#e5e0d8`, tunna och konsekventa |
+| Primär knapp | Skogsgrön, vit text, 12 px radie, minst 44 px tryckyta |
+| Sekundär knapp | Vit med tunn linje, mörk text, 12 px radie |
+| Destruktiv åtgärd | Ljus röd yta och röd text, 12 px radie |
+| Fält | Varm ljus yta, tunn linje, 12 px radie och tydligt fokus |
+| Kort/dialog | 16 px radie, låg skugga; innehållet får scrolla |
+| Typografi | Newsreader för huvudrubriker, Plus Jakarta Sans för gränssnitt |
+
+### Designkälla och komponentreferenser
+
+[DESIGN.md](../DESIGN.md) och bifogade [desktop-](../public/design/components-desktop.html)
+och [mobilexempel](../public/design/components-mobile.html) är designreferenser.
+PNG-bilderna finns bredvid HTML-filerna. `/components` visar produktionskomponenter
+med samma tokens och länkar till referenserna. HTML-filerna bevaras och använder
+externa CDN-resurser; appen använder egen CSS och lokalt paketerade typsnitt.
+Referenserna får CSP-sandbox utan `allow-same-origin`, med blockerade
+nätverksanrop och formulär. De får inte använda appens session eller lagring.
+Mobilreferensen tillåter zoom.
+
+Källmaterialet skiljer sig mellan YAML, löptext och HTML. Appens beslut är
+bakgrund `#faf9f3` och lime `#e0eb78` från HTML, skogsgrön åtgärd `#1e3f20`,
+kort 16 px och kontroller 12 px från komponentreglerna. Värden samlas som
+CSS-variabler i `globals.css`. Svar får färg och text: kommer (grönt), kan inte
+(rött), ej svarat (bärnsten). Gemensamma kontroller är minst 44 px höga och
+närvarorader minst 48 px. Befintlig hamburger-/sidomeny och verksamhetsflöden
+behålls; referensens bottennavigation och nya funktioner kräver separat beslut.
+
 
 ## Gemensamma menyer, header och footer
 
@@ -333,3 +354,24 @@ uttryckligt val. Spelarväljare visar bara serverns tillåtna urval.
 
 
 Disciplinformulär ägs av respektive paketkatalog och bäddas in via den gemensamma `DisciplineFields`-komponenten. De använder samma native formulärutseende och responsiva `discipline-*`-klasser; ingen extra pluginpanel införs.
+
+## Sidskisser: befintliga arbetsflöden
+
+Skisserna i `stitch_f_rena (2).zip` styr layouten för familjens översikt,
+aktivitetsredigering, närvaro och bemanningsscheman. [Mappningen](design-sketches.md)
+anger vad som används. `workflows.css` innehåller dessa avgränsade sidstilar och
+återanvänder tokens från `globals.css`. Inga skisspecifika verksamhetsregler
+eller externa scripts läggs till i produktionskomponenterna.
+
+- Familjens översikt visar ett kort per aktivitet, med klubb/lag och separata
+  svar per familjemedlem. Ej svarat får bärnstensmarkering. Kortet öppnar samma
+  aktivitetsdialog som tidigare. Svarsknapparna ligger kvar i dialogen.
+- Aktivitetsredigeraren har kort för detaljer, tid/samling och kallelse.
+  Befintliga datumfält, femminutersval, serieval och förhandsgranskning används.
+- Närvaro visar faktiska antal, sökning och en filtrerbar enkolumnslista på
+  mobil. På desktop visas de befintliga två listorna. Sökning/filtrering ändrar
+  aldrig urvalet eller antalet sparade personer; båda layouter delar urval.
+- Bemanning visar kapacitet från registrerade platser och ett kort per uppgift.
+  Egna bokningar markeras och byte/ersättare öppnas i ”Hantera ditt pass”. Andra
+  familjer förblir anonymiserade. Ledarverktyg, skapa/ändra uppgifter och regler
+  hålls i hopfällbara avsnitt. Samtliga skrivningar behåller förhandsgranskning.

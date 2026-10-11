@@ -40,7 +40,7 @@ export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
       <div className="welcome"><div><p className="eyebrow">Förena · Personligt</p><h1>Min översikt</h1><p>Din och barnens vardag – alla lag och föreningar på samma plats.</p></div></div>
       <PersonalOverview activities={pending} timeZone={timeZone} onOpenActivity={open} title="Behöver svar" id="pending-activities-title" emptyMessage="Alla aktuella kallelser är besvarade." />
       <div className="personal-calendar-section">
-        <div className="personal-view-switch" role="group" aria-label="Visning av familjens aktiviteter">
+        <div className="personal-view-switch segmented-control" role="group" aria-label="Visning av familjens aktiviteter">
           <button type="button" className={view === "agenda" ? "primary" : "secondary"} aria-pressed={view === "agenda"} onClick={() => setView("agenda")}>Agenda</button>
           <button type="button" className={view === "calendar" ? "primary" : "secondary"} aria-pressed={view === "calendar"} onClick={() => setView("calendar")}>Kalender</button>
         </div>
