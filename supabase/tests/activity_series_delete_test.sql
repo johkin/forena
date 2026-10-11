@@ -67,13 +67,13 @@ insert into public.activity_series(id,organization_id,team_id,activity_type_id,t
 values('a9000000-0000-0000-0000-000000000001','a1000000-0000-0000-0000-000000000001','a3000000-0000-0000-0000-000000000001','a4000000-0000-0000-0000-000000000001','Series','{}',current_date);
 update public.activities set series_id='a9000000-0000-0000-0000-000000000001' where id='a6000000-0000-0000-0000-000000000001';
 insert into public.activities(id,organization_id,team_id,activity_type_id,series_id,title,starts_at,ends_at,location,series_exception)
-select 'a6000000-0000-0000-0000-000000000003',organization_id,team_id,activity_type_id,series_id,title,starts_at+interval '7 days',ends_at+interval '7 days',location,true from public.activities where id='a6000000-0000-0000-0000-000000000001';
+select 'a6000000-0000-0000-0000-000000000003',organization_id,team_id,activity_type_id,series_id,title,((starts_at at time zone 'Europe/Stockholm')+interval '7 days') at time zone 'Europe/Stockholm',((ends_at at time zone 'Europe/Stockholm')+interval '7 days') at time zone 'Europe/Stockholm',location,true from public.activities where id='a6000000-0000-0000-0000-000000000001';
 
 update public.activities set status='published' where id='a6000000-0000-0000-0000-000000000001';
 insert into public.activities(id,organization_id,team_id,activity_type_id,series_id,title,starts_at,ends_at,location)
-select 'a6000000-0000-0000-0000-000000000004',organization_id,team_id,activity_type_id,series_id,title,starts_at+interval '14 days',ends_at+interval '14 days',location from public.activities where id='a6000000-0000-0000-0000-000000000001';
+select 'a6000000-0000-0000-0000-000000000004',organization_id,team_id,activity_type_id,series_id,title,((starts_at at time zone 'Europe/Stockholm')+interval '14 days') at time zone 'Europe/Stockholm',((ends_at at time zone 'Europe/Stockholm')+interval '14 days') at time zone 'Europe/Stockholm',location from public.activities where id='a6000000-0000-0000-0000-000000000001';
 insert into public.activities(id,organization_id,team_id,activity_type_id,series_id,title,starts_at,ends_at,location)
-select 'a6000000-0000-0000-0000-000000000005',organization_id,team_id,activity_type_id,series_id,title,starts_at-interval '7 days',ends_at-interval '7 days',location from public.activities where id='a6000000-0000-0000-0000-000000000001';
+select 'a6000000-0000-0000-0000-000000000005',organization_id,team_id,activity_type_id,series_id,title,((starts_at at time zone 'Europe/Stockholm')-interval '7 days') at time zone 'Europe/Stockholm',((ends_at at time zone 'Europe/Stockholm')-interval '7 days') at time zone 'Europe/Stockholm',location from public.activities where id='a6000000-0000-0000-0000-000000000001';
 set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"a0000000-0000-0000-0000-000000000002","role":"authenticated"}',true);
 select throws_ok($q$select public.delete_activity_series_from('a6000000-0000-0000-0000-000000000001')$q$,'42501',null,'Guardian cannot remove series');
