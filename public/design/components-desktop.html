@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400;1,6..72,500&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-tertiary-fixed": "#2f1500", "outline-variant": "#c2c8be", "surface-dim": "#dbdad4", "surface-tint": "#446744", "on-tertiary": "#ffffff", "on-surface-variant": "#424840", "secondary": "#5b6300", "on-secondary-fixed": "#1a1d00", "on-secondary": "#ffffff", "primary-fixed-dim": "#aad1a6", "outline": "#737970", "on-secondary-container": "#616a00", "inverse-on-surface": "#f2f1eb", "on-tertiary-container": "#ee881f", "surface-container-lowest": "#ffffff", "on-primary-fixed": "#012106", "tertiary-fixed-dim": "#ffb77d", "tertiary-container": "#582d00", "inverse-primary": "#aad1a6", "on-primary": "#ffffff", "tertiary-fixed": "#ffdcc3", "error": "#ba1a1a", "secondary-fixed-dim": "#c3ce5f", "on-secondary-fixed-variant": "#444b00", "on-tertiary-fixed-variant": "#6e3900", "on-primary-fixed-variant": "#2d4e2e", "background": "#faf9f3", "tertiary": "#391b00", "on-background": "#1b1c19", "secondary-fixed": "#e0eb78", "surface-container-highest": "#e3e3dd", "inverse-surface": "#30312d", "surface-container-low": "#f5f4ee", "primary-fixed": "#c5edc1", "surface": "#faf9f3", "surface-variant": "#e3e3dd", "surface-container-high": "#e9e8e2", "on-primary-container": "#86ab83", "surface-container": "#efeee8", "error-container": "#ffdad6", "secondary-container": "#e0eb78", "on-error-container": "#93000a", "primary-container": "#1e3f20", "on-surface": "#1b1c19", "surface-bright": "#faf9f3", "on-error": "#ffffff", "primary": "#07290c" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "gutter": "1rem", "space-xs": "0.25rem", "gutter-desktop": "1.5rem", "space-sm": "0.5rem", "space-md": "1rem", "space-lg": "1.25rem", "margin-desktop": "3rem", "margin": "1rem", "space-2xl": "2.5rem", "space-xl": "1.75rem", "margin-tablet": "2rem" }, "fontFamily": { "label-uppercase": [ "Plus Jakarta Sans" ], "body-lg": [ "Plus Jakarta Sans" ], "body-sm": [ "Plus Jakarta Sans" ], "stat-counter": [ "Plus Jakarta Sans" ], "body-md": [ "Plus Jakarta Sans" ], "headline-sm": [ "Plus Jakarta Sans" ], "headline-xl-mobile": [ "Newsreader" ], "headline-xl": [ "Newsreader" ], "label-sm": [ "Plus Jakarta Sans" ], "title-md": [ "Plus Jakarta Sans" ], "label-md": [ "Plus Jakarta Sans" ], "headline-lg": [ "Newsreader" ], "headline-md": [ "Newsreader" ] }, "fontSize": { "label-uppercase": [ "11px", { "lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "700" } ], "body-lg": [ "16px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400" } ], "body-sm": [ "13px", { "lineHeight": "18px", "letterSpacing": "0em", "fontWeight": "400" } ], "stat-counter": [ "26px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" } ], "body-md": [ "14px", { "lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400" } ], "headline-sm": [ "18px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "700" } ], "headline-xl-mobile": [ "32px", { "lineHeight": "38px", "letterSpacing": "-0.015em", "fontWeight": "400" } ], "headline-xl": [ "40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "400" } ], "label-sm": [ "11px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "600" } ], "title-md": [ "16px", { "lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "700" } ], "label-md": [ "13px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "600" } ], "headline-lg": [ "28px", { "lineHeight": "36px", "letterSpacing": "-0.01em", "fontWeight": "500" } ], "headline-md": [ "22px", { "lineHeight": "28px", "letterSpacing": "0em", "fontWeight": "500" } ] } } } };</script></head><body class="bg-surface font-body-md text-on-surface"><aside class="fixed left-0 top-0 h-full w-72 bg-surface-container-low shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex flex-col justify-between overflow-y-auto"><div class="flex flex-col"><div class="h-16 px-space-lg flex items-center justify-between"><div class="flex items-center gap-space-sm"><div class="w-8 h-8 rounded-lg bg-primary-container flex items-center justify-center"><span class="material-symbols-outlined text-primary-fixed text-[20px]">grid_view</span></div><div><span class="font-title-md text-title-md tracking-tight text-primary block leading-none">Förena</span><span class="font-label-uppercase text-label-uppercase text-on-surface-variant block mt-0.5">Designsystem</span></div></div><span class="px-2 py-0.5 rounded-full bg-secondary-container font-label-sm text-label-sm text-on-secondary-fixed">v2.4</span></div><div class="px-space-md py-space-sm"><div class="flex items-center gap-space-sm px-space-md py-space-sm bg-surface rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.02)]"><span class="material-symbols-outlined text-on-surface-variant text-[18px]">search</span><input class="bg-transparent border-0 outline-none w-full font-body-sm text-body-sm text-on-surface placeholder:text-on-surface-variant" placeholder="Sök komponenter..." type="text"/></div></div><div class="px-space-md mt-space-sm"><span class="px-space-md font-label-uppercase text-label-uppercase text-on-surface-variant">Grunder</span><nav class="mt-space-xs flex flex-col gap-1" data-active-classes="bg-primary-container text-on-primary font-title-md rounded-xl shadow-[0_1px_6px_rgba(30,63,32,0.08)]"><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all font-body-md text-body-md" data-path="overview" href="#"><span class="material-symbols-outlined text-[20px]">auto_stories</span>Översikt</a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all font-body-md text-body-md" data-path="design-principles" href="#"><span class="material-symbols-outlined text-[20px]">nature_people</span>Principer</a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all font-body-md text-body-md" data-path="tokens" href="#"><span class="material-symbols-outlined text-[20px]">palette</span>Designtokens</a></nav></div><div class="px-space-md mt-space-lg"><span class="px-space-md font-label-uppercase text-label-uppercase text-on-surface-variant">Komponenter</span><nav class="mt-space-xs flex flex-col gap-1" data-active-classes="bg-primary-container text-on-primary font-title-md rounded-xl shadow-[0_1px_6px_rgba(30,63,32,0.08)]"><a aria-current="page" class="flex items-center gap-space-sm px-space-md py-space-sm transition-all bg-primary-container text-on-primary font-title-md rounded-xl shadow-[0_1px_6px_rgba(30,63,32,0.08)]" data-path="components" href="#"><span class="material-symbols-outlined text-[20px]">widgets</span>Komponentbibliotek</a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all font-body-md text-body-md" data-path="form-controls" href="#"><span class="material-symbols-outlined text-[20px]">edit_note</span>Formulär &amp; Inputs</a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all font-body-md text-body-md" data-path="feedback-indicators" href="#"><span class="material-symbols-outlined text-[20px]">notifications_active</span>Feedback &amp; Status</a></nav></div><div class="px-space-md mt-space-lg"><span class="px-space-md font-label-uppercase text-label-uppercase text-on-surface-variant">Riktlinjer</span><nav class="mt-space-xs flex flex-col gap-1" data-active-classes="bg-primary-container text-on-primary font-title-md rounded-xl shadow-[0_1px_6px_rgba(30,63,32,0.08)]"><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all font-body-md text-body-md" data-path="patterns" href="#"><span class="material-symbols-outlined text-[20px]">schema</span>Mönster &amp; Flöden</a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all font-body-md text-body-md" data-path="accessibility" href="#"><span class="material-symbols-outlined text-[20px]">accessibility_new</span>Tillgänglighet</a></nav></div></div><div class="p-space-md m-space-md rounded-xl bg-surface-container shadow-[0_1px_4px_rgba(0,0,0,0.02)]"><div class="flex items-center justify-between mb-space-xs"><span class="font-label-uppercase text-label-uppercase text-on-surface-variant">Föreningsstöd</span><span class="material-symbols-outlined text-[16px] text-on-surface-variant">help</span></div><p class="font-body-sm text-body-sm text-on-surface-variant mb-space-sm">Grassroots designkit för tränare och ledare.</p><a class="inline-flex items-center font-label-md text-label-md text-primary font-bold hover:underline" href="#">Läs dokumentation <span class="material-symbols-outlined text-[16px] ml-1">arrow_forward</span></a></div></aside><div class="pl-72"><header class="fixed top-0 left-72 right-0 h-16 bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-gutter-desktop"><div class="flex items-center gap-space-lg"><nav class="flex items-center gap-space-sm" data-active-classes="bg-surface-container-highest text-on-surface font-title-md rounded-lg"><a class="px-space-md py-space-xs font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-colors" data-path="overview" href="#">Dokumentation</a><a class="px-space-md py-space-xs font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-colors" data-path="tokens" href="#">Tokens</a><a aria-current="page" class="px-space-md py-space-xs transition-colors bg-surface-container-highest text-on-surface font-title-md rounded-lg" data-path="components" href="#">Komponenter</a><a class="px-space-md py-space-xs font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-colors" data-path="form-controls" href="#">Formulär</a><a class="px-space-md py-space-xs font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-colors" data-path="accessibility" href="#">Riktlinjer</a></nav></div><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs"><button class="w-9 h-9 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[20px]">terminal</span></button><button class="w-9 h-9 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[20px]">mode_comment</span></button></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-[0_1px_4px_rgba(0,0,0,0.06)]"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="w-full pt-16 bg-surface min-h-screen"><div class="flex flex-col w-full">
+<!-- Sub-header Breadcrumb & Quick Filter Bar -->
+<section class="w-full bg-surface-container-low px-gutter-desktop py-space-md">
+<div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-sm flex-wrap">
+<span class="font-label-uppercase text-label-uppercase text-on-surface-variant">System v2.4</span>
+<span class="text-outline-variant">/</span>
+<span class="font-label-uppercase text-label-uppercase text-on-surface">Komponenter &amp; Kontroller</span>
+<span class="px-2 py-0.5 rounded-full bg-secondary-container font-label-sm text-label-sm text-on-secondary-fixed font-semibold">Web &amp; Desktop Spec</span>
+</div>
+<div class="flex items-center gap-space-sm flex-wrap">
+<a class="px-3 py-1 rounded-full bg-surface text-on-surface hover:bg-surface-container-high transition-colors font-label-sm text-label-sm shadow-sm" href="#section-buttons">Knappar</a>
+<a class="px-3 py-1 rounded-full bg-surface text-on-surface hover:bg-surface-container-high transition-colors font-label-sm text-label-sm shadow-sm" href="#section-inputs">Formulär &amp; Fält</a>
+<a class="px-3 py-1 rounded-full bg-surface text-on-surface hover:bg-surface-container-high transition-colors font-label-sm text-label-sm shadow-sm" href="#section-selection">Val &amp; Reglage</a>
+<a class="px-3 py-1 rounded-full bg-surface text-on-surface hover:bg-surface-container-high transition-colors font-label-sm text-label-sm shadow-sm" href="#section-feedback">Status &amp; Indikatorer</a>
+<a class="px-3 py-1 rounded-full bg-surface text-on-surface hover:bg-surface-container-high transition-colors font-label-sm text-label-sm shadow-sm" href="#section-cards">Kort &amp; Rader</a>
+<a class="px-3 py-1 rounded-full bg-surface text-on-surface hover:bg-surface-container-high transition-colors font-label-sm text-label-sm shadow-sm" href="#section-datetime">Kalender &amp; Tid</a></div>
+</div>
+</section>
+<!-- Editorial Introduction Header -->
+<header class="w-full px-gutter-desktop py-space-2xl bg-surface relative overflow-hidden">
+<div class="max-w-7xl mx-auto relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-space-xl items-start">
+<div class="lg:col-span-8">
+<div class="inline-flex items-center gap-space-xs px-3 py-1 rounded-full bg-primary-fixed text-on-primary-fixed mb-space-md shadow-sm">
+<span class="material-symbols-outlined text-[16px]">verified</span>
+<span class="font-label-uppercase text-label-uppercase">Förena Nordic Foundation</span>
+</div>
+<h1 class="font-headline-xl text-headline-xl text-primary tracking-tight mb-space-sm">
+          Komponentbibliotek &amp; Interaktionskontroller
+        </h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-3xl leading-relaxed">
+          Standardiserade komponenter och ergonomiska kontroller för Förenas föreningsplattform. Skapad för tränare, lagledare och föreningsföräldrar med rötter i skandinavisk naturgrön estetik, generösa tryckytor och lugn funktionell tydlighet.
+        </p>
+</div>
+<!-- Quick Token Card -->
+<div class="lg:col-span-4 bg-surface-container-lowest p-space-lg rounded-xl shadow-md">
+<div class="flex items-center justify-between pb-space-sm mb-space-sm">
+<span class="font-label-uppercase text-label-uppercase text-on-surface-variant">Design Tokens (Core)</span>
+<span class="material-symbols-outlined text-outline text-[18px]">token</span>
+</div>
+<div class="grid grid-cols-2 gap-space-sm font-label-sm text-label-sm">
+<div class="p-space-sm rounded-lg bg-surface-container flex items-center gap-2">
+<span class="w-4 h-4 rounded bg-primary-container inline-block"></span>
+<div>
+<p class="font-bold text-on-surface">Spruce Green</p>
+<p class="text-on-surface-variant font-mono text-[10px]">#1E3F20</p>
+</div>
+</div>
+<div class="p-space-sm rounded-lg bg-surface-container flex items-center gap-2">
+<span class="w-4 h-4 rounded bg-secondary-container inline-block"></span>
+<div>
+<p class="font-bold text-on-surface">Meadow Lime</p>
+<p class="text-on-surface-variant font-mono text-[10px]">#E0EB78</p>
+</div>
+</div>
+<div class="p-space-sm rounded-lg bg-surface-container flex items-center gap-2">
+<span class="w-4 h-4 rounded bg-surface-container-high inline-block"></span>
+<div>
+<p class="font-bold text-on-surface">Tactile Birch</p>
+<p class="text-on-surface-variant font-mono text-[10px]">#FAF9F3</p>
+</div>
+</div>
+<div class="p-space-sm rounded-lg bg-surface-container flex items-center gap-2">
+<span class="w-4 h-4 rounded bg-on-tertiary-container inline-block"></span>
+<div>
+<p class="font-bold text-on-surface">Warm Clay</p>
+<p class="text-on-surface-variant font-mono text-[10px]">#EE881F</p>
+</div>
+</div>
+</div>
+<div class="mt-space-md pt-space-sm text-on-surface-variant font-body-sm text-body-sm flex items-center justify-between">
+<span>Radie: <strong class="text-on-surface">12px (xl)</strong></span>
+<span>Baslinje: <strong class="text-on-surface">4px / 8px</strong></span>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Component Showroom Area -->
+<div class="w-full px-gutter-desktop py-space-lg max-w-7xl mx-auto space-y-space-2xl">
+<!-- ==================== SECTION 1: BUTTONS & ACTIONS ==================== -->
+<section class="space-y-space-lg" id="section-buttons">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-space-sm">
+<div>
+<span class="font-label-uppercase text-label-uppercase text-primary tracking-widest block mb-1">01 / Handlingar</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Knappar &amp; Handlingsreglage</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1 max-w-2xl">
+            Tydligt definierade handlingsnivåer med 12px radie, 44px minsta klickyta och distinkt haptisk återkoppling.
+          </p>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-2.5 py-1 rounded-full bg-surface-container font-label-sm text-label-sm text-on-surface-variant">WCAG AAA Kontrast</span>
+</div>
+</div>
+<!-- Button Variants Showcase Grid -->
+<div class="bg-surface-container-lowest rounded-xl p-space-xl shadow-md space-y-space-xl">
+<!-- Variant rows -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-space-lg items-center">
+<!-- Primary Action -->
+<div class="space-y-space-sm">
+<span class="font-label-uppercase text-label-uppercase text-on-surface-variant block">Primary Action</span>
+<button class="w-full bg-primary-container text-on-primary hover:bg-primary transition-all duration-200 py-3 px-5 rounded-xl font-title-md text-title-md flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]">
+<span class="material-symbols-outlined text-[20px]">add_task</span>
+              Spara matchschema
+            </button>
+<div class="flex justify-between font-label-sm text-label-sm text-on-surface-variant px-1">
+<span>Token: <code class="text-primary font-mono font-bold">primary-container</code></span>
+<span>Default</span>
+</div>
+</div>
+<!-- Secondary / Outlined -->
+<div class="space-y-space-sm">
+<span class="font-label-uppercase text-label-uppercase text-on-surface-variant block">Secondary / Outlined</span>
+<button class="w-full bg-surface text-on-surface hover:bg-surface-container-high transition-all duration-200 py-3 px-5 rounded-xl font-title-md text-title-md flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]">
+<span class="material-symbols-outlined text-[20px]">file_download</span>
+              Exportera närvaro
+            </button>
+<div class="flex justify-between font-label-sm text-label-sm text-on-surface-variant px-1">
+<span>Token: <code class="text-primary font-mono font-bold">surface / shadow</code></span>
+<span>Neutral</span>
+</div>
+</div>
+<!-- Ghost / Subtle -->
+<div class="space-y-space-sm">
+<span class="font-label-uppercase text-label-uppercase text-on-surface-variant block">Subtle / Ghost</span>
+<button class="w-full bg-transparent hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-all duration-200 py-3 px-5 rounded-xl font-title-md text-title-md flex items-center justify-center gap-2 active:scale-[0.98]">
+<span class="material-symbols-outlined text-[20px]">close</span>
+              Avbryt redigering
+            </button>
+<div class="flex justify-between font-label-sm text-label-sm text-on-surface-variant px-1">
+<span>Token: <code class="text-primary font-mono font-bold">ghost / text</code></span>
+<span>Avbryt/Backa</span>
+</div>
+</div>
+<!-- Danger / Destructive -->
+<div class="space-y-space-sm">
+<span class="font-label-uppercase text-label-uppercase text-on-surface-variant block">Danger / Destructive</span>
+<button class="w-full bg-error text-on-error hover:opacity-90 transition-all duration-200 py-3 px-5 rounded-xl font-title-md text-title-md flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+              Avboka tilldelat pass
+            </button>
+<div class="flex justify-between font-label-sm text-label-sm text-on-surface-variant px-1">
+<span>Token: <code class="text-primary font-mono font-bold">error / on-error</code></span>
+<span>Irreversibel</span>
+</div>
+</div>
+</div>
+<!-- Button States Strip (Interactive Demonstrator) -->
+<div class="bg-surface-container-low rounded-xl p-space-lg space-y-space-md">
+<div class="flex items-center justify-between">
+<span class="font-label-uppercase text-label-uppercase text-on-surface">Komponenttillstånd (States)</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Interaktiv förhandsvisning</span>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-space-md">
+<!-- State: Default -->
+<div class="bg-surface p-space-md rounded-lg flex flex-col items-center gap-2 text-center shadow-sm">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Default State</span>
+<button class="bg-primary-container text-on-primary py-2.5 px-4 rounded-xl font-title-md text-title-md flex items-center gap-1.5 shadow-sm">
+<span>Skicka kallelse</span>
+</button>
+</div>
+<!-- State: Hover State -->
+<div class="bg-surface p-space-md rounded-lg flex flex-col items-center gap-2 text-center shadow-sm">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Hover Simulation</span>
+<button class="bg-primary text-on-primary py-2.5 px-4 rounded-xl font-title-md text-title-md flex items-center gap-1.5 shadow-md">
+<span>Skicka kallelse</span>
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+<!-- State: Active / Pressed -->
+<div class="bg-surface p-space-md rounded-lg flex flex-col items-center gap-2 text-center shadow-sm">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Pressed / Active</span>
+<button class="bg-primary-container text-on-primary scale-95 py-2.5 px-4 rounded-xl font-title-md text-title-md flex items-center gap-1.5 opacity-90 shadow-none">
+<span>Skickar...</span>
+</button>
+</div>
+<!-- State: Disabled -->
+<div class="bg-surface p-space-md rounded-lg flex flex-col items-center gap-2 text-center shadow-sm">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Disabled</span>
+<button class="bg-surface-container-highest text-outline cursor-not-allowed py-2.5 px-4 rounded-xl font-title-md text-title-md flex items-center gap-1.5 shadow-none" disabled="">
+<span class="material-symbols-outlined text-[16px]">lock</span>
+<span>Ingen behörighet</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Icon Buttons & Segmented Control -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-space-lg items-center">
+<!-- Segmented Controls -->
+<div class="md:col-span-7 space-y-space-sm">
+<span class="font-label-uppercase text-label-uppercase text-on-surface-variant block">Segmented Switcher / Lägesväljare</span>
+<div class="p-1 bg-surface-container rounded-xl flex items-center gap-1 w-full max-w-lg shadow-inner" id="segmentedDemo">
+<button class="seg-btn flex-1 py-2 px-3 rounded-lg font-title-md text-title-md bg-surface text-primary shadow-sm flex items-center justify-center gap-2 transition-all" onclick="toggleSegment(this, 's1')">
+<span class="material-symbols-outlined text-[18px]">calendar_view_week</span>
+<span>Veckovy</span>
+</button>
+<button class="seg-btn flex-1 py-2 px-3 rounded-lg font-body-md text-body-md text-on-surface-variant hover:text-on-surface transition-all flex items-center justify-center gap-2" onclick="toggleSegment(this, 's2')">
+<span class="material-symbols-outlined text-[18px]">format_list_bulleted</span>
+<span>Listvy</span>
+</button>
+<button class="seg-btn flex-1 py-2 px-3 rounded-lg font-body-md text-body-md text-on-surface-variant hover:text-on-surface transition-all flex items-center justify-center gap-2" onclick="toggleSegment(this, 's3')">
+<span class="material-symbols-outlined text-[18px]">analytics</span>
+<span>Fördelning</span>
+</button>
+</div>
+</div>
+<!-- Icon Action Buttons -->
+<div class="md:col-span-5 space-y-space-sm">
+<span class="font-label-uppercase text-label-uppercase text-on-surface-variant block">Ikonknappar (40x40px / 44x44px)</span>
+<div class="flex items-center gap-space-sm flex-wrap">
+<button class="w-11 h-11 rounded-xl bg-surface hover:bg-surface-container text-primary flex items-center justify-center shadow-sm active:scale-95 transition-all" title="Filtrera">
+<span class="material-symbols-outlined text-[20px]">filter_list</span>
+</button>
+<button class="w-11 h-11 rounded-xl bg-surface hover:bg-surface-container text-primary flex items-center justify-center shadow-sm active:scale-95 transition-all" title="Dela aktivitet">
+<span class="material-symbols-outlined text-[20px]">share</span>
+</button>
+<button class="w-11 h-11 rounded-xl bg-surface hover:bg-surface-container text-primary flex items-center justify-center shadow-sm active:scale-95 transition-all" title="Ladda om data">
+<span class="material-symbols-outlined text-[20px]">sync</span>
+</button>
+<button class="w-11 h-11 rounded-xl bg-secondary-container text-on-secondary-fixed flex items-center justify-center shadow-sm active:scale-95 transition-all" title="Bokmärk">
+<span class="material-symbols-outlined text-[20px]">bookmark</span>
+</button>
+<button class="w-11 h-11 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant flex items-center justify-center transition-all" title="Stäng ruta">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Usage Guidelines Callout Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md pt-space-sm">
+<div class="p-space-md rounded-xl bg-surface-container-low flex gap-space-sm items-start">
+<span class="material-symbols-outlined text-primary-fixed-dim bg-primary-container text-white p-1 rounded-full text-[18px]">check</span>
+<div>
+<p class="font-title-md text-title-md text-on-surface">Gör så här (Knappar)</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1 leading-normal">
+                Använd max en Primary Action per visuell vy eller dialogruta. Placera primärknappen till höger i desktop-dialoger enligt skandinavisk läsriktning.
+              </p>
+</div>
+</div>
+<div class="p-space-md rounded-xl bg-surface-container-low flex gap-space-sm items-start">
+<span class="material-symbols-outlined text-on-error bg-error p-1 rounded-full text-[18px]">priority_high</span>
+<div>
+<p class="font-title-md text-title-md text-on-surface">Undvik detta</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1 leading-normal">
+                Blanda inte fler än två färgstarka knappar intill varandra. Skapa aldrig osymmetriska höjder i knappar som ligger i samma verktygsrad.
+              </p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- ==================== SECTION 2: FORM CONTROLS & INPUTS ==================== -->
+<section class="space-y-space-lg" id="section-inputs">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-space-sm">
+<div>
+<span class="font-label-uppercase text-label-uppercase text-primary tracking-widest block mb-1">02 / Formulär</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Formulärkontroller &amp; Inmatning</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1 max-w-2xl">
+            Tydliga fält med fokusramar utan linjer, stödjande mikrotexter, teckenräknare och integrerade assistenter för snabb föreningslogistik.
+          </p>
+</div>
+<span class="px-2.5 py-1 rounded-full bg-surface-container font-label-sm text-label-sm text-on-surface-variant">Ergonomiskt Touch &amp; Tangentbord</span>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-space-xl shadow-md space-y-space-xl">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-lg">
+<!-- Text Field: Standard -->
+<div class="space-y-1.5">
+<label class="font-label-sm text-label-sm text-on-surface block font-bold" for="input-team-name">
+              Aktivitetsnamn <span class="text-error">*</span>
+</label>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3.5 text-on-surface-variant text-[20px] pointer-events-none">sports_soccer</span>
+<input class="w-full bg-surface-container-low text-on-surface pl-11 pr-4 py-3 rounded-xl font-body-md text-body-md outline-none focus:bg-surface focus:shadow-md transition-all shadow-sm" id="input-team-name" type="text" value="P2014 Träningsmatch vs Tullinge"/>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">info</span>
+              Visas i kalendern för alla vårdnadshavare.
+            </p>
+</div>
+<!-- Search Field with Clear Button -->
+<div class="space-y-1.5">
+<label class="font-label-sm text-label-sm text-on-surface block font-bold" for="input-search">
+              Sök i medlemsregistret
+            </label>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3.5 text-on-surface-variant text-[20px] pointer-events-none">search</span>
+<input class="w-full bg-surface-container-low text-on-surface pl-11 pr-10 py-3 rounded-xl font-body-md text-body-md outline-none focus:bg-surface focus:shadow-md transition-all shadow-sm" id="input-search" placeholder="Sök spelare, ledare eller funktionär..." type="text"/>
+<button class="absolute right-3 text-on-surface-variant hover:text-on-surface transition-colors" onclick="document.getElementById('input-search').value = '';">
+<span class="material-symbols-outlined text-[18px]">cancel</span>
+</button>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Tryck ESC för att avbryta sökning.</p>
+</div>
+<!-- Field with Validation Error -->
+<div class="space-y-1.5">
+<label class="font-label-sm text-label-sm text-error block font-bold" for="input-email-error">
+              Kontaktperson (E-post)
+            </label>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3.5 text-error text-[20px] pointer-events-none">mail</span>
+<input class="w-full bg-error-container/40 text-on-error-container pl-11 pr-10 py-3 rounded-xl font-body-md text-body-md outline-none shadow-sm" id="input-email-error" type="email" value="johan.ledare@forening"/>
+<span class="material-symbols-outlined absolute right-3 text-error text-[20px]">error</span>
+</div>
+<p class="font-body-sm text-body-sm text-error flex items-center gap-1">
+<span>Ogiltig e-postadress. Kontrollera domänändelse.</span>
+</p>
+</div>
+<!-- Dropdown / Select Menu -->
+<div class="space-y-1.5">
+<label class="font-label-sm text-label-sm text-on-surface block font-bold" for="select-role">
+              Funktionärsuppgift / Roll
+            </label>
+<div class="relative">
+<select class="w-full appearance-none bg-surface-container-low text-on-surface pl-4 pr-10 py-3 rounded-xl font-body-md text-body-md outline-none focus:bg-surface focus:shadow-md transition-all shadow-sm cursor-pointer" id="select-role">
+<option value="1">Kioskansvarig (Halvtid + Eftermatch)</option>
+<option value="2">Matchvärd &amp; Domarstöd</option>
+<option value="3">Sekretariat &amp; Klocka</option>
+<option value="4">Plan- och sargvärd</option>
+</select>
+<span class="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-[20px]">expand_more</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">LOK-stöd genereras automatiskt per matchroll.</p>
+</div>
+<!-- Stepper / Number Counter -->
+<div class="space-y-1.5">
+<label class="font-label-sm text-label-sm text-on-surface block font-bold">
+              Bemanning per kioskpass
+            </label>
+<div class="flex items-center justify-between bg-surface-container-low rounded-xl p-1.5 shadow-sm">
+<button class="w-10 h-10 rounded-lg bg-surface hover:bg-surface-container text-on-surface flex items-center justify-center shadow-sm active:scale-95 transition-all" onclick="adjustCounter(-1)">
+<span class="material-symbols-outlined text-[20px]">remove</span>
+</button>
+<div class="flex items-baseline gap-1">
+<span class="font-stat-counter text-stat-counter text-primary" id="counterVal">3</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">föräldrar</span>
+</div>
+<button class="w-10 h-10 rounded-lg bg-surface hover:bg-surface-container text-on-surface flex items-center justify-center shadow-sm active:scale-95 transition-all" onclick="adjustCounter(1)">
+<span class="material-symbols-outlined text-[20px]">add</span>
+</button>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Rekommenderat: Minst 2 vid lunchmatch.</p>
+</div>
+<!-- Slider / Time Range Visualizer -->
+<div class="space-y-1.5">
+<div class="flex justify-between items-center">
+<label class="font-label-sm text-label-sm text-on-surface block font-bold">Tidsblock / Passlängd</label>
+<span class="font-label-md text-label-md text-primary font-bold" id="sliderDisplay">120 minuter</span>
+</div>
+<div class="pt-2">
+<input class="w-full accent-primary-container cursor-pointer h-2 bg-surface-container rounded-lg" id="timeSlider" max="240" min="30" oninput="document.getElementById('sliderDisplay').innerText = this.value + ' minuter'" step="15" type="range" value="120"/>
+</div>
+<div class="flex justify-between font-label-sm text-label-sm text-on-surface-variant pt-1">
+<span>30 min (Uppvärmning)</span>
+<span>4 timmar (Heldagscup)</span>
+</div>
+</div>
+</div>
+<!-- Textarea with Live Character Counter -->
+<div class="space-y-1.5">
+<div class="flex justify-between items-center">
+<label class="font-label-sm text-label-sm text-on-surface block font-bold" for="coach-notes">
+              Meddelande till lagets vårdnadshavare
+            </label>
+<span class="font-label-sm text-label-sm text-on-surface-variant" id="charCount">88 / 240 tecken</span>
+</div>
+<textarea class="w-full bg-surface-container-low text-on-surface p-3.5 rounded-xl font-body-md text-body-md outline-none focus:bg-surface focus:shadow-md transition-all shadow-sm resize-none" id="coach-notes" oninput="updateCharCount(this)" rows="3">Samling 45 minuter före avspark vid omklädningsrum 3. Medtag benskydd, svarta strumpor och vattenflaska.</textarea>
+<div class="flex justify-between items-center text-on-surface-variant font-body-sm text-body-sm">
+<span>Skickas som SMS och push-notis vid publicering.</span>
+<span class="text-secondary font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">bolt</span> Direktleverans aktiverad
+            </span>
+</div>
+</div>
+<!-- Date & Quick Slot Chips -->
+<div class="space-y-space-sm pt-space-xs">
+<span class="font-label-uppercase text-label-uppercase text-on-surface-variant block">Snabba tidsblock för pass</span>
+<div class="flex items-center gap-space-sm flex-wrap">
+<button class="px-3.5 py-2 rounded-xl bg-primary-container text-on-primary font-label-md text-label-md flex items-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+              08:30 - 10:30 (Morgonpass)
+            </button>
+<button class="px-3.5 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-2 transition-colors">
+<span class="material-symbols-outlined text-[16px]">wb_sunny</span>
+              10:30 - 13:00 (Lunchrusch)
+            </button>
+<button class="px-3.5 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-2 transition-colors">
+<span class="material-symbols-outlined text-[16px]">wb_twilight</span>
+              13:00 - 15:30 (Eftermiddag)
+            </button>
+<button class="px-3.5 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-2 transition-colors">
+<span class="material-symbols-outlined text-[16px]">cleaning_services</span>
+              15:30 - 17:00 (Stängning &amp; Avstämning)
+            </button>
+</div>
+</div>
+</div>
+</section>
+<!-- ==================== SECTION 3: SELECTION CONTROLS ==================== -->
+<section class="space-y-space-lg" id="section-datetime">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-space-sm">
+<div>
+<span class="font-label-uppercase text-label-uppercase text-primary tracking-widest block mb-1">02.5 / Datum &amp; Schemaläggning</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Kalender &amp; Tidsintervallväljare</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1 max-w-2xl">
+Ergonomiska datum- och tidsreglage för lagplanering, samlingstider före avspark och turneringars tidtabeller anpassade för mobiler och surfplattor vid sidlinjen.
+</p>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-2.5 py-1 rounded-full bg-surface-container font-label-sm text-label-sm text-on-surface-variant">ISO 8601 &amp; Svensk kalenderstandard</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-space-xl shadow-md space-y-space-xl">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-xl">
+<!-- Left Column: Month Datepicker -->
+<div class="lg:col-span-6 space-y-space-md bg-surface-container-low p-space-lg rounded-xl">
+<div class="flex items-center justify-between pb-1">
+<div>
+<span class="font-label-uppercase text-label-uppercase text-on-surface-variant block">Datumväljare (Månadsvy)</span>
+<h3 class="font-headline-md text-headline-md text-primary mt-0.5">Oktober 2026</h3>
+</div>
+<div class="flex items-center gap-1 bg-surface p-1 rounded-xl shadow-sm">
+<button class="w-8 h-8 rounded-lg hover:bg-surface-container text-on-surface flex items-center justify-center transition-colors" title="Föregående månad">
+<span class="material-symbols-outlined text-[18px]">chevron_left</span>
+</button>
+<span class="font-label-sm text-label-sm px-2 text-on-surface font-semibold">Okt</span>
+<button class="w-8 h-8 rounded-lg hover:bg-surface-container text-on-surface flex items-center justify-center transition-colors" title="Nästa månad">
+<span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Calendar Grid -->
+<div class="bg-surface rounded-xl p-space-md shadow-sm space-y-2">
+<!-- Weekday Labels -->
+<div class="grid grid-cols-7 text-center font-label-uppercase text-label-uppercase text-on-surface-variant pb-1">
+<span>Mån</span><span>Tis</span><span>Ons</span><span>Tor</span><span>Fre</span><span class="text-secondary font-bold">Lör</span><span class="text-secondary font-bold">Sön</span>
+</div>
+<!-- Days Matrix -->
+<div class="grid grid-cols-7 gap-y-1.5 text-center font-body-sm text-body-sm items-center">
+<!-- Prev month -->
+<span class="text-outline-variant py-2 opacity-40">28</span>
+<span class="text-outline-variant py-2 opacity-40">29</span>
+<span class="text-outline-variant py-2 opacity-40">30</span>
+<!-- Oct 1-4 -->
+<button class="py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface flex flex-col items-center justify-center">
+<span>1</span><span class="w-1 h-1 rounded-full bg-transparent mt-0.5"></span>
+</button>
+<button class="py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface flex flex-col items-center justify-center">
+<span>2</span><span class="w-1 h-1 rounded-full bg-secondary-container mt-0.5"></span>
+</button>
+<button class="py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface flex flex-col items-center justify-center">
+<span>3</span><span class="w-1 h-1 rounded-full bg-primary mt-0.5"></span>
+</button>
+<button class="py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface flex flex-col items-center justify-center">
+<span>4</span><span class="w-1 h-1 rounded-full bg-transparent mt-0.5"></span>
+</button>
+<!-- Oct 5-11 -->
+<button class="py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface flex flex-col items-center justify-center">
+<span>5</span><span class="w-1 h-1 rounded-full bg-primary mt-0.5"></span>
+</button>
+<button class="py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface flex flex-col items-center justify-center">
+<span>6</span><span class="w-1 h-1 rounded-full bg-transparent mt-0.5"></span>
+</button>
+<button class="py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface flex flex-col items-center justify-center relative">
+<span>7</span><span class="w-1 h-1 rounded-full bg-transparent mt-0.5"></span>
+</button>
+<!-- Today Highlight: 8 Oct -->
+<button class="py-1.5 rounded-lg bg-surface-container text-primary font-bold shadow-sm flex flex-col items-center justify-center border-0 ring-1 ring-primary-container">
+<span>8</span><span class="w-1 h-1 rounded-full bg-primary mt-0.5"></span>
+</button>
+<button class="py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface flex flex-col items-center justify-center">
+<span>9</span><span class="w-1 h-1 rounded-full bg-secondary mt-0.5"></span>
+</button>
+<!-- Selected Date Range: 10-12 Oct -->
+<button class="py-1.5 rounded-l-lg bg-primary-container text-on-primary font-bold flex flex-col items-center justify-center shadow-sm">
+<span>10</span><span class="w-1 h-1 rounded-full bg-secondary-fixed mt-0.5"></span>
+</button>
+<button class="py-1.5 bg-primary-container/90 text-on-primary font-bold flex flex-col items-center justify-center">
+<span>11</span><span class="w-1 h-1 rounded-full bg-secondary-fixed mt-0.5"></span>
+</button>
+<!-- Oct 12-18 -->
+<button class="py-1.5 rounded-r-lg bg-primary-container text-on-primary font-bold flex flex-col items-center justify-center shadow-sm">
+<span>12</span><span class="w-1 h-1 rounded-full bg-transparent mt-0.5"></span>
+</button>
+<button class="py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface flex flex-col items-center justify-center">
+<span>13</span><span class="w-1 h-1 rounded-full bg-transparent mt-0.5"></span>
+</button>
+<button class="py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface flex flex-col items-center justify-center">
+<span>14</span><span class="w-1 h-1 rounded-full bg-primary mt-0.5"></span>
+</button>
+<button class="py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface flex flex-col items-center justify-center">
+<span>15</span><span class="w-1 h-1 rounded-full bg-transparent mt-0.5"></span>
+</button>
+<button class="py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface flex flex-col items-center justify-center">
+<span>16</span><span class="w-1 h-1 rounded-full bg-primary mt-0.5"></span>
+</button>
+<button class="py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface flex flex-col items-center justify-center">
+<span>17</span><span class="w-1 h-1 rounded-full bg-transparent mt-0.5"></span>
+</button>
+<button class="py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface flex flex-col items-center justify-center">
+<span>18</span><span class="w-1 h-1 rounded-full bg-secondary mt-0.5"></span>
+</button>
+<!-- Oct 19-25 -->
+<button class="py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface flex flex-col items-center justify-center">
+<span>19</span><span class="w-1 h-1 rounded-full bg-transparent mt-0.5"></span>
+</button>
+<button class="py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface flex flex-col items-center justify-center">
+<span>20</span><span class="w-1 h-1 rounded-full bg-transparent mt-0.5"></span>
+</button>
+<button class="py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface flex flex-col items-center justify-center">
+<span>21</span><span class="w-1 h-1 rounded-full bg-primary mt-0.5"></span>
+</button>
+<button class="py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface flex flex-col items-center justify-center">
+<span>22</span><span class="w-1 h-1 rounded-full bg-transparent mt-0.5"></span>
+</button>
+<button class="py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface flex flex-col items-center justify-center">
+<span>23</span><span class="w-1 h-1 rounded-full bg-transparent mt-0.5"></span>
+</button>
+<button class="py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface flex flex-col items-center justify-center">
+<span>24</span><span class="w-1 h-1 rounded-full bg-primary mt-0.5"></span>
+</button>
+<button class="py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface flex flex-col items-center justify-center">
+<span>25</span><span class="w-1 h-1 rounded-full bg-transparent mt-0.5"></span>
+</button>
+<!-- Oct 26-31 -->
+<button class="py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface flex flex-col items-center justify-center">
+<span>26</span><span class="w-1 h-1 rounded-full bg-transparent mt-0.5"></span>
+</button>
+<button class="py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface flex flex-col items-center justify-center">
+<span>27</span><span class="w-1 h-1 rounded-full bg-transparent mt-0.5"></span>
+</button>
+<button class="py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface flex flex-col items-center justify-center">
+<span>28</span><span class="w-1 h-1 rounded-full bg-primary mt-0.5"></span>
+</button>
+<button class="py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface flex flex-col items-center justify-center">
+<span>29</span><span class="w-1 h-1 rounded-full bg-transparent mt-0.5"></span>
+</button>
+<button class="py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface flex flex-col items-center justify-center">
+<span>30</span><span class="w-1 h-1 rounded-full bg-transparent mt-0.5"></span>
+</button>
+<button class="py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface flex flex-col items-center justify-center">
+<span>31</span><span class="w-1 h-1 rounded-full bg-primary mt-0.5"></span>
+</button>
+<span class="text-outline-variant py-2 opacity-40">1</span>
+</div>
+</div>
+<!-- Calendar Footer Indicators -->
+<div class="flex items-center justify-between text-body-sm text-body-sm pt-1">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary inline-block"></span>
+<span class="text-on-surface-variant">Aktivitet schemalagd</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="px-2 py-0.5 rounded-md bg-primary-container text-on-primary font-label-sm text-label-sm font-bold">10–12 Okt (3 dagar)</span>
+</div>
+</div>
+</div>
+<!-- Right Column: Time Range & Gathering Offset -->
+<div class="lg:col-span-6 space-y-space-md">
+<!-- Time Range Controls -->
+<div class="bg-surface-container-low p-space-lg rounded-xl space-y-space-md">
+<div class="flex items-center justify-between">
+<span class="font-label-uppercase text-label-uppercase text-on-surface-variant block">Tidsintervall (Aktivitetspass)</span>
+<span class="font-label-md text-label-md text-primary font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">timelapse</span> 90 minuters pass
+</span>
+</div>
+<!-- Start & End Time Inputs -->
+<div class="grid grid-cols-2 gap-space-md">
+<div class="space-y-1">
+<label class="font-label-sm text-label-sm text-on-surface font-bold block" for="time-start">Starttid</label>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3 text-on-surface-variant text-[18px]">schedule</span>
+<input class="w-full bg-surface text-on-surface pl-10 pr-3 py-2.5 rounded-xl font-title-md text-title-md outline-none focus:shadow-md transition-all shadow-sm" id="time-start" type="text" value="17:00"/>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant block">Matchstart / Samling</span>
+</div>
+<div class="space-y-1">
+<label class="font-label-sm text-label-sm text-on-surface font-bold block" for="time-end">Sluttid</label>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3 text-on-surface-variant text-[18px]">timer_off</span>
+<input class="w-full bg-surface text-on-surface pl-10 pr-3 py-2.5 rounded-xl font-title-md text-title-md outline-none focus:shadow-md transition-all shadow-sm" id="time-end" type="text" value="18:30"/>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant block">Slutavblåsning &amp; städ</span>
+</div>
+</div>
+<!-- Quick Presets -->
+<div class="space-y-1.5">
+<span class="font-label-sm text-label-sm text-on-surface-variant block">Snabbval av passlängd:</span>
+<div class="flex items-center gap-2 flex-wrap">
+<button class="px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-container text-on-surface font-label-sm text-label-sm transition-colors shadow-sm">
+60 min (Träning)
+</button>
+<button class="px-3 py-1.5 rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm shadow-sm font-bold">
+90 min (Match)
+</button>
+<button class="px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-container text-on-surface font-label-sm text-label-sm transition-colors shadow-sm">
+120 min (Sammandrag)
+</button>
+</div>
+</div>
+<!-- Visual Timeline Bar (15:00 - 21:00 slot window) -->
+<div class="space-y-1.5 pt-1">
+<div class="flex justify-between font-label-sm text-label-sm text-on-surface-variant">
+<span>15:00</span><span>17:00</span><span>18:30</span><span>21:00</span>
+</div>
+<div class="relative w-full h-8 bg-surface rounded-xl overflow-hidden shadow-inner flex items-center px-1">
+<!-- Background hour lines -->
+<div class="absolute inset-0 grid grid-cols-6 divide-x divide-outline-variant/20 pointer-events-none"><div></div><div></div><div></div><div></div><div></div><div></div></div>
+<!-- Active Range Highlight -->
+<div class="absolute h-6 rounded-lg bg-primary-container text-on-primary flex items-center justify-between px-2 text-[11px] font-bold shadow-sm" style="left: 33.3%; width: 25%;">
+<span class="material-symbols-outlined text-[14px]">drag_handle</span>
+<span>Valt intervall</span>
+<span class="material-symbols-outlined text-[14px]">drag_handle</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Gathering Time Selector (Samlingstidsväljare) -->
+<div class="bg-surface-container-low p-space-lg rounded-xl space-y-space-sm">
+<div class="flex items-center justify-between">
+<div>
+<span class="font-label-uppercase text-label-uppercase text-on-surface-variant block">Samlingstid Före Start (Offset)</span>
+<p class="font-title-md text-title-md text-on-surface mt-0.5">Kallelse till omklädningsrum</p>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-fixed font-label-sm text-label-sm font-bold">Samling 16:15</span>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+<button class="p-2.5 rounded-xl bg-primary-container text-on-primary shadow-sm flex flex-col items-center justify-center text-center">
+<span class="font-title-md text-title-md font-bold">-45 min</span>
+<span class="text-[11px] text-primary-fixed-dim leading-none mt-1">Matchsamling</span>
+</button>
+<button class="p-2.5 rounded-xl bg-surface hover:bg-surface-container-high text-on-surface transition-colors shadow-sm flex flex-col items-center justify-center text-center">
+<span class="font-title-md text-title-md font-bold text-primary">-15 min</span>
+<span class="text-[11px] text-on-surface-variant leading-none mt-1">Träningssamling</span>
+</button>
+<button class="p-2.5 rounded-xl bg-surface hover:bg-surface-container-high text-on-surface transition-colors shadow-sm flex flex-col items-center justify-center text-center">
+<span class="font-title-md text-title-md font-bold text-on-surface">Vid start (0m)</span>
+<span class="text-[11px] text-on-surface-variant leading-none mt-1">Drop-in</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Editorial Tips: Do's & Don'ts for Scheduling -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md pt-space-xs">
+<div class="p-space-md rounded-xl bg-surface-container-low flex gap-space-sm items-start">
+<span class="material-symbols-outlined text-primary-fixed-dim bg-primary-container text-white p-1 rounded-full text-[18px]">check</span>
+<div>
+<p class="font-title-md text-title-md text-on-surface">Gör så här (Datum &amp; Tid)</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1 leading-normal">
+Visa alltid beräknad samlingstid explicit bredvid matchstart i kallelser. Använd förhandsvalda intervall (60/90 min) för att minimera klick på mobila skärmar.
+</p>
+</div>
+</div>
+<div class="p-space-md rounded-xl bg-surface-container-low flex gap-space-sm items-start">
+<span class="material-symbols-outlined text-on-error bg-error p-1 rounded-full text-[18px]">priority_high</span>
+<div>
+<p class="font-title-md text-title-md text-on-surface">Undvik detta</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1 leading-normal">
+Undvik komplexa tidsväljare med rullhjul för varje minut. Begränsa stegningen till 5- eller 15-minutersintervall för sportadministration.
+</p>
+</div>
+</div>
+</div>
+</div>
+</section><section class="space-y-space-lg" id="section-selection">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-space-sm">
+<div>
+<span class="font-label-uppercase text-label-uppercase text-primary tracking-widest block mb-1">03 / Val &amp; Villkor</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Urval &amp; Flerval (Selection Controls)</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1 max-w-2xl">
+            Tydliga klickytor för binära val, exklusiva lägen och avtagbara deltagartaggar för föreningsledning.
+          </p>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-space-xl shadow-md space-y-space-xl">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-xl">
+<!-- Checkbox Column -->
+<div class="space-y-space-md bg-surface-container-low p-space-lg rounded-xl">
+<span class="font-label-uppercase text-label-uppercase text-on-surface block">Kryssrutor (Checkboxes)</span>
+<label class="flex items-start gap-space-sm cursor-pointer group">
+<input checked="" class="mt-0.5 w-5 h-5 rounded-md accent-primary-container cursor-pointer" type="checkbox"/>
+<div>
+<span class="font-title-md text-title-md text-on-surface group-hover:text-primary transition-colors block">Automatisk påminnelse</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Skicka SMS 24 timmar innan kioskpasset börjar.</span>
+</div>
+</label>
+<label class="flex items-start gap-space-sm cursor-pointer group">
+<input class="mt-0.5 w-5 h-5 rounded-md accent-primary-container cursor-pointer" type="checkbox"/>
+<div>
+<span class="font-title-md text-title-md text-on-surface group-hover:text-primary transition-colors block">Tillåt självbyte av pass</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Föräldrar kan byta pass inbördes i mobilappen.</span>
+</div>
+</label>
+<label class="flex items-start gap-space-sm opacity-60 cursor-not-allowed">
+<input checked="" class="mt-0.5 w-5 h-5 rounded-md accent-primary cursor-not-allowed" disabled="" type="checkbox"/>
+<div>
+<span class="font-title-md text-title-md text-on-surface block">LOK-rapportering låst</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Perioden är redan inskickad till kommunen.</span>
+</div>
+</label>
+</div>
+<!-- Radio Buttons Column -->
+<div class="space-y-space-md bg-surface-container-low p-space-lg rounded-xl">
+<span class="font-label-uppercase text-label-uppercase text-on-surface block">Exklusiva Val (Radio Buttons)</span>
+<label class="flex items-start gap-space-sm cursor-pointer group">
+<input checked="" class="mt-0.5 w-5 h-5 accent-primary-container cursor-pointer" name="event-frequency" type="radio"/>
+<div>
+<span class="font-title-md text-title-md text-on-surface group-hover:text-primary transition-colors block">Enstaka aktivitet</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Gäller endast den valda matchen eller cupdagen.</span>
+</div>
+</label>
+<label class="flex items-start gap-space-sm cursor-pointer group">
+<input class="mt-0.5 w-5 h-5 accent-primary-container cursor-pointer" name="event-frequency" type="radio"/>
+<div>
+<span class="font-title-md text-title-md text-on-surface group-hover:text-primary transition-colors block">Återkommande serieschema</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Upprepa varannan helg under vårsäsongen 2025.</span>
+</div>
+</label>
+<label class="flex items-start gap-space-sm cursor-pointer group">
+<input class="mt-0.5 w-5 h-5 accent-primary-container cursor-pointer" name="event-frequency" type="radio"/>
+<div>
+<span class="font-title-md text-title-md text-on-surface group-hover:text-primary transition-colors block">Cup-block (Heldag)</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Schemalägg kontinuerliga 2-timmarspass.</span>
+</div>
+</label>
+</div>
+<!-- Switches & Toggles -->
+<div class="space-y-space-md bg-surface-container-low p-space-lg rounded-xl">
+<span class="font-label-uppercase text-label-uppercase text-on-surface block">Funktionsreglage (Toggles)</span>
+<div class="flex items-center justify-between">
+<div>
+<span class="font-title-md text-title-md text-on-surface block">Öppen Kioskbokning</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Först till kvarn bland lediga tider.</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+<div class="flex items-center justify-between">
+<div>
+<span class="font-title-md text-title-md text-on-surface block">Obligatorisk Fika</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Tilldela hembakat till pass 1 &amp; 2.</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+<div class="flex items-center justify-between">
+<div>
+<span class="font-title-md text-title-md text-on-surface block">Extern Domarersättning</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Generera Swish-underlag direkt.</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+</div>
+</div>
+<!-- Filter Chips & Dismissible Member Chips -->
+<div class="space-y-space-sm pt-space-xs">
+<span class="font-label-uppercase text-label-uppercase text-on-surface-variant block">Filter Chips &amp; Avtagbara Deltagartaggar</span>
+<div class="flex items-center gap-2 flex-wrap">
+<!-- Selected Filter Chip -->
+<button class="px-3 py-1.5 rounded-full bg-primary-container text-on-primary font-label-md text-label-md flex items-center gap-1.5 shadow-sm">
+<span class="material-symbols-outlined text-[16px]">check</span>
+              Alla Föräldrar
+            </button>
+<button class="px-3 py-1.5 rounded-full bg-surface-container text-on-surface hover:bg-surface-container-high font-label-md text-label-md flex items-center gap-1.5 transition-colors">
+              Födda 2014
+            </button>
+<button class="px-3 py-1.5 rounded-full bg-surface-container text-on-surface hover:bg-surface-container-high font-label-md text-label-md flex items-center gap-1.5 transition-colors">
+              Obemannade pass (4)
+            </button>
+<button class="px-3 py-1.5 rounded-full bg-surface-container text-on-surface hover:bg-surface-container-high font-label-md text-label-md flex items-center gap-1.5 transition-colors">
+              Kiosk &amp; Grill
+            </button>
+<span class="text-outline-variant mx-1">|</span>
+<!-- Removable participant chips -->
+<div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface text-on-surface font-label-md text-label-md shadow-sm">
+<span class="w-5 h-5 rounded-full bg-primary-fixed text-on-primary-fixed font-bold text-[10px] flex items-center justify-center">JK</span>
+<span>Johan Karlsson</span>
+<button class="hover:text-error transition-colors flex items-center">
+<span class="material-symbols-outlined text-[16px]">cancel</span>
+</button>
+</div>
+<div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface text-on-surface font-label-md text-label-md shadow-sm">
+<span class="w-5 h-5 rounded-full bg-secondary-container text-on-secondary-fixed font-bold text-[10px] flex items-center justify-center">KB</span>
+<span>Karin Bergqvist</span>
+<button class="hover:text-error transition-colors flex items-center">
+<span class="material-symbols-outlined text-[16px]">cancel</span>
+</button>
+</div>
+<div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface text-on-surface font-label-md text-label-md shadow-sm">
+<span class="w-5 h-5 rounded-full bg-surface-container-highest text-on-surface-variant font-bold text-[10px] flex items-center justify-center">#14</span>
+<span>Elias Ström</span>
+<button class="hover:text-error transition-colors flex items-center">
+<span class="material-symbols-outlined text-[16px]">cancel</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- ==================== SECTION 4: FEEDBACK & STATUS INDICATORS ==================== -->
+<section class="space-y-space-lg" id="section-feedback">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-space-sm">
+<div>
+<span class="font-label-uppercase text-label-uppercase text-primary tracking-widest block mb-1">04 / Feedback</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Statusindikatorer &amp; Feedback</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1 max-w-2xl">
+            Tydliga tillståndsbrickor, framstegsmätare och lugna nordiska callouts för föräldragruppens gemensamma framsteg.
+          </p>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-space-xl shadow-md space-y-space-xl">
+<!-- Status Badges Strip -->
+<div class="space-y-space-sm">
+<span class="font-label-uppercase text-label-uppercase text-on-surface-variant block">Semantiska Statusbrickor</span>
+<div class="flex items-center gap-space-sm flex-wrap">
+<span class="px-3 py-1 rounded-full bg-primary-container text-on-primary font-label-uppercase text-label-uppercase flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-secondary-fixed"></span> Bekräftad närvaro
+            </span>
+<span class="px-3 py-1 rounded-full bg-secondary-container text-on-secondary-fixed font-label-uppercase text-label-uppercase flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px]">local_cafe</span> Hembakat ordnat
+            </span>
+<span class="px-3 py-1 rounded-full bg-surface-container-highest text-on-surface font-label-uppercase text-label-uppercase flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px]">verified</span> LOK-berättigad
+            </span>
+<span class="px-3 py-1 rounded-full bg-error-container text-on-error-container font-label-uppercase text-label-uppercase flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-error"></span> Pass saknar bemanning
+            </span>
+<span class="px-3 py-1 rounded-full bg-surface-container text-on-surface-variant font-label-uppercase text-label-uppercase flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px]">timer</span> Deadline 48h
+            </span>
+<span class="px-3 py-1 rounded-full bg-primary-fixed text-on-primary-fixed font-label-uppercase text-label-uppercase flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px]">restaurant</span> Lunchrusch
+            </span>
+</div>
+</div>
+<!-- Progress Trackers with SVG Bars & Meters -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-lg">
+<!-- Metric 1: Kiosk Coverage -->
+<div class="p-space-lg rounded-xl bg-surface-container-low space-y-space-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-uppercase text-label-uppercase text-on-surface-variant">Bemanningsgrad</span>
+<span class="font-stat-counter text-stat-counter text-primary">71%</span>
+</div>
+<!-- Progress Bar -->
+<div class="w-full bg-surface-container-highest h-3 rounded-full overflow-hidden">
+<div class="bg-primary-container h-full rounded-full transition-all duration-500" style="width: 71%;"></div>
+</div>
+<div class="flex justify-between font-label-sm text-label-sm text-on-surface-variant">
+<span>10 av 14 pass tillsatta</span>
+<span class="text-error font-bold">4 kvar</span>
+</div>
+</div>
+<!-- Metric 2: Fair Distribution -->
+<div class="p-space-lg rounded-xl bg-surface-container-low space-y-space-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-uppercase text-label-uppercase text-on-surface-variant">Rättvis fördelning</span>
+<span class="font-stat-counter text-stat-counter text-primary">100%</span>
+</div>
+<div class="w-full bg-surface-container-highest h-3 rounded-full overflow-hidden">
+<div class="bg-secondary-fixed-dim h-full rounded-full transition-all duration-500" style="width: 100%;"></div>
+</div>
+<div class="flex justify-between font-label-sm text-label-sm text-on-surface-variant">
+<span>Alla 22 familjer tilldelade pass</span>
+<span class="text-primary font-bold">Optimal balans</span>
+</div>
+</div>
+<!-- Metric 3: Circular SVG Gauge -->
+<div class="p-space-lg rounded-xl bg-surface-container-low flex items-center justify-between">
+<div class="space-y-1">
+<span class="font-label-uppercase text-label-uppercase text-on-surface-variant block">LOK Träningsnärvaro</span>
+<span class="font-title-md text-title-md text-on-surface block font-bold">P10 Vårsäsong</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">19 av 21 spelare aktiva</span>
+</div>
+<!-- Circular Donut SVG -->
+<div class="relative w-16 h-16 flex items-center justify-center">
+<svg class="w-16 h-16 transform -rotate-90" viewbox="0 0 36 36">
+<path class="text-surface-container-highest" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3.5"></path>
+<path class="text-primary-container" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="90, 100" stroke-linecap="round" stroke-width="3.5"></path>
+</svg>
+<span class="absolute font-title-md text-title-md font-bold text-primary">90%</span>
+</div>
+</div>
+</div>
+<!-- Alerts & Banners (Scandinavian Tactile Style) -->
+<div class="space-y-space-md">
+<span class="font-label-uppercase text-label-uppercase text-on-surface-variant block">Alerter &amp; Informationsbanderoller</span>
+<!-- Info Callout with Amber Accent Left Bar -->
+<div class="p-space-lg rounded-xl bg-surface-container-low flex items-start gap-space-md shadow-sm relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-on-tertiary-container"></div>
+<div class="w-10 h-10 rounded-xl bg-surface flex items-center justify-center text-on-tertiary-container shrink-0 shadow-sm">
+<span class="material-symbols-outlined text-[22px]">campaign</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center justify-between">
+<h4 class="font-title-md text-title-md text-on-surface">Kioskhelg V19: Vänligen bekräfta tider innan fredag 18:00</h4>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Viktig instruktion</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1 leading-normal">
+                Föräldrar som fått lördagspasset 10:30–13:00 behöver hämta nyckeln i klubbstugan senast torsdag kväll. Vid förhinder, använd passbytesknappen i appen.
+              </p>
+</div>
+</div>
+<!-- Success Alert -->
+<div class="p-space-lg rounded-xl bg-surface-container-low flex items-start gap-space-md shadow-sm relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-primary-container"></div>
+<div class="w-10 h-10 rounded-xl bg-surface flex items-center justify-center text-primary-container shrink-0 shadow-sm">
+<span class="material-symbols-outlined text-[22px]">check_circle</span>
+</div>
+<div class="flex-1">
+<h4 class="font-title-md text-title-md text-on-surface">Samtliga 6 lagkassor avstämda och verifierade</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mt-0.5">
+                Alla intäkter från helgens hemmamatcher är överförda via Swish Företag och bokförda på lagkontot.
+              </p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- ==================== SECTION 5: DATA CARDS & INTERACTIVE ROWS ==================== -->
+<section class="space-y-space-lg" id="section-cards">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-space-sm">
+<div>
+<span class="font-label-uppercase text-label-uppercase text-primary tracking-widest block mb-1">05 / Interaktionskort</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Listor &amp; Verksamhetskort (Cards &amp; Rows)</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1 max-w-2xl">
+            Sammansatta mönster optimerade för matchplanering, närvarorapportering och smidiga passbyten mellan föräldrar.
+          </p>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-xl">
+<!-- Left: Match & Timeline Pass Card -->
+<div class="lg:col-span-7 bg-surface-container-lowest p-space-xl rounded-xl shadow-md space-y-space-lg">
+<div class="flex items-center justify-between pb-space-sm">
+<div>
+<span class="font-label-uppercase text-label-uppercase text-on-surface-variant">Schema-pass &amp; Kiosktilldelning</span>
+<h3 class="font-headline-md text-headline-md text-primary mt-0.5">Lördag 10 Maj – Idrottsparken Plan A</h3>
+</div>
+<button class="px-3 py-1.5 rounded-xl bg-surface text-primary font-label-md text-label-md shadow-sm hover:bg-surface-container flex items-center gap-1.5 transition-colors">
+<span class="material-symbols-outlined text-[16px]">print</span> Skriv ut kioskschema
+            </button>
+</div>
+<!-- Activity Pass Row 1 -->
+<div class="p-space-md rounded-xl bg-surface-container-low flex flex-col sm:flex-row sm:items-center justify-between gap-space-md hover:shadow-sm transition-shadow">
+<div class="flex items-center gap-space-md">
+<div class="w-12 h-12 rounded-xl bg-primary-container text-on-primary flex flex-col items-center justify-center font-bold">
+<span class="text-[12px] leading-tight">08:30</span>
+<span class="text-[10px] text-primary-fixed-dim">10:30</span>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<h4 class="font-title-md text-title-md text-on-surface">Kiosk &amp; Kaffebryggning (Pass 1)</h4>
+<span class="px-2 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-label-sm text-label-sm font-bold">Fullbemannad</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
+                  Tilldelad: <strong class="text-on-surface">Johan Karlsson &amp; Maria Lind</strong> (Spelare: Oliver #7)
+                </p>
+</div>
+</div>
+<div class="flex items-center gap-2 self-end sm:self-center">
+<button class="w-9 h-9 rounded-lg bg-surface text-on-surface hover:bg-surface-container-high flex items-center justify-center shadow-sm" title="Kontakta">
+<span class="material-symbols-outlined text-[18px]">call</span>
+</button>
+<button class="w-9 h-9 rounded-lg bg-surface text-on-surface hover:bg-surface-container-high flex items-center justify-center shadow-sm" title="Alternativ">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Activity Pass Row 2 (Unassigned Alert State) -->
+<div class="p-space-md rounded-xl bg-error-container/20 flex flex-col sm:flex-row sm:items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-md">
+<div class="w-12 h-12 rounded-xl bg-error-container text-on-error-container flex flex-col items-center justify-center font-bold">
+<span class="text-[12px] leading-tight">10:30</span>
+<span class="text-[10px] text-error">13:00</span>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<h4 class="font-title-md text-title-md text-on-surface">Lunchrusch &amp; Korvgrillning (Pass 2)</h4>
+<span class="px-2 py-0.5 rounded-full bg-error text-on-error font-label-sm text-label-sm font-bold">1 Plats Vakant</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
+                  Tilldelad: <strong class="text-on-surface">Karin Bergqvist</strong> · <span class="text-error font-semibold">1 person saknas</span>
+</p>
+</div>
+</div>
+<button class="px-3 py-1.5 rounded-xl bg-primary-container text-on-primary hover:bg-primary transition-all font-label-md text-label-md shadow-sm flex items-center gap-1.5 self-end sm:self-center">
+<span class="material-symbols-outlined text-[16px]">person_add</span>
+              Tilldela pass
+            </button>
+</div>
+<!-- Activity Pass Row 3 -->
+<div class="p-space-md rounded-xl bg-surface-container-low flex flex-col sm:flex-row sm:items-center justify-between gap-space-md hover:shadow-sm transition-shadow">
+<div class="flex items-center gap-space-md">
+<div class="w-12 h-12 rounded-xl bg-surface-container-highest text-on-surface flex flex-col items-center justify-center font-bold">
+<span class="text-[12px] leading-tight">13:00</span>
+<span class="text-[10px] text-on-surface-variant">15:30</span>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<h4 class="font-title-md text-title-md text-on-surface">Sekretariat &amp; Matchklocka</h4>
+<span class="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-fixed font-label-sm text-label-sm font-bold">Bekräftad</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
+                  Tilldelad: <strong class="text-on-surface">Erik Sandin</strong> (Utbildad distriktsdomare)
+                </p>
+</div>
+</div>
+<div class="flex items-center gap-2 self-end sm:self-center">
+<button class="w-9 h-9 rounded-lg bg-surface text-on-surface hover:bg-surface-container-high flex items-center justify-center shadow-sm" title="Kontakta">
+<span class="material-symbols-outlined text-[18px]">call</span>
+</button>
+<button class="w-9 h-9 rounded-lg bg-surface text-on-surface hover:bg-surface-container-high flex items-center justify-center shadow-sm" title="Alternativ">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Right: Mobile-ready Quick Attendance & Swap Rows -->
+<div class="lg:col-span-5 space-y-space-lg">
+<!-- Attendance Quick Tap List -->
+<div class="bg-surface-container-lowest p-space-xl rounded-xl shadow-md space-y-space-md">
+<div class="flex items-center justify-between">
+<div>
+<span class="font-label-uppercase text-label-uppercase text-on-surface-variant">Närvarorad (Tumvänlig)</span>
+<h3 class="font-title-md text-title-md text-on-surface mt-0.5">Snabbavkryssning Träning</h3>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-surface-container font-label-sm text-label-sm text-on-surface-variant font-bold">14/16</span>
+</div>
+<!-- Attendance Row 1 -->
+<div class="p-space-sm rounded-xl bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<div class="w-9 h-9 rounded-full bg-primary-container text-on-primary font-bold text-body-sm flex items-center justify-center">
+                  #7
+                </div>
+<div>
+<p class="font-title-md text-title-md text-on-surface leading-tight">Oliver Lind</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Anmäld kl 17:15</p>
+</div>
+</div>
+<div class="flex items-center gap-1.5">
+<button class="w-9 h-9 rounded-lg bg-primary-container text-on-primary flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-[18px]">check</span>
+</button>
+<button class="w-9 h-9 rounded-lg bg-surface hover:bg-surface-container text-on-surface-variant flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+</div>
+<!-- Attendance Row 2 -->
+<div class="p-space-sm rounded-xl bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<div class="w-9 h-9 rounded-full bg-secondary-container text-on-secondary-fixed font-bold text-body-sm flex items-center justify-center">
+                  #11
+                </div>
+<div>
+<p class="font-title-md text-title-md text-on-surface leading-tight">Liam Bergqvist</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Sjuk / Lämnat återbud</p>
+</div>
+</div>
+<div class="flex items-center gap-1.5">
+<button class="w-9 h-9 rounded-lg bg-surface hover:bg-surface-container text-on-surface-variant flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-[18px]">check</span>
+</button>
+<button class="w-9 h-9 rounded-lg bg-error text-on-error flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+</div>
+<!-- Attendance Row 3 -->
+<div class="p-space-sm rounded-xl bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<div class="w-9 h-9 rounded-full bg-surface-container-highest text-on-surface font-bold text-body-sm flex items-center justify-center">
+                  #14
+                </div>
+<div>
+<p class="font-title-md text-title-md text-on-surface leading-tight">Elias Ström</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Ej svarat på kallelse</p>
+</div>
+</div>
+<div class="flex items-center gap-1.5">
+<button class="w-9 h-9 rounded-lg bg-surface hover:bg-surface-container text-on-surface-variant flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-[18px]">check</span>
+</button>
+<button class="w-9 h-9 rounded-lg bg-surface hover:bg-surface-container text-on-surface-variant flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-[18px]">help</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Swap Request Card -->
+<div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-md space-y-space-sm relative overflow-hidden">
+<div class="flex items-center justify-between">
+<span class="font-label-uppercase text-label-uppercase text-on-tertiary-container flex items-center gap-1 font-bold">
+<span class="material-symbols-outlined text-[16px]">swap_horiz</span> Passbytesförfrågan
+              </span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Skickad 12 min sedan</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface leading-snug">
+<strong>Johan K.</strong> önskar byta lördagspasset mot söndagens stängning på grund av bortaresa.
+            </p>
+<div class="flex items-center gap-space-sm pt-space-xs">
+<button class="flex-1 py-2 px-3 rounded-xl bg-primary-container text-on-primary font-label-md text-label-md shadow-sm hover:bg-primary transition-all">
+                Acceptera byte
+              </button>
+<button class="py-2 px-3 rounded-xl bg-surface-container text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-all">
+                Avböj
+              </button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Bottom Reference & Documentation Summary -->
+<section class="bg-surface-container-low rounded-xl p-space-xl flex flex-col md:flex-row items-center justify-between gap-space-lg">
+<div class="space-y-1">
+<h3 class="font-headline-md text-headline-md text-on-surface">Behöver du ytterligare föreningsmallar?</h3>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-xl">
+          Förena Design System är öppet för alla svenska idrottsföreningar och förbund. Hämta Figma-bibliotek, Figma Tokens-synk och React-komponentpaket.
+        </p>
+</div>
+<div class="flex items-center gap-space-sm shrink-0">
+<button class="py-3 px-5 rounded-xl bg-surface text-primary hover:bg-surface-container-high transition-all font-title-md text-title-md shadow-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">menu_book</span>
+          Läs Riktlinjer
+        </button>
+<button class="py-3 px-5 rounded-xl bg-primary-container text-on-primary hover:bg-primary transition-all font-title-md text-title-md shadow-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">download</span>
+          Ladda ner UI-kit
+        </button>
+</div>
+</section>
+</div>
+</div>
+<script>
+  function adjustCounter(delta) {
+    const el = document.getElementById('counterVal');
+    if (!el) return;
+    let current = parseInt(el.innerText, 10);
+    current = Math.max(1, Math.min(10, current + delta));
+    el.innerText = current;
+  }
+
+  function updateCharCount(textarea) {
+    const counter = document.getElementById('charCount');
+    if (!counter) return;
+    counter.innerText = textarea.value.length + ' / 240 tecken';
+  }
+
+  function toggleSegment(btn, id) {
+    const container = document.getElementById('segmentedDemo');
+    if (!container) return;
+    const buttons = container.querySelectorAll('.seg-btn');
+    buttons.forEach(b => {
+      b.className = 'seg-btn flex-1 py-2 px-3 rounded-lg font-body-md text-body-md text-on-surface-variant hover:text-on-surface transition-all flex items-center justify-center gap-2';
+    });
+    btn.className = 'seg-btn flex-1 py-2 px-3 rounded-lg font-title-md text-title-md bg-surface text-primary shadow-sm flex items-center justify-center gap-2 transition-all';
+  }
+</script></main></div></body></html>

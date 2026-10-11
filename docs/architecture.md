@@ -30,6 +30,14 @@ Det gäller även administration, formulär, kalender, dialoger och nya funktion
   långa värden. Kontrollera `document.documentElement.scrollWidth <= innerWidth`
   och åtgärda det element som orsakar overflow.
 
+### Designtokens
+
+[DESIGN.md](../DESIGN.md) och referenserna under `public/design` styr den visuella
+riktningen. `globals.css` äger gemensamma färg-, typografi- och ytvariabler.
+Primär åtgärdsfärg är separat från textfärg. Rotlayouten laddar lokalt paketerade
+Newsreader och Plus Jakarta Sans. Se [designreglerna](design-spec.md) för hur
+skillnader mellan referensens YAML, text och HTML har lösts.
+
 ### Gemensamma komponenter
 
 Menyer, header och footer ska implementeras som centrala, återanvändbara

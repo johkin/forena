@@ -52,8 +52,9 @@ export function AttendanceModal({ activityId, onClose, onSaved }: Props) {
       const matching = people.filter((row) => row.role === role);
       return matching.length ? <div className="person-picker-group" key={role}>
         <h4>{roleLabels[role]} ({matching.length})</h4>
-        {matching.map((row) => <button key={row.personId} type="button" className="attendance-person" onClick={() => toggle(row.personId)}
+        {matching.map((row) => <button key={row.personId} type="button" className="attendance-person" aria-pressed={isPresent} onClick={() => toggle(row.personId)}
           aria-label={`${row.displayName}, ${roleLabels[role].toLowerCase()}. Flytta till ${isPresent ? "ej närvarande" : "närvarande"}`} title={row.displayName}>
+          <span className="attendance-person-state" aria-hidden="true">{isPresent ? "✓" : "+"}</span>
           <strong>{names.get(row.personId)}</strong>
           <small>{row.response === "accepted" ? "Anmäld" : row.response === "declined" ? "Tackat nej" : row.response === "pending" ? "Ej svarat" : "Ej kallad"}</small>
         </button>)}
