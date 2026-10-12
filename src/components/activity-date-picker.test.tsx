@@ -11,9 +11,9 @@ it("moves calendar selection across month and year boundaries", () => {
  expect(shiftCalendarDate("2026-12-31",1)).toBe("2027-01-01");
  expect(shiftCalendarDate("2027-01-01",-7)).toBe("2026-12-25");
 });
-it("steps to the next five-minute value without losing legacy minutes", () => {
- expect(stepActivityTime("18:02",1)).toBe("18:05");
- expect(stepActivityTime("18:02",-1)).toBe("18:00");
- expect(stepActivityTime("23:55",1)).toBe("00:00");
- expect(stepActivityTime("00:00",-1)).toBe("23:55");
+it("steps fifteen minutes while preserving exact minutes", () => {
+ expect(stepActivityTime("18:02",1)).toBe("18:17");
+ expect(stepActivityTime("18:02",-1)).toBe("17:47");
+ expect(stepActivityTime("23:45",1)).toBe("00:00");
+ expect(stepActivityTime("00:00",-1)).toBe("23:45");
 });

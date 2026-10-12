@@ -186,9 +186,7 @@ rader och samla nivåval i en radbrytande navigation. Aktivitetens typval ändra
 bara orörda nya fält. Förhandsgranskningen visar tider i föreningens tidszon.
 Kallelsemottagare och utskicksläge väljs alltid uttryckligen av ledaren.
 
-Tidsval använder den gemensamma `FiveMinuteTimeField`: timmar 00–23 och minuter
-00, 05, 10 … 55. Samma kontroll visas på komponentsidan. Befintliga tider och
-utkast mellan femminutersstegen bevaras tills användaren ändrar minutvalet.
+Aktiviteter och uppgifter använder gemensamma tidsmoduler med native tidsfält och minutprecision. Övriga tidsval kan använda `FiveMinuteTimeField`.
 
 Relativa tider väljs från listor med svenska texter, exempelvis ”6 dagar innan”.
 Uttryck som `start-6d` är interna värden och visas inte i kontroller eller hjälptexter.
@@ -377,13 +375,18 @@ eller externa scripts läggs till i produktionskomponenterna.
 - Aktivitetsredigeraren har kort för detaljer, tid/samling och kallelse.
   Den kompletterande skissen i `stitch_f_rena (4).zip` används för en staplad
   kortlayout på både mobil och desktop: konfigurerade aktivitetstyper som knappar,
-  kompakt veckoremsa, start/slut med femminutersreglage, passlängd och samlingsval.
+  kompakt veckoremsa, start/slut med femtonminutersreglage, passlängd och samlingsval.
   Veckoremsan har veckonavigering, minst 44 px breda datumknappar,
   tangentbordsnavigation och ett datumfält som alternativ. På smala skärmar
-  rullas bara veckoremsan i sidled. Flerdagars / Cup öppnar det befintliga
-  slutdatumfältet. Samlingsstapeln visar verkliga tider och minuter i rätt proportion.
-  Andra längder och samlingstider finns i ett utfällbart avsnitt; befintliga
-  minutvärden, slutdatum, tidszoner, serieval och förhandsgranskning bevaras.
+  rullas bara veckoremsan i sidled. Samma dag och Flerdagars väljs med flikar.
+  Flerdagars har en månadskalender med start-/slutdag och diskret intervallmarkering,
+  med samma gröna dagmarkeringar som veckoremsan. Flerdagars visar inga extra
+  längd-/tidsstapelsummeringar. Uppgifters datum och tider använder samma
+  `DateTimeRangeFields`, även för deadline. Förvalsursprung visas inte som ledtext.
+  Längd anges genom start-/sluttid och snabbval; serier behåller konfigurerade
+  längdval. Samling använder snabbval inklusive befintligt eget värde.
+  Avsnittet Annan längd eller samling är borttaget. Befintliga minutvärden,
+  slutdatum, tidszoner, serieval och förhandsgranskning bevaras.
 - Närvaro visar faktiska antal, sökning och en filtrerbar enkolumnslista på
   mobil och desktop. Samma `PersonSelectionList` används för Skicka nu:
   spelare och ledare grupperas i en lista med gröna kryssrutor för valda personer.
@@ -393,3 +396,5 @@ eller externa scripts läggs till i produktionskomponenterna.
   Egna bokningar markeras och byte/ersättare öppnas i ”Hantera ditt pass”. Andra
   familjer förblir anonymiserade. Ledarverktyg, skapa/ändra uppgifter och regler
   hålls i hopfällbara avsnitt. Samtliga skrivningar behåller förhandsgranskning.
+
+Tidsmoduler har kompakta minus/plus-knappar som ändrar tiden med 15 minuter. Klockslaget är ett native tidsfält med minutprecision, även för uppgifter.

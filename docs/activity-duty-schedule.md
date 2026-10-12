@@ -226,3 +226,8 @@ tid/bemanning och instruktioner i kort. Antal platser använder samma
 48 px-reglage vid skapande och redigering, med befintlig gräns 1–50.
 Uppgifter förhandsgranskas och sparas innan självbokning eller tilldelning.
 Skissens bemanningsmallar, matchbuffertar och guidebilagor är inte införda.
+
+Datum och tider använder `DateTimeRangeFields`, samma komponent som aktivitetsformuläret:
+veckoremsa för samma dag, månadskalender med start-/slutdag för flerdagars,
+femminutersreglage för klockslag och en kalender med ett klockslag för deadline.
+Pass utan tidigare tider får aktivitetens tider som utgångspunkt när tidstyp ändras.
