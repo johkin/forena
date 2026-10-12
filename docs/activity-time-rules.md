@@ -6,6 +6,12 @@ en disciplin och administreras under `/system/activity-types`. Lokala specialtyp
 behåller sin föreningsägare; oförändrade tidigare standardtyper migreras till den
 gemensamma katalogen med bibehållna aktivitets- och dokumentkopplingar.
 
+De fyra gemensamma valen för nya aktiviteter är Träning, Tävling/Match,
+Arbetspass och Övrigt. Möte och Utbildning är arkiverade: äldre aktiviteter,
+serier, förval och dokument behåller sina typ-ID:n och kan fortsatt redigeras.
+Matchtypens nyckel `match-tavling` och kategori `competition` är oförändrade.
+Lokala specialtyper och systemadministrationens kataloghantering bevaras.
+
 Grundförval och valbara tider definieras i disciplinens TypeScript-profil.
 Sektionen väljer disciplin; dess lag ärver samma disciplin. Sektionens och lagets
 sparsamma överstyrningar lagras i `section_discipline_defaults` respektive
