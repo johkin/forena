@@ -1,5 +1,31 @@
 # Förena – gränssnittets designregler
 
+## Komponentsidan är den gemensamma UI-referensen
+
+Alla UI-element som används i systemet ska finnas representerade på `/components`.
+Det gäller både grundelement och sammansatta komponenter: knappar, formulärfält,
+väljare, personlistor, kort, tabeller, navigation, dialoger, notifieringar och
+specialiserade vykomponenter för administration, discipliner och tillägg.
+
+- Exemplen ska använda samma produktionskomponenter och design-token som de
+  verkliga vyerna. Separata demonstrationskopior av markup eller CSS räcker inte.
+- Visa relevanta varianter och tillstånd: normalt, hover, tangentbordsfokus,
+  valt/delvis valt, inaktiverat, laddning, tomt, fel och lyckat resultat.
+  Interaktiva komponenter ska kunna provas med syntetiska data utan skarpa utskick
+  eller ändringar av verksamhetsdata.
+- Nya eller ändrade UI-element ska uppdateras på komponentsidan i samma PR som
+  implementationen. Ett UI-arbete är inte färdigt förrän exemplen speglar beteendet
+  och utseendet som användaren möter.
+- Återanvänd befintliga gemensamma komponenter i alla berörda vyer. Om ett nytt
+  behov kräver en variant ska den ingå i den gemensamma komponenten och visas på
+  komponentsidan; undvik lokala kopior och sidunika stilundantag.
+- Kontrollera både komponentsidan och de berörda användarflödena på mobil och
+  desktop, inklusive tangentbord, kontrast och att innehållet ryms inom skärmen.
+
+Komponentsidan ska vara en aktuell, gemensam referens för hela systemet.
+Dessa regler beskriver kravet; befintliga luckor i galleriet ska fyllas när de
+berörda UI-delarna ändras och innebär inte att dagens galleri redan är komplett.
+
 ## Personlig startsida
 
 `/` är den inloggade användarens Förena-brandade **Min översikt**, utan vald

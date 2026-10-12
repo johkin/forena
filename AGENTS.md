@@ -25,6 +25,11 @@ Vid gränssnittsändringar ska både arkitekturen och designreglerna följas.
 Menyer, header och footer ska återanvändas från centrala komponenter; skapa
 inte egna kopior för enskilda sidor eller administrationsområden.
 
+Alla UI-element ska finnas representerade på `/components` med samma
+produktionskomponenter som används i appen. Nya och ändrade element, relevanta
+varianter och tillstånd ska uppdateras där i samma PR. Kontrollera återanvändningen
+i berörda vyer och följ [reglerna för komponentsidan](docs/design-spec.md#komponentsidan-är-den-gemensamma-ui-referensen).
+
 ## Brancher och pull requests
 
 Skapa nya utvecklingsbrancher från aktuell `main` och rikta alla nya PR:er mot
