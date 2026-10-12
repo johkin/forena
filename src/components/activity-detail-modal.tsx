@@ -152,7 +152,7 @@ export function ActivityDetailModal({ activity, organization, team, canManageAct
 
       </> : null}
 
-      <ActivityDutySchedule key={activity.id} activityId={activity.id} startsAt={activity.startsAt} endsAt={activity.endsAt} timeZone={timeZone} readOnly={readOnly} />
+      <ActivityDutySchedule key={activity.id} activityId={activity.id} startsAt={activity.startsAt} endsAt={activity.endsAt} timeZone={timeZone} context={{title:activity.title,location:activity.location,teamName:team.name,organizationName:organization.name}} readOnly={readOnly} />
 
       {canManageInvitations && deliveryStatus ? <details className="delivery-status">
         <summary><span>Leveransstatus</span><small>{deliveryStatus.sent} skickade · {deliveryStatus.queued} väntar · {deliveryStatus.failed} misslyckade</small></summary>

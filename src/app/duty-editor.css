@@ -1,0 +1,28 @@
+/* Duty editor sketch: actual activity context and reusable staffing controls. */
+.duty-edit-overview { margin:16px 0; }
+.duty-activity-context, .duty-editor-section, .duty-creator .duty-series-form { padding:20px; background:var(--paper); border:1px solid var(--line); border-radius:16px; }
+.duty-activity-context h4 { margin:0; font-family:var(--font-heading); font-size:22px; font-weight:500; }
+.duty-activity-context p { margin:8px 0 0; font-size:13px; color:var(--ink-soft); overflow-wrap:anywhere; }
+.duty-activity-context .eyebrow { margin:0 0 8px; color:var(--primary); }
+.duty-creator { background:var(--cream); }
+.duty-creator > summary { font-family:var(--font-heading); font-size:22px; font-weight:500; }
+.duty-editor-section { margin-top:16px; }
+.duty-selected-type { padding:12px; background:var(--positive-surface); color:var(--primary); font-weight:600; border-radius:12px; }
+.duty-new-type { margin-top:16px; padding:12px; background:var(--surface-low); border-radius:12px; }
+.duty-new-type summary { min-height:44px; cursor:pointer; }
+.duty-new-type .secondary { margin-top:12px; }
+.duty-allocation-info, .duty-timing-help { padding:16px; border-radius:12px; background:var(--surface-low); font-size:13px; color:var(--ink-soft); }
+.duty-allocation-info { margin-top:20px; }
+.duty-allocation-info h4, .duty-instruction-fields h4 { margin:0; font-family:var(--font-heading); font-size:20px; font-weight:500; color:var(--ink); }
+.duty-places-stepper { display:grid; gap:8px; min-width:0; }
+.duty-places-stepper > label { font-weight:600; font-size:13px; }
+.duty-places-stepper > div { display:flex; gap:8px; align-items:center; padding:4px; background:var(--surface-container); border-radius:12px; }
+.duty-places-stepper button { flex:0 0 48px; width:48px; height:48px; border:1px solid var(--line); border-radius:9px; background:var(--paper); color:var(--primary); font-size:24px; cursor:pointer; }
+.duty-places-stepper input[type=number] { flex:1; min-width:0; width:64px; min-height:48px; text-align:center; border:0; background:transparent; font-size:24px; font-weight:700; color:var(--primary); padding:4px; }
+.duty-creator .participant-selection { grid-template-columns:minmax(0,1fr); }
+@media (max-width:400px) {
+ .duty-activity-context, .duty-editor-section, .duty-creator .duty-series-form { padding:12px; }
+ .duty-creator { padding:12px !important; }
+ .duty-places-stepper > div { gap:4px; }
+}
+.workflow-disclosure .participant-selection:has(.duty-places-stepper) { grid-template-columns:minmax(0,1fr); }

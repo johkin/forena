@@ -1,4 +1,5 @@
 "use client";
+import { DutyPlacesStepper } from "./duty-places-stepper";
 import { useState } from "react";
 import { dutyDefinitionSchema, type Duty, type DutyCommand, type DutySchedule } from "@/lib/activity-duty-schedule";
 import { formatDutyTiming } from "@/lib/duty-presentation";
@@ -34,7 +35,7 @@ export function DutyEditor({ duty, timeZone, propose }: { duty: Duty; timeZone: 
    } catch { setError("Kontrollera datum, tider och antal platser."); }
  }
  return <details className="workflow-disclosure"><summary>Redigera enskilt pass</summary>{completed?<p>Uppgiften har genomförande registrerat och behålls som historik.</p>:<>
- <div className="participant-selection"><label>Tidstyp<select value={kind} onChange={e=>setKind(e.target.value as Duty["timingKind"])}><option value="interval">Tidsintervall</option><option value="deadline">Leveransdeadline</option><option value="none">Ingen särskild tid</option></select></label><label>Antal platser<input type="number" min={1} max={50} value={places} onChange={e=>setPlaces(Number(e.target.value))}/></label></div>
+ <div className="participant-selection"><label>Tidstyp<select value={kind} onChange={e=>setKind(e.target.value as Duty["timingKind"])}><option value="interval">Tidsintervall</option><option value="deadline">Leveransdeadline</option><option value="none">Ingen särskild tid</option></select></label><DutyPlacesStepper value={places} onChange={setPlaces}/></div>
  {kind==="interval"&&<div className="participant-selection"><label>Från<input type="datetime-local" step={300} value={start} onChange={e=>setStart(e.target.value)}/></label><label>Till<input type="datetime-local" step={300} value={end} onChange={e=>setEnd(e.target.value)}/></label></div>}
  {kind==="deadline"&&<label>Lämnas senast<input type="datetime-local" step={300} value={due} onChange={e=>setDue(e.target.value)}/></label>}
  <label>Instruktioner<textarea maxLength={2000} value={instructions} onChange={e=>setInstructions(e.target.value)}/></label>

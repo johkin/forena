@@ -5,6 +5,14 @@ formspråk för befintliga funktioner; exempeldata och extra funktioner överfö
 inte till produktionsvyerna. Originalarkivet är referensmaterial, inte en
 implementation eller en källa till verksamhetsregler.
 
+Skissen för Lägg till uppgift (Inklistrad text.txt) används för aktivitetens
+verkliga namn, tider och plats, kort för uppgiftstyp, tid/bemanning och
+instruktioner samt gemensamma 48 px-reglage för antal platser. Självbokning,
+manuell tilldelning och befintligt rättviseförslag behåller separata flöden
+efter att uppgiften granskats och sparats. Fasta F2016-mallar, automatisk
+före-/eftermatchsynkning, PDF-guide och trygghetsnotis införs inte; de saknar
+befintligt verksamhetsstöd och pass måste rymmas inom aktivitetens tider.
+
 | Skiss | Tillämpning i Förena |
 | --- | --- |
 | Närvarorapportering mobil | Antal, tydlig snabbåtgärd, sökning, filter och stora närvarorader |
