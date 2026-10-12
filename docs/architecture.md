@@ -486,3 +486,11 @@ lag, ansvariga, medlemsansökningar, förval eller minnen. Discipliner kan bara
 tas bort utan kopplingar, sparade disciplinvärden, historik eller installerade
 kodpaket. Skydden gäller även direkta tabellkommandon, inklusive relationer
 som tidigare hade `ON DELETE SET NULL`.
+
+Klubbens adressnamn kan ändras via samma metadata-RPC. Unikhetsvillkoret i databasen
+förhindrar samtidiga dubletter. `club_slug_available` returnerar bara en boolean
+för inloggade användare; undantag för egen klubb kräver administratörsbehörighet.
+Byte av adressnamn ändrar URL:er och kräver att äldre länkar uppdateras.
+Disciplinkategorier är en separat katalog med RLS, läsning för inloggade och
+skrivning endast för systemadministratörer. Främmande nyckel hindrar borttagning
+av använda kategorier; kategori är gruppering och styr ingen domänlogik.

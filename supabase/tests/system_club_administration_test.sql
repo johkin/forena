@@ -52,5 +52,25 @@ select ok((select in_use from public.system_discipline_usage() where id='d000000
 select ok(not has_function_privilege('anon','public.create_club_workspace(jsonb,boolean)','execute'),'Anonymous create RPC privilege is revoked');
 select ok(not has_function_privilege('authenticated','administration.discipline_used(uuid)','execute'),'Internal usage helper cannot be called directly');
 select ok(not (select prosecdef from pg_proc where oid='public.create_club_workspace(jsonb,boolean)'::regprocedure),'Exposed create wrapper is security invoker');
+
+select ok(not public.club_slug_available('club-admin-managed-test'),'Occupied slug is unavailable');
+select ok(public.club_slug_available('club-admin-managed-test',(select (value->>'id')::uuid from created_clubs where label='managed')),'Own unchanged slug is available');
+select lives_ok($$select public.save_club_metadata((select (value->>'id')::uuid from created_clubs where label='managed'),'{"name":"Managed","slug":"club-admin-renamed","assistantName":"A","timeZone":"Europe/Stockholm"}')$$,'Administrator can change slug');
+select is((public.club_structure((select (value->>'id')::uuid from created_clubs where label='managed')))->'organization'->>'slug','club-admin-renamed','Persisted structure contains the new URL');
+select throws_ok($$select public.save_club_metadata((select (value->>'id')::uuid from created_clubs where label='managed'),'{"name":"Managed","slug":"club-admin-test","assistantName":"A","timeZone":"Europe/Stockholm"}')$$,'23505',null,'Occupied slug cannot be saved');
+select throws_ok($$select public.save_club_metadata((select (value->>'id')::uuid from created_clubs where label='managed'),'{"name":"Managed","slug":"../bad","assistantName":"A","timeZone":"Europe/Stockholm"}')$$,'22023','Invalid club','Invalid path is rejected');
+select lives_ok($$insert into public.discipline_categories(key,name) values('test-category','Test')$$,'System admin can create category');
+select lives_ok($$update public.discipline_categories set name='Changed' where key='test-category'$$,'Category display name can change');
+select lives_ok($$update public.disciplines set category='test-category' where id='d0000000-0000-0000-0000-000000000002'$$,'Existing discipline can select category');
+select throws_ok($$delete from public.discipline_categories where key='test-category'$$,'23503',null,'Used category is protected by foreign key');
+select throws_ok($$update public.disciplines set category='missing-category' where id='d0000000-0000-0000-0000-000000000002'$$,'23503',null,'Unknown category cannot be saved');
+select set_config('request.jwt.claims','{"sub":"a0000000-0000-0000-0000-000000000003","role":"authenticated"}',true);
+select ok(not public.club_slug_available('club-admin-test'),'Availability checks clubs outside membership');
+select throws_ok($$select public.club_slug_available('club-admin-test',(select (value->>'id')::uuid from created_clubs where label='own'))$$,'42501','Forbidden','Outsider cannot exclude a club from availability');
+select throws_ok($$insert into public.discipline_categories(key,name) values('forged','Forged')$$,'42501',null,'Ordinary members cannot create categories');
+with changes as (update public.discipline_categories set name='Forged' where key='test-category' returning key) select is((select count(*)::integer from changes),0,'Ordinary members cannot rename categories');
+with changes as (delete from public.discipline_categories where key='test-category' returning key) select is((select count(*)::integer from changes),0,'Ordinary members cannot delete categories');
+select ok(not has_function_privilege('anon','public.club_slug_available(text,uuid)','execute'),'Anonymous availability privilege is revoked');
+select ok(not has_column_privilege('authenticated','public.discipline_categories','key','update'),'Category keys cannot be renamed');
 select * from finish();
 rollback;

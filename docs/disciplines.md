@@ -307,3 +307,13 @@ Capabilities kan lämna strukturerade signaler separat från notifieringsförsla
 Gemensam lagring hanterar aktiv/löst/avfärdad status, återkomst, revisionskontroll
 och åtgärdshistorik. Utvärderingen körs genom schemaläggningsarbetaren, och
 outbox ansvarar fortsatt endast för leverans. Se [signalernas modell och flöde](capability-signals.md).
+
+## Kategorier
+
+`discipline_categories` innehåller stabil nyckel och redigerbart visningsnamn.
+Systemadministratörer lägger till, döper om och tar bort oanvända kategorier på
+disciplinsidan. Discipliner väljer kategori via dropdown; äldre egna värden
+bevaras i migrationen. Grundkategorierna är Idrott (`sport`), Kultur (`culture`),
+Friluftsliv (`outdoor`) och Spel (`game`). Kategori grupperar katalogen och
+påverkar inte aktivitetstyper, capabilities eller åtkomst. Kodägda pakets
+kategorinycklar versionshanteras fortsatt i källkoden.

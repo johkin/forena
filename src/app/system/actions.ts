@@ -27,7 +27,7 @@ export async function createDiscipline(formData: FormData) {
   const category = String(formData.get("category") ?? "").trim() || null;
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(key) || !name || name.length > 120) redirect("/system/disciplines?error=Ogiltig+disciplin");
   const { error } = await supabase.from("disciplines").insert({ key, name, category });
-  if (error) redirect("/system/disciplines?error=Disciplinen+kunde+inte+sparas");
+  if (error) redirect(`/system/disciplines?error=${encodeURIComponent(error.code === "23503" ? "Kategorin finns inte längre. Uppdatera sidan." : "Disciplinen kunde inte sparas.")}`);
   revalidatePath("/system/disciplines");
   redirect("/system/disciplines?saved=1");
 }
@@ -59,6 +59,41 @@ export async function deleteDiscipline(formData: FormData) {
   if (!data) redirect("/system/disciplines?error=Disciplinen+kunde+inte+tas+bort");
   revalidatePath("/system/disciplines");
   redirect("/system/disciplines?deleted=1");
+}
+
+const categoryInput = z.object({
+  key: z.string().trim().toLowerCase().min(1).max(120).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  name: z.string().trim().min(1).max(120),
+});
+function categoryResult(error: { code?: string } | null, changed: boolean): never {
+  if (error || !changed) {
+    const message = error?.code === "23503" ? "Kategorin används av discipliner och kan inte tas bort." : error?.code === "23505" ? "Kategorins nyckel finns redan." : "Kategorin kunde inte sparas. Kontrollera uppgifterna.";
+    redirect(`/system/disciplines?error=${encodeURIComponent(message)}`);
+  }
+  revalidatePath("/system/disciplines");
+  redirect("/system/disciplines?saved=1");
+}
+export async function createDisciplineCategory(form: FormData) {
+  const { supabase } = await requireSystemAdmin();
+  const input = categoryInput.safeParse({ key: form.get("key"), name: form.get("name") });
+  if (!input.success) redirect("/system/disciplines?error=Kontrollera+kategorins+nyckel+och+namn");
+  const { data, error } = await supabase.from("discipline_categories").insert(input.data).select("key").maybeSingle();
+  categoryResult(error, !!data);
+}
+export async function updateDisciplineCategory(form: FormData) {
+  const { supabase } = await requireSystemAdmin();
+  const key = String(form.get("key") ?? "");
+  const name = z.string().trim().min(1).max(120).safeParse(form.get("name"));
+  if (!key || !name.success) redirect("/system/disciplines?error=Kontrollera+kategorins+namn");
+  const { data, error } = await supabase.from("discipline_categories").update({ name: name.data }).eq("key", key).select("key").maybeSingle();
+  categoryResult(error, !!data);
+}
+export async function deleteDisciplineCategory(form: FormData) {
+  const { supabase } = await requireSystemAdmin();
+  const key = String(form.get("key") ?? "");
+  if (!key) redirect("/system/disciplines?error=Ogiltig+kategori");
+  const { data, error } = await supabase.from("discipline_categories").delete().eq("key", key).select("key").maybeSingle();
+  categoryResult(error, !!data);
 }
 
 export async function createSystemMemory(formData: FormData) {

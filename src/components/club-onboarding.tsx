@@ -2,6 +2,9 @@
 import { useActionState, useRef, useState } from "react";
 import { clubSlug, type ClubSetupState } from "@/lib/club-administration";
 
+import { ClubSlugField } from "./club-slug-field";
+import { TimeZoneSelect } from "./time-zone-select";
+
 type Props = { disciplines: { id: string; name: string }[]; managed?: boolean; action: (state: ClubSetupState, form: FormData) => Promise<ClubSetupState> };
 /** Review the initial structure before the atomic create command. */
 export function ClubOnboarding({ disciplines, managed = false, action }: Props) {
@@ -25,8 +28,8 @@ export function ClubOnboarding({ disciplines, managed = false, action }: Props) 
     <fieldset data-step="0" hidden={step !== 0} disabled={pending}>
       <legend className="sr-only">Klubbens uppgifter</legend>
       <label>Klubbens namn<input name="organizationName" value={values.organizationName} maxLength={120} required onChange={event => { const name = event.target.value; setValues(current => ({ ...current, organizationName: name, organizationSlug: manualSlug ? current.organizationSlug : clubSlug(name) })); }}/></label>
-      <label>Adressnamn<input name="organizationSlug" value={values.organizationSlug} pattern="[a-z0-9]+(?:-[a-z0-9]+)*" maxLength={120} required onChange={event => { setManualSlug(true); change("organizationSlug", event.target.value); }}/><small>Klubbens sida får adressen /o/{values.organizationSlug || "klubbnamn"}.</small></label>
-      <label>Tidszon<input name="timeZone" value={values.timeZone} required maxLength={100} onChange={event => change("timeZone", event.target.value)}/></label>
+      <ClubSlugField name="organizationSlug" value={values.organizationSlug} onChange={value => { setManualSlug(true); change("organizationSlug", value); }}/>
+      <TimeZoneSelect value={values.timeZone} onChange={value => change("timeZone", value)}/>
     </fieldset>
     <fieldset data-step="1" hidden={step !== 1} disabled={pending}>
       <legend className="sr-only">Första sektionen</legend><p>Alla lag hör till en sektion. Med en enda sektion visas inte en extra sektionsnivå i den vanliga navigationen.</p>

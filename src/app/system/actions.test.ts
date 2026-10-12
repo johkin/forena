@@ -3,7 +3,7 @@ const mocks = vi.hoisted(() => ({ client: vi.fn(), revalidate: vi.fn(), redirect
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.client }));
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }));
-import { updateDiscipline, deleteDiscipline, updateSystemMemory, deleteSystemMemory, cancelSystemAdminInvite } from "./actions";
+import { updateDiscipline, deleteDiscipline, updateSystemMemory, deleteSystemMemory, cancelSystemAdminInvite, createDisciplineCategory, updateDisciplineCategory, deleteDisciplineCategory } from "./actions";
 
 describe("system mutation results", () => {
   beforeEach(() => vi.clearAllMocks());
@@ -51,4 +51,18 @@ describe("unused discipline deletion", () => {
     await expect(deleteDiscipline(form)).rejects.toThrow("/");
     expect(from).not.toHaveBeenCalled();
   });
+});
+
+describe("discipline categories", () => {
+ it.each([createDisciplineCategory,updateDisciplineCategory,deleteDisciplineCategory])("requires the system role before touching the catalogue",async action=>{
+  const from=vi.fn();mocks.client.mockResolvedValue({auth:{getUser:vi.fn().mockResolvedValue({data:{user:{id:"user"}}})},rpc:vi.fn().mockResolvedValue({data:false,error:null}),from});
+  await expect(action(new FormData())).rejects.toThrow("/");expect(from).not.toHaveBeenCalled();
+ });
+ it("explains why an in-use category cannot be deleted",async()=>{
+  const query={delete:vi.fn(),eq:vi.fn(),select:vi.fn(),maybeSingle:vi.fn().mockResolvedValue({data:null,error:{code:"23503"}})};
+  for(const method of [query.delete,query.eq,query.select])method.mockReturnValue(query);
+  mocks.client.mockResolvedValue({auth:{getUser:vi.fn().mockResolvedValue({data:{user:{id:"user"}}})},rpc:vi.fn().mockResolvedValue({data:true,error:null}),from:vi.fn(()=>query)});
+  const form=new FormData();form.set("key","sport");mocks.revalidate.mockClear();
+  await expect(deleteDisciplineCategory(form)).rejects.toThrow(encodeURIComponent("Kategorin används av discipliner och kan inte tas bort."));expect(mocks.revalidate).not.toHaveBeenCalled();
+ });
 });
