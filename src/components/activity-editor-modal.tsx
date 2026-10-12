@@ -62,7 +62,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
   const [payload,setPayload]=useState<Record<string,unknown>>();
   const [pending,setPending]=useState(false);
   const [error,setError]=useState<string>();
-  const [groups,setGroups]=useState<{id:string;name:string}[]>([]);
+  const [groups,setGroups]=useState<{id:string;name:string;personIds?:string[]}[]>([]);
   const [responsibilities,setResponsibilities]=useState<{id:string;name:string}[]>([]);
   const [selectedRoles,setSelectedRoles]=useState<Set<AudienceRole>>(new Set());
   const [selectedGroups,setSelectedGroups]=useState<Set<string>>(new Set());
@@ -258,7 +258,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
             <div className="editor-inline-heading"><strong>Välj personer</strong><Help label="Skicka nu">Markera kryssrutan för de personer som ska få kallelsen. Du kan välja spelare och ledare tillsammans.</Help></div>
             <p className="editor-recipient-count" role="status">{invited.length} valda mottagare</p>
             <label className="attendance-search">Sök mottagare<input type="search" value={recipientSearch} onChange={event=>setRecipientSearch(event.target.value)} placeholder="Sök på namn"/></label>
-            <PersonSelectionList people={recipients} groups={recipientGroups} selected={selectedPeople} onToggle={togglePerson} disabled={pending} emptyMessage="Inga mottagare matchar sökningen."/>
+            <PersonSelectionList people={recipients} groups={recipientGroups} selected={selectedPeople} onToggle={togglePerson} quickGroups={groups.map(group=>({id:group.id,label:group.name,personIds:group.personIds??[]}))} onSelectionChange={next=>{invalidatePreview();setSelectedPeople(next);}} disabled={pending} emptyMessage="Inga mottagare matchar sökningen."/>
           </div>:null}
           {invitationMode==="schedule"?<div className="editor-invitation-body">
             <div className="editor-inline-heading"><strong>Målgrupper</strong><Help label="Målgrupper">Valda roller och undergrupper kombineras utan dubletter. Personerna bestäms när kallelsen skickas, så ändringar i laget följer med.</Help></div>

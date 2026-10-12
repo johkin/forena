@@ -250,3 +250,17 @@
 .activity-editor-modal .activity-reminder-group legend { padding:0 6px; background:var(--surface-low); border-radius:6px; }
 .activity-editor-modal .activity-reminder-group .timing-choice-row { padding:12px; border:0; border-radius:12px; margin-block:8px; background:var(--paper); }
 .activity-editor-modal .editor-invitation .activity-reminder-group .timing-choice-row select { background:var(--paper); }
+
+/* Group shortcuts share the person list's controlled selection. */
+.component-person-example { max-width:560px; }
+.person-selection-shortcuts { display:grid; gap:10px; }
+.person-selection-shortcuts > span { font-size:13px; font-weight:600; color:var(--ink-soft); }
+.person-selection-shortcuts > div { display:flex; flex-wrap:wrap; gap:8px; }
+.person-selection-shortcuts button { display:flex; align-items:center; gap:8px; min-height:44px; padding:8px 14px; border:1px solid var(--line); border-radius:999px; background:var(--paper); color:var(--primary); font:inherit; font-size:13px; cursor:pointer; }
+.person-selection-shortcuts button small { font-size:11px; opacity:.85; }
+.person-selection-shortcuts button[aria-pressed=mixed] { background:var(--positive-surface); border-color:var(--primary); }
+.person-selection-shortcuts button[aria-pressed=true] { background:var(--primary); border-color:var(--primary); color:var(--on-primary); }
+.person-selection-shortcuts button:focus-visible { outline:2px solid var(--primary); outline-offset:3px; }
+.person-selection-shortcuts button:disabled { opacity:.5; cursor:default; }
+.person-selection-summary { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; font-size:13px; }
+@media (hover:hover) { .person-selection-shortcuts button:hover:not(:disabled) { background:var(--primary); color:var(--on-primary); } }

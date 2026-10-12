@@ -484,3 +484,11 @@ ingen extra åtkomst till klubbens data. Serverns behörighetskontroller gäller
 - `/components#date-time-components` visar alla fyra varianter med appens
   verkliga komponenter. Delad kalender-/tids-CSS ligger i `date-time.css`;
   färgtokens ligger fortsatt i `globals.css`.
+
+## Snabbval i personlistor
+
+Komponentsidan visar `PersonSelectionList` med Alla, rollgrupper och namngivna
+undergrupper. Snabbval lägger till gruppens personer; om alla redan är valda
+avmarkeras gruppen. Övriga val bevaras. Delvis valda grupper visar antal och
+ett mellanläge. Undergrupper kan överlappa och innehålla flera roller; varje
+person väljs bara en gång. Knapparna radbryts på mobil.

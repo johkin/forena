@@ -26,6 +26,8 @@ export function AttendanceModal({ activityId, onClose, onSaved }: Props) {
   const [filter, setFilter] = useState<"all" | "present" | "absent">("all");
   const [search, setSearch] = useState("");
 
+  const [quickGroups, setQuickGroups] = useState<{id:string;label:string;personIds:string[]}[]>([]);
+
   useEffect(() => {
     fetch(`/api/activities/${activityId}/attendance`).then(async (response) => {
       const body = await response.json();
@@ -33,6 +35,8 @@ export function AttendanceModal({ activityId, onClose, onSaved }: Props) {
       return body;
     }).then((body) => {
       setRows(body.roster ?? []);
+      setQuickGroups(body.groups ?? []);
+      setError(body.groupsError ?? "");
       setSelected(new Set((body.roster ?? []).filter((row: Row) => row.present).map((row: Row) => row.personId)));
       setReportedAt(body.reportedAt ?? null);
     }).catch((reason) => setError(reason.message));
@@ -75,7 +79,7 @@ export function AttendanceModal({ activityId, onClose, onSaved }: Props) {
       <div className="attendance-actions"><button className="secondary" type="button" onClick={addAccepted} disabled={saving}>Lägg till alla anmälda ({accepted.length})</button></div>
       <label className="attendance-search">Sök deltagare<input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Sök på namn" /></label>
       <div className="attendance-list-filter segmented-control" role="group" aria-label="Filtrera närvaro">{([{ value: "all", label: "Alla", count: rows.length }, { value: "present", label: "Närvarande", count: present.length }, { value: "absent", label: "Ej närvarande", count: absent.length }] as const).map(item => <button key={item.value} type="button" className={filter === item.value ? "selected" : ""} aria-pressed={filter === item.value} onClick={() => setFilter(item.value)}>{item.label} ({item.count})</button>)}</div>
-      <PersonSelectionList people={visibleRows} groups={roles.map(role=>({role,label:roleLabels[role]}))} selected={selected} onToggle={toggle} disabled={saving} emptyMessage="Inga deltagare matchar filtret eller sökningen."/>
+      <PersonSelectionList people={visibleRows} groups={roles.map(role=>({role,label:roleLabels[role]}))} selected={selected} onToggle={toggle} quickGroups={quickGroups} onSelectionChange={setSelected} disabled={saving} emptyMessage="Inga deltagare matchar filtret eller sökningen."/>
       <div className="modal-actions"><button className="secondary" onClick={onClose} type="button">Avbryt</button><button className="primary" disabled={saving} onClick={save} type="button">{saving ? "Sparar…" : "Spara närvaro"}</button></div>
     </section>
   </div>;
