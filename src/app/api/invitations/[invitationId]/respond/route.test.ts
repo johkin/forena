@@ -32,3 +32,9 @@ it("fails closed when the activity/invitation cannot be read",async()=>{
 it("reports a lifecycle race rejected at the database boundary",async()=>{
  mocks.maybeSingle.mockResolvedValue({data:null,error:{code:"23514"}});expect((await answer({response:"accepted"})).status).toBe(409);
 });
+
+it("rejects responses and comments before the invitation send time",async()=>{
+ mocks.activitySingle.mockResolvedValue({data:{status:"published",ends_at:"2099-02-01T00:00:00Z",invitation_send_at:"2099-01-01T00:00:00Z"},error:null});
+ const response=await PUT(new Request("https://test",{method:"PUT",body:JSON.stringify({response:"accepted",comment:"Early"})}),{params:Promise.resolve({invitationId:"i"})});
+ expect(response.status).toBe(409);expect(mocks.update).not.toHaveBeenCalled();
+});

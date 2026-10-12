@@ -1,3 +1,4 @@
+import { invitationAvailable } from "@/lib/invitation-availability";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -41,12 +42,16 @@ export async function PUT(request: Request, { params }: Props) {
     return NextResponse.json({ error: "Kallelsen är inte tillgänglig." }, { status:403 });
   }
   const { data: activity, error: activityError } = await supabase
-    .from("activities").select("status, ends_at").eq("id", invitation.activity_id).maybeSingle();
+    .from("activities").select("status, ends_at, invitation_send_at").eq("id", invitation.activity_id).maybeSingle();
   if (activityError || !activity) {
     return NextResponse.json({ error: "Kallelsen är inte tillgänglig." }, { status:403 });
   }
   if (activity.status === "cancelled" || Date.parse(activity.ends_at) <= Date.now()) {
     return NextResponse.json({ error: "Aktiviteten är inställd eller avslutad. Svaret kan inte ändras." }, { status:409 });
+  }
+
+  if (!invitationAvailable(activity.invitation_send_at)) {
+    return NextResponse.json({ error:"Kallelsen har inte skickats ännu. Svaret kan inte ändras." }, { status:409 });
   }
 
   const isPending = response === "pending";

@@ -91,8 +91,10 @@ Rotrutten `/` använder `getPersonalDashboard` och det centrala `AppShell` utan
 organisationskontext. Den autentiserade användarens egna personposter och
 `person_guardians` härleder familjen över samtliga föreningar. Läsningen filtrerar
 kallelser uttryckligen på familjens person-ID:n även om användaren är ledare och
-RLS tillåter mer. Aktiviteter hämtas via dessa kallelser och auth-bundna
-`my_activity_duty_links`, inte via ett valt lag. Sidindelning med exakt radantal
+RLS tillåter mer. Aktiviteter hämtas via familjens lagmedlemskap, egen lagåtkomst,
+personliga kallelser och auth-bundna `my_activity_duty_links`, över alla lag
+och föreningar. Medlemskap och lagåtkomst kontrolleras vid aktivitetens lokala
+datum. Sidindelning med exakt radantal
 och batchade ID-uppslag hindrar tyst trunkering vid PostgREST:s radgräns.
 Fel ger inte en falskt tom kalender. Inga service credentials, nya grants eller
 ändrade RLS-policyer används.
@@ -443,3 +445,15 @@ Aktivitetsredigerarens datum- och tidsreglage återanvänder lokala datum,
 femminutersval och befintliga tidsregler. `PersonSelectionList` är den gemensamma
 kontrollerade listan för kallelsemottagare och närvaro. Varje vy äger sitt urval
 och skickar fullständiga person-ID:n; filtrering ändrar bara synliga rader.
+
+Min översikts kalender och agenda visar alla publicerade kommande aktiviteter
+i familjens lag, via medlemskap eller användarens egen lagåtkomst vid aktivitetens
+lokala datum. Personliga gästkallelser och bokade uppgifter inkluderas också.
+Läsning använder användarens session och RLS; klubbmedlemskap ensamt fyller inte
+kalendern med andra lag. Osända kallelser ger inga svarsknappar eller svarstatus.
+
+`invitationAvailable` delar kallelsetidens regel mellan personlig översikt,
+aktivitetsdialogens personliga kallelse-API och svar-API. Framtida kallelser
+returneras inte från dialogens API; svar och kommentarer nekas med 409 tills
+kallelsetiden infaller. Null kallelsetid behåller direkt-/äldre kallelsers beteende.
+Kontrollen avser appens schemalagda kallelsetid, inte leveranskvittens från mejl.

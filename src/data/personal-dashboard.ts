@@ -1,5 +1,6 @@
 import type { FamilyActivity, Organization, Team } from "@/domain/club";
 import { createClient } from "@/lib/supabase/server";
+import { invitationAvailable } from "@/lib/invitation-availability";
 import { activityDateKey } from "@/lib/activity-range";
 
 export type PersonalActivity = FamilyActivity & { organization: Organization };
@@ -56,7 +57,14 @@ export async function getPersonalDashboard(): Promise<PersonalDashboardData | nu
     Promise.all(organizationIds.map(id => readPersonalPages((from, to) => supabase.rpc("my_activity_duty_links", { target_organization_id: id }, { count: "exact" }).order("activity_id").order("person_id").range(from, to)))).then(groups => groups.flat()),
   ]);
   const activityIds = [...invitations.map(i => i.activity_id), ...dutyLinks.map(d => d.activity_id)];
-  const activityRows = await readIds(activityIds, ids => readPersonalPages((from, to) => supabase.from("activities").select("id, organization_id, team_id, activity_type_id, title, description_markdown, gathering_at, starts_at, ends_at, location, status, series_id, invitation_send_at, response_due_at", { count: "exact" }).in("id", ids).eq("status", "published").gte("ends_at", referenceTime).order("id").range(from, to)));
+  const relatedTeamIds = [...memberships.flatMap(m => m.team_id ? [m.team_id] : []), ...access.map(a => a.team_id)];
+  const activityColumns = "id, organization_id, team_id, activity_type_id, title, description_markdown, gathering_at, starts_at, ends_at, location, status, series_id, invitation_send_at, response_due_at" as const;
+  // Caller RLS remains in force. Team membership broadens the calendar, never the reply roster.
+  const [linkedActivities, teamActivities] = await Promise.all([
+    readIds(activityIds, ids => readPersonalPages((from, to) => supabase.from("activities").select(activityColumns, { count: "exact" }).in("id", ids).eq("status", "published").gte("ends_at", referenceTime).order("id").range(from, to))),
+    readIds(relatedTeamIds, ids => readPersonalPages((from, to) => supabase.from("activities").select(activityColumns, { count: "exact" }).in("team_id", ids).eq("status", "published").gte("ends_at", referenceTime).order("id").range(from, to))),
+  ]);
+  const activityRows = [...new Map([...linkedActivities, ...teamActivities].map(a => [a.id, a])).values()];
   const teamIds = [...memberships.flatMap(m => m.team_id ? [m.team_id] : []), ...access.map(a => a.team_id), ...activityRows.flatMap(a => a.team_id ? [a.team_id] : [])];
   const teamRows = await readIds(teamIds, ids => readPersonalPages((from, to) => supabase.from("teams").select("id, organization_id, section_id, slug, name, season", { count: "exact" }).in("id", ids).order("id").range(from, to)));
   const teamById = new Map<string, Team>(teamRows.map(t => [t.id, { id: t.id, organizationId: t.organization_id, sectionId: t.section_id, slug: t.slug, name: t.name, season: t.season }]));
@@ -72,9 +80,13 @@ export async function getPersonalDashboard(): Promise<PersonalDashboardData | nu
       if (!person || person.organization_id !== organization.id) return [];
       const key = `${a.id}:${personId}`;
       const invitation = invitationByKey.get(key);
-      const visibleInvitation = invitation && (!a.invitation_send_at || Date.parse(a.invitation_send_at) <= Date.parse(referenceTime)) ? invitation : undefined;
+      const visibleInvitation = invitation && invitationAvailable(a.invitation_send_at, Date.parse(referenceTime)) ? invitation : undefined;
       const hasDutyAssignment = dutyKeys.has(key);
-      if (!visibleInvitation && !hasDutyAssignment) return [];
+      const date = activityDateKey(a.starts_at, organization.timeZone ?? "Europe/Stockholm");
+      const coversDate = (row: { starts_on: string; ends_on: string | null }) => row.starts_on <= date && (!row.ends_on || row.ends_on >= date);
+      const belongsToTeam = memberships.some(m => m.person_id === personId && m.team_id === team.id && coversDate(m)) ||
+        access.some(link => link.person_id === personId && link.team_id === team.id && coversDate(link));
+      if (!invitation && !hasDutyAssignment && !belongsToTeam) return [];
       return [{ organization, team, hasDutyAssignment,
         member: { id: person.id, organizationId: person.organization_id, displayName: person.display_name },
         activity: { id: a.id, organizationId: a.organization_id, teamId: team.id, activityTypeId: a.activity_type_id, title: a.title, description: a.description_markdown, gatheringAt: a.gathering_at ?? undefined, startsAt: a.starts_at, endsAt: a.ends_at, location: a.location, status: a.status, seriesId: a.series_id ?? undefined, invitationSendAt: a.invitation_send_at ?? undefined, responseDueAt: a.response_due_at ?? undefined },

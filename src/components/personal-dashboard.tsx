@@ -45,7 +45,7 @@ export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
           <button type="button" className={view === "agenda" ? "primary" : "secondary"} aria-pressed={view === "agenda"} onClick={() => setView("agenda")}>Agenda</button>
           <button type="button" className={view === "calendar" ? "primary" : "secondary"} aria-pressed={view === "calendar"} onClick={() => setView("calendar")}>Kalender</button>
         </div>
-        {view === "agenda" ? <PersonalOverview onAnswered={() => router.refresh()} referenceTime={data.referenceTime} activities={data.activities} timeZone={timeZone} onOpenActivity={open} title="Kommande aktiviteter" id="upcoming-activities-title" emptyMessage="Inga kommande kallelser eller bokade arbetsuppgifter för familjen." /> : <>
+        {view === "agenda" ? <PersonalOverview onAnswered={() => router.refresh()} referenceTime={data.referenceTime} activities={data.activities} timeZone={timeZone} onOpenActivity={open} title="Kommande aktiviteter" id="upcoming-activities-title" emptyMessage="Inga kommande aktiviteter i dina eller barnens lag." /> : <>
           <p className="personal-calendar-zone">Familjens kalender · tider i svensk tid. Alla föreningar visas.</p>
           <TeamCalendar activities={unique.map(item => item.activity)} timeZone={timeZone} heading="Familjens kalender" showAllEvents onSelectActivity={activity => { setSelected(byId.get(activity.id)); }} eventLabel={activity => {
             const item = byId.get(activity.id)!;
