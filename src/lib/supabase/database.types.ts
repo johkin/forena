@@ -291,6 +291,7 @@ export interface Database {
     Views: Record<never, never>;
     Functions: {
       create_club_workspace: { Args: { input: Json; managed?: boolean }; Returns: Json };
+      system_clubs: { Args: { search_query?: string; page_number?: number }; Returns: Json };
       club_structure: { Args: { target: string }; Returns: Json };
       club_slug_available: { Args: { requested_slug: string; target?: string | null }; Returns: boolean };
       save_club_metadata: { Args: { target: string; input: Json }; Returns: undefined };
