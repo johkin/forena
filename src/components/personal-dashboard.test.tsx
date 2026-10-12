@@ -36,7 +36,7 @@ it("renders a neutral personal home with grouped family activities, club labels 
 it("renders useful empty states without choosing a default club", () => {
   const html = renderToStaticMarkup(<PersonalDashboard data={{ accountEmail: "new@example.test", referenceTime: "2030-01-01T00:00:00Z", activities: [], teams: [], organizations: [] }} />);
   expect(html).toContain("Du är inte ansluten till någon förening ännu");
-  expect(html).toContain("Inga kommande kallelser");
+  expect(html).toContain("Inga kommande aktiviteter");
   expect(html).not.toContain("Ursvik");
 });
 it.each([

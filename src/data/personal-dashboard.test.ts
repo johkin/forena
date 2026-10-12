@@ -52,26 +52,55 @@ describe("personal cross-club dashboard", () => {
   it("loads own and guarded people's activities across clubs, never teammates' responses", async () => {
     const data = await getPersonalDashboard();
     expect(data?.organizations.map(o => o.name)).toEqual(["AIK", "UIK"]);
-    expect(data?.activities.map(a => a.member.id).sort()).toEqual(["child1", "child2", "parent"]);
+    expect(data?.activities.map(a => a.member.id).sort()).toEqual(["child1", "child1", "child2", "parent", "parent"]);
     expect(data?.activities.find(a => a.member.id === "child2")?.invitation?.response).toBe("declined");
     expect(data?.teams.find(t => t.team.id === "football")?.roles).toEqual(["Målsman", "Ledare"]);
     expect(state.calls).toContainEqual({ table: "invitations", field: "person_id", value: ["parent", "child1", "child2"] });
-    expect(data?.activities.some(a => a.activity.id === "uncalled")).toBe(false);
+    expect(data?.activities.filter(a => a.activity.id === "uncalled").map(a => a.member.id).sort()).toEqual(["child1", "parent"]);
   });
   it("includes a cross-team invitation and duty-only activity without granting team membership", async () => {
     state.tables.invitations.push({ id: "guest-invite", person_id: "child2", organization_id: "aik", activity_id: "guest-match", response: "pending" });
     state.tables.activities.push(activity("guest-match", "aik", "guest"), activity("cafe", "uik", "football"));
     state.tables.duties.push({ organization_id: "uik", person_id: "child1", activity_id: "cafe", team_id: "football" });
     const data = await getPersonalDashboard();
-    expect(data?.activities.find(a => a.activity.id === "cafe")).toMatchObject({ hasDutyAssignment: true, invitation: undefined });
+    expect(data?.activities.find(a => a.activity.id === "cafe" && a.member.id === "child1")).toMatchObject({ hasDutyAssignment: true, invitation: undefined });
     expect(data?.activities.find(a => a.activity.id === "guest-match")?.team.id).toBe("guest");
     expect(data?.teams.some(t => t.team.id === "guest")).toBe(false);
   });
-  it("hides future invitations, drafts, cancelled and ended activities; keeps declined replies", async () => {
+  it("shows future activities without exposing unsent replies; hides drafts, cancelled and ended activities", async () => {
     state.tables.activities.push({ ...activity("future", "uik", "football"), invitation_send_at: "2031-01-01T10:00:00Z" }, { ...activity("draft", "uik", "football"), status: "draft" }, { ...activity("cancelled", "uik", "football"), status: "cancelled" }, { ...activity("ended", "uik", "football"), ends_at: "2020-01-01T12:00:00Z" });
     for (const id of ["future", "draft", "cancelled", "ended"]) state.tables.invitations.push({ id, person_id: "child1", activity_id: id, organization_id: "uik", response: "pending" });
     const data = await getPersonalDashboard();
-    expect(new Set(data?.activities.map(a => a.activity.id))).toEqual(new Set(["training", "match"]));
+    expect(new Set(data?.activities.map(a => a.activity.id))).toEqual(new Set(["training", "match", "uncalled", "future"]));
+    expect(data?.activities.filter(a => a.activity.id === "future").every(a => !a.invitation)).toBe(true);
+  });
+  it("does not include unrelated teams or memberships outside the activity date", async () => {
+    state.tables.activities.push(activity("unrelated", "aik", "guest"));
+    state.tables.memberships = state.tables.memberships.map(m => m.person_id === "child1" ? {...m, ends_on:"2029-12-31"} : m.person_id === "parent" ? {...m, starts_on:"2030-01-02"} : m);
+    const data = await getPersonalDashboard();
+    expect(data?.activities.some(a => a.activity.id === "unrelated" || a.activity.id === "uncalled")).toBe(false);
+    // Explicit invitations still connect a person even after leaving the team.
+    expect(data?.activities.some(a => a.activity.id === "training")).toBe(true);
+  });
+  it("uses the club-local activity day for membership boundaries", async () => {
+    state.tables.organizations[0].time_zone="America/Los_Angeles";
+    state.tables.memberships=state.tables.memberships.filter(m => m.person_id!=="parent").map(m => m.person_id==="child1" ? {...m,ends_on:"2029-12-31"} : m);
+    state.tables.activities.push({...activity("last-local-day","uik","football"),starts_at:"2030-01-01T02:00:00Z"}, {...activity("after-local-day","uik","football"),starts_at:"2030-01-01T12:00:00Z"});
+    const data=await getPersonalDashboard();
+    expect(data?.activities.filter(a=>a.activity.id==="last-local-day").map(a=>a.member.id)).toEqual(["child1"]);
+    expect(data?.activities.some(a=>a.activity.id==="after-local-day")).toBe(false);
+  });
+  it("includes future team memberships only for activities within their dates", async () => {
+    state.tables.memberships=[{id:"future",person_id:"child1",team_id:"football",role:"participant",starts_on:"2030-01-01",ends_on:"2030-01-31"}];
+    const data=await getPersonalDashboard();
+    expect(data?.activities.filter(a=>a.activity.id==="uncalled").map(a=>a.member.id)).toEqual(["child1"]);
+    expect(data?.teams).toEqual([]);
+  });
+  it("includes own team-access activities without inventing invitations", async () => {
+    state.tables.memberships = [];
+    state.tables.team_access_assignments = [{id:"access",person_id:"parent",team_id:"football",starts_on:"2020-01-01",ends_on:null}];
+    const data = await getPersonalDashboard();
+    expect(data?.activities.filter(a => a.activity.id === "uncalled")).toMatchObject([{member:{id:"parent"},invitation:undefined}]);
   });
   it("returns an empty personal page for a new account and does not read private data when signed out", async () => {
     state.tables = {};

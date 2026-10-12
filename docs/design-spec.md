@@ -14,9 +14,11 @@ Klubb och lag framgår på varje aktivitetsrad. Agendan och aktivitetsdialogen
 visar klubbens lokala tid; familjekalendern använder uttryckligen svensk tid för
 att kunna jämföra aktiviteter från klubbar i olika tidszoner. Dialogen använder
 aktivitetens egen klubb och lag, inte någon tidigare vald arbetsyta. Familjen
-ser bara skickade kallelser eller bokade arbetsuppgifter, aldrig lagets samtliga
-aktiviteter enbart genom medlemskap. Oanropade aktiviteter, utkast, inställda
-och avslutade aktiviteter ingår inte i denna kommande-vy.
+ser alla publicerade kommande aktiviteter i egna och barnens lag, även innan
+kallelser skickats. Medlemskap eller egen lagåtkomst måste omfatta aktivitetens
+lokala datum. Gästkallelser och bokade arbetsuppgifter ingår också. Svar visas
+först när kallelsen har skickats. Utkast, inställda och avslutade aktiviteter
+ingår inte i denna kommande-vy.
 
 **Min översikt** finns i den gemensamma inloggade menyn även på klubb-/lagsidor.
 Inloggning utan uttrycklig returadress går hit; djupa länkar behåller sitt mål.
