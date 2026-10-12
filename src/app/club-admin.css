@@ -28,3 +28,5 @@
 
 .club-administration select:disabled { opacity:.65; cursor:not-allowed; }
 .club-administration label small { overflow-wrap:anywhere; }
+.club-admin-section .system-admin-row > div { min-width:0; overflow-wrap:anywhere; }
+.club-admin-section .system-admin-row form { min-width:0; }

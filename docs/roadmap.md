@@ -503,4 +503,5 @@ Automatiskt kandidaturval, närvaroprocent och fullständiga nollistor återstå
 - [x] Systemadministration av klubbmetadata och sektioner; gemensam sektionsvy för klubbägare/administratörer.
 - [x] Klubbskapande med första sektionen, disciplin och valfritt första lag, gemensam granskning och atomär lagring.
 - [x] Borttagning av oanvända discipliner med databasverifierat skydd för kopplingar och historik.
-- [ ] Nästa onboardingsteg: bjud in och överlämna till första klubbadministratören, därefter vägledning för lag och medlemsimport. Skilj hanterad klubb från självanmäld klubb och återuppta ett påbörjat upplägg utan dubbletter.
+- [x] Systemadmin kan tilldela sig själv och bjuda in första/fler klubbadministratörer samt återkalla inbjudningar och administratörsroller.
+- [ ] Nästa onboardingsteg: vägledning för lag och medlemsimport. Skilj hanterad klubb från självanmäld klubb och återuppta ett påbörjat upplägg utan dubbletter.

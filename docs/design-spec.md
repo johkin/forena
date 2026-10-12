@@ -105,7 +105,7 @@ länkar är korrekta och att ingen horisontell sidskroll uppstår.
 ### Flytande föreningsassistent
 
 - Inloggade klubb-, sektions- och lagsidor använder samma pratbubbla från
-  sidskalet. Publika och systemadministrativa sidor visar inte assistenten.
+  sidskalet. Utloggade och systemadministrativa sidor visar inte assistenten.
 - Mobil öppnar en dialog nära full skärm; från 768 px visas en kompakt panel
   nere till höger. Safe area och tangentbordets synliga viewport respekteras.
 - Rubriken visar assistentens namn, arbetsyta och aktuell sida. Samtalet
@@ -453,3 +453,14 @@ och knappen ”Ladda om”, även i hemskärmsappen. Den radbryts på små skär
 respekterar safe area och ligger under dialoger. Texten annonseras som status
 utan att flytta fokus. Användaren väljer när sidan laddas om; pågående formulär
 avbryts inte automatiskt. Klick gör en full omladdning av aktuell adress.
+
+Systemets klubbsida visar klubbadministratörer och inbjudningar. Knappen
+Gör mig till klubbadministratör möjliggör första administratören i en tom
+klubb. Inbjudningar visar väntande, utgångna och misslyckade utskick och kan
+avbrytas. Borttagning av administratörsroll kräver bekräftelse och behåller
+medlemskap; när sista administratören tas bort förklaras det i bekräftelsen.
+Mottagaren ser klubbnamn och inloggat konto innan inbjudan accepteras.
+
+Assistentknappen och båda menyerna använder samma inloggningsvillkor. En
+inloggad användare ser assistenten även i en publik klubböversikt; detta ger
+ingen extra åtkomst till klubbens data. Serverns behörighetskontroller gäller.

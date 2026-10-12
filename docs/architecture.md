@@ -472,8 +472,8 @@ första sektionen med disciplin, granskning. Ett första lag är valfritt.
 `create_club_workspace` sparar hela strukturen i en transaktion utan
 exempelaktiviteter. Självregistrering ger skaparen ägarrollen. Systemets
 hanterade klubbskapande ger inte systemadministratören klubbmedlemskap.
-Inbjudan/överlämning till första klubbadministratören är ett separat framtida
-steg; detta flöde skapar strukturen och skickar inga mejl.
+Klubbskapandet skapar strukturen utan mejl. Första klubbadministratören kan
+sedan tilldelas eller bjudas in från klubbens sida i systemadministrationen.
 
 Metadata-RPC:er har invoker-wrappers och avgränsade definer-kommandon i det
 icke exponerade schemat `administration`. Varje kommando verifierar identitet,
@@ -522,3 +522,29 @@ Systemets klubblista använder `system_clubs`, en invoker-wrapper runt ett
 auktoriserat kommando i `administration`. Det returnerar enbart id, namn, slug
 och totalt antal för sökning och sidindelning. Plattformrollen ger inte bred
 läsning av `organizations` eller medlemsdata; vanliga RLS-regler behålls.
+
+### Klubbadministratörer och publik översikt
+
+Systemadministratörer hanterar klubbadministratörer i alla klubbar via
+`system_club_admins`, oberoende av klubbmedlemskap. De kan tilldela sitt eget
+verifierade konto, bjuda in och ta bort administratörsrollen. Borttagning
+bevarar klubbmedlemskap och övriga lagkopplingar; även sista administratören
+kan tas bort av systemadmin och därefter återställas via systemvyn.
+
+Inbjudningar finns i en privat RLS-tabell utan klientgrants. En ny inbjudan
+ersätter äldre väntande länkar till samma adress i klubben. Accept kräver
+verifierad adress från `auth.users`, rätt tokenhash, en aktiv och giltig
+inbjudan samt att inbjudaren fortfarande är systemadmin. Mottagaren ser
+klubbnamnet före accept. Transaktionen låser klubb före inbjudan, skriver
+medlemsroll och audit och förbrukar token. Inga systemroller tilldelas.
+
+Publika klubb-, sektions- och lagöversikter kan visas för en inloggad
+ickemedlem via en cookie-fri klient med befintliga anon-grants. Den läser
+bara publika metadata och publicerade aktiviteter. Kontot behålls i headern
+och assistenten visas bara vid inloggning, även i publik vy. Saknade klubbar/sektioner ger 404 och
+skickas inte till login, vilket förhindrar redirect-loopen för inloggade.
+
+Administratörsinbjudningar börjar i `prepared`, som inte kan förhandsvisas
+eller accepteras. Ett bekräftat och registrerat utskick övergår till
+`pending`. Misslyckad eller avbruten statusregistrering lämnar länken
+inaktiv; ett nytt utskick ersätter den förberedda inbjudan.
