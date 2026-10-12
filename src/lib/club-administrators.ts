@@ -1,7 +1,7 @@
 import { z } from "zod";
 export const clubAdministratorsSchema = z.object({
   administrators: z.array(z.object({ userId: z.guid(), email: z.string().nullable(), role: z.enum(["owner", "admin"]) })),
-  invitations: z.array(z.object({ id: z.guid(), email: z.string(), status: z.enum(["pending", "expired", "failed"]), expiresAt: z.string(), sent: z.boolean() })),
+  invitations: z.array(z.object({ id: z.guid(), email: z.string(), status: z.enum(["prepared", "pending", "expired", "failed"]), expiresAt: z.string(), sent: z.boolean() })),
 });
 export function clubAdminInvitationPath(token: unknown) {
   return typeof token === "string" && /^[A-Za-z0-9_-]{43}$/.test(token) ? `/club-admin-invite/${token}` : null;

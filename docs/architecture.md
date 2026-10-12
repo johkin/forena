@@ -541,5 +541,10 @@ medlemsroll och audit och förbrukar token. Inga systemroller tilldelas.
 Publika klubb-, sektions- och lagöversikter kan visas för en inloggad
 ickemedlem via en cookie-fri klient med befintliga anon-grants. Den läser
 bara publika metadata och publicerade aktiviteter. Kontot behålls i headern
-men assistenten döljs i publik vy. Saknade klubbar/sektioner ger 404 och
+och assistenten visas bara vid inloggning, även i publik vy. Saknade klubbar/sektioner ger 404 och
 skickas inte till login, vilket förhindrar redirect-loopen för inloggade.
+
+Administratörsinbjudningar börjar i `prepared`, som inte kan förhandsvisas
+eller accepteras. Ett bekräftat och registrerat utskick övergår till
+`pending`. Misslyckad eller avbruten statusregistrering lämnar länken
+inaktiv; ett nytt utskick ersätter den förberedda inbjudan.

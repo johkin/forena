@@ -37,3 +37,13 @@ it("reports delivery-record errors without resending an email",async()=>{
 it("binds administrator removal to the selected club and user",async()=>{
  const rpc=setup();await expect(removeClubAdministrator(form({userId:invite}))).rejects.toThrow("adminMessage=");expect(rpc).toHaveBeenLastCalledWith("system_club_admins",{target:org,operation:"remove",payload:{userId:invite}});
 });
+it("keeps the failure observable when email sending and recording the failure both fail",async()=>{
+ const rpc=setup();mocks.send.mockRejectedValue(Error("timeout"));
+ rpc.mockImplementation(async(name,input)=>({data:name==="has_platform_role"?true:{invitationId:invite,clubName:"AIK"},error:input?.operation==="delivery"?{code:"XX000"}:null}));
+ const log=vi.spyOn(console,"error").mockImplementation(()=>{});
+ try {
+  await expect(inviteClubAdministrator(form({email:"receiver@example.com"}))).rejects.toThrow("error=");
+  expect(rpc).toHaveBeenLastCalledWith("system_club_admins",{target:org,operation:"delivery",payload:{invitationId:invite,sent:false}});
+  expect(log).toHaveBeenCalledWith(expect.any(String),{code:"XX000"});
+ } finally {log.mockRestore();}
+});

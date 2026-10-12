@@ -54,14 +54,15 @@ export async function inviteClubAdministrator(form: FormData) {
   try {
     await sendClubAdminInvitationEmail({ to: email.data, invitationId: invitation.data.invitationId, clubName: invitation.data.clubName, invitationUrl: `${getSiteUrl()}${clubAdminInvitationPath(token)}` });
   } catch {
-    await supabase.rpc("system_club_admins", { target, operation: "delivery", payload: { invitationId: invitation.data.invitationId, sent: false } });
+    const { error: failureError } = await supabase.rpc("system_club_admins", { target, operation: "delivery", payload: { invitationId: invitation.data.invitationId, sent: false } });
+    if (failureError) console.error("[club-admin-invite] delivery failure status could not be recorded", { code: failureError.code });
     revalidatePath(path);
-    redirect(`${path}?error=${encodeURIComponent("Mejlet kunde inte skickas. Uppdatera sidan och försök skicka igen.")}`);
+    redirect(`${path}?error=${encodeURIComponent("Mejlet kunde inte skickas. Länken är inaktiv. Uppdatera sidan och försök skicka igen.")}`);
   }
   const { error: deliveryError } = await supabase.rpc("system_club_admins", { target, operation: "delivery", payload: { invitationId: invitation.data.invitationId, sent: true } });
   if (deliveryError) {
     revalidatePath(path);
-    redirect(`${path}?error=${encodeURIComponent("Mejlet skickades men utskicksstatusen kunde inte sparas. Uppdatera sidan innan du försöker igen.")}`);
+    redirect(`${path}?error=${encodeURIComponent("Mejlet skickades men inbjudan kunde inte aktiveras. Länken är inaktiv. Uppdatera sidan och skicka en ny inbjudan.")}`);
   }
   finish(path, null, `Inbjudan skickades till ${email.data}.`);
 }

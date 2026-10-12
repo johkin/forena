@@ -23,6 +23,11 @@ select ok(public.is_organization_member('c3000000-0000-0000-0000-000000000001'),
 select ok(not public.has_organization_role('c3000000-0000-0000-0000-000000000001',array['admin']),'Removed role is no longer admin');
 select lives_ok($$select public.system_club_admins('c3000000-0000-0000-0000-000000000001','self')$$,'System administrator can restore a club without administrators');
 insert into admin_invites values('first',public.system_club_admins('c3000000-0000-0000-0000-000000000002','invite',jsonb_build_object('email','club-recipient@test.example','tokenHash',repeat('a',64))));
+select set_config('request.jwt.claims','{"sub":"b3000000-0000-0000-000000000002","role":"authenticated"}',true);
+select throws_ok($$select public.accept_club_admin_invite(repeat('a',64))$$,'22023','Invalid invitation','Prepared invitation is not redeemable before delivery recording');
+select is(public.club_admin_invite_context(repeat('a',64)),null::jsonb,'Prepared invitation has no recipient preview');
+select set_config('request.jwt.claims','{"sub":"b3000000-0000-0000-0000-000000000001","role":"authenticated"}',true);
+select lives_ok($$select public.system_club_admins('c3000000-0000-0000-0000-000000000002','delivery',jsonb_build_object('invitationId',(select value->>'invitationId' from admin_invites where label='first'),'sent',true))$$,'Successful delivery activates first invitation');
 select is(jsonb_array_length(public.system_club_admins('c3000000-0000-0000-0000-000000000002')->'invitations'),1,'Pending invitation is listed');
 select ok(not public.has_organization_role('c3000000-0000-0000-0000-000000000002',array['admin']),'Inviting grants no membership to the system administrator');
 select throws_ok($$select public.system_club_admins('c3000000-0000-0000-0000-000000000001','cancel',jsonb_build_object('invitationId',(select value->>'invitationId' from admin_invites where label='first')))$$,'P0002','Invitation not found','Cannot cancel another club invitation');
@@ -39,12 +44,15 @@ select throws_ok($$select public.system_club_admins('c3000000-0000-0000-0000-000
 select set_config('request.jwt.claims','{"sub":"b3000000-0000-0000-0000-000000000001","role":"authenticated"}',true);
 select throws_ok($$select public.system_club_admins('c3000000-0000-0000-0000-000000000002','invite',jsonb_build_object('email','club-recipient@test.example','tokenHash',repeat('b',64)))$$,'55000','Already administrator','Existing administrators do not receive redundant invitations');
 insert into admin_invites values('unverified',public.system_club_admins('c3000000-0000-0000-0000-000000000002','invite',jsonb_build_object('email','club-unverified@test.example','tokenHash',repeat('b',64))));
+select lives_ok($$select public.system_club_admins('c3000000-0000-0000-0000-000000000002','delivery',jsonb_build_object('invitationId',(select value->>'invitationId' from admin_invites where label='unverified'),'sent',true))$$,'Successful delivery activates unverified invitation');
 select set_config('request.jwt.claims','{"sub":"b3000000-0000-0000-0000-000000000004","role":"authenticated"}',true);
 select throws_ok($$select public.accept_club_admin_invite(repeat('b',64))$$,'42501','Verified email required','Unverified email cannot accept');
 select set_config('request.jwt.claims','{"sub":"b3000000-0000-0000-0000-000000000001","role":"authenticated"}',true);
 select lives_ok($$select public.system_club_admins('c3000000-0000-0000-0000-000000000002','cancel',jsonb_build_object('invitationId',(select value->>'invitationId' from admin_invites where label='unverified')))$$,'System administrator can cancel invitation');
 insert into admin_invites values('resend-old',public.system_club_admins('c3000000-0000-0000-0000-000000000002','invite',jsonb_build_object('email','club-other@test.example','tokenHash',repeat('c',64))));
+select lives_ok($$select public.system_club_admins('c3000000-0000-0000-0000-000000000002','delivery',jsonb_build_object('invitationId',(select value->>'invitationId' from admin_invites where label='resend-old'),'sent',true))$$,'Successful delivery activates resend-old invitation');
 insert into admin_invites values('resend-new',public.system_club_admins('c3000000-0000-0000-0000-000000000002','invite',jsonb_build_object('email','club-other@test.example','tokenHash',repeat('d',64))));
+select lives_ok($$select public.system_club_admins('c3000000-0000-0000-0000-000000000002','delivery',jsonb_build_object('invitationId',(select value->>'invitationId' from admin_invites where label='resend-new'),'sent',true))$$,'Successful delivery activates resend-new invitation');
 select set_config('request.jwt.claims','{"sub":"b3000000-0000-0000-0000-000000000003","role":"authenticated"}',true);
 select throws_ok($$select public.accept_club_admin_invite(repeat('c',64))$$,'22023','Invalid invitation','Resending invalidates the previous token');
 reset role;
@@ -59,6 +67,7 @@ select set_config('request.jwt.claims','{"sub":"b3000000-0000-0000-0000-00000000
 select throws_ok($$select public.accept_club_admin_invite(repeat('e',64))$$,'22023','Invalid invitation','Failed email token cannot grant administration');
 select set_config('request.jwt.claims','{"sub":"b3000000-0000-0000-0000-000000000001","role":"authenticated"}',true);
 insert into admin_invites values('revoked-inviter',public.system_club_admins('c3000000-0000-0000-0000-000000000002','invite',jsonb_build_object('email','club-other@test.example','tokenHash',repeat('f',64))));
+select lives_ok($$select public.system_club_admins('c3000000-0000-0000-0000-000000000002','delivery',jsonb_build_object('invitationId',(select value->>'invitationId' from admin_invites where label='revoked-inviter'),'sent',true))$$,'Successful delivery activates revoked-inviter invitation');
 reset role;
 delete from public.platform_roles where user_id='b3000000-0000-0000-0000-000000000001';
 set local role authenticated;

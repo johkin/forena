@@ -1,11 +1,12 @@
 -- Private invitation records, reachable only through authorized commands.
+-- Prepared links are nonredeemable until a successful send is durably recorded.
 create table administration.club_admin_invites (
  id uuid primary key default gen_random_uuid(),
  organization_id uuid not null references public.organizations(id) on delete cascade,
  email text not null check (email=lower(btrim(email)) and length(email)<=254 and email like '%@%'),
  token_hash text not null unique check (token_hash ~ '^[a-f0-9]{64}$'),
  invited_by uuid not null references auth.users(id),
- status text not null default 'pending' check(status in ('pending','accepted','cancelled','failed')),
+ status text not null default 'prepared' check(status in ('prepared','pending','accepted','cancelled','failed')),
  created_at timestamptz not null default now(),
  expires_at timestamptz not null default now()+interval '7 days',
  sent_at timestamptz,
@@ -15,7 +16,7 @@ create table administration.club_admin_invites (
 );
 alter table administration.club_admin_invites enable row level security;
 revoke all on administration.club_admin_invites from public,anon,authenticated;
-create unique index club_admin_invites_pending_email on administration.club_admin_invites(organization_id,email) where status='pending';
+create unique index club_admin_invites_pending_email on administration.club_admin_invites(organization_id,email) where status in ('prepared','pending');
 
 create function administration.system_club_admins(target uuid,operation text,payload jsonb) returns jsonb
 language plpgsql security definer set search_path='' as $$
@@ -27,7 +28,7 @@ begin
  if jsonb_typeof(payload) is distinct from 'object' then raise exception 'Invalid command' using errcode='22023'; end if;
  if operation='list' then
   return jsonb_build_object('administrators',coalesce((select jsonb_agg(jsonb_build_object('userId',m.user_id,'email',u.email,'role',m.role) order by u.email,m.user_id) from public.organization_members m join auth.users u on u.id=m.user_id where m.organization_id=target and m.role in ('owner','admin')),'[]'::jsonb),
-   'invitations',coalesce((select jsonb_agg(jsonb_build_object('id',i.id,'email',i.email,'status',case when i.status='pending' and i.expires_at<=now() then 'expired' else i.status end,'expiresAt',i.expires_at,'sent',i.sent_at is not null) order by i.created_at desc,i.id) from administration.club_admin_invites i where i.organization_id=target and i.status in ('pending','failed')),'[]'::jsonb));
+   'invitations',coalesce((select jsonb_agg(jsonb_build_object('id',i.id,'email',i.email,'status',case when i.status in ('prepared','pending') and i.expires_at<=now() then 'expired' else i.status end,'expiresAt',i.expires_at,'sent',i.sent_at is not null) order by i.created_at desc,i.id) from administration.club_admin_invites i where i.organization_id=target and i.status in ('prepared','pending','failed')),'[]'::jsonb));
  elsif operation='self' then
   if not exists(select 1 from auth.users where id=auth.uid() and email_confirmed_at is not null) then raise exception 'Verified email required' using errcode='42501'; end if;
   insert into public.organization_members(organization_id,user_id,role) values(target,auth.uid(),'admin') on conflict(organization_id,user_id) do update set role=case when organization_members.role='owner' then 'owner' else 'admin' end;
@@ -37,22 +38,22 @@ begin
   update public.organization_members set role='member' where organization_id=target and user_id=subject and role in ('owner','admin');
   if not found then raise exception 'Administrator not found' using errcode='P0002'; end if;
   -- Cancel any outstanding invitation so it cannot silently restore this role.
-  update administration.club_admin_invites set status='cancelled' where organization_id=target and status='pending' and email=(select lower(email) from auth.users where id=subject);
+  update administration.club_admin_invites set status='cancelled' where organization_id=target and status in ('prepared','pending') and email=(select lower(email) from auth.users where id=subject);
  elsif operation='invite' then
   address:=lower(btrim(payload->>'email'));
   if address is null or length(address)>254 or address !~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$' or payload->>'tokenHash' is null or payload->>'tokenHash' !~ '^[a-f0-9]{64}$' then raise exception 'Invalid invitation' using errcode='22023'; end if;
   if exists(select 1 from public.organization_members m join auth.users u on u.id=m.user_id where m.organization_id=target and m.role in ('owner','admin') and lower(u.email)=address) then raise exception 'Already administrator' using errcode='55000'; end if;
-  update administration.club_admin_invites set status='cancelled' where organization_id=target and email=address and status='pending';
+  update administration.club_admin_invites set status='cancelled' where organization_id=target and email=address and status in ('prepared','pending');
   insert into administration.club_admin_invites(organization_id,email,token_hash,invited_by) values(target,address,payload->>'tokenHash',auth.uid()) returning id into invite;
   result:=jsonb_build_object('invitationId',invite,'clubName',club.name);
  elsif operation='cancel' then
   invite:=(payload->>'invitationId')::uuid;
-  update administration.club_admin_invites set status='cancelled' where id=invite and organization_id=target and status in ('pending','failed');
+  update administration.club_admin_invites set status='cancelled' where id=invite and organization_id=target and status in ('prepared','pending','failed');
   if not found then raise exception 'Invitation not found' using errcode='P0002'; end if;
  elsif operation='delivery' then
   invite:=(payload->>'invitationId')::uuid;
   if jsonb_typeof(payload->'sent') is distinct from 'boolean' then raise exception 'Invalid delivery state' using errcode='22023'; end if;
-  update administration.club_admin_invites set sent_at=case when (payload->>'sent')::boolean then now() else null end,status=case when (payload->>'sent')::boolean then 'pending' else 'failed' end where id=invite and organization_id=target and status='pending';
+  update administration.club_admin_invites set sent_at=case when (payload->>'sent')::boolean then now() else null end,status=case when (payload->>'sent')::boolean then 'pending' else 'failed' end where id=invite and organization_id=target and status='prepared';
   return '{}'::jsonb;
  else raise exception 'Invalid command' using errcode='22023';
  end if;

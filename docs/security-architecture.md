@@ -588,3 +588,9 @@ Publik fallback använder en separat klient utan session eller service key,
 och exakt de kolumner som redan är tillåtna för anon. Medlems-/spelaruppgifter,
 kallelser, närvaro och disciplinförval ingår inte. Auth-klienten används
 fortsatt för den egna medlemsrollen. Publikt saknade sidor ger 404.
+
+Förberedda inbjudningar är inte accepterbara. Först när mejlleverantören
+bekräftat utskicket och detta skrivits till databasen blir länken aktiv.
+Timeout eller avbrott före denna skrivning lämnar en inaktiv länk, även om
+kompensationen som markerar utskicket misslyckat fallerar. Omskick kan
+återställa flödet genom en ny inbjudan; den gamla avbryts atomärt.
