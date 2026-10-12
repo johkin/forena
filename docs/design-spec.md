@@ -393,6 +393,9 @@ eller externa scripts läggs till i produktionskomponenterna.
   Sökning/filtrering ändrar
   aldrig urvalet eller antalet sparade personer; båda layouter delar urval.
 - Bemanning visar kapacitet från registrerade platser och ett kort per uppgift.
+  Skapa uppgift använder en enda ram med linjerade rubriker och fält, utan
+  extra inre kort. Enskild redigering i ett uppgiftskort har ingen egen ram.
+  Datumväljare och native datumfält ska krympa inom samma innehållsbredd.
   Egna bokningar markeras och byte/ersättare öppnas i ”Hantera ditt pass”. Andra
   familjer förblir anonymiserade. Ledarverktyg, skapa/ändra uppgifter och regler
   hålls i hopfällbara avsnitt. Samtliga skrivningar behåller förhandsgranskning.

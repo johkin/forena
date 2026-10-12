@@ -222,7 +222,10 @@ Valideringsloggen innehåller endast fältsökväg och felkod, inga ID:n eller n
 
 Redigeringsläget visar aktivitetens verkliga namn, förening/lag, tid och plats.
 Skapa uppgift ligger före befintliga pass och grupperar uppgiftstyp,
-tid/bemanning och instruktioner i kort. Antal platser använder samma
+tid/bemanning och instruktioner med rubriker i en gemensam ram, utan inre kort
+som tar extra bredd. Fält och datumväljare följer samma vänsterkant och ryms
+inom avsnittet. Enskild redigering inne i ett uppgiftskort har ingen egen ram.
+Antal platser använder samma
 48 px-reglage vid skapande och redigering, med befintlig gräns 1–50.
 Uppgifter förhandsgranskas och sparas innan självbokning eller tilldelning.
 Skissens bemanningsmallar, matchbuffertar och guidebilagor är inte införda.
