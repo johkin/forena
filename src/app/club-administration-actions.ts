@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { clubMetadataSchema, clubMutationError, clubSectionSchema, clubSlug, clubStructureSchema, parseClubSetup, type ClubSetupState } from "@/lib/club-administration";
+import { clubAddressSchema, clubMetadataSchema, clubMutationError, clubSectionSchema, clubSlug, clubStructureSchema, parseClubSetup, type ClubSetupState } from "@/lib/club-administration";
 
 async function actor() {
   const supabase = await createClient();
@@ -55,11 +55,22 @@ function finish(path: string, slug: string, error: { code?: string; message?: st
   revalidatePath(path); revalidatePath("/system/organizations"); revalidatePath(`/o/${slug}`, "layout"); revalidatePath("/");
   redirect(`${path}?${deleted ? "deleted" : "saved"}=1`);
 }
+export async function checkClubSlug(value: string, organizationId?: string): Promise<"available" | "taken" | "error"> {
+  const parsed = clubAddressSchema.safeParse(value);
+  if (!parsed.success || (organizationId !== undefined && !z.guid().safeParse(organizationId).success)) return "error";
+  const supabase = await actor();
+  const { data, error } = await supabase.rpc("club_slug_available", { requested_slug: parsed.data, target: organizationId ?? null });
+  return error || typeof data !== "boolean" ? "error" : data ? "available" : "taken";
+}
+
 export async function saveClub(form: FormData) {
   const { supabase, target, path, slug } = await context(form);
-  const input = clubMetadataSchema.safeParse({ name: form.get("name"), assistantName: form.get("assistantName"), timeZone: form.get("timeZone") });
+  const input = clubMetadataSchema.safeParse({ name: form.get("name"), slug: form.get("slug"), assistantName: form.get("assistantName"), timeZone: form.get("timeZone") });
   if (!input.success) redirect(`${path}?error=Kontrollera+klubbens+uppgifter`);
-  const { error } = await supabase.rpc("save_club_metadata", { target, input: input.data }); finish(path, slug, error);
+  const { error } = await supabase.rpc("save_club_metadata", { target, input: input.data });
+  if (!error) revalidatePath(`/o/${input.data.slug}`, "layout");
+  const destination = path.startsWith("/system/") ? path : `/o/${input.data.slug}/admin/sections`;
+  finish(error ? path : destination, slug, error);
 }
 export async function saveSection(form: FormData) {
   const { supabase, target, path, slug } = await context(form);

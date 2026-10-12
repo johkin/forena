@@ -86,6 +86,7 @@ export interface Database {
           created_at?: string;
         }
       >;
+      discipline_categories: Table<{ key: string; name: string }, { key: string; name: string }>;
       disciplines: Table<
         Timestamped & { id: string; key: string; name: string; category: string | null; updated_at: string },
         { id?: string; key: string; name: string; category?: string | null; created_at?: string; updated_at?: string }
@@ -291,6 +292,7 @@ export interface Database {
     Functions: {
       create_club_workspace: { Args: { input: Json; managed?: boolean }; Returns: Json };
       club_structure: { Args: { target: string }; Returns: Json };
+      club_slug_available: { Args: { requested_slug: string; target?: string | null }; Returns: boolean };
       save_club_metadata: { Args: { target: string; input: Json }; Returns: undefined };
       save_club_section: { Args: { target: string; section_id: string | null; input: Json }; Returns: string };
       delete_club_section: { Args: { target: string; section_id: string }; Returns: undefined };

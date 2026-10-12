@@ -429,3 +429,12 @@ begripligt fel och en återgång till en giltig vy. Klubbfel visas i klubbövers
 för systemadministratörer eller på Min översikt för klubbadministratörer.
 Sektionsfel visas i den aktuella klubbens administration. Be användaren öppna
 administrationen eller välja sektionen på nytt; visa inga råa valideringsfel.
+
+Adressnamn (slug) redigeras vid både klubbskapande och administration, med
+fördröjd tillgänglighetskontroll, tydlig adressförhandsvisning och meddelanden
+för upptaget namn och kontrollfel. Bokstäver normaliseras till gemener. Vid
+ändring visas att äldre länkar behöver uppdateras. Tidszon väljs i en gemensam
+dropdown med IANA-zoner, Sverige först och befintligt värde bevarat.
+Disciplinens kategori väljs ur en administrerbar lista på disciplinsidan.
+Kategorins syfte förklaras som gruppering; kodägda disciplinpaket visas fortsatt
+skrivskyddade. Använda kategorier har inaktiverad borttagningsknapp.

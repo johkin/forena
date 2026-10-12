@@ -4,7 +4,8 @@ export const invalidClubIdMessage = "Klubben kunde inte identifieras. Öppna klu
 export function clubSlug(value: string) {
   return value.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
-const slug = z.string().min(1).max(120).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+export const clubAddressSchema = z.string().trim().toLowerCase().min(1).max(120).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+const slug = clubAddressSchema;
 const name = z.string().trim().min(1).max(120);
 const timeZone = z.string().refine(value => { try { new Intl.DateTimeFormat("sv-SE", { timeZone: value }); return true; } catch { return false; } });
 export const clubSetupSchema = z.object({ organizationName: name, organizationSlug: slug, sectionName: name, sectionSlug: slug, disciplineId: z.guid(), timeZone,
@@ -17,7 +18,7 @@ export function parseClubSetup(form: FormData) {
     ...(form.get("addTeam") === "on" ? { teamName, teamSlug: clubSlug(teamName), season: String(form.get("season") ?? "") } : {}),
   });
 }
-export const clubMetadataSchema = z.object({ name, assistantName: z.string().trim().min(1).max(60), timeZone });
+export const clubMetadataSchema = z.object({ name, slug, assistantName: z.string().trim().min(1).max(60), timeZone });
 export const clubSectionSchema = z.object({ name, slug, disciplineId: z.guid() });
 export const clubStructureSchema = z.object({ organization: z.object({ id: z.guid(), slug, name, assistantName: z.string(), timeZone: z.string() }), sections: z.array(z.object({ id: z.guid(), slug, name, disciplineId: z.string().nullable(), teamCount: z.number().int().nonnegative() })) });
 export type ClubStructure = z.infer<typeof clubStructureSchema>;
