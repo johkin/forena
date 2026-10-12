@@ -1,4 +1,5 @@
 import { z } from "zod";
+export const invalidClubIdMessage = "Klubben kunde inte identifieras. Öppna klubbens administration igen och försök på nytt.";
 
 export function clubSlug(value: string) {
   return value.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");

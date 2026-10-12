@@ -416,3 +416,9 @@ Adressnamn föreslås från klubbens namn och kan ändras. Sektionens namn före
 från vald disciplin. Ett första lag är ett uttryckligt tillval. Granskningen
 visar hela strukturen innan den sparas. Bakåtnavigering och valideringsfel
 bevarar utkastet. Inga förifyllda testklubbar eller exempelaktiviteter skapas.
+
+Ogiltiga klubb- eller sektionsreferenser i administrationsformulär ger ett
+begripligt fel och en återgång till en giltig vy. Klubbfel visas i klubböversikten
+för systemadministratörer eller på Min översikt för klubbadministratörer.
+Sektionsfel visas i den aktuella klubbens administration. Be användaren öppna
+administrationen eller välja sektionen på nytt; visa inga råa valideringsfel.

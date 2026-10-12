@@ -31,17 +31,24 @@ export async function createOwnClub(_state: ClubSetupState, form: FormData) { re
 
 async function context(form: FormData) {
   const supabase = await actor();
-  const target = z.guid().parse(form.get("organizationId"));
   const system = form.get("administrationScope") === "system";
   if (system) {
     const { data, error } = await supabase.rpc("has_platform_role", { allowed_roles: ["system_admin"] });
     if (error || data !== true) redirect("/");
   }
+  const id = z.guid().safeParse(form.get("organizationId"));
+  if (!id.success) redirect(`${system ? "/system/organizations" : "/"}?error=invalid-club-id`);
+  const target = id.data;
   const { data, error } = await supabase.rpc("club_structure", { target });
   if (error) redirect("/");
   const structure = clubStructureSchema.parse(data);
   const path = system ? `/system/organizations/${target}` : `/o/${structure.organization.slug}/admin/sections`;
   return { supabase, target, path, slug: structure.organization.slug };
+}
+function sectionId(value: FormDataEntryValue | null, path: string) {
+  const id = z.guid().safeParse(value);
+  if (!id.success) redirect(`${path}?error=${encodeURIComponent("Sektionen kunde inte identifieras. Uppdatera sidan och välj sektionen igen.")}`);
+  return id.data;
 }
 function finish(path: string, slug: string, error: { code?: string; message?: string } | null, deleted = false): never {
   if (error) redirect(`${path}?error=${encodeURIComponent(clubMutationError(error))}`);
@@ -57,13 +64,13 @@ export async function saveClub(form: FormData) {
 export async function saveSection(form: FormData) {
   const { supabase, target, path, slug } = await context(form);
   const name = String(form.get("name") ?? "");
-  const sectionId = form.get("sectionId") ? z.guid().parse(form.get("sectionId")) : null;
-  const input = clubSectionSchema.safeParse({ name, slug: sectionId ? form.get("slug") : clubSlug(name), disciplineId: form.get("disciplineId") });
+  const targetSection = form.get("sectionId") ? sectionId(form.get("sectionId"), path) : null;
+  const input = clubSectionSchema.safeParse({ name, slug: targetSection ? form.get("slug") : clubSlug(name), disciplineId: form.get("disciplineId") });
   if (!input.success) redirect(`${path}?error=Kontrollera+sektionens+namn+och+disciplin`);
-  const { error } = await supabase.rpc("save_club_section", { target, section_id: sectionId, input: input.data }); finish(path, slug, error);
+  const { error } = await supabase.rpc("save_club_section", { target, section_id: targetSection, input: input.data }); finish(path, slug, error);
 }
 export async function deleteSection(form: FormData) {
   const { supabase, target, path, slug } = await context(form);
-  const sectionId = z.guid().parse(form.get("sectionId"));
-  const { error } = await supabase.rpc("delete_club_section", { target, section_id: sectionId }); finish(path, slug, error, true);
+  const targetSection = sectionId(form.get("sectionId"), path);
+  const { error } = await supabase.rpc("delete_club_section", { target, section_id: targetSection }); finish(path, slug, error, true);
 }
