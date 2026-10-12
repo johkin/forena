@@ -6,7 +6,8 @@ import { previewWeeklySeries, previewRuleSingleActivity, previewRuleWeeklySeries
 import type { ActivityDraft } from "@/lib/ai/activity-draft";
 import { PersonSelectionList } from "./person-selection-list";
 import type { AudienceRole } from "@/lib/invitation-audience";
-import { ActivityDatePicker } from "./activity-date-picker";
+import { DateTimeRangeFields } from "./date-time-range-fields";
+import { ActivityDatePicker, shiftCalendarDate } from "./activity-date-picker";
 import { ActivityTimeStepper } from "./activity-time-stepper";
 import { FALLBACK_TIMING_OPTIONS, timingChoices } from "@/lib/activity-timing-options";
 import { ActivityTimingFields } from "./activity-timing-fields";
@@ -83,8 +84,8 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
   })();
   const typeDefaults = configuration?.types.find(type=>type.id===activityTypeId)?.defaults;
   const timeOptions=typeDefaults?.options ?? FALLBACK_TIMING_OPTIONS;
-  const durationChoices=timingChoices("duration",timeOptions.duration,[]).filter((choice,index,choices)=>[60,90,120].includes(durationToMinutes(choice.value)) && choices.findIndex(item=>durationToMinutes(item.value)===durationToMinutes(choice.value))===index);
-  const gatheringChoices=timingChoices("gatheringRule",timeOptions.gatheringRule,[rules.gatheringRule]).filter(choice=>["start","start-30m","start-45m","start-60m"].includes(choice.value));
+  const durationChoices=timingChoices("duration",timeOptions.duration,kind==="series"?[rules.duration]:[]).filter((choice,index,choices)=>(kind==="series" || [60,90,120].includes(durationToMinutes(choice.value))) && choices.findIndex(item=>durationToMinutes(item.value)===durationToMinutes(choice.value))===index);
+  const gatheringChoices=timingChoices("gatheringRule",timeOptions.gatheringRule,[rules.gatheringRule]).filter(choice=>["start","start-15m","start-30m","start-45m","start-60m"].includes(choice.value) || choice.value===rules.gatheringRule);
   let currentDuration=0;
   try {currentDuration=durationToMinutes(activityRangeDuration(scheduleDates.startsOn,scheduleDates.startTime,end.date,end.time,timeZone));} catch {}
   let rangeSummary:ActivityOccurrence|undefined;
@@ -106,6 +107,11 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
   const formatter=useMemo(()=>new Intl.DateTimeFormat("sv-SE",{timeZone,weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}),[timeZone]);
   const invited=members.filter(member=>selectedPeople.has(member.id));
   const [recipientSearch,setRecipientSearch]=useState("");
+  const [dayMode,setDayMode]=useState<"single"|"multi">(end.date!==scheduleDates.startsOn ? "multi" : "single");
+  function changeDayMode(next:"single"|"multi") {
+    invalidatePreview();setDayMode(next);
+    setExplicitEnd({...end,date:next==="single" ? scheduleDates.startsOn : end.date===scheduleDates.startsOn ? shiftCalendarDate(scheduleDates.startsOn,1) : end.date});
+  }
   const recipients=members.filter(member=>(member.teamRelation==="player" || member.teamRelation==="leader") && member.displayName.toLocaleLowerCase("sv-SE").includes(recipientSearch.trim().toLocaleLowerCase("sv-SE"))).map(member=>({id:member.id,name:member.displayName,role:member.teamRelation==="player"?"participant":"leader"}));
   const recurring=mode==="create"&&kind==="series";
   const scheduleContext = useMemo(() => {
@@ -133,6 +139,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
     const startsOn=String(data.get("startsOn")), startTime=String(data.get("startTime"));
     try {
       if(source === "database" && (!configuration || !activityTypeId)) throw new Error(configurationError ?? "Vänta tills aktivitetstyperna har hämtats och välj en typ.");
+      if(!recurring && dayMode==="single" && end.date!==startsOn) throw new Error("Välj Flerdagars för en aktivitet som slutar nästa dag, eller ändra sluttiden.");
       const timingRules=normalizeActivityTimingRules(recurring ? rules : { ...rules, duration: activityRangeDuration(startsOn, startTime, end.date, end.time, timeZone) });
       const base={startsOn,startTime,timeZone,rules:timingRules};
       let occurrences: NonNullable<typeof preview>=recurring?previewRuleWeeklySeries({...base,endsOn:String(data.get("endsOn")),weekdays:data.getAll("weekdays").map(Number)}):[previewRuleSingleActivity(base)];
@@ -235,14 +242,13 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
         <section className="editor-section" aria-labelledby="editor-time-title">
           <div className="workflow-section-heading"><div><h3 id="editor-time-title">Tid &amp; samling</h3></div></div>
           {recurring ? <fieldset className="editor-weekdays"><legend>Veckodagar</legend><div className="weekday-options">{weekdayOptions.map(([value,label])=><label key={value}><input type="checkbox" name="weekdays" value={value} checked={scheduleDates.weekdays.includes(value)} onChange={event=>setScheduleDates(current=>({...current,weekdays:event.target.checked ? [...current.weekdays,value] : current.weekdays.filter(day=>day!==value)}))}/>{label}</label>)}</div></fieldset> : null}
+          {!recurring ? <DateTimeRangeFields mode={dayMode} onModeChange={changeDayMode} startDate={scheduleDates.startsOn} endDate={end.date} startTime={scheduleDates.startTime} endTime={end.time} names={{startDate:"startsOn",endDate:"activityEndsOn",startTime:"startTime",endTime:"endTime"}} onDatesChange={(startsOn,endsOn)=>{invalidatePreview();setScheduleDates(current=>({...current,startsOn}));if(dayMode==="multi" || explicitEnd)setExplicitEnd({...end,date:endsOn});}} onStartTimeChange={startTime=>{invalidatePreview();setScheduleDates(current=>({...current,startTime}));}} onEndTimeChange={time=>{invalidatePreview();setExplicitEnd({...end,time});}}/> : <>
           <ActivityDatePicker name="startsOn" value={scheduleDates.startsOn} onChange={startsOn=>{invalidatePreview();setScheduleDates(current=>({...current,startsOn}));}}/>
-          {recurring ? <label className="editor-series-end">Serien slutar<input name="endsOn" type="date" required min={scheduleDates.startsOn} value={scheduleDates.endsOn} onChange={event=>setScheduleDates(current=>({...current,endsOn:event.target.value}))}/></label> : null}
-          <div className="editor-time-steppers"><ActivityTimeStepper name="startTime" label="Starttid" value={scheduleDates.startTime} onChange={startTime=>{invalidatePreview();setScheduleDates(current=>({...current,startTime}));}}/>{!recurring ? <ActivityTimeStepper name="endTime" label="Sluttid" value={end.time} onChange={time=>{invalidatePreview();setExplicitEnd({...end,time});}}/> : null}</div>
-          {!recurring ? <details className="editor-multiday" open={end.date!==scheduleDates.startsOn || undefined}><summary>Flerdagars / Cup</summary><label className="editor-end-date">Slutdatum<input name="activityEndsOn" type="date" required min={scheduleDates.startsOn} value={end.date} onChange={event=>setExplicitEnd({...end,date:event.target.value})}/></label></details> : null}
-          <div className="editor-duration-choices" role="group" aria-label="Passlängd"><span>Passlängd</span>{durationChoices.map(choice=><button type="button" key={choice.value} aria-pressed={durationToMinutes(choice.value)===(recurring?durationToMinutes(rules.duration):currentDuration)} onClick={()=>{changeRule("duration",choice.value);setExplicitEnd(null);}}>{durationToMinutes(choice.value)===90 ? "1,5 tim" : `${durationToMinutes(choice.value)/60} tim`}</button>)}</div>
-          <div className="editor-gathering"><p><strong>Samling</strong>{rangeSummary?.gatheringAt ? <span>{clockFormatter.format(new Date(rangeSummary.gatheringAt))}</span> : <span>Vid start</span>}</p><div className="editor-gathering-choices" role="group" aria-label="Samling före start">{gatheringChoices.map(choice=><button type="button" key={choice.value} aria-pressed={rules.gatheringRule===choice.value} onClick={()=>changeRule("gatheringRule",choice.value)}>{choice.value==="start" ? "Vid start" : `−${choice.value.slice(6,-1)} min`}</button>)}</div>
-          {rangeSummary ? <div className="editor-timeline"><div><span>Samling {clockFormatter.format(new Date(rangeSummary.gatheringAt ?? rangeSummary.startsAt))} ({rangeSummary.gatheringAt ? Math.round((Date.parse(rangeSummary.startsAt)-Date.parse(rangeSummary.gatheringAt))/60000) : 0} min)</span><span>Aktivitet {clockFormatter.format(new Date(rangeSummary.startsAt))}–{clockFormatter.format(new Date(rangeSummary.endsAt))} ({Math.round((Date.parse(rangeSummary.endsAt)-Date.parse(rangeSummary.startsAt))/60000)} min)</span></div><div className="editor-timeline-bar" aria-hidden="true"><span style={{flex:rangeSummary.gatheringAt ? Math.max(0,(Date.parse(rangeSummary.startsAt)-Date.parse(rangeSummary.gatheringAt))/60000) : 0}}/><span style={{flex:(Date.parse(rangeSummary.endsAt)-Date.parse(rangeSummary.startsAt))/60000}}/></div></div> : null}</div>
-          <details className="editor-time-advanced"><summary>Annan längd eller samling</summary><ActivityTimingFields rules={rules} onChange={(key,value)=>{changeRule(key,value);if(key==="duration")setExplicitEnd(null);}} defaults={typeDefaults} touched={touchedKeys} invitations={false} showDuration/></details>
+          <label className="editor-series-end">Serien slutar<input name="endsOn" type="date" required min={scheduleDates.startsOn} value={scheduleDates.endsOn} onChange={event=>setScheduleDates(current=>({...current,endsOn:event.target.value}))}/></label>
+          <div className="editor-time-steppers"><ActivityTimeStepper name="startTime" label="Starttid" value={scheduleDates.startTime} onChange={startTime=>{invalidatePreview();setScheduleDates(current=>({...current,startTime}));}}/></div></>}
+          {recurring || dayMode==="single" ? <div className="editor-duration-choices" role="group" aria-label="Passlängd"><span>Passlängd</span>{durationChoices.map(choice=><button type="button" key={choice.value} aria-pressed={durationToMinutes(choice.value)===(recurring?durationToMinutes(rules.duration):currentDuration)} onClick={()=>{changeRule("duration",choice.value);setExplicitEnd(null);}}>{durationToMinutes(choice.value)===90 ? "1,5 tim" : durationToMinutes(choice.value)%60===0 ? `${durationToMinutes(choice.value)/60} tim` : `${durationToMinutes(choice.value)} min`}</button>)}</div> : null}
+          <div className="editor-gathering"><p><strong>Samling</strong>{rangeSummary?.gatheringAt ? <span>{clockFormatter.format(new Date(rangeSummary.gatheringAt))}</span> : <span>Vid start</span>}</p><div className="editor-gathering-choices" role="group" aria-label="Samling före start">{gatheringChoices.map(choice=><button type="button" key={choice.value} aria-pressed={rules.gatheringRule===choice.value} onClick={()=>changeRule("gatheringRule",choice.value)}>{choice.value==="start" ? "Vid start" : /^start-\d+m$/.test(choice.value) ? `−${choice.value.slice(6,-1)} min` : choice.label}</button>)}</div>
+          {rangeSummary && (recurring || dayMode==="single") ? <div className="editor-timeline"><div><span>Samling {clockFormatter.format(new Date(rangeSummary.gatheringAt ?? rangeSummary.startsAt))} ({rangeSummary.gatheringAt ? Math.round((Date.parse(rangeSummary.startsAt)-Date.parse(rangeSummary.gatheringAt))/60000) : 0} min)</span><span>Aktivitet {clockFormatter.format(new Date(rangeSummary.startsAt))}–{clockFormatter.format(new Date(rangeSummary.endsAt))} ({Math.round((Date.parse(rangeSummary.endsAt)-Date.parse(rangeSummary.startsAt))/60000)} min)</span></div><div className="editor-timeline-bar" aria-hidden="true"><span style={{flex:rangeSummary.gatheringAt ? Math.max(0,(Date.parse(rangeSummary.startsAt)-Date.parse(rangeSummary.gatheringAt))/60000) : 0}}/><span style={{flex:(Date.parse(rangeSummary.endsAt)-Date.parse(rangeSummary.startsAt))/60000}}/></div></div> : null}</div>
           <small>Samlingen räknas före aktivitetens start. Välj kallelse och mottagare nedan.</small>
         </section>
         {canManageInvitations && editScope!=="following" ? <details className="editor-section editor-invitation" open={invitationOpen} onToggle={event=>setInvitationOpen(event.currentTarget.open)}>

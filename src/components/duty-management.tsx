@@ -1,4 +1,6 @@
 "use client";
+import { DateTimeRangeFields } from "./date-time-range-fields";
+import { shiftCalendarDate } from "./activity-date-picker";
 import { DutyPlacesStepper } from "./duty-places-stepper";
 import { useState } from "react";
 import { dutyDefinitionSchema, type Duty, type DutyCommand, type DutySchedule } from "@/lib/activity-duty-schedule";
@@ -15,17 +17,17 @@ function localValue(value: string | null, zone: string) {
 function instant(value: string, zone: string) {
  if (!value) throw new Error("Ange datum och tid");
  const [date,time] = value.split("T");
- if (Number(time.split(":")[1]) % 5) throw new Error("Välj femminuterssteg");
  return localActivityTime(date,time,zone).toISOString();
 }
-export function DutyEditor({ duty, timeZone, propose }: { duty: Duty; timeZone: string; propose: Propose }) {
+export function DutyEditor({ duty, timeZone, propose, startsAt, endsAt }: { duty: Duty; timeZone: string; propose: Propose; startsAt?: string; endsAt?: string }) {
  const [kind,setKind]=useState(duty.timingKind);
- const [start,setStart]=useState(localValue(duty.startsAt,timeZone));
- const [end,setEnd]=useState(localValue(duty.endsAt,timeZone));
- const [due,setDue]=useState(localValue(duty.dueAt,timeZone));
+ const [start,setStart]=useState(localValue(duty.startsAt ?? startsAt ?? duty.dueAt ?? new Date().toISOString(),timeZone));
+ const [end,setEnd]=useState(localValue(duty.endsAt ?? endsAt ?? duty.dueAt ?? startsAt ?? new Date().toISOString(),timeZone));
+ const [due,setDue]=useState(localValue(duty.dueAt ?? duty.startsAt ?? startsAt ?? new Date().toISOString(),timeZone));
  const [instructions,setInstructions]=useState(duty.instructions);
  const [places,setPlaces]=useState(duty.slots.length);
  const [error,setError]=useState("");
+ const [dayMode,setDayMode]=useState<"single"|"multi">(start.slice(0,10)===end.slice(0,10)?"single":"multi");
  const completed=duty.slots.some(s=>s.completedAt);
  function review() {
    try {
@@ -36,8 +38,7 @@ export function DutyEditor({ duty, timeZone, propose }: { duty: Duty; timeZone: 
  }
  return <details className="workflow-disclosure"><summary>Redigera enskilt pass</summary>{completed?<p>Uppgiften har genomförande registrerat och behålls som historik.</p>:<>
  <div className="participant-selection"><label>Tidstyp<select value={kind} onChange={e=>setKind(e.target.value as Duty["timingKind"])}><option value="interval">Tidsintervall</option><option value="deadline">Leveransdeadline</option><option value="none">Ingen särskild tid</option></select></label><DutyPlacesStepper value={places} onChange={setPlaces}/></div>
- {kind==="interval"&&<div className="participant-selection"><label>Från<input type="datetime-local" step={300} value={start} onChange={e=>setStart(e.target.value)}/></label><label>Till<input type="datetime-local" step={300} value={end} onChange={e=>setEnd(e.target.value)}/></label></div>}
- {kind==="deadline"&&<label>Lämnas senast<input type="datetime-local" step={300} value={due} onChange={e=>setDue(e.target.value)}/></label>}
+ {kind!=="none" ? <DateTimeRangeFields mode={kind==="deadline" ? "single" : dayMode} onModeChange={kind==="interval" ? mode=>{setDayMode(mode);const date=start.slice(0,10);setEnd(`${mode==="single" ? date : end.slice(0,10)===date ? shiftCalendarDate(date,1) : end.slice(0,10)}T${end.slice(11)}`);} : undefined} startDate={(kind==="deadline"?due:start).slice(0,10)} endDate={end.slice(0,10)} startTime={(kind==="deadline"?due:start).slice(11)} endTime={end.slice(11)} onDatesChange={(date,last)=>{if(kind==="deadline")setDue(`${date}T${due.slice(11)}`);else {setStart(`${date}T${start.slice(11)}`);setEnd(`${last}T${end.slice(11)}`);}}} onStartTimeChange={time=>kind==="deadline" ? setDue(`${due.slice(0,10)}T${time}`) : setStart(`${start.slice(0,10)}T${time}`)} onEndTimeChange={kind==="interval" ? time=>setEnd(`${end.slice(0,10)}T${time}`) : undefined} startLabel={kind==="deadline" ? "Lämnas senast" : "Starttid"}/> : null}
  <label>Instruktioner<textarea maxLength={2000} value={instructions} onChange={e=>setInstructions(e.target.value)}/></label>
  <p>Antalet kan minskas genom att ta bort lediga platser. Genomförda uppgifter ändras inte.</p>
  {error&&<p role="alert">{error}</p>}<div className="modal-actions"><button type="button" className="secondary" onClick={review}>Granska ändring</button><button type="button" className="secondary" onClick={()=>propose({op:"cancel_duty",dutyId:duty.id,revision:duty.revision},`Ta bort ${duty.name} ur schemat? Alla ${duty.slots.length} platser tas bort ur bokningen, tilldelningar frigörs och berörda familjer meddelas. Historik sparas.`)}>Ta bort uppgiften</button></div>

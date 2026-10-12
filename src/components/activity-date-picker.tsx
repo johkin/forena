@@ -31,7 +31,7 @@ export function ActivityDatePicker({name,value,onChange}:{name:string;value:stri
     <div className="activity-week-strip" ref={strip}>{cells.map((date,index)=><button key={date} type="button" aria-label={new Intl.DateTimeFormat("sv-SE",{weekday:"long",day:"numeric",month:"long",year:"numeric",timeZone:"UTC"}).format(new Date(`${date}T12:00:00Z`))} aria-pressed={date===value} tabIndex={date===value || (!cells.includes(value) && index===0) ? 0 : -1} onClick={()=>select(date)} onKeyDown={event=>{
       const days=({ArrowLeft:-1,ArrowRight:1,ArrowUp:-7,ArrowDown:7} as Record<string,number>)[event.key];
       if(days){event.preventDefault();const next=shiftCalendarDate(date,days);select(next);requestAnimationFrame(()=>document.getElementById(`${name}-${next}`)?.focus());}
-    }} id={`${name}-${date}`}><span>{["M","T","O","T","F","L","S"][index]}</span><strong>{Number(date.slice(-2))}</strong></button>)}</div>
+    }} id={`${name}-${date}`}><span>{["M","T","O","T","F","L","S"][index]}</span><strong className="activity-day-number">{Number(date.slice(-2))}</strong></button>)}</div>
     <details className="activity-date-alternative"><summary>Välj annat datum</summary>
     <label className="activity-calendar-selected">Valt datum<input type="date" value={value} onChange={event=>{if(event.target.value)select(event.target.value);}}/></label>
     </details>
