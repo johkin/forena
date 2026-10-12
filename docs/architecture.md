@@ -457,3 +457,32 @@ aktivitetsdialogens personliga kallelse-API och svar-API. Framtida kallelser
 returneras inte från dialogens API; svar och kommentarer nekas med 409 tills
 kallelsetiden infaller. Null kallelsetid behåller direkt-/äldre kallelsers beteende.
 Kontrollen avser appens schemalagda kallelsetid, inte leveranskvittens från mejl.
+
+### Klubbstruktur och onboarding
+
+`/system/organizations` ger plattformsadministratörer metadataadministration av
+klubbar och sektioner. Klubbägare och klubbadministratörer använder samma
+komponent via `/o/[slug]/admin/sections`. Dessa rättigheter ger inga extra
+läsrättigheter till persondata, kallelser eller lagadministration.
+Systemlänken visas i den gemensamma kontomenyn först efter en databasverifierad
+plattformroll.
+
+`/setup` och systemets klubbskapande delar ett trestegsformulär: klubb,
+första sektionen med disciplin, granskning. Ett första lag är valfritt.
+`create_club_workspace` sparar hela strukturen i en transaktion utan
+exempelaktiviteter. Självregistrering ger skaparen ägarrollen. Systemets
+hanterade klubbskapande ger inte systemadministratören klubbmedlemskap.
+Inbjudan/överlämning till första klubbadministratören är ett separat framtida
+steg; detta flöde skapar strukturen och skickar inga mejl.
+
+Metadata-RPC:er har invoker-wrappers och avgränsade definer-kommandon i det
+icke exponerade schemat `administration`. Varje kommando verifierar identitet,
+plattformroll eller klubbroll, och binder sektioner till klubben. Ändringar
+loggas i `audit_log`. Sektionens URL bevaras vid namnbyte; byte av disciplin
+med lag eller sparat sektionsunderlag kräver en separat migrering.
+
+Databastriggers stoppar borttagning av sista sektionen och sektioner med
+lag, ansvariga, medlemsansökningar, förval eller minnen. Discipliner kan bara
+tas bort utan kopplingar, sparade disciplinvärden, historik eller installerade
+kodpaket. Skydden gäller även direkta tabellkommandon, inklusive relationer
+som tidigare hade `ON DELETE SET NULL`.

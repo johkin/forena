@@ -11,7 +11,7 @@ import { ActivityDetailModal } from "./activity-detail-modal";
 
 const organizationRoleLabels = { owner: "Ägare", admin: "Föreningsadministratör", leader: "Ledare", member: "Medlem" } as const;
 
-export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
+export function PersonalDashboard({ data, administrationError }: { data: PersonalDashboardData; administrationError?: string }) {
   const router = useRouter();
   const [view, setView] = useState<"agenda" | "calendar">("agenda");
   const [selected, setSelected] = useState<PersonalActivity>();
@@ -38,6 +38,7 @@ export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
   }, [router]);
   return <AppShell accountEmail={data.accountEmail}>
     <main className="content personal-dashboard">
+      {administrationError ? <p role="alert" className="auth-error">{administrationError}</p> : null}
       <div className="welcome"><div><p className="eyebrow">Förena · Personligt</p><h1>Min översikt</h1><p>Din och barnens vardag – alla lag och föreningar på samma plats.</p></div></div>
       <PersonalOverview onAnswered={() => router.refresh()} referenceTime={data.referenceTime} activities={pending} timeZone={timeZone} onOpenActivity={open} title="Behöver svar" id="pending-activities-title" emptyMessage="Alla aktuella kallelser är besvarade." />
       <div className="personal-calendar-section">

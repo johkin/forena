@@ -6,6 +6,7 @@ import "@fontsource-variable/newsreader/index.css";
 import "./globals.css";
 import "./workflows.css";
 import "./duty-editor.css";
+import "./club-admin.css";
 
 export const metadata: Metadata = {
   title: "Förena",

@@ -289,6 +289,12 @@ export interface Database {
     };
     Views: Record<never, never>;
     Functions: {
+      create_club_workspace: { Args: { input: Json; managed?: boolean }; Returns: Json };
+      club_structure: { Args: { target: string }; Returns: Json };
+      save_club_metadata: { Args: { target: string; input: Json }; Returns: undefined };
+      save_club_section: { Args: { target: string; section_id: string | null; input: Json }; Returns: string };
+      delete_club_section: { Args: { target: string; section_id: string }; Returns: undefined };
+      system_discipline_usage: { Args: Record<string, never>; Returns: { id: string; in_use: boolean }[] };
       read_team_signals: { Args: { target_team_id: string }; Returns: Json };
       consume_signal_domain_events: { Args: { batch_size?: number }; Returns: number };
       dismiss_capability_signal: { Args: { target_signal_id: string; expected_revision: number }; Returns: undefined };

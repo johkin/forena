@@ -9,5 +9,6 @@ export function OrganizationMenu({ organizationSlug, canAdminister = false }: {
     { href: `${base}/join`, label: "Ansök om medlemskap" },
     ...(canAdminister ? [{ href: `${base}/applications`, label: "Medlemsansökningar" }] : []),
     ...(canAdminister ? [{ href: `${base}/admin/roles`, label: "Administrera ledare och roller" }] : []),
+    ...(canAdminister ? [{ href: `${base}/admin/sections`, label: "Klubb och sektioner" }] : []),
   ]} />;
 }

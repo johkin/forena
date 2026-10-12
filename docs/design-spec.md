@@ -401,3 +401,24 @@ eller externa scripts läggs till i produktionskomponenterna.
   hålls i hopfällbara avsnitt. Samtliga skrivningar behåller förhandsgranskning.
 
 Tidsmoduler har kompakta minus/plus-knappar som ändrar tiden med 15 minuter. Klockslaget är ett native tidsfält med minutprecision, även för uppgifter.
+
+## Klubbadministration och onboarding
+
+Systemets Klubb-sida har sökning, sidindelning och ett separat Skapa klubb-avsnitt.
+Klubb och sektioner hanteras i samma formulärkomponent på plattforms- och
+klubbnivå. Rubriker och fält staplas inom en innehållskolumn på telefon.
+Sektionsrader visar antal lag och behåller sin adress vid namnbyte. Borttagning
+kräver bekräftelse; sista sektionen och sektioner med lag har inaktiverad knapp.
+Databasen kontrollerar dessutom sparade kopplingar.
+
+Klubbskapandet har tre tydliga steg: Klubb, Första sektionen, Granska.
+Adressnamn föreslås från klubbens namn och kan ändras. Sektionens namn föreslås
+från vald disciplin. Ett första lag är ett uttryckligt tillval. Granskningen
+visar hela strukturen innan den sparas. Bakåtnavigering och valideringsfel
+bevarar utkastet. Inga förifyllda testklubbar eller exempelaktiviteter skapas.
+
+Ogiltiga klubb- eller sektionsreferenser i administrationsformulär ger ett
+begripligt fel och en återgång till en giltig vy. Klubbfel visas i klubböversikten
+för systemadministratörer eller på Min översikt för klubbadministratörer.
+Sektionsfel visas i den aktuella klubbens administration. Be användaren öppna
+administrationen eller välja sektionen på nytt; visa inga råa valideringsfel.
