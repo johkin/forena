@@ -15,7 +15,7 @@ implementation eller en källa till verksamhetsregler.
 | Rättvis fördelning | Avgränsat ledarverktyg med befintliga statistikregler och granskning |
 | Boka arbetspass | Kapacitetsöversikt, tidkort, lediga platser och markering av eget pass |
 | Hantera/byt arbetspass | Hopfällbart hanteringsavsnitt med befintligt byte/ersättarflöde |
-| Flerlagsöversikt | Aktivitetskort med klubb/lag, svar per person och samlad agenda |
+| Flerlagsöversikt | Aktivitetskort med klubb/lag, direkta svar per person och samlad agenda |
 
 LOK-stöd/signering, provspelare, tränarloggbok, passmallar, automatiska
 före-/eftermatchstider, nya rättviseregler, meddelanden mellan föräldrar,
@@ -35,3 +35,7 @@ används för gemensamma personrader med grön kryssruta i närvaro och Skicka n
 Personerna ligger kvar i en lista när urvalet ändras, även på desktop.
 Närvaro behåller faktiska svar, antal, sökning och filter. Skicka nu visar
 valda mottagare utan att sökning ändrar urvalet.
+
+Skissen i `stitch_f_rena (3).zip` preciserar lagöversikten: två paneler på
+desktop och en separat svarrad per kallad person. Den gemensamma
+`PersonalOverview` visar samma kort i lagets och familjens översikt.

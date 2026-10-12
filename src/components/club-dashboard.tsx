@@ -96,6 +96,9 @@ export function ClubDashboard({ initialPage = "overview", organization, sections
                   <div className="overview-main">
                     <PersonalOverview
                       activities={familyActivities}
+                      demo={source === "demo"}
+                      referenceTime={referenceTime}
+                      onAnswered={() => router.refresh()}
                       timeZone={organization.timeZone ?? "Europe/Stockholm"}
                       onOpenActivity={(item) => setSelectedActivity(item.activity)}
                     />

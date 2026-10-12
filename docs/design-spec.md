@@ -247,8 +247,9 @@ Genomförd historik visas som låst, och ändrade platsrevisioner kräver uppdat
   aktivitet; en familjemedlems kallelse gör inte andra personer kallade.
 - Familjens kallelser och bokade arbetsuppgifter samlas i en rad per aktivitet.
   Visa lag, aktivitet och tid en gång samt namn och svarstatus för varje berörd
-  person. Räknaren visar antalet aktiviteter. Klick öppnar den gemensamma
-  aktivitetsdialogen där varje kallad person har eget svar och kommentar.
+  person med ”Kommer”/”Kan ej” direkt på översikten. Räknaren visar antalet
+  aktiviteter. Klick på aktivitetsrubriken öppnar den gemensamma dialogen för
+  detaljer och kommentarer. Svarsknapparna är separata från rubrikens knapp.
 
 
 - Lagets publika sida ska fungera även utloggad och ha en synlig inloggningslänk
@@ -365,7 +366,12 @@ eller externa scripts läggs till i produktionskomponenterna.
 
 - Familjens översikt visar ett kort per aktivitet, med klubb/lag och separata
   svar per familjemedlem. Ej svarat får bärnstensmarkering. Kortet öppnar samma
-  aktivitetsdialog som tidigare. Svarsknapparna ligger kvar i dialogen.
+  aktivitetsdialog som tidigare. Varje kallad person har en egen rad med
+  ”Kommer” och ”Kan ej”. Rubriken öppnar detaljer; svarsknapparna öppnar ingen
+  dialog. Samma kort används i lagets ”För mig” och familjens översikt.
+  ”Behöver svar” visar alla berörda personer för aktiviteten, även redan svarande.
+  Snabbsvar behåller kommentarer och visar väntande/fel per person.
+  Inställda/avslutade aktiviteter och demoläge är skrivskyddade.
 - Aktivitetsredigeraren har kort för detaljer, tid/samling och kallelse.
   Den kompletterande skissen i `stitch_f_rena (4).zip` används för en staplad
   kortlayout på både mobil och desktop: konfigurerade aktivitetstyper som knappar,

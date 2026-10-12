@@ -30,17 +30,42 @@ export async function PUT(request: Request, { params }: Props) {
     return NextResponse.json({ error: "Inloggning krävs" }, { status: 401 });
   }
 
+  // Give a readable error; the database policy/trigger remains authoritative
+  // if the activity changes after this read or a caller bypasses this route.
+  const { data: invitation, error: readError } = await supabase
+    .from("invitations")
+    .select("activity_id")
+    .eq("id", invitationId)
+    .maybeSingle();
+  if (readError || !invitation) {
+    return NextResponse.json({ error: "Kallelsen är inte tillgänglig." }, { status:403 });
+  }
+  const { data: activity, error: activityError } = await supabase
+    .from("activities").select("status, ends_at").eq("id", invitation.activity_id).maybeSingle();
+  if (activityError || !activity) {
+    return NextResponse.json({ error: "Kallelsen är inte tillgänglig." }, { status:403 });
+  }
+  if (activity.status === "cancelled" || Date.parse(activity.ends_at) <= Date.now()) {
+    return NextResponse.json({ error: "Aktiviteten är inställd eller avslutad. Svaret kan inte ändras." }, { status:409 });
+  }
+
   const isPending = response === "pending";
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("invitations")
     .update({
       response: response as "pending" | "accepted" | "declined",
       responded_at: isPending ? null : new Date().toISOString(),
-      response_comment: isPending ? null : (comment || null),
+      // Quick replies omit comment; only explicit comment edits replace it.
+      ...(isPending ? { response_comment:null } : rawComment !== undefined ? { response_comment:comment || null } : {}),
     })
-    .eq("id", invitationId);
+    .eq("id", invitationId)
+    .select("id")
+    .maybeSingle();
 
-  if (error) {
+  if (error?.code === "23514") {
+    return NextResponse.json({ error: "Aktiviteten är inställd eller avslutad. Svaret kan inte ändras." }, { status:409 });
+  }
+  if (error || !updated) {
     return NextResponse.json({ error: "Kallelsesvaret kunde inte sparas" }, { status: 403 });
   }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { OverviewInvitationResponse } from "./overview-invitation-response";
 import type { FamilyActivity } from "@/domain/club";
 
 type Props = {
@@ -9,6 +10,9 @@ type Props = {
   title?: string;
   id?: string;
   emptyMessage?: string;
+  onAnswered?: () => void;
+  demo?: boolean;
+  referenceTime?: string;
 };
 
 function when(value: string, timeZone: string) {
@@ -22,7 +26,7 @@ function when(value: string, timeZone: string) {
   }).format(new Date(value));
 }
 
-export function PersonalOverview({ activities, timeZone, onOpenActivity, title = "För mig", id = "personal-overview-title", emptyMessage = "Inga personliga aktiviteter kräver din uppmärksamhet just nu." }: Props) {
+export function PersonalOverview({ activities, timeZone, onOpenActivity, title = "För mig", id = "personal-overview-title", emptyMessage = "Inga personliga aktiviteter kräver din uppmärksamhet just nu.", onAnswered, demo = false, referenceTime }: Props) {
 
   const grouped = new Map<string, FamilyActivity[]>();
   for (const item of activities) {
@@ -43,19 +47,17 @@ export function PersonalOverview({ activities, timeZone, onOpenActivity, title =
         const dueAt = item.activity.gatheringAt ?? item.activity.startsAt;
         return <div className="personal-activity-row" data-response={people.some(person => person.invitation?.response === "pending") ? "pending" : undefined} key={item.activity.id}>
           <button className="personal-activity-main" type="button" onClick={() => onOpenActivity(item)}>
-            <span className="member-avatar">{item.team.name.slice(0, 1)}</span>
+            <span className="overview-date-badge" aria-hidden="true"><small>{new Intl.DateTimeFormat("sv-SE", { timeZone:item.organization?.timeZone ?? timeZone,weekday:"short" }).format(new Date(dueAt))}</small><strong>{new Intl.DateTimeFormat("sv-SE", { timeZone:item.organization?.timeZone ?? timeZone,day:"numeric" }).format(new Date(dueAt))}</strong></span>
             <span className="personal-activity-copy">
               <small>{[item.organization?.name, item.team.name].filter(Boolean).join(" · ")}</small>
               <strong>{item.activity.title}</strong>
 
               <span>{when(dueAt, item.organization?.timeZone ?? timeZone)} · {item.activity.location}</span>
-              <span className="personal-activity-people">{people.map(person => <span className="personal-activity-person" key={person.member.id}>
-                <span>{person.member.displayName}</span>
-                <span data-response={person.invitation?.response}>{[person.hasDutyAssignment ? "Bokad arbetsuppgift" : undefined, person.invitation ? ({ accepted:"Kommer", declined:"Kan inte", pending:"Ej svarat" } as const)[person.invitation.response] : undefined].filter(Boolean).join(" · ") || "Ingen kallelse ännu"}</span>
-              </span>)}</span>
+
             </span>
             <b aria-hidden="true">→</b>
           </button>
+          <div className="personal-activity-people">{people.map(person => <OverviewInvitationResponse key={person.member.id} item={person} readOnly={person.activity.status === "cancelled" || Date.parse(person.activity.endsAt) <= Date.parse(referenceTime ?? new Date().toISOString())} demo={demo} onAnswered={onAnswered} />)}</div>
         </div>;
       })}
     </div> : <p className="overview-empty">{emptyMessage}</p>}

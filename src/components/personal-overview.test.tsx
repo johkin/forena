@@ -6,7 +6,7 @@ import type { FamilyActivity } from "@/domain/club";
 it.each(["accepted","declined","pending"] as const)("keeps duty and %s status visible in the collapsible overview",response=>{
   const item={member:{id:"child",displayName:"Test"},team:{name:"Team"},activity:{id:"a",title:"Work",startsAt:"2030-01-01T10:00:00Z",location:"Cafe"},hasDutyAssignment:true,invitation:{response}} as FamilyActivity;
   const html=renderToStaticMarkup(createElement(PersonalOverview,{activities:[item],timeZone:"Europe/Stockholm",onOpenActivity:()=>{}}));
-  expect(html).toContain("Bokad arbetsuppgift · "+({accepted:"Kommer",declined:"Kan inte",pending:"Ej svarat"}[response]));
+  expect(html).toContain("Bokad arbetsuppgift · "+({accepted:"Kommer",declined:"Kan ej",pending:"Ej svarat"}[response]));
   expect(html).toContain('class="overview-details"');
   expect(html).not.toContain("Spara kommentar");
 });
@@ -19,10 +19,10 @@ it("groups leader and children under one activity with separate response statuse
   ] as FamilyActivity[];
   const html = renderToStaticMarkup(createElement(PersonalOverview, { activities, timeZone: "Europe/Stockholm", onOpenActivity: () => {} }));
   expect(html.match(/class="personal-activity-row"/g)).toHaveLength(1);
-  expect(html.match(/<button/g)).toHaveLength(1);
+  expect(html.match(/<button/g)).toHaveLength(5);
   expect(html).toContain('class="badge">1</span>');
-  expect(html).toContain("Johan</span><span data-response=\"accepted\">Kommer");
-  expect(html).toContain("Tilda</span><span data-response=\"pending\">Ej svarat");
+  expect(html).toContain('aria-label="Kommer: Johan" aria-pressed="true"');
+  expect(html).toContain("Tilda</strong><span>Ej svarat");
 });
 it("keeps different activities with the same title separate and avoids repeating a person", () => {
   const item = { member: { id: "child", displayName: "Tilda" }, team: { name: "F2016" }, activity: { id: "a", title: "Träning", startsAt: "2030-01-01T10:00:00Z", location: "Pitch" }, invitation: { response: "declined" } } as FamilyActivity;
@@ -36,15 +36,15 @@ it("opens the grouped activity on click", () => {
   let opened: FamilyActivity | undefined;
   const tree = PersonalOverview({ activities: [item], timeZone: "Europe/Stockholm", onOpenActivity: value => { opened = value; } });
   const rows = tree.props.children.props.children[1].props.children;
-  rows[0].props.children.props.onClick();
+  rows[0].props.children[0].props.onClick();
   expect(opened?.activity.id).toBe("a");
 });
 it("shows a booked duty without inventing an invitation response", () => {
   const item = { member: { id: "child", displayName: "Tilda" }, team: { name: "F2016" }, activity: { id: "a", title: "Café", startsAt: "2030-01-01T10:00:00Z", location: "Ursvik IP" }, hasDutyAssignment: true } as FamilyActivity;
   const html = renderToStaticMarkup(createElement(PersonalOverview, { activities: [item], timeZone: "Europe/Stockholm", onOpenActivity: () => {} }));
-  expect(html).toContain("Tilda</span><span>Bokad arbetsuppgift");
+  expect(html).toContain("Tilda</strong><span>Bokad arbetsuppgift");
   expect(html).toContain('class="badge">1</span>');
-  expect(html).not.toMatch(/Kommer|Kan inte|Ej svarat|Ingen kallelse ännu/);
+  expect(html).not.toMatch(/Kommer|Kan ej|Ej svarat|Ingen kallelse ännu/);
 });
 it("groups a duty-only person with an invited person and keeps their statuses separate", () => {
   const base = { team: { name: "F2016" }, activity: { id: "a", title: "Café", startsAt: "2030-01-01T10:00:00Z", location: "Ursvik IP" } };
@@ -55,7 +55,7 @@ it("groups a duty-only person with an invited person and keeps their statuses se
   const html = renderToStaticMarkup(createElement(PersonalOverview, { activities, timeZone: "Europe/Stockholm", onOpenActivity: () => {} }));
   expect(html.match(/class="personal-activity-row"/g)).toHaveLength(1);
   expect(html.match(/class="personal-activity-person"/g)).toHaveLength(2);
-  expect(html).toContain("Johan</span><span>Bokad arbetsuppgift");
-  expect(html).toContain("Tilda</span><span data-response=\"pending\">Ej svarat");
+  expect(html).toContain("Johan</strong><span>Bokad arbetsuppgift");
+  expect(html).toContain("Tilda</strong><span>Ej svarat");
   expect(html).not.toContain("Bokad arbetsuppgift · Ej svarat");
 });
