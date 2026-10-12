@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { invitationAvailable } from "@/lib/invitation-availability";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ activityId: string }> }) {
@@ -6,6 +7,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ act
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return NextResponse.json({ error: "Logga in för att svara." }, { status:401 });
   const { activityId } = await params;
+  const { data: activity, error: activityError } = await supabase.from("activities").select("invitation_send_at").eq("id", activityId).maybeSingle();
+  if (activityError || !activity) return NextResponse.json({ error:"Aktiviteten kunde inte hittas." }, { status:404 });
+  if (!invitationAvailable(activity.invitation_send_at)) return NextResponse.json({ invitations:[] }, { headers:{"Cache-Control":"no-store"} });
   const [{ data: own, error: ownError }, { data: wards, error: wardsError }] = await Promise.all([
     supabase.from("people").select("id").eq("user_id", auth.user.id),
     supabase.from("person_guardians").select("person_id").eq("guardian_user_id", auth.user.id),

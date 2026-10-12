@@ -1,5 +1,6 @@
 import type { FamilyActivity, Organization, Team } from "@/domain/club";
 import { createClient } from "@/lib/supabase/server";
+import { invitationAvailable } from "@/lib/invitation-availability";
 import { activityDateKey } from "@/lib/activity-range";
 
 export type PersonalActivity = FamilyActivity & { organization: Organization };
@@ -79,7 +80,7 @@ export async function getPersonalDashboard(): Promise<PersonalDashboardData | nu
       if (!person || person.organization_id !== organization.id) return [];
       const key = `${a.id}:${personId}`;
       const invitation = invitationByKey.get(key);
-      const visibleInvitation = invitation && (!a.invitation_send_at || Date.parse(a.invitation_send_at) <= Date.parse(referenceTime)) ? invitation : undefined;
+      const visibleInvitation = invitation && invitationAvailable(a.invitation_send_at, Date.parse(referenceTime)) ? invitation : undefined;
       const hasDutyAssignment = dutyKeys.has(key);
       const date = activityDateKey(a.starts_at, organization.timeZone ?? "Europe/Stockholm");
       const coversDate = (row: { starts_on: string; ends_on: string | null }) => row.starts_on <= date && (!row.ends_on || row.ends_on >= date);

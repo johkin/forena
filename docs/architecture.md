@@ -451,3 +451,9 @@ i familjens lag, via medlemskap eller användarens egen lagåtkomst vid aktivite
 lokala datum. Personliga gästkallelser och bokade uppgifter inkluderas också.
 Läsning använder användarens session och RLS; klubbmedlemskap ensamt fyller inte
 kalendern med andra lag. Osända kallelser ger inga svarsknappar eller svarstatus.
+
+`invitationAvailable` delar kallelsetidens regel mellan personlig översikt,
+aktivitetsdialogens personliga kallelse-API och svar-API. Framtida kallelser
+returneras inte från dialogens API; svar och kommentarer nekas med 409 tills
+kallelsetiden infaller. Null kallelsetid behåller direkt-/äldre kallelsers beteende.
+Kontrollen avser appens schemalagda kallelsetid, inte leveranskvittens från mejl.
