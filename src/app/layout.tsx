@@ -5,6 +5,7 @@ import "@fontsource-variable/plus-jakarta-sans/index.css";
 import "@fontsource-variable/newsreader/index.css";
 import "./globals.css";
 import "./workflows.css";
+import "./duty-editor.css";
 
 export const metadata: Metadata = {
   title: "Förena",
