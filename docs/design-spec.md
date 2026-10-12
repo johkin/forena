@@ -439,6 +439,13 @@ Disciplinens kategori väljs ur en administrerbar lista på disciplinsidan.
 Kategorins syfte förklaras som gruppering; kodägda disciplinpaket visas fortsatt
 skrivskyddade. Använda kategorier har inaktiverad borttagningsknapp.
 
+Disciplinvalet för befintliga sektioner är inaktiverat när sektionen har lag,
+sparade disciplinförval eller sektionsminnen. Fältet visar orsaken och skickar
+den befintliga disciplinen dolt så att namnbyte fortfarande fungerar. Tomma
+sektioner behåller ett aktivt disciplinval.
+
+Spara sektion är formulärets primära åtgärd och använder den gröna primärknappen.
+
 ### Ny appversion
 
 En gemensam diskret notifiering under sidhuvudet visar ”En ny version av Förena finns.”

@@ -25,3 +25,6 @@
 .club-search { display:flex; align-items:end; gap:12px; margin-block:24px; }
 .club-search label { flex:1; }
 @media(max-width:400px) { .club-section-card { padding:12px; } .onboarding-review dl > div { grid-template-columns:minmax(0,1fr); gap:4px; } }
+
+.club-administration select:disabled { opacity:.65; cursor:not-allowed; }
+.club-administration label small { overflow-wrap:anywhere; }

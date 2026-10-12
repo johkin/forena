@@ -495,6 +495,15 @@ Disciplinkategorier är en separat katalog med RLS, läsning för inloggade och
 skrivning endast för systemadministratörer. Främmande nyckel hindrar borttagning
 av använda kategorier; kategori är gruppering och styr ingen domänlogik.
 
+`club_structure` returnerar `canChangeDiscipline` per sektion. Den privata
+hjälpfunktionen `section_discipline_change_allowed` används av både läsningen
+och sparkommandot, så att formulärets låsning följer databasens regel för lag,
+sektionsförval och sektionsminnen. Äldre svar utan flagga behandlas som låsta.
+
+Äldre sektioner med `discipline_id = null` kan behålla null vid namnbyte, även
+om disciplinvalet är låst. Nya sektioner kräver fortfarande disciplin, och en
+befintlig disciplin kan inte tömmas. Databasen kontrollerar det sparade värdet.
+
 ### Versionskontroll i öppna sidor
 
 `npm run build` genererar ett unikt bygg-ID i `public/app-version.json` via
