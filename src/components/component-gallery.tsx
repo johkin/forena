@@ -5,7 +5,9 @@ import { ActivityTimingFields } from "./activity-timing-fields";
 import { DisciplineDefaultsFields } from "./discipline-defaults-fields";
 import { resolveDisciplineDefaults } from "@/lib/discipline-defaults";
 import type { ActivityTimingRules } from "@/lib/activity-time-rules";
-import { FiveMinuteTimeField } from "@/components/five-minute-time-field";
+import { ActivityDatePicker } from "./activity-date-picker";
+import { ActivityTimeStepper } from "./activity-time-stepper";
+import { DateTimeRangeFields } from "./date-time-range-fields";
 import { ActivityEditorModal } from "@/components/activity-editor-modal";
 import { ActivityDetailModal } from "@/components/activity-detail-modal";
 import { ActivityStaffingList } from "@/components/activity-staffing-list";
@@ -34,6 +36,12 @@ const reminderDraft: ReminderDraft = {
 export function ComponentGallery() {
   const defaults = resolveDisciplineDefaults({activityTypeId:"example",organizationId:"example",sectionId:"example",teamId:"example"}, []);
   const [timing, setTiming] = useState<ActivityTimingRules>(defaults.rules);
+  const [date, setDate] = useState("2026-10-16");
+  const [pointDate, setPointDate] = useState("2026-10-16");
+  const [pointTime, setPointTime] = useState("09:00");
+  const [time, setTime] = useState("17:00");
+  const [range, setRange] = useState({ start: "2026-10-16", end: "2026-10-18", startTime: "17:00", endTime: "18:00" });
+  const [dayMode, setDayMode] = useState<"single" | "multi">("multi");
   const [dialog, setDialog] = useState<"create" | "edit" | "detail">();
   const [notice, setNotice] = useState("Prova en knapp.");
   return <>
@@ -47,10 +55,14 @@ export function ComponentGallery() {
     </div><p role="status">{notice}</p></section>
     <section><h2>Formulärfält</h2><div className="component-fields">
       <label>Titel<input placeholder="Träning eller match" /></label>
-      <label>Datum<input type="date" defaultValue="2026-10-05" /></label>
-      <FiveMinuteTimeField name="exampleTime" defaultValue="17:00"/>
       <label>Längd<select defaultValue="60"><option value="60">1 timme</option><option value="90">1,5 timmar</option></select></label>
     </div><details><summary>Beskrivning (valfritt)</summary><p>Extra uppgifter visas när de behövs.</p></details></section>
+    <section id="date-time-components"><h2>Datum och tid</h2><div className="component-date-examples">
+      <div><h3>Tidsintervall</h3><DateTimeRangeFields mode={dayMode} onModeChange={mode => { setDayMode(mode); if (mode === "single") setRange(current => ({ ...current, end: current.start })); }} startDate={range.start} endDate={range.end} startTime={range.startTime} endTime={range.endTime} onDatesChange={(start, end) => setRange(current => ({ ...current, start, end }))} onStartTimeChange={startTime => setRange(current => ({ ...current, startTime }))} onEndTimeChange={endTime => setRange(current => ({ ...current, endTime }))} /></div>
+      <div><h3>En tidpunkt</h3><DateTimeRangeFields mode="single" startDate={pointDate} endDate={pointDate} startTime={pointTime} endTime={pointTime} onDatesChange={setPointDate} onStartTimeChange={setPointTime} startLabel="Tid" /></div>
+      <div><h3>Enbart datum</h3><ActivityDatePicker name="exampleDate" value={date} onChange={setDate} /></div>
+      <div><h3>Enbart klockslag</h3><div className="standalone-time-field"><ActivityTimeStepper name="exampleTime" label="Tid" value={time} onChange={setTime} /></div></div>
+    </div></section>
     <section><h2>Tider för kallelse</h2><ActivityTimingFields rules={timing} defaults={defaults} touched={new Set()} invitations starts={[activity.startsAt]} timeZone="Europe/Stockholm" onChange={(key, value) => setTiming(current => ({...current, [key]:value}))}/></section>
     <section><h2>Aktivitetsförval</h2><DisciplineDefaultsFields initial={{}} resolved={defaults}/></section>
     <section><h2>Bemanning</h2><ActivityStaffingList invitees={[...invitees]} /></section>

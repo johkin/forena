@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ActivityDatePicker } from "./activity-date-picker";
 import { submitMembershipApplication } from "@/app/o/[organizationSlug]/join/actions";
 
 export type JoinOption = {
@@ -21,6 +22,7 @@ export function MembershipApplicationForm({ organizationSlug, options, selectedS
 }) {
   const sections = useMemo(() => [...new Map(options.map((item) => [item.sectionId, item])).values()], [options]);
   const initialSection = options.find((item) => item.sectionSlug === selectedSection || item.teamSlug === selectedTeam)?.sectionId ?? sections[0]?.sectionId ?? "";
+  const [birthDate, setBirthDate] = useState("");
   const [sectionId, setSectionId] = useState(initialSection);
   const teams = options.filter((item) => item.sectionId === sectionId);
   const initialTeam = teams.find((item) => item.teamSlug === selectedTeam)?.teamId ?? teams[0]?.teamId ?? "";
@@ -39,7 +41,7 @@ export function MembershipApplicationForm({ organizationSlug, options, selectedS
       <section className="form-section">
         <h2>Spelaren</h2>
         <div className="form-row"><label>Förnamn<input name="playerFirstName" required maxLength={80} /></label><label>Efternamn<input name="playerLastName" required maxLength={80} /></label></div>
-        <label>Födelsedatum<input name="playerBirthDate" type="date" required /></label>
+        <div className="date-field"><span>Födelsedatum</span><ActivityDatePicker name="playerBirthDate" label="Födelsedatum" value={birthDate} onChange={setBirthDate} required /></div>
         <label>Adress<input name="address" maxLength={200} /></label>
         <div className="form-row"><label>Postnummer<input name="postalCode" maxLength={20} /></label><label>Ort<input name="city" maxLength={100} /></label></div>
         <label>Tidigare eller nuvarande förening<input name="previousClub" maxLength={160} /></label>

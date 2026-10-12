@@ -186,7 +186,7 @@ rader och samla nivåval i en radbrytande navigation. Aktivitetens typval ändra
 bara orörda nya fält. Förhandsgranskningen visar tider i föreningens tidszon.
 Kallelsemottagare och utskicksläge väljs alltid uttryckligen av ledaren.
 
-Aktiviteter och uppgifter använder gemensamma tidsmoduler med native tidsfält och minutprecision. Övriga tidsval kan använda `FiveMinuteTimeField`.
+Alla absoluta datum- och tidsval använder de gemensamma komponenterna nedan. Tidsreglagen bevarar minutprecision; äldre separata femminuterslistor används inte.
 
 Relativa tider väljs från listor med svenska texter, exempelvis ”6 dagar innan”.
 Uttryck som `start-6d` är interna värden och visas inte i kontroller eller hjälptexter.
@@ -376,11 +376,12 @@ eller externa scripts läggs till i produktionskomponenterna.
   Den kompletterande skissen i `stitch_f_rena (4).zip` används för en staplad
   kortlayout på både mobil och desktop: konfigurerade aktivitetstyper som knappar,
   kompakt veckoremsa, start/slut med femtonminutersreglage, passlängd och samlingsval.
-  Veckoremsan har veckonavigering, minst 44 px breda datumknappar,
-  tangentbordsnavigation och ett datumfält som alternativ. På smala skärmar
-  rullas bara veckoremsan i sidled. Samma dag och Flerdagars väljs med flikar.
-  Flerdagars har en månadskalender med start-/slutdag och diskret intervallmarkering,
-  med samma gröna dagmarkeringar som veckoremsan. Flerdagars visar inga extra
+  Veckovyn har veckonavigering, tangentbordsnavigation och direkt datuminmatning
+  som alternativ. Alla sju dagar ryms i innehållsbredden. Samma dag och Flerdagars
+  väljs med flikar ovanför kalendern. Flerdagars har en månadskalender där första
+  klicket väljer start, andra klicket slut och ett tredje påbörjar ett nytt intervall.
+  Omvänd ordning sorteras. Intervallet får ett sammanhängande grönt band,
+  med samma runda mörkgröna ändpunkter och vita siffror som veckovyn. Flerdagars visar inga extra
   längd-/tidsstapelsummeringar. Uppgifters datum och tider använder samma
   `DateTimeRangeFields`, även för deadline. Förvalsursprung visas inte som ledtext.
   Längd anges genom start-/sluttid och snabbval; serier behåller konfigurerade
@@ -464,3 +465,22 @@ Mottagaren ser klubbnamn och inloggat konto innan inbjudan accepteras.
 Assistentknappen och båda menyerna använder samma inloggningsvillkor. En
 inloggad användare ser assistenten även i en publik klubböversikt; detta ger
 ingen extra åtkomst till klubbens data. Serverns behörighetskontroller gäller.
+
+## Gemensamma datum- och tidsväljare
+
+- `ActivityDatePicker`: enbart datum, med veckovy. Använd även för födelsedatum,
+  seriens slutdatum och historikfilter. Direktinmatningen öppnas för tomma värden
+  och bevarar obligatoriska fält och min-/maxgränser.
+- `DateTimeRangeFields`: tidpunkt med veckovy och ett tidsreglage, utan flikar;
+  intervall med Samma dag/Flerdagars ovanför kalendern och två tidsreglage.
+- `ActivityRangeCalendar`: sammanhängande intervallband mellan två val. Bandet
+  fortsätter på nästa veckorad och mellan månader. Färgen är `--calendar-range`
+  (`#a8c89d`) med text `--on-calendar-range` (`#18371b`).
+- `ActivityTimeStepper`: enbart klockslag, med ±15 minuter och direktinmatning
+  av exakt tid. Ingen avrundning av befintliga minuter.
+- Ingen synlig datumupprepning under kalendern och inga Start/Slut-etiketter
+  på dagarna. Hjälpmedel får datum, ändpunkter och nästa val via tillgänglighetsnamn.
+- Flikarnas hover använder grön bakgrund och vit text tillsammans.
+- `/components#date-time-components` visar alla fyra varianter med appens
+  verkliga komponenter. Delad kalender-/tids-CSS ligger i `date-time.css`;
+  färgtokens ligger fortsatt i `globals.css`.

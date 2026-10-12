@@ -162,23 +162,6 @@
 .activity-type-picker button > span { font-size:24px; line-height:1; }
 .activity-type-picker button[aria-pressed=true] { background:var(--primary); border-color:var(--primary); color:white; }
 .activity-type-picker:disabled button { cursor:default; opacity:.6; }
-.activity-date-picker { padding:16px; border-radius:12px; background:var(--surface-low); }
-.activity-calendar-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; text-transform:capitalize; }
-.activity-calendar-heading > div { display:flex; }
-.activity-calendar-heading strong { font-size:13px; }
-.activity-week-strip { position:relative; display:flex; gap:4px; overflow-x:auto; padding:12px 0; }
-.activity-week-strip button { display:grid; place-items:center; gap:8px; flex:1 0 44px; min-width:44px; min-height:64px; padding:8px 4px; border:0; border-radius:12px; background:transparent; color:var(--ink); font:inherit; cursor:pointer; }
-.activity-week-strip button span { font-size:11px; }
-.activity-week-strip button[aria-pressed=true] { background:transparent; color:var(--ink); }
-.activity-date-alternative summary { min-height:44px; display:flex; align-items:center; cursor:pointer; font-size:12px; color:var(--primary); }
-.activity-calendar-selected { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,150px); gap:8px; align-items:center; margin-top:12px; }
-.editor-time-steppers { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-top:20px; }
-.activity-time-stepper { min-width:0; padding:12px 8px; border-radius:12px; background:var(--surface-low); text-align:center; }
-.activity-time-controls { display:grid; grid-template-columns:32px minmax(0,1fr) 32px; align-items:center; gap:2px; }
-.activity-time-controls > button { min-width:0; padding:0; min-height:44px; border:1px solid var(--line); border-radius:9px; background:var(--paper); color:var(--primary); font-size:22px; cursor:pointer; }
-.activity-time-stepper .activity-time-controls.activity-time-controls input[type=time] { min-width:0; width:100%; padding:4px 0; min-height:44px; border:0; background:transparent; font-size:18px; font-weight:700; text-align:center; }
-.activity-time-stepper .activity-time-controls.activity-time-controls input[type=time]::-webkit-calendar-picker-indicator { display:none; }
-.activity-editor-modal .editor-series-end { display:grid; grid-template-columns:1fr minmax(0,150px); align-items:center; margin-top:12px; }
 .editor-duration-choices, .editor-gathering-choices { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:16px; }
 .editor-duration-choices > span { font-size:12px; color:var(--ink-soft); margin-right:auto; }
 .editor-duration-choices button, .editor-gathering-choices button { padding:8px 12px; min-height:44px; border:1px solid var(--line); border-radius:9999px; background:var(--surface-low); color:var(--ink); font:inherit; font-size:12px; cursor:pointer; }
@@ -199,10 +182,6 @@
 .activity-editor-modal .editor-invitation > summary > span:last-child { font-size:12px; }
 @media (max-width:400px) {
  .activity-editor-modal .editor-section { padding:16px; }
- .activity-date-picker { padding:8px; }
- .activity-time-stepper { padding:8px 4px; }
- .editor-time-steppers { gap:8px; }
- .activity-time-stepper .activity-time-controls.activity-time-controls input[type=time] { font-size:16px; }
  .activity-editor-modal .editor-invitation .settings-fields > label { grid-template-columns:minmax(0,1fr); }
 }
 
@@ -267,31 +246,7 @@
   .personal-overview .personal-activity-person { grid-template-columns:36px minmax(0,1fr) auto; }
 }
 
-/* Consistent day markers in the weekly and monthly activity calendars. */
-.editor-day-tabs { margin-bottom:16px; }
-.activity-week-strip button, .activity-month-days button { border-radius:12px; }
-.activity-month-weekdays, .activity-month-days { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px; text-align:center; }
-.activity-month-weekdays { padding-block:12px 8px; font-size:11px; color:var(--ink-soft); }
-.activity-month-days button { min-width:0; min-height:48px; padding:0; border:0; background:transparent; color:var(--ink); font:inherit; cursor:pointer; }
-.activity-month-days button[data-in-range=true] .activity-day-number { background:var(--positive-surface); color:var(--primary); }
-.activity-week-strip button[aria-pressed=true] .activity-day-number, .activity-month-days button[data-endpoint=true] .activity-day-number { background:var(--primary); color:white; }
-.calendar-range-edge { margin-bottom:12px; }
-.calendar-range-inputs { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-top:16px; }
-.calendar-range-inputs label { min-width:0; }
-.calendar-range-inputs input { width:100%; }
 .activity-editor-modal .activity-reminder-group { margin:0; padding:16px; background:var(--surface-low); border:0; border-radius:12px; }
 .activity-editor-modal .activity-reminder-group legend { padding:0 6px; background:var(--surface-low); border-radius:6px; }
 .activity-editor-modal .activity-reminder-group .timing-choice-row { padding:12px; border:0; border-radius:12px; margin-block:8px; background:var(--paper); }
 .activity-editor-modal .editor-invitation .activity-reminder-group .timing-choice-row select { background:var(--paper); }
-@media (max-width:400px) { .calendar-range-inputs { grid-template-columns:minmax(0,1fr); } }
-
-.activity-day-number { display:grid; place-items:center; min-height:48px; width:100%; border-radius:12px; }
-.date-time-range-fields, .date-time-range-fields .activity-date-picker { min-width:0; width:100%; max-width:100%; }
-.date-time-range-fields input[type=date] { display:block; min-width:0; width:100%; max-width:100%; appearance:none; }
-@media (max-width:400px) { .activity-calendar-selected { grid-template-columns:minmax(0,1fr); } }
-.date-time-range-fields .activity-calendar-heading strong { min-width:0; overflow-wrap:anywhere; }
-.date-time-range-fields .activity-calendar-heading > div { flex-shrink:0; }
-
-.activity-time-controls > .activity-time-value { border:0; background:transparent; font-size:18px; font-weight:700; color:var(--ink); }
-.activity-time-stepper .activity-exact-time { width:100%; min-width:0; min-height:44px; padding:4px; font-size:18px; }
-@media(max-width:400px) { .activity-time-controls > .activity-time-value { font-size:16px; } }

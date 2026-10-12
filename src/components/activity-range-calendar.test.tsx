@@ -8,3 +8,13 @@ it("keeps endpoints ordered when selecting either boundary",()=>{
  expect(selectRangeDate("2030-10-16","2030-10-18","2030-10-14","end")).toEqual({start:"2030-10-14",end:"2030-10-14"});
  expect(selectRangeDate("2030-10-16","2030-10-18","2030-11-01","end")).toEqual({start:"2030-10-16",end:"2030-11-01"});
 });
+
+it("starts afresh, completes a reverse interval across months, then restarts", async () => {
+ const {selectCalendarRange}=await import("./activity-range-calendar");
+ const first=selectCalendarRange(null,"2026-11-02");
+ expect(first).toEqual({start:"2026-11-02",end:"2026-11-02",anchor:"2026-11-02"});
+ const second=selectCalendarRange(first.anchor,"2026-10-30");
+ expect(second).toEqual({start:"2026-10-30",end:"2026-11-02",anchor:null});
+ expect(selectCalendarRange(second.anchor,"2026-12-01")).toEqual({start:"2026-12-01",end:"2026-12-01",anchor:"2026-12-01"});
+ expect(selectCalendarRange("2026-12-01","2026-12-01").anchor).toBe(null);
+});

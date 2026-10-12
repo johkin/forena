@@ -1,4 +1,6 @@
 :root {
+  --calendar-range: #a8c89d;
+  --on-calendar-range: #18371b;
   --primary: #1e3f20;
   --on-primary: #ffffff;
   --ink: #19231a;
@@ -944,9 +946,6 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .settings-checkbox input { width:auto; }
 @media(min-width:768px) { .settings-fields { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 
-.five-minute-time-field { display:grid; gap:6px; min-width:0; font-size:14px; }
-.five-minute-time-selects { display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1.35fr); align-items:center; gap:5px; }
-.five-minute-time-selects select { width:100%; min-width:0; min-height:44px; }
 
 .timing-choice-row { display: flex; gap: .75rem; align-items: end; flex-wrap: wrap; margin-block: .75rem; }
 .timing-choice-row > label { flex: 1 1 10rem; min-width: 0; }

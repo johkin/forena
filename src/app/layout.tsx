@@ -8,6 +8,7 @@ import "./globals.css";
 import "./workflows.css";
 import "./duty-editor.css";
 import "./club-admin.css";
+import "./date-time.css";
 
 export const metadata: Metadata = {
   title: "Förena",
