@@ -30,12 +30,15 @@ begin
  perform 1 from public.organizations where id=target for update;
  if not found then raise exception 'Club not found' using errcode='P0002'; end if;
  if jsonb_typeof(input) is distinct from 'object' or nullif(btrim(input->>'name'),'') is null or length(input->>'name')>120
- or slug is null or slug !~ '^[a-z0-9]+(?:-[a-z0-9]+)*$' or length(slug)>120 or discipline is null then raise exception 'Invalid section' using errcode='22023'; end if;
+ or slug is null or slug !~ '^[a-z0-9]+(?:-[a-z0-9]+)*$' or length(slug)>120 then raise exception 'Invalid section' using errcode='22023'; end if;
  if section_id is null then
+  if discipline is null then raise exception 'Invalid section' using errcode='22023'; end if;
   insert into public.sections(organization_id,name,slug,discipline_id) values(target,btrim(input->>'name'),slug,discipline) returning id into result;
  else
   select * into existing from public.sections where id=section_id and organization_id=target for update;
   if not found then raise exception 'Section not found' using errcode='P0002'; end if;
+  -- A legacy null is preserved on rename; existing discipline assignments cannot be cleared.
+  if discipline is null and existing.discipline_id is not null then raise exception 'Invalid section' using errcode='22023'; end if;
   -- Existing URLs remain stable; changing a populated discipline needs migration.
   if slug<>existing.slug then raise exception 'Section address cannot change' using errcode='22023'; end if;
   if discipline is distinct from existing.discipline_id and not administration.section_discipline_change_allowed(existing.id) then raise exception 'Section discipline is in use' using errcode='55000'; end if;
@@ -44,4 +47,3 @@ begin
  insert into public.audit_log(organization_id,actor_user_id,action,entity_type,entity_id) values(target,auth.uid(),'section.saved','section',result::text);
  return result;
 end $$;
-

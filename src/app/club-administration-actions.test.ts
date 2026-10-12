@@ -80,3 +80,13 @@ it("does not claim availability when the lookup fails",async()=>{
 it("rejects malformed availability input before querying",async()=>{
  const rpc=vi.fn();client(rpc);expect(await checkClubSlug("../bad")).toBe("error");expect(await checkClubSlug("uik","bad")).toBe("error");expect(rpc).not.toHaveBeenCalled();
 });
+
+it("preserves a legacy null discipline during a section name edit",async()=>{
+ const rpc=vi.fn().mockResolvedValueOnce({data:structure,error:null}).mockResolvedValueOnce({data:section,error:null});client(rpc);
+ await expect(saveSection(form({organizationId:org,sectionId:section,name:"Renamed",slug:"sport",disciplineId:""}))).rejects.toThrow("/o/club/admin/sections?saved=1");
+ expect(rpc).toHaveBeenLastCalledWith("save_club_section",{target:org,section_id:section,input:{name:"Renamed",slug:"sport",disciplineId:null}});
+});
+it("still requires a discipline for a new section",async()=>{
+ const rpc=vi.fn().mockResolvedValue({data:structure,error:null});client(rpc);
+ await expect(saveSection(form({organizationId:org,name:"New",disciplineId:""}))).rejects.toThrow("error=");expect(rpc).toHaveBeenCalledTimes(1);
+});

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { clubAddressSchema, clubMetadataSchema, clubMutationError, clubSectionSchema, clubSlug, clubStructureSchema, parseClubSetup, type ClubSetupState } from "@/lib/club-administration";
+import { clubAddressSchema, clubMetadataSchema, clubMutationError, clubSectionSchema, clubSectionUpdateSchema, clubSlug, clubStructureSchema, parseClubSetup, type ClubSetupState } from "@/lib/club-administration";
 
 async function actor() {
   const supabase = await createClient();
@@ -76,7 +76,9 @@ export async function saveSection(form: FormData) {
   const { supabase, target, path, slug } = await context(form);
   const name = String(form.get("name") ?? "");
   const targetSection = form.get("sectionId") ? sectionId(form.get("sectionId"), path) : null;
-  const input = clubSectionSchema.safeParse({ name, slug: targetSection ? form.get("slug") : clubSlug(name), disciplineId: form.get("disciplineId") });
+  const submittedDiscipline = form.get("disciplineId");
+  const schema = targetSection ? clubSectionUpdateSchema : clubSectionSchema;
+  const input = schema.safeParse({ name, slug: targetSection ? form.get("slug") : clubSlug(name), disciplineId: targetSection && submittedDiscipline === "" ? null : submittedDiscipline });
   if (!input.success) redirect(`${path}?error=Kontrollera+sektionens+namn+och+disciplin`);
   const { error } = await supabase.rpc("save_club_section", { target, section_id: targetSection, input: input.data }); finish(path, slug, error);
 }

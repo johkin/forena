@@ -42,6 +42,17 @@ select ok(not (public.club_structure((select (value->>'id')::uuid from created_c
 select lives_ok($$select public.save_club_section((select (value->>'id')::uuid from created_clubs where label='own'),(select (value->>'sectionId')::uuid from created_clubs where label='own'),'{"name":"Renamed empty section","slug":"sport","disciplineId":"d0000000-0000-0000-0000-000000000002"}')$$,'Locked section can still be renamed with unchanged discipline');
 select throws_ok($$select public.save_club_section((select (value->>'id')::uuid from created_clubs where label='own'),(select (value->>'sectionId')::uuid from created_clubs where label='own'),'{"name":"Renamed empty section","slug":"sport","disciplineId":"d0000000-0000-0000-0000-000000000001"}')$$,'55000','Section discipline is in use','Memory lock also applies when saving');
 select ok(not has_function_privilege('authenticated','administration.section_discipline_change_allowed(uuid)','execute'),'Internal lock helper has no client execute privilege');
+
+-- Emulate an older populated section that the original discipline backfill did not classify.
+reset role;
+update public.sections set discipline_id=null where id=(select (value->>'sectionId')::uuid from created_clubs where label='own');
+set local role authenticated;
+select lives_ok($$select public.save_club_section((select (value->>'id')::uuid from created_clubs where label='own'),(select (value->>'sectionId')::uuid from created_clubs where label='own'),'{"name":"Legacy renamed","slug":"sport","disciplineId":null}')$$,'Locked legacy section can retain null discipline when renamed');
+select is((select name from public.sections where id=(select (value->>'sectionId')::uuid from created_clubs where label='own')),'Legacy renamed','Legacy name edit is persisted');
+select ok((select discipline_id is null from public.sections where id=(select (value->>'sectionId')::uuid from created_clubs where label='own')),'Legacy null remains unchanged');
+select throws_ok($$select public.save_club_section((select (value->>'id')::uuid from created_clubs where label='own'),(select (value->>'sectionId')::uuid from created_clubs where label='own'),'{"name":"Legacy","slug":"sport","disciplineId":"d0000000-0000-0000-0000-000000000002"}')$$,'55000','Section discipline is in use','Preserving null does not permit discipline changes for locked sections');
+select throws_ok($$select public.save_club_section((select (value->>'id')::uuid from created_clubs where label='team'),(select (value->>'sectionId')::uuid from created_clubs where label='team'),'{"name":"Cleared","slug":"sport","disciplineId":null}')$$,'22023','Invalid section','Existing discipline cannot be cleared');
+select throws_ok($$select public.save_club_section((select (value->>'id')::uuid from created_clubs where label='own'),null,'{"name":"Missing discipline","slug":"missing-discipline","disciplineId":null}')$$,'22023','Invalid section','New sections still require a discipline');
 select set_config('request.jwt.claims','{"sub":"a0000000-0000-0000-0000-000000000003","role":"authenticated"}',true);
 select throws_ok($$select public.club_structure((select (value->>'id')::uuid from created_clubs where label='own'))$$,'42501','Forbidden','Outsider cannot read administrative structure');
 select throws_ok($$select public.save_club_metadata((select (value->>'id')::uuid from created_clubs where label='own'),'{"name":"Forged","assistantName":"A","timeZone":"Europe/Stockholm"}')$$,'42501','Forbidden','Outsider cannot update club metadata');
