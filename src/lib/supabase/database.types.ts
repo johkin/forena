@@ -291,6 +291,9 @@ export interface Database {
     Views: Record<never, never>;
     Functions: {
       create_club_workspace: { Args: { input: Json; managed?: boolean }; Returns: Json };
+      system_club_admins: { Args: { target: string; operation?: string; payload?: Json }; Returns: Json };
+      club_admin_invite_context: { Args: { invitation_token_hash: string }; Returns: Json };
+      accept_club_admin_invite: { Args: { invitation_token_hash: string }; Returns: Json };
       system_clubs: { Args: { search_query?: string; page_number?: number }; Returns: Json };
       club_structure: { Args: { target: string }; Returns: Json };
       club_slug_available: { Args: { requested_slug: string; target?: string | null }; Returns: boolean };

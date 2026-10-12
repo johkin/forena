@@ -568,3 +568,23 @@ Triggern skyddar också skrivningar som kringgår RLS. Den använder en privat
 definer enbart för att låsa raden utan att ge målsmän aktivitetsbehörighet;
 extern exekvering är indragen. Leveransmetadata och nya historikrader påverkas
 inte av triggern. Närvarorapportering har sitt separata ändringsflöde.
+
+## Administration av klubbadministratörer
+
+Systemrollen auktoriserar hantering av klubbadministratörer oberoende av
+klubbmedlemskap. Varje kommando i det privata administrationsschemat
+kontrollerar aktuell `auth.uid()` och plattformroll. Listan exponerar enbart
+administratörernas e-post, konto-id och klubbroll samt inbjudningsstatus.
+
+Inbjudningar lagrar endast hash av 32 slumpbyte och är bundna till klubb och
+verifierad `auth.users.email`. E-post eller andra fält i användarredigerbar
+JWT-metadata används inte för auktorisering. Rätt konto krävs även för
+inbjudans förhandsvisning. Förbrukade, avbrutna, utgångna och misslyckade
+inbjudningar kan inte accepteras; avbruten systemroll hos inbjudaren stoppar
+accept. Borttagning av klubbroll avbryter väntande inbjudningar till kontot.
+Alla rolländringar auditeras utan token eller innehållet i mejlet.
+
+Publik fallback använder en separat klient utan session eller service key,
+och exakt de kolumner som redan är tillåtna för anon. Medlems-/spelaruppgifter,
+kallelser, närvaro och disciplinförval ingår inte. Auth-klienten används
+fortsatt för den egna medlemsrollen. Publikt saknade sidor ger 404.

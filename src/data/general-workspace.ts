@@ -3,6 +3,8 @@ import type { Organization, Section, Team, Workspace } from "@/domain/club";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 
+import { createPublicClient } from "@/lib/supabase/public";
+
 export type PublicActivity = {
   id: string;
   teamId: string;
@@ -25,6 +27,7 @@ export type GeneralWorkspaceData = {
   accountEmail?: string;
   canAdministerOrganization: boolean;
   source: "database" | "demo";
+  publicOnly?: boolean;
 };
 
 export async function getGeneralWorkspace(organizationSlug: string, sectionSlug?: string): Promise<GeneralWorkspaceData | null> {
@@ -42,20 +45,31 @@ export async function getGeneralWorkspace(organizationSlug: string, sectionSlug?
     };
   }
 
-  const supabase = await createClient();
+  const sessionClient = await createClient();
+  let supabase = sessionClient;
   const { data: authData } = await supabase.auth.getUser();
-  const { data: organizationRow } = await supabase.from("organizations").select("id, slug, name, assistant_name, time_zone").eq("slug", organizationSlug).maybeSingle();
+  let publicOnly = !authData.user;
+  const loadOrganization = () => supabase.from("organizations").select("id, slug, name, assistant_name, time_zone").eq("slug", organizationSlug).maybeSingle();
+  let organizationResult = await loadOrganization();
+  if (organizationResult.error) throw new Error("Klubben kunde inte hämtas.");
+  if (!organizationResult.data && authData.user) {
+    supabase = createPublicClient();
+    publicOnly = true;
+    organizationResult = await loadOrganization();
+    if (organizationResult.error) throw new Error("Klubbens publika information kunde inte hämtas.");
+  }
+  const organizationRow = organizationResult.data;
   if (!organizationRow) return null;
   const { data: organizationMembership } = authData.user
-    ? await supabase.from("organization_members").select("role").eq("organization_id", organizationRow.id).eq("user_id", authData.user.id).maybeSingle()
+    ? await sessionClient.from("organization_members").select("role").eq("organization_id", organizationRow.id).eq("user_id", authData.user.id).maybeSingle()
     : { data: null };
 
   const [{ data: sectionRows }, { data: teamRows }, { data: activityTypes }] = await Promise.all([
-    supabase.from("sections").select("id, organization_id, slug, name, discipline_id").eq("organization_id", organizationRow.id).order("name"),
+    publicOnly ? supabase.from("sections").select("id, organization_id, slug, name").eq("organization_id", organizationRow.id).order("name") : supabase.from("sections").select("id, organization_id, slug, name, discipline_id").eq("organization_id", organizationRow.id).order("name"),
     supabase.from("teams").select("id, organization_id, section_id, slug, name, season").eq("organization_id", organizationRow.id).order("name"),
     supabase.from("activity_types").select("id, system_category").or(`organization_id.is.null,organization_id.eq.${organizationRow.id}`),
   ]);
-  const sections: Section[] = (sectionRows ?? []).map((row) => ({ id: row.id, organizationId: row.organization_id, slug: row.slug, name: row.name, disciplineId: row.discipline_id ?? undefined }));
+  const sections: Section[] = (sectionRows ?? []).map((row) => ({ id: row.id, organizationId: row.organization_id, slug: row.slug, name: row.name, disciplineId: "discipline_id" in row && typeof row.discipline_id === "string" ? row.discipline_id : undefined }));
   const section = sectionSlug ? sections.find((item) => item.slug === sectionSlug) : undefined;
   if (sectionSlug && !section) return null;
   const teams: Team[] = (teamRows ?? []).filter((row) => !section || row.section_id === section.id).map((row) => ({ id: row.id, organizationId: row.organization_id, sectionId: row.section_id, slug: row.slug, name: row.name, season: row.season, disciplineId: sections.find(item => item.id === row.section_id)?.disciplineId }));
@@ -78,5 +92,5 @@ export async function getGeneralWorkspace(organizationSlug: string, sectionSlug?
     ...(showSections ? sections.map((item) => ({ id: item.id, kind: "section" as const, name: item.name, description: "Sektion", href: `/o/${organization.slug}/s/${item.slug}`, active: item.id === section?.id })) : []),
     ...(teamRows ?? []).map((row) => ({ id: row.id, kind: "team" as const, name: row.name, description: showSections ? sections.find((item) => item.id === row.section_id)?.name ?? "Lag" : "Lag", href: `/o/${organization.slug}/t/${row.slug}`, active: false })),
   ];
-  return { organization, section, sections, teams, activities, workspaces, accountEmail: authData.user?.email, canAdministerOrganization: ["owner", "admin"].includes(organizationMembership?.role ?? ""), source: "database" };
+  return { organization, section, sections, teams, activities, workspaces, accountEmail: authData.user?.email, canAdministerOrganization: ["owner", "admin"].includes(organizationMembership?.role ?? ""), source: "database", publicOnly };
 }

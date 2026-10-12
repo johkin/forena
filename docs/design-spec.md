@@ -453,3 +453,10 @@ och knappen ”Ladda om”, även i hemskärmsappen. Den radbryts på små skär
 respekterar safe area och ligger under dialoger. Texten annonseras som status
 utan att flytta fokus. Användaren väljer när sidan laddas om; pågående formulär
 avbryts inte automatiskt. Klick gör en full omladdning av aktuell adress.
+
+Systemets klubbsida visar klubbadministratörer och inbjudningar. Knappen
+Gör mig till klubbadministratör möjliggör första administratören i en tom
+klubb. Inbjudningar visar väntande, utgångna och misslyckade utskick och kan
+avbrytas. Borttagning av administratörsroll kräver bekräftelse och behåller
+medlemskap; när sista administratören tas bort förklaras det i bekräftelsen.
+Mottagaren ser klubbnamn och inloggat konto innan inbjudan accepteras.
