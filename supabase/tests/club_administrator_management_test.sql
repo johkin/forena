@@ -23,7 +23,7 @@ select ok(public.is_organization_member('c3000000-0000-0000-0000-000000000001'),
 select ok(not public.has_organization_role('c3000000-0000-0000-0000-000000000001',array['admin']),'Removed role is no longer admin');
 select lives_ok($$select public.system_club_admins('c3000000-0000-0000-0000-000000000001','self')$$,'System administrator can restore a club without administrators');
 insert into admin_invites values('first',public.system_club_admins('c3000000-0000-0000-0000-000000000002','invite',jsonb_build_object('email','club-recipient@test.example','tokenHash',repeat('a',64))));
-select set_config('request.jwt.claims','{"sub":"b3000000-0000-0000-000000000002","role":"authenticated"}',true);
+select set_config('request.jwt.claims','{"sub":"b3000000-0000-0000-0000-000000000002","role":"authenticated"}',true);
 select throws_ok($$select public.accept_club_admin_invite(repeat('a',64))$$,'22023','Invalid invitation','Prepared invitation is not redeemable before delivery recording');
 select is(public.club_admin_invite_context(repeat('a',64)),null::jsonb,'Prepared invitation has no recipient preview');
 select set_config('request.jwt.claims','{"sub":"b3000000-0000-0000-0000-000000000001","role":"authenticated"}',true);
