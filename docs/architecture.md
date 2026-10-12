@@ -517,3 +517,8 @@ ID ändras inte vid RSC-uppdatering eller navigation. Avvikande ID omfattar äve
 sker automatiskt. Kontrollen stannar när notifieringen visas och städar timers,
 lyssnare och pågående anrop vid avmontering. Utvecklingsservern kontrollerar inte
 versioner. Bygg alltid via `npm run build`, även vid egen drift.
+
+Systemets klubblista använder `system_clubs`, en invoker-wrapper runt ett
+auktoriserat kommando i `administration`. Det returnerar enbart id, namn, slug
+och totalt antal för sökning och sidindelning. Plattformrollen ger inte bred
+läsning av `organizations` eller medlemsdata; vanliga RLS-regler behålls.

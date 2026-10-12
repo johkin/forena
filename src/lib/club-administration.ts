@@ -22,6 +22,7 @@ export const clubMetadataSchema = z.object({ name, slug, assistantName: z.string
 export const clubSectionSchema = z.object({ name, slug, disciplineId: z.guid() });
 export const clubSectionUpdateSchema = clubSectionSchema.extend({ disciplineId: z.guid().nullable() });
 export const clubStructureSchema = z.object({ organization: z.object({ id: z.guid(), slug, name, assistantName: z.string(), timeZone: z.string() }), sections: z.array(z.object({ id: z.guid(), slug, name, disciplineId: z.string().nullable(), canChangeDiscipline: z.boolean().optional().default(false), teamCount: z.number().int().nonnegative() })) });
+export const systemClubsSchema = z.object({ clubs: z.array(z.object({ id: z.guid(), name, slug })), total: z.number().int().nonnegative() });
 export type ClubStructure = z.infer<typeof clubStructureSchema>;
 export type ClubSetupState = { error?: string };
 export function clubMutationError(error: { code?: string; message?: string }) {

@@ -1,0 +1,32 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+select no_plan();
+insert into auth.users(id,email,email_confirmed_at) values
+ ('a1000000-0000-0000-0000-000000000001','listing-admin@test.example',now()),
+ ('a1000000-0000-0000-0000-000000000002','listing-member@test.example',now());
+insert into public.platform_roles(user_id,role) values('a1000000-0000-0000-0000-000000000001','system_admin');
+insert into public.organizations(name,slug) select 'System list '||lpad(i::text,2,'0'),'system-list-'||i from generate_series(1,35) i;
+insert into public.organizations(name,slug) values('Symbols %_ club','system-list-symbols');
+insert into public.organization_members(organization_id,user_id,role) select id,'a1000000-0000-0000-0000-000000000002','owner' from public.organizations where slug='system-list-1';
+set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"a1000000-0000-0000-0000-000000000001","role":"authenticated"}',true);
+select is((select count(*)::integer from public.organizations where slug like 'system-list-%'),0,'Platform administration does not grant direct organization-table access');
+select is((public.system_clubs('System list',1)->>'total')::integer,35,'System list includes every club without membership');
+select is(jsonb_array_length(public.system_clubs('System list',1)->'clubs'),30,'First page has 30 clubs');
+select is(public.system_clubs('System list',1)->'clubs'->0->>'name','System list 01','Clubs have deterministic ordering');
+select is(jsonb_array_length(public.system_clubs('System list',2)->'clubs'),5,'Second page includes remaining clubs');
+select is(jsonb_array_length(public.system_clubs('System list',3)->'clubs'),0,'Empty later page returns an empty array');
+select is((public.system_clubs('System list',3)->>'total')::integer,35,'An empty page retains total count');
+select is((public.system_clubs(' %_',1)->>'total')::integer,1,'Wildcard characters are searched literally');
+select is((public.system_clubs('SYSTEM LIST',1)->>'total')::integer,35,'Search is case insensitive');
+select is((select count(*)::integer from jsonb_object_keys(public.system_clubs('System list',1)->'clubs'->0)),3,'Only id name and slug are exposed');
+select throws_ok($$select public.system_clubs('',0)$$,'22023','Invalid club query','Invalid pages are rejected');
+select throws_ok($$select public.system_clubs(repeat('x',121),1)$$,'22023','Invalid club query','Oversized search is rejected');
+select set_config('request.jwt.claims','{"sub":"a1000000-0000-0000-0000-000000000002","role":"authenticated"}',true);
+select throws_ok($$select public.system_clubs()$$,'42501','Forbidden','Club ownership does not grant system listing');
+select set_config('request.jwt.claims','{"role":"authenticated"}',true);
+select throws_ok($$select public.system_clubs()$$,'42501','Forbidden','A session without an authenticated identity is denied');
+select ok(not has_function_privilege('anon','public.system_clubs(text,integer)','execute'),'Anonymous RPC access is revoked');
+select ok(not (select prosecdef from pg_proc where oid='public.system_clubs(text,integer)'::regprocedure),'Public wrapper is security invoker');
+select * from finish();
+rollback;
