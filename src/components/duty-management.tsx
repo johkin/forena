@@ -23,7 +23,7 @@ export function DutyEditor({ duty, timeZone, propose, startsAt, endsAt }: { duty
  const [kind,setKind]=useState(duty.timingKind);
  const [start,setStart]=useState(localValue(duty.startsAt ?? startsAt ?? duty.dueAt ?? new Date().toISOString(),timeZone));
  const [end,setEnd]=useState(localValue(duty.endsAt ?? endsAt ?? duty.dueAt ?? startsAt ?? new Date().toISOString(),timeZone));
- const [due,setDue]=useState(localValue(duty.dueAt ?? startsAt ?? duty.startsAt ?? new Date().toISOString(),timeZone));
+ const [due,setDue]=useState(localValue(duty.dueAt ?? duty.startsAt ?? startsAt ?? new Date().toISOString(),timeZone));
  const [instructions,setInstructions]=useState(duty.instructions);
  const [places,setPlaces]=useState(duty.slots.length);
  const [error,setError]=useState("");

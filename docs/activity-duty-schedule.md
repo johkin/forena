@@ -229,5 +229,5 @@ Skissens bemanningsmallar, matchbuffertar och guidebilagor är inte införda.
 
 Datum och tider använder `DateTimeRangeFields`, samma komponent som aktivitetsformuläret:
 veckoremsa för samma dag, månadskalender med start-/slutdag för flerdagars,
-femminutersreglage för klockslag och en kalender med ett klockslag för deadline.
+femtonminutersreglage för klockslag och en kalender med ett klockslag för deadline.
 Pass utan tidigare tider får aktivitetens tider som utgångspunkt när tidstyp ändras.

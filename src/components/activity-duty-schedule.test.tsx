@@ -8,6 +8,7 @@ vi.mock("react", async original => ({ ...await original<typeof import("react")>(
 }));
 import { ActivityDutySchedule } from "./activity-duty-schedule";
 import { DutyEditor } from "./duty-management";
+import { DateTimeRangeFields } from "./date-time-range-fields";
 function elements(node: unknown): ReactElement<Record<string, unknown>>[] {
   if (Array.isArray(node)) return node.flatMap(elements);
   if (!node || typeof node !== "object" || !("props" in node)) return [];
@@ -23,6 +24,21 @@ const schedule: DutySchedule = { isWork: true, canManage: true, types: [], peopl
 };
 const render = (readOnly = false) => elements(ActivityDutySchedule({ activityId: "activity", startsAt: "2030-10-10T06:00:00Z", endsAt: "2030-10-10T16:00:00Z", timeZone: "Europe/Stockholm", readOnly }));
 beforeEach(() => { hooks.index = 0; hooks.setters = []; hooks.values = [schedule, "", false, false, "", false, [], null]; });
+it.each([
+  { dueAt: "2030-10-10T10:17:00Z", startsAt: "2030-10-10T08:00:00Z", expected: "12:17" },
+  { dueAt: null, startsAt: "2030-10-10T08:00:00Z", expected: "10:00" },
+  { dueAt: null, startsAt: null, expected: "08:00" },
+])("defaults deadline to existing deadline, duty start, then activity start: $expected", ({ dueAt, startsAt, expected }) => {
+  hooks.values = ["deadline"];
+  const propose = vi.fn();
+  const tree = elements(DutyEditor({ duty: { ...schedule.duties[0], dueAt, startsAt }, timeZone: "Europe/Stockholm", startsAt: "2030-10-10T06:00:00Z", endsAt: "2030-10-10T16:00:00Z", propose }));
+  const timing = tree.find(el => el.type === DateTimeRangeFields)!;
+  expect(timing.props.startDate).toBe("2030-10-10");
+  expect(timing.props.startTime).toBe(expected);
+  const review = tree.find(el => el.type === "button" && el.props.children === "Granska ändring")!;
+  (review.props.onClick as () => void)();
+  expect(propose).toHaveBeenCalledWith(expect.objectContaining({ op: "edit_duty", definition: expect.objectContaining({ timingKind: "deadline", dueAt: `2030-10-10T${String(Number(expected.slice(0,2))-2).padStart(2,"0")}:${expected.slice(3)}:00.000Z` }) }), expect.any(String));
+});
 it("shows duties on matches and training without relabeling them as work", () => {
   hooks.values[0] = { ...schedule, isWork: false, supportsDuties: true };
   expect(render().some(el => el.props["aria-label"] === "Arbetsuppgifter och schema")).toBe(true);
