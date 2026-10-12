@@ -234,3 +234,10 @@ Datum och tider använder `DateTimeRangeFields`, samma komponent som aktivitetsf
 veckoremsa för samma dag, månadskalender med start-/slutdag för flerdagars,
 femtonminutersreglage för klockslag och en kalender med ett klockslag för deadline.
 Pass utan tidigare tider får aktivitetens tider som utgångspunkt när tidstyp ändras.
+
+I tomt schema visas skapandet, men inte rättvis fördelning eller självserviceregler.
+Fördelning visas endast med lediga, ej genomförda platser; spelarhistorik ligger
+som underlag i samma avsnitt. Självservice använder `DateTimeRangeFields`.
+Lagets återanvändbara uppgiftstyper hanteras intill uppgiftstypvalet vid skapande,
+med tydlig information om att katalogen gäller hela laget. Arv från klubb och
+sektion är ännu inte implementerat.

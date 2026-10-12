@@ -402,6 +402,13 @@ eller externa scripts läggs till i produktionskomponenterna.
 
 Tidsmoduler har kompakta minus/plus-knappar som ändrar tiden med 15 minuter. Klockslaget är ett native tidsfält med minutprecision, även för uppgifter.
 
+I tomt schema visas skapandet, men inte rättvis fördelning eller självserviceregler.
+Fördelning visas endast med lediga, ej genomförda platser; spelarhistorik ligger
+som underlag i samma avsnitt. Självservice använder `DateTimeRangeFields`.
+Lagets återanvändbara uppgiftstyper hanteras intill uppgiftstypvalet vid skapande,
+med tydlig information om att katalogen gäller hela laget. Arv från klubb och
+sektion är ännu inte implementerat.
+
 ## Klubbadministration och onboarding
 
 Systemets Klubb-sida har sökning, sidindelning och ett separat Skapa klubb-avsnitt.
