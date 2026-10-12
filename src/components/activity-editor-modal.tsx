@@ -4,9 +4,11 @@ import { FormEvent, useEffect, useMemo, useState, useRef } from "react";
 import type { Activity, Member, Organization, Team } from "@/domain/club";
 import { previewWeeklySeries, previewRuleSingleActivity, previewRuleWeeklySeries, type ActivityOccurrence } from "@/lib/activity-series";
 import type { ActivityDraft } from "@/lib/ai/activity-draft";
-import { attendanceNames } from "@/lib/attendance-names";
+import { PersonSelectionList } from "./person-selection-list";
 import type { AudienceRole } from "@/lib/invitation-audience";
-import { FiveMinuteTimeField } from "./five-minute-time-field";
+import { ActivityDatePicker } from "./activity-date-picker";
+import { ActivityTimeStepper } from "./activity-time-stepper";
+import { FALLBACK_TIMING_OPTIONS, timingChoices } from "@/lib/activity-timing-options";
 import { ActivityTimingFields } from "./activity-timing-fields";
 import type { ActivityConfiguration } from "@/lib/activity-configuration";
 import { BASE_DISCIPLINE_DEFAULTS } from "@/lib/discipline-defaults";
@@ -19,8 +21,18 @@ import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
 type Props = { mode: "create" | "edit"; organization: Organization; team: Team; members: Member[]; activity?: Activity; draft?: ActivityDraft; source: "database" | "demo"; canManageInvitations: boolean; onClose: () => void; onNotice: (notice: string) => void; };
 const weekdayOptions = [[1,"Mån"],[2,"Tis"],[3,"Ons"],[4,"Tor"],[5,"Fre"],[6,"Lör"],[7,"Sön"]] as const;
 const roleLabels: Record<AudienceRole,string> = { participant:"Spelare",leader:"Ledare" };
-const directRoles: AudienceRole[] = ["participant","leader"];
+const recipientGroups = [{role:"participant",label:"Spelare"},{role:"leader",label:"Ledare"}];
 const scheduledRoles: AudienceRole[] = ["participant","leader"];
+
+function ActivityTypeIcon({category}:{category:string}) {
+  const paths:Record<string,string>={
+    session:"M4 11h16M6 8v6M3 9v4M18 8v6M21 9v4",
+    competition:"M8 3h8v6a4 4 0 0 1-8 0V3ZM8 5H4v2a4 4 0 0 0 4 4m8-6h4v2a4 4 0 0 1-4 4M12 13v6m-4 2h8",
+    meeting:"M9 8a3 3 0 1 0 6 0 3 3 0 0 0-6 0ZM6 20v-2a6 6 0 0 1 12 0v2M3 8h2m14 0h2M2 18v-2m20 2v-2",
+    work:"M8 6V3h8v3M3 6h18v14H3V6Zm0 6h18M10 10h4v4h-4v-4",
+  };
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[category] ?? "M4 5h16v16H4V5ZM8 3v4m8-4v4M4 10h16"}/></svg>;
+}
 
 function Help({children,label}:{children:React.ReactNode;label:string}) {
   return <details className="editor-help"><summary aria-label={`Hjälp: ${label}`} title={`Hjälp: ${label}`}>?</summary><p>{children}</p></details>;
@@ -70,6 +82,14 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
     catch { return { date: scheduleDates.startsOn, time: scheduleDates.startTime }; }
   })();
   const typeDefaults = configuration?.types.find(type=>type.id===activityTypeId)?.defaults;
+  const timeOptions=typeDefaults?.options ?? FALLBACK_TIMING_OPTIONS;
+  const durationChoices=timingChoices("duration",timeOptions.duration,[]).filter((choice,index,choices)=>[60,90,120].includes(durationToMinutes(choice.value)) && choices.findIndex(item=>durationToMinutes(item.value)===durationToMinutes(choice.value))===index);
+  const gatheringChoices=timingChoices("gatheringRule",timeOptions.gatheringRule,[rules.gatheringRule]).filter(choice=>["start","start-30m","start-45m","start-60m"].includes(choice.value));
+  let currentDuration=0;
+  try {currentDuration=durationToMinutes(activityRangeDuration(scheduleDates.startsOn,scheduleDates.startTime,end.date,end.time,timeZone));} catch {}
+  let rangeSummary:ActivityOccurrence|undefined;
+  try {rangeSummary=previewRuleSingleActivity({startsOn:scheduleDates.startsOn,startTime:scheduleDates.startTime,timeZone,rules:{...rules,duration:kind==="series" ? rules.duration : activityRangeDuration(scheduleDates.startsOn,scheduleDates.startTime,end.date,end.time,timeZone)}});} catch {}
+  const clockFormatter=new Intl.DateTimeFormat("sv-SE",{timeZone,hour:"2-digit",minute:"2-digit",hourCycle:"h23"});
   useEffect(()=>{
     if (source !== "database") return;
     const controller = new AbortController();
@@ -84,9 +104,9 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
   function changeActivityType(id:string) { invalidatePreview();setActivityTypeId(id); if(mode==="create") {const defaults=configuration?.types.find(type=>type.id===id)?.defaults;if(defaults)setRules(current=>applyUntouchedDefaults(current,defaults,touched.current));} }
 
   const formatter=useMemo(()=>new Intl.DateTimeFormat("sv-SE",{timeZone,weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}),[timeZone]);
-  const names=useMemo(()=>attendanceNames(members.map(member=>({personId:member.id,displayName:member.displayName}))),[members]);
   const invited=members.filter(member=>selectedPeople.has(member.id));
-  const available=members.filter(member=>!selectedPeople.has(member.id));
+  const [recipientSearch,setRecipientSearch]=useState("");
+  const recipients=members.filter(member=>(member.teamRelation==="player" || member.teamRelation==="leader") && member.displayName.toLocaleLowerCase("sv-SE").includes(recipientSearch.trim().toLocaleLowerCase("sv-SE"))).map(member=>({id:member.id,name:member.displayName,role:member.teamRelation==="player"?"participant":"leader"}));
   const recurring=mode==="create"&&kind==="series";
   const scheduleContext = useMemo(() => {
     try {
@@ -105,20 +125,6 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
   function togglePerson(id:string) {
     invalidatePreview();setSelectedPeople(current=>{const next=new Set(current);if(next.has(id))next.delete(id);else next.add(id);return next;});
   }
-
-  function peopleColumn(people:Member[],selected:boolean) {
-    return directRoles.map(role=>{
-      const matching=people.filter(member=>member.teamRelation === (role === "participant" ? "player" : "leader"));
-      return matching.length?<div className="person-picker-group" key={role}>
-        <h4>{roleLabels[role]} ({matching.length})</h4>
-        {matching.map(member=><button key={member.id} type="button" className="attendance-person" onClick={()=>togglePerson(member.id)}
-          aria-label={`${selected?"Ta bort":"Lägg till"} ${member.displayName}, ${roleLabels[role].toLowerCase()}`} title={member.displayName}>
-          <strong>{names.get(member.id)}</strong>
-        </button>)}
-      </div>:null;
-    });
-  }
-
 
   async function prepare(event:FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -209,7 +215,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
 
   return <div className="modal-backdrop" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget)onClose();}}>
     <section className="modal activity-editor-modal" role="dialog" aria-modal="true" aria-labelledby="activity-editor-title">
-      <div className="card-heading"><div><p className="eyebrow">{team.name}</p><h2 id="activity-editor-title">{mode==="edit"?"Redigera aktivitet":"Ny aktivitet"}</h2></div><button className="icon-button" onClick={onClose} aria-label="Stäng" type="button">✕</button></div>
+      <div className="card-heading"><div><p className="eyebrow">{team.name}</p><h2 id="activity-editor-title">{mode==="edit"?"Redigera aktivitet":"Skapa aktivitet"}</h2></div><button className="icon-button" onClick={onClose} aria-label="Stäng" type="button">✕</button></div>
       {draft?<div className="ai-draft-notice"><strong>AI-utkast för granskning</strong><span>Kontrollera särskilt datum, plats och text innan aktiviteten skapas.</span>{draft.sources.length?<div>{draft.sources.map(source=><a href={source.url} key={source.url} target="_blank" rel="noreferrer">{source.title}</a>)}</div>:<small>Inga webbkällor följde med utkastet.</small>}</div>:null}
       {mode==="edit" && activity?.seriesId ? <fieldset className="activity-series-scope" disabled={pending}><legend>Vilka tillfällen gäller ändringen?</legend><label><input type="radio" name="editScope" checked={editScope==="single"} onChange={()=>{setEditScope("single");invalidatePreview();}}/>Endast denna aktivitet</label><label><input type="radio" name="editScope" checked={editScope==="following"} disabled={new Date(activity.startsAt)<=new Date()} onChange={()=>{setEditScope("following");setInvitationMode("none");setActivityTypeId(activity.activityTypeId ?? "");invalidatePreview();}}/>Denna och kommande aktiviteter</label>{editScope==="following"?<p>Passerade, inställda och individuellt ändrade tillfällen hoppas över. Vald aktivitet ingår. Valet gäller även borttagning. Vid sparande bevaras kallelser och svar; tider flyttas lika mycket i lokal tid.</p>:null}</fieldset>:null}
       <form onSubmit={prepare} onChange={invalidatePreview}>
@@ -217,8 +223,8 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
         <fieldset className="activity-editor-fields" hidden={Boolean(deletePreview)} disabled={pending || editScope===null}>
         {mode==="create"?<div className="activity-kind-switch" role="group" aria-label="Typ av aktivitet"><button className={kind==="single"?"selected":""} onClick={()=>changeKind("single")} type="button">En aktivitet</button><button className={kind==="series"?"selected":""} onClick={()=>changeKind("series")} type="button">Aktivitetsserie</button></div>:null}
         <section className="editor-section" aria-labelledby="editor-basics-title">
-          <div className="workflow-section-heading"><div><p className="eyebrow">01 · Grunduppgifter</p><h3 id="editor-basics-title">Aktivitetsdetaljer</h3></div><span className="badge">Obligatoriskt</span></div>
-          {source === "database" ? <label>Aktivitetstyp<select required value={activityTypeId} onChange={e=>changeActivityType(e.target.value)} disabled={!configuration || editScope==="following"}><option value="">Välj aktivitetstyp</option>{activity?.activityTypeId && !configuration?.types.some(t=>t.id===activity.activityTypeId) ? <option value={activity.activityTypeId}>Befintlig aktivitetstyp (inaktiv eller annan disciplin)</option> : null}{configuration?.types.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></label> : null}
+          <div className="workflow-section-heading"><div><h3 id="editor-basics-title">Aktivitetsdetaljer</h3></div><span className="badge">Obligatoriskt</span></div>
+          {source === "database" ? <fieldset className="activity-type-picker" disabled={!configuration || editScope==="following"}><legend>Aktivitetstyp</legend><div>{configuration?.types.map(type=><button type="button" key={type.id} aria-pressed={activityTypeId===type.id} onClick={()=>changeActivityType(type.id)}><ActivityTypeIcon category={type.system_category}/>{type.name}</button>)}</div>{!configuration ? <small>Laddar aktivitetstyper…</small> : null}{activity?.activityTypeId && !configuration?.types.some(type=>type.id===activity.activityTypeId) ? <p>Befintlig aktivitetstyp (inaktiv eller annan disciplin)</p> : null}</fieldset> : null}
           {configurationError ? <p className="auth-error" role="alert">{configurationError}</p> : null}
           <div className="editor-fields">
             <label>Titel<input name="title" required defaultValue={draft?.title??activity?.title??""} placeholder="Träning eller match"/></label>
@@ -227,21 +233,26 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
           <details className="editor-optional" open={descriptionOpen} onToggle={event=>setDescriptionOpen(event.currentTarget.open)}><summary>Beskrivning (valfritt)</summary><label className="sr-only" htmlFor="editor-description">Beskrivning</label><textarea id="editor-description" name="description" rows={3} defaultValue={draft?.description??activity?.description??""} placeholder="Praktisk information till deltagarna"/></details>
         </section>
         <section className="editor-section" aria-labelledby="editor-time-title">
-          <div className="workflow-section-heading"><div><p className="eyebrow">02 · Datum och tider</p><h3 id="editor-time-title">Tid &amp; samling</h3></div></div>
-          {recurring?<><fieldset><legend>Veckodagar</legend><div className="weekday-options">{weekdayOptions.map(([value,label])=><label key={value}><input type="checkbox" name="weekdays" value={value} checked={scheduleDates.weekdays.includes(value)} onChange={event=>setScheduleDates(current=>({...current,weekdays:event.target.checked ? [...current.weekdays,value] : current.weekdays.filter(day=>day!==value)}))}/>{label}</label>)}</div></fieldset><div className="form-row editor-date-row"><label>Startdatum<input name="startsOn" type="date" required value={scheduleDates.startsOn} onChange={event=>setScheduleDates(current=>({...current,startsOn:event.target.value}))}/></label><label>Slutdatum<input name="endsOn" type="date" required min={scheduleDates.startsOn} value={scheduleDates.endsOn} onChange={event=>setScheduleDates(current=>({...current,endsOn:event.target.value}))}/></label></div><div className="editor-time-field"><FiveMinuteTimeField name="startTime" label="Starttid" defaultValue={scheduleDates.startTime} onChange={value=>setScheduleDates(current=>({...current,startTime:value}))}/></div></>:<div className="form-row editor-date-row"><label>Startdatum<input name="startsOn" type="date" required value={scheduleDates.startsOn} onChange={event=>setScheduleDates(current=>({...current,startsOn:event.target.value}))}/></label><div className="editor-time-field"><FiveMinuteTimeField name="startTime" label="Starttid" defaultValue={scheduleDates.startTime} onChange={value=>setScheduleDates(current=>({...current,startTime:value}))}/></div></div>}
-          {!recurring && <div className="form-row editor-date-row"><label>Slutdatum<input name="activityEndsOn" type="date" required min={scheduleDates.startsOn} value={end.date} onChange={event => setExplicitEnd({ ...end, date: event.target.value })} /></label><div className="editor-time-field"><FiveMinuteTimeField name="endTime" label="Sluttid" defaultValue={end.time} value={end.time} onChange={time => setExplicitEnd({ ...end, time })} /></div></div>}
-          <ActivityTimingFields rules={rules} onChange={changeRule} defaults={typeDefaults} touched={touchedKeys} invitations={false} showDuration={recurring}/>
+          <div className="workflow-section-heading"><div><h3 id="editor-time-title">Tid &amp; samling</h3></div></div>
+          {recurring ? <fieldset className="editor-weekdays"><legend>Veckodagar</legend><div className="weekday-options">{weekdayOptions.map(([value,label])=><label key={value}><input type="checkbox" name="weekdays" value={value} checked={scheduleDates.weekdays.includes(value)} onChange={event=>setScheduleDates(current=>({...current,weekdays:event.target.checked ? [...current.weekdays,value] : current.weekdays.filter(day=>day!==value)}))}/>{label}</label>)}</div></fieldset> : null}
+          <ActivityDatePicker name="startsOn" value={scheduleDates.startsOn} onChange={startsOn=>{invalidatePreview();setScheduleDates(current=>({...current,startsOn}));}}/>
+          {recurring ? <label className="editor-series-end">Serien slutar<input name="endsOn" type="date" required min={scheduleDates.startsOn} value={scheduleDates.endsOn} onChange={event=>setScheduleDates(current=>({...current,endsOn:event.target.value}))}/></label> : null}
+          <div className="editor-time-steppers"><ActivityTimeStepper name="startTime" label="Starttid" value={scheduleDates.startTime} onChange={startTime=>{invalidatePreview();setScheduleDates(current=>({...current,startTime}));}}/>{!recurring ? <ActivityTimeStepper name="endTime" label="Sluttid" value={end.time} onChange={time=>{invalidatePreview();setExplicitEnd({...end,time});}}/> : null}</div>
+          {!recurring ? <details className="editor-multiday" open={end.date!==scheduleDates.startsOn || undefined}><summary>Flerdagars / Cup</summary><label className="editor-end-date">Slutdatum<input name="activityEndsOn" type="date" required min={scheduleDates.startsOn} value={end.date} onChange={event=>setExplicitEnd({...end,date:event.target.value})}/></label></details> : null}
+          <div className="editor-duration-choices" role="group" aria-label="Passlängd"><span>Passlängd</span>{durationChoices.map(choice=><button type="button" key={choice.value} aria-pressed={durationToMinutes(choice.value)===(recurring?durationToMinutes(rules.duration):currentDuration)} onClick={()=>{changeRule("duration",choice.value);setExplicitEnd(null);}}>{durationToMinutes(choice.value)===90 ? "1,5 tim" : `${durationToMinutes(choice.value)/60} tim`}</button>)}</div>
+          <div className="editor-gathering"><p><strong>Samling</strong>{rangeSummary?.gatheringAt ? <span>{clockFormatter.format(new Date(rangeSummary.gatheringAt))}</span> : <span>Vid start</span>}</p><div className="editor-gathering-choices" role="group" aria-label="Samling före start">{gatheringChoices.map(choice=><button type="button" key={choice.value} aria-pressed={rules.gatheringRule===choice.value} onClick={()=>changeRule("gatheringRule",choice.value)}>{choice.value==="start" ? "Vid start" : `−${choice.value.slice(6,-1)} min`}</button>)}</div>
+          {rangeSummary ? <div className="editor-timeline"><div><span>Samling {clockFormatter.format(new Date(rangeSummary.gatheringAt ?? rangeSummary.startsAt))} ({rangeSummary.gatheringAt ? Math.round((Date.parse(rangeSummary.startsAt)-Date.parse(rangeSummary.gatheringAt))/60000) : 0} min)</span><span>Aktivitet {clockFormatter.format(new Date(rangeSummary.startsAt))}–{clockFormatter.format(new Date(rangeSummary.endsAt))} ({Math.round((Date.parse(rangeSummary.endsAt)-Date.parse(rangeSummary.startsAt))/60000)} min)</span></div><div className="editor-timeline-bar" aria-hidden="true"><span style={{flex:rangeSummary.gatheringAt ? Math.max(0,(Date.parse(rangeSummary.startsAt)-Date.parse(rangeSummary.gatheringAt))/60000) : 0}}/><span style={{flex:(Date.parse(rangeSummary.endsAt)-Date.parse(rangeSummary.startsAt))/60000}}/></div></div> : null}</div>
+          <details className="editor-time-advanced"><summary>Annan längd eller samling</summary><ActivityTimingFields rules={rules} onChange={(key,value)=>{changeRule(key,value);if(key==="duration")setExplicitEnd(null);}} defaults={typeDefaults} touched={touchedKeys} invitations={false} showDuration/></details>
           <small>Samlingen räknas före aktivitetens start. Välj kallelse och mottagare nedan.</small>
         </section>
         {canManageInvitations && editScope!=="following" ? <details className="editor-section editor-invitation" open={invitationOpen} onToggle={event=>setInvitationOpen(event.currentTarget.open)}>
           <summary><span className="workflow-summary-title">Kallelse &amp; svarsregler</span> <span>{invitationMode==="none"?"Ingen":invitationMode==="now"?"Skicka nu":"Schemalägg"}</span></summary>
           <div className="activity-kind-switch invitation-mode-switch" role="group" aria-label="Kallelse"><button className={invitationMode==="none"?"selected":""} onClick={()=>{invalidatePreview();setInvitationMode("none");}} type="button">Ingen</button><button className={invitationMode==="now"?"selected":""} onClick={()=>{invalidatePreview();setInvitationMode("now");}} disabled={recurring} title={recurring ? "Använd Schemalägg för en serie" : undefined} type="button">Skicka nu</button><button className={invitationMode==="schedule"?"selected":""} onClick={()=>{invalidatePreview();setInvitationMode("schedule");}} type="button">Schemalägg</button></div>
           {invitationMode==="now"?<div className="editor-invitation-body">
-            <div className="editor-inline-heading"><strong>Välj personer</strong><Help label="Skicka nu">Tryck på ett namn för att flytta det till listan över mottagare. Du kan välja spelare, ledare och andra roller tillsammans.</Help></div>
-            <div className="attendance-columns person-picker-columns">
-              <section className="attendance-column" aria-label={`Ej valda, ${available.length} personer`}><h3 className="attendance-absent-heading">Ej valda ({available.length})</h3><div className="attendance-roster">{peopleColumn(available,false)}</div></section>
-              <section className="attendance-column" aria-label={`Valda, ${invited.length} personer`}><h3 className="attendance-present-heading">Valda ({invited.length})</h3><div className="attendance-roster">{peopleColumn(invited,true)}</div></section>
-            </div>
+            <div className="editor-inline-heading"><strong>Välj personer</strong><Help label="Skicka nu">Markera kryssrutan för de personer som ska få kallelsen. Du kan välja spelare och ledare tillsammans.</Help></div>
+            <p className="editor-recipient-count" role="status">{invited.length} valda mottagare</p>
+            <label className="attendance-search">Sök mottagare<input type="search" value={recipientSearch} onChange={event=>setRecipientSearch(event.target.value)} placeholder="Sök på namn"/></label>
+            <PersonSelectionList people={recipients} groups={recipientGroups} selected={selectedPeople} onToggle={togglePerson} disabled={pending} emptyMessage="Inga mottagare matchar sökningen."/>
           </div>:null}
           {invitationMode==="schedule"?<div className="editor-invitation-body">
             <div className="editor-inline-heading"><strong>Målgrupper</strong><Help label="Målgrupper">Valda roller och undergrupper kombineras utan dubletter. Personerna bestäms när kallelsen skickas, så ändringar i laget följer med.</Help></div>

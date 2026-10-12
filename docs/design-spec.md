@@ -373,9 +373,19 @@ eller externa scripts läggs till i produktionskomponenterna.
   Snabbsvar behåller kommentarer och visar väntande/fel per person.
   Inställda/avslutade aktiviteter och demoläge är skrivskyddade.
 - Aktivitetsredigeraren har kort för detaljer, tid/samling och kallelse.
-  Befintliga datumfält, femminutersval, serieval och förhandsgranskning används.
+  Den kompletterande skissen i `stitch_f_rena (4).zip` används för en staplad
+  kortlayout på både mobil och desktop: konfigurerade aktivitetstyper som knappar,
+  kompakt veckoremsa, start/slut med femminutersreglage, passlängd och samlingsval.
+  Veckoremsan har veckonavigering, minst 44 px breda datumknappar,
+  tangentbordsnavigation och ett datumfält som alternativ. På smala skärmar
+  rullas bara veckoremsan i sidled. Flerdagars / Cup öppnar det befintliga
+  slutdatumfältet. Samlingsstapeln visar verkliga tider och minuter i rätt proportion.
+  Andra längder och samlingstider finns i ett utfällbart avsnitt; befintliga
+  minutvärden, slutdatum, tidszoner, serieval och förhandsgranskning bevaras.
 - Närvaro visar faktiska antal, sökning och en filtrerbar enkolumnslista på
-  mobil. På desktop visas de befintliga två listorna. Sökning/filtrering ändrar
+  mobil och desktop. Samma `PersonSelectionList` används för Skicka nu:
+  spelare och ledare grupperas i en lista med gröna kryssrutor för valda personer.
+  Sökning/filtrering ändrar
   aldrig urvalet eller antalet sparade personer; båda layouter delar urval.
 - Bemanning visar kapacitet från registrerade platser och ett kort per uppgift.
   Egna bokningar markeras och byte/ersättare öppnas i ”Hantera ditt pass”. Andra

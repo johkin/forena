@@ -20,11 +20,21 @@ implementation eller en källa till verksamhetsregler.
 LOK-stöd/signering, provspelare, tränarloggbok, passmallar, automatiska
 före-/eftermatchstider, nya rättviseregler, meddelanden mellan föräldrar,
 kalenderexport, byte mellan aktiviteter och bottennavigation ingår inte.
-Datum och tider väljs med appens befintliga kontroller; skissens egna kalender
-och plus/minus-reglage kopieras inte.
+Den kompletterande skissen `stitch_f_rena (4).zip` styr aktivitetsredigerarens
+kompakta veckoremsa och plus/minus-reglage. De skriver till samma lokala datum och
+femminutersval som tidigare. Konfigurerade typer blir valbara knappar; längd och
+samling får snabbval med andra befintliga val i ett utfällbart avsnitt.
+Slutdatum och serieregler behålls. Tidslinjen visar verkliga tider;
+publiceringsstatus och mottagarantal från skissens exempel visas inte.
 
 Gemensamt sidskal, behörigheter och bekräftelseflöden återanvänds.
 Sidorna laddar inga skript från skissfilerna.
+
+Den kompletterande närvaroskissen (`screen.png`, `code.html`, `DESIGN(2).md`)
+används för gemensamma personrader med grön kryssruta i närvaro och Skicka nu.
+Personerna ligger kvar i en lista när urvalet ändras, även på desktop.
+Närvaro behåller faktiska svar, antal, sökning och filter. Skicka nu visar
+valda mottagare utan att sökning ändrar urvalet.
 
 Skissen i `stitch_f_rena (3).zip` preciserar lagöversikten: två paneler på
 desktop och en separat svarrad per kallad person. Den gemensamma
