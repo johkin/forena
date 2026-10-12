@@ -1,0 +1,27 @@
+/* Club setup and structural administration share the existing application shell. */
+.club-onboarding { margin-top:24px; }
+.club-onboarding h2, .club-admin-section h2 { font-family:var(--font-heading); font-weight:500; }
+.club-onboarding fieldset { display:grid; gap:16px; min-width:0; padding:0; border:0; margin:0; }
+.club-onboarding [hidden] { display:none; }
+.club-onboarding label, .club-administration label, .club-search label { display:grid; gap:8px; min-width:0; }
+.club-onboarding input, .club-onboarding select, .club-administration input, .club-administration select, .club-search input { min-width:0; max-width:100%; width:100%; min-height:44px; padding:12px; border:1px solid var(--line); border-radius:12px; background:var(--surface-low); color:var(--ink); font:inherit; }
+.onboarding-steps { display:flex; flex-wrap:wrap; gap:8px 16px; padding:0; list-style:none; font-size:13px; color:var(--ink-soft); }
+.onboarding-steps [aria-current=step] { font-weight:700; color:var(--primary); }
+.club-onboarding .onboarding-checkbox { display:flex; align-items:center; gap:12px; min-height:44px; }
+.club-onboarding .onboarding-checkbox input { flex:0 0 24px; width:24px; min-height:24px; height:24px; }
+.onboarding-review { padding:16px; background:var(--surface-low); border-radius:12px; }
+.onboarding-review dl { display:grid; gap:12px; margin:0; }
+.onboarding-review dl > div { display:grid; grid-template-columns:minmax(0,120px) minmax(0,1fr); gap:12px; }
+.onboarding-review dt { color:var(--ink-soft); }
+.onboarding-review dd { margin:0; overflow-wrap:anywhere; }
+.club-admin-section { padding-block:24px; border-top:1px solid var(--line); margin-top:24px; }
+.club-section-list { display:grid; gap:20px; }
+.club-section-card { padding:20px; border:1px solid var(--line); border-radius:16px; min-width:0; }
+.club-section-card h3 { margin-top:0; }
+.club-section-card p, .club-administration p, .club-onboarding small { overflow-wrap:anywhere; color:var(--ink-soft); }
+.club-section-card > form + form { margin-top:16px; }
+.club-admin-add { border-top:1px solid var(--line); padding-top:20px; margin-top:24px; }
+.club-admin-add > summary { min-height:44px; cursor:pointer; font-weight:700; }
+.club-search { display:flex; align-items:end; gap:12px; margin-block:24px; }
+.club-search label { flex:1; }
+@media(max-width:400px) { .club-section-card { padding:12px; } .onboarding-review dl > div { grid-template-columns:minmax(0,1fr); gap:4px; } }

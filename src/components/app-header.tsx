@@ -1,4 +1,5 @@
 "use client";
+import { SystemAdminLink } from "./system-admin-link";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Organization, Team, Workspace } from "@/domain/club";
@@ -87,7 +88,7 @@ export function AppMenuContent({ organization, team, workspaces, navigation, acc
         {organization && accountEmail ? <div className="header-menu-section header-menu-account"><p className="eyebrow">Assistent</p><NavigationLinks label="Assistent" items={[{ href: `/o/${organization.slug}/memories`, label: "Minnen" }, ...(adminHref ? [{ href: `/o/${organization.slug}/activity-settings`, label: "Aktivitetsinställningar" }] : [])]} /></div> : null}
         {organization ? <div className="header-menu-section header-menu-account"><p className="eyebrow">Förening</p><OrganizationMenu organizationSlug={organization.slug} canAdminister={Boolean(adminHref)} /></div> : !navigation && !accountEmail ? <div className="header-menu-section"><NavigationLinks label="Navigation" items={[{ href: homeHref, label: "Översikt" }]} /></div> : null}
         <div className="header-menu-section header-menu-account">
-          {accountEmail ? <><p className="eyebrow">Konto</p><small className="header-menu-email">{accountEmail}</small><a href="/profile">Min profil</a><LogoutButton destination={logoutDestination} /></>
+          {accountEmail ? <><p className="eyebrow">Konto</p><small className="header-menu-email">{accountEmail}</small><a href="/profile">Min profil</a><SystemAdminLink accountEmail={accountEmail}/><LogoutButton destination={logoutDestination} /></>
             : <a href={loginHref ?? `/login?next=${encodeURIComponent(homeHref)}`}>Logga in</a>}
           <a href="/connect">Anslut AI</a>
           <a href="/components">Komponenter</a>

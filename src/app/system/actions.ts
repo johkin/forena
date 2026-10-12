@@ -8,6 +8,8 @@ import { headers } from "next/headers";
 import { sendPlatformAdminInvitationEmail } from "@/lib/email/platform-admin-invitation";
 import { getSiteUrl } from "@/lib/site-url";
 import { createClient } from "@/lib/supabase/server";
+import { clubMutationError } from "@/lib/club-administration";
+import { z } from "zod";
 
 async function requireSystemAdmin() {
   const supabase = await createClient();
@@ -43,6 +45,20 @@ export async function updateDiscipline(formData: FormData) {
   if (error || !data) redirect("/system/disciplines?error=Disciplinen+kunde+inte+uppdateras");
   revalidatePath("/system/disciplines");
   redirect("/system/disciplines?saved=1");
+}
+
+export async function deleteDiscipline(formData: FormData) {
+  const { supabase } = await requireSystemAdmin();
+  const id = z.guid().safeParse(formData.get("id"));
+  if (!id.success) redirect("/system/disciplines?error=Ogiltig+disciplin");
+  const { data: discipline, error: readError } = await supabase.from("disciplines").select("key").eq("id", id.data).single();
+  if (readError || !discipline) redirect("/system/disciplines?error=Disciplinen+kunde+inte+hittas");
+  if (getDisciplinePackage(discipline.key)) redirect("/system/disciplines?error=Kodägda+disciplinpaket+kan+inte+tas+bort");
+  const { data, error } = await supabase.from("disciplines").delete().eq("id", id.data).select("id").maybeSingle();
+  if (error) redirect(`/system/disciplines?error=${encodeURIComponent(clubMutationError(error))}`);
+  if (!data) redirect("/system/disciplines?error=Disciplinen+kunde+inte+tas+bort");
+  revalidatePath("/system/disciplines");
+  redirect("/system/disciplines?deleted=1");
 }
 
 export async function createSystemMemory(formData: FormData) {
