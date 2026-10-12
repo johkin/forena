@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { AppFooter } from "@/components/app-footer";
+import { AppUpdateNotice } from "@/components/app-update-notice";
 import { PwaRegistration } from "@/components/pwa-registration";
 import "@fontsource-variable/plus-jakarta-sans/index.css";
 import "@fontsource-variable/newsreader/index.css";
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="sv">
       <body>
         <PwaRegistration />
+        <AppUpdateNotice />
         <div className="app-page">{children}</div>
         <AppFooter />
       </body>

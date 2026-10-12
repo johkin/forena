@@ -438,3 +438,11 @@ dropdown med IANA-zoner, Sverige först och befintligt värde bevarat.
 Disciplinens kategori väljs ur en administrerbar lista på disciplinsidan.
 Kategorins syfte förklaras som gruppering; kodägda disciplinpaket visas fortsatt
 skrivskyddade. Använda kategorier har inaktiverad borttagningsknapp.
+
+### Ny appversion
+
+En gemensam diskret notifiering under sidhuvudet visar ”En ny version av Förena finns.”
+och knappen ”Ladda om”, även i hemskärmsappen. Den radbryts på små skärmar,
+respekterar safe area och ligger under dialoger. Texten annonseras som status
+utan att flytta fokus. Användaren väljer när sidan laddas om; pågående formulär
+avbryts inte automatiskt. Klick gör en full omladdning av aktuell adress.

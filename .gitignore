@@ -12,3 +12,6 @@ coverage
 # Supabase local runtime files
 supabase/.branches
 supabase/.temp
+
+# Generated once per production build
+public/app-version.json

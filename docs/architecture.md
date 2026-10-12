@@ -494,3 +494,17 @@ Byte av adressnamn ändrar URL:er och kräver att äldre länkar uppdateras.
 Disciplinkategorier är en separat katalog med RLS, läsning för inloggade och
 skrivning endast för systemadministratörer. Främmande nyckel hindrar borttagning
 av använda kategorier; kategori är gruppering och styr ingen domänlogik.
+
+### Versionskontroll i öppna sidor
+
+`npm run build` genererar ett unikt bygg-ID i `public/app-version.json` via
+`prebuild`. Next-konfigurationen bäddar in samma ID i klientpaketet.
+`AppUpdateNotice` i rotlayouten jämför det inbäddade ID:t med den statiska filen
+vid öppning, var femte minut på synliga online-sidor samt när sidan blir synlig
+eller anslutningen återkommer. Filen hämtas utan klient-/CDN-cache och innehåller
+inga användaruppgifter; service workern cachar den inte. Klientens ursprungliga
+ID ändras inte vid RSC-uppdatering eller navigation. Avvikande ID omfattar även
+återställning till tidigare version. Nätverksfel ignoreras och inga omladdningar
+sker automatiskt. Kontrollen stannar när notifieringen visas och städar timers,
+lyssnare och pågående anrop vid avmontering. Utvecklingsservern kontrollerar inte
+versioner. Bygg alltid via `npm run build`, även vid egen drift.
