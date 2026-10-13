@@ -91,12 +91,40 @@ Publik RFC 9728-metadata finns på båda adresserna:
 - `/.well-known/oauth-protected-resource`
 - `/.well-known/oauth-protected-resource/api/mcp`
 
-De annonserar exakt `SITE_URL/api/mcp` som resource och Supabase
-`NEXT_PUBLIC_SUPABASE_URL/auth/v1` som authorization server. Anonyma MCP-POST
+De annonserar `FORENA_MCP_RESOURCE_URL` som resource och
+`FORENA_MCP_OAUTH_ISSUER_URL` som authorization server när dessa är satta.
+Annars används `SITE_URL/api/mcp` respektive
+`NEXT_PUBLIC_SUPABASE_URL/auth/v1`. Issuer anges exakt som i OAuth-serverns
+metadata, inklusive sökväg och eventuell avslutande slash; det är inte
+Förenas `/oauth/consent`-adress. `resource_metadata` i Bearer-challenge pekar
+på discovery-adressen på den konfigurerade MCP-adressens origin. Anonyma MCP-POST
 får `WWW-Authenticate` med `resource_metadata`. Proxy uppdaterar inga cookies
 för dessa discovery-adresser. Metadata kommer aldrig från inkommande Host.
 Om OAuth är avstängt eller konfigurationen är ogiltig svarar discovery 503,
 samtyckessidan visar inaktivt läge och MCP använder sin tidigare Bearer-challenge.
+
+### Separata publika adresser
+
+Exempel (ersätt adresserna med installationens faktiska värden):
+
+```dotenv
+SITE_URL=https://forena.example
+FORENA_MCP_RESOURCE_URL=https://mcp.forena.example/api/mcp
+FORENA_MCP_OAUTH_ISSUER_URL=https://auth.forena.example/auth/v1
+```
+
+OAuth-serverns discovery publicerar authorize/token-endpoints; de konfigureras
+inte separat i Förena. Den publika OAuth-adressen ska höra till samma Supabase-
+projekt som appen använder för samtycke och tokenvalidering. En extern issuer
+från en annan identitetsleverantör stöds inte genom att bara ändra adressen.
+MCP-hostens proxy behöver vidarebefordra både `/api/mcp` och de två
+`/.well-known/oauth-protected-resource`-adresserna till Förena.
+Konfigurationen skapar inga domäner, proxyregler eller OAuth-klienter.
+
+Sätt variablerna per miljö i Vercel (Settings → Environment Variables), och
+lokalt i `.env.local`. Driftsätt en ny version efter ändringen. Callback-adressen
+registreras fortfarande på OAuth-klienten i Supabase; den är inte MCP-resourcen
+eller issuer-adressen.
 
 ### Installationssteg (administratör)
 
@@ -111,9 +139,16 @@ samtyckessidan visar inaktivt läge och MCP använder sin tidigare Bearer-challe
    `FORENA_MCP_OAUTH_CLIENT_IDS` (kommaseparerad tillåtelselista) och till sist
    `FORENA_MCP_OAUTH_ENABLED=true`. Lokal HTTP accepteras bara för localhost/
    127.0.0.1 i icke-produktionsläge. Supabase-URL måste också vara en origin.
+   Sätt vid behov `FORENA_MCP_RESOURCE_URL` till den fullständiga publika
+   MCP-adressen (sökvägen måste vara `/api/mcp`) och
+   `FORENA_MCP_OAUTH_ISSUER_URL` till den fullständiga issuer-adressen.
+   Båda är servervariabler, utan `NEXT_PUBLIC_`. Tomma värden använder förvalen.
+   Ogiltiga värden stänger OAuth-discovery; ingen fallback till förval sker
+   för en felaktig explicit adress.
 4. **Konfigurera och verifiera resource-audience innan aktivering.** MCP kräver
    att signerade OAuth-token har ett tillåtet `client_id` och `aud` som innehåller
-   exakt `SITE_URL/api/mcp`. Supabases standardaudience `authenticated` räcker
+   exakt den konfigurerade MCP-resourcen (`FORENA_MCP_RESOURCE_URL`, annars
+   `SITE_URL/api/mcp`). Supabases standardaudience `authenticated` räcker
    därför inte. En separat Custom Access Token Hook/issuer-konfiguration behöver
    ge rätt audience och bevara det som Auth/PostgREST behöver. Hooken ingår inte
    här. Om ert Supabase-flöde inte kan binda rätt audience till begärd resource,
@@ -152,6 +187,7 @@ gemensamma menyn och från profilens Integrationer-avsnitt. Kopieringsikonen
 kopierar endast den publika MCP-adressen, aldrig någon token. Vid nekad
 urklippsåtkomst markeras adressen för manuell kopiering. `SITE_URL` används
 när den är satt; annars visas adressen för den aktuella sajten.
+`FORENA_MCP_RESOURCE_URL` har företräde, även när OAuth är avstängt.
 
 ## Anslutningsexempel
 

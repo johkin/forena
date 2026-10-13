@@ -5,7 +5,7 @@ import { CopyAddress } from "@/components/copy-address";
 import { getSiteUrl } from "@/lib/site-url";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
-import { getMcpOAuthConfig } from "@/lib/mcp/oauth";
+import { getMcpOAuthConfig, getMcpResourceUrl } from "@/lib/mcp/oauth";
 
 export const metadata: Metadata = { title: "Anslut AI | Förena" };
 
@@ -15,7 +15,7 @@ export default async function ConnectPage() {
   const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
   const protocol = requestHeaders.get("x-forwarded-proto") === "https" ? "https" : "http";
   const siteUrl = getSiteUrl(host ? `${protocol}://${host}` : undefined);
-  const address = new URL("/api/mcp", siteUrl).href;
+  const address = getMcpResourceUrl(siteUrl);
   const user = isSupabaseConfigured()
     ? (await (await createClient()).auth.getUser()).data.user
     : null;
@@ -30,7 +30,7 @@ export default async function ConnectPage() {
           <section className="form-section" aria-labelledby="connection-address-heading">
             <h2 id="connection-address-heading">Serveradress</h2>
             <p>Den här adressen används för att ansluta till Förena.</p>
-            <CopyAddress address={address} />
+            {address ? <CopyAddress address={address} /> : <p>Serveradressen är inte tillgänglig.</p>}
           </section>
           <section className="connection-note" aria-labelledby="connection-chatgpt-heading">
             <h2 id="connection-chatgpt-heading">ChatGPT</h2>
