@@ -45,6 +45,7 @@ function localParts(value:string|undefined,timeZone:string) {
   return {date:`${parts.year}-${parts.month}-${parts.day}`,time:`${parts.hour}:${value ? parts.minute : String(Math.floor(Number(parts.minute)/5)*5).padStart(2,"0")}`};
 }
 
+/** Edit activities and recipient selections, then preview before persisting changes. */
 export function ActivityEditorModal({mode,organization,team,members,activity,draft,source,canManageInvitations,onClose,onNotice}:Props) {
   useModalScrollLock();
   const timeZone=organization.timeZone??"Europe/Stockholm";
@@ -62,7 +63,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
   const [payload,setPayload]=useState<Record<string,unknown>>();
   const [pending,setPending]=useState(false);
   const [error,setError]=useState<string>();
-  const [groups,setGroups]=useState<{id:string;name:string}[]>([]);
+  const [groups,setGroups]=useState<{id:string;name:string;personIds?:string[]}[]>([]);
   const [responsibilities,setResponsibilities]=useState<{id:string;name:string}[]>([]);
   const [selectedRoles,setSelectedRoles]=useState<Set<AudienceRole>>(new Set());
   const [selectedGroups,setSelectedGroups]=useState<Set<string>>(new Set());
@@ -243,8 +244,8 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
           <div className="workflow-section-heading"><div><h3 id="editor-time-title">Tid &amp; samling</h3></div></div>
           {recurring ? <fieldset className="editor-weekdays"><legend>Veckodagar</legend><div className="weekday-options">{weekdayOptions.map(([value,label])=><label key={value}><input type="checkbox" name="weekdays" value={value} checked={scheduleDates.weekdays.includes(value)} onChange={event=>setScheduleDates(current=>({...current,weekdays:event.target.checked ? [...current.weekdays,value] : current.weekdays.filter(day=>day!==value)}))}/>{label}</label>)}</div></fieldset> : null}
           {!recurring ? <DateTimeRangeFields mode={dayMode} onModeChange={changeDayMode} startDate={scheduleDates.startsOn} endDate={end.date} startTime={scheduleDates.startTime} endTime={end.time} names={{startDate:"startsOn",endDate:"activityEndsOn",startTime:"startTime",endTime:"endTime"}} onDatesChange={(startsOn,endsOn)=>{invalidatePreview();setScheduleDates(current=>({...current,startsOn}));if(dayMode==="multi" || explicitEnd)setExplicitEnd({...end,date:endsOn});}} onStartTimeChange={startTime=>{invalidatePreview();setScheduleDates(current=>({...current,startTime}));}} onEndTimeChange={time=>{invalidatePreview();setExplicitEnd({...end,time});}}/> : <>
-          <ActivityDatePicker name="startsOn" value={scheduleDates.startsOn} onChange={startsOn=>{invalidatePreview();setScheduleDates(current=>({...current,startsOn}));}}/>
-          <label className="editor-series-end">Serien slutar<input name="endsOn" type="date" required min={scheduleDates.startsOn} value={scheduleDates.endsOn} onChange={event=>setScheduleDates(current=>({...current,endsOn:event.target.value}))}/></label>
+          <ActivityDatePicker required name="startsOn" value={scheduleDates.startsOn} onChange={startsOn=>{invalidatePreview();setScheduleDates(current=>({...current,startsOn}));}}/>
+          <div className="date-field editor-series-end"><span>Serien slutar</span><ActivityDatePicker name="endsOn" label="Serien slutar" required min={scheduleDates.startsOn} value={scheduleDates.endsOn} onChange={endsOn=>{invalidatePreview();setScheduleDates(current=>({...current,endsOn}));}}/></div>
           <div className="editor-time-steppers"><ActivityTimeStepper name="startTime" label="Starttid" value={scheduleDates.startTime} onChange={startTime=>{invalidatePreview();setScheduleDates(current=>({...current,startTime}));}}/></div></>}
           {recurring || dayMode==="single" ? <div className="editor-duration-choices" role="group" aria-label="Passlängd"><span>Passlängd</span>{durationChoices.map(choice=><button type="button" key={choice.value} aria-pressed={durationToMinutes(choice.value)===(recurring?durationToMinutes(rules.duration):currentDuration)} onClick={()=>{changeRule("duration",choice.value);setExplicitEnd(null);}}>{durationToMinutes(choice.value)===90 ? "1,5 tim" : durationToMinutes(choice.value)%60===0 ? `${durationToMinutes(choice.value)/60} tim` : `${durationToMinutes(choice.value)} min`}</button>)}</div> : null}
           <div className="editor-gathering"><p><strong>Samling</strong>{rangeSummary?.gatheringAt ? <span>{clockFormatter.format(new Date(rangeSummary.gatheringAt))}</span> : <span>Vid start</span>}</p><div className="editor-gathering-choices" role="group" aria-label="Samling före start">{gatheringChoices.map(choice=><button type="button" key={choice.value} aria-pressed={rules.gatheringRule===choice.value} onClick={()=>changeRule("gatheringRule",choice.value)}>{choice.value==="start" ? "Vid start" : /^start-\d+m$/.test(choice.value) ? `−${choice.value.slice(6,-1)} min` : choice.label}</button>)}</div>
@@ -258,7 +259,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
             <div className="editor-inline-heading"><strong>Välj personer</strong><Help label="Skicka nu">Markera kryssrutan för de personer som ska få kallelsen. Du kan välja spelare och ledare tillsammans.</Help></div>
             <p className="editor-recipient-count" role="status">{invited.length} valda mottagare</p>
             <label className="attendance-search">Sök mottagare<input type="search" value={recipientSearch} onChange={event=>setRecipientSearch(event.target.value)} placeholder="Sök på namn"/></label>
-            <PersonSelectionList people={recipients} groups={recipientGroups} selected={selectedPeople} onToggle={togglePerson} disabled={pending} emptyMessage="Inga mottagare matchar sökningen."/>
+            <PersonSelectionList people={recipients} groups={recipientGroups} selected={selectedPeople} onToggle={togglePerson} quickGroups={groups.map(group=>({id:group.id,label:group.name,personIds:group.personIds??[]}))} onSelectionChange={next=>{invalidatePreview();setSelectedPeople(next);}} disabled={pending} emptyMessage="Inga mottagare matchar sökningen."/>
           </div>:null}
           {invitationMode==="schedule"?<div className="editor-invitation-body">
             <div className="editor-inline-heading"><strong>Målgrupper</strong><Help label="Målgrupper">Valda roller och undergrupper kombineras utan dubletter. Personerna bestäms när kallelsen skickas, så ändringar i laget följer med.</Help></div>

@@ -1,0 +1,50 @@
+/* Shared date/time controls: same day marker in weekly and monthly calendars. */
+.date-time-range-fields, .activity-date-picker { min-width:0; width:100%; max-width:100%; }
+.activity-date-picker { padding:12px; border-radius:12px; background:var(--surface-low); }
+.activity-calendar-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; text-transform:capitalize; }
+.activity-calendar-heading strong { min-width:0; font-size:13px; overflow-wrap:anywhere; }
+.activity-calendar-heading > div { display:flex; gap:4px; flex-shrink:0; }
+.activity-month-weekdays, .activity-week-strip, .activity-month-days { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); column-gap:0; row-gap:6px; text-align:center; }
+.activity-month-weekdays { padding-block:12px 8px; font-size:11px; color:var(--ink-soft); }
+.activity-week-strip button, .activity-month-days button { position:relative; isolation:isolate; display:grid; place-items:center; min-width:0; min-height:50px; padding:0; border:0; border-radius:0; background:transparent; color:var(--ink); font:inherit; cursor:pointer; }
+.activity-day-number { position:relative; z-index:1; display:grid; place-items:center; width:min(44px,100%); height:44px; border-radius:50%; font-size:15px; }
+.activity-month-days button[data-in-range=true]::before { content:""; position:absolute; inset:3px 0; background:var(--calendar-range); z-index:0; }
+.activity-month-days button[data-range-start=true]::before { left:50%; }
+.activity-month-days button[data-range-end=true]::before { right:50%; }
+.activity-month-days button[data-in-range=true] { color:var(--on-calendar-range); }
+.activity-week-strip button[aria-pressed=true] .activity-day-number, .activity-month-days button[data-endpoint=true] .activity-day-number { background:var(--primary); color:var(--on-primary); }
+.activity-date-picker button:focus-visible { outline:2px solid var(--primary); outline-offset:2px; z-index:2; }
+.activity-date-picker button:disabled { cursor:not-allowed; opacity:.4; }
+.activity-date-alternative summary { min-height:44px; display:flex; align-items:center; cursor:pointer; font-size:12px; color:var(--primary); }
+.activity-calendar-selected { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,170px); gap:8px; align-items:center; }
+.activity-date-picker input[type=date] { display:block; min-width:0; width:100%; max-width:100%; min-height:44px; padding:10px; border:1px solid var(--line); border-radius:10px; background:var(--paper); color:var(--ink); font:inherit; appearance:none; }
+.calendar-range-inputs { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.calendar-range-inputs label { display:grid; gap:6px; min-width:0; font-size:13px; }
+.editor-day-tabs { margin-bottom:16px; }
+.editor-time-steppers { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-top:18px; }
+.editor-time-steppers.single-time { grid-template-columns:minmax(0,1fr); max-width:240px; }
+.activity-time-stepper { min-width:0; padding:12px 8px; border-radius:12px; background:var(--surface-low); text-align:center; }
+.activity-time-stepper > .eyebrow { display:block; margin-bottom:10px; }
+.activity-time-controls { display:grid; grid-template-columns:32px minmax(0,1fr) 32px; align-items:center; gap:2px; }
+.activity-time-controls > button { min-width:0; padding:0; min-height:44px; border:1px solid var(--line); border-radius:9px; background:var(--paper); color:var(--primary); font-size:22px; cursor:pointer; }
+.activity-time-controls > .activity-time-value { border:0; background:transparent; font-size:18px; font-weight:700; color:var(--ink); }
+.activity-time-stepper .activity-exact-time { width:100%; min-width:0; min-height:44px; padding:4px; font-size:18px; }
+.date-field, .activity-editor-modal .editor-series-end { display:grid; grid-template-columns:minmax(0,1fr); gap:8px; }
+.date-field > span { font-size:13px; color:var(--ink-soft); font-weight:600; }
+.activity-editor-modal .editor-series-end { margin-top:16px; }
+.component-date-examples { display:grid; gap:32px; max-width:560px; }
+.component-date-examples h3 { margin:0 0 16px; }
+.standalone-time-field { max-width:240px; }
+.visually-hidden { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; border:0; }
+@media (hover:hover) {
+  .segmented-control button:hover:not(:disabled) { background:var(--primary); color:var(--on-primary); }
+  .activity-week-strip button:hover:not(:disabled) .activity-day-number, .activity-month-days button:hover:not(:disabled) .activity-day-number { background:var(--primary); color:var(--on-primary); }
+}
+@media (max-width:400px) {
+  .activity-date-picker { padding:8px; }
+  .activity-calendar-selected, .calendar-range-inputs { grid-template-columns:minmax(0,1fr); }
+  .activity-time-stepper { padding:10px 4px; }
+  .editor-time-steppers { gap:8px; }
+  .activity-time-controls { grid-template-columns:28px minmax(0,1fr) 28px; }
+  .activity-time-controls > .activity-time-value { font-size:16px; }
+}

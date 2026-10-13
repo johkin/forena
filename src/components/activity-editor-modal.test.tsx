@@ -35,3 +35,19 @@ it("confirms exactly the previewed series token",async()=>{
  await vi.waitFor(()=>expect(window.location.reload).toHaveBeenCalled());
  expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({preview:false,token:"preview"});
 });
+
+it("uses shared group shortcuts for send-now and invalidates its preview", async () => {
+ const {PersonSelectionList}=await import("./person-selection-list");
+ // Hook indexes: 10 groups, 15 invitationMode, 16 selectedPeople,
+ // 6 preview and 7 payload. Keep this mapping aligned with ActivityEditorModal.
+ hooks.values[10]=[{id:"g",name:"Grön",personIds:["p"]}];
+ hooks.values[15]="now";
+ const tree=elements(ActivityEditorModal({mode:"create",organization,team,members:[{id:"p",organizationId:organization.id,displayName:"Spelare",teamRelation:"player"}],source:"demo",canManageInvitations:true,onClose:vi.fn(),onNotice:vi.fn()}));
+ const list=tree.find(el=>el.type===PersonSelectionList)!;
+ expect(list.props.quickGroups).toEqual([{id:"g",label:"Grön",personIds:["p"]}]);
+ const selection=new Set(["p"]);
+ (list.props.onSelectionChange as (selected:Set<string>)=>void)(selection);
+ expect(hooks.setters[16]).toHaveBeenCalledWith(selection);
+ expect(hooks.setters[6]).toHaveBeenCalledWith(undefined);
+ expect(hooks.setters[7]).toHaveBeenCalledWith(undefined);
+});

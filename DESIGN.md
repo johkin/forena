@@ -214,6 +214,17 @@ The shape architecture delivers friendly ergonomics:
 - **Badges, Status Pills, and Counters:** Fully rounded pill forms (`9999px`) to distinguish categorical indicators from tappable structural containers.
 - **Icon Buttons & Floating Action Modules:** Square elements soften into `10px` or `12px` squircle shapes; floating action anchors utilize circular silhouettes.
 
+## Component Gallery & Consistency
+
+Every UI element used in Förena must be represented on `/components`, including
+composed controls, navigation, dialogs, feedback and specialized admin or
+discipline components. Render the actual shared production components with
+synthetic data; keep relevant variants, interaction states and responsive behavior
+in sync in the same PR as each UI change. Reuse these components throughout the
+application instead of creating page-specific copies or styling exceptions.
+See [the component gallery requirements](docs/design-spec.md#komponentsidan-är-den-gemensamma-ui-referensen)
+for the implementation and review checklist.
+
 ## Components
 
 ### Buttons

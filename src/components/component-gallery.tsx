@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { PersonSelectionList } from "./person-selection-list";
 import { ActivityTimingFields } from "./activity-timing-fields";
 import { DisciplineDefaultsFields } from "./discipline-defaults-fields";
 import { resolveDisciplineDefaults } from "@/lib/discipline-defaults";
 import type { ActivityTimingRules } from "@/lib/activity-time-rules";
-import { FiveMinuteTimeField } from "@/components/five-minute-time-field";
+import { ActivityDatePicker } from "./activity-date-picker";
+import { ActivityTimeStepper } from "./activity-time-stepper";
+import { DateTimeRangeFields } from "./date-time-range-fields";
 import { ActivityEditorModal } from "@/components/activity-editor-modal";
 import { ActivityDetailModal } from "@/components/activity-detail-modal";
 import { ActivityStaffingList } from "@/components/activity-staffing-list";
@@ -23,6 +26,20 @@ const invitees = [
   { personId: "4", displayName: "Tilda Kindgren", role: "participant", response: "declined" },
 ] as const;
 
+const selectionPeople = [
+  { id: "coach-1", name: "Alex Andersson", role: "leader", detail: "Tränare · Grupp Grön" },
+  { id: "coach-2", name: "Kim Berg", role: "leader", detail: "Lagledare · Grupp Vit" },
+  { id: "player-1", name: "Alva Lind", role: "player", detail: "Grupp Grön" },
+  { id: "player-2", name: "Ella Holm", role: "player", detail: "Grupp Grön" },
+  { id: "player-3", name: "Maja Ek", role: "player", detail: "Grupp Vit" },
+  { id: "player-4", name: "Nora Berg", role: "player", detail: "Grupp Vit" },
+];
+const selectionGroups = [{ role: "leader", label: "Ledare" }, { role: "player", label: "Spelare" }];
+const selectionSubgroups = [
+  { id: "green", label: "Grupp Grön", personIds: ["coach-1", "player-1", "player-2"] },
+  { id: "white", label: "Grupp Vit", personIds: ["coach-2", "player-3", "player-4"] },
+];
+
 const reminderDraft: ReminderDraft = {
   timeZone: "Europe/Stockholm",
   assessment: { teamId: "example-team", activityId: "example-activity", title: "Söndagens match på idrottsplatsen med ett långt aktivitetsnamn", activityType: "Match", startsAt: "2026-10-11T09:00:00Z", responseDueAt: "2026-10-09T18:00:00Z",
@@ -31,10 +48,18 @@ const reminderDraft: ReminderDraft = {
   memories: [{ scope: "team", subject: "Matchtrupp", content: "Till matcher vill vi ha minst nio spelare. Följ upp obesvarade kallelser om truppen är för liten.", disciplineId: "football" }],
 };
 
+/** Demonstrate production UI components with synthetic data and local interactions. */
 export function ComponentGallery() {
   const defaults = resolveDisciplineDefaults({activityTypeId:"example",organizationId:"example",sectionId:"example",teamId:"example"}, []);
   const [timing, setTiming] = useState<ActivityTimingRules>(defaults.rules);
+  const [date, setDate] = useState("2026-10-16");
+  const [pointDate, setPointDate] = useState("2026-10-16");
+  const [pointTime, setPointTime] = useState("09:00");
+  const [time, setTime] = useState("17:00");
+  const [range, setRange] = useState({ start: "2026-10-16", end: "2026-10-18", startTime: "17:00", endTime: "18:00" });
+  const [dayMode, setDayMode] = useState<"single" | "multi">("multi");
   const [dialog, setDialog] = useState<"create" | "edit" | "detail">();
+  const [selectedPeople, setSelectedPeople] = useState(new Set(["coach-1", "player-1", "player-2"]));
   const [notice, setNotice] = useState("Prova en knapp.");
   return <>
     <section className="design-introduction"><p className="eyebrow">Förena · Designsystem</p><h2>Varmt, tydligt och nära laget</h2><p>Skogsgrönt, ljusa naturtoner och stora tryckytor. Referenserna visar designens riktning; exemplen nedan använder appens riktiga komponenter.</p><div className="component-example-actions"><a className="secondary" href="/design/components-desktop.html">Desktopreferens</a><a className="secondary" href="/design/components-mobile.html">Mobilreferens</a></div><div className="design-swatches"><span className="design-swatch-primary">Skogsgrönt</span><span className="design-swatch-lime">Lime</span><span className="design-swatch-surface">Varm ljus yta</span></div></section>
@@ -47,12 +72,22 @@ export function ComponentGallery() {
     </div><p role="status">{notice}</p></section>
     <section><h2>Formulärfält</h2><div className="component-fields">
       <label>Titel<input placeholder="Träning eller match" /></label>
-      <label>Datum<input type="date" defaultValue="2026-10-05" /></label>
-      <FiveMinuteTimeField name="exampleTime" defaultValue="17:00"/>
       <label>Längd<select defaultValue="60"><option value="60">1 timme</option><option value="90">1,5 timmar</option></select></label>
     </div><details><summary>Beskrivning (valfritt)</summary><p>Extra uppgifter visas när de behövs.</p></details></section>
+    <section id="date-time-components"><h2>Datum och tid</h2><div className="component-date-examples">
+      <div><h3>Tidsintervall</h3><DateTimeRangeFields mode={dayMode} onModeChange={mode => { setDayMode(mode); if (mode === "single") setRange(current => ({ ...current, end: current.start })); }} startDate={range.start} endDate={range.end} startTime={range.startTime} endTime={range.endTime} onDatesChange={(start, end) => setRange(current => ({ ...current, start, end }))} onStartTimeChange={startTime => setRange(current => ({ ...current, startTime }))} onEndTimeChange={endTime => setRange(current => ({ ...current, endTime }))} /></div>
+      <div><h3>En tidpunkt</h3><DateTimeRangeFields mode="single" startDate={pointDate} endDate={pointDate} startTime={pointTime} endTime={pointTime} onDatesChange={setPointDate} onStartTimeChange={setPointTime} startLabel="Tid" /></div>
+      <div><h3>Enbart datum</h3><ActivityDatePicker name="exampleDate" value={date} onChange={setDate} /></div>
+      <div><h3>Enbart klockslag</h3><div className="standalone-time-field"><ActivityTimeStepper name="exampleTime" label="Tid" value={time} onChange={setTime} /></div></div>
+    </div></section>
     <section><h2>Tider för kallelse</h2><ActivityTimingFields rules={timing} defaults={defaults} touched={new Set()} invitations starts={[activity.startsAt]} timeZone="Europe/Stockholm" onChange={(key, value) => setTiming(current => ({...current, [key]:value}))}/></section>
     <section><h2>Aktivitetsförval</h2><DisciplineDefaultsFields initial={{}} resolved={defaults}/></section>
+    <section id="person-selection-components"><h2>Välj personer</h2><p>Välj en hel grupp eller justera enskilda personer. Undergrupper kan innehålla både ledare och spelare.</p>
+      <div className="component-person-example">
+        <PersonSelectionList people={selectionPeople} groups={selectionGroups} quickGroups={selectionSubgroups} selected={selectedPeople} onSelectionChange={setSelectedPeople} onToggle={id => setSelectedPeople(current => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; })} />
+        <div className="person-selection-summary"><span role="status">{selectedPeople.size} av {selectionPeople.length} personer valda</span><button type="button" className="secondary" disabled={!selectedPeople.size} onClick={() => setSelectedPeople(new Set())}>Rensa val</button></div>
+      </div>
+    </section>
     <section><h2>Bemanning</h2><ActivityStaffingList invitees={[...invitees]} /></section>
     <section><h2>Assistentens påminnelseförslag</h2><p>Exempel med syntetiska minnen. Knapparna skickar ingenting.</p><div className="card assistant-card team-chat-card"><div className="assistant-message"><AssistantReminderDraftCard draft={reminderDraft} demo /></div></div></section>
     <section><h2>Aktivitetsdialoger</h2><p>Den riktiga aktivitetsredigeraren körs i demoläge. Inga aktiviteter eller kallelser sparas.</p><div className="component-example-actions">

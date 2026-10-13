@@ -45,3 +45,13 @@ it("toggles from the filtered shared list and keeps other people selected", () =
   expect([...hooks.values[1] as Set<string>]).toEqual(["one","coach","two"]);
   expect(elements(render().find(e=>e.type===PersonSelectionList)).filter(e=>e.type==="input" && e.props.type==="checkbox")).toHaveLength(0);
 });
+
+it("applies group selection while keeping people hidden by the search", () => {
+  hooks.values[6] = "två";
+  hooks.values[7] = [{id:"green",label:"Grön",personIds:["one","two","outside"]}];
+  const tree=render();
+  const list=tree.find(e=>e.type===PersonSelectionList)!;
+  const shortcut=elements(PersonSelectionList(list.props as Parameters<typeof PersonSelectionList>[0])).find(e=>e.type==="button" && elements(e.props.children).some(child=>child.props.children==="Grön"))!;
+  (shortcut.props.onClick as ()=>void)();
+  expect([...hooks.values[1] as Set<string>].sort()).toEqual(["coach","one","two"]);
+});

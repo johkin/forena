@@ -1,3 +1,4 @@
+import { loadTeamSelectionGroups } from "@/lib/team-selection-groups";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -14,16 +15,18 @@ async function managedActivity(activityId: string) {
   return { supabase, authData, activity: { ...activity, team_id: activity.team_id, organization_id: activity.organization_id } };
 }
 
+/** Return authorized attendance rows and roster-scoped subgroup shortcuts. */
 export async function GET(_request: Request, { params }: Props) {
   const { activityId } = await params;
   const context = await managedActivity(activityId);
   if ("error" in context) return context.error;
   const { supabase, activity } = context;
 
-  const [{ data: membershipRows }, { data: invitationRows }, { data: report }] = await Promise.all([
+  const [{ data: membershipRows }, { data: invitationRows }, { data: report }, groupResult] = await Promise.all([
     supabase.from("memberships").select("person_id, role").eq("team_id", activity.team_id).in("role", ["participant", "leader"]).is("ends_on", null),
     supabase.from("invitations").select("person_id, response, activity_role").eq("activity_id", activityId),
     supabase.from("activity_attendance_reports").select("id, reported_at").eq("activity_id", activityId).maybeSingle(),
+    loadTeamSelectionGroups(supabase, activity.team_id).then(groups => ({ groups, error: false })).catch(() => ({ groups: [], error: true })),
   ]);
   const personIds = [...new Set([...(membershipRows ?? []).map((item) => item.person_id), ...(invitationRows ?? []).map((item) => item.person_id)])];
   const [{ data: peopleRows }, { data: attendanceRows }] = await Promise.all([
@@ -34,6 +37,8 @@ export async function GET(_request: Request, { params }: Props) {
   const present = new Set((attendanceRows ?? []).map((item) => item.person_id));
   const roleByPerson = new Map((membershipRows ?? []).map((item) => [item.person_id, item.role]));
   return NextResponse.json({
+    groupsError: groupResult.error ? "Undergrupperna kunde inte hämtas. Du kan fortfarande välja personer och roller." : null,
+    groups: groupResult.groups.map(group => ({ id: group.id, label: group.name, personIds: group.personIds.filter(id => personIds.includes(id)) })),
     started: new Date(activity.starts_at).getTime() <= Date.now(),
     reportedAt: report?.reported_at ?? null,
     roster: (peopleRows ?? []).map((person) => ({

@@ -441,10 +441,17 @@ beständiga eventet `activity.invitation_response_changed` i skrivtransaktionen.
 Signalprenumeranten kvitterar och kölägger atomärt; RPC:n är service-only och
 händelsetabellen har RLS utan klientgrants. Se [signalflödet](capability-signals.md).
 
-Aktivitetsredigerarens datum- och tidsreglage återanvänder lokala datum,
-femminutersval och befintliga tidsregler. `PersonSelectionList` är den gemensamma
+Alla datum- och tidsval återanvänder `ActivityDatePicker`, `ActivityRangeCalendar`,
+`ActivityTimeStepper` och kompositionen `DateTimeRangeFields`. Kalenderkomponenterna
+arbetar med lokala datumsträngar; tidszonskonvertering ligger kvar hos anroparen.
+Tidsreglagen stegar 15 minuter och bevarar exakt minut vid direktinmatning.
+Månadsvyn väljer start och slut i två klick; en ny sekvens återställer intervallet.
+Datumfält bevarar namn, obligatoriskhet och gränser för formulärinlämning. `PersonSelectionList` är den gemensamma
 kontrollerade listan för kallelsemottagare och närvaro. Varje vy äger sitt urval
 och skickar fullständiga person-ID:n; filtrering ändrar bara synliga rader.
+Roll- och undergruppssnabbval återanvänds i närvaro och Skicka nu. De påverkar
+bara visade, tillåtna personer och behåller dolda val. Undergrupper hämtas
+lagavgränsat med den autentiserade RLS-klienten efter befintlig behörighetskontroll.
 
 Min översikts kalender och agenda visar alla publicerade kommande aktiviteter
 i familjens lag, via medlemskap eller användarens egen lagåtkomst vid aktivitetens
