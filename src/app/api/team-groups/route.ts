@@ -2,6 +2,7 @@ import { loadTeamSelectionGroups } from "@/lib/team-selection-groups";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
+/** Return authorized team audiences and deduplicated subgroup member IDs. */
 export async function GET(request: Request) {
   const teamId = new URL(request.url).searchParams.get("teamId");
   if (!teamId) return NextResponse.json({ error: "Lag saknas" }, { status: 400 });

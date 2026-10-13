@@ -14,6 +14,7 @@ export type JoinOption = {
   teamSlug: string;
 };
 
+/** Collect player and guardian details for a public membership application. */
 export function MembershipApplicationForm({ organizationSlug, options, selectedSection, selectedTeam }: {
   organizationSlug: string;
   options: JoinOption[];

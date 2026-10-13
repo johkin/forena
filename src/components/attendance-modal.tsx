@@ -16,6 +16,7 @@ type Props = { activityId: string; onClose: () => void; onSaved?: () => void };
 const roleLabels = { leader: "Ledare", participant: "Spelare", volunteer: "Funktionärer", guardian: "Målsmän" } as const;
 const roles: Row["role"][] = ["participant", "leader", "guardian", "volunteer"];
 
+/** Load permitted attendance rows and edit a controlled selection before saving. */
 export function AttendanceModal({ activityId, onClose, onSaved }: Props) {
   useModalScrollLock();
   const [rows, setRows] = useState<Row[]>([]);
@@ -57,6 +58,7 @@ export function AttendanceModal({ activityId, onClose, onSaved }: Props) {
     .map(row => ({ id: row.personId, name: row.displayName, role: row.role,
       detail: row.response === "accepted" ? "Anmäld" : row.response === "declined" ? "Tackat nej" : row.response === "pending" ? "Ej svarat" : "Ej kallad" }));
 
+  /** Persist the full selection, including people hidden by active filters. */
   async function save() {
     setSaving(true); setError("");
     try {

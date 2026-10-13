@@ -2,6 +2,7 @@
 import { useId, useState } from "react";
 import { calendarDateLabel, CalendarWeekdays, shiftCalendarDate } from "./activity-date-picker";
 
+/** Build a Monday-first month grid with empty cells outside the month. */
 export function monthDates(month: string): (string | null)[] {
   const [year, number] = month.split("-").map(Number);
   const first = new Date(Date.UTC(year, number - 1, 1, 12));
@@ -22,6 +23,7 @@ export function selectCalendarRange(anchor: string | null, date: string) {
     : { start: date < anchor ? date : anchor, end: date < anchor ? anchor : date, anchor: null };
 }
 
+/** Select an ordered interval in two clicks while preserving named form values. */
 export function ActivityRangeCalendar({ start, end, onChange, startName = "startsOn", endName = "activityEndsOn" }: { start: string; end: string; startName?: string; endName?: string; onChange: (start: string, end: string) => void }) {
   const id = useId();
   const [view, setView] = useState<{ start: string; end: string; month: string }>();
@@ -31,11 +33,13 @@ export function ActivityRangeCalendar({ start, end, onChange, startName = "start
   const cells = monthDates(month);
   const waiting = anchor !== null && start === anchor && end === anchor;
   const monthLabel = new Intl.DateTimeFormat("sv-SE", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${month}-01T12:00:00Z`));
+  /** Browse months without changing the selected interval. */
   function move(direction: number) {
     const date = new Date(`${month}-01T12:00:00Z`);
     date.setUTCMonth(date.getUTCMonth() + direction);
     setView({ start, end, month: date.toISOString().slice(0, 7) });
   }
+  /** Start or complete the current two-click interval. */
   function pick(date: string) {
     const next = selectCalendarRange(waiting ? anchor : null, date);
     setAnchor(next.anchor);
@@ -43,6 +47,7 @@ export function ActivityRangeCalendar({ start, end, onChange, startName = "start
     setView({ start: next.start, end: next.end, month: date.slice(0, 7) });
     onChange(next.start, next.end);
   }
+  /** Apply a nonempty manual endpoint and end pending click selection. */
   function enter(date: string, edge: "start" | "end") {
     if (!date) return;
     const next = selectRangeDate(start, end, date, edge);

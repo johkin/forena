@@ -19,6 +19,7 @@ function instant(value: string, zone: string) {
  const [date,time] = value.split("T");
  return localActivityTime(date,time,zone).toISOString();
 }
+/** Prepare a duty change for review using shared date and time controls. */
 export function DutyEditor({ duty, timeZone, propose, startsAt, endsAt }: { duty: Duty; timeZone: string; propose: Propose; startsAt?: string; endsAt?: string }) {
  const [kind,setKind]=useState(duty.timingKind);
  const [start,setStart]=useState(localValue(duty.startsAt ?? startsAt ?? duty.dueAt ?? new Date().toISOString(),timeZone));
@@ -51,6 +52,7 @@ function TypeEditor({ type, propose }: { type: DutySchedule["types"][number]; pr
 export function DutyTypes({ schedule, propose }: { schedule: DutySchedule; propose: Propose }) {
  return <details className="workflow-disclosure"><summary>Hantera lagets uppgiftstyper</summary><p>Typerna är gemensamma för alla aktiviteter i laget. Namnändringar och inaktivering påverkar katalogen för nya uppgifter; befintliga scheman behålls.</p>{schedule.types.map(t=><TypeEditor key={`${t.id}:${t.revision}`} type={t} propose={propose}/>)}</details>;
 }
+/** Suggest assignments from a chosen history period, then request review. */
 export function DutyDistribution({ activityId, schedule, timeZone, propose, children }: { activityId: string; schedule: DutySchedule; timeZone: string; propose: Propose; children?: ReactNode }) {
  const [from,setFrom]=useState(()=>`${new Date().getFullYear()}-01-01`);
  const [rows,setRows]=useState<DutySuggestion[]>([]);

@@ -15,6 +15,7 @@ async function managedActivity(activityId: string) {
   return { supabase, authData, activity: { ...activity, team_id: activity.team_id, organization_id: activity.organization_id } };
 }
 
+/** Return authorized attendance rows and roster-scoped subgroup shortcuts. */
 export async function GET(_request: Request, { params }: Props) {
   const { activityId } = await params;
   const context = await managedActivity(activityId);

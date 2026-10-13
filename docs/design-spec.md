@@ -496,7 +496,8 @@ ingen extra åtkomst till klubbens data. Serverns behörighetskontroller gäller
 
 - `ActivityDatePicker`: enbart datum, med veckovy. Använd även för födelsedatum,
   seriens slutdatum och historikfilter. Direktinmatningen öppnas för tomma värden
-  och bevarar obligatoriska fält och min-/maxgränser.
+  och bevarar obligatoriska fält och min-/maxgränser. Valfria datum kan tömmas;
+  obligatoriska aktivitets- och uppgiftsdatum behåller sitt val vid tömningsförsök.
 - `DateTimeRangeFields`: tidpunkt med veckovy och ett tidsreglage, utan flikar;
   intervall med Samma dag/Flerdagars ovanför kalendern och två tidsreglage.
 - `ActivityRangeCalendar`: sammanhängande intervallband mellan två val. Bandet

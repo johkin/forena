@@ -48,6 +48,7 @@ const reminderDraft: ReminderDraft = {
   memories: [{ scope: "team", subject: "Matchtrupp", content: "Till matcher vill vi ha minst nio spelare. Följ upp obesvarade kallelser om truppen är för liten.", disciplineId: "football" }],
 };
 
+/** Demonstrate production UI components with synthetic data and local interactions. */
 export function ComponentGallery() {
   const defaults = resolveDisciplineDefaults({activityTypeId:"example",organizationId:"example",sectionId:"example",teamId:"example"}, []);
   const [timing, setTiming] = useState<ActivityTimingRules>(defaults.rules);

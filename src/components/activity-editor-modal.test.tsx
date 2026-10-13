@@ -38,6 +38,8 @@ it("confirms exactly the previewed series token",async()=>{
 
 it("uses shared group shortcuts for send-now and invalidates its preview", async () => {
  const {PersonSelectionList}=await import("./person-selection-list");
+ // Hook indexes: 10 groups, 15 invitationMode, 16 selectedPeople,
+ // 6 preview and 7 payload. Keep this mapping aligned with ActivityEditorModal.
  hooks.values[10]=[{id:"g",name:"Grön",personIds:["p"]}];
  hooks.values[15]="now";
  const tree=elements(ActivityEditorModal({mode:"create",organization,team,members:[{id:"p",organizationId:organization.id,displayName:"Spelare",teamRelation:"player"}],source:"demo",canManageInvitations:true,onClose:vi.fn(),onNotice:vi.fn()}));

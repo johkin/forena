@@ -1,19 +1,23 @@
 "use client";
 import { useId, useRef, useState } from "react";
 
+/** Shift an ISO calendar date without browser timezone changes. */
 export function shiftCalendarDate(value: string, days: number) {
   const date = new Date(`${value}T12:00:00Z`);
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
 }
+/** Return the Monday-to-Sunday week containing an ISO calendar date. */
 export function weekDates(value: string) {
   const day = new Date(`${value}T12:00:00Z`).getUTCDay();
   const monday = shiftCalendarDate(value, -((day + 6) % 7));
   return Array.from({ length: 7 }, (_, index) => shiftCalendarDate(monday, index));
 }
+/** Format a calendar date for Swedish assistive-technology labels. */
 export function calendarDateLabel(value: string) {
   return new Intl.DateTimeFormat("sv-SE", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${value}T12:00:00Z`));
 }
+/** Render the shared Monday-first weekday headings. */
 export function CalendarWeekdays() {
   return <div className="activity-month-weekdays" aria-hidden="true">{["M", "T", "O", "T", "F", "L", "S"].map((day, index) => <span key={index}>{day}</span>)}</div>;
 }
@@ -34,6 +38,7 @@ export function ActivityDatePicker({ name, value, onChange, label = "Datum", min
   const focusDate = cells.includes(value) && available(value) ? value : cells.find(available);
   const formatter = new Intl.DateTimeFormat("sv-SE", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
   const weekLabel = formatter.formatRange(new Date(`${cells[0]}T12:00:00Z`), new Date(`${cells[6]}T12:00:00Z`));
+  /** Apply a bounded date selection or clear an optional value. */
   function select(date: string) {
     if (date && !available(date)) return;
     setBrowsing(undefined);
@@ -56,7 +61,7 @@ export function ActivityDatePicker({ name, value, onChange, label = "Datum", min
       }
     }}><strong className="activity-day-number">{Number(date.slice(-2))}</strong></button>)}</div>
     <details ref={alternative} className="activity-date-alternative" open={!value || undefined}><summary>Välj annat datum</summary>
-      <label className="activity-calendar-selected">{label}<input name={name} type="date" value={value} min={min} max={max} required={required} onInvalid={() => { if (alternative.current) alternative.current.open = true; }} onChange={event => { if (event.target.value || !value) select(event.target.value); }} /></label>
+      <label className="activity-calendar-selected">{label}<input name={name} type="date" value={value} min={min} max={max} required={required} onInvalid={() => { if (alternative.current) alternative.current.open = true; }} onChange={event => { if (event.target.value || !required || !value) select(event.target.value); }} /></label>
     </details>
   </div>;
 }
