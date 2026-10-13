@@ -555,3 +555,29 @@ Administratörsinbjudningar börjar i `prepared`, som inte kan förhandsvisas
 eller accepteras. Ett bekräftat och registrerat utskick övergår till
 `pending`. Misslyckad eller avbruten statusregistrering lämnar länken
 inaktiv; ett nytt utskick ersätter den förberedda inbjudan.
+
+### Lagadministration inom sektion
+
+`/o/[klubb]/s/[sektion]/admin/teams` använder samma `AppShell` och
+`SectionTeamAdministration` som det syntetiska exemplet på `/components`.
+Hantera lag nås från sektionsraderna i både klubb- och systemadministrationen
+och från sektionens översikt för behöriga användare. Detta gäller även
+klubbar med en enda sektion. Sektionens befintliga `section_admin`-roll,
+klubbens `owner`/`admin` och plattformens `system_admin` kan skapa lag,
+ändra namn/säsong och ta bort tomma lag. Rolltilldelning för sektionsadmin
+har ännu inget gränssnitt.
+
+Publika ID-uppslag löser rutten för systemadmin utan medlemskap; själva
+administrationsunderlaget hämtas alltid genom ett autentiserat kommando.
+Privata kommandon i `administration` verifierar klubb och sektion tillsammans.
+Lagets disciplin ärvs från sektionen, och adressen bevaras vid redigering.
+Sparande låser klubb → sektion → lag och auditerar ändringen. Borttagning
+skyddas även vid direkt tabellåtkomst: en trigger kontrollerar alla FK-ankrade
+lagdata (även historik och privata tabeller) samt lagets scope-bundna minnen.
+Ingen aktivitet, medlem eller lagbehörighet skapas automatiskt med laget.
+
+Lagadministrationens läsning hämtar FK-katalogen en gång per
+`section_team_structure` och återanvänder listan för alla lag.
+Borttagningskontrollen hämtar alltid aktuella referenser på nytt; ingen
+beständig cache kan missa kopplingar från senare migrationer eller tillägg.
+Hjälpfunktionerna är privata och tar inte emot referenslistor från klienter.

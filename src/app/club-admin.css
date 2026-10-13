@@ -30,3 +30,9 @@
 .club-administration label small { overflow-wrap:anywhere; }
 .club-admin-section .system-admin-row > div { min-width:0; overflow-wrap:anywhere; }
 .club-admin-section .system-admin-row form { min-width:0; }
+
+.section-team-list { display:grid; gap:24px; }
+.section-team-row { min-width:0; padding-block:16px; border-bottom:1px solid var(--line); }
+.section-team-row h3 { overflow-wrap:anywhere; }
+.section-team-row .application-form { margin-block:16px; }
+.section-team-row small { display:block; margin-top:8px; overflow-wrap:anywhere; }

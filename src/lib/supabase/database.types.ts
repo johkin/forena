@@ -298,6 +298,10 @@ export interface Database {
       club_structure: { Args: { target: string }; Returns: Json };
       club_slug_available: { Args: { requested_slug: string; target?: string | null }; Returns: boolean };
       save_club_metadata: { Args: { target: string; input: Json }; Returns: undefined };
+      can_administer_section_teams: { Args: { target_section_id: string }; Returns: boolean };
+      section_team_structure: { Args: { target: string; section_id: string }; Returns: Json };
+      save_section_team: { Args: { target: string; section_id: string; team_id: string | null; input: Json }; Returns: string };
+      delete_section_team: { Args: { target: string; section_id: string; team_id: string }; Returns: undefined };
       save_club_section: { Args: { target: string; section_id: string | null; input: Json }; Returns: string };
       delete_club_section: { Args: { target: string; section_id: string }; Returns: undefined };
       system_discipline_usage: { Args: Record<string, never>; Returns: { id: string; in_use: boolean }[] };
