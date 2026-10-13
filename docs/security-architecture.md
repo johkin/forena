@@ -317,8 +317,14 @@ skriver inte verksamhetsdata och aktivitetsförslag kräver granskning i appen.
 
 MCP-anrop loggas med verktygsnamn, användar-id, utfall och latens utan token,
 argument eller medlemsdata. Origin begränsas till appens konfigurerade URL och
-svar får inte cachas. Bearer-token-stöd är första steget; klientbundet OAuth,
-scopes, samtycke och omedelbar sessionsåterkallning återstår. Se [MCP](mcp.md).
+svar får inte cachas. OAuth-discovery och samtycke är opt-in med en klientlista
+och exakt resource-audience. `FORENA_MCP_RESOURCE_URL` och
+`FORENA_MCP_OAUTH_ISSUER_URL` är uttryckliga serverinställningar för separata
+publika adresser. HTTPS krävs i produktion; credentials, query och fragment
+nekas. Issuer-värdet bevaras exakt. Ingen inkommande Host används för
+OAuth-identiteterna och issuer-inställningen byter inte betrodd Auth-backend.
+Produktions-OAuth kräver separat konfiguration och RLS-granskning; omedelbar
+sessionsåterkallning återstår. Se [MCP](mcp.md).
 
 
 ## Aktivitetsdeltagare över laggränser
