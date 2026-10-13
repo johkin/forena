@@ -14,12 +14,11 @@ end $$;
 
 -- Conservatively protect all FK-backed data, including historical/inactive rows
 -- and future extensions. Scoped memories are the one non-FK team anchor.
-create function administration.team_used(target uuid) returns boolean
-language plpgsql volatile security definer set search_path='' as $$
-declare reference record; used boolean;
-begin
- if exists(select 1 from public.assistant_memories where scope='team' and scope_id=target) then return true; end if;
- for reference in
+-- Resolve the catalogue once per structure read, without a persistent cache
+-- that could miss FK references introduced by later migrations/extensions.
+create function administration.team_references() returns jsonb
+language sql stable security invoker set search_path='' as $$
+ select coalesce(jsonb_agg(to_jsonb(reference)), '[]'::jsonb) from (
   select distinct n.nspname, c.relname, a.attname
   from pg_catalog.pg_constraint fk
   join pg_catalog.pg_class c on c.oid=fk.conrelid
@@ -28,6 +27,15 @@ begin
   join pg_catalog.pg_attribute a on a.attrelid=fk.conrelid and a.attnum=keys.local_key
   join pg_catalog.pg_attribute referenced on referenced.attrelid=fk.confrelid and referenced.attnum=keys.foreign_key
   where fk.contype='f' and fk.confrelid='public.teams'::regclass and referenced.attname='id'
+ ) reference;
+$$;
+
+create function administration.team_used_with_references(target uuid, team_references jsonb) returns boolean
+language plpgsql volatile security invoker set search_path='' as $$
+declare reference record; used boolean;
+begin
+ if exists(select 1 from public.assistant_memories where scope='team' and scope_id=target) then return true; end if;
+ for reference in select * from jsonb_to_recordset(team_references) as refs(nspname text,relname text,attname text)
  loop
   execute format('select exists(select 1 from %I.%I where %I=$1)',reference.nspname,reference.relname,reference.attname) into used using target;
   if used then return true; end if;
@@ -35,15 +43,22 @@ begin
  return false;
 end $$;
 
+-- Deletion always resolves fresh references; callers cannot supply a shorter list.
+create function administration.team_used(target uuid) returns boolean
+language sql volatile security definer set search_path='' as $$
+ select administration.team_used_with_references(target,administration.team_references());
+$$;
+
 create function administration.section_team_structure(target uuid, section_id uuid) returns jsonb
 language plpgsql security definer set search_path='' as $$
-declare result jsonb;
+declare result jsonb; team_references jsonb;
 begin
  perform administration.require_section_team_admin(target,section_id);
+ team_references:=administration.team_references();
  select jsonb_build_object(
   'organization',jsonb_build_object('id',o.id,'slug',o.slug,'name',o.name,'assistantName',o.assistant_name,'timeZone',o.time_zone),
   'section',jsonb_build_object('id',s.id,'slug',s.slug,'name',s.name,'disciplineName',d.name),
-  'teams',coalesce((select jsonb_agg(jsonb_build_object('id',t.id,'slug',t.slug,'name',t.name,'season',t.season,'canDelete',not administration.team_used(t.id)) order by t.name,t.id) from public.teams t where t.organization_id=target and t.section_id=s.id),'[]'::jsonb)
+  'teams',coalesce((select jsonb_agg(jsonb_build_object('id',t.id,'slug',t.slug,'name',t.name,'season',t.season,'canDelete',not administration.team_used_with_references(t.id,team_references)) order by t.name,t.id) from public.teams t where t.organization_id=target and t.section_id=s.id),'[]'::jsonb)
  ) into result from public.sections s join public.organizations o on o.id=s.organization_id left join public.disciplines d on d.id=s.discipline_id where s.id=section_id and o.id=target;
  return result;
 end $$;
@@ -107,7 +122,7 @@ create function public.section_team_structure(target uuid, section_id uuid) retu
 create function public.save_section_team(target uuid, section_id uuid, team_id uuid, input jsonb) returns uuid language sql security invoker set search_path='' as $$ select administration.save_section_team(target,section_id,team_id,input); $$;
 create function public.delete_section_team(target uuid, section_id uuid, team_id uuid) returns void language sql security invoker set search_path='' as $$ select administration.delete_section_team(target,section_id,team_id); $$;
 
-revoke all on function administration.require_section_team_admin(uuid,uuid),administration.team_used(uuid),administration.guard_team_delete() from public,anon,authenticated;
+revoke all on function administration.require_section_team_admin(uuid,uuid),administration.team_used(uuid),administration.team_references(),administration.team_used_with_references(uuid,jsonb),administration.guard_team_delete() from public,anon,authenticated;
 revoke all on function administration.can_administer_section_teams(uuid),administration.section_team_structure(uuid,uuid),administration.save_section_team(uuid,uuid,uuid,jsonb),administration.delete_section_team(uuid,uuid,uuid) from public,anon;
 grant execute on function administration.can_administer_section_teams(uuid),administration.section_team_structure(uuid,uuid),administration.save_section_team(uuid,uuid,uuid,jsonb),administration.delete_section_team(uuid,uuid,uuid) to authenticated;
 revoke all on function public.can_administer_section_teams(uuid),public.section_team_structure(uuid,uuid),public.save_section_team(uuid,uuid,uuid,jsonb),public.delete_section_team(uuid,uuid,uuid) from public,anon;

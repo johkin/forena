@@ -575,3 +575,9 @@ Sparande låser klubb → sektion → lag och auditerar ändringen. Borttagning
 skyddas även vid direkt tabellåtkomst: en trigger kontrollerar alla FK-ankrade
 lagdata (även historik och privata tabeller) samt lagets scope-bundna minnen.
 Ingen aktivitet, medlem eller lagbehörighet skapas automatiskt med laget.
+
+Lagadministrationens läsning hämtar FK-katalogen en gång per
+`section_team_structure` och återanvänder listan för alla lag.
+Borttagningskontrollen hämtar alltid aktuella referenser på nytt; ingen
+beständig cache kan missa kopplingar från senare migrationer eller tillägg.
+Hjälpfunktionerna är privata och tar inte emot referenslistor från klienter.

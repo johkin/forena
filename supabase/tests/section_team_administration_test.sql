@@ -67,5 +67,21 @@ select ok(not has_function_privilege('anon','public.save_section_team(uuid,uuid,
 select ok(not has_function_privilege('authenticated','administration.team_used(uuid)','execute'),'Internal usage helper private');
 select ok(not (select prosecdef from pg_proc where oid='public.save_section_team(uuid,uuid,uuid,jsonb)'::regprocedure),'Exposed wrapper is invoker');
 select ok(exists(select 1 from public.audit_log where action='team.metadata_changed' and entity_id=(select id::text from section_created_teams where label='first')),'Metadata mutation auditable');
+-- A single structure read must keep independent usage results for multiple teams,
+-- including newly introduced FK-backed extension data.
+reset role;
+insert into public.teams(id,organization_id,section_id,name,slug,season) values
+ ('e1000000-0000-0000-0000-000000000001','b1000000-0000-0000-0000-000000000001','c1000000-0000-0000-0000-000000000001','Empty team','empty-team',''),
+ ('e1000000-0000-0000-0000-000000000002','b1000000-0000-0000-0000-000000000001','c1000000-0000-0000-0000-000000000001','Extension team','extension-team','');
+create table administration.team_usage_test(team_id uuid references public.teams(id) on delete cascade);
+insert into administration.team_usage_test values('e1000000-0000-0000-0000-000000000002');
+set local role authenticated;
+with teams as (select jsonb_array_elements(public.section_team_structure('b1000000-0000-0000-0000-000000000001','c1000000-0000-0000-0000-000000000001')->'teams') value)
+select is((select (value->>'canDelete')::boolean from teams where value->>'slug'='empty-team'),true,'Shared references preserve empty team deletion');
+with teams as (select jsonb_array_elements(public.section_team_structure('b1000000-0000-0000-0000-000000000001','c1000000-0000-0000-0000-000000000001')->'teams') value)
+select is((select (value->>'canDelete')::boolean from teams where value->>'slug'='extension-team'),false,'Shared references discover a new extension FK');
+select throws_ok($$select public.delete_section_team('b1000000-0000-0000-0000-000000000001','c1000000-0000-0000-0000-000000000001','e1000000-0000-0000-0000-000000000002')$$,'55000','Team is in use','Deletion guard also discovers the new FK');
+select ok(not has_function_privilege('authenticated','administration.team_references()','execute'),'Reference catalogue helper remains private');
+select ok(not has_function_privilege('authenticated','administration.team_used_with_references(uuid,jsonb)','execute'),'Caller cannot supply forged reference lists');
 select * from finish();
 rollback;
