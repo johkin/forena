@@ -26,6 +26,7 @@ export type GeneralWorkspaceData = {
   workspaces: Workspace[];
   accountEmail?: string;
   canAdministerOrganization: boolean;
+  canAdministerSectionTeams?: boolean;
   source: "database" | "demo";
   publicOnly?: boolean;
 };
@@ -72,6 +73,11 @@ export async function getGeneralWorkspace(organizationSlug: string, sectionSlug?
   const sections: Section[] = (sectionRows ?? []).map((row) => ({ id: row.id, organizationId: row.organization_id, slug: row.slug, name: row.name, disciplineId: "discipline_id" in row && typeof row.discipline_id === "string" ? row.discipline_id : undefined }));
   const section = sectionSlug ? sections.find((item) => item.slug === sectionSlug) : undefined;
   if (sectionSlug && !section) return null;
+  const administrationSection = section ?? (sections.length === 1 ? sections[0] : undefined);
+  const sectionPermission = authData.user && administrationSection
+    ? await sessionClient.rpc("can_administer_section_teams", { target_section_id: administrationSection.id })
+    : { data: false, error: null };
+  if (sectionPermission.error) throw new Error("Sektionens behörighet kunde inte kontrolleras.");
   const teams: Team[] = (teamRows ?? []).filter((row) => !section || row.section_id === section.id).map((row) => ({ id: row.id, organizationId: row.organization_id, sectionId: row.section_id, slug: row.slug, name: row.name, season: row.season, disciplineId: sections.find(item => item.id === row.section_id)?.disciplineId }));
   const teamIds = teams.map((team) => team.id);
   const now = new Date().toISOString();
@@ -92,5 +98,5 @@ export async function getGeneralWorkspace(organizationSlug: string, sectionSlug?
     ...(showSections ? sections.map((item) => ({ id: item.id, kind: "section" as const, name: item.name, description: "Sektion", href: `/o/${organization.slug}/s/${item.slug}`, active: item.id === section?.id })) : []),
     ...(teamRows ?? []).map((row) => ({ id: row.id, kind: "team" as const, name: row.name, description: showSections ? sections.find((item) => item.id === row.section_id)?.name ?? "Lag" : "Lag", href: `/o/${organization.slug}/t/${row.slug}`, active: false })),
   ];
-  return { organization, section, sections, teams, activities, workspaces, accountEmail: authData.user?.email, canAdministerOrganization: ["owner", "admin"].includes(organizationMembership?.role ?? ""), source: "database", publicOnly };
+  return { organization, section, sections, teams, activities, workspaces, accountEmail: authData.user?.email, canAdministerOrganization: ["owner", "admin"].includes(organizationMembership?.role ?? ""), canAdministerSectionTeams: sectionPermission.data === true, source: "database", publicOnly };
 }

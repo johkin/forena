@@ -519,3 +519,17 @@ undergrupper. Snabbval lägger till gruppens personer; om alla redan är valda
 avmarkeras gruppen. Övriga val bevaras. Delvis valda grupper visar antal och
 ett mellanläge. Undergrupper kan överlappa och innehålla flera roller; varje
 person väljs bara en gång. Knapparna radbryts på mobil.
+
+## Hantera lag i sektion
+
+Varje sektion i klubb- och systemadministrationen har länken **Hantera lag**,
+även om den saknar lag. Sektionens översikt visar samma länk endast efter
+serverkontrollerad behörighet. Lagformulären staplas i en kolumn med tunna
+avdelare, gröna **Spara lag**/**Lägg till lag** och separat röd borttagning.
+Namn och valfri säsong redigeras, medan lagets befintliga adress behålls.
+Disciplinen visas som sektionens gemensamma värde. Tomt läge leder direkt
+till skapaformuläret. Borttagning kräver bekräftelse och är inaktiverad med
+förklaring om medlemmar eller sparat underlag finns. Serverfel och lyckat
+sparande visas i aktuell sektion. Produktionskomponenten visas på
+`/components#section-team-components` med tomt, ändringsbart och
+borttagningsskyddat läge samt lokala interaktioner utan verksamhetsskrivningar.

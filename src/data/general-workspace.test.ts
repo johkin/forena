@@ -12,7 +12,7 @@ function client(organization:typeof org|null,user:{id:string;email:string}|null)
   const query={select:vi.fn((columns:string)=>{(selects[table]??=[]).push(columns);return query;}),eq:vi.fn(()=>query),order:vi.fn(()=>query),or:vi.fn(()=>query),in:vi.fn(()=>query),gte:vi.fn(()=>query),lte:vi.fn(()=>query),limit:vi.fn(()=>query),maybeSingle:vi.fn(async()=>({data:table==="organizations"?organization:null,error:null})),then:(resolve:(value:unknown)=>void)=>Promise.resolve({data:rows[table]??[],error:null}).then(resolve)};
   return query;
  });
- return {from,selects,auth:{getUser:vi.fn(async()=>({data:{user},error:null}))}};
+ return {from,selects,rpc:vi.fn(async()=>({data:false,error:null})),auth:{getUser:vi.fn(async()=>({data:{user},error:null}))}};
 }
 beforeEach(()=>vi.clearAllMocks());
 it("loads only publicly granted information when a signed-in nonmember cannot read the club",async()=>{
@@ -25,4 +25,12 @@ it("returns null for an unknown club after the public fallback",async()=>{
 });
 it("does not use anonymous fallback when the club is visible in the authenticated session",async()=>{
  mocks.session.mockResolvedValue(client(org,{id:"user",email:"user@example.com"}));expect((await getGeneralWorkspace("aik"))?.publicOnly).toBe(false);expect(mocks.public).not.toHaveBeenCalled();
+});
+
+it("checks structure administration for a single section even while its navigation level is hidden",async()=>{
+ const session=client(org,{id:"admin",email:"admin@example.com"});
+ session.rpc.mockResolvedValue({data:true,error:null});mocks.session.mockResolvedValue(session);
+ const result=await getGeneralWorkspace("aik");
+ expect(result?.section).toBeUndefined();expect(result?.canAdministerSectionTeams).toBe(true);
+ expect(session.rpc).toHaveBeenCalledWith("can_administer_section_teams",{target_section_id:"section"});
 });

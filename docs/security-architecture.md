@@ -600,3 +600,19 @@ bekräftat utskicket och detta skrivits till databasen blir länken aktiv.
 Timeout eller avbrott före denna skrivning lämnar en inaktiv länk, även om
 kompensationen som markerar utskicket misslyckat fallerar. Omskick kan
 återställa flödet genom en ny inbjudan; den gamla avbryts atomärt.
+
+## Sektionsavgränsad lagadministration
+
+Lagkommandon kräver autentiserad användare samt `section_admin` för målsektionen,
+`owner`/`admin` för målklubben eller `system_admin`. Klubb/sektion och
+klubb/sektion/lag verifieras på nytt vid varje kommando; klubb-ID i formuläret
+ger aldrig behörighet till en annan sektion. Målsmän, sektionsredaktörer och
+lagadministratörer får inte strukturbehörighet. Systemadmin behöver inget
+klubbmedlemskap och får endast lagmetadata genom dessa RPC:er.
+
+Exponerade wrapper-funktioner är security invoker; privilegierad logik ligger
+i `administration` med tom `search_path` och explicit auth-kontroll.
+Anonyma saknar EXECUTE och interna skyddsfunktioner saknar klientgrants.
+Befintlig RLS/grants för lag och medlemsdata breddas inte. Sparande/radering
+auditeras. Radering av lag med FK-ankrad data eller lagminnen stoppas av
+en privat trigger, även genom klubbadministratörens direkta tabellgrants.
