@@ -38,11 +38,6 @@ export function telegramAction(payload: unknown, botUsername: string) {
   if (q) {
     const m = q.message;
     const reply = /^T1:([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}):(accepted|declined)$/.exec(q.data ?? "");
-    const bind = /^B1:([A-Za-z0-9_-]{43})$/.exec(q.data ?? "");
-    if (bind && m && m.chat.type === "private" && m.chat.id === q.from.id && !q.from.is_bot) {
-      return { ...envelope, operation: "bind" as const, sender: String(q.from.id), chatId: String(m.chat.id),
-        eventAt: new Date().toISOString(), pairingHash: telegramPairingHash(bind[1]), callbackId: q.id };
-    }
     if (!reply || !m || m.chat.type !== "private" || m.chat.id !== q.from.id || q.from.is_bot) return null;
     return { ...envelope, operation: "respond" as const, sender: String(q.from.id), chatId: String(m.chat.id),
       callbackId: q.id, providerMessageId: String(m.message_id), originalText: m.text ?? "Kallelse",

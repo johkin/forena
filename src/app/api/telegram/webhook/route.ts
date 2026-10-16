@@ -1,7 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { telegramAction, verifyTelegramSecret, telegramAvailable } from "@/lib/telegram";
 import { TelegramError, telegramApi, telegramKeyboard, telegramInvitationText, telegramConfirmation, type TelegramInvitationMessage } from "../../../../../supabase/functions/_shared/telegram";
-import { createTelegramEnrollment } from "@/lib/telegram-enrollment";
 import { getSiteUrl } from "@/lib/site-url";
 
 export async function POST(request: Request) {
@@ -26,12 +25,9 @@ export async function POST(request: Request) {
   if (action.operation === "help") {
     // Free text is only a request for connection instructions, never an action.
     if (Date.now() - Date.parse(action.eventAt) > 600_000 || Date.parse(action.eventAt) > Date.now()) return new Response("OK");
-    const proof = createTelegramEnrollment(action.sender, action.messageId.slice(2), process.env.TELEGRAM_WEBHOOK_SECRET!);
-    const url = new URL("/profile", getSiteUrl());
-    url.searchParams.set("telegram", proof);
-    url.hash = "telegram";
+    const url = new URL("/profile#telegram", getSiteUrl());
     await telegramApi(token, "sendMessage", { chat_id: action.chatId,
-      text: "Välkommen till Förena! Öppna länken, logga in och godkänn Telegram för ditt konto. Länken gäller i tio minuter och ska inte delas. Är du redan kopplad behöver du inte göra något. /stop kopplar bort kontot.",
+      text: "Välkommen till Förena! Öppna Min profil, logga in och välj Koppla Telegram. Godkänn samtycket och öppna sedan Telegram-länken på din egen enhet. Tryck Start i din privata chatt med boten för att slutföra kopplingen. Dela inte kopplingslänken. Är du redan kopplad behöver du inte göra något. /stop kopplar bort kontot.",
       protect_content: true, link_preview_options: { is_disabled: true },
       reply_markup: { inline_keyboard: [[{ text: "Koppla till Förena", url: url.href }]] },
     }).catch(() => {});
@@ -67,8 +63,6 @@ export async function POST(request: Request) {
         operation: action.operation, pairing_hash: action.operation === "bind" ? action.pairingHash : undefined,
       });
       if (error) return new Response("Retry later", { status: 503 });
-      if ("callbackId" in action) await telegramApi(token, "answerCallbackQuery", { callback_query_id: action.callbackId,
-        text: data ? "Telegram är kopplat." : "Kopplingen är redan klar eller länken har gått ut. Öppna Förena för att kontrollera." }).catch(() => {});
       if (data) await telegramApi(token, "sendMessage", { chat_id: action.chatId,
         text: action.operation === "bind" ? "Telegram är kopplat till Förena. Du får privata kallelser och kan svara med knapparna. /stop kopplar bort kontot." : "Telegram har kopplats bort från Förena." }).catch(() => {});
     } else if (action.operation === "removed") {

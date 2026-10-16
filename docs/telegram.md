@@ -140,13 +140,19 @@ från en genomförd användarutvärdering.
 
 ## Koppling och kallelser
 
-Kopplingen kan börja direkt i botens privata chatt: skicka `/start` eller ett
-vanligt meddelande. Boten svarar med **Koppla till Förena**. Länken gäller i tio
-minuter. Logga in i Förena, godkänn samtycket och bekräfta sedan med knappen i
-botens privata meddelande. Profilen uppdaterar status automatiskt under den
-pågående kopplingen. Det går även att börja i Min profil som tidigare.
-Länkar och bekräftelseknappar ska inte delas. Namn, användarnamn eller
-telefonnummer används aldrig för att gissa vilket Förena-konto som avses.
+Börja i botens privata chatt genom att skicka `/start` eller ett vanligt
+meddelande. Boten visar **Koppla till Förena**, en vanlig länk till Min profil
+utan Telegram-ID eller kopplingsbevis. Logga in, lämna samtycke och välj
+**Koppla Telegram**. Öppna den nya länken på din egen enhet och tryck **Start**
+i din egen privata chatt med boten. Denna personliga länk gäller tio minuter
+och ska inte delas. Botens första profillänk kan inte välja mottagarens
+Telegram-konto, även om länken vidarebefordras.
+
+Profilen uppdaterar status automatiskt under väntan. När den personliga
+länken går ut visas samtycket igen så att en ny länk kan skapas utan omladdning.
+Gamla profillänkar med parametern `telegram` rensas före inloggningen; deras
+bevis används inte. Namn, användarnamn eller telefonnummer används aldrig
+för att gissa vilket Förena-konto som avses.
 
 Kallelser använder gemensam formatering för utskick och svar: barnets namn i
 rubriken, separata stycken för lag/aktivitet och tider/plats samt svenska datum.

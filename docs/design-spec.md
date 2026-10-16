@@ -560,8 +560,9 @@ har röd `danger`-stil och ❌. Texten är alltid begriplig utan färg. Telegram
 klient bestämmer typsnitt, hörnradier och exakta färgnyanser. Disciplinen får
 anpassa ikon och rubrik utan att ändra svarens betydelse eller personkoppling.
 
-Koppling som börjar i boten leder till profilens befintliga samtyckessektion,
-visar maskerat Telegram-ID och avslutas med en bekräftelse hos boten.
-Profilen uppdaterar status automatiskt och erbjuder manuell uppdatering vid
-nätverksproblem. Tillstånden Start från boten och Bekräfta hos boten finns i
+Botens kopplingshjälp leder till profilens befintliga samtyckessektion utan att
+välja ett Telegram-konto. Därifrån öppnar användaren sin personliga startlänk
+i sin egen Telegram-chatt. Profilen uppdaterar status automatiskt och erbjuder
+manuell uppdatering vid nätverksproblem. När länken går ut återgår profilen
+till nytt samtycke och en ny länk utan omladdning. Utgången länk visas också i
 `/components#telegram-example` tillsammans med övriga profiltillstånd.

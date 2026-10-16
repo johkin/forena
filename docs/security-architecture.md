@@ -657,15 +657,14 @@ administratörskommandon ignoreras. Privat fritext ger endast kopplingshjälp. I
 Telegram-hemligheter, användar-ID:n och leverantörens svarskroppar loggas inte.
 
 
-Telegram-koppling som börjar hos boten använder en domänseparerad HMAC-SHA256-
-signerad länk med avsändar-ID, update-ID och utfärdandetid. Den verifieras i
-profilen och på servern före samtyckesåtgärden, gäller tio minuter och ger
-endast rätt att skicka en bekräftelse till den verifierade privata chatten.
-Själva kontokopplingen kräver fortfarande verifierad inloggning, uttryckligt
-samtycke och ett separat 256-bitars engångsbevis från databasen. Beviset skickas
-som knapp till Telegram och förbrukas först av en verifierad callback från en
-privat chatt vars ID är samma som avsändaren. Webblänken kopplar aldrig konton
-på egen hand. Befintliga kvittenser, tidsgränser och avstängningsregler gäller.
-Länken ska inte loggas eller delas; appen använder `Referrer-Policy: no-referrer`.
-Privat fritext ger enbart kopplingshjälp utan administrativ databasåtkomst;
-innehållet lagras inte och tolkas inte som instruktioner.
+Botens kopplingshjälp länkar till `/profile#telegram` utan Telegram-ID eller
+identitetsbevis. Profilen ignorerar och rensar äldre `telegram`-parametrar före
+inloggning. Klienten skickar inga sådana parametrar vid samtycke; inställnings-
+API:t kan inte välja en Telegram-mottagare utifrån inkommande kopplingsdata.
+Ett färskt 256-bitars engångsbevis skapas först för det verifierade inloggade
+kontot efter samtycke, och användaren öppnar själv länken i sin Telegram-chatt.
+Den tidigare signerade länken och `B1:`-callbacken har tagits bort. Ett gammalt
+eller vidarebefordrat botbevis kan inte utlösa en koppling eller ett utskick
+till bevisets ursprungliga avsändare. Befintliga kvittenser, tidsgränser och
+avstängningsregler gäller. Privat fritext ger enbart kopplingshjälp utan
+administrativ databasåtkomst; innehållet lagras inte eller tolkas som instruktioner.

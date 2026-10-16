@@ -68,11 +68,9 @@ it("only offers connection help for arbitrary private text, never executes it", 
   expect(telegramAction({ update_id: 1, message: { ...msg, chat: { id: -100, type: "group" }, text: "hello" } }, "ForenaBot")).toBeNull();
   expect(telegramAction({ update_id: 1, message: { ...msg, from: { id: 456 }, text: "hello" } }, "ForenaBot")).toBeNull();
 });
-it("uses a final connection callback only in the sender's private chat", () => {
-  const proof = "x".repeat(43);
-  const callback_query = { id: "bind", from: { id: 123 }, message: msg, data: `B1:${proof}` };
-  expect(telegramAction({ update_id: 1, callback_query }, "ForenaBot")).toMatchObject({ operation: "bind", pairingHash: telegramPairingHash(proof), callbackId: "bind" });
-  expect(telegramAction({ update_id: 1, callback_query: { ...callback_query, from: { id: 456 } } }, "ForenaBot")).toBeNull();
+it("rejects retired bot-first connection callbacks", () => {
+  const callback_query = { id: "bind", from: { id: 123 }, message: msg, data: "B1:" + "x".repeat(43) };
+  expect(telegramAction({ update_id: 1, callback_query }, "ForenaBot")).toBeNull();
 });
 it("marks only the saved answer with color, icon and text and allows changing it", () => {
   for (const answer of ["accepted", "declined"] as const) {

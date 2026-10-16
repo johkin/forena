@@ -79,19 +79,19 @@ it("removes blocked chats and handles private stop commands", async () => {
   expect(mocks.rpc).toHaveBeenCalledWith("remove_telegram_chat", expect.objectContaining({ target_chat: "123" }));
 });
 
-it("offers a signed connection link for private messages without opening admin access", async () => {
-  await POST(request({ update_id: 99, message: { ...message, text: "Hej" } }));
+it("offers the same identity-free profile link to every private sender without admin access", async () => {
+  for (const sender of [123, 456]) {
+    await POST(request({ update_id: 99, message: { ...message, from: { id: sender }, chat: { id: sender, type: "private" }, text: "Hej" } }));
+    const body = JSON.parse(mocks.transport.mock.calls.at(-1)![1].body);
+    expect(body.reply_markup.inline_keyboard[0][0].url).toBe("https://forena.test/profile#telegram");
+    expect(body.text).toContain("din egen enhet");
+  }
   expect(mocks.admin).not.toHaveBeenCalled();
-  const body = JSON.parse(mocks.transport.mock.calls[0][1].body);
-  const url = new URL(body.reply_markup.inline_keyboard[0][0].url);
-  expect(url.origin + url.pathname).toBe("https://forena.test/profile");
-  expect(url.searchParams.get("telegram")).toMatch(/^123\.\d+\.99\.[a-f0-9]{64}$/);
 });
-it("consumes the final bot confirmation through the existing one-use pairing operation", async () => {
-  mocks.rpc.mockResolvedValue({ data: true, error: null });
+it("ignores retired bind callbacks so an old bot-selected destination cannot be linked", async () => {
   await POST(request({ update_id: 99, callback_query: { ...callback.callback_query, data: "B1:" + "x".repeat(43) } }));
-  expect(mocks.rpc).toHaveBeenCalledWith("receive_telegram", expect.objectContaining({ sender: "123", operation: "bind", pairing_hash: expect.stringMatching(/^[a-f0-9]{64}$/) }));
-  expect(mocks.transport.mock.calls.some(c => c[0].endsWith("answerCallbackQuery"))).toBe(true);
+  expect(mocks.admin).not.toHaveBeenCalled();
+  expect(mocks.transport).not.toHaveBeenCalled();
 });
 it.each(["accepted", "declined"])("confirms %s with the child's name and updates escaped text and selected color", async answer => {
   const frozen = { person: "Tilda <&>", team: "Team", activity: "Match", when: "2026-10-18 10:00", gathering: "09:30", location: "Field", due: "Tomorrow", url: `/activities/${id}` };

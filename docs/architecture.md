@@ -618,7 +618,9 @@ formatteringen använder aldrig aktuell aktivitet för att identifiera barnet.
 Båda vägarna HTML-escapar verksamhetsdata och använder svenska datum utan
 att konvertera redan frysta lokala tider en gång till. Svarskvittot och den
 markerade knappen bygger endast på ett lyckat svar från `respond_telegram`.
-Botens privata startmeddelande kan leda till profilens samtycke via en kortlivad
-signerad länk; en separat engångsknapp hos boten slutför kopplingen. Den vanliga
-profilstarten fungerar parallellt. Status hämtas automatiskt under väntan och
-stoppas vid aktiv koppling, avmontering eller efter tio minuter.
+Botens privata hjälpsvar leder till profilen via en vanlig länk utan
+Telegram-identitet eller bevis. Kopplingen börjar först i den verifierade
+inloggade användarens profil efter samtycke; användaren öppnar själv länken i
+sin Telegram-chatt. Status hämtas automatiskt under väntan och stoppas vid
+aktiv koppling, avmontering eller efter tio minuter. Vid utgång visas nytt
+samtycke och möjlighet att skapa en ny länk utan omladdning.
