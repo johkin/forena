@@ -92,9 +92,9 @@ select is(public.whatsapp_recipient('b0000000-0000-0000-0000-000000000001'),null
 select is(public.respond_whatsapp('after-stop','46700000001',now(),pg_temp.child_reply(),'accepted'),'unavailable','Revocation disables old buttons');
 -- Own invitations use the same identity check as guardians, without any
 -- authority to answer a teammate's invitation.
-insert into public.people(id,organization_id,display_name,user_id) values ('b5000000-0000-0000-0000-000000000003','b1000000-0000-0000-0000-000000000001','Own invite','b0000000-0000-0000-0000-000000000003');
-insert into public.memberships(organization_id,person_id,team_id,role) values ('b1000000-0000-0000-0000-000000000001','b5000000-0000-0000-0000-000000000003','b3000000-0000-0000-0000-000000000001','participant');
-insert into public.invitations(organization_id,activity_id,person_id) values ('b1000000-0000-0000-0000-000000000001','b6000000-0000-0000-0000-000000000002','b5000000-0000-0000-0000-000000000003');
+insert into public.people(id,organization_id,display_name,user_id) values ('b5000000-0000-0000-0000-000000000003','b1000000-0000-0000-0000-000000000001','Own invite','b0000000-0000-0000-0000-000000000003') on conflict(organization_id,user_id) do update set display_name=excluded.display_name;
+insert into public.memberships(organization_id,person_id,team_id,role) select organization_id,id,'b3000000-0000-0000-0000-000000000001','participant' from public.people where organization_id='b1000000-0000-0000-0000-000000000001' and user_id='b0000000-0000-0000-0000-000000000003';
+insert into public.invitations(organization_id,activity_id,person_id) select organization_id,'b6000000-0000-0000-0000-000000000002',id from public.people where organization_id='b1000000-0000-0000-0000-000000000001' and user_id='b0000000-0000-0000-0000-000000000003';
 insert into public.notification_outbox(id,organization_id,user_id,type,payload,scheduled_at) values
  ('b7000000-0000-0000-0000-000000000002','b1000000-0000-0000-0000-000000000001','b0000000-0000-0000-0000-000000000003','activity_invitation','{"activityId":"b6000000-0000-0000-0000-000000000002"}',now());
 select is(public.respond_whatsapp('own-answer','46700000003',now(),(select id from messaging.whatsapp_invitations where outbox_id='b7000000-0000-0000-0000-000000000002'),'accepted'),'accepted','Verified account can answer its own invitation');
