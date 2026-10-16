@@ -46,6 +46,9 @@ export function telegramAction(payload: unknown, botUsername: string) {
   const m = u.message;
   if (!m?.from || m.from.is_bot || m.sender_chat || !m.text) return null;
   const command = /^\/(start|stop|help|forena)(?:@([A-Za-z0-9_]+))?(?: ([a-f0-9]{64}))?$/.exec(m.text.trim());
+  if (!command && m.chat.type === "private" && m.chat.id === m.from.id && !m.text.trim().startsWith("/")) {
+    return { ...envelope, operation: "help" as const, sender: String(m.from.id), chatId: String(m.chat.id), eventAt: new Date(m.date * 1000).toISOString() };
+  }
   if (!command || (command[2] && command[2].toLowerCase() !== botUsername.toLowerCase())) return null;
   const common = { ...envelope, sender: String(m.from.id), chatId: String(m.chat.id), eventAt: new Date(m.date * 1000).toISOString() };
   if (m.chat.type === "private") {

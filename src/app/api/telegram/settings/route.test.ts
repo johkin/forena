@@ -1,4 +1,4 @@
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ getUser: vi.fn(), rpc: vi.fn(), available: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => mocks }));
 vi.mock("@/lib/telegram", async importOriginal => ({ ...await importOriginal<typeof import("@/lib/telegram")>(), telegramAvailable: mocks.available }));
@@ -42,4 +42,22 @@ it("returns a readable rate limit and does not leak database errors", async () =
   mocks.rpc.mockResolvedValue({ data: null, error: { code: "54000", message: "sensitive" } });
   const response = await POST(request({ operation: "start", consent: true }));
   expect(response.status).toBe(429); expect(await response.text()).not.toContain("sensitive");
+});
+
+afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+it("ignores forwarded or expired enrollment data and only returns a new profile-owned link", async () => {
+  const transport = vi.fn(); vi.stubGlobal("fetch", transport);
+  vi.stubEnv("TELEGRAM_BOT_USERNAME", "ForenaBot");
+  for (const enrollmentProof of ["123.1792180000.42." + "a".repeat(64), "expired", {}]) {
+    const response = await POST(request({ operation: "start", consent: true, enrollmentProof, sender: "123" }));
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    const url = new URL(body.pairingUrl);
+    expect(url.origin + url.pathname).toBe("https://t.me/ForenaBot");
+    expect(url.searchParams.get("start")).toMatch(/^[a-f0-9]{64}$/);
+    expect(url.searchParams.get("start")).not.toBe(enrollmentProof);
+    expect(body).not.toHaveProperty("confirmInBot");
+  }
+  expect(transport).not.toHaveBeenCalled();
+  expect(mocks.rpc.mock.calls.every(([name]) => name === "telegram_settings")).toBe(true);
 });

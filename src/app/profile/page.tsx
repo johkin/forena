@@ -6,13 +6,15 @@ import { TelegramGroupSettings } from "@/components/telegram-group-settings";
 import { WhatsAppSettings } from "@/components/whatsapp-settings";
 import { updateProfile } from "./actions";
 
-type Props = { searchParams: Promise<{ saved?: string; error?: string }> };
+type Props = { searchParams: Promise<{ saved?: string; error?: string; telegram?: string }> };
 
 export default async function ProfilePage({ searchParams }: Props) {
-  const { saved, error } = await searchParams;
+  const { saved, error, telegram } = await searchParams;
+  // Discard links issued by the retired bot-selected destination flow before login.
+  if (telegram) redirect("/profile#telegram");
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getUser();
-  if (!authData.user) redirect("/login?next=%2Fprofile");
+  if (!authData.user) redirect("/login?next=%2Fprofile%23telegram");
 
   const { data: profile } = await supabase.from("profiles").select("display_name").eq("id", authData.user.id).maybeSingle();
   const { data: people } = await supabase.from("people").select("organization_id").eq("user_id", authData.user.id);

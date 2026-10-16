@@ -5,16 +5,17 @@ WhatsApp, push och e-post finns kvar. Kanalen är avstängd från början.
 
 ## Privata chattar med spelare och vårdnadshavare
 
-Öppna Min profil → Telegram, lämna samtycke, öppna länken och tryck **Start** i
-Telegram. Länken gäller tio minuter och får inte delas. Återvänd till profilen
-och kontrollera status. Kontot måste ha verifierad e-post. Ett Telegram-konto kan
+Öppna Min profil → Telegram och välj **Aktivera Telegram**. Knappens text
+förklarar samtycket; Telegram öppnas direkt. Tryck **Start** hos boten. Länken
+gäller tio minuter och får inte delas. Profilen uppdaterar status automatiskt
+när du återvänder. Kontot måste ha verifierad e-post. Ett Telegram-konto kan
 inte överföras från ett annat Förena-konto utan att först kopplas bort där.
 
 Varje kallad person får ett eget meddelande. Vårdnadshavare med två kallade barn
 får två kallelser med **Kommer**, **Kan inte** och **Öppna Förena**. Spelare med
 eget kopplat konto svarar på sin egen kallelse. Knapptryck bevarar kommentarer,
 skriver det ordinarie kallelsesvaret och uppdaterar meddelandet med en bekräftelse.
-Kommentarer skrivs i Förena. Fritext tolkas inte av boten. Om svaret ändras i appen
+Kommentarer skrivs i Förena. Privat fritext ger endast kopplingshjälp. Om svaret ändras i appen
 blir tidigare Telegram-knappar inaktuella; fortsätt i appen eller använd en ny
 kallelse. Telegrams callback har ingen egen tidpunkt, så detta skyddar mot
 fördröjda knapptryck som annars kunde skriva över appsvaret.
@@ -138,3 +139,46 @@ och flytta inte befintliga användare innan liveflödet och en familjepilot har
 godkänts. Följ upp anslutningsgrad, faktisk svarsfrekvens, leveransfel,
 reservnotiser och supportbehov. Underlaget här är tekniskt, inte ett resultat
 från en genomförd användarutvärdering.
+
+## Koppling och kallelser
+
+Börja i botens privata chatt genom att skicka `/start` eller ett vanligt
+meddelande. Boten visar **Koppla till Förena**, en vanlig länk till Min profil
+utan Telegram-ID eller kopplingsbevis. Logga in och välj **Aktivera Telegram**.
+Samtycket förklaras vid knappen och lämnas genom det uttryckliga klicket; ingen
+separat kryssruta behövs. Telegram öppnas automatiskt i samma flik. Tryck
+**Start** i din egen privata chatt med boten. Denna personliga länk gäller tio minuter
+och ska inte delas. Botens första profillänk kan inte välja mottagarens
+Telegram-konto, även om länken vidarebefordras.
+
+Profilen uppdaterar status automatiskt under väntan. När den personliga
+länken går ut visas aktiveringsknappen igen så att en ny länk kan skapas utan
+omladdning. Återvänd till profilen för att se att kopplingen är klar. Om den
+automatiska öppningen inte fungerar finns **Öppna Telegram igen** som reservlänk.
+Gamla profillänkar med parametern `telegram` rensas före inloggningen; deras
+bevis används inte. Namn, användarnamn eller telefonnummer används aldrig
+för att gissa vilket Förena-konto som avses.
+
+Kallelser använder gemensam formatering för utskick och svar: barnets namn i
+rubriken, separata stycken för lag/aktivitet och tider/plats samt svenska datum.
+Tiderna behåller föreningens tidszon från den frysta köposten. Efter ett sparat
+svar visar både Telegrams kvittens och samma kallelse exempelvis **Tilda kommer.**
+eller **Tilda kan inte komma.** Den valda knappen får ikon och grön `success`-
+eller röd `danger`-stil. Båda svarsknapparna finns kvar för att ändra svaret.
+Ett misslyckat visuellt kvitto rullar inte tillbaka ett redan sparat svar.
+
+Disciplin och aktivitetskategori fryses med kallelsen. Fotboll använder ⚽ och
+rubriken Matchkallelse för tävlingar. Andra discipliner och äldre köposter får
+en neutral kallelserubrik. Inga uppgifter om disciplin gissas från aktivitetens
+namn. Länken till Förena visar fullständiga aktivitetsdetaljer.
+
+Design-specens betydelser används: grönt för kommer, rött för kan inte och
+alltid text utöver färg. Telegram bestämmer typsnitt, knappform, bubblor och
+exakta färgnyanser efter klient och tema; appens CSS kan inte skickas till en
+vanlig botchatt. Äldre klienter kan sakna knappfärger men visar fortfarande
+svaret i text. Se [Telegrams knappformat](https://core.telegram.org/bots/api#inlinekeyboardbutton).
+
+Migrationen för presentation behåller det äldre textfältet för att stödja
+rullande uppgradering. Deploya migration, webbapp och notifieringsworker för
+samma format i nya utskick och efter knapptryck. Redan skickade meddelanden
+ändras först när ett giltigt svar skickas via knapparna.

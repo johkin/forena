@@ -652,6 +652,22 @@ Telegram-avsändare och administratörsstatus i Telegram-gruppen. Botens
 administratörsroll behövs för att säkert kontrollera den senare. Ett chatt-ID
 kan inte ersätta en annan lagkoppling med en ny länk. Borttagen ledarbehörighet
 stoppar gruppens svar tills gruppen kopplas om. Gruppkommandot delar enbart en
-länk; inloggning och RLS gäller när den öppnas. Fritext och anonyma
-administratörskommandon ignoreras. Inga chattmeddelanden skickas till AI.
+länk; inloggning och RLS gäller när den öppnas. Fritext i grupper och anonyma
+administratörskommandon ignoreras. Privat fritext ger endast kopplingshjälp. Inga chattmeddelanden skickas till AI.
 Telegram-hemligheter, användar-ID:n och leverantörens svarskroppar loggas inte.
+
+
+Botens kopplingshjälp länkar till `/profile#telegram` utan Telegram-ID eller
+identitetsbevis. Profilen ignorerar och rensar äldre `telegram`-parametrar före
+inloggning. Klienten skickar inga sådana parametrar vid samtycke; inställnings-
+API:t kan inte välja en Telegram-mottagare utifrån inkommande kopplingsdata.
+Ett färskt 256-bitars engångsbevis skapas först för det verifierade inloggade
+kontot efter samtycke. Den tydligt beskrivna knappen Aktivera Telegram lämnar
+samtycke endast vid ett uttryckligt klick; sidladdning eller ett hjälpsvar
+aktiverar ingenting. Efter lyckat sparande öppnas den personliga länken direkt
+i användarens Telegram-chatt. API:t kräver fortfarande `consent: true`.
+Den tidigare signerade länken och `B1:`-callbacken har tagits bort. Ett gammalt
+eller vidarebefordrat botbevis kan inte utlösa en koppling eller ett utskick
+till bevisets ursprungliga avsändare. Befintliga kvittenser, tidsgränser och
+avstängningsregler gäller. Privat fritext ger enbart kopplingshjälp utan
+administrativ databasåtkomst; innehållet lagras inte eller tolkas som instruktioner.

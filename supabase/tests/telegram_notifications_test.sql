@@ -11,7 +11,7 @@ insert into public.organization_members(organization_id,user_id,role) values
  ('b1000000-0000-0000-0000-000000000001','b0000000-0000-0000-0000-000000000001','member'),
  ('b1000000-0000-0000-0000-000000000001','b0000000-0000-0000-0000-000000000002','admin'),
  ('b1000000-0000-0000-0000-000000000001','b0000000-0000-0000-0000-000000000003','member');
-insert into public.sections(id,organization_id,slug,name) values ('b2000000-0000-0000-0000-000000000001','b1000000-0000-0000-0000-000000000001','section','Section');
+insert into public.sections(id,organization_id,slug,name,discipline_id) values ('b2000000-0000-0000-0000-000000000001','b1000000-0000-0000-0000-000000000001','section','Section',(select id from public.disciplines where key='football'));
 insert into public.teams(id,organization_id,section_id,slug,name,season) values ('b3000000-0000-0000-0000-000000000001','b1000000-0000-0000-0000-000000000001','b2000000-0000-0000-0000-000000000001','team','Team','2026');
 insert into public.activity_types(id,organization_id,slug,name,system_category) values ('b4000000-0000-0000-0000-000000000001','b1000000-0000-0000-0000-000000000001','training','Training','session');
 insert into public.people(id,organization_id,display_name) values ('b5000000-0000-0000-0000-000000000001','b1000000-0000-0000-0000-000000000001','Child');
@@ -67,6 +67,10 @@ select is((select count(distinct id)::integer from messaging.telegram_invitation
 create function pg_temp.child_reply() returns uuid language sql as $$
  select w.id from messaging.telegram_invitations w join public.invitations i on i.id=w.invitation_id where w.outbox_id='b7000000-0000-0000-0000-000000000001' and i.person_id='b5000000-0000-0000-0000-000000000001';
 $$;
+select is(public.telegram_reply_message(pg_temp.child_reply(),'46700000001')->'message'->>'person','Child','Reply presentation keeps the frozen child identity');
+select is(public.telegram_reply_message(pg_temp.child_reply(),'46700000001')->'message'->>'discipline','football','Discipline is frozen when queued');
+select is(public.telegram_reply_message(pg_temp.child_reply(),'46700000001')->'message'->>'category','session','Activity category is frozen when queued');
+select is(public.telegram_reply_message(pg_temp.child_reply(),'unknown'),null,'Another sender cannot read presentation metadata');
 select is(public.respond_telegram('u:2','46700000003',clock_timestamp(),pg_temp.child_reply(),'accepted'),null,'Forwarded button cannot authorize another sender');
 select is(public.respond_telegram('u:3','46700000001',clock_timestamp(),pg_temp.child_reply(),'accepted'),'accepted','Guardian answers own first child');
 select is((select response from public.invitations where activity_id='b6000000-0000-0000-0000-000000000001' and person_id='b5000000-0000-0000-0000-000000000001'),'accepted','Ordinary invitation data updated');
