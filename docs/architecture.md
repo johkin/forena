@@ -620,7 +620,10 @@ att konvertera redan frysta lokala tider en gång till. Svarskvittot och den
 markerade knappen bygger endast på ett lyckat svar från `respond_telegram`.
 Botens privata hjälpsvar leder till profilen via en vanlig länk utan
 Telegram-identitet eller bevis. Kopplingen börjar först i den verifierade
-inloggade användarens profil efter samtycke; användaren öppnar själv länken i
-sin Telegram-chatt. Status hämtas automatiskt under väntan och stoppas vid
-aktiv koppling, avmontering eller efter tio minuter. Vid utgång visas nytt
-samtycke och möjlighet att skapa en ny länk utan omladdning.
+inloggade användarens profil genom ett uttryckligt klick på Aktivera Telegram,
+med samtyckestext vid knappen. Efter lyckat API-anrop öppnas den personliga
+Telegram-länken direkt i samma flik; en reservlänk finns kvar. När användaren
+återvänder hämtas status genom fokus-, pageshow- och visibilitychange-händelser.
+Status hämtas automatiskt under väntan och stoppas vid aktiv koppling,
+avmontering eller efter tio minuter. Vid utgång visas en ny
+aktiveringsknapp och möjlighet att skapa en ny länk utan omladdning.

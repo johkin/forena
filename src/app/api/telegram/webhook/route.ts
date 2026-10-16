@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     if (Date.now() - Date.parse(action.eventAt) > 600_000 || Date.parse(action.eventAt) > Date.now()) return new Response("OK");
     const url = new URL("/profile#telegram", getSiteUrl());
     await telegramApi(token, "sendMessage", { chat_id: action.chatId,
-      text: "Välkommen till Förena! Öppna Min profil, logga in och välj Koppla Telegram. Godkänn samtycket och öppna sedan Telegram-länken på din egen enhet. Tryck Start i din privata chatt med boten för att slutföra kopplingen. Dela inte kopplingslänken. Är du redan kopplad behöver du inte göra något. /stop kopplar bort kontot.",
+      text: "Välkommen till Förena! Öppna Min profil, logga in och välj Aktivera Telegram. Telegram öppnas direkt på din egen enhet. Tryck Start i din privata chatt med boten för att slutföra kopplingen. Dela inte kopplingslänken. Är du redan kopplad behöver du inte göra något. /stop kopplar bort kontot.",
       protect_content: true, link_preview_options: { is_disabled: true },
       reply_markup: { inline_keyboard: [[{ text: "Koppla till Förena", url: url.href }]] },
     }).catch(() => {});

@@ -5,8 +5,10 @@ WhatsApp, push och e-post finns kvar. Kanalen är avstängd från början.
 
 ## Privata chattar med spelare och vårdnadshavare
 
-Öppna Min profil → Telegram, lämna samtycke, öppna länken och tryck **Start** i
-Telegram. Länken gäller tio minuter och får inte delas. Profilen uppdaterar status automatiskt när du återvänder. Kontot måste ha verifierad e-post. Ett Telegram-konto kan
+Öppna Min profil → Telegram och välj **Aktivera Telegram**. Knappens text
+förklarar samtycket; Telegram öppnas direkt. Tryck **Start** hos boten. Länken
+gäller tio minuter och får inte delas. Profilen uppdaterar status automatiskt
+när du återvänder. Kontot måste ha verifierad e-post. Ett Telegram-konto kan
 inte överföras från ett annat Förena-konto utan att först kopplas bort där.
 
 Varje kallad person får ett eget meddelande. Vårdnadshavare med två kallade barn
@@ -142,14 +144,17 @@ från en genomförd användarutvärdering.
 
 Börja i botens privata chatt genom att skicka `/start` eller ett vanligt
 meddelande. Boten visar **Koppla till Förena**, en vanlig länk till Min profil
-utan Telegram-ID eller kopplingsbevis. Logga in, lämna samtycke och välj
-**Koppla Telegram**. Öppna den nya länken på din egen enhet och tryck **Start**
-i din egen privata chatt med boten. Denna personliga länk gäller tio minuter
+utan Telegram-ID eller kopplingsbevis. Logga in och välj **Aktivera Telegram**.
+Samtycket förklaras vid knappen och lämnas genom det uttryckliga klicket; ingen
+separat kryssruta behövs. Telegram öppnas automatiskt i samma flik. Tryck
+**Start** i din egen privata chatt med boten. Denna personliga länk gäller tio minuter
 och ska inte delas. Botens första profillänk kan inte välja mottagarens
 Telegram-konto, även om länken vidarebefordras.
 
 Profilen uppdaterar status automatiskt under väntan. När den personliga
-länken går ut visas samtycket igen så att en ny länk kan skapas utan omladdning.
+länken går ut visas aktiveringsknappen igen så att en ny länk kan skapas utan
+omladdning. Återvänd till profilen för att se att kopplingen är klar. Om den
+automatiska öppningen inte fungerar finns **Öppna Telegram igen** som reservlänk.
 Gamla profillänkar med parametern `telegram` rensas före inloggningen; deras
 bevis används inte. Namn, användarnamn eller telefonnummer används aldrig
 för att gissa vilket Förena-konto som avses.

@@ -662,7 +662,10 @@ identitetsbevis. Profilen ignorerar och rensar äldre `telegram`-parametrar för
 inloggning. Klienten skickar inga sådana parametrar vid samtycke; inställnings-
 API:t kan inte välja en Telegram-mottagare utifrån inkommande kopplingsdata.
 Ett färskt 256-bitars engångsbevis skapas först för det verifierade inloggade
-kontot efter samtycke, och användaren öppnar själv länken i sin Telegram-chatt.
+kontot efter samtycke. Den tydligt beskrivna knappen Aktivera Telegram lämnar
+samtycke endast vid ett uttryckligt klick; sidladdning eller ett hjälpsvar
+aktiverar ingenting. Efter lyckat sparande öppnas den personliga länken direkt
+i användarens Telegram-chatt. API:t kräver fortfarande `consent: true`.
 Den tidigare signerade länken och `B1:`-callbacken har tagits bort. Ett gammalt
 eller vidarebefordrat botbevis kan inte utlösa en koppling eller ett utskick
 till bevisets ursprungliga avsändare. Befintliga kvittenser, tidsgränser och

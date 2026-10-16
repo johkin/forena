@@ -544,7 +544,7 @@ borttagningsskyddat läge samt lokala interaktioner utan verksamhetsskrivningar.
 ## Telegram i profilen
 
 Privat Telegram-koppling visas som egen samtyckessektion i Min profil, med
-startlänk, statuskontroll och bortkoppling. Lag- och ledarchattar har lagval och
+en aktiveringsknapp, automatisk statuskontroll och bortkoppling. Lag- och ledarchattar har lagval och
 separat chattval; endast lag med serverkontrollerad truppbehörighet visas.
 Gruppkoppling kräver uttrycklig bekräftelse, och den kortlivade länken öppnar
 Telegrams gruppval. Samma produktionskomponenter och laddning, väntan, fel,
@@ -561,8 +561,12 @@ klient bestämmer typsnitt, hörnradier och exakta färgnyanser. Disciplinen få
 anpassa ikon och rubrik utan att ändra svarens betydelse eller personkoppling.
 
 Botens kopplingshjälp leder till profilens befintliga samtyckessektion utan att
-välja ett Telegram-konto. Därifrån öppnar användaren sin personliga startlänk
-i sin egen Telegram-chatt. Profilen uppdaterar status automatiskt och erbjuder
-manuell uppdatering vid nätverksproblem. När länken går ut återgår profilen
-till nytt samtycke och en ny länk utan omladdning. Utgången länk visas också i
+välja ett Telegram-konto. **Aktivera Telegram** har en kort samtyckestext
+kopplad med `aria-describedby`; klicket lämnar samtycke och öppnar den
+personliga startlänken direkt i samma flik. Användaren trycker sedan Start
+i sin egen Telegram-chatt. Ingen separat kryssruta eller manuell
+statusknapp ingår i normalflödet. **Öppna Telegram igen** är en sekundär
+reservlänk om öppningen misslyckas. Profilen uppdaterar status automatiskt och erbjuder
+möjlighet att försöka igen vid nätverksproblem. När länken går ut återgår profilen
+till aktiveringsknappen och en ny länk utan omladdning. Utgången länk visas också i
 `/components#telegram-example` tillsammans med övriga profiltillstånd.
