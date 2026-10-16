@@ -63,6 +63,15 @@ En uppgradering från grupp till supergrupp kräver en ny koppling.
    och `my_chat_member`. Väntande uppdateringar kastas inte bort.
 6. Kör testprotokollet nedan. Aktivera produktionsflaggan först efter godkänd pilot.
 
+Scriptet läser variabler från processens miljö. För en lokal fil, kör
+`node --env-file=.env scripts/configure-telegram-webhook.mjs` eller byt filnamnet
+till `.env.local`. Scriptet visar vilket API-steg som körs (`getMe`,
+`setMyCommands`, `setWebhook`). Vid fel anges variabeln eller API-metoden,
+HTTP-status och Telegrams felkod samt en begränsad, sanerad felbeskrivning.
+Nätverksfel och timeout skiljs från API-fel. Token, webhookhemlighet, råa
+svarskroppar och fetch-fel med hemliga URL:er skrivs aldrig ut. Ett fel avbryter
+återstående steg; redan lyckade API-anrop återställs inte automatiskt.
+
 Använd separat bot/token för varje miljö: en bot kan bara ha en webhook.
 Token förekommer i Telegrams API-URL; undvik URL-loggning i proxy/APM. Rotera
 token och webhookhemlighet vid misstänkt exponering. Kopplings- och kvittensbevis
