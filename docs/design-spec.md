@@ -540,3 +540,12 @@ förklaring om medlemmar eller sparat underlag finns. Serverfel och lyckat
 sparande visas i aktuell sektion. Produktionskomponenten visas på
 `/components#section-team-components` med tomt, ändringsbart och
 borttagningsskyddat läge samt lokala interaktioner utan verksamhetsskrivningar.
+
+## Telegram i profilen
+
+Privat Telegram-koppling visas som egen samtyckessektion i Min profil, med
+startlänk, statuskontroll och bortkoppling. Lag- och ledarchattar har lagval och
+separat chattval; endast lag med serverkontrollerad truppbehörighet visas.
+Gruppkoppling kräver uttrycklig bekräftelse, och den kortlivade länken öppnar
+Telegrams gruppval. Samma produktionskomponenter och laddning, väntan, fel,
+ej konfigurerat och aktiva tillstånd visas på `/components`.
