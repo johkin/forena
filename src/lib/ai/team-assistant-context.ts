@@ -40,7 +40,8 @@ export async function loadTeamAssistantContext(input: TeamAssistantInput, { supa
     : { data: [] };
   if (!canViewTeam && !(personalMemberships ?? []).length) throw new TeamAssistantError("team-forbidden", "Du saknar åtkomst till laget.");
 
-  const [{ data: organization }, { data: activities }, { data: section }, { data: memories }] = await Promise.all([
+  const [{ data: personalPeople, error: personalPeopleError }, { data: organization }, { data: activities }, { data: section }, { data: memories }] = await Promise.all([
+    personalIds.length ? supabase.from("people").select("id, display_name").eq("organization_id", team.organization_id).in("id", personalIds) : Promise.resolve({ data: [], error: null }),
     supabase.from("organizations").select("name, assistant_name, time_zone").eq("id", team.organization_id).single(),
     supabase.from("activities").select("id, activity_type_id, title, description_markdown, gathering_at, starts_at, ends_at, location").eq("team_id", teamId).neq("status", "cancelled").gte("ends_at", new Date().toISOString()).order("starts_at").limit(5),
     supabase.from("sections").select("discipline_id, name").eq("id", team.section_id).maybeSingle(),
@@ -51,6 +52,8 @@ export async function loadTeamAssistantContext(input: TeamAssistantInput, { supa
       .order("updated_at", { ascending: false })
       .limit(80),
   ]);
+  if (personalPeopleError) throw new TeamAssistantError("draft-unavailable", "Personuppgifterna kunde inte hämtas. Försök igen.");
+  const personalNames = new Map((personalPeople ?? []).map(person => [person.id, person.display_name]));
   const disciplineId = section?.discipline_id ?? null;
   const relevantMemories = (memories ?? [])
     .filter((memory) => memory.discipline_id === null || memory.discipline_id === disciplineId)
@@ -126,7 +129,7 @@ export async function loadTeamAssistantContext(input: TeamAssistantInput, { supa
       items: parsedSignals.success ? parsedSignals.data.slice(0, 20) : [],
       truncated: parsedSignals.success && parsedSignals.data.length > 20,
     } : undefined,
-    viewer: { kind: (canViewTeam ? "leader" : "player-or-guardian") as AssistantViewerKind, people: (ownPeople ?? []).map((item) => item.display_name) },
+    viewer: { kind: (canViewTeam ? "leader" : "player-or-guardian") as AssistantViewerKind, people: (personalPeople ?? []).filter(person => (personalMemberships ?? []).some(member => member.person_id === person.id)).map(person => ({ id: person.id, name: person.display_name })) },
     activities: (activities ?? []).map((activity) => ({
       id: activity.id,
       title: activity.title,
@@ -135,7 +138,7 @@ export async function loadTeamAssistantContext(input: TeamAssistantInput, { supa
       startsAt: { instantUtc: activity.starts_at, organizationLocal: localTime(activity.starts_at, organizationTimeZone), viewerLocal: localTime(activity.starts_at, viewerTimeZone) },
       endsAt: { instantUtc: activity.ends_at, organizationLocal: localTime(activity.ends_at, organizationTimeZone), viewerLocal: localTime(activity.ends_at, viewerTimeZone) },
       location: activity.location,
-      ownInvitations: invitationsByActivity.get(activity.id) ?? [],
+      ownInvitations: (invitationsByActivity.get(activity.id) ?? []).map(invitation => ({ ...invitation, personName: personalNames.get(invitation.person_id) ?? "Namn saknas" })),
       teamResponseSummary: canManageInvitations ? {
         accepted: (teamInvitations ?? []).filter((item) => item.activity_id === activity.id && item.response === "accepted").length,
         declined: (teamInvitations ?? []).filter((item) => item.activity_id === activity.id && item.response === "declined").length,

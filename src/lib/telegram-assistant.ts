@@ -5,6 +5,7 @@ import type { Database } from "./supabase/database.types";
 import { getSupabaseEnvironment } from "./supabase/env";
 import { createAdminClient } from "./supabase/admin";
 import { answerTeamAssistant } from "./ai/team-assistant";
+import type { AssistantDependencies } from "./ai/team-assistant-types";
 import { TeamAssistantError } from "./ai/team-assistant-types";
 
 export type TelegramQuestion = { sender: string; chatId: string; messageId: string; eventAt: string; question: string; teamPath?: string };
@@ -40,6 +41,38 @@ export function telegramMentionsTeam(question: string, team: { name: string; slu
     const escaped = normalize(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     return new RegExp(`(?:^|[^\\p{L}\\p{N}])${escaped}(?=$|[^\\p{L}\\p{N}])`, "u").test(text);
   });
+}
+
+type PersonalTeam = { teamId: string; people: string[] };
+
+/** Derive personal routing from current self/guardian records, never chat claims. */
+export async function telegramPersonalTeams(supabase: AssistantDependencies["supabase"], userId: string, question: string): Promise<PersonalTeam[]> {
+  const [own, guardians] = await Promise.all([
+    supabase.from("people").select("id, display_name").eq("user_id", userId).limit(51),
+    supabase.from("person_guardians").select("person_id").eq("guardian_user_id", userId).limit(51),
+  ]);
+  if (own.error || guardians.error || !own.data || !guardians.data) throw new Error("telegram_assistant_people_failed");
+  const ids = [...new Set([...own.data.map(person => person.id), ...guardians.data.map(link => link.person_id)])];
+  if (ids.length > 50) return [];
+  if (!ids.length) return [];
+  const [people, memberships] = await Promise.all([
+    supabase.from("people").select("id, display_name").in("id", ids).limit(51),
+    supabase.from("memberships").select("person_id, team_id").in("person_id", ids).eq("role", "participant").is("ends_on", null).limit(201),
+  ]);
+  if (people.error || memberships.error || !people.data || !memberships.data) throw new Error("telegram_assistant_memberships_failed");
+  if (memberships.data.length > 200) return [];
+  const mentioned = people.data.filter(person => telegramMentionsTeam(question, { name: person.display_name, slug: person.display_name.trim().split(/\s+/)[0] }));
+  const relevant = mentioned.length ? mentioned : people.data;
+  const selected = new Map<string, string[]>();
+  for (const membership of memberships.data) {
+    if (!membership.team_id) continue;
+    const person = relevant.find(person => person.id === membership.person_id);
+    if (!person) continue;
+    const names = selected.get(membership.team_id) ?? [];
+    if (!names.includes(person.display_name)) names.push(person.display_name);
+    selected.set(membership.team_id, names);
+  }
+  return [...selected].map(([teamId, people]) => ({ teamId, people }));
 }
 
 const claimSchema = z.discriminatedUnion("status", [
@@ -79,8 +112,20 @@ export async function answerTelegramQuestion(action: TelegramQuestion): Promise<
     const teams = await query;
     if (teams.error || !teams.data) throw new Error("telegram_assistant_teams_failed");
     const mentioned = action.teamPath || teams.data.length > 200 ? [] : teams.data.filter(team => telegramMentionsTeam(action.question, team));
-    const selected = mentioned.length === 1 ? mentioned[0] : teams.data.length === 1 ? teams.data[0] : undefined;
-    if (!teams.data.length) answer = "Jag hittar inget tillgängligt lag. Öppna Förena och kontrollera din lagkoppling.";
+    let selected = mentioned.length === 1 ? mentioned[0] : teams.data.length === 1 ? teams.data[0] : undefined;
+    const personal = !selected && !action.teamPath && !mentioned.length && teams.data.length <= 200
+      ? (await telegramPersonalTeams(supabase, identity.userId, action.question)).filter(item => teams.data.some(team => team.id === item.teamId)) : [];
+    if (personal.length === 1) selected = teams.data.find(team => team.id === personal[0].teamId);
+    if (personal.length > 1 && personal.length <= 3) {
+      const replies = await Promise.all(personal.map(async item => {
+        const team = teams.data.find(team => team.id === item.teamId)!;
+        const reply = await answerTeamAssistant({ teamId: team.id, question: action.question.trim().slice(0, 500), messages: [] }, { supabase, userId: identity.userId });
+        const hasDraft = reply.activityDraft || reply.memoryDrafts?.length || reply.reminderDrafts?.length || reply.dutyDrafts?.length;
+        const text = hasDraft ? "Öppna lagets assistent i Förena för att granska förslaget. Inget har sparats eller skickats." : reply.answer;
+        return `${item.people.join(", ").slice(0, 160)} – ${team.name.slice(0, 100)}\n${text.length > 950 ? text.slice(0, 900) + "… Läs mer i Förena." : text}`;
+      }));
+      answer = replies.join("\n\n");
+    } else if (!teams.data.length) answer = "Jag hittar inget tillgängligt lag. Öppna Förena och kontrollera din lagkoppling.";
     else if (!selected) {
       const organizations = await supabase.from("organizations").select("id, slug").in("id", [...new Set(teams.data.map(team => team.organization_id))]);
       if (organizations.error || !organizations.data) throw new Error("telegram_assistant_organizations_failed");
@@ -93,7 +138,7 @@ export async function answerTelegramQuestion(action: TelegramQuestion): Promise<
       const hasDraft = reply.activityDraft || reply.memoryDrafts?.length || reply.reminderDrafts?.length || reply.dutyDrafts?.length;
       answer = hasDraft
         ? "Det här kräver ett förslag som du granskar i Förena. Öppna lagets assistent och ställ frågan där. Inget har sparats eller skickats."
-        : reply.answer;
+        : personal.length === 1 ? `${personal[0].people.join(", ").slice(0, 160)} – ${team.name.slice(0, 100)}\n${reply.answer}` : reply.answer;
     }
   } catch (error) {
     answer = error instanceof TeamAssistantError ? error.message : "Assistenten kunde inte svara just nu. Försök igen eller öppna Förena.";

@@ -16,7 +16,8 @@ får två kallelser med **Kommer**, **Kan inte** och **Öppna Förena**. Spelare
 eget kopplat konto svarar på sin egen kallelse. Knapptryck bevarar kommentarer,
 skriver det ordinarie kallelsesvaret och uppdaterar meddelandet med en bekräftelse.
 Kommentarer skrivs i Förena. Privat fritext kan användas för assistentfrågor när
-frågestödet är aktiverat; annars visas kopplingshjälp. Om svaret ändras i appen
+frågestödet är aktiverat; annars förklarar boten att frågestödet är avstängt och
+länkar till assistenten i Förena. /start och /help visar kopplingshjälp. Om svaret ändras i appen
 blir tidigare Telegram-knappar inaktuella; fortsätt i appen eller använd en ny
 kallelse. Telegrams callback har ingen egen tidpunkt, så detta skyddar mot
 fördröjda knapptryck som annars kunde skriva över appsvaret.
@@ -54,8 +55,17 @@ verktyg och datakällor används som i webbappen. Kontot härleds enbart från d
 verifierade Telegram-kopplingen. Varje fråga är fristående; samtalshistorik och
 lagval sparas inte. Ange aktivitet och period igen i följdfrågor.
 
-Om ett enda lag är synligt används det. Vid flera synliga lag kan man skriva
-lagets namn i vanlig text, exempelvis **När är nästa träning för F2016?**.
+Om ett enda lag är synligt används det. Vid flera lag och utan uttryckligt
+lagval hämtas användarens egna personer, aktuella vårdnadshavarkopplingar och
+aktiva deltagarmedlemskap med den autentiserade RLS-klienten. **När är nästa
+träning?** kan då besvaras för familjens lag, med barnets namn och lag som
+separata rubriker. **När tränar Tilda?** avgränsar till det barnets egna lag när
+namnet finns i det verifierade underlaget. Ingen person eller behörighet
+härleds från Telegram-namn eller modellens svar. Högst tre personliga lag
+behandlas per fråga; vid fler lag ber boten om ett uttryckligt lagval.
+
+Ett uttryckligt lag kan anges i vanlig text, exempelvis **När är nästa träning
+för F2016?**.
 Boten väljer bara om namnet entydigt matchar ett lag i serverns lista. Annars
 visas lag att välja mellan; skriv namnet tillsammans med frågan. För tvetydiga
 namn finns även `/ask klubbens-slug/lagets-slug När är nästa träning?`.
@@ -87,7 +97,8 @@ fel; ingen privilegierad reservklient används.
 
 Migrationen `telegram_assistant` måste appliceras före aktivering. Samma update
 behandlas högst en gång; gränsen är fem frågor per minut och trettio per timme
-per kopplat konto. En misslyckad generering förbrukar också frågan; ställ en ny
+per kopplat konto. En fråga kan göra högst tre lagassistentanrop för familjens
+lag. En misslyckad generering förbrukar också frågan; ställ en ny
 fråga vid fel. Kopplingen och kontots aktiva status kontrolleras igen före svar.
 Svar skickas som vanlig text med skydd mot vidarebefordran och en länk till Förena.
 

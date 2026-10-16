@@ -2,19 +2,20 @@ import { describe, expect, it, vi } from "vitest";
 import { loadTeamAssistantContext } from "./team-assistant-context";
 import type { AssistantDependencies } from "./team-assistant-types";
 
-function setup({ leader = false, family = true, team = true, invitationManager = false, legacyDiscipline = false } = {}) {
+function setup({ leader = false, family = true, team = true, invitationManager = false, legacyDiscipline = false, guardian = false } = {}) {
   const queries: { table: string; select: ReturnType<typeof vi.fn>; in: ReturnType<typeof vi.fn>; or: ReturnType<typeof vi.fn> }[] = [];
+  let peopleReads = 0;
   const from = vi.fn((table: string) => {
     const data = {
       teams: team ? { id: "team", organization_id: "org", section_id: "section", discipline_id: legacyDiscipline ? "other" : null, name: "Laget" } : null,
-      people: family ? [{ id: "own-person", display_name: "Barn" }] : [],
-      person_guardians: [],
-      memberships: family ? [{ person_id: "own-person" }] : [],
+      people: guardian ? (table === "people" && ++peopleReads === 1 ? [] : [{ id: "child-a", display_name: "Tilda" }, { id: "child-b", display_name: "Johan" }]) : family ? [{ id: "own-person", display_name: "Barn" }] : [],
+      person_guardians: guardian ? [{ person_id: "child-a" }, { person_id: "child-b" }] : [],
+      memberships: guardian ? [{ person_id: "child-a" }, { person_id: "child-b" }] : family ? [{ person_id: "own-person" }] : [],
       organizations: { name: "Klubb", assistant_name: "Nova", time_zone: "Europe/Stockholm", discipline_id: null },
       sections: { discipline_id: legacyDiscipline ? "football" : null },
       activities: [{ id: "activity", activity_type_id: "training", title: "Träning", description_markdown: "Info",
         gathering_at: null, starts_at: "2026-10-20T16:00:00Z", ends_at: "2026-10-20T17:30:00Z", location: "Plan" }],
-      invitations: [], activity_type_documents: [], team_tasks: [], assistant_memories: [],
+      invitations: guardian ? [{ activity_id: "activity", person_id: "child-a", response: "accepted" }, { activity_id: "activity", person_id: "child-b", response: "declined" }] : [], activity_type_documents: [], team_tasks: [], assistant_memories: [],
     }[table];
     const result = { data, error: null };
     const builder = {
@@ -100,4 +101,14 @@ describe("team assistant context access", () => {
     expect(result.context.activities[0].teamResponseSummary).toBeDefined();
     expect(queries.filter(query => query.table === "invitations")).toHaveLength(1);
   });
+});
+
+it("identifies each guardian's child and keeps their different invitation answers separate", async () => {
+  const { dependencies } = setup({ guardian: true });
+  const result = await loadTeamAssistantContext(input, dependencies);
+  expect(result.context.viewer.people).toEqual([{ id: "child-a", name: "Tilda" }, { id: "child-b", name: "Johan" }]);
+  expect(result.context.activities[0].ownInvitations).toEqual([
+    { activity_id: "activity", person_id: "child-a", response: "accepted", personName: "Tilda" },
+    { activity_id: "activity", person_id: "child-b", response: "declined", personName: "Johan" },
+  ]);
 });
