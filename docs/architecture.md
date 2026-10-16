@@ -637,3 +637,15 @@ internt kortlivat användar-JWT och en klient med vanlig RLS. Service-klienten
 överlämnas aldrig till assistenten. Grupper har en uttryckligt vald roll men
 ingen verifierad komplett publik; därför körs inte assistenten i grupper.
 Konfiguration, begränsningar och granskningsflöde finns i [Telegram](telegram.md).
+
+
+Privata Telegram-frågor utan uttryckligt lagval kan använda verifierade egna
+personer och vårdnadshavarkopplingar för att hitta familjens aktiva deltagarlag.
+Uppslag sker med samma RLS-klient som assistenten. Personnamn i frågan är ett
+urval inom den aktuella behöriga familjen, aldrig en identitet eller en grant.
+Högst tre personliga lag delegeras till den befintliga lagassistenten, med
+namngivna separata svar. Fler lag kräver precisering. Även ett enskilt
+personligt svar får namn-/lagrubrik när den personliga routningen används.
+Den delade lagkontexten inkluderar nu namn och ID på vårdnadshavarens barn samt
+`personName` på varje personlig kallelse, så att syskons kallelsesvar hålls isär
+även i webbappen. En lagaktivitet bevisar inte att barnet är kallat eller anmält.
