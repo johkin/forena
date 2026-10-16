@@ -24,7 +24,7 @@ const update = z.object({
   my_chat_member: z.object({ chat, date: timestamp, new_chat_member: z.object({ status: z.string() }) }).optional(),
 });
 
-// Exact commands only. Never interpret chat text as app instructions or AI input.
+// Group text never becomes AI input. Private questions use a separately authorized adapter.
 export function telegramAction(payload: unknown, botUsername: string) {
   const parsed = update.safeParse(payload);
   if (!parsed.success) return null;
@@ -44,10 +44,15 @@ export function telegramAction(payload: unknown, botUsername: string) {
       replyId: reply[1], answer: reply[2] as "accepted" | "declined" };
   }
   const m = u.message;
-  if (!m?.from || m.from.is_bot || m.sender_chat || !m.text) return null;
-  const command = /^\/(start|stop|help|forena)(?:@([A-Za-z0-9_]+))?(?: ([a-f0-9]{64}))?$/.exec(m.text.trim());
+  if (!m?.from || m.from.is_bot || m.sender_chat || !m.text?.trim()) return null;
+  const ask = /^\/ask(?:@([A-Za-z0-9_]+))?\s+(\S+\/\S+)\s+([\s\S]+)$/.exec(m.text.trim());
+  if (ask && (!ask[1] || ask[1].toLowerCase() === botUsername.toLowerCase()) && m.chat.type === "private" && m.chat.id === m.from.id) {
+    return { ...envelope, operation: "question" as const, sender: String(m.from.id), chatId: String(m.chat.id),
+      eventAt: new Date(m.date * 1000).toISOString(), question: ask[3].trim().slice(0, 500), teamPath: ask[2] };
+  }
+  const command = /^\/(start|stop|help|forena|ask)(?:@([A-Za-z0-9_]+))?(?: ([a-f0-9]{64}))?$/.exec(m.text.trim());
   if (!command && m.chat.type === "private" && m.chat.id === m.from.id && !m.text.trim().startsWith("/")) {
-    return { ...envelope, operation: "help" as const, sender: String(m.from.id), chatId: String(m.chat.id), eventAt: new Date(m.date * 1000).toISOString() };
+    return { ...envelope, operation: "question" as const, sender: String(m.from.id), chatId: String(m.chat.id), eventAt: new Date(m.date * 1000).toISOString(), question: m.text.trim().slice(0, 500), teamPath: undefined };
   }
   if (!command || (command[2] && command[2].toLowerCase() !== botUsername.toLowerCase())) return null;
   const common = { ...envelope, sender: String(m.from.id), chatId: String(m.chat.id), eventAt: new Date(m.date * 1000).toISOString() };

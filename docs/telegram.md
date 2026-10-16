@@ -15,7 +15,8 @@ Varje kallad person får ett eget meddelande. Vårdnadshavare med två kallade b
 får två kallelser med **Kommer**, **Kan inte** och **Öppna Förena**. Spelare med
 eget kopplat konto svarar på sin egen kallelse. Knapptryck bevarar kommentarer,
 skriver det ordinarie kallelsesvaret och uppdaterar meddelandet med en bekräftelse.
-Kommentarer skrivs i Förena. Privat fritext ger endast kopplingshjälp. Om svaret ändras i appen
+Kommentarer skrivs i Förena. Privat fritext kan användas för assistentfrågor när
+frågestödet är aktiverat; annars visas kopplingshjälp. Om svaret ändras i appen
 blir tidigare Telegram-knappar inaktuella; fortsätt i appen eller använd en ny
 kallelse. Telegrams callback har ingen egen tidpunkt, så detta skyddar mot
 fördröjda knapptryck som annars kunde skriva över appsvaret.
@@ -44,6 +45,67 @@ kallelsesvar. Telegrams medlemslista ger ingen Förena-behörighet. Om ledaren
 förlorar behörigheten eller kopplar bort sitt konto upphör gruppintegrationen.
 Ta bort boten eller välj **Koppla bort eller avbryt** i profilen för att avsluta.
 En uppgradering från grupp till supergrupp kräver en ny koppling.
+
+## Frågor till assistenten privat
+
+När `TELEGRAM_ASSISTANT_ENABLED=true` kan kopplade användare ställa frågor i
+botens privata chatt. Samma `answerTeamAssistant` och dess behörighetskontroller,
+verktyg och datakällor används som i webbappen. Kontot härleds enbart från den
+verifierade Telegram-kopplingen. Varje fråga är fristående; samtalshistorik och
+lagval sparas inte. Ange aktivitet och period igen i följdfrågor.
+
+Om ett enda lag är synligt används det. Vid flera synliga lag kan man skriva
+lagets namn i vanlig text, exempelvis **När är nästa träning för F2016?**.
+Boten väljer bara om namnet entydigt matchar ett lag i serverns lista. Annars
+visas lag att välja mellan; skriv namnet tillsammans med frågan. För tvetydiga
+namn finns även `/ask klubbens-slug/lagets-slug När är nästa träning?`.
+Snedstreck behövs alltså inte för vanliga frågor. Sluggarna är samma som
+i lagets webbadress `/o/klubbens-slug/t/lagets-slug`. Sökningen begränsas till 200 synliga lag. Listan följer vanlig RLS för
+lagmetadata; synlig metadata ger inte tillgång till lagassistentens privata data.
+Assistenten kontrollerar vald lagåtkomst på nytt. Högst tio val visas; fler lag
+kan väljas uttryckligen med adressens sluggar. Utkast och påminnelser granskas i
+webbappens assistent; Telegram-svaret kan inte spara eller skicka dem.
+
+Aktivering kräver även `TELEGRAM_ASSISTANT_SIGNING_JWK`: en privat JWK som
+motsvarar en **aktiv signeringsnyckel i samma Supabase-projekt**. ES256 (P-256)
+och RS256 stöds med rätt `kid` och `alg`. För projekt med legacy JWT secret kan
+en oct-JWK med `alg=HS256` och hemligheten base64url-kodad i `k` användas. Detta
+är en separat serverhemlighet, aldrig publishable key, service key eller en
+publik JWK. Supabase-genererade privata nycklar kan inte exporteras; använd en
+avsiktligt importerad signeringsnyckel eller befintlig legacy-hemlighet. Byt
+inte projektets aktiva nycklar enbart för att slå på prototypen. Saknas en
+lämplig nyckel, behåll funktionen avstängd.
+
+Nyckeln skapar ett internt JWT med den kopplade användarens ID,
+`role=authenticated` och två minuters livslängd. Assistentens klient använder
+publishable key och detta JWT, så vanliga RLS-policyer och lagbehörigheter gäller.
+Service-klienten används bara för kontokoppling, deduplicering och frågebudget.
+JWT lagras inte och skickas aldrig till Telegram eller modellen. Inga
+inloggningssessioner eller mejllänkar skapas. Rotera hemligheten tillsammans med
+projektets signeringsnyckel. Saknad eller felaktig konfiguration ger ett generiskt
+fel; ingen privilegierad reservklient används.
+
+Migrationen `telegram_assistant` måste appliceras före aktivering. Samma update
+behandlas högst en gång; gränsen är fem frågor per minut och trettio per timme
+per kopplat konto. En misslyckad generering förbrukar också frågan; ställ en ny
+fråga vid fel. Kopplingen och kontots aktiva status kontrolleras igen före svar.
+Svar skickas som vanlig text med skydd mot vidarebefordran och en länk till Förena.
+
+## Gruppdeltagare och ledarchattar
+
+Telegram Bot API erbjuder ingen komplett deltagarlista, inte heller för en
+administratörsbot. `getChatMember` kan kontrollera ett **känt Telegram-ID**; det
+bevisar varken att alla övriga deltagare är kända eller att personen tillhör ett
+lag i Förena. För en sådan kontroll behövs både en verifierad kontokoppling och
+ett aktuellt lagmedlemskap eller en aktuell målsmans-/ledarkoppling.
+
+Den sparade grupprollen `team` eller `leaders` kommer från ledarens uttryckliga
+val i profilen och binds till ett lag med ett engångsbevis. Gruppens namn,
+Telegram-administratörer och meddelandetext avgör aldrig ledarbehörighet.
+Rollen säger vilken sorts grupp ledaren avsåg; den intygar inte alla deltagares
+behörighet. Boten gör i denna version ingen fullständig deltagarkontroll och
+påstår aldrig att alla är verifierade. Fria frågor och `/ask` i grupper ignoreras.
+Känsliga frågor besvaras privat efter individuell behörighetskontroll.
 
 ## Installation och hemligheter
 
@@ -117,6 +179,11 @@ tillhandahållits. Följande ska journalföras innan issue 91 kan stängas:
   aldrig får barnens kallelser eller svar.
 - Testa `/stop`, profilens avstängning, blockering, återanslutning och gamla
   knappar. Simulera 429/403 och kontrollera reservnotis samt leveranshistorik.
+- Med frågestödet och dess signeringsnyckel konfigurerade: ställ vanliga frågor
+  som ledare, spelare och målsman. Prova flera lag med namn i vanlig text,
+  ett främmande lag, dubbletter, frågebudget och bortkoppling under generering.
+  Kontrollera att ingen gruppfråga når modellen och att utkast hänvisas till
+  webbappens granskning.
 - Anteckna installationstid, missade steg och behov av hjälp för pilotfamiljer.
 
 ## Utvärdering och rekommendation
@@ -182,3 +249,20 @@ Migrationen för presentation behåller det äldre textfältet för att stödja
 rullande uppgradering. Deploya migration, webbapp och notifieringsworker för
 samma format i nya utskick och efter knapptryck. Redan skickade meddelanden
 ändras först när ett giltigt svar skickas via knapparna.
+
+## Möjlig nytta i gruppchattar (förslag, inte implementerat)
+
+Föräldrachattar kan få gemensamma svar om träningstider, samling, plats,
+utrustning, resor och lagrutiner, med länkar till aktivitet och kallelse.
+Frivilliga sammanfattningar och förslag till gemensamma frågor kan minska
+upprepade meddelanden. Personliga svar och uppgifter om barn går privat.
+
+Ledarchattar kan få underlag om obesvarade kallelser, spelarantal,
+bemanningsluckor och kommande uppgifter samt förslag till påminnelser,
+aktiviteter och agendor. Förslag granskas och bekräftas i Förena före
+publicering, ändringar eller utskick. Privat information kräver individuell
+behörighetskontroll även om gruppen har rollen leaders.
+
+Innan gruppsvar byggs behövs en uttrycklig dataklassning av vad hela gruppen
+får se, när boten ska svara (exempelvis vid tilltal) och hur nya eller okända
+deltagare påverkar delning. Gruppnamnet ersätter aldrig dessa kontroller.
