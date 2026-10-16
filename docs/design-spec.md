@@ -549,3 +549,19 @@ separat chattval; endast lag med serverkontrollerad truppbehörighet visas.
 Gruppkoppling kräver uttrycklig bekräftelse, och den kortlivade länken öppnar
 Telegrams gruppval. Samma produktionskomponenter och laddning, väntan, fel,
 ej konfigurerat och aktiva tillstånd visas på `/components`.
+
+
+### Telegram-meddelanden
+
+Botmeddelanden följer samma svarsfärger och tydliga hierarki som appen:
+barnets namn i rubriken, grupperade aktivitetsuppgifter och ett namngivet
+sparat svar. Vald Kommer-knapp har grön `success`-stil och ✅; vald Kan inte
+har röd `danger`-stil och ❌. Texten är alltid begriplig utan färg. Telegrams
+klient bestämmer typsnitt, hörnradier och exakta färgnyanser. Disciplinen får
+anpassa ikon och rubrik utan att ändra svarens betydelse eller personkoppling.
+
+Koppling som börjar i boten leder till profilens befintliga samtyckessektion,
+visar maskerat Telegram-ID och avslutas med en bekräftelse hos boten.
+Profilen uppdaterar status automatiskt och erbjuder manuell uppdatering vid
+nätverksproblem. Tillstånden Start från boten och Bekräfta hos boten finns i
+`/components#telegram-example` tillsammans med övriga profiltillstånd.

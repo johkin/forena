@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { telegramAction, verifyTelegramSecret, telegramAvailable } from "@/lib/telegram";
-import { TelegramError, telegramApi, telegramKeyboard } from "../../../../../supabase/functions/_shared/telegram";
+import { TelegramError, telegramApi, telegramKeyboard, telegramInvitationText, telegramConfirmation, type TelegramInvitationMessage } from "../../../../../supabase/functions/_shared/telegram";
+import { createTelegramEnrollment } from "@/lib/telegram-enrollment";
 import { getSiteUrl } from "@/lib/site-url";
 
 export async function POST(request: Request) {
@@ -22,6 +23,20 @@ export async function POST(request: Request) {
   const action = telegramAction(payload, process.env.TELEGRAM_BOT_USERNAME!);
   if (!action) return new Response("OK");
   const token = process.env.TELEGRAM_BOT_TOKEN!;
+  if (action.operation === "help") {
+    // Free text is only a request for connection instructions, never an action.
+    if (Date.now() - Date.parse(action.eventAt) > 600_000 || Date.parse(action.eventAt) > Date.now()) return new Response("OK");
+    const proof = createTelegramEnrollment(action.sender, action.messageId.slice(2), process.env.TELEGRAM_WEBHOOK_SECRET!);
+    const url = new URL("/profile", getSiteUrl());
+    url.searchParams.set("telegram", proof);
+    url.hash = "telegram";
+    await telegramApi(token, "sendMessage", { chat_id: action.chatId,
+      text: "Välkommen till Förena! Öppna länken, logga in och godkänn Telegram för ditt konto. Länken gäller i tio minuter och ska inte delas. Är du redan kopplad behöver du inte göra något. /stop kopplar bort kontot.",
+      protect_content: true, link_preview_options: { is_disabled: true },
+      reply_markup: { inline_keyboard: [[{ text: "Koppla till Förena", url: url.href }]] },
+    }).catch(() => {});
+    return new Response("OK");
+  }
   const supabase = createAdminClient();
   try {
     if (action.operation === "respond") {
@@ -29,26 +44,31 @@ export async function POST(request: Request) {
         message_id: action.messageId, sender: action.sender, event_at: new Date().toISOString(), reply_id: action.replyId, answer: action.answer,
       });
       if (error) return new Response("Retry later", { status: 503 });
-      const text = data === "accepted" ? "Kommer" : data === "declined" ? "Kan inte" : "Kallelsen är inte tillgänglig. Öppna Förena.";
-      // A confirmation failure never rolls back a saved answer. No provider body
-      // or fetch error (which can contain credentials) enters application logs.
-      await telegramApi(token, "answerCallbackQuery", { callback_query_id: action.callbackId, text }).catch(() => {});
-      if (data === "accepted" || data === "declined") {
-        const { data: messages, error: lookupError } = await supabase.rpc("telegram_reply_message", { reply_id: action.replyId, sender: action.sender });
-        const frozen = messages as { text: string; url: string } | null;
-        if (!lookupError && frozen) await telegramApi(token, "editMessageText", {
-          chat_id: action.chatId, message_id: Number(action.providerMessageId),
-          text: `${frozen.text}\n\nDitt svar: ${text}.`,
-          reply_markup: telegramKeyboard(action.replyId, new URL(frozen.url, getSiteUrl()).href),
-          link_preview_options: { is_disabled: true },
-        }).catch(() => {});
+      const answer = data === "accepted" || data === "declined" ? data : null;
+      type FrozenMessage = { text: string; url: string; message?: TelegramInvitationMessage };
+      let frozen: FrozenMessage | null = null;
+      if (answer) {
+        const lookup = await supabase.rpc("telegram_reply_message", { reply_id: action.replyId, sender: action.sender });
+        if (!lookup.error) frozen = lookup.data as FrozenMessage | null;
       }
+      const confirmation = answer ? frozen?.message ? telegramConfirmation(frozen.message.person, answer) : `Ditt svar: ${answer === "accepted" ? "Kommer" : "Kan inte"}.` : "Kallelsen är inte tillgänglig. Öppna Förena.";
+      // Confirmation failures never roll back a saved answer.
+      await telegramApi(token, "answerCallbackQuery", { callback_query_id: action.callbackId, text: confirmation }).catch(() => {});
+      if (answer && frozen) await telegramApi(token, "editMessageText", {
+        chat_id: action.chatId, message_id: Number(action.providerMessageId),
+        text: frozen.message ? telegramInvitationText(frozen.message, answer) : `${frozen.text}\n\n${confirmation}`,
+        ...(frozen.message ? { parse_mode: "HTML" } : {}),
+        reply_markup: telegramKeyboard(action.replyId, new URL(frozen.url, getSiteUrl()).href, answer),
+        link_preview_options: { is_disabled: true },
+      }).catch(() => {});
     } else if (action.operation === "bind" || action.operation === "stop") {
       const { data, error } = await supabase.rpc("receive_telegram", {
         message_id: action.messageId, sender: action.sender, event_at: action.eventAt,
         operation: action.operation, pairing_hash: action.operation === "bind" ? action.pairingHash : undefined,
       });
       if (error) return new Response("Retry later", { status: 503 });
+      if ("callbackId" in action) await telegramApi(token, "answerCallbackQuery", { callback_query_id: action.callbackId,
+        text: data ? "Telegram är kopplat." : "Kopplingen är redan klar eller länken har gått ut. Öppna Förena för att kontrollera." }).catch(() => {});
       if (data) await telegramApi(token, "sendMessage", { chat_id: action.chatId,
         text: action.operation === "bind" ? "Telegram är kopplat till Förena. Du får privata kallelser och kan svara med knapparna. /stop kopplar bort kontot." : "Telegram har kopplats bort från Förena." }).catch(() => {});
     } else if (action.operation === "removed") {
@@ -73,8 +93,6 @@ export async function POST(request: Request) {
       if (error) return new Response("Retry later", { status: 503 });
       if (data) await telegramApi(token, "sendMessage", { chat_id: action.chatId, text: "Öppna lagets vy i Förena. Logga in för att se det du har behörighet till.",
         reply_markup: { inline_keyboard: [[{ text: "Öppna Förena", url: new URL(data, getSiteUrl()).href }]] } }).catch(() => {});
-    } else {
-      await telegramApi(token, "sendMessage", { chat_id: action.chatId, text: "Koppla Telegram i Min profil i Förena. Svara på privata kallelser med knapparna. /stop kopplar bort kontot. Gruppkoppling för lag och ledare görs i profilen." }).catch(() => {});
     }
   } catch {
     return new Response("Retry later", { status: 503 });

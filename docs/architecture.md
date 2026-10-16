@@ -610,3 +610,15 @@ syskon som råkar ha kallelser till aktiviteten. Nya köposter använder samma
 personfilter för WhatsApp-reserven; äldre WhatsApp-payloads behåller sitt
 befintliga kontrakt. Äldre Telegram-köposter utan personurval ger en generell
 navigationsnotis utan privata snapshots.
+
+
+Telegrams kallelsepresentation delas mellan notifieringsworker och webhook.
+Frysta meddelanden innehåller också disciplinnyckel och aktivitetskategori;
+formatteringen använder aldrig aktuell aktivitet för att identifiera barnet.
+Båda vägarna HTML-escapar verksamhetsdata och använder svenska datum utan
+att konvertera redan frysta lokala tider en gång till. Svarskvittot och den
+markerade knappen bygger endast på ett lyckat svar från `respond_telegram`.
+Botens privata startmeddelande kan leda till profilens samtycke via en kortlivad
+signerad länk; en separat engångsknapp hos boten slutför kopplingen. Den vanliga
+profilstarten fungerar parallellt. Status hämtas automatiskt under väntan och
+stoppas vid aktiv koppling, avmontering eller efter tio minuter.

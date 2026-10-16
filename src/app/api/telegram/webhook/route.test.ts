@@ -78,3 +78,28 @@ it("removes blocked chats and handles private stop commands", async () => {
   await POST(request({ update_id: 2, my_chat_member: { chat: message.chat, date: message.date, new_chat_member: { status: "kicked" } } }));
   expect(mocks.rpc).toHaveBeenCalledWith("remove_telegram_chat", expect.objectContaining({ target_chat: "123" }));
 });
+
+it("offers a signed connection link for private messages without opening admin access", async () => {
+  await POST(request({ update_id: 99, message: { ...message, text: "Hej" } }));
+  expect(mocks.admin).not.toHaveBeenCalled();
+  const body = JSON.parse(mocks.transport.mock.calls[0][1].body);
+  const url = new URL(body.reply_markup.inline_keyboard[0][0].url);
+  expect(url.origin + url.pathname).toBe("https://forena.test/profile");
+  expect(url.searchParams.get("telegram")).toMatch(/^123\.\d+\.99\.[a-f0-9]{64}$/);
+});
+it("consumes the final bot confirmation through the existing one-use pairing operation", async () => {
+  mocks.rpc.mockResolvedValue({ data: true, error: null });
+  await POST(request({ update_id: 99, callback_query: { ...callback.callback_query, data: "B1:" + "x".repeat(43) } }));
+  expect(mocks.rpc).toHaveBeenCalledWith("receive_telegram", expect.objectContaining({ sender: "123", operation: "bind", pairing_hash: expect.stringMatching(/^[a-f0-9]{64}$/) }));
+  expect(mocks.transport.mock.calls.some(c => c[0].endsWith("answerCallbackQuery"))).toBe(true);
+});
+it.each(["accepted", "declined"])("confirms %s with the child's name and updates escaped text and selected color", async answer => {
+  const frozen = { person: "Tilda <&>", team: "Team", activity: "Match", when: "2026-10-18 10:00", gathering: "09:30", location: "Field", due: "Tomorrow", url: `/activities/${id}` };
+  mocks.rpc.mockResolvedValueOnce({ data: answer, error: null }).mockResolvedValueOnce({ data: { text: "legacy", url: frozen.url, message: frozen }, error: null });
+  await POST(request(callback));
+  const calls = mocks.transport.mock.calls.map(c => ({ url: c[0], body: JSON.parse(c[1].body) }));
+  expect(calls[0].body.text).toBe(answer === "accepted" ? "Tilda <&> kommer." : "Tilda <&> kan inte komma.");
+  expect(calls[1].body.parse_mode).toBe("HTML");
+  expect(calls[1].body.text).toContain("Tilda &lt;&amp;&gt;");
+  expect(calls[1].body.reply_markup.inline_keyboard[0][answer === "accepted" ? 0 : 1].style).toBe(answer === "accepted" ? "success" : "danger");
+});

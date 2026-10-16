@@ -1,3 +1,4 @@
+import { verifyTelegramEnrollment } from "@/lib/telegram-enrollment";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
@@ -6,13 +7,14 @@ import { TelegramGroupSettings } from "@/components/telegram-group-settings";
 import { WhatsAppSettings } from "@/components/whatsapp-settings";
 import { updateProfile } from "./actions";
 
-type Props = { searchParams: Promise<{ saved?: string; error?: string }> };
+type Props = { searchParams: Promise<{ saved?: string; error?: string; telegram?: string }> };
 
 export default async function ProfilePage({ searchParams }: Props) {
-  const { saved, error } = await searchParams;
+  const { saved, error, telegram } = await searchParams;
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getUser();
-  if (!authData.user) redirect("/login?next=%2Fprofile");
+  const enrollmentSender = verifyTelegramEnrollment(telegram, process.env.TELEGRAM_WEBHOOK_SECRET ?? "");
+  if (!authData.user) redirect(`/login?next=${encodeURIComponent(enrollmentSender ? `/profile?telegram=${telegram}#telegram` : "/profile")}`);
 
   const { data: profile } = await supabase.from("profiles").select("display_name").eq("id", authData.user.id).maybeSingle();
   const { data: people } = await supabase.from("people").select("organization_id").eq("user_id", authData.user.id);
@@ -44,7 +46,7 @@ export default async function ProfilePage({ searchParams }: Props) {
           <button className="primary application-submit" type="submit">Spara profil</button>
         </form>
         <WhatsAppSettings />
-        <TelegramSettings />
+        <TelegramSettings enrollmentProof={telegram} enrollmentSuffix={enrollmentSender?.slice(-4)} />
         <TelegramGroupSettings />
       </section></main>
     </AppShell>

@@ -652,6 +652,20 @@ Telegram-avsändare och administratörsstatus i Telegram-gruppen. Botens
 administratörsroll behövs för att säkert kontrollera den senare. Ett chatt-ID
 kan inte ersätta en annan lagkoppling med en ny länk. Borttagen ledarbehörighet
 stoppar gruppens svar tills gruppen kopplas om. Gruppkommandot delar enbart en
-länk; inloggning och RLS gäller när den öppnas. Fritext och anonyma
-administratörskommandon ignoreras. Inga chattmeddelanden skickas till AI.
+länk; inloggning och RLS gäller när den öppnas. Fritext i grupper och anonyma
+administratörskommandon ignoreras. Privat fritext ger endast kopplingshjälp. Inga chattmeddelanden skickas till AI.
 Telegram-hemligheter, användar-ID:n och leverantörens svarskroppar loggas inte.
+
+
+Telegram-koppling som börjar hos boten använder en domänseparerad HMAC-SHA256-
+signerad länk med avsändar-ID, update-ID och utfärdandetid. Den verifieras i
+profilen och på servern före samtyckesåtgärden, gäller tio minuter och ger
+endast rätt att skicka en bekräftelse till den verifierade privata chatten.
+Själva kontokopplingen kräver fortfarande verifierad inloggning, uttryckligt
+samtycke och ett separat 256-bitars engångsbevis från databasen. Beviset skickas
+som knapp till Telegram och förbrukas först av en verifierad callback från en
+privat chatt vars ID är samma som avsändaren. Webblänken kopplar aldrig konton
+på egen hand. Befintliga kvittenser, tidsgränser och avstängningsregler gäller.
+Länken ska inte loggas eller delas; appen använder `Referrer-Policy: no-referrer`.
+Privat fritext ger enbart kopplingshjälp utan administrativ databasåtkomst;
+innehållet lagras inte och tolkas inte som instruktioner.
