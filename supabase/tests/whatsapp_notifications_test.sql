@@ -99,6 +99,8 @@ insert into public.notification_outbox(id,organization_id,user_id,type,payload,s
  ('b7000000-0000-0000-0000-000000000002','b1000000-0000-0000-0000-000000000001','b0000000-0000-0000-0000-000000000003','activity_invitation','{"activityId":"b6000000-0000-0000-0000-000000000002"}',now());
 select is(public.respond_whatsapp('own-answer','46700000003',now(),(select id from messaging.whatsapp_invitations where outbox_id='b7000000-0000-0000-0000-000000000002'),'accepted'),'accepted','Verified account can answer its own invitation');
 -- A past deadline is authoritative even if the frozen message has not expired.
+-- Fixture administration must use an invitation manager, even as postgres.
+select set_config('request.jwt.claim.sub','b0000000-0000-0000-0000-000000000002',true);
 update public.activities set response_due_at=now()-interval '1 minute' where id='b6000000-0000-0000-0000-000000000002';
 update messaging.whatsapp_invitations set activity_generation=(select discipline_generation from public.activities where id='b6000000-0000-0000-0000-000000000002') where outbox_id='b7000000-0000-0000-0000-000000000002';
 select is(public.respond_whatsapp('late-answer','46700000003',now(),(select id from messaging.whatsapp_invitations where outbox_id='b7000000-0000-0000-0000-000000000002'),'declined'),'unavailable','Current response deadline rejects late answers');
