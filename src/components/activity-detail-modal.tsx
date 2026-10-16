@@ -14,7 +14,7 @@ import { AttendanceModal } from "@/components/attendance-modal";
 import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
 
 type DeliveryChannel = {
-  channel: "email" | "push";
+  channel: "email" | "push" | "whatsapp";
   status: "pending" | "sent" | "failed" | "skipped";
   provider: string | null;
   attempts: number;
@@ -163,7 +163,7 @@ export function ActivityDetailModal({ activity, organization, team, canManageAct
         </div>
         {deliveryStatus.deliveries.length ? <ol className="delivery-list">{deliveryStatus.deliveries.slice(0, 20).map((delivery) => <li key={delivery.outboxId}>
           <div><strong>{delivery.type === "invitation_reminder" ? "Påminnelse" : "Kallelse"}</strong><small>{new Intl.DateTimeFormat("sv-SE", { timeZone, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(delivery.scheduledAt))} · försök {delivery.attempts}</small></div>
-          <div className="delivery-channels">{delivery.channels.map((channel) => <span className={`delivery-channel ${channel.status}`} key={channel.channel}>{channel.channel === "email" ? "E-post" : "Push"}: {statusLabels[channel.status]}</span>)}</div>
+          <div className="delivery-channels">{delivery.channels.map((channel) => <span className={`delivery-channel ${channel.status}`} key={channel.channel}>{channel.channel === "email" ? "E-post" : channel.channel === "whatsapp" ? "WhatsApp" : "Push"}: {statusLabels[channel.status]}</span>)}</div>
         </li>)}</ol> : <p className="overview-empty">Inga notifieringar har köats för aktiviteten ännu.</p>}
       </details> : null}
 
