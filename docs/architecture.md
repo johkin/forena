@@ -627,3 +627,13 @@ Telegram-länken direkt i samma flik; en reservlänk finns kvar. När användare
 Status hämtas automatiskt under väntan och stoppas vid aktiv koppling,
 avmontering eller efter tio minuter. Vid utgång visas en ny
 aktiveringsknapp och möjlighet att skapa en ny länk utan omladdning.
+
+### Telegram som privat assistentkanal
+
+Telegram-webhooken kan delegera privata frågor till `answerTeamAssistant` via
+`telegram-assistant.ts`. En service-only RPC härleder kontot från verifierad
+koppling och begränsar frekvens samt dubbletter. Dataverktygen använder ett
+internt kortlivat användar-JWT och en klient med vanlig RLS. Service-klienten
+överlämnas aldrig till assistenten. Grupper har en uttryckligt vald roll men
+ingen verifierad komplett publik; därför körs inte assistenten i grupper.
+Konfiguration, begränsningar och granskningsflöde finns i [Telegram](telegram.md).

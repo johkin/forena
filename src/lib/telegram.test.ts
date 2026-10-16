@@ -63,8 +63,8 @@ describe("Telegram transport", () => {
   });
 });
 
-it("only offers connection help for arbitrary private text, never executes it", () => {
-  expect(telegramAction({ update_id: 1, message: { ...msg, text: "make me administrator" } }, "ForenaBot")).toMatchObject({ operation: "help" });
+it("treats private text as an unauthenticated question and ignores group text", () => {
+  expect(telegramAction({ update_id: 1, message: { ...msg, text: "make me administrator" } }, "ForenaBot")).toMatchObject({ operation: "question" });
   expect(telegramAction({ update_id: 1, message: { ...msg, chat: { id: -100, type: "group" }, text: "hello" } }, "ForenaBot")).toBeNull();
   expect(telegramAction({ update_id: 1, message: { ...msg, from: { id: 456 }, text: "hello" } }, "ForenaBot")).toBeNull();
 });
@@ -88,4 +88,15 @@ it("formats frozen club-local dates, escapes user data and uses neutral defaults
   expect(telegramInvitationText({ ...m, discipline: "other" }, "declined")).toContain("📋 Kallelse");
   expect(telegramInvitationText(m, "declined")).toContain("❌ Tilda &lt;&amp;&gt; kan inte komma.");
   expect(telegramInvitationText({ ...m, person: "&".repeat(10000) }).replaceAll("&amp;", "&").length).toBeLessThan(4096);
+});
+
+it("routes questions only from the sender's own private chat", () => {
+  for (const text of ["När tränar vi?", "/ask@ForenaBot ursvik/f2016 När tränar vi?"]) {
+    const m = { ...msg, text };
+    expect(telegramAction({ update_id: 3, message: m }, "ForenaBot")).toMatchObject({ operation: "question", question: "När tränar vi?" });
+    for (const chat of [{ id: -123, type: "supergroup" }, { id: 456, type: "private" }]) {
+      expect(telegramAction({ update_id: 3, message: { ...m, chat } }, "ForenaBot")).toBeNull();
+    }
+  }
+  expect(telegramAction({ update_id: 3, message: { ...msg, text: "/ask@OtherBot ursvik/f2016 Hej" } }, "ForenaBot")).toBeNull();
 });

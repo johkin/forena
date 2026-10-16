@@ -2,6 +2,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { telegramAction, verifyTelegramSecret, telegramAvailable } from "@/lib/telegram";
 import { TelegramError, telegramApi, telegramKeyboard, telegramInvitationText, telegramConfirmation, type TelegramInvitationMessage } from "../../../../../supabase/functions/_shared/telegram";
 import { getSiteUrl } from "@/lib/site-url";
+import { answerTelegramQuestion, telegramAssistantEnabled } from "@/lib/telegram-assistant";
+
+export const runtime = "nodejs";
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   if (!telegramAvailable()) return new Response("Unavailable", { status: 503 });
@@ -22,12 +26,21 @@ export async function POST(request: Request) {
   const action = telegramAction(payload, process.env.TELEGRAM_BOT_USERNAME!);
   if (!action) return new Response("OK");
   const token = process.env.TELEGRAM_BOT_TOKEN!;
-  if (action.operation === "help") {
-    // Free text is only a request for connection instructions, never an action.
+  if (action.operation === "question" && telegramAssistantEnabled()) {
+    try {
+      const answer = await answerTelegramQuestion(action);
+      if (answer) await telegramApi(token, "sendMessage", { chat_id: action.chatId, text: answer,
+        protect_content: true, link_preview_options: { is_disabled: true },
+        reply_markup: { inline_keyboard: [[{ text: "Öppna Förena", url: getSiteUrl() }]] },
+      }).catch(() => {});
+      return new Response("OK");
+    } catch { return new Response("Retry later", { status: 503 }); }
+  }
+  if (action.operation === "help" || action.operation === "question") {
     if (Date.now() - Date.parse(action.eventAt) > 600_000 || Date.parse(action.eventAt) > Date.now()) return new Response("OK");
     const url = new URL("/profile#telegram", getSiteUrl());
     await telegramApi(token, "sendMessage", { chat_id: action.chatId,
-      text: "Välkommen till Förena! Öppna Min profil, logga in och välj Aktivera Telegram. Telegram öppnas direkt på din egen enhet. Tryck Start i din privata chatt med boten för att slutföra kopplingen. Dela inte kopplingslänken. Är du redan kopplad behöver du inte göra något. /stop kopplar bort kontot.",
+      text: "Välkommen till Förena! Öppna Min profil, logga in och välj Aktivera Telegram. Telegram öppnas direkt på din egen enhet. Tryck Start i din privata chatt med boten för att slutföra kopplingen. Dela inte kopplingslänken. Är du redan kopplad behöver du inte göra något. /stop kopplar bort kontot." + (telegramAssistantEnabled() ? " Ställ frågor här privat med vanlig text, till exempel: När är nästa träning för F2016? Ange lagets namn om du har flera lag. Varje fråga är fristående; ange lag, aktivitet och period igen vid behov." : ""),
       protect_content: true, link_preview_options: { is_disabled: true },
       reply_markup: { inline_keyboard: [[{ text: "Koppla till Förena", url: url.href }]] },
     }).catch(() => {});

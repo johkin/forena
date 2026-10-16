@@ -290,6 +290,15 @@ export interface Database {
     };
     Views: Record<never, never>;
     Functions: {
+      claim_telegram_assistant: {
+        Args: { sender: string; event_at: string; message_id: string }
+        Returns: Json
+      }
+      telegram_assistant_identity: {
+        Args: { sender: string; event_at: string }
+        Returns: string | null
+      }
+
       telegram_group_settings: { Args: { operation?: string; target_team_id?: string; chat_kind?: string; pairing_hash?: string }; Returns: Json };
       bind_telegram_group: { Args: { pairing_hash: string; sender: string; target_chat: string; event_at: string }; Returns: boolean };
       telegram_group_link: { Args: { target_chat: string; sender: string; message_id: string }; Returns: string | null };

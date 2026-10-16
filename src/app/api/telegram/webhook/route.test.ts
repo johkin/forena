@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ rpc: vi.fn(), admin: vi.fn(), transport: vi.fn() }));
+const mocks = vi.hoisted(() => ({ rpc: vi.fn(), admin: vi.fn(), transport: vi.fn(), assistant: vi.fn() }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: mocks.admin }));
+vi.mock("@/lib/telegram-assistant", () => ({ answerTelegramQuestion: mocks.assistant, telegramAssistantEnabled: () => process.env.TELEGRAM_ASSISTANT_ENABLED === "true" }));
 import { POST } from "./route";
 const secret = "a".repeat(32);
 const id = "a1000000-0000-0000-0000-000000000001";
@@ -11,6 +12,7 @@ function request(body: unknown, header = secret) {
 }
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.stubEnv("TELEGRAM_ASSISTANT_ENABLED", "false");
   vi.stubEnv("TELEGRAM_ENABLED", "true"); vi.stubEnv("TELEGRAM_BOT_TOKEN", "123:token"); vi.stubEnv("TELEGRAM_BOT_USERNAME", "ForenaBot"); vi.stubEnv("TELEGRAM_WEBHOOK_SECRET", secret); vi.stubEnv("SITE_URL", "https://forena.test");
   mocks.admin.mockReturnValue({ rpc: mocks.rpc }); mocks.rpc.mockResolvedValue({ data: null, error: null });
   mocks.transport.mockResolvedValue(Response.json({ ok: true, result: {} })); vi.stubGlobal("fetch", mocks.transport);
@@ -102,4 +104,28 @@ it.each(["accepted", "declined"])("confirms %s with the child's name and updates
   expect(calls[1].body.parse_mode).toBe("HTML");
   expect(calls[1].body.text).toContain("Tilda &lt;&amp;&gt;");
   expect(calls[1].body.reply_markup.inline_keyboard[0][answer === "accepted" ? 0 : 1].style).toBe(answer === "accepted" ? "success" : "danger");
+});
+
+it("delegates enabled private questions and sends only text to the sender", async () => {
+  vi.stubEnv("TELEGRAM_ASSISTANT_ENABLED", "true");
+  mocks.assistant.mockResolvedValue("Träning på tisdag");
+  expect((await POST(request({ update_id: 101, message: { ...message, text: "När tränar vi?" } }))).status).toBe(200);
+  expect(mocks.assistant).toHaveBeenCalledWith(expect.objectContaining({ sender: "123", chatId: "123", question: "När tränar vi?", messageId: "u:101" }));
+  const body = JSON.parse(mocks.transport.mock.calls.at(-1)![1].body);
+  expect(body).toMatchObject({ chat_id: "123", text: "Träning på tisdag", protect_content: true });
+  expect(body.parse_mode).toBeUndefined();
+  expect(mocks.admin).not.toHaveBeenCalled();
+});
+it("never delegates group questions, even when the assistant is enabled", async () => {
+  vi.stubEnv("TELEGRAM_ASSISTANT_ENABLED", "true");
+  for (const text of ["När tränar vi?", "/ask ursvik/f2016 När tränar vi?"]) {
+    await POST(request({ update_id: 102, message: { ...message, chat: { id: -123, type: "supergroup" }, text } }));
+  }
+  expect(mocks.assistant).not.toHaveBeenCalled();
+  expect(mocks.transport).not.toHaveBeenCalled();
+});
+it("acknowledges a suppressed or duplicate answer without sending it", async () => {
+  vi.stubEnv("TELEGRAM_ASSISTANT_ENABLED", "true"); mocks.assistant.mockResolvedValue(null);
+  expect((await POST(request({ update_id: 103, message: { ...message, text: "Hej" } }))).status).toBe(200);
+  expect(mocks.transport).not.toHaveBeenCalled();
 });

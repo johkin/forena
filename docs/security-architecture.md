@@ -653,7 +653,8 @@ administratörsroll behövs för att säkert kontrollera den senare. Ett chatt-I
 kan inte ersätta en annan lagkoppling med en ny länk. Borttagen ledarbehörighet
 stoppar gruppens svar tills gruppen kopplas om. Gruppkommandot delar enbart en
 länk; inloggning och RLS gäller när den öppnas. Fritext i grupper och anonyma
-administratörskommandon ignoreras. Privat fritext ger endast kopplingshjälp. Inga chattmeddelanden skickas till AI.
+administratörskommandon ignoreras. Privat fritext kan vid separat aktivering
+behandlas av lagassistenten efter kontokontroll, se Telegram-assistent nedan.
 Telegram-hemligheter, användar-ID:n och leverantörens svarskroppar loggas inte.
 
 
@@ -671,3 +672,16 @@ eller vidarebefordrat botbevis kan inte utlösa en koppling eller ett utskick
 till bevisets ursprungliga avsändare. Befintliga kvittenser, tidsgränser och
 avstängningsregler gäller. Privat fritext ger enbart kopplingshjälp utan
 administrativ databasåtkomst; innehållet lagras inte eller tolkas som instruktioner.
+
+## Telegram-assistent
+
+Privata frågor kräver hemlig webhookheader och en aktuell verifierad
+Telegram-koppling till ett aktivt konto. Endast service_role kan anropa
+identitets- och deduplicerings-RPC:erna. Frågetext kan aldrig välja användare.
+Assistentens dataläsningar sker med ett två minuter giltigt authenticated-JWT
+och samma RLS samt lagkontroller som webbappen, aldrig med service_role.
+Signeringsnyckeln är en separat serverhemlighet som måste matcha projektets
+aktiva Supabase-nyckel. Identiteten omprövas efter generering före leverans.
+Grupproll är en explicit konfiguration, inget bevis för deltagarnas rättigheter;
+grupptext och gruppkommandot `/ask` skickas därför inte till modellen.
+Utkast bekräftas i Förena. Se [Telegram](telegram.md) för aktivering och gränser.
