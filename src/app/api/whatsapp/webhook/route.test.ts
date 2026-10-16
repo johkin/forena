@@ -47,3 +47,18 @@ it("registers invitation replies without trusting button labels, and confirms on
   expect(mocks.rpc).toHaveBeenCalledWith("respond_whatsapp", expect.objectContaining({ answer: "accepted", reply_id: "a1000000-0000-0000-0000-000000000001" }));
   await POST(request(data)); expect(transport).toHaveBeenCalledOnce();
 });
+it("asks Meta to retry busy account operations without sending a confirmation", async () => {
+  const transport = vi.fn(); vi.stubGlobal("fetch", transport);
+  mocks.rpc.mockResolvedValue({ data: null, error: { code: "55P03" } });
+  const reply = payload({ type: "button", button: { payload: "F1:a1000000-0000-0000-0000-000000000001:accepted" } });
+  expect((await POST(request(reply))).status).toBe(503);
+  expect((await POST(request(payload({ type: "text", text: { body: "STOPP" } })))).status).toBe(503);
+  expect(transport).not.toHaveBeenCalled();
+});
+it("silently acknowledges an unconnected or irrelevant reply without sending a confirmation", async () => {
+  const transport = vi.fn(); vi.stubGlobal("fetch", transport);
+  mocks.rpc.mockResolvedValue({ data: null, error: null });
+  const reply = payload({ type: "button", button: { payload: "F1:a1000000-0000-0000-0000-000000000001:accepted" } });
+  expect((await POST(request(reply))).status).toBe(200);
+  expect(transport).not.toHaveBeenCalled();
+});

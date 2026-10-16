@@ -125,6 +125,18 @@ Högst 256 kB accepteras. Inkommande meddelande-ID dedupliceras transaktionellt.
 Gamla/för långt framtida händelser avvisas. Telefonnummer, koder, meddelandetext
 och leverantörens svarskropp loggas inte.
 
+Okända STOPP-avsändare, ogiltiga/utgångna kopplingsbevis och främmande
+knappreferenser avvisas före låsning eller kvittensskrivning. Ett okänt STOPP-nummer
+kontrolleras också mot pågående nummerreservationer via `pg_locks`: om en koppling
+ännu inte har hunnit bli synlig får Meta försöka igen, så att STOPP inte tappas.
+De utlöser ingen svarsbekräftelse och inget underhållsarbete. Rensning sker enbart
+i det schemalagda jobbet. Kontoinställningar och inkommande operationer använder
+samma kontospecifika lås; koppling serialiseras även per telefonnummer för att
+förhindra att numret samtidigt kopplas till två konton. Inget globalt WhatsApp-lås
+används. Upptagna konton/nummer ger SQLSTATE `55P03` och HTTP 503 så att Meta kan
+försöka igen, utan att köa inkommande anrop bakom andra kontons operationer.
+Aktuell koppling och bevisets giltighet kontrolleras igen efter låsningen.
+
 Varje knapp bär en opak referens till ett bestämt meddelande, konto och kallelse;
 referensen ensam ger ingen behörighet. Webhookens signerade avsändarnummer måste
 fortfarande tillhöra mottagarkontot. Kontot måste fortfarande vara personen själv

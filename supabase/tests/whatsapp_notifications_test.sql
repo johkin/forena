@@ -67,7 +67,7 @@ select is((select count(distinct id)::integer from messaging.whatsapp_invitation
 create function pg_temp.child_reply() returns uuid language sql as $$
  select w.id from messaging.whatsapp_invitations w join public.invitations i on i.id=w.invitation_id where w.outbox_id='b7000000-0000-0000-0000-000000000001' and i.person_id='b5000000-0000-0000-0000-000000000001';
 $$;
-select is(public.respond_whatsapp('wrong-sender','46700000003',now(),pg_temp.child_reply(),'accepted'),'unavailable','Forwarded button cannot authorize another sender');
+select is(public.respond_whatsapp('wrong-sender','46700000003',now(),pg_temp.child_reply(),'accepted'),null,'Forwarded button cannot authorize another sender');
 select is(public.respond_whatsapp('answer-one','46700000001',now(),pg_temp.child_reply(),'accepted'),'accepted','Guardian answers own first child');
 select is((select response from public.invitations where activity_id='b6000000-0000-0000-0000-000000000001' and person_id='b5000000-0000-0000-0000-000000000001'),'accepted','Ordinary invitation data updated');
 select is((select response from public.invitations where activity_id='b6000000-0000-0000-0000-000000000001' and person_id='b5000000-0000-0000-0000-000000000002'),'pending','Sibling is unaffected');
@@ -89,7 +89,7 @@ update public.activities set status='cancelled',cancelled_at=now(),cancellation_
 select is(public.respond_whatsapp('cancelled-answer','46700000001',now(),pg_temp.child_reply(),'accepted'),'unavailable','Cancelled activity cannot accept a button answer');
 select ok(public.receive_whatsapp('opt-out','46700000001',now(),'stop'),'STOP revokes connection');
 select is(public.whatsapp_recipient('b0000000-0000-0000-0000-000000000001'),null,'Revoked number is no longer eligible for delivery');
-select is(public.respond_whatsapp('after-stop','46700000001',now(),pg_temp.child_reply(),'accepted'),'unavailable','Revocation disables old buttons');
+select is(public.respond_whatsapp('after-stop','46700000001',now(),pg_temp.child_reply(),'accepted'),null,'Revocation disables old buttons');
 -- Own invitations use the same identity check as guardians, without any
 -- authority to answer a teammate's invitation.
 insert into public.people(id,organization_id,display_name,user_id) values ('b5000000-0000-0000-0000-000000000003','b1000000-0000-0000-0000-000000000001','Own invite','b0000000-0000-0000-0000-000000000003') on conflict(organization_id,user_id) do update set display_name=excluded.display_name;
