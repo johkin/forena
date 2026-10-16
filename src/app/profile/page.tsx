@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
+import { WhatsAppSettings } from "@/components/whatsapp-settings";
 import { updateProfile } from "./actions";
 
 type Props = { searchParams: Promise<{ saved?: string; error?: string }> };
@@ -40,6 +41,7 @@ export default async function ProfilePage({ searchParams }: Props) {
           <div className="form-section"><h2>Integrationer</h2><div className="profile-organizations"><a href="/connect">Anslut AI<span aria-hidden="true">›</span></a></div><p className="form-help">Anslutningsinstruktioner och serveradress för AI-tjänster som stöder MCP.</p></div>
           <button className="primary application-submit" type="submit">Spara profil</button>
         </form>
+        <WhatsAppSettings />
       </section></main>
     </AppShell>
   );

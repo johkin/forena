@@ -54,6 +54,7 @@
 - [x] UI för att aktivera/inaktivera pushnotiser
 - [x] VAPID-konfiguration för Web Push
 - [x] Skicka Web Push från notification workern
+- [x] Valbar WhatsApp-kanal med verifierad kontokoppling och ett kallelsemeddelande per barn, med svarsknappar (kräver Meta-konfiguration; se [WhatsApp](whatsapp.md))
 - [x] Hantera ogiltiga/utgångna push-subscriptions (404/410)
 - [ ] notificationclick öppnar rätt aktivitet i Förena (klick öppnar appen, men push-payloaden länkar ännu till startsidan)
 - [x] Visa push-leveransstatus i aktivitetsvyn

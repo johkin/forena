@@ -175,6 +175,17 @@ till en extern AI-provider.
 
 ## Notiser, e-post och dokument
 
+WhatsApp kräver personligt samtycke och nummerverifiering via ett inkommande
+engångsmeddelande till Förena. Kontaktdata och knappkopplingar hålls i privat
+schema med RLS utan klientgrants. Webhook-signatur verifieras före serviceåtkomst.
+Okända avsändare och ogiltiga kopplingsbevis avvisas före advisory-lås och
+kvittensskrivning. Kontospecifika lås ersätter global serialisering; upptagna
+ingressoperationer ger ett återförsökssvar. Se [WhatsApp](whatsapp.md).
+Signerad avsändaridentitet, aktuell kontokoppling och aktuell person-/målsmansrelation
+kontrolleras vid varje knapptryck; en vidarebefordrad knapp ger ingen åtkomst.
+Kallelsemallen innehåller uppgifter om ett barn per meddelande. Övriga notifieringar
+är generella. Se [WhatsApp](whatsapp.md) för samtycke, rensning och livscykelskydd.
+
 Pushnotiser och e-post kan exponera information utanför Förena, exempelvis på en
 låsskärm. För känsliga sammanhang ska notisen därför kunna vara generell:
 

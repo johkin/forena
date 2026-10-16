@@ -1,5 +1,6 @@
 "use client";
 
+import { WhatsAppSettingsExamples } from "./whatsapp-settings";
 import { SectionTeamAdministrationExamples } from "./section-team-administration-examples";
 import { useState } from "react";
 import { PersonSelectionList } from "./person-selection-list";
@@ -72,6 +73,7 @@ export function ComponentGallery() {
       <button className="secondary" disabled>Inaktiverad</button>
     </div><p role="status">{notice}</p></section>
     <SectionTeamAdministrationExamples/>
+    <WhatsAppSettingsExamples/>
     <section><h2>Formulärfält</h2><div className="component-fields">
       <label>Titel<input placeholder="Träning eller match" /></label>
       <label>Längd<select defaultValue="60"><option value="60">1 timme</option><option value="90">1,5 timmar</option></select></label>

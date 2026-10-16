@@ -26,6 +26,13 @@ Komponentsidan ska vara en aktuell, gemensam referens för hela systemet.
 Dessa regler beskriver kravet; befintliga luckor i galleriet ska fyllas när de
 berörda UI-delarna ändras och innebär inte att dagens galleri redan är komplett.
 
+WhatsApp-inställningarna i Min profil och exemplen på `/components` använder
+samma produktionskomponent. Visa ej aktiverat, samtycke, väntande verifiering,
+maskerat aktivt nummer, laddning, sparande, fel och ej konfigurerat. Galleriets
+handlingar använder enbart syntetiska lokala data.
+Efter avbruten koppling eller avstängning ska en ny koppling börja med en
+omarkerad samtyckesruta. Detta gäller även galleriets interaktiva exempel.
+
 ## Personlig startsida
 
 `/` är den inloggade användarens Förena-brandade **Min översikt**, utan vald
