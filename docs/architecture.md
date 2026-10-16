@@ -258,8 +258,8 @@ Se [schemalagda uppgifter](scheduled-tasks.md).
 WhatsApp är en valbar transport före push/e-post. För anslutna mottagare
 materialiseras en privat meddelandesnapshot per person/kallelse atomärt vid
 outbox-INSERT. Workern levererar dessa med godkända Meta-mallar och sparar
-accept per barnmeddelande inför återförsök. Signerade svarsknappar går till en
-separat webhook och uppdaterar ordinarie kallelsesvar efter aktuell
+accept per barnmeddelande inför återförsök. Knappsvar tas emot via en separat,
+signerad webhook och uppdaterar ordinarie kallelsesvar efter aktuell
 person-/målsmans- och livscykelkontroll. Ingen AI tolkar svaren.
 Se [WhatsApp](whatsapp.md) för kontokoppling, mallar, drift och begränsningar.
 

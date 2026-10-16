@@ -6,7 +6,6 @@ export type WhatsAppState = { active: boolean; available: boolean; phoneSuffix?:
 type ViewProps = { state: WhatsAppState | null; pending: boolean; error: string; onStart: () => void; onDisable: () => void; onRefresh: () => void };
 
 export function WhatsAppSettingsView({ state, pending, error, onStart, onDisable, onRefresh }: ViewProps) {
-  const [consent, setConsent] = useState(false);
   return <section id="whatsapp" className="form-section" aria-label="WhatsApp-notifieringar">
     <h2>WhatsApp</h2>
     <p>Få privata kallelser och påminnelser i WhatsApp. Svara Kommer eller Kan inte direkt med knapparna. Varje barn får en egen kallelse. Om WhatsApp inte kan skickas försöker vi med push eller e-post.</p>
@@ -21,13 +20,19 @@ export function WhatsAppSettingsView({ state, pending, error, onStart, onDisable
         <a className="primary" href={state.pairingUrl} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">Öppna WhatsApp</a>
         <button type="button" className="secondary" disabled={pending} onClick={onRefresh}>Jag har skickat meddelandet</button>
         <button type="button" className="secondary" disabled={pending} onClick={onDisable}>Avbryt koppling</button>
-      </div> : state?.available ? <>
-        <label className="settings-checkbox"><input type="checkbox" checked={consent} onChange={event => setConsent(event.target.checked)} disabled={pending} />Jag vill få notifieringar från Förena via WhatsApp och samtycker till att mitt nummer, kallelser och notifieringar behandlas av Meta för leveransen.</label>
-        <button type="button" className="primary" disabled={pending || !consent} onClick={onStart}>{pending ? "Förbereder…" : "Koppla WhatsApp"}</button>
-      </> : null}
+      </div> : state?.available ? <WhatsAppConsent pending={pending} onStart={onStart} /> : null}
     {state?.active || state?.pairingUrl ? <p className="form-help">Du kan stänga av här eller skicka STOPP i WhatsApp. Kommentarer skriver du i Förena. Övriga meddelanden behandlas inte.</p> : null}
     {error && !state ? <button type="button" className="secondary" disabled={pending} onClick={onRefresh}>Försök igen</button> : null}
   </section>;
+}
+
+// Leaving the setup step discards consent, including in the component gallery.
+function WhatsAppConsent({ pending, onStart }: Pick<ViewProps, "pending" | "onStart">) {
+  const [consent, setConsent] = useState(false);
+  return <>
+    <label className="settings-checkbox"><input type="checkbox" checked={consent} onChange={event => setConsent(event.target.checked)} disabled={pending} />Jag vill få notifieringar från Förena via WhatsApp och samtycker till att mitt nummer, kallelser och notifieringar behandlas av Meta för leveransen.</label>
+    <button type="button" className="primary" disabled={pending || !consent} onClick={onStart}>{pending ? "Förbereder…" : "Koppla WhatsApp"}</button>
+  </>;
 }
 
 export function WhatsAppSettings() {

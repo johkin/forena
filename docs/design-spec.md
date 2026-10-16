@@ -30,6 +30,8 @@ WhatsApp-inställningarna i Min profil och exemplen på `/components` använder
 samma produktionskomponent. Visa ej aktiverat, samtycke, väntande verifiering,
 maskerat aktivt nummer, laddning, sparande, fel och ej konfigurerat. Galleriets
 handlingar använder enbart syntetiska lokala data.
+Efter avbruten koppling eller avstängning ska en ny koppling börja med en
+omarkerad samtyckesruta. Detta gäller även galleriets interaktiva exempel.
 
 ## Personlig startsida
 
