@@ -1,5 +1,7 @@
 "use client";
 
+import { TelegramGroupExamples } from "@/components/telegram-group-settings";
+import { TelegramSettingsExamples } from "@/components/telegram-settings";
 import { WhatsAppSettingsExamples } from "./whatsapp-settings";
 import { SectionTeamAdministrationExamples } from "./section-team-administration-examples";
 import { useState } from "react";
@@ -74,6 +76,8 @@ export function ComponentGallery() {
     </div><p role="status">{notice}</p></section>
     <SectionTeamAdministrationExamples/>
     <WhatsAppSettingsExamples/>
+    <TelegramSettingsExamples/>
+    <TelegramGroupExamples/>
     <section><h2>Formulärfält</h2><div className="component-fields">
       <label>Titel<input placeholder="Träning eller match" /></label>
       <label>Längd<select defaultValue="60"><option value="60">1 timme</option><option value="90">1,5 timmar</option></select></label>

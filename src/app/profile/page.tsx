@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
+import { TelegramSettings } from "@/components/telegram-settings";
+import { TelegramGroupSettings } from "@/components/telegram-group-settings";
 import { WhatsAppSettings } from "@/components/whatsapp-settings";
 import { updateProfile } from "./actions";
 
@@ -42,6 +44,8 @@ export default async function ProfilePage({ searchParams }: Props) {
           <button className="primary application-submit" type="submit">Spara profil</button>
         </form>
         <WhatsAppSettings />
+        <TelegramSettings />
+        <TelegramGroupSettings />
       </section></main>
     </AppShell>
   );

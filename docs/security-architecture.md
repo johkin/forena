@@ -627,3 +627,23 @@ Anonyma saknar EXECUTE och interna skyddsfunktioner saknar klientgrants.
 Befintlig RLS/grants för lag och medlemsdata breddas inte. Sparande/radering
 auditeras. Radering av lag med FK-ankrad data eller lagminnen stoppas av
 en privat trigger, även genom klubbadministratörens direkta tabellgrants.
+
+## Telegram
+
+Webhookens separata hemliga header verifieras före serviceklienten skapas.
+Privata kontokopplingar kräver verifierat inloggat konto, samtycke och ett
+256-bitars engångsbevis giltigt i tio minuter. Bara dess hash lagras. Telegrams
+privata chatt-ID måste vara samma som avsändarens ID; användarnamn används inte
+som identitet. Aktuell person-/målsmansrelation kontrolleras vid varje knapptryck.
+Gamla kallelser, återleveranser och äldre update-ID:n får inte ändra ett senare
+svar. Avstängning tar bort knappreferenser och gruppkopplingar samt förbrukar
+väntande bevis. En återanslutning återupplivar inte gamla knappar.
+
+Gruppkoppling kräver aktuell `roster.manage` hos bevisägaren, samma kopplade
+Telegram-avsändare och administratörsstatus i Telegram-gruppen. Botens
+administratörsroll behövs för att säkert kontrollera den senare. Ett chatt-ID
+kan inte ersätta en annan lagkoppling med en ny länk. Borttagen ledarbehörighet
+stoppar gruppens svar tills gruppen kopplas om. Gruppkommandot delar enbart en
+länk; inloggning och RLS gäller när den öppnas. Fritext och anonyma
+administratörskommandon ignoreras. Inga chattmeddelanden skickas till AI.
+Telegram-hemligheter, användar-ID:n och leverantörens svarskroppar loggas inte.

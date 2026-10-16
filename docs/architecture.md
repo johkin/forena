@@ -589,3 +589,15 @@ Lagadministrationens läsning hämtar FK-katalogen en gång per
 Borttagningskontrollen hämtar alltid aktuella referenser på nytt; ingen
 beständig cache kan missa kopplingar från senare migrationer eller tillägg.
 Hjälpfunktionerna är privata och tar inte emot referenslistor från klienter.
+
+## Telegram-prototyp
+
+Telegram följer samma outboxgräns som WhatsApp: ett fryst meddelande per
+mottagare och kallad person skapas transaktionellt vid köläggning. Leveransordningen
+är Telegram → WhatsApp → push → e-post för de kanaler mottagaren har aktiverat.
+`messaging` äger privata kontokopplingar, engångsbevis, gruppkopplingar och
+knappreferenser; inga tabellgrants ges till klienter. Svar skriver befintliga
+`invitations` under aktivitetens lås med aktuell person-/målsmanskontroll.
+Gruppchattar får bara en navigationslänk på kommandot `/forena`; personliga
+kallelser och svar går aldrig till grupper. Lag- och ledargrupper kopplas separat.
+Se [Telegram](telegram.md) för konfiguration, verifiering och utvärdering.
