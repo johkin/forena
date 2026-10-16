@@ -601,3 +601,12 @@ knappreferenser; inga tabellgrants ges till klienter. Svar skriver befintliga
 Gruppchattar får bara en navigationslänk på kommandot `/forena`; personliga
 kallelser och svar går aldrig till grupper. Lag- och ledargrupper kopplas separat.
 Se [Telegram](telegram.md) för konfiguration, verifiering och utvärdering.
+
+Vid köläggning av kallelser och påminnelser sparas `personIds` per mottagare:
+endast personerna i det aktuella urvalet som mottagaren själv är eller är
+målsman för. Både manuella och schemalagda utskick bevarar detta beslut.
+Telegram-snapshots kräver dessa ID:n och kan därför inte utökas till andra
+syskon som råkar ha kallelser till aktiviteten. Nya köposter använder samma
+personfilter för WhatsApp-reserven; äldre WhatsApp-payloads behåller sitt
+befintliga kontrakt. Äldre Telegram-köposter utan personurval ger en generell
+navigationsnotis utan privata snapshots.

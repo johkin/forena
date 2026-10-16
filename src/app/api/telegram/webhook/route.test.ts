@@ -54,6 +54,24 @@ it("requires Telegram admin status before consuming a group proof", async () => 
   await POST(request(group));
   expect(mocks.rpc).toHaveBeenCalledWith("bind_telegram_group", expect.objectContaining({ sender: "123", target_chat: "-100123" }));
 });
+it.each([400, 403])("acknowledges permanent Telegram %i errors without consuming a group proof", async code => {
+  mocks.transport.mockResolvedValue(Response.json({ ok: false, error_code: code }, { status: code }));
+  const group = { update_id: 4, message: { ...message, chat: { id: -100123, type: "supergroup" }, text: "/start " + "a".repeat(64) } };
+  expect((await POST(request(group))).status).toBe(200);
+  expect(mocks.rpc).not.toHaveBeenCalled();
+});
+it.each([429, 500])("retries temporary Telegram %i errors without consuming a group proof", async code => {
+  mocks.transport.mockResolvedValue(Response.json({ ok: false, error_code: code, parameters: { retry_after: 30 } }, { status: code }));
+  const group = { update_id: 5, message: { ...message, chat: { id: -100123, type: "supergroup" }, text: "/start " + "a".repeat(64) } };
+  expect((await POST(request(group))).status).toBe(503);
+  expect(mocks.rpc).not.toHaveBeenCalled();
+});
+it("retries group membership lookups after network errors", async () => {
+  mocks.transport.mockRejectedValue(new Error("network failure"));
+  const group = { update_id: 6, message: { ...message, chat: { id: -100123, type: "supergroup" }, text: "/start " + "a".repeat(64) } };
+  expect((await POST(request(group))).status).toBe(503);
+  expect(mocks.rpc).not.toHaveBeenCalled();
+});
 it("removes blocked chats and handles private stop commands", async () => {
   await POST(request({ update_id: 1, message: { ...message, text: "/stop" } }));
   expect(mocks.rpc).toHaveBeenCalledWith("receive_telegram", expect.objectContaining({ sender: "123", operation: "stop" }));

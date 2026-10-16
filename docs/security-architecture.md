@@ -630,6 +630,14 @@ en privat trigger, även genom klubbadministratörens direkta tabellgrants.
 
 ## Telegram
 
+`telegram_connections.telegram_id` klassas som PERSONAL och lagras för verifierad
+privat leverans och avsändarkontroll; `telegram_groups.chat_id` klassas som TEAM
+och lagras för att styra gruppens navigationssvar till rätt lagkoppling.
+Snapshots i `messaging.telegram_invitations` klassas som PERSONAL eftersom de
+kopplar ett barns namn till lag, aktivitet och tider; de lagras för rätt kallelse,
+återförsök och svarskoppling, och skickar endast minsta information som behövs
+för att förstå och besvara kallelsen, ett barn per meddelande.
+
 Webhookens separata hemliga header verifieras före serviceklienten skapas.
 Privata kontokopplingar kräver verifierat inloggat konto, samtycke och ett
 256-bitars engångsbevis giltigt i tio minuter. Bara dess hash lagras. Telegrams

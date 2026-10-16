@@ -67,7 +67,7 @@ it("uses push for users without an active Telegram connection", async () => {
   expect(w.send).not.toHaveBeenCalled(); expect(w.push).toHaveBeenCalledOnce(); expect(w.email).not.toHaveBeenCalled();
   expect(w.result.sent).toBe(1);
 });
-it("falls back to push or email on Meta failures without persisting provider bodies", async () => {
+it("falls back to push or email on Telegram failures without persisting provider bodies", async () => {
   const w = await runWorker({ failTelegram: true, failPush: true });
   expect(w.email).toHaveBeenCalledOnce(); expect(w.result.sent).toBe(1);
   expect(w.writes).toContainEqual({ table: "notification_deliveries", value: expect.objectContaining({ channel: "telegram", status: "failed", last_error: "telegram_send_failed" }) });

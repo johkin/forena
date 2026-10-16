@@ -61,7 +61,7 @@ select ok(not public.receive_telegram('steal','46700000001',clock_timestamp(),'b
 select ok(public.receive_telegram('pair-other','46700000003',clock_timestamp(),'bind',repeat('c',64)),'Other verified sender binds separately');
 
 insert into public.notification_outbox(id,organization_id,user_id,type,payload,scheduled_at) values
- ('b7000000-0000-0000-0000-000000000001','b1000000-0000-0000-0000-000000000001','b0000000-0000-0000-0000-000000000001','activity_invitation','{"activityId":"b6000000-0000-0000-0000-000000000001"}',now());
+ ('b7000000-0000-0000-0000-000000000001','b1000000-0000-0000-0000-000000000001','b0000000-0000-0000-0000-000000000001','activity_invitation','{"activityId":"b6000000-0000-0000-0000-000000000001","personIds":["b5000000-0000-0000-0000-000000000001","b5000000-0000-0000-0000-000000000002"]}',now());
 select is(jsonb_array_length(public.telegram_invitation_messages('b7000000-0000-0000-0000-000000000001')),2,'Two children create two messages');
 select is((select count(distinct id)::integer from messaging.telegram_invitations where outbox_id='b7000000-0000-0000-0000-000000000001'),2,'Each child has its own opaque button reference');
 create function pg_temp.child_reply() returns uuid language sql as $$
@@ -96,7 +96,7 @@ insert into public.people(id,organization_id,display_name,user_id) values ('b500
 insert into public.memberships(organization_id,person_id,team_id,role) select organization_id,id,'b3000000-0000-0000-0000-000000000001','participant' from public.people where organization_id='b1000000-0000-0000-0000-000000000001' and user_id='b0000000-0000-0000-0000-000000000003';
 insert into public.invitations(organization_id,activity_id,person_id) select organization_id,'b6000000-0000-0000-0000-000000000002',id from public.people where organization_id='b1000000-0000-0000-0000-000000000001' and user_id='b0000000-0000-0000-0000-000000000003';
 insert into public.notification_outbox(id,organization_id,user_id,type,payload,scheduled_at) values
- ('b7000000-0000-0000-0000-000000000002','b1000000-0000-0000-0000-000000000001','b0000000-0000-0000-0000-000000000003','activity_invitation','{"activityId":"b6000000-0000-0000-0000-000000000002"}',now());
+ ('b7000000-0000-0000-0000-000000000002','b1000000-0000-0000-0000-000000000001','b0000000-0000-0000-0000-000000000003','activity_invitation',jsonb_build_object('activityId','b6000000-0000-0000-0000-000000000002','personIds',(select jsonb_agg(id) from public.people where organization_id='b1000000-0000-0000-0000-000000000001' and user_id='b0000000-0000-0000-0000-000000000003')),now());
 select is(public.respond_telegram('u:11','46700000003',clock_timestamp(),(select id from messaging.telegram_invitations where outbox_id='b7000000-0000-0000-0000-000000000002'),'accepted'),'accepted','Verified account can answer its own invitation');
 -- A past deadline is authoritative even if the frozen message has not expired.
 -- Fixture administration must use an invitation manager, even as postgres.

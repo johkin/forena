@@ -53,7 +53,8 @@ En uppgradering från grupp till supergrupp kräver en ny koppling.
    ur A–Z, a–z, 0–9, `_`, `-`) och `SITE_URL` (kanonisk HTTPS-origin).
 3. Ange `TELEGRAM_ENABLED`, `TELEGRAM_BOT_TOKEN` och samma `SITE_URL` som secrets
    för Supabase `notification-worker`. Prefixa aldrig med `NEXT_PUBLIC_`.
-4. Applicera migrationen `20261016175439_telegram_bot.sql` i testmiljön och
+4. Applicera repots migrationer, inklusive `20261016175439_telegram_bot.sql` och
+   `20261016182313_scope_telegram_invitation_recipients.sql`, i testmiljön och
    publicera webbapp och worker. Aktivera kanalen där för testet.
 5. Med variablerna i din säkra servermiljö, kör
    `node scripts/configure-telegram-webhook.mjs`. Scriptet verifierar botens

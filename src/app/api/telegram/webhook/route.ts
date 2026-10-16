@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { telegramAction, verifyTelegramSecret, telegramAvailable } from "@/lib/telegram";
-import { telegramApi, telegramKeyboard } from "../../../../../supabase/functions/_shared/telegram";
+import { TelegramError, telegramApi, telegramKeyboard } from "../../../../../supabase/functions/_shared/telegram";
 import { getSiteUrl } from "@/lib/site-url";
 
 export async function POST(request: Request) {
@@ -56,8 +56,15 @@ export async function POST(request: Request) {
       if (error) return new Response("Retry later", { status: 503 });
     } else if (action.operation === "bind_group") {
       // getChatMember is only guaranteed for other users when the bot is an admin.
-      const member = await telegramApi<{ status: string }>(token, "getChatMember", { chat_id: action.chatId, user_id: Number(action.sender) });
-      if (!["creator", "administrator"].includes(member.status)) return new Response("OK");
+      let status: string;
+      try {
+        status = (await telegramApi<{ status: string }>(token, "getChatMember", { chat_id: action.chatId, user_id: Number(action.sender) })).status;
+      } catch (error) {
+        // These errors cannot be repaired by redelivering the same group update.
+        if (error instanceof TelegramError && (error.code === 400 || error.code === 403)) return new Response("OK");
+        throw error;
+      }
+      if (!["creator", "administrator"].includes(status)) return new Response("OK");
       const { data, error } = await supabase.rpc("bind_telegram_group", { pairing_hash: action.pairingHash, sender: action.sender, target_chat: action.chatId, event_at: action.eventAt });
       if (error) return new Response("Retry later", { status: 503 });
       if (data) await telegramApi(token, "sendMessage", { chat_id: action.chatId, text: "Gruppen är kopplad till Förena. Använd /forena för att öppna lagets vy. Personliga kallelser och svar skickas privat." }).catch(() => {});
