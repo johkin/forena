@@ -1,5 +1,10 @@
 # Arkitektur
 
+Den stegvisa målarkitekturen för Kotlin/Spring Boot och Google Cloud finns i
+[migreringsplanen](migration/README.md) och dess [beslut](migration/decisions.md).
+Beskrivningen nedan avser nuvarande lösning och befintliga principer; målteknik
+är inte införd bara för att den dokumenterats.
+
 Förena byggs som en multi-tenant-applikation där varje skrivning går genom ett
 validerat applikationskommando. Gränssnitt och AI-assistent använder samma
 kommandon; AI:n får aldrig direkt databasåtkomst.

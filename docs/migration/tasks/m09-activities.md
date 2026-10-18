@@ -1,0 +1,43 @@
+# M09: Flytta skapa och ändra en enskild aktivitet
+
+Status: planerad. Beroenden: M07. Leverans: en avgränsad PR om inte nedan
+anges att arbetet först ska delas. Alla PR-baser är aktuell `main`.
+
+## Bakgrund och gemensamma beslut
+
+Nuvarande create-route gör flera anrop; atomärt kommando är en föreslagen förbättring. Flytta en enskild aktivitet före serier/import.
+
+Läs [repoinstruktionerna](../../../AGENTS.md), [planen](../README.md),
+[nuläget](../inventory.md), [besluten](../decisions.md),
+[versionerna](../versions.md) och [status](../status.md).
+Detta underlag räcker för att starta en separat Codex-session; verifiera sedan
+aktuell kod och eventuella tillkommande AGENTS.md.
+
+## Relevanta filer
+
+src/app/api/activities/route.ts, src/app/api/activities/[activityId]/route.ts, src/lib/activity-configuration.ts, src/lib/activity-time-rules.ts, docs/activity-time-rules.md, backend/. Nya backend-/infra-sökvägar beskriver avsedd plats och finns inte
+nödvändigtvis innan beroendena är genomförda. Sökvägarna utgår från reporoten.
+
+## Ingår
+
+Implementera skapa/ändra/inställ en aktivitet med domänregler, tidszon, disciplinförval, deltagare och schemaläggningsposter i en transaktion. Återanvänd applikationstjänst i webbens adapter. Fastställ activities/discipline-gräns utan cykel. Bevara audit och eventansvar.
+
+## Acceptanskriterier
+
+Behörighet, datum och relationer valideras; misslyckande lämnar inget halvt skapat flöde. Samtidig kallelserespons och inställning bevarar livscykellåset. Befintlig editor och gamla klienter fungerar.
+
+## Verifiering
+
+JUnit rena regler, PostgreSQL rollback/constraints, Modulith struktur/modultest och browser skapa → visa → ändra → inställ med relevanta nuvarande testfall.
+
+## Lämnas till senare
+
+Serier, extern matchimport, alla disciplinpaket och transporter blir egna senare uppgifter.
+
+## Avslut och överlämning
+
+Systemet ska lämnas byggbart och testbart. Kör relevanta befintliga kontroller
+enligt AGENTS.md; behåll CI-skydd. Uppdatera [status](../status.md) med PR/commit,
+ändrat beteende, körda/godkända/misslyckade/ej körda kontroller, begränsningar och
+nästa beroende uppgift. Om omfånget växer, skapa en separat uppgiftsfil och
+lämna en kort överlämning med beslut, filer, tester och återstående arbete.
