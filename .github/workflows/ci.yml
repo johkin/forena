@@ -71,9 +71,38 @@ jobs:
           supabase gen types typescript --local --schema public > /tmp/database.types.ts
           test -s /tmp/database.types.ts
 
+  kotlin-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install pinned Oracle JDK 26.0.2.1
+        run: |
+          scripts/probe/install-jdk.sh "$RUNNER_TEMP/forena-jdk"
+          echo "JAVA_HOME=$RUNNER_TEMP/forena-jdk" >> "$GITHUB_ENV"
+          echo "$RUNNER_TEMP/forena-jdk/bin" >> "$GITHUB_PATH"
+
+      - name: Verify Kotlin, schema, module structure and HTTP lifecycle
+        working-directory: backend
+        run: ./mvnw --batch-mode --no-transfer-progress verify
+
+      - name: Verify abrupt JVM death and durable recovery
+        run: python3 scripts/probe/local-lifecycle.py
+
+      - name: Retain test and generated architecture reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: kotlin-probe-reports
+          path: |
+            backend/target/surefire-reports/
+            backend/target/spring-modulith-docs/
+
   # Keep the existing required check; it must fail if either parallel job fails or skips.
   verify:
-    needs: [application, database]
+    needs: [application, database, kotlin-probe]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -82,6 +111,8 @@ jobs:
         env:
           APPLICATION_RESULT: ${{ needs.application.result }}
           DATABASE_RESULT: ${{ needs.database.result }}
+          KOTLIN_RESULT: ${{ needs.kotlin-probe.result }}
         run: |
           test "$APPLICATION_RESULT" = success
           test "$DATABASE_RESULT" = success
+          test "$KOTLIN_RESULT" = success

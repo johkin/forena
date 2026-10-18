@@ -1,0 +1,6 @@
+target/
+.kotlin/
+.git/
+.env
+.env.*
+*.log
