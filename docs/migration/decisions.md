@@ -41,12 +41,19 @@ i nya JVM:er med en slutlig effekt och kvittens. Två samtidiga moln-HTTP-worker
 valde samma publicering; separata konkurrerande JVM:er verifierades lokalt.
 Felinjektionen är en SQL-styrd teknikprovsmekanism, inte en produktionsfunktion.
 Cron/åtkomst är avstängda och provcredentials neutraliserade, men slutlig
-radrensning är blockerad av leverantörsverktygets requestState-fel.
+radrensning blockerades först av leverantörsverktygets requestState-fel och
+slutfördes med nollkontroll i M22E.
 [M22D](m22-registry-results.md) inför nu avgränsad worker-materialisering via
 repository-SPI utan egna statusskrivningar. Manuellt teknikprovsåtertag och
 shutdown-diagnostik är fortsatt obegränsade; totalbudgeten är mjuk och SQL-scan
 kan växa med kön. [M22E](tasks/m22e-load-cost.md) verifierar last/anslutningar och
-kostnad innan hosting-/schedulerbeslut. Hostingvalet är öppet.
+kostnad innan hosting-/schedulerbeslut.
+[M22E:s underlag](m22-load-cost-results.md) rekommenderar nu Vercel + Supabase
+med Supabase Cron för en förening först, villkorat av pg_net-tillit, planvillkor,
+beta/skalning och återhämtningskapacitet. Pro behövs inte för Supabase Cron.
+M22C:s exakta radrensning är verifierat avslutad. Inget produktionsval, köp eller
+hostingbyte genomförs; M22F/G är grindar före pilot. Cloud Run kvarstår som
+alternativ om kraven inte kan uppfyllas.
 
 ## ADR-008: Behåll Supabase PostgreSQL — aktuell planeringsinriktning
 

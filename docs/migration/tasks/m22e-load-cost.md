@@ -1,6 +1,8 @@
 # M22E: last, anslutningar och kostnad före hostingbeslut
 
-Status: planerad; ingen separat session/agent eller GitHub Issue startad.
+Status: lokalt kapacitetsprov och kostnadsunderlag genomförda på `a9ca451`.
+Ingen delegering eller ny molnlast; M22C:s radrensning nu avslutad.
+Se [resultat](../m22-load-cost-results.md) och [kostnadskalkyl](../m22-costs.md).
 Beroenden: M22A–D mergade. Ny branch från aktuell main, egen PR.
 
 ## Bakgrund och relevanta filer
@@ -55,3 +57,12 @@ verksamhetsmigrering. Ingen publik last mot ordinarie Förena.
 Om arbetet växer, dela lokalt kapacitetsprov och moln-/kostnadsbeslut i egna
 uppgifter med uppmätta gränser och källor. Efter hostingbeslut återstår bland
 annat M02/M03/M04 och svarstjänsten inför [M07](m07-first-flow.md).
+
+## Överlämning
+
+En förening först, enligt användarens besked. Supabase Cron är huvudspåret;
+Vercel Pro är inte ett cronkrav. Batch två/minut räcker inte till det föreslagna
+återhämtningsmålet, och pg_net-tillit/Hobbyvillkor/beta/instansstyrning återstår
+före pilot. [M22F](m22f-recovery-capacity.md) och [M22G](m22g-vercel-pilot-gates.md)
+är självständiga följduppgifter, inte startade sessioner. Inga betalplaner,
+backendregler eller produktionsresurser ändrades i M22E.

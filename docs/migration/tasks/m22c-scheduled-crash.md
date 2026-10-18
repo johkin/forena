@@ -1,6 +1,6 @@
 # M22C: Schemalagd återhämtning efter JVM-död och effekt/kvittens
 
-Status: testverifiering genomförd; slutlig radrensning blockerad av verktygsfel.
+Status: testverifiering genomförd; slutlig radrensning avslutad och verifierad i M22E.
 Se [rapporten](../m22-crash-results.md).
 Beroenden: M22A och M22B mergade. Ny branch från då aktuell main, separat PR.
 
@@ -61,3 +61,9 @@ Molnet bevisar därför inte konkurrens mellan två olika JVM:er för samma even
 Resultat och städning redovisas i rapporten. Ingen delegering gjordes.
 Nästa avgränsning är [M22D](m22d-bounded-registry.md); last/kostnader och
 hostingbeslut återstår i M22.
+
+
+Städuppföljning: M22E genomförde nu det tidigare blockerade städ-SQL:t och
+verifierade noll kvarvarande provposter 2026-10-18 21:09:10 UTC. Se
+[städbevis](../evidence/m22e-cleanup.json); det historiska requestState-felet
+är inte längre ett kvarstående rensningshinder för denna körning.
