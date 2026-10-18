@@ -25,7 +25,10 @@ def docker(*args, **kwargs):
     return subprocess.run(DOCKER + list(args), env=DOCKER_ENV, check=True, text=True, capture_output=True, **kwargs).stdout.strip()
 
 def sql(query):
-    return docker('exec', '-i', container, 'psql', '-U', 'postgres', '-At', '-v', 'ON_ERROR_STOP=1', input=query)
+    # The image's temporary initialization server accepts Unix sockets before
+    # shutting down. TCP becomes ready only on the final PostgreSQL server.
+    return docker('exec', '-i', '-e', 'PGPASSWORD=local-probe-admin', container,
+        'psql', '-h', '127.0.0.1', '-U', 'postgres', '-At', '-v', 'ON_ERROR_STOP=1', input=query)
 
 def call(path, body=None):
     request = urllib.request.Request(f'http://127.0.0.1:{port}{path}',
@@ -55,6 +58,8 @@ try:
             break
         except subprocess.CalledProcessError:
             time.sleep(0.1)
+    else:
+        raise TimeoutError('PostgreSQL did not become ready over TCP')
     db_port = docker('port', container, '5432').rsplit(':', 1)[1]
     sql("CREATE SCHEMA forena_probe; CREATE ROLE forena_probe_runtime LOGIN PASSWORD 'local-probe-only';")
     import socket
@@ -95,7 +100,7 @@ try:
             print(json.dumps({'postResponseCompleted': True, 'actualJvmExit': 137, 'restartedJvmCompleted': True, 'effectCountAfterReplay': 1}))
 except Exception:
     # Preserve diagnostics outside the repo, without printing environment variables or credentials.
-    if 'directory' in locals() and Path(directory).exists():
+    if directory and Path(directory).exists():
         shutil.copytree(directory, '/tmp/forena-lifecycle-failure', dirs_exist_ok=True)
     raise
 finally:

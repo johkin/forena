@@ -72,8 +72,17 @@ Migreringslösenordet lagrades inte i appens runtimekonfiguration.
 
 Testprojektets Git-inställning är nu `rootDirectory=backend`, framework
 `services`. Ordinarie Vercelprojekt och rotkonfiguration ändrades inte.
-Kontrollera första Git-previewn separat; API-deploymenten ovan publicerades
-med backend som rot utan Git-deploy.
+Första Git-previewn byggde till READY för commit
+`0e4833dbca25ae934067dc870ed6aaf437d12556`:
+`dpl_72dhwj6Us79z3Z2egi52YDTgXWR8`. Den verifierar Git-bygget från backend;
+livscykelmätningarna ovan avser fortfarande den tidigare API-deploymenten.
+Ingen ny mätning av faktisk JVM-region är gjord.
+
+Första CI-körningen passerade Maven och alla nio tester men visade en startrace
+i processprovets väntan på PostgreSQL: initieringsserverns Unix-socket kunde
+svara före den slutliga servern. Skriptet väntar nu på TCP och hanterar fel även
+före skapad loggkatalog. Rättningen verifieras med samma verkliga kraschprov;
+slutlig CI-status läses på PR:ens senaste commit.
 
 ## Kostnad och nästa beslut
 
