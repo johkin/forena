@@ -1,7 +1,9 @@
 # M22: Beständig leverans och väckning på Vercel
 
-Status: planerad, inte skapad som separat GitHub Issue eller startad session.
-Beroende: M21:s provkod och resultat mergade. Följ AGENTS.md.
+Status: delvis genomförd. Regionkontroll och lokalt konkurrensprov är körda;
+schemalagd molnleverans och hostingbeslut återstår. Ingen separat GitHub Issue.
+Beroende: M21 mergad via PR #98 som `2e0af8f`. Följ AGENTS.md.
+Se [delresultat och nästa prov](../m22-results.md).
 
 ## Bakgrund och mål
 

@@ -102,3 +102,17 @@ Begränsningar och aktiveringsstatus:
 Nya beslut och följduppgifter:
 Nästa beroende uppgift:
 ```
+
+## M22: genomförd första del
+
+PR #98 är mergad som `2e0af8f`. Fortsättningen på `test/vercel-durable-delivery`
+utgår från denna main. [Delrapporten](m22-results.md) registrerar verifierad
+fra1-runtime i Git-previewn och ett reproducerbart lokalt konkurrensprov med
+två separata JVM:er. Tre omgångar gav en effekt och noll oavslutade publiceringar.
+Krasch-/omstartsprovet passerade också. CI aktiverar samma två-JVM-prov.
+
+Vercel Cron kräver production-deployment och Hobby stödjer endast dagliga jobb.
+Ingen planuppgradering eller cronaktivering har gjorts. Manuellt långt återtag,
+schemalagd väckning, molnkonkurrens, felpunkt efter effekt och full kostnadsbild
+återstår; M22 är inte avslutad och hostingbeslutet är öppet. Molnklientens
+credentialöverföring inväntar uttryckligt godkännande efter tidigare autoreview-nekande.
