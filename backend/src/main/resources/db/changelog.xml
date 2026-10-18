@@ -11,4 +11,18 @@
    REVOKE ALL ON forena_probe.databasechangelog, forena_probe.databasechangeloglock FROM forena_probe_runtime;
   </sql>
  </changeSet>
+ <changeSet id="probe-002-faults" author="forena">
+  <sql>
+   CREATE TABLE forena_probe.probe_fault (
+    id uuid PRIMARY KEY REFERENCES forena_probe.probe_run(id),
+    point text NOT NULL CHECK(point IN ('BEFORE_EFFECT','AFTER_EFFECT_COMMIT')),
+    consumed_at timestamptz,
+    consumed_by text,
+    CHECK((consumed_at IS NULL) = (consumed_by IS NULL))
+   );
+   REVOKE ALL ON forena_probe.probe_fault FROM PUBLIC, forena_probe_runtime;
+   GRANT SELECT ON forena_probe.probe_fault TO forena_probe_runtime;
+   GRANT UPDATE(consumed_at,consumed_by) ON forena_probe.probe_fault TO forena_probe_runtime;
+  </sql>
+ </changeSet>
 </databaseChangeLog>

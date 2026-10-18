@@ -1,0 +1,117 @@
+{
+  "deployment": "dpl_3rYtTVoBmahAdq3uKunFyMmX3hCK",
+  "files": [
+    {
+      "file": "backend/.dockerignore",
+      "sha256": "8c3cdf1d8762549b35d4a02b84c46bfdae1304dab941458a59dc675758942849"
+    },
+    {
+      "file": "backend/.gitignore",
+      "sha256": "6d2cbcfdf67b3135e7b4d5f1c7bfe70d3fa0c13fde5067597551d3afd626851c"
+    },
+    {
+      "file": "backend/.mvn/wrapper/maven-wrapper.properties",
+      "sha256": "bb0b8f16b2661c3676ed5a6a15f5b11d864460c4e77cfb50c583f54708f944e7"
+    },
+    {
+      "file": "backend/Dockerfile.vercel",
+      "sha256": "43d4395573c7216c8bcac62eb577fa1ca8e628bb326bd57b80487d194b7edf7f"
+    },
+    {
+      "file": "backend/certs/supabase-ca.crt",
+      "sha256": "700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7"
+    },
+    {
+      "file": "backend/mvnw",
+      "sha256": "cae96cef89ebea3531221f4ae17c23cf8edf67d00eae8306d4186ae1bbed4d02"
+    },
+    {
+      "file": "backend/mvnw.cmd",
+      "sha256": "46eedb8419bd14fe70d5bb2916d7b6f51806e51b39d5b76a42610384ca929c1c"
+    },
+    {
+      "file": "backend/pom.xml",
+      "sha256": "d63101529566c70929cd9d6737c8e343aa290a14186ac76297d7833eb16f3fe5"
+    },
+    {
+      "file": "backend/src/main/kotlin/se/forena/probe/ProbeApplication.kt",
+      "sha256": "05d0061c80b51b0e0b72ba8995cbec29d9796e87be93b51d66edc9f15223d31f"
+    },
+    {
+      "file": "backend/src/main/kotlin/se/forena/probe/ProbeSecurity.kt",
+      "sha256": "7330d870790219516ace8974ab23cca458e7d141fa514606089e847ada8c48bd"
+    },
+    {
+      "file": "backend/src/main/kotlin/se/forena/probe/commands/ProbeCommands.kt",
+      "sha256": "d0e371568892243bf50ff36b624c4ebb0a533eb85fcef1d78057a6c7936af5be"
+    },
+    {
+      "file": "backend/src/main/kotlin/se/forena/probe/commands/ProbeRequested.kt",
+      "sha256": "7489ad56598427aa3a47af4a507486e29288739b3ab79f77e2c5e1a3774a36d4"
+    },
+    {
+      "file": "backend/src/main/kotlin/se/forena/probe/commands/internal/RunRepository.kt",
+      "sha256": "c24281ee8e6a6ecbd297f9b603ffb3d60e0940e4a1e04a4cd34cc2d09d6f0260"
+    },
+    {
+      "file": "backend/src/main/kotlin/se/forena/probe/delivery/ProbeWorker.kt",
+      "sha256": "624a090622b3d93a0815ee26af5e614256d2a66113dfa3319de3c71e05b17260"
+    },
+    {
+      "file": "backend/src/main/kotlin/se/forena/probe/delivery/internal/PendingPublications.kt",
+      "sha256": "45c60e5ecc34e4a278c22ab3d917c9d45fcc8581f81016e13b08e0535cd0df4e"
+    },
+    {
+      "file": "backend/src/main/kotlin/se/forena/probe/effects/EffectControl.kt",
+      "sha256": "aa4aae87d7d9c8c00f1effb01abbc8466c711839acdf791cff2286956570da1f"
+    },
+    {
+      "file": "backend/src/main/kotlin/se/forena/probe/effects/internal/ProbeAttempts.kt",
+      "sha256": "bdf6b0d3375aa12c827cc965748217fa294bc563dc89379f7a5332de23f67a86"
+    },
+    {
+      "file": "backend/src/main/kotlin/se/forena/probe/effects/internal/ProbeListener.kt",
+      "sha256": "7ec81b2eea11711f2a9f3254cbbf542f8f10a3c7de718a78e6825bee23158fa4"
+    },
+    {
+      "file": "backend/src/main/kotlin/se/forena/probe/transport/ProbeController.kt",
+      "sha256": "c9ae0a571fc3425575e8740d9676e81abd895d522d91bb3c5bb6d01d1f8a4820"
+    },
+    {
+      "file": "backend/src/main/kotlin/se/forena/probe/transport/WorkerController.kt",
+      "sha256": "973a070df639df902886d0588a4043510b7ab1c3b1e86cab8422f96183c783dd"
+    },
+    {
+      "file": "backend/src/main/resources/application.properties",
+      "sha256": "e136037c4b07d654369947ed2ba8cfe5dec6e10799fa5172b873a1885e42d148"
+    },
+    {
+      "file": "backend/src/main/resources/db/changelog.xml",
+      "sha256": "53ece1af47c0c8227b9485f2cb145371aabd5627c1c16b8214d575a1da18b7c5"
+    },
+    {
+      "file": "backend/src/main/resources/db/modulith-postgresql.sql",
+      "sha256": "4d9065e3cdb514eafdabbdc33682f48a62900d3a5a369b987737d693990031d4"
+    },
+    {
+      "file": "backend/src/main/resources/db/probe.sql",
+      "sha256": "2814386a8baa72676b8d695dced187c2e1d361cafa65e2dfae1d3399df6837b5"
+    },
+    {
+      "file": "backend/src/main/resources/static/index.html",
+      "sha256": "70b675c90cd908b0e424dc7737619a8ab9b66cba114ebf4be1a87d6315bfa490"
+    },
+    {
+      "file": "backend/src/main/resources/static/probe.js",
+      "sha256": "7df5566d86a4f294e753a93bf75f83821c5487cea7caacb6aa69884a30f2ba89"
+    },
+    {
+      "file": "backend/vercel.json",
+      "sha256": "884bc781150f813f8b3caebdacc4a1af3e6ec146f28deae36b777f400ae8a7ba"
+    },
+    {
+      "file": "backend/src/main/kotlin/se/forena/probe/effects/internal/ProbeFaults.kt",
+      "sha256": "07e6f0686aa430d84bc57530d54ecb5dbf6e89f9a48f47918caba65ea94ff664"
+    }
+  ]
+}

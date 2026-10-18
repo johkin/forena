@@ -14,10 +14,12 @@ befintliga Supabase-beroenden ersätts stegvis med bevarad säkerhet.
 Se ADR-008 i [besluten](decisions.md). Ingen databasflytt eller ny databasinstans
 ska beställas inom nästa implementationssteg.
 
-PR #97–100 är mergade. M21/M22 har verifierat isolerade Vercel-prov och
+PR #97–101 är mergade. M21/M22 har verifierat isolerade Vercel-prov och
 [M22A](m22-scheduler-results.md) dokumenterar verklig Supabase Cron-väckning.
 [M22B](m22-isolation-results.md) skiljer avstängt Data API från SQL-kontonas
 pg_net-rättigheter; JDBC och avstängt Data API behålls i Kotlin-testprojektet.
+[M22C](m22-crash-results.md) verifierar schemalagt återtag efter två verkliga
+JVM-krascher; testet är godkänt men slutlig radrensning inväntar ett verktygsfel.
 ADR-009 lämnar hostingvalet öppet tills säkerhets-, registry-, last- och
 kostnadsgränserna är hanterade. Teknikproven verifierar delar av M01/M02/M06. Därefter följer
 M02/M03/M04, svarstjänsten och M07:s kompletta kallelsesvar. M08 verifierar
