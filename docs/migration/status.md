@@ -250,3 +250,45 @@ M22C:s dokumenterade rensningshinder kvarstår utan ny molnverifiering; lokal
 DB-container är raderad. Nästa självständiga uppgift är
 [M22E](tasks/m22e-load-cost.md): last/anslutningar och kostnadsbild före hosting-
 och schedulerbeslut. Hostingvalet är fortsatt öppet; ordinarie Förena oförändrat.
+
+
+## M22E: last, anslutningar och kostnad för en förening
+
+Bas `a9ca451` (PR #103 mergad), branch `test/load-cost`.
+[Rapport](m22-load-cost-results.md), [kalkyl](m22-costs.md),
+[lokala mätningar](evidence/m22e-local-capacity.json),
+[reproducerbar budget](evidence/m22e-costs.json) och [städbevis](evidence/m22e-cleanup.json).
+Användaren valde enstaka förening först; Supabase Cron är huvudspåret och
+kräver inte Vercel Pro. Inga betalplaner eller produktionsresurser ändrade.
+
+Reproducerbart prov med två riktiga JVM:er: 1 000/10 000/100 000 registry-poster,
+EXPLAIN/BUFFERS, 40 korta leveranser med en/två workers, 1,5 s-lyssnare, tvåsekunders
+read-timeout, fyra anslutningar fyllda av åtta konkurrerande skrivningar samt
+överbudgeterad lyssnare. En slutlig databaseffekt/kvittens per genomförd körning;
+extra försök med två workers är observerade. P95 och RSS är lokala små stickprov,
+inte molngarantier. Ingen app-/schemaversion ändrad, ingen ny molnlast.
+
+Mätt dränering vid täta anrop är inte cronkapacitet: batch två/minut behöver
+minst 50 minuter för 100 poster efter stale-väntan. Det föreslagna pilotmålet
+är fem minuter efter stale-gränsen. SQL-scan/sort, pool-/instansbudget och
+fördröjda/felande poster behöver fortsatt arbete i [M22F](tasks/m22f-recovery-capacity.md).
+Vercel-beta/planvillkor, två samtidiga moln-JVM:er, pg_net-tillit och driftgrindar
+ligger i [M22G](tasks/m22g-vercel-pilot-gates.md). Ingen av dem är startad/delegerad.
+
+Kostnadsinriktning: prod cirka 25–30 USD/månad med Supabase Pro/Micro och
+Vercel Hobby om villkor/kvoter passar; 45–50 med ett Pro-team. Ständigt aktiv
+betald test-Micro tillför cirka 9,6 USD på orgnivå; lokal dev är grundmodellen.
+Avgifter/krediter delas per org/team, inte per miljö. Reserv är egen budget,
+mejl/AI/domän/add-ons tillkommer. Hobby har liten CPU-marginal i lastantagandet;
+kalla teststarter kan överskrida kvoten. Inget nytt abonnemang valt.
+
+M22C:s tidigare rensningshinder är **avslutat**: exakt städ-SQL lyckades;
+oberoende kontroll 2026-10-18 21:09:10 UTC visar noll provjobb, kö-/Vault-/fault-/
+calls-/settings-/responseposter och oavslutade publiceringar. Historiska M22C-
+rapporter/bevis har kvar sina dåvarande observationer med tydlig senare uppföljning.
+
+Lokalt 36 JUnit-/PostgreSQL-tester inklusive struktur/modultest, full kapacitets-
+matris, 1 065 frontendtester/typecheck/lint/build, sex Pythonregressioner och
+offlinebeviskontroll godkända. CI kör även --quick-kapacitetsvariant och verifierar
+kostnadsreproduktionen samt behåller tidigare krasch-/DB-/frontendkontroller.
+Ordinarie Förena fortsätter; produktionshosting/pilot är inte aktiverade.

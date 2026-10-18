@@ -163,3 +163,14 @@ eller annat externt utskick. Globala workerleases införs inte. Moduliths
 obundna predicate-läsning, mjuka tidsbudget, anslutningsbudget och kostnader
 återstår i M22. pg_net:s credentialtillit till SQL-konton kvarstår enligt
 [M22B](m22-isolation-results.md). Inget hosting- eller produktionsval görs här.
+
+
+## Senare städning, verifierad i M22E
+
+2026-10-18 lyckades den oförändrade `scripts/probe/m22c-cleanup.sql` via
+Supabase execute_sql. Oberoende läskontroll 21:09:10.194344 UTC visar noll
+provjobb, köposter, Vault-poster, faults, calls, settings, responser 25–34 och
+oavslutade publiceringar. Tidigare requestState-fel och dåvarande restposter
+ovan är historiska observationer; radrensningen är nu avslutad.
+[Städbevis](evidence/m22e-cleanup.json). Befintliga syntetiska effekter och
+körningar behölls. Ingen ny molnlast eller ny schemaläggning kördes i M22E.

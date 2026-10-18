@@ -1,0 +1,252 @@
+{
+  "rates": {
+    "checkedAt": "2026-10-18",
+    "vercelFra1CpuHour": 0.184,
+    "vercelFra1GbHour": 0.0152,
+    "vercelMillionInvocations": 0.6,
+    "vercelProTeam": 20,
+    "vercelUsageCredit": 20,
+    "supabaseProOrg": 25,
+    "supabaseMicroHour": 0.01344,
+    "supabaseComputeCredit": 10,
+    "cloudRunTier1VcpuSecond": 2.4e-05,
+    "cloudRunTier1GibSecond": 2.5e-06,
+    "cloudRunMillionRequests": 0.4,
+    "schedulerJob": 0.1,
+    "sources": [
+      "https://vercel.com/docs/functions/usage-and-pricing",
+      "https://vercel.com/docs/plans/pro-plan",
+      "https://supabase.com/docs/guides/platform/manage-your-usage/compute",
+      "https://cloud.google.com/run/pricing",
+      "https://cloud.google.com/run/docs/locations",
+      "https://cloud.google.com/scheduler/pricing"
+    ]
+  },
+  "scenarios": {
+    "devRemoteIfUsed": {
+      "assumptions": {
+        "apiRequests": 10000,
+        "apiCpuMs": 100,
+        "apiWallMs": 200,
+        "schedulerDays": 0,
+        "schedulerWallMs": 200,
+        "schedulerCpuMs": 10,
+        "listenerWaitSeconds": 0,
+        "memoryGbOrGib": 2,
+        "vcpus": 1
+      },
+      "monthlyInvocations": 10000,
+      "schedulerInvocations": 0,
+      "cpuSeconds": 1000.0,
+      "instanceActiveSecondsUpperEstimate": 2000.0,
+      "vercelGross": {
+        "cpu": 0.051111111111111114,
+        "memory": 0.01688888888888889,
+        "invocations": 0.006,
+        "total": 0.07400000000000001
+      },
+      "cloudRunTier1GrossBeforeFreeTier": {
+        "cpu": 0.048,
+        "memory": 0.01,
+        "requests": 0.004,
+        "total": 0.062
+      }
+    },
+    "testControlled": {
+      "assumptions": {
+        "apiRequests": 20000,
+        "apiCpuMs": 100,
+        "apiWallMs": 200,
+        "schedulerDays": 2,
+        "schedulerWallMs": 200,
+        "schedulerCpuMs": 10,
+        "listenerWaitSeconds": 0,
+        "memoryGbOrGib": 2,
+        "vcpus": 1
+      },
+      "monthlyInvocations": 22880,
+      "schedulerInvocations": 2880,
+      "cpuSeconds": 2028.8,
+      "instanceActiveSecondsUpperEstimate": 4576.0,
+      "vercelGross": {
+        "cpu": 0.10369422222222223,
+        "memory": 0.038641777777777775,
+        "invocations": 0.013728,
+        "total": 0.156064
+      },
+      "cloudRunTier1GrossBeforeFreeTier": {
+        "cpu": 0.109824,
+        "memory": 0.02288,
+        "requests": 0.009152,
+        "total": 0.141856
+      }
+    },
+    "oneClubProduction": {
+      "assumptions": {
+        "apiRequests": 100000,
+        "apiCpuMs": 100,
+        "apiWallMs": 200,
+        "schedulerDays": 30,
+        "schedulerWallMs": 200,
+        "schedulerCpuMs": 10,
+        "listenerWaitSeconds": 0,
+        "memoryGbOrGib": 2,
+        "vcpus": 1
+      },
+      "monthlyInvocations": 143200,
+      "schedulerInvocations": 43200,
+      "cpuSeconds": 10432.0,
+      "instanceActiveSecondsUpperEstimate": 28640.0,
+      "vercelGross": {
+        "cpu": 0.5331911111111111,
+        "memory": 0.2418488888888889,
+        "invocations": 0.08592,
+        "total": 0.86096
+      },
+      "cloudRunTier1GrossBeforeFreeTier": {
+        "cpu": 0.68736,
+        "memory": 0.14320000000000002,
+        "requests": 0.05728,
+        "total": 0.88784
+      }
+    },
+    "tenfoldTraffic": {
+      "assumptions": {
+        "apiRequests": 1000000,
+        "apiCpuMs": 100,
+        "apiWallMs": 200,
+        "schedulerDays": 30,
+        "schedulerWallMs": 200,
+        "schedulerCpuMs": 10,
+        "listenerWaitSeconds": 0,
+        "memoryGbOrGib": 2,
+        "vcpus": 1
+      },
+      "monthlyInvocations": 1043200,
+      "schedulerInvocations": 43200,
+      "cpuSeconds": 100432.0,
+      "instanceActiveSecondsUpperEstimate": 208640.0,
+      "vercelGross": {
+        "cpu": 5.133191111111111,
+        "memory": 1.7618488888888888,
+        "invocations": 0.6259199999999999,
+        "total": 7.52096
+      },
+      "cloudRunTier1GrossBeforeFreeTier": {
+        "cpu": 5.00736,
+        "memory": 1.0432000000000001,
+        "requests": 0.41728,
+        "total": 6.467840000000001
+      }
+    },
+    "coldControlledTestSensitivity": {
+      "assumptions": {
+        "apiRequests": 20000,
+        "apiCpuMs": 100,
+        "apiWallMs": 200,
+        "schedulerDays": 2,
+        "schedulerWallMs": 15000,
+        "schedulerCpuMs": 4000,
+        "listenerWaitSeconds": 0,
+        "memoryGbOrGib": 2,
+        "vcpus": 1
+      },
+      "monthlyInvocations": 22880,
+      "schedulerInvocations": 2880,
+      "cpuSeconds": 13520.0,
+      "instanceActiveSecondsUpperEstimate": 47200.0,
+      "vercelGross": {
+        "cpu": 0.6910222222222222,
+        "memory": 0.39857777777777775,
+        "invocations": 0.013728,
+        "total": 1.1033279999999999
+      },
+      "cloudRunTier1GrossBeforeFreeTier": {
+        "cpu": 1.1328,
+        "memory": 0.23600000000000002,
+        "requests": 0.009152,
+        "total": 1.377952
+      }
+    },
+    "coldEverySchedulerTickSensitivity": {
+      "assumptions": {
+        "apiRequests": 100000,
+        "apiCpuMs": 100,
+        "apiWallMs": 200,
+        "schedulerDays": 30,
+        "schedulerWallMs": 15000,
+        "schedulerCpuMs": 4000,
+        "listenerWaitSeconds": 0,
+        "memoryGbOrGib": 2,
+        "vcpus": 1
+      },
+      "monthlyInvocations": 143200,
+      "schedulerInvocations": 43200,
+      "cpuSeconds": 182800.0,
+      "instanceActiveSecondsUpperEstimate": 668000.0,
+      "vercelGross": {
+        "cpu": 9.343111111111112,
+        "memory": 5.640888888888888,
+        "invocations": 0.08592,
+        "total": 15.06992
+      },
+      "cloudRunTier1GrossBeforeFreeTier": {
+        "cpu": 16.032,
+        "memory": 3.3400000000000003,
+        "requests": 0.05728,
+        "total": 19.42928
+      }
+    },
+    "sixtySecondListenerEveryMinuteSensitivity": {
+      "assumptions": {
+        "apiRequests": 100000,
+        "apiCpuMs": 100,
+        "apiWallMs": 200,
+        "schedulerDays": 30,
+        "schedulerWallMs": 200,
+        "schedulerCpuMs": 10,
+        "listenerWaitSeconds": 2592000,
+        "memoryGbOrGib": 2,
+        "vcpus": 1
+      },
+      "monthlyInvocations": 143200,
+      "schedulerInvocations": 43200,
+      "cpuSeconds": 10432.0,
+      "instanceActiveSecondsUpperEstimate": 2620640.0,
+      "vercelGross": {
+        "cpu": 0.5331911111111111,
+        "memory": 22.129848888888887,
+        "invocations": 0.08592,
+        "total": 22.74896
+      },
+      "cloudRunTier1GrossBeforeFreeTier": {
+        "cpu": 62.895360000000004,
+        "memory": 13.103200000000001,
+        "requests": 0.05728,
+        "total": 76.05584
+      }
+    }
+  },
+  "sharedBilling": {
+    "supabaseOneMicroOrg": 25,
+    "supabaseTwoMicrosOrg": 34.6224,
+    "supabaseSecondMicroIncrement": 9.622399999999999,
+    "vercelProTeamOneDeployingSeat": 20,
+    "vercelAllThreeFunctionUsage": 1.091024,
+    "hobbyAllThreeCpuHoursAssumed": 3.739111111111111,
+    "vercelAllThreeAfterSharedCredit": 20,
+    "hobbyPlusSupabaseCronCoreIfEligible": 25,
+    "hobbyWithLocalDevAndPaidTestIfEligible": 34.6224,
+    "oneClubCoreVercelProPlusSupabase": 45,
+    "coreWithLocalDevAndAlwaysOnPaidTest": 54.6224
+  },
+  "exclusions": [
+    "No actual account invoice or resource usage was retrieved.",
+    "AI, email, domain, taxes, optional PITR, additional seats and integrations are excluded.",
+    "Allow separate storage/network/build/log budgets; see accompanying report.",
+    "Cloud Run numbers use nearby Belgium Tier 1; Frankfurt is Tier 2 and needs its own quote.",
+    "Vercel usage credit and Supabase compute credit each apply once per team/organization.",
+    "Cloud Run free tier is shared per billing account and is not deducted here.",
+    "GB and GiB are provider units; this model budgets the configured 2-unit memory size for each."
+  ]
+}

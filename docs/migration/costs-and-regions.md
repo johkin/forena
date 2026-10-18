@@ -1,4 +1,25 @@
-# Preliminär kostnadsmodell och regionval för GCP
+# Kostnader och regioner
+
+## Aktuellt underlag: M22E, en förening först
+
+Läs [aktuell kalkyl](m22-costs.md), [last-/anslutningsrapport](m22-load-cost-results.md)
+och [reproducerbara prisberäkningar](evidence/m22e-costs.json). Officiella källor
+kontrollerades 2026-10-18 via tillgängligt webbverktyg/leverantörsdokumentation.
+Supabase PostgreSQL/Auth och Supabase Cron behålls som huvudspår. Vercel fra1
+ligger nära Supabase eu-central-1; Cloud Run-jämförelsen använder Belgien Tier 1,
+inte Frankfurts Tier 2-pris. Inga kontoplaner eller regioner har bytts.
+
+För en förening: cirka 25–30 USD/månad för prod med Supabase Pro/Micro och
+Vercel Hobby om villkor/kvoter passar; cirka 45–50 med Pro. Extra ständigt
+aktiv betald Micro-test tillför cirka 9,6 USD på organisationsnivå. Dev är lokal.
+Detta är budget inklusive liten reserv, inte faktura/tak; mejl/AI/domän och
+särskilda add-ons tillkommer. Delade avgifter/krediter räknas en gång.
+
+## Historiskt M00-underlag: preliminärt GCP/Cloud SQL-scenario
+
+Följande text är bevarad inventeringshistorik, **inte aktiv beställningsbudget**.
+Dess overifierade prisfaktorer och tidigare nätbegränsning avser M00-tillfället;
+använd M22E ovan för aktuella kontroller och antaganden.
 
 Datum: 2026-10-18. Status: budgetunderlag, inte prisoffert eller godkänt driftbeslut.
 Alla belopp är **USD per månad exklusive moms**. Ingen provisionering eller

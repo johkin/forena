@@ -306,3 +306,15 @@ tidsmätning. Ingen extension installeras i Supabase. Processprovet kan köras
 med `--concurrent-recovery --scheduled-crash --registry-backlog 10000` för att
 behålla färska poster under båda riktiga JVM-krascherna och tre två-JVM-rundor.
 CI kör den kombinationen. Se rapporten för mätgränser och kvarvarande arbete.
+
+
+## Lokal kapacitet och kostnad (M22E)
+
+Efter bygget kör `python3 scripts/probe/local-capacity.py --out /tmp/m22e.json`
+från reporoten. Det skapar själv disponibel PostgreSQL och två JVM:er; ingen
+extern DB/URL accepteras. Mätningen omfattar växande SQL-planer, aktiv worker-
+dränering, RSS/CPU, låst registryläsning, poolmättnad och överbudgeterad lyssnare.
+`--quick` är CI-varianten. `cost-model.py --out /tmp/m22e-costs.json` reproducerar
+[den daterade budgeten](../docs/migration/m22-costs.md).
+Se [resultat och begränsningar](../docs/migration/m22-load-cost-results.md).
+Supabase Cron kräver inte Vercel Pro; batch-/tillit-/pilotgrindar kvarstår.

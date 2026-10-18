@@ -91,6 +91,14 @@ jobs:
       - name: Verify abrupt JVM death and concurrent durable recovery
         run: python3 scripts/probe/local-lifecycle.py --concurrent-recovery --scheduled-crash --registry-backlog 10000
 
+      - name: Verify local capacity, pool exhaustion and registry timeouts
+        run: python3 scripts/probe/local-capacity.py --quick --out backend/target/m22e-capacity-ci.json
+
+      - name: Verify cost calculation
+        run: |
+          python3 scripts/probe/cost-model.py --out /tmp/m22e-costs.json
+          diff -u docs/migration/evidence/m22e-costs.json /tmp/m22e-costs.json
+
       - name: Verify Data API isolation evidence and rejection checks
         run: |
           python3 scripts/probe/isolation-check.py --verify-evidence docs/migration/evidence/m22-isolation.json
@@ -102,6 +110,7 @@ jobs:
         with:
           name: kotlin-probe-reports
           path: |
+            backend/target/m22e-capacity-ci.json
             backend/target/surefire-reports/
             backend/target/spring-modulith-docs/
 

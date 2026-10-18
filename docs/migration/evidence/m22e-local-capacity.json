@@ -1,0 +1,761 @@
+{
+  "kind": "local-only",
+  "base": "a9ca451",
+  "queryPlans": [
+    {
+      "backlog": 1000,
+      "representativePlan": {
+        "Plan": {
+          "Node Type": "Limit",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 83.71,
+          "Total Cost": 83.72,
+          "Plan Rows": 2,
+          "Plan Width": 48,
+          "Actual Startup Time": 8.519,
+          "Actual Total Time": 8.521,
+          "Actual Rows": 2,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 46,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Plans": [
+            {
+              "Node Type": "Sort",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 83.71,
+              "Total Cost": 84.34,
+              "Plan Rows": 249,
+              "Plan Width": 48,
+              "Actual Startup Time": 8.518,
+              "Actual Total Time": 8.519,
+              "Actual Rows": 2,
+              "Actual Loops": 1,
+              "Sort Key": [
+                "publication_date",
+                "id"
+              ],
+              "Sort Method": "top-N heapsort",
+              "Sort Space Used": 25,
+              "Sort Space Type": "Memory",
+              "Shared Hit Blocks": 46,
+              "Shared Read Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Temp Written Blocks": 0,
+              "Plans": [
+                {
+                  "Node Type": "Seq Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Relation Name": "event_publication",
+                  "Alias": "p",
+                  "Startup Cost": 0.0,
+                  "Total Cost": 81.22,
+                  "Plan Rows": 249,
+                  "Plan Width": 48,
+                  "Actual Startup Time": 0.038,
+                  "Actual Total Time": 8.342,
+                  "Actual Rows": 750,
+                  "Actual Loops": 1,
+                  "Filter": "((completion_date IS NULL) AND (event_type = 'se.forena.probe.commands.ProbeRequested'::text) AND (listener_id = 'se.forena.probe.effects.internal.ProbeListener.on(se.forena.probe.commands.ProbeRequested)'::text) AND (((serialized_event)::jsonb ->> 'mode'::text) <> 'CRASH'::text) AND (GREATEST(publication_date, last_resubmission_date) < (clock_timestamp() - '00:02:00'::interval)))",
+                  "Rows Removed by Filter": 250,
+                  "Shared Hit Blocks": 40,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0
+                }
+              ]
+            }
+          ]
+        },
+        "Planning": {
+          "Shared Hit Blocks": 172,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 1.33,
+        "Triggers": [],
+        "Execution Time": 8.577
+      },
+      "executionTimesMs": [
+        7.055,
+        16.278,
+        9.652,
+        6.557,
+        8.577
+      ],
+      "executionP95Ms": 16.278
+    },
+    {
+      "backlog": 10000,
+      "representativePlan": {
+        "Plan": {
+          "Node Type": "Limit",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 835.08,
+          "Total Cost": 835.09,
+          "Plan Rows": 2,
+          "Plan Width": 48,
+          "Actual Startup Time": 97.913,
+          "Actual Total Time": 97.915,
+          "Actual Rows": 2,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 404,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Plans": [
+            {
+              "Node Type": "Sort",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 835.08,
+              "Total Cost": 841.3,
+              "Plan Rows": 2488,
+              "Plan Width": 48,
+              "Actual Startup Time": 97.912,
+              "Actual Total Time": 97.912,
+              "Actual Rows": 2,
+              "Actual Loops": 1,
+              "Sort Key": [
+                "publication_date",
+                "id"
+              ],
+              "Sort Method": "top-N heapsort",
+              "Sort Space Used": 25,
+              "Sort Space Type": "Memory",
+              "Shared Hit Blocks": 404,
+              "Shared Read Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Temp Written Blocks": 0,
+              "Plans": [
+                {
+                  "Node Type": "Seq Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Relation Name": "event_publication",
+                  "Alias": "p",
+                  "Startup Cost": 0.0,
+                  "Total Cost": 810.2,
+                  "Plan Rows": 2488,
+                  "Plan Width": 48,
+                  "Actual Startup Time": 0.068,
+                  "Actual Total Time": 96.025,
+                  "Actual Rows": 7500,
+                  "Actual Loops": 1,
+                  "Filter": "((completion_date IS NULL) AND (event_type = 'se.forena.probe.commands.ProbeRequested'::text) AND (listener_id = 'se.forena.probe.effects.internal.ProbeListener.on(se.forena.probe.commands.ProbeRequested)'::text) AND (((serialized_event)::jsonb ->> 'mode'::text) <> 'CRASH'::text) AND (GREATEST(publication_date, last_resubmission_date) < (clock_timestamp() - '00:02:00'::interval)))",
+                  "Rows Removed by Filter": 2500,
+                  "Shared Hit Blocks": 398,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0
+                }
+              ]
+            }
+          ]
+        },
+        "Planning": {
+          "Shared Hit Blocks": 171,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 1.77,
+        "Triggers": [],
+        "Execution Time": 98.017
+      },
+      "executionTimesMs": [
+        64.275,
+        100.314,
+        83.596,
+        66.954,
+        98.017
+      ],
+      "executionP95Ms": 100.314
+    },
+    {
+      "backlog": 100000,
+      "representativePlan": {
+        "Plan": {
+          "Node Type": "Limit",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 6798.99,
+          "Total Cost": 6799.23,
+          "Plan Rows": 2,
+          "Plan Width": 48,
+          "Actual Startup Time": 293.667,
+          "Actual Total Time": 297.711,
+          "Actual Rows": 2,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 4066,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Plans": [
+            {
+              "Node Type": "Gather Merge",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 6798.99,
+              "Total Cost": 9216.73,
+              "Plan Rows": 20722,
+              "Plan Width": 48,
+              "Actual Startup Time": 293.665,
+              "Actual Total Time": 297.708,
+              "Actual Rows": 2,
+              "Actual Loops": 1,
+              "Workers Planned": 2,
+              "Workers Launched": 2,
+              "Shared Hit Blocks": 4066,
+              "Shared Read Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Temp Written Blocks": 0,
+              "Plans": [
+                {
+                  "Node Type": "Sort",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Startup Cost": 5798.97,
+                  "Total Cost": 5824.87,
+                  "Plan Rows": 10361,
+                  "Plan Width": 48,
+                  "Actual Startup Time": 288.337,
+                  "Actual Total Time": 288.338,
+                  "Actual Rows": 2,
+                  "Actual Loops": 3,
+                  "Sort Key": [
+                    "publication_date",
+                    "id"
+                  ],
+                  "Sort Method": "top-N heapsort",
+                  "Sort Space Used": 25,
+                  "Sort Space Type": "Memory",
+                  "Shared Hit Blocks": 4066,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0,
+                  "Workers": [
+                    {
+                      "Worker Number": 0,
+                      "Sort Method": "top-N heapsort",
+                      "Sort Space Used": 25,
+                      "Sort Space Type": "Memory"
+                    },
+                    {
+                      "Worker Number": 1,
+                      "Sort Method": "top-N heapsort",
+                      "Sort Space Used": 25,
+                      "Sort Space Type": "Memory"
+                    }
+                  ],
+                  "Plans": [
+                    {
+                      "Node Type": "Seq Scan",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": true,
+                      "Async Capable": false,
+                      "Relation Name": "event_publication",
+                      "Alias": "p",
+                      "Startup Cost": 0.0,
+                      "Total Cost": 5695.36,
+                      "Plan Rows": 10361,
+                      "Plan Width": 48,
+                      "Actual Startup Time": 0.039,
+                      "Actual Total Time": 281.138,
+                      "Actual Rows": 25000,
+                      "Actual Loops": 3,
+                      "Filter": "((completion_date IS NULL) AND (event_type = 'se.forena.probe.commands.ProbeRequested'::text) AND (listener_id = 'se.forena.probe.effects.internal.ProbeListener.on(se.forena.probe.commands.ProbeRequested)'::text) AND (((serialized_event)::jsonb ->> 'mode'::text) <> 'CRASH'::text) AND (GREATEST(publication_date, last_resubmission_date) < (clock_timestamp() - '00:02:00'::interval)))",
+                      "Rows Removed by Filter": 8333,
+                      "Shared Hit Blocks": 3978,
+                      "Shared Read Blocks": 0,
+                      "Shared Dirtied Blocks": 0,
+                      "Shared Written Blocks": 0,
+                      "Local Hit Blocks": 0,
+                      "Local Read Blocks": 0,
+                      "Local Dirtied Blocks": 0,
+                      "Local Written Blocks": 0,
+                      "Temp Read Blocks": 0,
+                      "Temp Written Blocks": 0,
+                      "Workers": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "Planning": {
+          "Shared Hit Blocks": 172,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 1.363,
+        "Triggers": [],
+        "Execution Time": 297.814
+      },
+      "executionTimesMs": [
+        606.62,
+        697.176,
+        462.618,
+        327.319,
+        297.814
+      ],
+      "executionP95Ms": 697.176
+    }
+  ],
+  "delivery": [
+    {
+      "instances": 1,
+      "delayMs": 0,
+      "events": 40,
+      "seconds": 9.54724805799924,
+      "effectsPerSecond": 4.189688982312099,
+      "httpP95Ms": 444.81506000010995,
+      "httpMinMs": 247.17930399492616,
+      "httpMaxMs": 678.5318480033311,
+      "workerCalls": 20,
+      "initialState": {
+        "effects": 0,
+        "attempts": 0,
+        "attemptingJvms": 0,
+        "oldestPendingAgeSeconds": 300.532841,
+        "pending": 40
+      },
+      "state": {
+        "effects": 40,
+        "attempts": 40,
+        "attemptingJvms": 1,
+        "oldestPendingAgeSeconds": 0,
+        "pending": 0
+      },
+      "resources": {
+        "samples": 27,
+        "targetIntervalSeconds": 0.2,
+        "processCpuSeconds": [
+          3.4400000000000013,
+          0.010000000000001563
+        ],
+        "peakConnections": {
+          "jvm1": 2,
+          "jvm2": 1
+        },
+        "peakLockWaiters": 0,
+        "peakRssKiB": [
+          546796,
+          662372
+        ],
+        "processHighWaterKiB": [
+          546796,
+          662372
+        ]
+      },
+      "sqlStats": [
+        {
+          "calls": 120,
+          "rows": 120,
+          "total_exec_time": 10.107955000000004,
+          "query": "select completion_date is not null from event_publication where id=$1"
+        },
+        {
+          "calls": 40,
+          "rows": 40,
+          "total_exec_time": 5.981674000000001,
+          "query": "UPDATE EVENT_PUBLICATION SET STATUS = $3, COMPLETION_DATE = $1 WHERE ID = $2"
+        },
+        {
+          "calls": 40,
+          "rows": 40,
+          "total_exec_time": 4.570554000000001,
+          "query": "UPDATE EVENT_PUBLICATION SET STATUS = $3, COMPLETION_ATTEMPTS = COMPLETION_ATTEMPTS + $4, LAST_RESUBMISSION_DATE = $1 WHERE ID = $2 AND STATUS != $5"
+        },
+        {
+          "calls": 20,
+          "rows": 40,
+          "total_exec_time": 511.77075900000006,
+          "query": "select p.id publication_id, (p.serialized_event::jsonb ->> $3)::uuid run_id,\n       (p.serialized_event::jsonb ->> $4)::bigint delay_ms\nfrom event_publication p\nwhere p.completion_date is null\n  and p.event_type = $5\n  and p.listener_id = $6\n  and p.serialized_event::jsonb ->> $7 <> $8\n  and greatest(p.publication_date, p.last_resubmission_date)\n      < clock_timestamp() - ($1 * interval $9)\norder by p.publication_date, p.id\nlimit $2"
+        },
+        {
+          "calls": 22,
+          "rows": 22,
+          "total_exec_time": 121.21786099999998,
+          "query": "select json_build_object(\n            $1,(select count(*) from forena_probe.probe_effect),\n            $2,(select count(*) from forena_probe.probe_attempt),\n            $3,(select count(distinct instance_id) from forena_probe.probe_attempt),\n            $4,(select coalesce(max(extract($5 from clock_timestamp()-publication_date)),$6)\n                from forena_probe.event_publication where completion_date is null\n                and publication_date < clock_timestamp() and listener_id != $7),\n            $8,(select count(*) from forena_probe.event_publication where completion_date is null\n                and publication_date < clock_timestamp() and listener_id != $9))"
+        },
+        {
+          "calls": 40,
+          "rows": 40,
+          "total_exec_time": 4.440879,
+          "query": "UPDATE EVENT_PUBLICATION SET STATUS = $2 WHERE ID = $1 AND STATUS != $3"
+        },
+        {
+          "calls": 40,
+          "rows": 40,
+          "total_exec_time": 3.217475,
+          "query": "select * from event_publication\n        where id=$1 and completion_date is null and status <> $2\n          and event_type = $3\n          and listener_id = $4"
+        }
+      ]
+    },
+    {
+      "instances": 2,
+      "delayMs": 0,
+      "events": 40,
+      "seconds": 6.596992074002628,
+      "effectsPerSecond": 6.063369419167816,
+      "httpP95Ms": 406.54181400168454,
+      "httpMinMs": 141.0597290014266,
+      "httpMaxMs": 703.2106639962876,
+      "workerCalls": 31,
+      "initialState": {
+        "effects": 0,
+        "attempts": 0,
+        "attemptingJvms": 0,
+        "oldestPendingAgeSeconds": 300.559356,
+        "pending": 40
+      },
+      "state": {
+        "effects": 40,
+        "attempts": 43,
+        "attemptingJvms": 2,
+        "oldestPendingAgeSeconds": 0,
+        "pending": 0
+      },
+      "resources": {
+        "samples": 20,
+        "targetIntervalSeconds": 0.2,
+        "processCpuSeconds": [
+          1.4800000000000004,
+          2.219999999999999
+        ],
+        "peakConnections": {
+          "jvm1": 3,
+          "jvm2": 3
+        },
+        "peakLockWaiters": 0,
+        "peakRssKiB": [
+          553952,
+          697716
+        ],
+        "processHighWaterKiB": [
+          553952,
+          697716
+        ]
+      },
+      "sqlStats": [
+        {
+          "calls": 158,
+          "rows": 158,
+          "total_exec_time": 9.607344000000001,
+          "query": "select completion_date is not null from event_publication where id=$1"
+        },
+        {
+          "calls": 43,
+          "rows": 43,
+          "total_exec_time": 9.362723999999998,
+          "query": "UPDATE EVENT_PUBLICATION SET STATUS = $3, COMPLETION_DATE = $1 WHERE ID = $2"
+        },
+        {
+          "calls": 53,
+          "rows": 43,
+          "total_exec_time": 10.760305,
+          "query": "UPDATE EVENT_PUBLICATION SET STATUS = $3, COMPLETION_ATTEMPTS = COMPLETION_ATTEMPTS + $4, LAST_RESUBMISSION_DATE = $1 WHERE ID = $2 AND STATUS != $5"
+        },
+        {
+          "calls": 31,
+          "rows": 62,
+          "total_exec_time": 1118.864153,
+          "query": "select p.id publication_id, (p.serialized_event::jsonb ->> $3)::uuid run_id,\n       (p.serialized_event::jsonb ->> $4)::bigint delay_ms\nfrom event_publication p\nwhere p.completion_date is null\n  and p.event_type = $5\n  and p.listener_id = $6\n  and p.serialized_event::jsonb ->> $7 <> $8\n  and greatest(p.publication_date, p.last_resubmission_date)\n      < clock_timestamp() - ($1 * interval $9)\norder by p.publication_date, p.id\nlimit $2"
+        },
+        {
+          "calls": 33,
+          "rows": 33,
+          "total_exec_time": 152.72812600000003,
+          "query": "select json_build_object(\n            $1,(select count(*) from forena_probe.probe_effect),\n            $2,(select count(*) from forena_probe.probe_attempt),\n            $3,(select count(distinct instance_id) from forena_probe.probe_attempt),\n            $4,(select coalesce(max(extract($5 from clock_timestamp()-publication_date)),$6)\n                from forena_probe.event_publication where completion_date is null\n                and publication_date < clock_timestamp() and listener_id != $7),\n            $8,(select count(*) from forena_probe.event_publication where completion_date is null\n                and publication_date < clock_timestamp() and listener_id != $9))"
+        },
+        {
+          "calls": 43,
+          "rows": 43,
+          "total_exec_time": 4.36735,
+          "query": "UPDATE EVENT_PUBLICATION SET STATUS = $2 WHERE ID = $1 AND STATUS != $3"
+        },
+        {
+          "calls": 53,
+          "rows": 53,
+          "total_exec_time": 2.7555479999999997,
+          "query": "select * from event_publication\n        where id=$1 and completion_date is null and status <> $2\n          and event_type = $3\n          and listener_id = $4"
+        }
+      ]
+    },
+    {
+      "instances": 2,
+      "delayMs": 1500,
+      "events": 4,
+      "seconds": 6.675560900999699,
+      "effectsPerSecond": 0.5992005854370949,
+      "httpP95Ms": 3236.2779479954042,
+      "httpMinMs": 3119.8934109997936,
+      "httpMaxMs": 3236.2779479954042,
+      "workerCalls": 4,
+      "initialState": {
+        "effects": 0,
+        "attempts": 0,
+        "attemptingJvms": 0,
+        "oldestPendingAgeSeconds": 300.551382,
+        "pending": 4
+      },
+      "state": {
+        "effects": 4,
+        "attempts": 5,
+        "attemptingJvms": 2,
+        "oldestPendingAgeSeconds": 0,
+        "pending": 0
+      },
+      "resources": {
+        "samples": 22,
+        "targetIntervalSeconds": 0.2,
+        "processCpuSeconds": [
+          0.19000000000000128,
+          0.17999999999999972
+        ],
+        "peakConnections": {
+          "jvm1": 3,
+          "jvm2": 3
+        },
+        "peakLockWaiters": 0,
+        "peakRssKiB": [
+          554684,
+          698360
+        ],
+        "processHighWaterKiB": [
+          554684,
+          698360
+        ]
+      },
+      "sqlStats": [
+        {
+          "calls": 138,
+          "rows": 138,
+          "total_exec_time": 7.098013999999999,
+          "query": "select completion_date is not null from event_publication where id=$1"
+        },
+        {
+          "calls": 5,
+          "rows": 5,
+          "total_exec_time": 8.081169,
+          "query": "UPDATE EVENT_PUBLICATION SET STATUS = $3, COMPLETION_DATE = $1 WHERE ID = $2"
+        },
+        {
+          "calls": 8,
+          "rows": 5,
+          "total_exec_time": 0.755892,
+          "query": "UPDATE EVENT_PUBLICATION SET STATUS = $3, COMPLETION_ATTEMPTS = COMPLETION_ATTEMPTS + $4, LAST_RESUBMISSION_DATE = $1 WHERE ID = $2 AND STATUS != $5"
+        },
+        {
+          "calls": 4,
+          "rows": 8,
+          "total_exec_time": 131.07425,
+          "query": "select p.id publication_id, (p.serialized_event::jsonb ->> $3)::uuid run_id,\n       (p.serialized_event::jsonb ->> $4)::bigint delay_ms\nfrom event_publication p\nwhere p.completion_date is null\n  and p.event_type = $5\n  and p.listener_id = $6\n  and p.serialized_event::jsonb ->> $7 <> $8\n  and greatest(p.publication_date, p.last_resubmission_date)\n      < clock_timestamp() - ($1 * interval $9)\norder by p.publication_date, p.id\nlimit $2"
+        },
+        {
+          "calls": 6,
+          "rows": 6,
+          "total_exec_time": 33.642382999999995,
+          "query": "select json_build_object(\n            $1,(select count(*) from forena_probe.probe_effect),\n            $2,(select count(*) from forena_probe.probe_attempt),\n            $3,(select count(distinct instance_id) from forena_probe.probe_attempt),\n            $4,(select coalesce(max(extract($5 from clock_timestamp()-publication_date)),$6)\n                from forena_probe.event_publication where completion_date is null\n                and publication_date < clock_timestamp() and listener_id != $7),\n            $8,(select count(*) from forena_probe.event_publication where completion_date is null\n                and publication_date < clock_timestamp() and listener_id != $9))"
+        },
+        {
+          "calls": 5,
+          "rows": 5,
+          "total_exec_time": 1.0901939999999999,
+          "query": "UPDATE EVENT_PUBLICATION SET STATUS = $2 WHERE ID = $1 AND STATUS != $3"
+        },
+        {
+          "calls": 8,
+          "rows": 8,
+          "total_exec_time": 0.369005,
+          "query": "select * from event_publication\n        where id=$1 and completion_date is null and status <> $2\n          and event_type = $3\n          and listener_id = $4"
+        }
+      ]
+    }
+  ],
+  "faults": [
+    {
+      "case": "blocked-registry-read",
+      "status": 500,
+      "ms": 2061.478313000407,
+      "retry": {
+        "effects": 1,
+        "attempts": 1,
+        "attemptingJvms": 1,
+        "oldestPendingAgeSeconds": 0,
+        "pending": 0
+      }
+    },
+    {
+      "case": "eight-writers-one-locked-key",
+      "statuses": [
+        202,
+        500,
+        202,
+        202,
+        500,
+        500,
+        202,
+        500
+      ],
+      "httpP95Ms": 15384.802663997107,
+      "resources": {
+        "samples": 48,
+        "targetIntervalSeconds": 0.2,
+        "processCpuSeconds": [
+          1.889999999999997,
+          0.019999999999999574
+        ],
+        "peakConnections": {
+          "jvm1": 4,
+          "jvm2": 3
+        },
+        "peakLockWaiters": 4,
+        "peakRssKiB": [
+          613528,
+          698380
+        ],
+        "processHighWaterKiB": [
+          613528,
+          698380
+        ]
+      },
+      "retry": {
+        "effects": 1,
+        "attempts": 1,
+        "attemptingJvms": 1,
+        "oldestPendingAgeSeconds": 0,
+        "pending": 0
+      }
+    },
+    {
+      "case": "listener-above-budget",
+      "status": 200,
+      "ms": 50.91394499322632,
+      "result": {
+        "selected": [],
+        "completed": [],
+        "unfinished": [],
+        "deferred": [
+          "4f85c7ec-c97f-4dc7-9e8e-26a39bdc23b3"
+        ],
+        "stopReason": "budget"
+      }
+    }
+  ],
+  "jarSha256": "a0330915129dfdf8daf04a60f94285b797a114e9d0d83eac59ba3f4fd05cc313",
+  "runtimeSourceSha256": {
+    "backend/src/main/kotlin/se/forena/probe/ProbeApplication.kt": "05d0061c80b51b0e0b72ba8995cbec29d9796e87be93b51d66edc9f15223d31f",
+    "backend/src/main/kotlin/se/forena/probe/ProbeSecurity.kt": "7330d870790219516ace8974ab23cca458e7d141fa514606089e847ada8c48bd",
+    "backend/src/main/kotlin/se/forena/probe/commands/ProbeCommands.kt": "d0e371568892243bf50ff36b624c4ebb0a533eb85fcef1d78057a6c7936af5be",
+    "backend/src/main/kotlin/se/forena/probe/commands/ProbeRequested.kt": "7489ad56598427aa3a47af4a507486e29288739b3ab79f77e2c5e1a3774a36d4",
+    "backend/src/main/kotlin/se/forena/probe/commands/internal/RunRepository.kt": "c24281ee8e6a6ecbd297f9b603ffb3d60e0940e4a1e04a4cd34cc2d09d6f0260",
+    "backend/src/main/kotlin/se/forena/probe/delivery/ProbeWorker.kt": "e9c92df110bb35a12586bfca1b7bb603c85c31feec0a874d90e166047dc8564b",
+    "backend/src/main/kotlin/se/forena/probe/delivery/internal/BoundedResubmission.kt": "c817dd68de8eeeeca285df120c1e24ad6a30dde783e967f6861e95b07e1b90a7",
+    "backend/src/main/kotlin/se/forena/probe/delivery/internal/PendingPublications.kt": "a215975a9edc897b5fa21854cd250ad07ad1663d33654bd47a93e970ee3ee838",
+    "backend/src/main/kotlin/se/forena/probe/delivery/internal/RegistryReadScope.kt": "558934e7699a77da35d50878533e62e37cbba045cd45ec09a352f7dcd3249b68",
+    "backend/src/main/kotlin/se/forena/probe/effects/EffectControl.kt": "aa4aae87d7d9c8c00f1effb01abbc8466c711839acdf791cff2286956570da1f",
+    "backend/src/main/kotlin/se/forena/probe/effects/internal/ProbeAttempts.kt": "bdf6b0d3375aa12c827cc965748217fa294bc563dc89379f7a5332de23f67a86",
+    "backend/src/main/kotlin/se/forena/probe/effects/internal/ProbeFaults.kt": "07e6f0686aa430d84bc57530d54ecb5dbf6e89f9a48f47918caba65ea94ff664",
+    "backend/src/main/kotlin/se/forena/probe/effects/internal/ProbeListener.kt": "7ec81b2eea11711f2a9f3254cbbf542f8f10a3c7de718a78e6825bee23158fa4",
+    "backend/src/main/kotlin/se/forena/probe/transport/ProbeController.kt": "c9ae0a571fc3425575e8740d9676e81abd895d522d91bb3c5bb6d01d1f8a4820",
+    "backend/src/main/kotlin/se/forena/probe/transport/WorkerController.kt": "973a070df639df902886d0588a4043510b7ab1c3b1e86cab8422f96183c783dd",
+    "backend/src/main/resources/application.properties": "e136037c4b07d654369947ed2ba8cfe5dec6e10799fa5172b873a1885e42d148",
+    "backend/src/main/resources/db/changelog.xml": "53ece1af47c0c8227b9485f2cb145371aabd5627c1c16b8214d575a1da18b7c5",
+    "backend/src/main/resources/db/modulith-postgresql.sql": "4d9065e3cdb514eafdabbdc33682f48a62900d3a5a369b987737d693990031d4",
+    "backend/src/main/resources/db/probe.sql": "2814386a8baa72676b8d695dced187c2e1d361cafa65e2dfae1d3399df6837b5",
+    "backend/src/main/resources/static/index.html": "70b675c90cd908b0e424dc7737619a8ab9b66cba114ebf4be1a87d6315bfa490",
+    "backend/src/main/resources/static/probe.js": "7df5566d86a4f294e753a93bf75f83821c5487cea7caacb6aa69884a30f2ba89"
+  },
+  "checkedAtUtc": "2026-10-18T21:15:03Z",
+  "harnessSha256": "bdd7b401c5e43832761ede3e72a4746f6c6cc8b29ca87ae78a89d75bee42d93c",
+  "command": "JAVA_HOME=<pinned-jdk> python3 scripts/probe/local-capacity.py --out /tmp/forena-m22e-capacity-verified.json",
+  "exitCode": 0
+}
