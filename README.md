@@ -180,6 +180,14 @@ Se [docs/architecture.md](docs/architecture.md) för den första arkitekturen oc
 [docs/roadmap.md](docs/roadmap.md) för föreslagen ordning framåt.
 
 
+## Stegvis backendmigrering
+
+Planen för Kotlin, Spring Boot och Google Cloud finns i
+[migreringsunderlaget](docs/migration/README.md), med
+[status](docs/migration/status.md) och [självständiga uppgifter](docs/migration/tasks/README.md).
+Detta är mål och genomförandeplan; nuvarande utvecklings- och driftinstruktioner
+ovan gäller tills respektive flytt är verifierad.
+
 ## Licens
 
 GNU Affero General Public License v3.0. Se [LICENSE](LICENSE).

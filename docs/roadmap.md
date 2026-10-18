@@ -1,5 +1,10 @@
 # Roadmap
 
+Teknisk migrering till Kotlin/Spring Boot och Google Cloud följs separat i
+[migreringsplanen](migration/README.md), med [status](migration/status.md) och
+[självständiga PR-uppgifter](migration/tasks/README.md). Befintliga funktioner
+och säkerhetskrav ska bevaras när respektive flöde flyttas.
+
 ## 1. Körbar produktgrund
 
 - [x] Next.js, TypeScript och PWA-manifest
