@@ -35,6 +35,15 @@ Modulith 2.1.0:s
 predicate-återtag läser alla ofullständiga poster och behöver begränsas före
 pilot. Ingen plattforms- eller versionsändring görs automatiskt.
 
+[M22C](m22-crash-results.md) verifierar nu verklig JVM-död före effekt och efter
+committad effekt men före Modulith-kvittens. Supabase Cron återtog båda fallen
+i nya JVM:er med en slutlig effekt och kvittens. Två samtidiga moln-HTTP-workers
+valde samma publicering; separata konkurrerande JVM:er verifierades lokalt.
+Felinjektionen är en SQL-styrd teknikprovsmekanism, inte en produktionsfunktion.
+Cron/åtkomst är avstängda och provcredentials neutraliserade, men slutlig
+radrensning är blockerad av leverantörsverktygets requestState-fel.
+Nästa avgränsning är [M22D](tasks/m22d-bounded-registry.md); hostingvalet är öppet.
+
 ## ADR-008: Behåll Supabase PostgreSQL — aktuell planeringsinriktning
 
 Efter diskussion om Cloud SQL:s grundkostnad planeras backendmigreringen med

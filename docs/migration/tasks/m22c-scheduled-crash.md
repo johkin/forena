@@ -1,6 +1,7 @@
 # M22C: Schemalagd återhämtning efter JVM-död och effekt/kvittens
 
-Status: planerad, inte körd eller delegerad.
+Status: testverifiering genomförd; slutlig radrensning blockerad av verktygsfel.
+Se [rapporten](../m22-crash-results.md).
 Beroenden: M22A och M22B mergade. Ny branch från då aktuell main, separat PR.
 
 ## Bakgrund och relevanta filer
@@ -47,3 +48,16 @@ hindret utan att kalla ett timeoutprov för kraschprov.
 En byggbar/testbar PR med reproduktion, bevis, gränser och uppdaterad status.
 M22:s register-/lastprov och kostnads-/hostingbeslut ligger kvar separat.
 Tillfälligt schedulerprov godkänner inte samma credentialmodell i produktion.
+
+## Avslut och nästa uppgift
+
+Bas PR #101 / 175fc5e, separat branch test/scheduled-jvm-crash. Båda felpunkterna
+verifierade med faktisk exit 137 lokalt och på Vercel, beständig effekt/kvittens
+och återtag via riktig Supabase Cron efter minst 150 s utan användartrafik.
+29 JUnit-tester, processprov och tre två-JVM-workeromgångar godkända lokalt,
+liksom 1 065 frontendtester/typecheck/lint/build. Överlappande moln-HTTP-workers
+valde samma publicering; bara en lyssnarstart observerades i den rundan.
+Molnet bevisar därför inte konkurrens mellan två olika JVM:er för samma event.
+Resultat och städning redovisas i rapporten. Ingen delegering gjordes.
+Nästa avgränsning är [M22D](m22d-bounded-registry.md); last/kostnader och
+hostingbeslut återstår i M22.

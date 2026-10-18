@@ -249,3 +249,47 @@ M22B återställde avsiktligt avstängt Data API; en ny sådan kontroll ger där
 503/PGRST002 och ska inte godkännas som frisk schemaisolering. Lämna
 `PROBE_PUBLISHABLE_KEY` osatt i scheduler-seed.py när Data API ska vara avstängt.
 Återaktivera inte API:t enbart för kommande JDBC-/Cron-prov.
+
+## Faktisk JVM-krasch och effekt/kvittens (M22C)
+
+Se [rapporten](../docs/migration/m22-crash-results.md). Lokalt efter Maven verify:
+
+```sh
+python3 scripts/probe/local-lifecycle.py --concurrent-recovery --scheduled-crash
+```
+
+Detta startar engångs-PostgreSQL och riktiga JVM:er, kontrollerar exit 137 före
+effekt respektive efter committad effekt men före registerkvittens och provar
+sedan samtidiga workeranrop i två JVM:er. Lokala HTTP-anrop startar processerna;
+det verkliga molnprovet använder riktig Supabase Cron för väckningen.
+
+Felinjektion kräver både PROBE_ALLOW_CRASH=true och en SQL-skapad probe_fault
+för ett frisläppt BLOCK-ID. Felpunkterna är BEFORE_EFFECT och AFTER_EFFECT_COMMIT.
+Armera aldrig en verksamhetshändelse. Runtime kan läsa/förbruka markörer men
+får inte skapa/radera dem eller ändra ID/felpunkt. Dess SQL-rättighet på
+konsumtionskolumnerna är ingen säkerhetsgräns mot komprometterad JDBC; betrodda
+SQL-konton och verifierad städning krävs precis som för pg_net i M22B.
+
+För ett nytt molnprov:
+
+1. Kör separat Liquibasejobb i testprojektet före runtime-deploy. Använd ett
+   tidsbegränsat migrationskonto och verify-full TLS, inga migrationcredentials
+   i funktionens runtime. Kontrollera migrationshistorik, bevarade data och
+   slutlig objektägare forena_probe_migrator. Stäng sedan LOGIN/medlemskap.
+2. Deploya provkällorna till en skyddad forena-kotlin-preview med kraschflaggan
+   påslagen endast för provet. Använd separata prov-/workertokens.
+3. Kör scheduler-seed.py utan PROBE_PUBLISHABLE_KEY; Data API ska förbli avstängt.
+   Notera två BLOCK-ID:n och sista fullständiga svarstid. För över kortlivad
+   previewcookie och endast workertoken till provets tre Vault-poster.
+4. Kör scheduler-crash-activate.sql med before_id, after_id och last_response_at
+   som psql-variabler (eller motsvarande säker parametrisering via MCP). Stoppa
+   klienten före tidsgrinden. Högst tio HTTP-anrop under högst 15 minuter.
+5. Följ SQL och Vercels loggar, inte appanrop. Bevisa vid båda felpunkterna
+   faktisk JVM-död, kvittens saknas, 0 respektive 1 committad effekt, senare
+   återtag i annan JVM samt en slutlig effekt och kvittens efter upprepning.
+   Spara inte råa pg_net-felkroppar eller headers.
+6. Exportera sanerade bevis före städning. Kör scheduler-cleanup.sql och ta
+   bort endast provets två probe_fault-rader. Återkalla previewlänken, verifiera
+   stoppade klienter och sätt previewförvalets kraschflagga till false inför
+   kommande deployment. Befintliga deploymenters miljö är oföränderlig; de
+   skyddas genom återkallad provåtkomst och borttagna armeringar.

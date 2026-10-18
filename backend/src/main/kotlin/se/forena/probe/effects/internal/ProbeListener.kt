@@ -12,6 +12,7 @@ import java.util.UUID
 class ProbeListener(
     private val jdbc: JdbcClient,
     private val attempts: ProbeAttempts,
+    private val faults: ProbeFaults,
     @Value("\${probe.allow-crash:false}") private val allowCrash: Boolean
 ) {
     private val instanceId = UUID.randomUUID().toString()
@@ -28,7 +29,9 @@ class ProbeListener(
             check(allowCrash) { "Crash mode is disabled" }
             Runtime.getRuntime().halt(137)
         }
+        if (released && event.mode == ProbeMode.BLOCK) faults.beforeEffect(event.id, instanceId)
         jdbc.sql("insert into probe_effect(id,instance_id) values (:id,:instance) on conflict do nothing")
             .param("id", event.id).param("instance", instanceId).update()
+        if (released && event.mode == ProbeMode.BLOCK) faults.afterEffectCommit(event.id, instanceId)
     }
 }

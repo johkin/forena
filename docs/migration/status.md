@@ -181,3 +181,44 @@ Produktionsaktivering kräver ett separat val av tillitsgräns eller extern
 schedulercredential; ingen ny leverantör eller plan väljs i denna uppgift.
 Nästa avgränsade uppgift är [M22C](tasks/m22c-scheduled-crash.md), inte ännu körd
 eller delegerad. Registry-/lastprov och kostnads-/hostingbeslut återstår i M22.
+
+## M22C: faktisk schemalagd JVM-krasch
+
+Bas `175fc5e` (PR #101 mergad), branch `test/scheduled-jvm-crash`.
+[Rapport](m22-crash-results.md), [uppgift](tasks/m22c-scheduled-crash.md),
+[molnbevis](evidence/m22c-scheduled-crash.json) och
+[lokalt bevis](evidence/m22c-local-crash.json) beskriver körningarna.
+
+Verifierat lokalt: 29 JUnit-/PostgreSQL-tester, struktur/modultest, riktiga
+JVM-exit 137 före effekt och efter commit men före leveranskvittens, tre
+två-JVM-workeromgångar samt 1 065 frontendtester/typecheck/lint/build.
+Samma låsta verktygskedja används; Liquibase probe-002-faults inför SQL-styrda
+förbrukningsmarkörer. Workertokenen får ingen ny endpoint eller ID-styrd krasch.
+Runtime kan förbruka/ändra konsumtionsmarkörer via SQL men kan inte skapa en
+felpunkt eller ändra dess ID/fas; detta skyddar inte mot komprometterad JDBC.
+
+Moln: Supabase Cron väckte fra1-previewn utan användartrafik efter minst 150 s
+och båda avsiktliga JVM-avsluten bekräftades av Vercel. SQL verifierade 0
+respektive 1 effekter efter krasch och senare en slutlig effekt och kvittens
+för båda. Två överlappande HTTP-workers valde samma publicering; en ny
+lyssnarstart observerades i den rundan, inte två bevisat olika moln-JVM:er.
+Senare anrop ändrade inte effekter/försök. Cron stängde av sig vid tio anrop.
+
+Städning **delvis klar**: 0 jobb, 0 köposter, 0 oavslutade publiceringar,
+preview-share återkallad, klienter stoppade, migrationskonto NOLOGIN utan
+medlemskap och utgånget lösenord. Tabellägare är forena_probe_migrator.
+Data API är fortsatt avstängt och kommande previewförval har crash=false.
+Alla tre Vault-värden är neutraliserade och verifierade som ofarliga markörer.
+
+Radrensning blockerad: tre städanrop returnerade Invalid or expired
+requestState, inget uttryckligt säkerhetsavslag. Kvar finns 3 neutraliserade
+Vault-poster, 2 förbrukade fault-rader, 10 HTTP-responser/transportkorrelationer
+och 1 utgången inställning. [Exakt städ-SQL](../../scripts/probe/m22c-cleanup.sql)
+är redo och ska verifieras innan dessa provnamn återanvänds. M22C:s tester är
+godkända, men uppgiftens städning är inte avslutad.
+
+Nästa självständiga uppgift är [M22D](tasks/m22d-bounded-registry.md), planerad
+och inte delegerad/startad. Den kan börja lokalt när kodbasen mergats; nästa
+molnprov måste först passera städgrinden. Last/anslutningar/kostnader och
+produktionsmodell för scheduleråtkomst återstår i M22. Ordinarie Förena är
+oförändrat och hostingvalet fortfarande öppet.

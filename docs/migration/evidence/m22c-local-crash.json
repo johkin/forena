@@ -1,0 +1,73 @@
+{
+  "command": "python3 scripts/probe/local-lifecycle.py --concurrent-recovery --scheduled-crash",
+  "results": [
+    {
+      "postResponseCompleted": true,
+      "actualJvmExit": 137,
+      "restartedJvmCompleted": true,
+      "effectCountAfterReplay": 1
+    },
+    {
+      "workerCrashRecovery": [
+        {
+          "point": "BEFORE_EFFECT",
+          "id": "be407ecb-755e-4b26-a0ce-6703964f23d3",
+          "jvmExit": 137,
+          "effectsBeforeRecovery": 0,
+          "pendingBeforeRecovery": 1,
+          "effectsAfterRepeatedRecovery": 1,
+          "pendingAfterRecovery": 0,
+          "distinctJvms": 2
+        },
+        {
+          "point": "AFTER_EFFECT_COMMIT",
+          "id": "5abe0c47-76f5-401e-87a2-384e2e8f9d5c",
+          "jvmExit": 137,
+          "effectsBeforeRecovery": 1,
+          "pendingBeforeRecovery": 1,
+          "effectsAfterRepeatedRecovery": 1,
+          "pendingAfterRecovery": 0,
+          "distinctJvms": 2
+        }
+      ]
+    },
+    {
+      "distinctJvms": 2,
+      "concurrentRecovery": [
+        {
+          "id": "e04e63a8-8521-464f-acf8-8d347fb5f290",
+          "responses": [
+            200,
+            200
+          ],
+          "effects": 1,
+          "pendingPublications": 0,
+          "attempts": 3,
+          "attemptingJvms": 2
+        },
+        {
+          "id": "c95a7c08-0184-4423-87bb-3379118de797",
+          "responses": [
+            200,
+            200
+          ],
+          "effects": 1,
+          "pendingPublications": 0,
+          "attempts": 2,
+          "attemptingJvms": 2
+        },
+        {
+          "id": "e015b01c-6dfd-4ae3-b261-2dc805082510",
+          "responses": [
+            200,
+            200
+          ],
+          "effects": 1,
+          "pendingPublications": 0,
+          "attempts": 3,
+          "attemptingJvms": 2
+        }
+      ]
+    }
+  ]
+}

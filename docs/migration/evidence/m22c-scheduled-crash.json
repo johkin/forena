@@ -1,0 +1,409 @@
+{
+  "task": "M22C",
+  "base": "175fc5e28737a4b2b02598ee1ffd012c6a3c1041",
+  "deployment": "dpl_3rYtTVoBmahAdq3uKunFyMmX3hCK",
+  "url": "https://forena-kotlin-kq4zfdbo1-johkin.vercel.app",
+  "region": "fra1",
+  "seed": {
+    "seeded": [
+      {
+        "id": "145e727b-69c0-401f-a7fa-6fdfdcb9e9e0",
+        "delayMs": 1000,
+        "responseReceivedAt": "2026-10-18T18:46:59.466977+00:00"
+      },
+      {
+        "id": "7c402fdb-7cf2-4f7d-af72-a6bd8fbcd93d",
+        "delayMs": 60000,
+        "responseReceivedAt": "2026-10-18T18:46:59.654498+00:00"
+      }
+    ],
+    "noFurtherAppRequests": true
+  },
+  "clientStoppedAt": "2026-10-18T18:48:04Z",
+  "firstHttpAllowedAt": "2026-10-18T18:49:29.654498Z",
+  "cronJobId": 2,
+  "maxCalls": 10,
+  "autoUnscheduleVerifiedAt": "2026-10-18T18:56:41.706135Z",
+  "beforeEffectSnapshot": {
+    "at": "2026-10-18T18:50:53.290977+00:00",
+    "record": {
+      "id": "145e727b-69c0-401f-a7fa-6fdfdcb9e9e0",
+      "effect": null,
+      "attempts": [
+        {
+          "id": 12,
+          "run_id": "145e727b-69c0-401f-a7fa-6fdfdcb9e9e0",
+          "started_at": "2026-10-18T18:46:59.568432+00:00",
+          "instance_id": "6dc03100-6c01-469e-b1d4-d23971b6609e"
+        },
+        {
+          "id": 14,
+          "run_id": "145e727b-69c0-401f-a7fa-6fdfdcb9e9e0",
+          "started_at": "2026-10-18T18:50:14.870981+00:00",
+          "instance_id": "2596724b-55e2-4d32-aba5-0823c17f123b"
+        }
+      ],
+      "publication": {
+        "id": "e613e036-3fec-4c79-a4f3-e31020fa8208",
+        "status": "PROCESSING",
+        "completed_at": null,
+        "last_resubmission": "2026-10-18T18:50:14.483318+00:00",
+        "completion_attempts": 2
+      }
+    },
+    "fault": {
+      "id": "145e727b-69c0-401f-a7fa-6fdfdcb9e9e0",
+      "point": "BEFORE_EFFECT",
+      "consumed_at": "2026-10-18T18:50:15.892111+00:00",
+      "consumed_by": "2596724b-55e2-4d32-aba5-0823c17f123b"
+    }
+  },
+  "afterCommitBeforeAckSnapshot": {
+    "at": "2026-10-18T18:53:16.711816+00:00",
+    "record": {
+      "id": "7c402fdb-7cf2-4f7d-af72-a6bd8fbcd93d",
+      "effect": {
+        "id": "7c402fdb-7cf2-4f7d-af72-a6bd8fbcd93d",
+        "instance_id": "c6981523-66b7-41c6-a7c2-5510b546be31",
+        "completed_at": "2026-10-18T18:52:14.841159+00:00"
+      },
+      "attempts": [
+        {
+          "id": 13,
+          "run_id": "7c402fdb-7cf2-4f7d-af72-a6bd8fbcd93d",
+          "started_at": "2026-10-18T18:46:59.711045+00:00",
+          "instance_id": "6dc03100-6c01-469e-b1d4-d23971b6609e"
+        },
+        {
+          "id": 15,
+          "run_id": "7c402fdb-7cf2-4f7d-af72-a6bd8fbcd93d",
+          "started_at": "2026-10-18T18:51:14.782828+00:00",
+          "instance_id": "c6981523-66b7-41c6-a7c2-5510b546be31"
+        },
+        {
+          "id": 17,
+          "run_id": "7c402fdb-7cf2-4f7d-af72-a6bd8fbcd93d",
+          "started_at": "2026-10-18T18:53:15.646496+00:00",
+          "instance_id": "31ce873c-7d37-4062-b883-29d63afa0eb6"
+        }
+      ],
+      "publication": {
+        "id": "a1060e2c-0f4a-425b-a723-50a9439e1780",
+        "status": "PROCESSING",
+        "completed_at": null,
+        "last_resubmission": "2026-10-18T18:53:15.162697+00:00",
+        "completion_attempts": 3
+      }
+    },
+    "fault": {
+      "id": "7c402fdb-7cf2-4f7d-af72-a6bd8fbcd93d",
+      "point": "AFTER_EFFECT_COMMIT",
+      "consumed_at": "2026-10-18T18:52:14.860324+00:00",
+      "consumed_by": "c6981523-66b7-41c6-a7c2-5510b546be31"
+    },
+    "recoveryAlreadyStarted": true
+  },
+  "finalAt": "2026-10-18T18:56:34.597468+00:00",
+  "finalRecords": [
+    {
+      "id": "145e727b-69c0-401f-a7fa-6fdfdcb9e9e0",
+      "effect": {
+        "id": "145e727b-69c0-401f-a7fa-6fdfdcb9e9e0",
+        "instance_id": "39409df8-b1fa-4637-875e-51a54d4645c8",
+        "completed_at": "2026-10-18T18:52:31.498242+00:00"
+      },
+      "attempts": [
+        {
+          "id": 12,
+          "run_id": "145e727b-69c0-401f-a7fa-6fdfdcb9e9e0",
+          "started_at": "2026-10-18T18:46:59.568432+00:00",
+          "instance_id": "6dc03100-6c01-469e-b1d4-d23971b6609e"
+        },
+        {
+          "id": 14,
+          "run_id": "145e727b-69c0-401f-a7fa-6fdfdcb9e9e0",
+          "started_at": "2026-10-18T18:50:14.870981+00:00",
+          "instance_id": "2596724b-55e2-4d32-aba5-0823c17f123b"
+        },
+        {
+          "id": 16,
+          "run_id": "145e727b-69c0-401f-a7fa-6fdfdcb9e9e0",
+          "started_at": "2026-10-18T18:52:30.468826+00:00",
+          "instance_id": "39409df8-b1fa-4637-875e-51a54d4645c8"
+        }
+      ],
+      "publication": {
+        "id": "e613e036-3fec-4c79-a4f3-e31020fa8208",
+        "status": "COMPLETED",
+        "completed_at": "2026-10-18T18:52:31.513407+00:00",
+        "last_resubmission": "2026-10-18T18:52:30.081903+00:00",
+        "completion_attempts": 3
+      }
+    },
+    {
+      "id": "7c402fdb-7cf2-4f7d-af72-a6bd8fbcd93d",
+      "effect": {
+        "id": "7c402fdb-7cf2-4f7d-af72-a6bd8fbcd93d",
+        "instance_id": "c6981523-66b7-41c6-a7c2-5510b546be31",
+        "completed_at": "2026-10-18T18:52:14.841159+00:00"
+      },
+      "attempts": [
+        {
+          "id": 13,
+          "run_id": "7c402fdb-7cf2-4f7d-af72-a6bd8fbcd93d",
+          "started_at": "2026-10-18T18:46:59.711045+00:00",
+          "instance_id": "6dc03100-6c01-469e-b1d4-d23971b6609e"
+        },
+        {
+          "id": 15,
+          "run_id": "7c402fdb-7cf2-4f7d-af72-a6bd8fbcd93d",
+          "started_at": "2026-10-18T18:51:14.782828+00:00",
+          "instance_id": "c6981523-66b7-41c6-a7c2-5510b546be31"
+        },
+        {
+          "id": 17,
+          "run_id": "7c402fdb-7cf2-4f7d-af72-a6bd8fbcd93d",
+          "started_at": "2026-10-18T18:53:15.646496+00:00",
+          "instance_id": "31ce873c-7d37-4062-b883-29d63afa0eb6"
+        }
+      ],
+      "publication": {
+        "id": "a1060e2c-0f4a-425b-a723-50a9439e1780",
+        "status": "COMPLETED",
+        "completed_at": "2026-10-18T18:54:15.690501+00:00",
+        "last_resubmission": "2026-10-18T18:53:15.162697+00:00",
+        "completion_attempts": 3
+      }
+    }
+  ],
+  "transport": [
+    {
+      "id": 25,
+      "body": null,
+      "status": 500,
+      "sent_at": "2026-10-18T18:50:00.041303+00:00",
+      "timed_out": false,
+      "response_at": "2026-10-18T18:50:00.052051+00:00"
+    },
+    {
+      "id": 26,
+      "body": null,
+      "status": 500,
+      "sent_at": "2026-10-18T18:51:00.033512+00:00",
+      "timed_out": false,
+      "response_at": "2026-10-18T18:51:00.035198+00:00"
+    },
+    {
+      "id": 27,
+      "body": {
+        "deferred": [],
+        "selected": [
+          "145e727b-69c0-401f-a7fa-6fdfdcb9e9e0"
+        ],
+        "completed": [
+          "145e727b-69c0-401f-a7fa-6fdfdcb9e9e0"
+        ],
+        "stopReason": "drained",
+        "unfinished": []
+      },
+      "status": 200,
+      "sent_at": "2026-10-18T18:52:00.223878+00:00",
+      "timed_out": false,
+      "response_at": "2026-10-18T18:52:15.21554+00:00"
+    },
+    {
+      "id": 28,
+      "body": {
+        "deferred": [],
+        "selected": [
+          "7c402fdb-7cf2-4f7d-af72-a6bd8fbcd93d"
+        ],
+        "completed": [
+          "7c402fdb-7cf2-4f7d-af72-a6bd8fbcd93d"
+        ],
+        "stopReason": "drained",
+        "unfinished": []
+      },
+      "status": 200,
+      "sent_at": "2026-10-18T18:53:00.08225+00:00",
+      "timed_out": false,
+      "response_at": "2026-10-18T18:53:00.084689+00:00"
+    },
+    {
+      "id": 29,
+      "body": {
+        "deferred": [],
+        "selected": [
+          "7c402fdb-7cf2-4f7d-af72-a6bd8fbcd93d"
+        ],
+        "completed": [
+          "7c402fdb-7cf2-4f7d-af72-a6bd8fbcd93d"
+        ],
+        "stopReason": "drained",
+        "unfinished": []
+      },
+      "status": 200,
+      "sent_at": "2026-10-18T18:53:00.083516+00:00",
+      "timed_out": false,
+      "response_at": "2026-10-18T18:53:00.084689+00:00"
+    },
+    {
+      "id": 30,
+      "body": {
+        "deferred": [],
+        "selected": [],
+        "completed": [],
+        "stopReason": "drained",
+        "unfinished": []
+      },
+      "status": 200,
+      "sent_at": "2026-10-18T18:54:00.019689+00:00",
+      "timed_out": false,
+      "response_at": "2026-10-18T18:54:16.129344+00:00"
+    },
+    {
+      "id": 31,
+      "body": {
+        "deferred": [],
+        "selected": [],
+        "completed": [],
+        "stopReason": "drained",
+        "unfinished": []
+      },
+      "status": 200,
+      "sent_at": "2026-10-18T18:54:00.020881+00:00",
+      "timed_out": false,
+      "response_at": "2026-10-18T18:54:16.129344+00:00"
+    },
+    {
+      "id": 32,
+      "body": {
+        "deferred": [],
+        "selected": [],
+        "completed": [],
+        "stopReason": "drained",
+        "unfinished": []
+      },
+      "status": 200,
+      "sent_at": "2026-10-18T18:55:00.058593+00:00",
+      "timed_out": false,
+      "response_at": "2026-10-18T18:55:00.061102+00:00"
+    },
+    {
+      "id": 33,
+      "body": {
+        "deferred": [],
+        "selected": [],
+        "completed": [],
+        "stopReason": "drained",
+        "unfinished": []
+      },
+      "status": 200,
+      "sent_at": "2026-10-18T18:55:00.059898+00:00",
+      "timed_out": false,
+      "response_at": "2026-10-18T18:55:00.061102+00:00"
+    },
+    {
+      "id": 34,
+      "body": {
+        "deferred": [],
+        "selected": [],
+        "completed": [],
+        "stopReason": "drained",
+        "unfinished": []
+      },
+      "status": 200,
+      "sent_at": "2026-10-18T18:56:00.021766+00:00",
+      "timed_out": false,
+      "response_at": "2026-10-18T18:56:00.031162+00:00"
+    }
+  ],
+  "cron": [
+    {
+      "end": "2026-10-18T18:53:00.086087+00:00",
+      "runid": 11,
+      "start": "2026-10-18T18:53:00.070817+00:00",
+      "status": "succeeded"
+    },
+    {
+      "end": "2026-10-18T18:50:00.046333+00:00",
+      "runid": 8,
+      "start": "2026-10-18T18:50:00.014882+00:00",
+      "status": "succeeded"
+    },
+    {
+      "end": "2026-10-18T18:56:00.039498+00:00",
+      "runid": 14,
+      "start": "2026-10-18T18:56:00.016156+00:00",
+      "status": "succeeded"
+    },
+    {
+      "end": "2026-10-18T18:54:00.023389+00:00",
+      "runid": 12,
+      "start": "2026-10-18T18:54:00.015032+00:00",
+      "status": "succeeded"
+    },
+    {
+      "end": "2026-10-18T18:51:00.036575+00:00",
+      "runid": 9,
+      "start": "2026-10-18T18:51:00.025684+00:00",
+      "status": "succeeded"
+    },
+    {
+      "end": "2026-10-18T18:52:00.227885+00:00",
+      "runid": 10,
+      "start": "2026-10-18T18:52:00.186419+00:00",
+      "status": "succeeded"
+    },
+    {
+      "end": "2026-10-18T18:55:00.062575+00:00",
+      "runid": 13,
+      "start": "2026-10-18T18:55:00.049807+00:00",
+      "status": "succeeded"
+    },
+    {
+      "end": "2026-10-18T18:48:00.133765+00:00",
+      "runid": 6,
+      "start": "2026-10-18T18:48:00.129548+00:00",
+      "status": "succeeded"
+    },
+    {
+      "end": "2026-10-18T18:49:00.03913+00:00",
+      "runid": 7,
+      "start": "2026-10-18T18:49:00.031217+00:00",
+      "status": "succeeded"
+    }
+  ],
+  "crashLogs": "## Runtime Logs\n\n**Project:** prj_V1a7hd39ABj3w5ARUOATF31XMWX9\n**Deployment:** dpl_3rYtTVoBmahAdq3uKunFyMmX3hCK\n**Time range:** 2026-10-18T18:38:17.945Z → 2026-10-18T18:53:17.945Z\n\n### 2026-10-18T18:52:15.190Z POST /api/probes/worker [error/function]\ndep=dpl_3rYtTVoBmahAdq3uKunFyMmX3hCK request=zqdcs-1792349460038-6e91777b5657 domain=forena-kotlin-kq4zfdbo1-johkin.vercel.app environment=preview region=fra1 stream=stderr\n    Application exited with code 137 (SIGKILL).\n\n### 2026-10-18T18:52:14.867Z POST /api/probes/worker [info/function]\ndep=dpl_3rYtTVoBmahAdq3uKunFyMmX3hCK request=zqdcs-1792349460038-6e91777b5657 domain=forena-kotlin-kq4zfdbo1-johkin.vercel.app environment=preview region=fra1 stream=stderr\n    probe_fault id=7c402fdb-7cf2-4f7d-af72-a6bd8fbcd93d point=AFTER_EFFECT_COMMIT instance=c6981523-66b7-41c6-a7c2-5510b546be31 exit=137\n\n### 2026-10-18T18:50:16.225Z POST /api/probes/worker [error/function]\ndep=dpl_3rYtTVoBmahAdq3uKunFyMmX3hCK request=xn8rp-1792349400305-3c60215a1b47 domain=forena-kotlin-kq4zfdbo1-johkin.vercel.app environment=preview region=fra1 stream=stderr\n    Application exited with code 137 (SIGKILL).\n\n### 2026-10-18T18:50:15.900Z POST /api/probes/worker [info/function]\ndep=dpl_3rYtTVoBmahAdq3uKunFyMmX3hCK request=xn8rp-1792349400305-3c60215a1b47 domain=forena-kotlin-kq4zfdbo1-johkin.vercel.app environment=preview region=fra1 stream=stderr\n    probe_fault id=145e727b-69c0-401f-a7fa-6fdfdcb9e9e0 point=BEFORE_EFFECT instance=2596724b-55e2-4d32-aba5-0823c17f123b exit=137\n",
+  "workerLogs": "## Runtime Logs\n\n**Project:** prj_V1a7hd39ABj3w5ARUOATF31XMWX9\n**Deployment:** dpl_3rYtTVoBmahAdq3uKunFyMmX3hCK\n**Time range:** 2026-10-18T18:40:43.378Z → 2026-10-18T18:55:43.378Z\n\n### 2026-10-18T18:55:00.150Z POST /api/probes/worker [info/function]\ndep=dpl_3rYtTVoBmahAdq3uKunFyMmX3hCK request=b5r5n-1792349700063-5c132eadb713 domain=forena-kotlin-kq4zfdbo1-johkin.vercel.app environment=preview region=fra1 stream=stdout\n    2026-10-18T18:55:00.150Z  INFO 1 --- [forena-kotlin-probe] [p-nio-80-exec-2] se.forena.probe.delivery.ProbeWorker     : probe_worker actor=isolated-worker channel=worker-http selected=[] completed=[] unfinished=[] deferred=[] stop=drained\n\n### 2026-10-18T18:55:00.150Z POST /api/probes/worker [info/function]\ndep=dpl_3rYtTVoBmahAdq3uKunFyMmX3hCK request=pvbkz-1792349700063-88f1a150a51d domain=forena-kotlin-kq4zfdbo1-johkin.vercel.app environment=preview region=fra1 stream=stdout\n    2026-10-18T18:55:00.150Z  INFO 1 --- [forena-kotlin-probe] [p-nio-80-exec-2] se.forena.probe.delivery.ProbeWorker     : probe_worker actor=isolated-worker channel=worker-http selected=[] completed=[] unfinished=[] deferred=[] stop=drained\n\n### 2026-10-18T18:55:00.142Z POST /api/probes/worker [info/function]\ndep=dpl_3rYtTVoBmahAdq3uKunFyMmX3hCK request=b5r5n-1792349700063-5c132eadb713 domain=forena-kotlin-kq4zfdbo1-johkin.vercel.app environment=preview region=fra1 stream=stdout\n    2026-10-18T18:55:00.139Z  INFO 1 --- [forena-kotlin-probe] [-nio-80-exec-10] se.forena.probe.delivery.ProbeWorker     : probe_worker actor=isolated-worker channel=worker-http selected=[] completed=[] unfinished=[] deferred=[] stop=drained\n\n### 2026-10-18T18:55:00.142Z POST /api/probes/worker [info/function]\ndep=dpl_3rYtTVoBmahAdq3uKunFyMmX3hCK request=pvbkz-1792349700063-88f1a150a51d domain=forena-kotlin-kq4zfdbo1-johkin.vercel.app environment=preview region=fra1 stream=stdout\n    2026-10-18T18:55:00.139Z  INFO 1 --- [forena-kotlin-probe] [-nio-80-exec-10] se.forena.probe.delivery.ProbeWorker     : probe_worker actor=isolated-worker channel=worker-http selected=[] completed=[] unfinished=[] deferred=[] stop=drained\n\n### 2026-10-18T18:54:32.242Z POST /api/probes/worker [info/function]\ndep=dpl_3rYtTVoBmahAdq3uKunFyMmX3hCK request=4s2r5-1792349656132-89d3be2f8924 domain=forena-kotlin-kq4zfdbo1-johkin.vercel.app environment=preview region=fra1 stream=stdout\n    2026-10-18T18:54:32.242Z  INFO 1 --- [forena-kotlin-probe] [p-nio-80-exec-1] se.forena.probe.delivery.ProbeWorker     : probe_worker actor=isolated-worker channel=worker-http selected=[] completed=[] unfinished=[] deferred=[] stop=drained\n\n### 2026-10-18T18:54:29.339Z POST /api/probes/worker [info/function]\ndep=dpl_3rYtTVoBmahAdq3uKunFyMmX3hCK request=dz7qr-1792349656132-2cc0bf54db44 domain=forena-kotlin-kq4zfdbo1-johkin.vercel.app environment=preview region=fra1 stream=stdout\n    2026-10-18T18:54:29.339Z  INFO 1 --- [forena-kotlin-probe] [p-nio-80-exec-3] se.forena.probe.delivery.ProbeWorker     : probe_worker actor=isolated-worker channel=worker-http selected=[] completed=[] unfinished=[] deferred=[] stop=drained\n\n### 2026-10-18T18:54:15.719Z POST /api/probes/worker [info/function]\ndep=dpl_3rYtTVoBmahAdq3uKunFyMmX3hCK request=dz7qr-1792349580087-edb3514ef386 domain=forena-kotlin-kq4zfdbo1-johkin.vercel.app environment=preview region=fra1 stream=stdout\n    2026-10-18T18:54:15.718Z  INFO 1 --- [forena-kotlin-probe] [p-nio-80-exec-6] se.forena.probe.delivery.ProbeWorker     : probe_worker actor=isolated-worker channel=worker-http selected=[7c402fdb-7cf2-4f7d-af72-a6bd8fbcd93d] completed=[7c402fdb-7cf2-4f7d-af72-a6bd8fbcd93d] unfinished=[] deferred=[] stop=drained\n\n### 2026-10-18T18:54:15.707Z POST /api/probes/worker [info/function]\ndep=dpl_3rYtTVoBmahAdq3uKunFyMmX3hCK request=ntztw-1792349580086-68253699537d domain=forena-kotlin-kq4zfdbo1-johkin.vercel.app environment=preview region=fra1 stream=stdout\n    2026-10-18T18:54:15.706Z  INFO 1 --- [forena-kotlin-probe] [p-nio-80-exec-4] se.forena.probe.delivery.ProbeWorker     : probe_worker actor=isolated-worker channel=worker-http selected=[7c402fdb-7cf2-4f7d-af72-a6bd8fbcd93d] completed=[7c402fdb-7cf2-4f7d-af72-a6bd8fbcd93d] unfinished=[] deferred=[] stop=drained\n\n### 2026-10-18T18:52:31.537Z POST /api/probes/worker [info/function]\ndep=dpl_3rYtTVoBmahAdq3uKunFyMmX3hCK request=4m78q-1792349535254-746fd0d16b6d domain=forena-kotlin-kq4zfdbo1-johkin.vercel.app environment=preview region=fra1 stream=stdout\n    2026-10-18T18:52:31.536Z  INFO 1 --- [forena-kotlin-probe] [p-nio-80-exec-4] se.forena.probe.delivery.ProbeWorker     : probe_worker actor=isolated-worker channel=worker-http selected=[145e727b-69c0-401f-a7fa-6fdfdcb9e9e0] completed=[145e727b-69c0-401f-a7fa-6fdfdcb9e9e0] unfinished=[] deferred=[] stop=drained\n",
+  "cleanup": {
+    "at": "2026-10-18T20:24:08.711715+00:00",
+    "jobs": 0,
+    "calls": 10,
+    "queue": 0,
+    "faults": 2,
+    "expired": true,
+    "pending": 0,
+    "settings": 1,
+    "responses": 10,
+    "armed_faults": 0,
+    "vault_entries": 3,
+    "temporary_login": false,
+    "vault_values_neutralized": true,
+    "previewShareRevoked": true,
+    "seedClientStopped": true,
+    "migrationClientStopped": true,
+    "futurePreviewCrashDisabled": true,
+    "rowCleanupCompleted": false,
+    "error": "McpServerError: Invalid or expired requestState",
+    "failedAttempts": 3,
+    "remainingCleanupScript": "scripts/probe/m22c-cleanup.sql"
+  },
+  "limits": [
+    "Runtime.halt(137) injected; not an observed external OS SIGKILL or OOM.",
+    "Cloud concurrent HTTP workers selected same publication; only one listener attempt observed, not proof of separate competing cloud JVMs.",
+    "Separate competing JVMs verified in local three-round worker test.",
+    "pg_net response created timestamps are not HTTP completion timestamps.",
+    "No real external notification effects, production hosting decision, bounded registry integration or cost test."
+  ]
+}
