@@ -94,6 +94,9 @@ jobs:
       - name: Verify local capacity, pool exhaustion and registry timeouts
         run: python3 scripts/probe/local-capacity.py --quick --out backend/target/m22e-capacity-ci.json
 
+      - name: Verify bounded recovery cadence and deferred-prefix fairness
+        run: python3 scripts/probe/local-capacity.py --quick --recovery-cadence --out backend/target/m22f-cadence-ci.json
+
       - name: Verify cost calculation
         run: |
           python3 scripts/probe/cost-model.py --out /tmp/m22e-costs.json
@@ -110,6 +113,7 @@ jobs:
         with:
           name: kotlin-probe-reports
           path: |
+            backend/target/m22f-cadence-ci.json
             backend/target/m22e-capacity-ci.json
             backend/target/surefire-reports/
             backend/target/spring-modulith-docs/

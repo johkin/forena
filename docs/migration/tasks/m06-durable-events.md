@@ -1,4 +1,4 @@
-# M06: Bevisa beständig modulreaktion och Pub/Sub-gräns
+# M06: Bevisa beständig modulreaktion i verksamhetsflödet
 
 Status: planerad. Beroenden: M01, M02. Leverans: en avgränsad PR om inte nedan
 anges att arbetet först ska delas. Alla PR-baser är aktuell `main`.
@@ -20,7 +20,7 @@ nödvändigtvis innan beroendena är genomförda. Sökvägarna utgår från repo
 
 ## Ingår
 
-Skapa ett avgränsat prov med riktig JDBC Event Publication Registry, transaktionell lyssnare och en extern Pub/Sub-publicerare via port. Dokumentera event-ID, payloadversion, retry/lease/ack och exakt ansvar. Prova emulerad transport lokalt och verklig avsedd Pub/Sub-testmiljö i M08. Ange hur Scheduler/Job väcker arbetet från noll instanser.
+Bygg vidare på M22A–F:s JDBC Event Publication Registry och transaktionella lyssnare för det första verksamhetsflödet. Dokumentera event-ID, payloadversion, återförsök, kvittens och exakt ansvar. Supabase Cron väcker requestbundet arbete på Vercel enligt M22G. Ingen Google Cloud-/Pub/Sub-koppling eller emulator utvärderas förrän ett konkret hinder i Vercel/Supabase har dokumenterats, enligt ADR-009.
 
 ## Acceptanskriterier
 
@@ -28,11 +28,11 @@ Affärsskrivning och registry-post committas/rullas tillbaka tillsammans. Krasch
 
 ## Verifiering
 
-PostgreSQL/Testcontainers, kontrollerade felpunkter och omstart; rapportera emulator separat från riktigt molnprov. Dokumentera svar på vilken Modulith-funktion/adaptation som används, inte antaget inbyggt Pub/Sub-stöd.
+PostgreSQL/Testcontainers, kontrollerade felpunkter och omstart; skilj lokalt processprov från riktigt Vercel/Supabase-prov. Dokumentera vilken Modulith-funktion/adaptation som används.
 
 ## Lämnas till senare
 
-Ingen generell eventbuss för alla interna händelser, inget Kafka, ingen konvertering av hela nuvarande kömodellen. Aktivering för verkliga utskick väntar på M10 och M08:s livscykelprov.
+Ingen generell eventbuss för alla interna händelser, inget Kafka, ingen konvertering av hela nuvarande kömodellen. Aktivering för verkliga utskick väntar på M10 och M22G:s driftgrindar.
 
 ## Avslut och överlämning
 

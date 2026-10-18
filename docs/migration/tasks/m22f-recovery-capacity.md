@@ -1,7 +1,9 @@
 # M22F: dimensionera beständig återtagning för en förening
 
-Status: planerad; ingen separat session/agent eller GitHub Issue skapad.
-Beroende: M22E mergad, ny branch från aktuell main och egen PR.
+Status: genomförd lokalt på `test/recovery-capacity`; se
+[resultat och överlämning](../m22-recovery-results.md).
+Ingen separat session/agent eller GitHub Issue skapad.
+Beroende: M22E mergad i PR #104; branch från main `a3ff203` och egen PR.
 
 ## Bakgrund och avgränsat mål
 
@@ -49,3 +51,16 @@ Ingen ny hosting, planuppgradering, verksamhets-/frontendflytt eller generell
 kö. Lokal implementering räcker här. Molnprovet och konkreta driftgrindar är
 [M22G](m22g-vercel-pilot-gates.md), som kan förberedas med pris-/konfiggranskning
 parallellt men ska använda mergad M22F-kod för det slutliga kapacitetsprovet.
+
+## Leverans M22F
+
+Flera SQL-begränsade sidor, mjuk budget, högst 64 starter/256 kandidater och
+beständig CAS-markör för turordning över anrop. Modulith äger leveransstatus.
+Liquibase probe-003-worker-cursor ska köras separat före ny runtime i M22G.
+44 backendtester inklusive fresh/upgrade/repeat, felande/stillastående lyssnare,
+markörkonkurrens och grants. Rapporten anger processprov, minutkadens, SQL,
+resurser och övriga verifieringsresultat; ingen molnaktivering i denna del.
+
+Vercel + Supabase är vald arbetsinriktning. GCP-kopplingar utvärderas först vid
+ett dokumenterat konkret hinder. Nästa beroende uppgift är M22G:s isolerade
+molnprov och driftgrindar på mergad M22F-kod.

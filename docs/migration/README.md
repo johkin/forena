@@ -1,4 +1,4 @@
-# Stegvis migrering till Kotlin och Google Cloud
+# Stegvis migrering till Kotlin på Vercel och Supabase
 
 Inventeringsbas: `c379a96719490bc4edbfcb0a4ee7a1947684ddce` på `main`.
 Datum: 2026-10-18. Detta är första dokumentationsleveransen, inte en genomförd
@@ -14,7 +14,7 @@ befintliga Supabase-beroenden ersätts stegvis med bevarad säkerhet.
 Se ADR-008 i [besluten](decisions.md). Ingen databasflytt eller ny databasinstans
 ska beställas inom nästa implementationssteg.
 
-PR #97–103 är mergade. M21/M22 har verifierat isolerade Vercel-prov och
+PR #97–104 är mergade. M21/M22 har verifierat isolerade Vercel-prov och
 [M22A](m22-scheduler-results.md) dokumenterar verklig Supabase Cron-väckning.
 [M22B](m22-isolation-results.md) skiljer avstängt Data API från SQL-kontonas
 pg_net-rättigheter; JDBC och avstängt Data API behålls i Kotlin-testprojektet.
@@ -23,12 +23,15 @@ JVM-krascher; testet är godkänt och slutlig radrensning verifierades i M22E.
 [M22D](m22-registry-results.md) begränsar worker-materialisering och verifierar
 backlog lokalt. [M22E](m22-load-cost-results.md) dokumenterar nu last, anslutningar och
 [kostnad för en förening](m22-costs.md); M22C:s städning är avslutad.
-Supabase Cron är huvudspår, inte ett krav på Vercel Pro. M22F/G beskriver
-återstående kapacitets- och driftgrindar före pilot.
-ADR-009 lämnar hostingvalet öppet tills säkerhets-, registry-, last- och
-kostnadsgränserna är hanterade. Teknikproven verifierar delar av M01/M02/M06. Därefter följer
-M02/M03/M04, svarstjänsten och M07:s kompletta kallelsesvar. M08 verifierar
-Cloud Run → Supabase innan drift aktiveras. M20 tar bort kvarvarande
+Supabase Cron är huvudspår, inte ett krav på Vercel Pro. M22F har genomfört lokala kapacitetsprov; M22G beskriver
+återstående driftgrindar före pilot.
+ADR-009 fastställer Vercel + Supabase som aktuell inriktning. Google Cloud-
+kopplingar utvärderas först om ett konkret hinder dokumenteras i denna lösning;
+M08, M12 och M18C är vilande alternativ, inte pilotberoenden.
+[M22F](m22-recovery-results.md) verifierar lokal, begränsad dränering över flera
+batcher; M22G är nästa verifiering av Vercel-/Supabase-driftgrindar.
+Teknikproven verifierar delar av M01/M02/M06. Därefter följer M02/M03/M04,
+svarstjänsten och M07:s kompletta kallelsesvar. M20 tar bort kvarvarande
 Supabase-specifika verksamhetsberoenden när motsvarande flöden har flyttats.
 
 ## Läsordning och gemensamt underlag

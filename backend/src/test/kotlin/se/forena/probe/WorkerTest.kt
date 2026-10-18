@@ -42,6 +42,7 @@ import org.springframework.dao.QueryTimeoutException
 @TestPropertySource(properties = [
     "probe.worker.token=local-worker-token-at-least-32-characters",
     "probe.worker.batch-size=2",
+    "probe.worker.max-publications=2",
     "probe.worker.budget=PT3S",
     "probe.worker.stale-after=PT0.1S",
     "probe.worker.reserve=PT0.1S"
@@ -71,6 +72,7 @@ class WorkerTest : DatabaseTest() {
 
     @AfterEach
     fun removeOnlyOwnedFixtures() {
+        jdbc.sql("update probe_worker_cursor set publication_date=null,publication_id=null,revision=revision+1").update()
         if (backlogIds.isNotEmpty()) jdbc.sql("delete from event_publication where id in (:ids)")
             .param("ids", backlogIds).update()
         for (id in owned) {
@@ -303,7 +305,7 @@ class WorkerTest : DatabaseTest() {
                     .param("fresh", Timestamp.from(Instant.now().plusSeconds(60))).param("id", id).update()
                 assertThat(pending.isDone).isFalse()
                 val overlapping = worker()
-                assertThat(ids(overlapping, "deferred")).contains(id)
+                assertThat(overlapping.path("stopReason").asString()).isEqualTo("worker-busy")
                 assertThat(ids(overlapping, "selected")).doesNotContain(id)
                 assertThat(ids(overlapping, "completed")).doesNotContain(id)
 

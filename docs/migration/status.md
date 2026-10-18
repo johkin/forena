@@ -71,8 +71,8 @@ fortfarande öppet. M22 beskriver nästa leveransprov, inte en startad session.
    struktur-/modultester. M21 inför ett isolerat bygge; verksamhetsgrundprojektet återstår.
 2. M04 och M17 kan inventeras oberoende. M02 och M03 följer M01.
 3. M05/M06 förbereder första svarflödet. M07 flyttar hela flödet genom ny backend.
-4. M08 förbereder Cloud Run med verifierad anslutning till Supabase PostgreSQL.
-   M13 är backendpilot på samma databas. M12:s Cloud SQL-flytt är vilande.
+4. M22G verifierar Vercel/Supabase före pilot. M13 är backendpilot på samma
+   databas. M08, M12 och M18C är vilande tills ett konkret hinder dokumenterats.
 
 Övriga verksamhetsuppgifter i indexet är planerade. M21 är ett genomfört teknikprov,
 inte implementering av verksamhetsbackend. M22 följer innan hostingvalet fastställs.
@@ -83,7 +83,7 @@ uppgifter krävs för kvarvarande verksamhetsflöden innan pilotens cutover-grin
 
 | Fråga | När krävs svaret? | Nuvarande hantering |
 | --- | --- | --- |
-| Region och same-origin-stöd | M08 innan Terraform-plan låses | europe-west1 kandidat, europe-north2 alternativ; båda kräver verifiering |
+| Region och same-origin-stöd | M22G före pilot | Vercel fra1 och Supabase eu-central-1; routing verifieras i vald lösning |
 | SLO, RPO, RTO och backup/PITR | Före produktionsbudget/aktivering | Verifiera stöd och pris i vald Supabaseplan; Cloud SQL HA är endast jämförelse |
 | Faktisk signeringsnyckel, audience/scopes, kontorevokering | M03 före auth-aktivering | Enbart teststub verifierad hittills |
 | Befintlig domän/RP-ID och preview-origins | Före domän-/hostingbyte | Behåll befintlig identitetsleverantör och ändra inte RP-ID utan plan |
@@ -292,3 +292,36 @@ matris, 1 065 frontendtester/typecheck/lint/build, sex Pythonregressioner och
 offlinebeviskontroll godkända. CI kör även --quick-kapacitetsvariant och verifierar
 kostnadsreproduktionen samt behåller tidigare krasch-/DB-/frontendkontroller.
 Ordinarie Förena fortsätter; produktionshosting/pilot är inte aktiverade.
+
+## M22F: begränsad dränering och beständig turordning
+
+Bas `a3ff203` (PR #104 mergad), branch `test/recovery-capacity`.
+[Rapport och överlämning](m22-recovery-results.md),
+[uppgift](tasks/m22f-recovery-capacity.md),
+[krasch-/konkurrensbevis](evidence/m22f-lifecycle.json) och
+[timeout-/pool-/SQL-regressioner](evidence/m22f-regressions.json).
+
+Workern läser nu flera små sidor per request, högst 64 starter/256 kandidater
+inom mjuk budget. En privat, beständig CAS-markör låter senare kandidater
+passera långa ködelar av uppskjutna/felande poster. Modulith äger fortfarande
+claims och leveransstatus; ingen parallell outbox eller egen statusskrivning.
+Liquibase probe-003-worker-cursor körs separat före ny runtime. Testerna täcker
+tom databas, föregående schema med data, förnyad migrering och begränsade grants.
+
+44 JUnit-/PostgreSQL-tester inklusive struktur/modultest godkända, liksom
+båda riktiga worker-krascherna och tre två-JVM-omgångar med 10 000 färska
+poster kvar. Även timeout, fyra mättade poolanslutningar/åtta skrivningar,
+för lång/felande/stillastående lyssnare, 1 065 frontendtester/typecheck/lint/build,
+sex Pythonregressioner, offlinebevis och oförändrad kostnadsreproduktion godkända.
+Minutprovet klarade 100 korta leveranser på 186,03 s från start, cirka
+187,62 s efter stale-gränsen, trots missad tick och 300 blockerande poster.
+[Sanerat minutbevis](evidence/m22f-cadence.json) och rapport anger mätgränser.
+Supabase CLI saknas lokalt; dess reset/test db är inte körda lokalt.
+
+Aktuellt användarbeslut: Vercel + Supabase är arbetsinriktningen. Google Cloud-
+kopplingar utvärderas först vid dokumenterat konkret hinder i denna lösning.
+M08/M12/M18C är vilande, inte pilotberoenden. Tidigare statusavsnitts öppna
+hostingval och GCP-ordning beskriver historiska skeden och ersätts av ADR-009.
+Inga molnjobb, betalplaner, produktionsdata eller befintlig frontend ändrade.
+Nästa beroende uppgift är M22G:s isolerade Vercel/Supabase-prov och driftgrindar
+på mergad M22F-kod; ingen separat session eller GitHub Issue har startats.

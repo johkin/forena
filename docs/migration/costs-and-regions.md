@@ -1,5 +1,10 @@
 # Kostnader och regioner
 
+Aktuell inriktning enligt ADR-009 (M22F): Vercel + Supabase. Google Cloud-
+kopplingar utvärderas först vid ett dokumenterat konkret hinder. Tidigare
+GCP-priser och lösningsförslag nedan är historiska alternativ, inte aktivt arbete.
+
+
 ## Aktuellt underlag: M22E, en förening först
 
 Läs [aktuell kalkyl](m22-costs.md), [last-/anslutningsrapport](m22-load-cost-results.md)

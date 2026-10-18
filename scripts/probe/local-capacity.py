@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""M22E: disposable local PostgreSQL + two real JVMs; never accepts remote targets.
+"""M22E/F: disposable local PostgreSQL + two real JVMs; never accepts remote targets.
 Build backend first with the pinned JDK. Output contains synthetic metrics only.
 """
 import argparse
@@ -39,9 +39,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--quick', action='store_true', help='Smaller CI query matrix, same failure scenarios')
     parser.add_argument('--out', type=Path, required=True)
+    parser.add_argument('--recovery-cadence', action='store_true', help='M22F: missed tick and persistent cursor through deferred backlog')
     args = parser.parse_args()
     container, processes, blockers = None, [], []
-    observations = {'kind': 'local-only', 'base': 'a9ca451', 'queryPlans': [], 'delivery': [], 'faults': []}
+    observations = {'kind': 'local-only', 'base': 'a3ff203', 'queryPlans': [], 'delivery': [], 'faults': []}
 
     def docker(*arguments, **kwargs):
         return subprocess.run(DOCKER + list(arguments), env=ENV, check=True, capture_output=True,
@@ -68,10 +69,10 @@ def main():
 
     def clear():
         # Only the disposable container created above; no connection arguments or cloud URL accepted.
-        sql('truncate forena_probe.event_publication, forena_probe.probe_run cascade;')
+        sql('truncate forena_probe.event_publication, forena_probe.probe_run cascade; update forena_probe.probe_worker_cursor set publication_date=null,publication_id=null,revision=revision+1;')
 
-    def seed(count, delay=0, fresh=False, mixed=False):
-        age = "interval '-1 day'" if fresh else "interval '5 minutes'"
+    def seed(count, delay=0, fresh=False, mixed=False, age_seconds=300):
+        age = "interval '-1 day'" if fresh else f"interval '{age_seconds} seconds'"
         sql(f"""
             with runs as (
                 insert into forena_probe.probe_run(id,delay_ms,mode,requested_at)
@@ -169,7 +170,8 @@ def main():
             'SPRING_DATASOURCE_URL': f'jdbc:postgresql://127.0.0.1:{db_port}/postgres',
             'PROBE_DB_USERNAME': 'forena_probe_runtime', 'PROBE_DB_PASSWORD': 'local-probe-only', 'PROBE_TOKEN': TOKEN, 'PROBE_WORKER_TOKEN': WORKER,
             'PROBE_ALLOW_CRASH': 'false', 'PROBE_MIGRATE': 'false',
-            'SPRING_APPLICATION_JSON': json.dumps({'probe.worker.budget': 'PT8S', 'probe.worker.reserve': 'PT0.1S'})}
+            'SPRING_APPLICATION_JSON': json.dumps({'probe.worker.budget': 'PT8S', 'probe.worker.reserve': 'PT0.1S',
+                'probe.worker.max-publications': 64 if args.recovery_cadence else 2})}
         with tempfile.TemporaryDirectory(prefix='forena-capacity-') as directory:
             log = open(Path(directory) / 'jvm.log', 'w')
             try:
@@ -195,83 +197,139 @@ def main():
                     else: raise TimeoutError('JVM readiness')
                 source = (ROOT / 'backend/src/main/kotlin/se/forena/probe/delivery/internal/PendingPublications.kt').read_text()
                 selection = re.search(r'fun oldest.*?jdbc.sql\("""(.*?)"""', source, re.S)[1]
-                selection = selection.replace(':age', '120000').replace(':limit', '2')
-                for size in ([1000, 10000] if args.quick else [1000, 10000, 100000]):
+                selection = selection.replace(':age', '120000').replace(':limit', '2').replace(':after_id', 'null').replace(':after_date', 'null')
+                if not args.recovery_cadence:
+                    for size in ([1000, 10000] if args.quick else [1000, 10000, 100000]):
+                        clear()
+                        seed(size, mixed=True)
+                        sql('analyze forena_probe.event_publication;')
+                        plans = [json_sql('set search_path=forena_probe,public; explain(analyze,buffers,format json) ' + selection)[0]
+                                 for _ in range(5)]
+                        observations['queryPlans'].append({'backlog': size, 'representativePlan': plans[-1],
+                            'executionTimesMs': [p['Execution Time'] for p in plans],
+                            'executionP95Ms': percentile([p['Execution Time'] for p in plans])})
+                    for instances, delay, count in [(1, 0, 16 if args.quick else 40), (2, 0, 16 if args.quick else 40), (2, 1500, 4)]:
+                        clear()
+                        seed(count, delay)
+                        seed(10000, fresh=True, mixed=True)
+                        sql('select pg_stat_statements_reset();')
+                        initial_state = counts()
+                        calls, started = [], time.monotonic()
+                        def drain(index):
+                            for _ in range(200):
+                                if time.monotonic() - started > 45:
+                                    raise TimeoutError('Drain wall-clock budget')
+                                status, body, elapsed = request(ports[index], '/api/probes/worker', {}, worker=True)
+                                calls.append({'status': status, 'ms': elapsed,
+                                              'completed': len(body['completed']) if status == 200 else 0})
+                                if counts()['pending'] == 0: return
+                                time.sleep(.02)
+                            raise TimeoutError('Drain iteration bound')
+                        def drain_all():
+                            with concurrent.futures.ThreadPoolExecutor(max_workers=instances) as pool:
+                                list(pool.map(drain, range(instances)))
+                        _, resources = measured(drain_all)
+                        elapsed = time.monotonic() - started
+                        state = counts()
+                        assert state['effects'] == count and state['pending'] == 0, state
+                        assert all(c['status'] == 200 for c in calls)
+                        stats = json_sql("select coalesce(json_agg(t),'[]') from (select calls,rows,total_exec_time,query from pg_stat_statements where query ilike '%event_publication%' and query not ilike '%pg_stat_statements%')t")
+                        observations['delivery'].append({'instances': instances, 'delayMs': delay, 'events': count,
+                            'seconds': elapsed, 'effectsPerSecond': count / elapsed, 'httpP95Ms': percentile([c['ms'] for c in calls]),
+                            'httpMinMs': min(c['ms'] for c in calls), 'httpMaxMs': max(c['ms'] for c in calls),
+                            'workerCalls': len(calls), 'initialState': initial_state, 'state': state, 'resources': resources, 'sqlStats': stats})
                     clear()
-                    seed(size, mixed=True)
-                    sql('analyze forena_probe.event_publication;')
-                    plans = [json_sql('set search_path=forena_probe,public; explain(analyze,buffers,format json) ' + selection)[0]
-                             for _ in range(5)]
-                    observations['queryPlans'].append({'backlog': size, 'representativePlan': plans[-1],
-                        'executionTimesMs': [p['Execution Time'] for p in plans],
-                        'executionP95Ms': percentile([p['Execution Time'] for p in plans])})
-                for instances, delay, count in [(1, 0, 16 if args.quick else 40), (2, 0, 16 if args.quick else 40), (2, 1500, 4)]:
+                    seed(1)
+                    blocked = lock_for('lock table forena_probe.event_publication in access exclusive mode', 4)
+                    status, _, elapsed = request(ports[0], '/api/probes/worker', {}, worker=True)
+                    assert status == 500 and elapsed < 5000, (status, elapsed)
+                    blocked.wait(timeout=10)
+                    assert request(ports[0], '/api/probes/worker', {}, worker=True)[0] == 200
+                    assert counts()['effects'] == 1 and counts()['pending'] == 0
+                    observations['faults'].append({'case': 'blocked-registry-read', 'status': status, 'ms': elapsed, 'retry': counts()})
                     clear()
-                    seed(count, delay)
+                    shared_id = str(uuid.uuid4())
+                    blocked = lock_for(f"select pg_advisory_xact_lock(hashtextextended('{shared_id}',0))", 15)
+                    gate = threading.Barrier(8)
+                    def submit(_):
+                        gate.wait(timeout=10)
+                        return request(ports[0], '/api/probes', {'id': shared_id, 'delayMs': 0, 'mode': 'NORMAL'})
+                    def saturate():
+                        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+                            return list(pool.map(submit, range(8)))
+                    saturated, resources = measured(saturate)
+                    blocked.wait(timeout=5)
+                    statuses = [r[0] for r in saturated]
+                    assert 500 in statuses and 202 in statuses, statuses
+                    assert resources['peakConnections']['jvm1'] == 4, resources
+                    for _ in range(100):
+                        if counts()['effects'] == 1 and counts()['pending'] == 0: break
+                        time.sleep(.1)
+                    assert counts()['effects'] == 1 and counts()['pending'] == 0
+                    assert request(ports[0], '/api/probes', {'id': shared_id, 'delayMs': 0, 'mode': 'NORMAL'})[0] == 202
+                    observations['faults'].append({'case': 'eight-writers-one-locked-key', 'statuses': statuses,
+                        'httpP95Ms': percentile([r[2] for r in saturated]), 'resources': resources, 'retry': counts()})
+                    clear()
+                    seed(1, 9000)
+                    status, body, elapsed = request(ports[0], '/api/probes/worker', {}, worker=True)
+                    assert status == 200 and len(body['deferred']) == 1 and counts()['attempts'] == 0
+                    observations['faults'].append({'case': 'listener-above-budget', 'status': status, 'ms': elapsed, 'result': body})
+                    clear()
+                else:
+                    clear()
+                    seed(300, delay=9000, age_seconds=121) # Eligible just after the 120s stale threshold.
+                    seed(100, age_seconds=121)
                     seed(10000, fresh=True, mixed=True)
                     sql('select pg_stat_statements_reset();')
-                    initial_state = counts()
-                    calls, started = [], time.monotonic()
-                    def drain(index):
-                        for _ in range(200):
-                            if time.monotonic() - started > 45:
-                                raise TimeoutError('Drain wall-clock budget')
-                            status, body, elapsed = request(ports[index], '/api/probes/worker', {}, worker=True)
-                            calls.append({'status': status, 'ms': elapsed,
-                                          'completed': len(body['completed']) if status == 200 else 0})
-                            if counts()['pending'] == 0: return
-                            time.sleep(.02)
-                        raise TimeoutError('Drain iteration bound')
-                    def drain_all():
-                        with concurrent.futures.ThreadPoolExecutor(max_workers=instances) as pool:
-                            list(pool.map(drain, range(instances)))
-                    _, resources = measured(drain_all)
+                    tick_seconds = 2 if args.quick else 60
+                    ticks = [{'tick': 0, 'missed': True, 'atSeconds': 0}]
+                    started = time.monotonic()
+                    def valid_state():
+                        return json_sql("""select json_build_object(
+                            'pendingValid',(select count(*) from forena_probe.event_publication
+                                where completion_date is null and publication_date<clock_timestamp()
+                                and serialized_event::jsonb->>'delayMs'='0'),
+                            'effects',(select count(*) from forena_probe.probe_effect),
+                            'attempts',(select count(*) from forena_probe.probe_attempt),
+                            'oldestValidPendingAgeSeconds',(select coalesce(max(extract(epoch from clock_timestamp()-publication_date)),0)
+                                from forena_probe.event_publication where completion_date is null
+                                and publication_date<clock_timestamp() and serialized_event::jsonb->>'delayMs'='0'),
+                            'oldestDeferredPendingAgeSeconds',(select coalesce(max(extract(epoch from clock_timestamp()-publication_date)),0)
+                                from forena_probe.event_publication where completion_date is null
+                                and serialized_event::jsonb->>'delayMs'='9000'),
+                            'deferredAttempts',(select count(*) from forena_probe.probe_attempt a
+                                join forena_probe.probe_run r on r.id=a.run_id where r.delay_ms=9000))
+                        """)
+                    initial_state = valid_state()
+                    def run_ticks():
+                        # Real minute cadence locally; explicitly scaled 2-second cadence in --quick CI.
+                        for tick in range(1, 5):
+                            while time.monotonic() < started + tick * tick_seconds:
+                                time.sleep(max(0, min(.2, started + tick * tick_seconds - time.monotonic())))
+                            port_index = (tick - 1) % 2
+                            at = time.monotonic() - started
+                            status, body, elapsed = request(ports[port_index], '/api/probes/worker', {}, worker=True)
+                            assert status == 200, status
+                            ticks.append({'tick': tick, 'atSeconds': at, 'jvm': port_index + 1, 'httpMs': elapsed,
+                                'selected': len(body['selected']), 'completed': len(body['completed']),
+                                'deferred': len(body['deferred']), 'examined': body['examined'],
+                                'stopReason': body['stopReason'], 'state': valid_state()})
+                            print(json.dumps({'cadenceTick': ticks[-1]}), flush=True)
+                            if valid_state()['pendingValid'] == 0: return
+                        raise AssertionError('Recovery target not met in four scheduled invocations')
+                    _, resources = measured(run_ticks)
                     elapsed = time.monotonic() - started
-                    state = counts()
-                    assert state['effects'] == count and state['pending'] == 0, state
-                    assert all(c['status'] == 200 for c in calls)
+                    final = valid_state()
+                    assert final['effects'] == 100 and final['pendingValid'] == 0 and final['deferredAttempts'] == 0, final
+                    assert elapsed < (5 * 60 if not args.quick else 40), elapsed
+                    if not args.quick:
+                        # Includes time already spent eligible before the first (missed) tick.
+                        assert initial_state['oldestValidPendingAgeSeconds'] - 120 + elapsed < 300
                     stats = json_sql("select coalesce(json_agg(t),'[]') from (select calls,rows,total_exec_time,query from pg_stat_statements where query ilike '%event_publication%' and query not ilike '%pg_stat_statements%')t")
-                    observations['delivery'].append({'instances': instances, 'delayMs': delay, 'events': count,
-                        'seconds': elapsed, 'effectsPerSecond': count / elapsed, 'httpP95Ms': percentile([c['ms'] for c in calls]),
-                        'httpMinMs': min(c['ms'] for c in calls), 'httpMaxMs': max(c['ms'] for c in calls),
-                        'workerCalls': len(calls), 'initialState': initial_state, 'state': state, 'resources': resources, 'sqlStats': stats})
-                clear()
-                seed(1)
-                blocked = lock_for('lock table forena_probe.event_publication in access exclusive mode', 4)
-                status, _, elapsed = request(ports[0], '/api/probes/worker', {}, worker=True)
-                assert status == 500 and elapsed < 5000, (status, elapsed)
-                blocked.wait(timeout=10)
-                assert request(ports[0], '/api/probes/worker', {}, worker=True)[0] == 200
-                assert counts()['effects'] == 1 and counts()['pending'] == 0
-                observations['faults'].append({'case': 'blocked-registry-read', 'status': status, 'ms': elapsed, 'retry': counts()})
-                clear()
-                shared_id = str(uuid.uuid4())
-                blocked = lock_for(f"select pg_advisory_xact_lock(hashtextextended('{shared_id}',0))", 15)
-                gate = threading.Barrier(8)
-                def submit(_):
-                    gate.wait(timeout=10)
-                    return request(ports[0], '/api/probes', {'id': shared_id, 'delayMs': 0, 'mode': 'NORMAL'})
-                def saturate():
-                    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
-                        return list(pool.map(submit, range(8)))
-                saturated, resources = measured(saturate)
-                blocked.wait(timeout=5)
-                statuses = [r[0] for r in saturated]
-                assert 500 in statuses and 202 in statuses, statuses
-                assert resources['peakConnections']['jvm1'] == 4, resources
-                for _ in range(100):
-                    if counts()['effects'] == 1 and counts()['pending'] == 0: break
-                    time.sleep(.1)
-                assert counts()['effects'] == 1 and counts()['pending'] == 0
-                assert request(ports[0], '/api/probes', {'id': shared_id, 'delayMs': 0, 'mode': 'NORMAL'})[0] == 202
-                observations['faults'].append({'case': 'eight-writers-one-locked-key', 'statuses': statuses,
-                    'httpP95Ms': percentile([r[2] for r in saturated]), 'resources': resources, 'retry': counts()})
-                clear()
-                seed(1, 9000)
-                status, body, elapsed = request(ports[0], '/api/probes/worker', {}, worker=True)
-                assert status == 200 and len(body['deferred']) == 1 and counts()['attempts'] == 0
-                observations['faults'].append({'case': 'listener-above-budget', 'status': status, 'ms': elapsed, 'result': body})
-                clear()
+                    observations['cadence'] = {'tickSeconds': tick_seconds, 'realMinuteCadence': not args.quick,
+                        'initialState': initial_state, 'events': 100, 'deferredPrefix': 300, 'freshBacklog': 10000, 'ticks': ticks,
+                        'secondsToComplete': elapsed, 'resources': resources, 'state': final, 'sqlStats': stats}
+                    clear()
                 observations['jarSha256'] = hashlib.sha256(JAR.read_bytes()).hexdigest()
                 observations['runtimeSourceSha256'] = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
                     for p in sorted((ROOT / 'backend/src/main').rglob('*')) if p.is_file()}

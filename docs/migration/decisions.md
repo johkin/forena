@@ -3,7 +3,20 @@
 Status anger målbeslut för kommande implementation, inte redan införd teknik.
 Källkodsverifierat nuläge finns i [inventeringen](inventory.md).
 
-## ADR-009: Prova Vercel före val av backendhosting
+## ADR-009: Vercel + Supabase är aktuell inriktning
+
+**Beslut 2026-10-18 (M22F):** fortsätt med Vercel för app/backend och Supabase
+för PostgreSQL/Auth/Cron. Google Cloud-kopplingar, inklusive Pub/Sub, Cloud Run,
+Cloud SQL, Firebase och GCP-infrastruktur, utvärderas först när ett konkret
+hinder i Vercel/Supabase-lösningen har dokumenterats. Ingen parallell GCP-
+utvärdering eller obligatorisk jämförelse ingår i aktiva uppgifter. M08, M12
+och M18C är vilande alternativ. Tidigare GCP-formuleringar nedan gäller endast
+om detta beslut senare omprövas. M22G verifierar pilotgrindarna i vald lösning;
+det är inte ett automatiskt hostingbyte om en kontroll ännu saknar bevis.
+M22F:s [resultat](m22-recovery-results.md) dokumenterar lokal återtagningskapacitet.
+Produktionsaktivering återstår och kräver verksamhetsflöde, auth och behörigheter.
+
+### Tidigare prov och beslutsunderlag
 
 Efter diskussion om samordning och kostnad provas Vercel med Kotlin/JDK 26
 som container i det isolerade projektet `forena-kotlin` (M21). Supabase behålls
@@ -76,8 +89,8 @@ uttrycklig överlämning skett. Backendkontot får inte ha superuser/BYPASSRLS.
 Kontoidentitet verifieras med JWT, familj/lag/klubb/roller i applikationstjänsten.
 RLS kan fortsatt vara extra skydd, utan att affärsregler kräver Supabasefunktioner.
 
-M08 ska verifiera TLS/certifikat, stödd anslutningsväg och JDBC-poolning från
-Cloud Run, regionavstånd, IP-/IPv6-behov, anslutningsgränser och trafikavgifter.
+M22G verifierar TLS/certifikat, stödd anslutningsväg och JDBC-poolning från
+Vercel, regionavstånd, IP-/IPv6-behov, anslutningsgränser och trafikavgifter.
 Välj direktanslutning eller pooler utifrån faktisk kompatibilitet med
 transaktioner, prepared statements och transaktionslokal kontext; anta inte att
 alla poolerlägen passar. Poolstorlek × maxinstanser måste rymmas i databasens
@@ -106,7 +119,7 @@ när scripts, testimporter, deploy och cache-nycklar kan verifieras tillsammans.
 
 ## ADR-002: Modulär monolit — fastställt, gränser preliminära
 
-Ett Maven-projekt och en Cloud Run-tjänst. Verksamhetspaket under exempelvis
+Ett Maven-projekt och en backendtjänst på Vercel enligt ADR-009. Verksamhetspaket under exempelvis
 `se.forena`: `organization`, `activities`, `participation`, `duties`,
 `notifications`, `disciplines`. Transportadaptrar för HTTP, Telegram, AI och MCP
 anropar samma applikationstjänster med verifierad användarkontext.
