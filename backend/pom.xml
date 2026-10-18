@@ -54,6 +54,11 @@
       <groupId>org.springframework.modulith</groupId>
       <artifactId>spring-modulith-starter-jdbc</artifactId>
     </dependency>
+    <!-- Explicit compile-time SPI dependency for the bounded registry reader (same pinned BOM). -->
+    <dependency>
+      <groupId>org.springframework.modulith</groupId>
+      <artifactId>spring-modulith-events-core</artifactId>
+    </dependency>
     <dependency>
       <groupId>tools.jackson.module</groupId>
       <artifactId>jackson-module-kotlin</artifactId>

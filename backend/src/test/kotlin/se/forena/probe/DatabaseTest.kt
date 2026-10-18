@@ -6,7 +6,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer
 
 abstract class DatabaseTest {
     companion object {
-        val database = PostgreSQLContainer("postgres:17.6-alpine").withInitScript("init.sql").also { it.start() }
+        val database = PostgreSQLContainer("postgres:17.6-alpine").withInitScript("init.sql").withCommand("postgres", "-c", "shared_preload_libraries=pg_stat_statements").also { it.start() }
         const val TOKEN = "local-only-token-with-at-least-32-characters"
         @JvmStatic
         @DynamicPropertySource

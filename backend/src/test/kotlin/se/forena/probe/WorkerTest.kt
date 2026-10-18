@@ -26,6 +26,17 @@ import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import javax.sql.DataSource
+import java.sql.DriverManager
+import java.lang.management.ManagementFactory
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
+import org.springframework.modulith.events.core.EventSerializer
+import org.mockito.Mockito.clearInvocations
+import org.mockito.Mockito.mockingDetails
+import se.forena.probe.delivery.ProbeWorker
+import se.forena.probe.delivery.internal.PendingPublications
+import se.forena.probe.delivery.internal.BoundedResubmission
+import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.springframework.dao.QueryTimeoutException
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestPropertySource(properties = [
@@ -43,6 +54,13 @@ class WorkerTest : DatabaseTest() {
     @Autowired lateinit var json: JsonMapper
     @Autowired lateinit var dataSource: DataSource
 
+    @Autowired lateinit var workerService: ProbeWorker
+    @Autowired lateinit var pendingReads: PendingPublications
+    @Autowired lateinit var bounded: BoundedResubmission
+    @MockitoSpyBean lateinit var serializer: EventSerializer
+    private val backlogListener = "m22d-backlog-listener"
+    private val backlogIds = mutableListOf<UUID>()
+
     private val client = HttpClient.newHttpClient()
     private val owned = mutableListOf<UUID>()
 
@@ -53,6 +71,8 @@ class WorkerTest : DatabaseTest() {
 
     @AfterEach
     fun removeOnlyOwnedFixtures() {
+        if (backlogIds.isNotEmpty()) jdbc.sql("delete from event_publication where id in (:ids)")
+            .param("ids", backlogIds).update()
         for (id in owned) {
             jdbc.sql("delete from event_publication where serialized_event like :id")
                 .param("id", "%$id%").update()
@@ -304,6 +324,101 @@ class WorkerTest : DatabaseTest() {
                 pending.get(10, TimeUnit.SECONDS)
             }
         }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [100, 10000])
+    fun `registry materialization stays bounded as backlog grows`(backlog: Int) {
+        val first = publication(status = "FAILED", order = 10)
+        val second = publication(status = "PROCESSING", order = 20)
+        // Half share the real listener, half belong to another listener; FAILED and PROCESSING.
+        // All timestamps follow the two real runs. No sleeping initial listener or probe_run is created.
+        backlogIds.addAll(jdbc.sql("""
+            with fixture as materialized (select n, gen_random_uuid() id from generate_series(1, :count) n)
+            insert into event_publication(id, listener_id, event_type, serialized_event,
+                publication_date, status, completion_attempts)
+            select f.id, case when f.n % 2 = 0 then p.listener_id else :listener end, p.event_type,
+                jsonb_set(p.serialized_event::jsonb, '{id}', to_jsonb(f.id::text))::text,
+                '2001-01-01'::timestamptz,
+                case when f.n % 4 < 2 then 'FAILED' else 'PROCESSING' end, 1
+            from fixture f cross join event_publication p where p.serialized_event like :source
+            returning id
+        """).param("listener", backlogListener).param("count", backlog)
+            .param("source", "%$first%").query(UUID::class.java).list().map { requireNotNull(it) })
+        DriverManager.getConnection(database.jdbcUrl, database.username, database.password).use { admin ->
+            admin.createStatement().use { it.execute("create extension if not exists pg_stat_statements with schema public") }
+            admin.createStatement().use { it.execute("select public.pg_stat_statements_reset()") }
+            clearInvocations(serializer)
+            val memory = ManagementFactory.getMemoryMXBean()
+            val heapBefore = memory.heapMemoryUsage.used
+            val allocation = ManagementFactory.getThreadMXBean() as com.sun.management.ThreadMXBean
+            val allocatedBefore = allocation.getThreadAllocatedBytes(Thread.currentThread().threadId())
+            val started = System.nanoTime()
+            val result = workerService.run()
+            val elapsedMs = (System.nanoTime() - started) / 1_000_000
+            val allocatedBytes = allocation.getThreadAllocatedBytes(Thread.currentThread().threadId()) - allocatedBefore
+            val heapDelta = memory.heapMemoryUsage.used - heapBefore
+            val deserializations = mockingDetails(serializer).invocations.count { it.method.name == "deserialize" }
+            val reads = mutableListOf<Map<String, Any>>()
+            admin.createStatement().use { statement ->
+                statement.executeQuery("""
+                    select query, calls, rows from public.pg_stat_statements
+                    where dbid=(select oid from pg_database where datname=current_database())
+                      and query ilike '%select%from event_publication%'
+                    order by query
+                """).use { rs -> while (rs.next()) reads.add(mapOf(
+                    "sql" to rs.getString(1), "calls" to rs.getLong(2), "rows" to rs.getLong(3))) }
+            }
+            assertThat(result.completed).containsExactly(first, second)
+            assertThat(deserializations).isEqualTo(2)
+            // The vendor's unbounded reader selects ID, COMPLETION_DATE, EVENT_TYPE, ... .
+            assertThat(reads.none { (it["sql"] as String).contains("SELECT ID, COMPLETION_DATE") }).isTrue()
+            val exact = reads.filter { (it["sql"] as String).contains("select * from event_publication") }
+            assertThat(exact).hasSize(1)
+            assertThat(exact.single()["calls"]).isEqualTo(2L)
+            assertThat(exact.single()["rows"]).isEqualTo(2L)
+            val selection = reads.single { (it["sql"] as String).contains("publication_id") }
+            assertThat(selection["calls"]).isEqualTo(1L)
+            assertThat(selection["rows"]).isEqualTo(2L)
+            println("M22D_METRICS " + json.writeValueAsString(mapOf(
+                "backlog" to backlog, "elapsedMs" to elapsedMs, "callingThreadAllocatedBytes" to allocatedBytes,
+                "heapDeltaBytes" to heapDelta, "deserializations" to deserializations,
+                "selected" to result.selected.size, "completed" to result.completed.size, "reads" to reads)))
+        }
+        assertThat(jdbc.sql("select count(*) from event_publication where id in (:ids) and completion_date is null")
+            .param("ids", backlogIds).query(Long::class.java).single()).isEqualTo(backlog.toLong())
+    }
+
+    @Test
+    fun `read timeout cancels blocked registry query and returns connection to pool`() {
+        val id = publication()
+        dataSource.connection.use { blocker ->
+            blocker.autoCommit = false
+            blocker.createStatement().use { it.execute("lock table event_publication in access exclusive mode") }
+            val started = System.nanoTime()
+            try {
+                assertThatThrownBy { pendingReads.oldest(Duration.ZERO, 2) }
+                    .isInstanceOf(QueryTimeoutException::class.java)
+                assertThat(Duration.ofNanos(System.nanoTime() - started)).isLessThan(Duration.ofSeconds(5))
+            } finally { blocker.rollback() }
+        }
+        assertThat(ids(worker(), "completed")).contains(id)
+        assertAcknowledged(id)
+    }
+
+    @Test
+    fun `expired or interrupted dispatch does not read deserialize release or start listeners`() {
+        val id = publication()
+        val publicationId = jdbc.sql("select id from event_publication where serialized_event like :id")
+            .param("id", "%$id%").query(UUID::class.java).single()
+        val before = attempts(id)
+        clearInvocations(serializer)
+        bounded.resubmit(publicationId, System.nanoTime() - 1)
+        Thread.currentThread().interrupt()
+        try { bounded.resubmit(publicationId, System.nanoTime() + Duration.ofSeconds(10).toNanos()) }
+        finally { Thread.interrupted() }
+        assertThat(mockingDetails(serializer).invocations.count { it.method.name == "deserialize" }).isZero()
+        assertUntouched(id, before)
     }
 
     private fun publication(

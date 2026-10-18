@@ -1,7 +1,7 @@
 package se.forena.probe.delivery
 
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.modulith.events.IncompleteEventPublications
+import se.forena.probe.delivery.internal.BoundedResubmission
 import org.springframework.stereotype.Service
 import org.slf4j.LoggerFactory
 import se.forena.probe.delivery.internal.PendingPublications
@@ -22,7 +22,7 @@ data class WorkerResult(
 class ProbeWorker(
     private val pending: PendingPublications,
     private val effects: EffectControl,
-    private val publications: IncompleteEventPublications,
+    private val publications: BoundedResubmission,
     @Value("\${probe.worker.batch-size:2}") private val batchSize: Int,
     @Value("\${probe.worker.budget:PT120S}") private val budget: Duration,
     @Value("\${probe.worker.stale-after:PT120S}") private val staleAfter: Duration,
@@ -63,9 +63,7 @@ class ProbeWorker(
             // No transaction spans this request, its waits, or the listener.
             effects.release(candidate.runId)
             selected.add(candidate.runId)
-            publications.resubmitIncompletePublications { publication ->
-                publication.identifier == candidate.publicationId && System.nanoTime() < deadline
-            }
+            publications.resubmit(candidate.publicationId, deadline)
             while (System.nanoTime() < deadline) {
                 if (pending.completed(candidate.publicationId)) break
                 try {

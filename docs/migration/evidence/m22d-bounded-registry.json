@@ -1,0 +1,201 @@
+{
+  "baseCommit": "ad9ac0bf9a60a444111004efe5c1743decfed7d1",
+  "environment": "local disposable PostgreSQL 17.6-alpine; no cloud execution",
+  "versions": {
+    "springBoot": "4.1.0",
+    "kotlin": "2.4.20",
+    "java": "26.0.2.1+1-7",
+    "springModulith": "2.1.0",
+    "maven": "3.9.11"
+  },
+  "junit": {
+    "tests": 36,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "log": "/tmp/forena-m22d-maven-4.log"
+  },
+  "frontend": {
+    "files": 131,
+    "tests": 1065,
+    "typecheck": "passed",
+    "lint": "passed",
+    "build": "passed"
+  },
+  "backlog": [
+    {
+      "backlog": 100,
+      "elapsedMs": 228,
+      "callingThreadAllocatedBytes": 129504,
+      "heapDeltaBytes": 0,
+      "deserializations": 2,
+      "selected": 2,
+      "completed": 2,
+      "reads": [
+        {
+          "sql": "select * from event_publication\n        where id=$1 and completion_date is null and status <> $2\n          and event_type = $3\n          and listener_id = $4",
+          "calls": 2,
+          "rows": 2
+        },
+        {
+          "sql": "select completion_date is not null from event_publication where id=$1",
+          "calls": 6,
+          "rows": 6
+        },
+        {
+          "sql": "select p.id publication_id, (p.serialized_event::jsonb ->> $3)::uuid run_id,\n       (p.serialized_event::jsonb ->> $4)::bigint delay_ms\nfrom event_publication p\nwhere p.completion_date is null\n  and p.event_type = $5\n  and p.listener_id = $6\n  and p.serialized_event::jsonb ->> $7 <> $8\n  and greatest(p.publication_date, p.last_resubmission_date)\n      < clock_timestamp() - ($1 * interval $9)\norder by p.publication_date, p.id\nlimit $2",
+          "calls": 1,
+          "rows": 2
+        }
+      ]
+    },
+    {
+      "backlog": 10000,
+      "elapsedMs": 277,
+      "callingThreadAllocatedBytes": 128608,
+      "heapDeltaBytes": 0,
+      "deserializations": 2,
+      "selected": 2,
+      "completed": 2,
+      "reads": [
+        {
+          "sql": "select * from event_publication\n        where id=$1 and completion_date is null and status <> $2\n          and event_type = $3\n          and listener_id = $4",
+          "calls": 2,
+          "rows": 2
+        },
+        {
+          "sql": "select completion_date is not null from event_publication where id=$1",
+          "calls": 6,
+          "rows": 6
+        },
+        {
+          "sql": "select p.id publication_id, (p.serialized_event::jsonb ->> $3)::uuid run_id,\n       (p.serialized_event::jsonb ->> $4)::bigint delay_ms\nfrom event_publication p\nwhere p.completion_date is null\n  and p.event_type = $5\n  and p.listener_id = $6\n  and p.serialized_event::jsonb ->> $7 <> $8\n  and greatest(p.publication_date, p.last_resubmission_date)\n      < clock_timestamp() - ($1 * interval $9)\norder by p.publication_date, p.id\nlimit $2",
+          "calls": 1,
+          "rows": 2
+        }
+      ]
+    }
+  ],
+  "process": {
+    "command": "JAVA_HOME=<pinned-jdk> python3 scripts/probe/local-lifecycle.py --concurrent-recovery --scheduled-crash --registry-backlog 10000",
+    "exitCode": 0,
+    "observations": [
+      {
+        "postResponseCompleted": true,
+        "actualJvmExit": 137,
+        "restartedJvmCompleted": true,
+        "effectCountAfterReplay": 1
+      },
+      {
+        "workerCrashRecovery": [
+          {
+            "point": "BEFORE_EFFECT",
+            "id": "4b4f172c-366e-479d-99cc-2f45a1297470",
+            "jvmExit": 137,
+            "effectsBeforeRecovery": 0,
+            "pendingBeforeRecovery": 1,
+            "effectsAfterRepeatedRecovery": 1,
+            "pendingAfterRecovery": 0,
+            "distinctJvms": 2
+          },
+          {
+            "point": "AFTER_EFFECT_COMMIT",
+            "id": "5c7d10eb-a430-420a-8797-023091964365",
+            "jvmExit": 137,
+            "effectsBeforeRecovery": 1,
+            "pendingBeforeRecovery": 1,
+            "effectsAfterRepeatedRecovery": 1,
+            "pendingAfterRecovery": 0,
+            "distinctJvms": 2
+          }
+        ]
+      },
+      {
+        "distinctJvms": 2,
+        "concurrentRecovery": [
+          {
+            "id": "6d7683e6-f31e-485a-8c11-2d4f8ed23d9c",
+            "responses": [
+              200,
+              200
+            ],
+            "effects": 1,
+            "pendingPublications": 0,
+            "attempts": 3,
+            "attemptingJvms": 2
+          },
+          {
+            "id": "0f78894c-dfe3-4d3f-abb8-a065889b81df",
+            "responses": [
+              200,
+              200
+            ],
+            "effects": 1,
+            "pendingPublications": 0,
+            "attempts": 2,
+            "attemptingJvms": 1
+          },
+          {
+            "id": "d943fef7-050c-421f-aa51-12d631d9a432",
+            "responses": [
+              200,
+              200
+            ],
+            "effects": 1,
+            "pendingPublications": 0,
+            "attempts": 2,
+            "attemptingJvms": 2
+          }
+        ]
+      },
+      {
+        "registryBacklog": 10000,
+        "untouchedAfterCrashesAndRaces": 10000
+      }
+    ]
+  },
+  "limitations": [
+    "Returned SQL rows do not measure PostgreSQL scan/sort work.",
+    "Heap delta is not peak RSS; calling-thread allocations exclude asynchronous listener threads.",
+    "Worker read scope only: manual recovery and vendor shutdown diagnostics remain unbounded.",
+    "Read query timeout is not a hard overall worker deadline.",
+    "M22C cloud cleanup has not been reverified or completed in M22D."
+  ],
+  "sourceSha256": {
+    ".github/workflows/ci.yml": "4b02b4431c5549d060de96ec1b6cbb9256f3f20cf7fd2127cc2e74f2e23a80b3",
+    "backend/pom.xml": "d87a4d74d68950694dee129507831dd70f812cb2bcdfef50f664eb383fa3bd01",
+    "backend/src/main/kotlin/se/forena/probe/ProbeApplication.kt": "05d0061c80b51b0e0b72ba8995cbec29d9796e87be93b51d66edc9f15223d31f",
+    "backend/src/main/kotlin/se/forena/probe/ProbeSecurity.kt": "7330d870790219516ace8974ab23cca458e7d141fa514606089e847ada8c48bd",
+    "backend/src/main/kotlin/se/forena/probe/commands/ProbeCommands.kt": "d0e371568892243bf50ff36b624c4ebb0a533eb85fcef1d78057a6c7936af5be",
+    "backend/src/main/kotlin/se/forena/probe/commands/ProbeRequested.kt": "7489ad56598427aa3a47af4a507486e29288739b3ab79f77e2c5e1a3774a36d4",
+    "backend/src/main/kotlin/se/forena/probe/commands/internal/RunRepository.kt": "c24281ee8e6a6ecbd297f9b603ffb3d60e0940e4a1e04a4cd34cc2d09d6f0260",
+    "backend/src/main/kotlin/se/forena/probe/delivery/ProbeWorker.kt": "e9c92df110bb35a12586bfca1b7bb603c85c31feec0a874d90e166047dc8564b",
+    "backend/src/main/kotlin/se/forena/probe/delivery/internal/BoundedResubmission.kt": "c817dd68de8eeeeca285df120c1e24ad6a30dde783e967f6861e95b07e1b90a7",
+    "backend/src/main/kotlin/se/forena/probe/delivery/internal/PendingPublications.kt": "a215975a9edc897b5fa21854cd250ad07ad1663d33654bd47a93e970ee3ee838",
+    "backend/src/main/kotlin/se/forena/probe/delivery/internal/RegistryReadScope.kt": "558934e7699a77da35d50878533e62e37cbba045cd45ec09a352f7dcd3249b68",
+    "backend/src/main/kotlin/se/forena/probe/effects/EffectControl.kt": "aa4aae87d7d9c8c00f1effb01abbc8466c711839acdf791cff2286956570da1f",
+    "backend/src/main/kotlin/se/forena/probe/effects/internal/ProbeAttempts.kt": "bdf6b0d3375aa12c827cc965748217fa294bc563dc89379f7a5332de23f67a86",
+    "backend/src/main/kotlin/se/forena/probe/effects/internal/ProbeFaults.kt": "07e6f0686aa430d84bc57530d54ecb5dbf6e89f9a48f47918caba65ea94ff664",
+    "backend/src/main/kotlin/se/forena/probe/effects/internal/ProbeListener.kt": "7ec81b2eea11711f2a9f3254cbbf542f8f10a3c7de718a78e6825bee23158fa4",
+    "backend/src/main/kotlin/se/forena/probe/transport/ProbeController.kt": "c9ae0a571fc3425575e8740d9676e81abd895d522d91bb3c5bb6d01d1f8a4820",
+    "backend/src/main/kotlin/se/forena/probe/transport/WorkerController.kt": "973a070df639df902886d0588a4043510b7ab1c3b1e86cab8422f96183c783dd",
+    "backend/src/main/resources/application.properties": "e136037c4b07d654369947ed2ba8cfe5dec6e10799fa5172b873a1885e42d148",
+    "backend/src/main/resources/db/changelog.xml": "53ece1af47c0c8227b9485f2cb145371aabd5627c1c16b8214d575a1da18b7c5",
+    "backend/src/main/resources/db/modulith-postgresql.sql": "4d9065e3cdb514eafdabbdc33682f48a62900d3a5a369b987737d693990031d4",
+    "backend/src/main/resources/db/probe.sql": "2814386a8baa72676b8d695dced187c2e1d361cafa65e2dfae1d3399df6837b5",
+    "backend/src/main/resources/static/index.html": "70b675c90cd908b0e424dc7737619a8ab9b66cba114ebf4be1a87d6315bfa490",
+    "backend/src/main/resources/static/probe.js": "7df5566d86a4f294e753a93bf75f83821c5487cea7caacb6aa69884a30f2ba89",
+    "backend/src/test/kotlin/se/forena/probe/ArchitectureTest.kt": "36706cbad719d4d013c7db332514187f998c744e68c7ec7d3cf2918f397ae4f5",
+    "backend/src/test/kotlin/se/forena/probe/DatabaseTest.kt": "dd8e8e2f42ede18fdda7cd27cecbf86a8b0084655aa89f6854e41a8e6ad66b79",
+    "backend/src/test/kotlin/se/forena/probe/FaultTest.kt": "f74cfa868f99f1070e16c8875816f43ce8c83f134a79f0224b382e1a5c36e713",
+    "backend/src/test/kotlin/se/forena/probe/LifecycleTest.kt": "19ed2f820f9ac24137fab08ffe8976f2c739f29d66bcfc2add45d6c8a0edc5b3",
+    "backend/src/test/kotlin/se/forena/probe/RegistryScopeTest.kt": "59dfd424db0677685f6ed34c94f74655018800fa53f0bee1d5eb5f954f9efa02",
+    "backend/src/test/kotlin/se/forena/probe/WorkerTest.kt": "bd1a5804277e45575dfde6861c4fc909269325dd9abfd50f39373b6d2724b728",
+    "backend/src/test/kotlin/se/forena/probe/effects/EffectsModuleTest.kt": "7b6452c0c9df1c8757638b9367de127ad1ee2a8f5450f92b343c864d4344d2c7",
+    "scripts/probe/local-lifecycle.py": "f4bc0393746b3af5acfe4334cdd10c32888e13648322b4e271b17299c3b58bcc"
+  },
+  "librarySourceSha256": {
+    "m22d-core-sources.jar": "8f4c91aca1b109c64b62396d6a59ad36a93b149d89368abb2c8a83c7e73af82c",
+    "m22d-jdbc-sources.jar": "65b4cc96f52936a92b1a850264a3195261efe105939d044112a4dd08005eb350"
+  }
+}

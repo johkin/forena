@@ -208,8 +208,12 @@ observatör har alltså inte en sådan garanti för net-schemat när pg_net är
 installerat. Provet använder bara kontrollerade SQL-konton och kortlivad
 previewåtkomst. Net ska aldrig exponeras via Data API.
 
-Moduliths predicate-API läser alla ofullständiga poster innan filtrering;
-max två starter innebär inte begränsad registry-läsning. Se den fullständiga
+Moduliths predicate-API läser normalt alla ofullständiga poster före filtrering.
+M22D begränsar nu workerendpointens materialisering via en repository-SPI-
+dekorator; se [registryrapporten](../docs/migration/m22-registry-results.md).
+Manuellt återtag och shutdown-diagnostik är fortsatt obegränsade.
+`probe.worker.read-timeout-seconds=2` styr bara workerns egna SQL-läsningar;
+den totala budgeten är fortfarande mjuk. Se den fullständiga
 [rapporten](../docs/migration/m22-scheduler-results.md) för tidslinje,
 bevis och kvarvarande produktionsgränser.
 
@@ -293,3 +297,12 @@ För ett nytt molnprov:
    stoppade klienter och sätt previewförvalets kraschflagga till false inför
    kommande deployment. Befintliga deploymenters miljö är oföränderlig; de
    skyddas genom återkallad provåtkomst och borttagna armeringar.
+
+## Registry-backlog (M22D)
+
+`./mvnw verify` kör WorkerTest med pg_stat_statements i disponibel PostgreSQL:
+100/10 000 köposter, SQL-resultatrader/anrop, deserialisering och grov minnes-/
+tidsmätning. Ingen extension installeras i Supabase. Processprovet kan köras
+med `--concurrent-recovery --scheduled-crash --registry-backlog 10000` för att
+behålla färska poster under båda riktiga JVM-krascherna och tre två-JVM-rundor.
+CI kör den kombinationen. Se rapporten för mätgränser och kvarvarande arbete.

@@ -32,6 +32,7 @@ M00 är denna inventerings- och planeringsleverans.
 | [M22B](m22b-scheduler-isolation.md) | Verifiera Data API och pg_net:s SQL-tillitsgräns | M22A, PR #100 |
 | [M22C](m22c-scheduled-crash.md) | Schemalagd JVM-död och effekt/kvittens | M22A, M22B |
 | [M22D](m22d-bounded-registry.md) | Begränsa verklig registryläsning och verifiera backlog | M22A, M22B, M22C |
+| [M22E](m22e-load-cost.md) | Verifiera last/anslutningar och kostnad före hostingbeslut | M22A–D |
 | [M22](m22-vercel-delivery.md) | Verifiera schemalagd beständig leverans, region och Vercel-kostnad | M21 |
 | [M21](m21-vercel-probe.md) | Prova Vercel-container, PostgreSQL och händelser efter HTTP-svar | M00 |
 | [M20](m20-portable-postgres.md) | Verifiera portabel verksamhetsdatabas på Supabase PostgreSQL | M04, M07, M13 |
