@@ -24,7 +24,14 @@ lokal samtidig återtagning med två JVM:er. Ett aktivt HTTP-anrop slutförde ä
 1/60 s arbete, senare anrop utan dubbletter och ett kontrollerat HTTP-timeoutfall.
 Det är fortfarande inget produktionsval: pg_net:s köheaders kan läsas av alla
 direkta SQL-inloggningar och dess PUBLIC-grants kan inte ändras av postgres.
-Data API-isolering gav 503/PGRST002 och är ej verifierad. Modulith 2.1.0:s
+Data API-kontrollen gav först 503/PGRST002. [M22B](m22-isolation-results.md)
+förklarar det med avsiktligt avstängt Data API och verifierar 13 HTTP-fall med
+en tillfälligt exponerad syntetisk fixtur. Data API behålls avstängt i Kotlin-
+testprojektet som använder JDBC; det ordinarie Förena-projektet ändras inte.
+SQL-kontonas åtkomst till pg_net kvarstår oavsett API-avstängning. Före produktion
+krävs bedömning av gemensam credentialtillit för SQL-konton eller schemaläggning
+med credentials utanför databasen; inget av alternativen aktiveras här.
+Modulith 2.1.0:s
 predicate-återtag läser alla ofullständiga poster och behöver begränsas före
 pilot. Ingen plattforms- eller versionsändring görs automatiskt.
 

@@ -149,3 +149,35 @@ SQL-loginroller; Data API-kontrollen gav 503/PGRST002; predicate-API:t läser he
 registret före filter. Dessa gränser, faktisk schemalagd JVM-krasch, effekt/kvittens-
 felpunkt, last/anslutningar och kostnader måste hanteras före verksamhetspilot.
 Ordinarie Förena berörs inte.
+
+## M22B: Data API och scheduleråtkomst
+
+Bas `e43d752` (PR #100 mergad), branch `test/scheduler-isolation`.
+[Rapport](m22-isolation-results.md), [uppgift](tasks/m22b-scheduler-isolation.md)
+och [bevis](evidence/m22-isolation.json) skiljer API-exponering från SQL-grants.
+Användaren bekräftade att Data API avsiktligt stängts av för JDBC. Detta
+förklarar loggarnas pg_pgrst_no_exposed_schemas och 503/PGRST002; inställningen
+är återställd och ska behållas. Ingen ändring av ordinarie Förena.
+
+13 HTTP-fall verifierade med en tillfälligt exponerad syntetisk RLS-fixtur:
+positiv läskontroll, nekad skrivning och 406/PGRST106 för privata GET-/POST-
+scheman och scheduler-RPC. SQL-markören kunde läsas som anon/authenticated;
+runtime/observer verifierades med effektiva katalogprivilegier, utan att ändra
+deras SET FALSE eller NOLOGIN. Inget autentiserat användar-JWT-prov kördes.
+Sex lokala Pythonregressionstester och offlinebeviskontroll godkända; CI kör
+dessa också. App-/Kotlin-/Liquibasekällor är oförändrade i denna del.
+Även befintliga 1 065 frontendtester/typecheck/lint/build godkända lokalt.
+Ingen lokal Maven-körning eller databasreset för oförändrat applikationsschema;
+CI:s befintliga DB-/Kotlin-kontroller behålls.
+
+Städning verifierad 2026-10-18 17:08:35 UTC: fixtur borttagen, API-override
+borta, 0 jobb/köposter/responser, observer NOLOGIN. Två providerbootstrap-poster
+för tillfällig fixtur och borttagning finns i testets migrationshistorik.
+Supabases säkerhetsrådgivare gav inga lints; pg_net:s PUBLIC-grants kvarstår.
+
+Slutsats: JDBC och avstängt Data API räcker för nästa isolerade backendprov.
+pg_net innebär fortfarande gemensam HTTP-credentialtillit för SQL-inloggningar.
+Produktionsaktivering kräver ett separat val av tillitsgräns eller extern
+schedulercredential; ingen ny leverantör eller plan väljs i denna uppgift.
+Nästa avgränsade uppgift är [M22C](tasks/m22c-scheduled-crash.md), inte ännu körd
+eller delegerad. Registry-/lastprov och kostnads-/hostingbeslut återstår i M22.
