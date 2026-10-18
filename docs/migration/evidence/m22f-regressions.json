@@ -1,0 +1,602 @@
+{
+  "kind": "local-only",
+  "base": "a3ff203",
+  "queryPlans": [
+    {
+      "backlog": 1000,
+      "representativePlan": {
+        "Plan": {
+          "Node Type": "Limit",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 83.71,
+          "Total Cost": 83.72,
+          "Plan Rows": 2,
+          "Plan Width": 48,
+          "Actual Startup Time": 15.953,
+          "Actual Total Time": 15.955,
+          "Actual Rows": 2,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 46,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Plans": [
+            {
+              "Node Type": "Sort",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 83.71,
+              "Total Cost": 84.34,
+              "Plan Rows": 249,
+              "Plan Width": 48,
+              "Actual Startup Time": 15.952,
+              "Actual Total Time": 15.953,
+              "Actual Rows": 2,
+              "Actual Loops": 1,
+              "Sort Key": [
+                "publication_date",
+                "id"
+              ],
+              "Sort Method": "top-N heapsort",
+              "Sort Space Used": 25,
+              "Sort Space Type": "Memory",
+              "Shared Hit Blocks": 46,
+              "Shared Read Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Temp Written Blocks": 0,
+              "Plans": [
+                {
+                  "Node Type": "Seq Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Relation Name": "event_publication",
+                  "Alias": "p",
+                  "Startup Cost": 0.0,
+                  "Total Cost": 81.22,
+                  "Plan Rows": 249,
+                  "Plan Width": 48,
+                  "Actual Startup Time": 0.032,
+                  "Actual Total Time": 15.804,
+                  "Actual Rows": 750,
+                  "Actual Loops": 1,
+                  "Filter": "((completion_date IS NULL) AND (event_type = 'se.forena.probe.commands.ProbeRequested'::text) AND (listener_id = 'se.forena.probe.effects.internal.ProbeListener.on(se.forena.probe.commands.ProbeRequested)'::text) AND (((serialized_event)::jsonb ->> 'mode'::text) <> 'CRASH'::text) AND (GREATEST(publication_date, last_resubmission_date) < (clock_timestamp() - '00:02:00'::interval)))",
+                  "Rows Removed by Filter": 250,
+                  "Shared Hit Blocks": 40,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0
+                }
+              ]
+            }
+          ]
+        },
+        "Planning": {
+          "Shared Hit Blocks": 171,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 1.118,
+        "Triggers": [],
+        "Execution Time": 16.002
+      },
+      "executionTimesMs": [
+        13.454,
+        5.824,
+        6.236,
+        6.296,
+        16.002
+      ],
+      "executionP95Ms": 16.002
+    },
+    {
+      "backlog": 10000,
+      "representativePlan": {
+        "Plan": {
+          "Node Type": "Limit",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 835.08,
+          "Total Cost": 835.09,
+          "Plan Rows": 2,
+          "Plan Width": 48,
+          "Actual Startup Time": 76.452,
+          "Actual Total Time": 76.454,
+          "Actual Rows": 2,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 404,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Plans": [
+            {
+              "Node Type": "Sort",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 835.08,
+              "Total Cost": 841.3,
+              "Plan Rows": 2488,
+              "Plan Width": 48,
+              "Actual Startup Time": 76.45,
+              "Actual Total Time": 76.451,
+              "Actual Rows": 2,
+              "Actual Loops": 1,
+              "Sort Key": [
+                "publication_date",
+                "id"
+              ],
+              "Sort Method": "top-N heapsort",
+              "Sort Space Used": 25,
+              "Sort Space Type": "Memory",
+              "Shared Hit Blocks": 404,
+              "Shared Read Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Temp Written Blocks": 0,
+              "Plans": [
+                {
+                  "Node Type": "Seq Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Relation Name": "event_publication",
+                  "Alias": "p",
+                  "Startup Cost": 0.0,
+                  "Total Cost": 810.2,
+                  "Plan Rows": 2488,
+                  "Plan Width": 48,
+                  "Actual Startup Time": 0.034,
+                  "Actual Total Time": 74.992,
+                  "Actual Rows": 7500,
+                  "Actual Loops": 1,
+                  "Filter": "((completion_date IS NULL) AND (event_type = 'se.forena.probe.commands.ProbeRequested'::text) AND (listener_id = 'se.forena.probe.effects.internal.ProbeListener.on(se.forena.probe.commands.ProbeRequested)'::text) AND (((serialized_event)::jsonb ->> 'mode'::text) <> 'CRASH'::text) AND (GREATEST(publication_date, last_resubmission_date) < (clock_timestamp() - '00:02:00'::interval)))",
+                  "Rows Removed by Filter": 2500,
+                  "Shared Hit Blocks": 398,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0
+                }
+              ]
+            }
+          ]
+        },
+        "Planning": {
+          "Shared Hit Blocks": 170,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 1.014,
+        "Triggers": [],
+        "Execution Time": 76.501
+      },
+      "executionTimesMs": [
+        59.706,
+        70.792,
+        69.895,
+        91.002,
+        76.501
+      ],
+      "executionP95Ms": 91.002
+    }
+  ],
+  "delivery": [
+    {
+      "instances": 1,
+      "delayMs": 0,
+      "events": 16,
+      "seconds": 3.561346239002887,
+      "effectsPerSecond": 4.492683082810761,
+      "httpP95Ms": 587.8227449939004,
+      "httpMinMs": 259.1436660004547,
+      "httpMaxMs": 587.8227449939004,
+      "workerCalls": 8,
+      "initialState": {
+        "effects": 0,
+        "attempts": 0,
+        "attemptingJvms": 0,
+        "oldestPendingAgeSeconds": 300.545092,
+        "pending": 16
+      },
+      "state": {
+        "effects": 16,
+        "attempts": 16,
+        "attemptingJvms": 1,
+        "oldestPendingAgeSeconds": 0,
+        "pending": 0
+      },
+      "resources": {
+        "samples": 12,
+        "targetIntervalSeconds": 0.2,
+        "processCpuSeconds": [
+          1.4499999999999993,
+          0.0
+        ],
+        "peakConnections": {
+          "jvm1": 2,
+          "jvm2": 1
+        },
+        "peakLockWaiters": 0,
+        "peakRssKiB": [
+          546652,
+          656332
+        ],
+        "processHighWaterKiB": [
+          546652,
+          656332
+        ]
+      },
+      "sqlStats": [
+        {
+          "calls": 8,
+          "rows": 16,
+          "total_exec_time": 203.25763899999998,
+          "query": "select p.publication_date, p.id publication_id, (p.serialized_event::jsonb ->> $6)::uuid run_id,\n       (p.serialized_event::jsonb ->> $7)::bigint delay_ms\nfrom event_publication p\nwhere p.completion_date is null\n  and p.event_type = $8\n  and p.listener_id = $9\n  and p.serialized_event::jsonb ->> $10 <> $11\n  and greatest(p.publication_date, p.last_resubmission_date)\n      < clock_timestamp() - ($1 * interval $12)\n  and (cast($2 as uuid) is null or (p.publication_date, p.id) >\n      (cast($3 as timestamptz), cast($4 as uuid)))\norder by p.publication_date, p.id\nlimit $5"
+        },
+        {
+          "calls": 32,
+          "rows": 32,
+          "total_exec_time": 1.735526,
+          "query": "select completion_date, status from event_publication where id=$1"
+        },
+        {
+          "calls": 16,
+          "rows": 16,
+          "total_exec_time": 2.1884930000000002,
+          "query": "UPDATE EVENT_PUBLICATION SET STATUS = $3, COMPLETION_DATE = $1 WHERE ID = $2"
+        },
+        {
+          "calls": 16,
+          "rows": 16,
+          "total_exec_time": 0.7673540000000001,
+          "query": "UPDATE EVENT_PUBLICATION SET STATUS = $3, COMPLETION_ATTEMPTS = COMPLETION_ATTEMPTS + $4, LAST_RESUBMISSION_DATE = $1 WHERE ID = $2 AND STATUS != $5"
+        },
+        {
+          "calls": 10,
+          "rows": 10,
+          "total_exec_time": 46.476614,
+          "query": "select json_build_object(\n            $1,(select count(*) from forena_probe.probe_effect),\n            $2,(select count(*) from forena_probe.probe_attempt),\n            $3,(select count(distinct instance_id) from forena_probe.probe_attempt),\n            $4,(select coalesce(max(extract($5 from clock_timestamp()-publication_date)),$6)\n                from forena_probe.event_publication where completion_date is null\n                and publication_date < clock_timestamp() and listener_id != $7),\n            $8,(select count(*) from forena_probe.event_publication where completion_date is null\n                and publication_date < clock_timestamp() and listener_id != $9))"
+        },
+        {
+          "calls": 16,
+          "rows": 16,
+          "total_exec_time": 3.0018949999999993,
+          "query": "UPDATE EVENT_PUBLICATION SET STATUS = $2 WHERE ID = $1 AND STATUS != $3"
+        },
+        {
+          "calls": 16,
+          "rows": 16,
+          "total_exec_time": 0.723964,
+          "query": "select * from event_publication\n        where id=$1 and completion_date is null and status <> $2\n          and event_type = $3\n          and listener_id = $4"
+        }
+      ]
+    },
+    {
+      "instances": 2,
+      "delayMs": 0,
+      "events": 16,
+      "seconds": 2.7907497999985935,
+      "effectsPerSecond": 5.73322624622532,
+      "httpP95Ms": 398.5906800007797,
+      "httpMinMs": 55.93475000205217,
+      "httpMaxMs": 398.5906800007797,
+      "workerCalls": 12,
+      "initialState": {
+        "effects": 0,
+        "attempts": 0,
+        "attemptingJvms": 0,
+        "oldestPendingAgeSeconds": 300.576729,
+        "pending": 16
+      },
+      "state": {
+        "effects": 16,
+        "attempts": 16,
+        "attemptingJvms": 2,
+        "oldestPendingAgeSeconds": 0,
+        "pending": 0
+      },
+      "resources": {
+        "samples": 8,
+        "targetIntervalSeconds": 0.2,
+        "processCpuSeconds": [
+          0.46999999999999886,
+          1.9000000000000021
+        ],
+        "peakConnections": {
+          "jvm1": 2,
+          "jvm2": 2
+        },
+        "peakLockWaiters": 0,
+        "peakRssKiB": [
+          548484,
+          694912
+        ],
+        "processHighWaterKiB": [
+          548484,
+          694912
+        ]
+      },
+      "sqlStats": [
+        {
+          "calls": 12,
+          "rows": 24,
+          "total_exec_time": 450.3922750000001,
+          "query": "select p.publication_date, p.id publication_id, (p.serialized_event::jsonb ->> $6)::uuid run_id,\n       (p.serialized_event::jsonb ->> $7)::bigint delay_ms\nfrom event_publication p\nwhere p.completion_date is null\n  and p.event_type = $8\n  and p.listener_id = $9\n  and p.serialized_event::jsonb ->> $10 <> $11\n  and greatest(p.publication_date, p.last_resubmission_date)\n      < clock_timestamp() - ($1 * interval $12)\n  and (cast($2 as uuid) is null or (p.publication_date, p.id) >\n      (cast($3 as timestamptz), cast($4 as uuid)))\norder by p.publication_date, p.id\nlimit $5"
+        },
+        {
+          "calls": 32,
+          "rows": 32,
+          "total_exec_time": 1.8446660000000001,
+          "query": "select completion_date, status from event_publication where id=$1"
+        },
+        {
+          "calls": 16,
+          "rows": 16,
+          "total_exec_time": 1.8482020000000001,
+          "query": "UPDATE EVENT_PUBLICATION SET STATUS = $3, COMPLETION_DATE = $1 WHERE ID = $2"
+        },
+        {
+          "calls": 16,
+          "rows": 16,
+          "total_exec_time": 1.623662,
+          "query": "UPDATE EVENT_PUBLICATION SET STATUS = $3, COMPLETION_ATTEMPTS = COMPLETION_ATTEMPTS + $4, LAST_RESUBMISSION_DATE = $1 WHERE ID = $2 AND STATUS != $5"
+        },
+        {
+          "calls": 14,
+          "rows": 14,
+          "total_exec_time": 59.863522,
+          "query": "select json_build_object(\n            $1,(select count(*) from forena_probe.probe_effect),\n            $2,(select count(*) from forena_probe.probe_attempt),\n            $3,(select count(distinct instance_id) from forena_probe.probe_attempt),\n            $4,(select coalesce(max(extract($5 from clock_timestamp()-publication_date)),$6)\n                from forena_probe.event_publication where completion_date is null\n                and publication_date < clock_timestamp() and listener_id != $7),\n            $8,(select count(*) from forena_probe.event_publication where completion_date is null\n                and publication_date < clock_timestamp() and listener_id != $9))"
+        },
+        {
+          "calls": 16,
+          "rows": 16,
+          "total_exec_time": 1.9817860000000003,
+          "query": "UPDATE EVENT_PUBLICATION SET STATUS = $2 WHERE ID = $1 AND STATUS != $3"
+        },
+        {
+          "calls": 16,
+          "rows": 16,
+          "total_exec_time": 1.116852,
+          "query": "select * from event_publication\n        where id=$1 and completion_date is null and status <> $2\n          and event_type = $3\n          and listener_id = $4"
+        }
+      ]
+    },
+    {
+      "instances": 2,
+      "delayMs": 1500,
+      "events": 4,
+      "seconds": 3.8659676470051636,
+      "effectsPerSecond": 1.0346698072082074,
+      "httpP95Ms": 1738.8992170017445,
+      "httpMinMs": 34.68748600425897,
+      "httpMaxMs": 1738.8992170017445,
+      "workerCalls": 6,
+      "initialState": {
+        "effects": 0,
+        "attempts": 0,
+        "attemptingJvms": 0,
+        "oldestPendingAgeSeconds": 300.851346,
+        "pending": 4
+      },
+      "state": {
+        "effects": 4,
+        "attempts": 4,
+        "attemptingJvms": 2,
+        "oldestPendingAgeSeconds": 0,
+        "pending": 0
+      },
+      "resources": {
+        "samples": 12,
+        "targetIntervalSeconds": 0.2,
+        "processCpuSeconds": [
+          0.14000000000000057,
+          0.16000000000000014
+        ],
+        "peakConnections": {
+          "jvm1": 2,
+          "jvm2": 2
+        },
+        "peakLockWaiters": 0,
+        "peakRssKiB": [
+          549112,
+          695752
+        ],
+        "processHighWaterKiB": [
+          549112,
+          695752
+        ]
+      },
+      "sqlStats": [
+        {
+          "calls": 7,
+          "rows": 9,
+          "total_exec_time": 332.67231599999997,
+          "query": "select p.publication_date, p.id publication_id, (p.serialized_event::jsonb ->> $6)::uuid run_id,\n       (p.serialized_event::jsonb ->> $7)::bigint delay_ms\nfrom event_publication p\nwhere p.completion_date is null\n  and p.event_type = $8\n  and p.listener_id = $9\n  and p.serialized_event::jsonb ->> $10 <> $11\n  and greatest(p.publication_date, p.last_resubmission_date)\n      < clock_timestamp() - ($1 * interval $12)\n  and (cast($2 as uuid) is null or (p.publication_date, p.id) >\n      (cast($3 as timestamptz), cast($4 as uuid)))\norder by p.publication_date, p.id\nlimit $5"
+        },
+        {
+          "calls": 64,
+          "rows": 64,
+          "total_exec_time": 6.851961,
+          "query": "select completion_date, status from event_publication where id=$1"
+        },
+        {
+          "calls": 4,
+          "rows": 4,
+          "total_exec_time": 0.332928,
+          "query": "UPDATE EVENT_PUBLICATION SET STATUS = $3, COMPLETION_DATE = $1 WHERE ID = $2"
+        },
+        {
+          "calls": 4,
+          "rows": 4,
+          "total_exec_time": 0.46016500000000005,
+          "query": "UPDATE EVENT_PUBLICATION SET STATUS = $3, COMPLETION_ATTEMPTS = COMPLETION_ATTEMPTS + $4, LAST_RESUBMISSION_DATE = $1 WHERE ID = $2 AND STATUS != $5"
+        },
+        {
+          "calls": 8,
+          "rows": 8,
+          "total_exec_time": 35.259844,
+          "query": "select json_build_object(\n            $1,(select count(*) from forena_probe.probe_effect),\n            $2,(select count(*) from forena_probe.probe_attempt),\n            $3,(select count(distinct instance_id) from forena_probe.probe_attempt),\n            $4,(select coalesce(max(extract($5 from clock_timestamp()-publication_date)),$6)\n                from forena_probe.event_publication where completion_date is null\n                and publication_date < clock_timestamp() and listener_id != $7),\n            $8,(select count(*) from forena_probe.event_publication where completion_date is null\n                and publication_date < clock_timestamp() and listener_id != $9))"
+        },
+        {
+          "calls": 4,
+          "rows": 4,
+          "total_exec_time": 0.186178,
+          "query": "UPDATE EVENT_PUBLICATION SET STATUS = $2 WHERE ID = $1 AND STATUS != $3"
+        },
+        {
+          "calls": 4,
+          "rows": 4,
+          "total_exec_time": 0.144428,
+          "query": "select * from event_publication\n        where id=$1 and completion_date is null and status <> $2\n          and event_type = $3\n          and listener_id = $4"
+        }
+      ]
+    }
+  ],
+  "faults": [
+    {
+      "case": "blocked-registry-read",
+      "status": 500,
+      "ms": 2052.5011790014105,
+      "retry": {
+        "effects": 1,
+        "attempts": 1,
+        "attemptingJvms": 1,
+        "oldestPendingAgeSeconds": 0,
+        "pending": 0
+      }
+    },
+    {
+      "case": "eight-writers-one-locked-key",
+      "statuses": [
+        202,
+        500,
+        202,
+        202,
+        500,
+        500,
+        202,
+        500
+      ],
+      "httpP95Ms": 15399.810389004415,
+      "resources": {
+        "samples": 48,
+        "targetIntervalSeconds": 0.2,
+        "processCpuSeconds": [
+          1.1600000000000001,
+          0.00999999999999801
+        ],
+        "peakConnections": {
+          "jvm1": 4,
+          "jvm2": 2
+        },
+        "peakLockWaiters": 4,
+        "peakRssKiB": [
+          601344,
+          695768
+        ],
+        "processHighWaterKiB": [
+          601344,
+          695768
+        ]
+      },
+      "retry": {
+        "effects": 1,
+        "attempts": 1,
+        "attemptingJvms": 1,
+        "oldestPendingAgeSeconds": 0,
+        "pending": 0
+      }
+    },
+    {
+      "case": "listener-above-budget",
+      "status": 200,
+      "ms": 23.64894100173842,
+      "result": {
+        "selected": [],
+        "completed": [],
+        "unfinished": [],
+        "deferred": [
+          "982ac63c-3245-4bab-b800-ec47761e5841"
+        ],
+        "stopReason": "cycle-complete",
+        "examined": 1
+      }
+    }
+  ],
+  "jarSha256": "3acda171dfe3de839368163f68066e05549eb44ae702564d13f11e8244fa01e1",
+  "runtimeSourceSha256": {
+    "backend/src/main/kotlin/se/forena/probe/ProbeApplication.kt": "05d0061c80b51b0e0b72ba8995cbec29d9796e87be93b51d66edc9f15223d31f",
+    "backend/src/main/kotlin/se/forena/probe/ProbeSecurity.kt": "7330d870790219516ace8974ab23cca458e7d141fa514606089e847ada8c48bd",
+    "backend/src/main/kotlin/se/forena/probe/commands/ProbeCommands.kt": "d0e371568892243bf50ff36b624c4ebb0a533eb85fcef1d78057a6c7936af5be",
+    "backend/src/main/kotlin/se/forena/probe/commands/ProbeRequested.kt": "7489ad56598427aa3a47af4a507486e29288739b3ab79f77e2c5e1a3774a36d4",
+    "backend/src/main/kotlin/se/forena/probe/commands/internal/RunRepository.kt": "c24281ee8e6a6ecbd297f9b603ffb3d60e0940e4a1e04a4cd34cc2d09d6f0260",
+    "backend/src/main/kotlin/se/forena/probe/delivery/ProbeWorker.kt": "e75ba1d316e2780780b08b625b517ba059fa7665b4e94e226c05f22333422451",
+    "backend/src/main/kotlin/se/forena/probe/delivery/internal/BoundedResubmission.kt": "c817dd68de8eeeeca285df120c1e24ad6a30dde783e967f6861e95b07e1b90a7",
+    "backend/src/main/kotlin/se/forena/probe/delivery/internal/PendingPublications.kt": "17c77ab037e68b8dd9822b1d9a44a1d6023fe48089deefae29421d151426ea9a",
+    "backend/src/main/kotlin/se/forena/probe/delivery/internal/RegistryReadScope.kt": "558934e7699a77da35d50878533e62e37cbba045cd45ec09a352f7dcd3249b68",
+    "backend/src/main/kotlin/se/forena/probe/effects/EffectControl.kt": "aa4aae87d7d9c8c00f1effb01abbc8466c711839acdf791cff2286956570da1f",
+    "backend/src/main/kotlin/se/forena/probe/effects/internal/ProbeAttempts.kt": "bdf6b0d3375aa12c827cc965748217fa294bc563dc89379f7a5332de23f67a86",
+    "backend/src/main/kotlin/se/forena/probe/effects/internal/ProbeFaults.kt": "07e6f0686aa430d84bc57530d54ecb5dbf6e89f9a48f47918caba65ea94ff664",
+    "backend/src/main/kotlin/se/forena/probe/effects/internal/ProbeListener.kt": "7ec81b2eea11711f2a9f3254cbbf542f8f10a3c7de718a78e6825bee23158fa4",
+    "backend/src/main/kotlin/se/forena/probe/transport/ProbeController.kt": "c9ae0a571fc3425575e8740d9676e81abd895d522d91bb3c5bb6d01d1f8a4820",
+    "backend/src/main/kotlin/se/forena/probe/transport/WorkerController.kt": "973a070df639df902886d0588a4043510b7ab1c3b1e86cab8422f96183c783dd",
+    "backend/src/main/resources/application.properties": "e136037c4b07d654369947ed2ba8cfe5dec6e10799fa5172b873a1885e42d148",
+    "backend/src/main/resources/db/changelog.xml": "f9716373cad0ac3e0ea96b26f22c3de2242ab41af9510eb77231aacdacbc33d3",
+    "backend/src/main/resources/db/modulith-postgresql.sql": "4d9065e3cdb514eafdabbdc33682f48a62900d3a5a369b987737d693990031d4",
+    "backend/src/main/resources/db/probe.sql": "2814386a8baa72676b8d695dced187c2e1d361cafa65e2dfae1d3399df6837b5",
+    "backend/src/main/resources/static/index.html": "70b675c90cd908b0e424dc7737619a8ab9b66cba114ebf4be1a87d6315bfa490",
+    "backend/src/main/resources/static/probe.js": "7df5566d86a4f294e753a93bf75f83821c5487cea7caacb6aa69884a30f2ba89"
+  },
+  "checkedAtUtc": "2026-10-18T21:58:17Z"
+}

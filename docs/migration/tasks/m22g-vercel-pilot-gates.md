@@ -6,7 +6,7 @@ Beroenden: M22E för underlag, M22F för slutligt kapacitetsprov. Egen PR från 
 ## Bakgrund och relevanta filer
 
 Läs AGENTS.md, [M22E](../m22-load-cost-results.md), [kostnadsbilden](../m22-costs.md),
-ADR-009 i [besluten](../decisions.md), M22A–D:s rapporter och status.
+[M22F](../m22-recovery-results.md), ADR-009 i [besluten](../decisions.md), M22A–D:s rapporter och status.
 Filer: backend/Dockerfile.vercel, vercel.json, application.properties,
 ProbeWorker och delivery/internal, ProbeController, ProbeSecurity,
 scripts/probe/scheduler-*.sql och local-capacity.py.
@@ -49,3 +49,9 @@ Ingen produktionsaktivering, ny OAuth/WebAuthn-server eller databasflytt.
 Ingen publik last på ordinarie Förena. Ingen extern utskicksidempotens kan
 påstås bevisad av en unik databasrad. Nästa verksamhetsarbete är M02/M03/M04,
 svarstjänsten och M07; Cloud Run-alternativet kräver eget M08-prov vid ett nytt val.
+
+Google Cloud-kopplingar utvärderas inte här. Dokumentera först ett konkret hinder
+i Vercel/Supabase och ett nytt avgränsat uppdrag om alternativ behöver prövas.
+Använd M22F:s pool-/instansbudget och kör probe-003-worker-cursor som separat
+migration före ny runtime. Bevara Data API avstängt och Session pooler tills
+annat läge har kompatibilitetstestats.

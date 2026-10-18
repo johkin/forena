@@ -1,5 +1,10 @@
 # M22E: aktuell kostnadsbild med Supabase som databas
 
+Aktuell inriktning enligt ADR-009 (M22F): Vercel + Supabase. Google Cloud-
+kopplingar utvärderas först vid ett dokumenterat konkret hinder. Tidigare
+GCP-priser och lösningsförslag nedan är historiska alternativ, inte aktivt arbete.
+
+
 Kontrollerad 2026-10-18. USD/månad exklusive moms, växelkurs ej antagen.
 Budget för **en förening först**, enligt användarens besked. Detta ersätter
 M00:s overifierade Cloud SQL-scenario som aktiv jämförelse, ingen beställning.
@@ -167,3 +172,14 @@ Behåll Supabase Cron som huvudspår. Avgör Hobby-behörighet och önskad backu
 begränsningen i M22F och verifiera Vercel-/schedulergrindarna i M22G före pilot.
 Cloud Run är ett kvarvarande alternativ om beta-, skalnings- eller tillitskraven
 inte kan uppfyllas till rimlig kostnad. Inga abonnemang har uppgraderats här.
+
+## Uppföljning M22F
+
+[M22F](m22-recovery-results.md) ändrar gränsen från två starter per anrop till
+flera sidor om två, högst 64 starter/256 kandidater inom mjuk tidsbudget.
+Den tidigare uppskattningen 50 minuter per 100 gäller M22E:s gamla worker.
+Minutprovets belastning är syntetisk återtagning, inte 100 nya leveranser varje
+minut hela månaden. Kostnadsmodellen ovan har inte mätts om till en fakturaprognos;
+CPU för kösökning, kalla starter, fel och ytterligare återförsök måste följas i
+M22G. Inga priser, abonnemang eller kvoter har ändrats. Google Cloud-jämförelsen
+är historiskt underlag och föranleder ingen ny utvärdering utan konkret hinder.

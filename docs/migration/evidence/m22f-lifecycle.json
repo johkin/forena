@@ -1,0 +1,104 @@
+{
+  "kind": "local-only",
+  "base": "a3ff203",
+  "checkedAtUtc": "2026-10-18T21:56:57.125823+00:00",
+  "command": "JAVA_HOME=<pinned JDK> python3 scripts/probe/local-lifecycle.py --concurrent-recovery --scheduled-crash --registry-backlog 10000",
+  "jarSha256": "3acda171dfe3de839368163f68066e05549eb44ae702564d13f11e8244fa01e1",
+  "runtimeSourceSha256": {
+    "backend/src/main/kotlin/se/forena/probe/ProbeApplication.kt": "05d0061c80b51b0e0b72ba8995cbec29d9796e87be93b51d66edc9f15223d31f",
+    "backend/src/main/kotlin/se/forena/probe/ProbeSecurity.kt": "7330d870790219516ace8974ab23cca458e7d141fa514606089e847ada8c48bd",
+    "backend/src/main/kotlin/se/forena/probe/commands/ProbeCommands.kt": "d0e371568892243bf50ff36b624c4ebb0a533eb85fcef1d78057a6c7936af5be",
+    "backend/src/main/kotlin/se/forena/probe/commands/ProbeRequested.kt": "7489ad56598427aa3a47af4a507486e29288739b3ab79f77e2c5e1a3774a36d4",
+    "backend/src/main/kotlin/se/forena/probe/commands/internal/RunRepository.kt": "c24281ee8e6a6ecbd297f9b603ffb3d60e0940e4a1e04a4cd34cc2d09d6f0260",
+    "backend/src/main/kotlin/se/forena/probe/delivery/ProbeWorker.kt": "e75ba1d316e2780780b08b625b517ba059fa7665b4e94e226c05f22333422451",
+    "backend/src/main/kotlin/se/forena/probe/delivery/internal/BoundedResubmission.kt": "c817dd68de8eeeeca285df120c1e24ad6a30dde783e967f6861e95b07e1b90a7",
+    "backend/src/main/kotlin/se/forena/probe/delivery/internal/PendingPublications.kt": "17c77ab037e68b8dd9822b1d9a44a1d6023fe48089deefae29421d151426ea9a",
+    "backend/src/main/kotlin/se/forena/probe/delivery/internal/RegistryReadScope.kt": "558934e7699a77da35d50878533e62e37cbba045cd45ec09a352f7dcd3249b68",
+    "backend/src/main/kotlin/se/forena/probe/effects/EffectControl.kt": "aa4aae87d7d9c8c00f1effb01abbc8466c711839acdf791cff2286956570da1f",
+    "backend/src/main/kotlin/se/forena/probe/effects/internal/ProbeAttempts.kt": "bdf6b0d3375aa12c827cc965748217fa294bc563dc89379f7a5332de23f67a86",
+    "backend/src/main/kotlin/se/forena/probe/effects/internal/ProbeFaults.kt": "07e6f0686aa430d84bc57530d54ecb5dbf6e89f9a48f47918caba65ea94ff664",
+    "backend/src/main/kotlin/se/forena/probe/effects/internal/ProbeListener.kt": "7ec81b2eea11711f2a9f3254cbbf542f8f10a3c7de718a78e6825bee23158fa4",
+    "backend/src/main/kotlin/se/forena/probe/transport/ProbeController.kt": "c9ae0a571fc3425575e8740d9676e81abd895d522d91bb3c5bb6d01d1f8a4820",
+    "backend/src/main/kotlin/se/forena/probe/transport/WorkerController.kt": "973a070df639df902886d0588a4043510b7ab1c3b1e86cab8422f96183c783dd",
+    "backend/src/main/resources/application.properties": "e136037c4b07d654369947ed2ba8cfe5dec6e10799fa5172b873a1885e42d148",
+    "backend/src/main/resources/db/changelog.xml": "f9716373cad0ac3e0ea96b26f22c3de2242ab41af9510eb77231aacdacbc33d3",
+    "backend/src/main/resources/db/modulith-postgresql.sql": "4d9065e3cdb514eafdabbdc33682f48a62900d3a5a369b987737d693990031d4",
+    "backend/src/main/resources/db/probe.sql": "2814386a8baa72676b8d695dced187c2e1d361cafa65e2dfae1d3399df6837b5",
+    "backend/src/main/resources/static/index.html": "70b675c90cd908b0e424dc7737619a8ab9b66cba114ebf4be1a87d6315bfa490",
+    "backend/src/main/resources/static/probe.js": "7df5566d86a4f294e753a93bf75f83821c5487cea7caacb6aa69884a30f2ba89"
+  },
+  "observations": [
+    {
+      "postResponseCompleted": true,
+      "actualJvmExit": 137,
+      "restartedJvmCompleted": true,
+      "effectCountAfterReplay": 1
+    },
+    {
+      "workerCrashRecovery": [
+        {
+          "point": "BEFORE_EFFECT",
+          "id": "9ed5495f-34b4-46e0-bea4-1e0ef655a6a9",
+          "jvmExit": 137,
+          "effectsBeforeRecovery": 0,
+          "pendingBeforeRecovery": 1,
+          "effectsAfterRepeatedRecovery": 1,
+          "pendingAfterRecovery": 0,
+          "distinctJvms": 2
+        },
+        {
+          "point": "AFTER_EFFECT_COMMIT",
+          "id": "74a236a4-a890-4581-ac54-dc6c8cf6caaf",
+          "jvmExit": 137,
+          "effectsBeforeRecovery": 1,
+          "pendingBeforeRecovery": 1,
+          "effectsAfterRepeatedRecovery": 1,
+          "pendingAfterRecovery": 0,
+          "distinctJvms": 2
+        }
+      ]
+    },
+    {
+      "distinctJvms": 2,
+      "concurrentRecovery": [
+        {
+          "id": "b4c1eb69-abeb-45bb-a157-4207223478cc",
+          "responses": [
+            200,
+            200
+          ],
+          "effects": 1,
+          "pendingPublications": 0,
+          "attempts": 2,
+          "attemptingJvms": 1
+        },
+        {
+          "id": "f46104dc-0440-4819-a1c8-a3008f8a3b51",
+          "responses": [
+            200,
+            200
+          ],
+          "effects": 1,
+          "pendingPublications": 0,
+          "attempts": 2,
+          "attemptingJvms": 1
+        },
+        {
+          "id": "6fda0270-9f98-4df8-b855-bd675563a741",
+          "responses": [
+            200,
+            200
+          ],
+          "effects": 1,
+          "pendingPublications": 0,
+          "attempts": 2,
+          "attemptingJvms": 2
+        }
+      ]
+    },
+    {
+      "registryBacklog": 10000,
+      "untouchedAfterCrashesAndRaces": 10000
+    }
+  ]
+}

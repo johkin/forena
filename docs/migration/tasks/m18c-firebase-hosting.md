@@ -1,6 +1,9 @@
 # M18C: Driftsätt frontend på Firebase med kopplad backendversion
 
-Status: planerad. Beroenden: M08, M18B. Leverans: en avgränsad PR om inte nedan
+Vilande enligt ADR-009: utvärdera först vid dokumenterat konkret hinder i
+Vercel + Supabase. Följande är en historisk alternativbeskrivning.
+
+Status: vilande. Beroenden: M08, M18B. Leverans: en avgränsad PR om inte nedan
 anges att arbetet först ska delas. Alla PR-baser är aktuell `main`.
 
 ## Bakgrund och gemensamma beslut

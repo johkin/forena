@@ -165,8 +165,11 @@ inte köra workerendpointen.
 Spring-properties styr batch och mjuk tidsbudget: `probe.worker.batch-size=2`,
 `probe.worker.budget=PT120S`, `probe.worker.stale-after=PT120S` och
 `probe.worker.reserve=PT5S`. Testerna använder kortare tider. Arbetaren väljer
-högst batchstorleken, ignorerar färska försök/CRASH och väntar på Moduliths
-kvittens. För BLOCK är frisläppningen avsiktlig felinjektion i teknikprovet.
+flera batcher om två, upp till `probe.worker.max-publications=64` starter och
+`probe.worker.max-candidates=256` granskade poster per anrop. Den ignorerar
+färska försök/CRASH och väntar på Moduliths kvittens.
+`probe.worker.start-grace=PT5S` begränsar väntan på en enskild stillastående
+lyssnare utöver dess fördröjning och reserv. Totalbudgeten är mjuk. För BLOCK är frisläppningen avsiktlig felinjektion i teknikprovet.
 
 Kör endast i forena-kotlin:
 
@@ -318,3 +321,30 @@ dränering, RSS/CPU, låst registryläsning, poolmättnad och överbudgeterad ly
 [den daterade budgeten](../docs/migration/m22-costs.md).
 Se [resultat och begränsningar](../docs/migration/m22-load-cost-results.md).
 Supabase Cron kräver inte Vercel Pro; batch-/tillit-/pilotgrindar kvarstår.
+
+## Begränsad dränering och turordning (M22F)
+
+Kör Liquibase `probe-003-worker-cursor` separat **före** uppdaterad runtime.
+Den tillför en privat markörrad; äldre data/leveransstatus ändras inte.
+Markören sparas med revisionskontroll före varje kandidat. Processdöd kan skjuta
+upp ett försök tills nästa varv, men tar inte bort leveransposten. Även färska,
+för långa och felande poster passeras så att senare poster får en chans.
+`cycle-complete` betyder avslutat sökvarv, inte tom kö. Varvet börjar om först
+vid nästa anrop. Modulith äger fortfarande alla claims/statusövergångar;
+markören är läsprogress, ingen andra leveranskö. Samma JVM kör en worker åt gången;
+andra anrop får `worker-busy`. Olika JVM:er samordnar markören med CAS, och
+Modulith/idempotenta effekter skyddar leveranshanteringen.
+
+`examined` är ett additivt svarsfält; befintliga ID-listor kvarstår.
+`publication-limit`, `scan-limit`, `budget`, `cursor-contended` och `interrupted`
+förklarar övriga avslut. Kör lokalt efter Maven verify:
+
+```sh
+python3 scripts/probe/local-capacity.py --recovery-cadence --out /tmp/m22f.json
+```
+
+Det provar verklig minutkadens, missad första tick, 300 permanent överbudgeterade
+poster före 100 giltiga och 10 000 färska poster, växelvis i två JVM:er.
+`--quick` skalar bara tickintervallet till två sekunder för CI; det bevisar inte
+minutkadens. Se [resultat och begränsningar](../docs/migration/m22-recovery-results.md).
+Vercel + Supabase är riktningen; Google Cloud utvärderas först vid konkret hinder.

@@ -1,0 +1,185 @@
+{
+  "kind": "local-only",
+  "base": "a3ff203",
+  "queryPlans": [],
+  "delivery": [],
+  "faults": [],
+  "cadence": {
+    "tickSeconds": 60,
+    "realMinuteCadence": true,
+    "initialState": {
+      "pendingValid": 100,
+      "effects": 0,
+      "attempts": 0,
+      "oldestValidPendingAgeSeconds": 121.585848,
+      "oldestDeferredPendingAgeSeconds": 121.730515,
+      "deferredAttempts": 0
+    },
+    "events": 100,
+    "deferredPrefix": 300,
+    "freshBacklog": 10000,
+    "ticks": [
+      {
+        "tick": 0,
+        "missed": true,
+        "atSeconds": 0
+      },
+      {
+        "tick": 1,
+        "atSeconds": 60.000146793994645,
+        "jvm": 1,
+        "httpMs": 4310.770158001105,
+        "selected": 0,
+        "completed": 0,
+        "deferred": 256,
+        "examined": 256,
+        "stopReason": "scan-limit",
+        "state": {
+          "pendingValid": 100,
+          "effects": 0,
+          "attempts": 0,
+          "oldestValidPendingAgeSeconds": 185.920552,
+          "oldestDeferredPendingAgeSeconds": 186.064953,
+          "deferredAttempts": 0
+        }
+      },
+      {
+        "tick": 2,
+        "atSeconds": 120.000120314995,
+        "jvm": 2,
+        "httpMs": 8151.762970999698,
+        "selected": 55,
+        "completed": 55,
+        "deferred": 44,
+        "examined": 99,
+        "stopReason": "budget",
+        "state": {
+          "pendingValid": 45,
+          "effects": 55,
+          "attempts": 55,
+          "oldestValidPendingAgeSeconds": 249.743507,
+          "oldestDeferredPendingAgeSeconds": 249.889713,
+          "deferredAttempts": 0
+        }
+      },
+      {
+        "tick": 3,
+        "atSeconds": 180.00019159400108,
+        "jvm": 1,
+        "httpMs": 5771.447484999953,
+        "selected": 45,
+        "completed": 45,
+        "deferred": 0,
+        "examined": 45,
+        "stopReason": "cycle-complete",
+        "state": {
+          "pendingValid": 0,
+          "effects": 100,
+          "attempts": 100,
+          "oldestValidPendingAgeSeconds": 0,
+          "oldestDeferredPendingAgeSeconds": 307.50284,
+          "deferredAttempts": 0
+        }
+      }
+    ],
+    "secondsToComplete": 186.0267383190003,
+    "resources": {
+      "samples": 600,
+      "targetIntervalSeconds": 0.2,
+      "processCpuSeconds": [
+        3.789999999999999,
+        3.789999999999999
+      ],
+      "peakConnections": {
+        "jvm1": 2,
+        "jvm2": 3
+      },
+      "peakLockWaiters": 0,
+      "peakRssKiB": [
+        717548,
+        703292
+      ],
+      "processHighWaterKiB": [
+        717548,
+        703292
+      ]
+    },
+    "state": {
+      "pendingValid": 0,
+      "effects": 100,
+      "attempts": 100,
+      "oldestValidPendingAgeSeconds": 0,
+      "oldestDeferredPendingAgeSeconds": 307.767883,
+      "deferredAttempts": 0
+    },
+    "sqlStats": [
+      {
+        "calls": 202,
+        "rows": 401,
+        "total_exec_time": 4911.260058000001,
+        "query": "select p.publication_date, p.id publication_id, (p.serialized_event::jsonb ->> $6)::uuid run_id,\n       (p.serialized_event::jsonb ->> $7)::bigint delay_ms\nfrom event_publication p\nwhere p.completion_date is null\n  and p.event_type = $8\n  and p.listener_id = $9\n  and p.serialized_event::jsonb ->> $10 <> $11\n  and greatest(p.publication_date, p.last_resubmission_date)\n      < clock_timestamp() - ($1 * interval $12)\n  and (cast($2 as uuid) is null or (p.publication_date, p.id) >\n      (cast($3 as timestamptz), cast($4 as uuid)))\norder by p.publication_date, p.id\nlimit $5"
+      },
+      {
+        "calls": 200,
+        "rows": 200,
+        "total_exec_time": 10.669587000000002,
+        "query": "select completion_date, status from event_publication where id=$1"
+      },
+      {
+        "calls": 8,
+        "rows": 8,
+        "total_exec_time": 262.682118,
+        "query": "select json_build_object(\n                            $1,(select count(*) from forena_probe.event_publication\n                                where completion_date is null and publication_date<clock_timestamp()\n                                and serialized_event::jsonb->>$2=$3),\n                            $4,(select count(*) from forena_probe.probe_effect),\n                            $5,(select count(*) from forena_probe.probe_attempt),\n                            $6,(select coalesce(max(extract($7 from clock_timestamp()-publication_date)),$8)\n                                from forena_probe.event_publication where completion_date is null\n                                and publication_date<clock_timestamp() and serialized_event::jsonb->>$9=$10),\n                            $11,(select coalesce(max(extract($12 from clock_timestamp()-publication_date)),$13)\n                                from forena_probe.event_publication where completion_date is null\n                                and serialized_event::jsonb->>$14=$15),\n                            $16,(select count(*) from forena_probe.probe_attempt a\n                                join forena_probe.probe_run r on r.id=a.run_id where r.delay_ms=$17))"
+      },
+      {
+        "calls": 100,
+        "rows": 100,
+        "total_exec_time": 9.880650999999997,
+        "query": "UPDATE EVENT_PUBLICATION SET STATUS = $3, COMPLETION_DATE = $1 WHERE ID = $2"
+      },
+      {
+        "calls": 100,
+        "rows": 100,
+        "total_exec_time": 7.505867999999998,
+        "query": "UPDATE EVENT_PUBLICATION SET STATUS = $3, COMPLETION_ATTEMPTS = COMPLETION_ATTEMPTS + $4, LAST_RESUBMISSION_DATE = $1 WHERE ID = $2 AND STATUS != $5"
+      },
+      {
+        "calls": 100,
+        "rows": 100,
+        "total_exec_time": 7.482974999999999,
+        "query": "UPDATE EVENT_PUBLICATION SET STATUS = $2 WHERE ID = $1 AND STATUS != $3"
+      },
+      {
+        "calls": 100,
+        "rows": 100,
+        "total_exec_time": 4.148078000000001,
+        "query": "select * from event_publication\n        where id=$1 and completion_date is null and status <> $2\n          and event_type = $3\n          and listener_id = $4"
+      }
+    ]
+  },
+  "jarSha256": "3acda171dfe3de839368163f68066e05549eb44ae702564d13f11e8244fa01e1",
+  "runtimeSourceSha256": {
+    "backend/src/main/kotlin/se/forena/probe/ProbeApplication.kt": "05d0061c80b51b0e0b72ba8995cbec29d9796e87be93b51d66edc9f15223d31f",
+    "backend/src/main/kotlin/se/forena/probe/ProbeSecurity.kt": "7330d870790219516ace8974ab23cca458e7d141fa514606089e847ada8c48bd",
+    "backend/src/main/kotlin/se/forena/probe/commands/ProbeCommands.kt": "d0e371568892243bf50ff36b624c4ebb0a533eb85fcef1d78057a6c7936af5be",
+    "backend/src/main/kotlin/se/forena/probe/commands/ProbeRequested.kt": "7489ad56598427aa3a47af4a507486e29288739b3ab79f77e2c5e1a3774a36d4",
+    "backend/src/main/kotlin/se/forena/probe/commands/internal/RunRepository.kt": "c24281ee8e6a6ecbd297f9b603ffb3d60e0940e4a1e04a4cd34cc2d09d6f0260",
+    "backend/src/main/kotlin/se/forena/probe/delivery/ProbeWorker.kt": "e75ba1d316e2780780b08b625b517ba059fa7665b4e94e226c05f22333422451",
+    "backend/src/main/kotlin/se/forena/probe/delivery/internal/BoundedResubmission.kt": "c817dd68de8eeeeca285df120c1e24ad6a30dde783e967f6861e95b07e1b90a7",
+    "backend/src/main/kotlin/se/forena/probe/delivery/internal/PendingPublications.kt": "17c77ab037e68b8dd9822b1d9a44a1d6023fe48089deefae29421d151426ea9a",
+    "backend/src/main/kotlin/se/forena/probe/delivery/internal/RegistryReadScope.kt": "558934e7699a77da35d50878533e62e37cbba045cd45ec09a352f7dcd3249b68",
+    "backend/src/main/kotlin/se/forena/probe/effects/EffectControl.kt": "aa4aae87d7d9c8c00f1effb01abbc8466c711839acdf791cff2286956570da1f",
+    "backend/src/main/kotlin/se/forena/probe/effects/internal/ProbeAttempts.kt": "bdf6b0d3375aa12c827cc965748217fa294bc563dc89379f7a5332de23f67a86",
+    "backend/src/main/kotlin/se/forena/probe/effects/internal/ProbeFaults.kt": "07e6f0686aa430d84bc57530d54ecb5dbf6e89f9a48f47918caba65ea94ff664",
+    "backend/src/main/kotlin/se/forena/probe/effects/internal/ProbeListener.kt": "7ec81b2eea11711f2a9f3254cbbf542f8f10a3c7de718a78e6825bee23158fa4",
+    "backend/src/main/kotlin/se/forena/probe/transport/ProbeController.kt": "c9ae0a571fc3425575e8740d9676e81abd895d522d91bb3c5bb6d01d1f8a4820",
+    "backend/src/main/kotlin/se/forena/probe/transport/WorkerController.kt": "973a070df639df902886d0588a4043510b7ab1c3b1e86cab8422f96183c783dd",
+    "backend/src/main/resources/application.properties": "e136037c4b07d654369947ed2ba8cfe5dec6e10799fa5172b873a1885e42d148",
+    "backend/src/main/resources/db/changelog.xml": "f9716373cad0ac3e0ea96b26f22c3de2242ab41af9510eb77231aacdacbc33d3",
+    "backend/src/main/resources/db/modulith-postgresql.sql": "4d9065e3cdb514eafdabbdc33682f48a62900d3a5a369b987737d693990031d4",
+    "backend/src/main/resources/db/probe.sql": "2814386a8baa72676b8d695dced187c2e1d361cafa65e2dfae1d3399df6837b5",
+    "backend/src/main/resources/static/index.html": "70b675c90cd908b0e424dc7737619a8ab9b66cba114ebf4be1a87d6315bfa490",
+    "backend/src/main/resources/static/probe.js": "7df5566d86a4f294e753a93bf75f83821c5487cea7caacb6aa69884a30f2ba89"
+  },
+  "checkedAtUtc": "2026-10-18T22:02:10Z"
+}

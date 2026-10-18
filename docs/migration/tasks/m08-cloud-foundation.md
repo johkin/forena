@@ -1,6 +1,9 @@
 # M08: Provisionera isolerad testdrift och releasegrund
 
-Status: planerad. Beroenden: M01, M02. Leverans: en avgränsad PR om inte nedan
+Status: vilande enligt ADR-009; får utvärderas först efter dokumenterat konkret
+hinder i Vercel + Supabase. Inte ett beroende för aktiva verksamhetsuppgifter.
+Följande är historisk alternativbeskrivning, inte beställd implementation.
+Beroenden: M01, M02. Leverans: en avgränsad PR om inte nedan
 anges att arbetet först ska delas. Alla PR-baser är aktuell `main`.
 
 ## Bakgrund och gemensamma beslut

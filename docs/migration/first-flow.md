@@ -1,5 +1,10 @@
 # Första kompletta flödet: besvara en kallelse
 
+Aktuell inriktning enligt ADR-009 (M22F): Vercel + Supabase. Google Cloud-
+kopplingar utvärderas först vid ett dokumenterat konkret hinder. Tidigare
+GCP-priser och lösningsförslag nedan är historiska alternativ, inte aktivt arbete.
+
+
 Status: föreslaget första verksamhetsflöde, inte implementerat.
 Beroenden: M01–M07 enligt [uppgifterna](tasks/README.md).
 Beslut: [ADR-003–007](decisions.md). Säkerhetsbas:
