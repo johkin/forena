@@ -1,6 +1,6 @@
 # M12: Bygg och repetera Supabase till Cloud SQL-dataflytt
 
-Status: planerad. Beroenden: M02, M04, M08. Leverans: en avgränsad PR om inte nedan
+Status: vilande alternativ enligt ADR-008; ingår inte i aktiva backendmigreringen. Beroenden: M02, M04, M08. Leverans: en avgränsad PR om inte nedan
 anges att arbetet först ska delas. Alla PR-baser är aktuell `main`.
 
 ## Bakgrund och gemensamma beslut

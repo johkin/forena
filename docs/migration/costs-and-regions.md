@@ -5,7 +5,21 @@ Alla belopp är **USD per månad exklusive moms**. Ingen provisionering eller
 åtkomst till produktionskonton har utförts. Faktisk trafik, avtal, fakturor,
 kvoter och regionala SKU-priser har inte hämtats.
 
-## Rekommendation och avgränsning
+## Aktuell inriktning: Supabase PostgreSQL
+
+Enligt ADR-008 behålls Supabase som värd för både verksamhetsdatabas och Auth.
+Cloud SQL-tabellerna nedan är kvar som **jämförelsescenario**, inte aktuell
+beställningsbudget. Cloud SQL-beräkning och SQL-disk/backup ska inte ingå i
+huvudalternativet. Supabaseposten måste i stället dimensioneras för både
+verksamhetsdata och Auth, inklusive rätt compute, backup/PITR och nättrafik.
+
+Ingen ny verifierad totalsumma finns för detta alternativ. Det går inte att
+bara subtrahera Cloud SQL från tidigare summa och anta att Supabaseposten är
+oförändrad. Nästa kostnadsunderlag ska använda faktisk Supabaseplan och
+resursanvändning, Cloud Run-region nära databasregionen samt trafik mellan
+leverantörerna. Separata testprojekt och kontrollerade utskick kvarstår.
+
+## Tidigare Cloud SQL-scenario och avgränsning
 
 Planera Cloud Run för webbapp/API och arbetare, Cloud SQL PostgreSQL för
 verksamhetsdata, Cloud Storage för filer och Firebase Hosting med CDN för

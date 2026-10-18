@@ -17,8 +17,8 @@ M00 är denna inventerings- och planeringsleverans.
 | [M09](m09-activities.md) | Flytta skapa och ändra en enskild aktivitet | M07 |
 | [M10](m10-notifications.md) | Flytta en kallelseleverans med kontrollerad e-post | M06, M08, M09 |
 | [M11](m11-duties.md) | Flytta bokning av en arbetspassplats | M07 |
-| [M12](m12-data-transfer.md) | Bygg och repetera Supabase till Cloud SQL-dataflytt | M02, M04, M08 |
-| [M13](m13-cutover.md) | Genomför kontrollerad Cloud SQL-pilot och återställningsövning | M12, M07, M09, M10, M11, M14, M15A, M15B, M16 |
+| [M12](m12-data-transfer.md) | Vilande alternativ: Supabase till Cloud SQL-dataflytt | M02, M04, M08 |
+| [M13](m13-cutover.md) | Genomför kontrollerad backendpilot på Supabase PostgreSQL | M07, M09, M10, M11, M14, M15A, M15B, M16 |
 | [M14](m14-telegram.md) | Flytta Telegrams verifierade koppling och kallelsesvar | M07, M08 |
 | [M15A](m15a-web-push.md) | Flytta Web Push-prenumeration och leverans | M07, M08, M10 |
 | [M15B](m15b-whatsapp.md) | Flytta WhatsApps koppling, leverans och kallelsesvar | M07, M08, M10 |
@@ -28,6 +28,10 @@ M00 är denna inventerings- och planeringsleverans.
 | [M18B](m18b-vite.md) | Implementera Vite och vald publik renderingsstrategi | M13, M17, M18A |
 | [M18C](m18c-firebase-hosting.md) | Driftsätt frontend på Firebase med kopplad backendversion | M08, M18B |
 | [M19](m19-retire-legacy.md) | Avveckla gamla resurser efter verifierad täckning | M13, M18C |
+| [M20](m20-portable-postgres.md) | Verifiera portabel verksamhetsdatabas på Supabase PostgreSQL | M04, M07, M13 |
+
+M12 är vilande enligt ADR-008. M13 flyttar backendansvar på samma databas;
+Cloud SQL är inte ett beroende för M18B eller annan aktiv uppgift.
 
 M04 och M17 kan undersökas parallellt med M01; M03 och M02 efter M01.
 M08 kan förberedas parallellt med första flödet. M06 är ett eget leveransprov.

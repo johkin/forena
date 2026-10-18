@@ -3,6 +3,40 @@
 Status anger målbeslut för kommande implementation, inte redan införd teknik.
 Källkodsverifierat nuläge finns i [inventeringen](inventory.md).
 
+## ADR-008: Behåll Supabase PostgreSQL — aktuell planeringsinriktning
+
+Efter diskussion om Cloud SQL:s grundkostnad planeras backendmigreringen med
+Supabase som fortsatt databasvärd. Detta ersätter kravet på Cloud SQL som nästa
+mål i ADR-003/007 och tidigare kostnadsscenarier. Cloud SQL-dataflytt M12 är
+vilande och kräver ett nytt uttryckligt behovs- och kostnadsbeslut.
+
+”Ren PostgreSQL” betyder att verksamhetskoden använder JDBC/SQL, vanliga
+constraints/transaktioner och Liquibase för de objekt den äger. Det betyder
+inte att Supabases Auth-schema ska tas över eller att alla befintliga triggers
+ska raderas. Auth fortsätter via Supabases inbyggda API:er. Databasens nuvarande
+RLS, auth.uid(), auth.users-kopplingar, RPC:er och cron måste översättas och
+testas före avveckling. M05:s övergång behåller skydden; M20 verifierar den
+slutliga verksamhetsmodellens portabilitet mot vanlig PostgreSQL.
+
+M02 använder separata applikationsscheman och klart migreringsägarskap; Supabase
+äger auth/storage och befintliga objekt har kvar sin migrationsägare tills en
+uttrycklig överlämning skett. Backendkontot får inte ha superuser/BYPASSRLS.
+Kontoidentitet verifieras med JWT, familj/lag/klubb/roller i applikationstjänsten.
+RLS kan fortsatt vara extra skydd, utan att affärsregler kräver Supabasefunktioner.
+
+M08 ska verifiera TLS/certifikat, stödd anslutningsväg och JDBC-poolning från
+Cloud Run, regionavstånd, IP-/IPv6-behov, anslutningsgränser och trafikavgifter.
+Välj direktanslutning eller pooler utifrån faktisk kompatibilitet med
+transaktioner, prepared statements och transaktionslokal kontext; anta inte att
+alla poolerlägen passar. Poolstorlek × maxinstanser måste rymmas i databasens
+anslutningsbudget. Inget kostnadspåstående ersätter dessa prov.
+
+Supabase har också en löpande kostnad och Auth-projektet måste behållas.
+Tidigare Cloud SQL-budget är nu ett jämförelsescenario. Faktisk Supabaseplan,
+projekt/compute, backup/PITR, trafik och region behöver verifieras innan vi
+påstår en besparing. Ingen produktion har ändrats genom detta planeringsbeslut.
+
+
 ## ADR-001: Verktygskedja och repo — fastställt
 
 Spring Boot **4.1.0**, Kotlin **2.4.20**, Java **26**. Bygg och kör med JDK 26.

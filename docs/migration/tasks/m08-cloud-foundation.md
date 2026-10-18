@@ -20,7 +20,7 @@ nödvändigtvis innan beroendena är genomförda. Sökvägarna utgår från repo
 
 ## Ingår
 
-Inför Terraform för ett testprojekt med Cloud Run, Cloud SQL, Storage, Secret Manager, Artifact Registry, Logging/Monitoring och vid behov Scheduler/PubSub. Remote state med minsta åtkomst och låsning; hemligheter via referenser, undvik klartext i plan/state/logg. GitHub WIF/OIDC med repo/ref/environment-villkor och tjänstekonton. Välj region efter verifierat Hosting-rewrite-stöd.
+Inför Terraform för ett testprojekt med Cloud Run, Storage, Secret Manager, Artifact Registry, Logging/Monitoring och vid behov Scheduler/PubSub. Remote state med minsta åtkomst och låsning; hemligheter via referenser, undvik klartext i plan/state/logg. GitHub WIF/OIDC med repo/ref/environment-villkor och tjänstekonton. Välj region efter verifierat Hosting-rewrite-stöd och närhet till Supabase-databasen. Verifiera Cloud Run → Supabase med TLS, JDBC/poolerläge, anslutningsbudget, IP/IPv6, återanslutning och mätbar latens/egress. Supabase-testprojektet ska ha isolerade data och hemligheter.
 
 ## Acceptanskriterier
 
@@ -32,7 +32,7 @@ terraform fmt/validate/plan, IAM-negativtest, JDK/version i körande container, 
 
 ## Lämnas till senare
 
-Ingen produktionscutover, ingen delad databas för previews och inga långlivade GCP-nycklar. Om omfattningen växer bryt ut IAM/nät och runtime till två efterföljande PR:er.
+Ingen Cloud SQL-provisionering eller produktionscutover, ingen delad databas för previews och inga långlivade GCP-nycklar. Om omfattningen växer bryt ut IAM/nät och runtime till två efterföljande PR:er.
 
 ## Avslut och överlämning
 

@@ -103,7 +103,7 @@ Ingen automatisk skrivfallback efter timeout: resultatet kan redan vara sparat.
 Återgång före dataflytt växlar implementation men behåller samma databas och
 kontrakt. Kvittera pågående anrop och kontrollera sidoeffekter vid växling.
 
-M12/M13 flyttar data först när samtliga skrivare till klubbens sammanhängande
+M12 är nu ett vilande Cloud SQL-alternativ enligt ADR-008; M13 flyttar backendansvar på samma databas. Om separat dataflytt senare beslutas får den ske först när samtliga skrivare till klubbens sammanhängande
 data kan stängas av eller ledas till målbackend: aktiviteter, svar, närvaro,
 pass, kanalwebhooks, RPC:er, workers och direkt PostgREST från gamla flikar.
 Delade identiteter och kataloger behöver separat mappning. Det räcker inte att

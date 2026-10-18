@@ -20,7 +20,7 @@ nödvändigtvis innan beroendena är genomförda. Sökvägarna utgår från repo
 
 ## Ingår
 
-Stäm av samtliga funktioner/integrationer mot tester och ägarskap; avsluta alla följduppgifter. Stoppa gamla deploytriggers, Edge Functions, domändatabasjobb och gamla verksamhetsgrants stegvis. Behåll Supabase Auth och nödvändiga inställningar. Rotera uttjänta hemligheter enligt driftens rutin och fastställ backup/retention.
+Stäm av samtliga funktioner/integrationer mot tester och ägarskap; avsluta alla följduppgifter. Stoppa gamla deploytriggers, Edge Functions, domändatabasjobb och gamla verksamhetsgrants stegvis. Behåll Supabase PostgreSQL, Auth och nödvändiga inställningar enligt ADR-008; avvecklingen gäller ersatta app-/workergränssnitt, inte databasvärden. Rotera uttjänta hemligheter enligt driftens rutin och fastställ backup/retention.
 
 ## Acceptanskriterier
 
@@ -32,7 +32,7 @@ Logg-/trafikmätning med dataminimering, återställningstest och regression fö
 
 ## Lämnas till senare
 
-Ingen borttagning av Supabase Auth eller historik som omfattas av retentionkrav. Irreversibel resursradering sker först som separat konkret releaseåtgärd.
+Ingen borttagning av Supabase PostgreSQL eller Auth eller historik som omfattas av retentionkrav. Irreversibel resursradering sker först som separat konkret releaseåtgärd.
 
 ## Avslut och överlämning
 

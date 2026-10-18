@@ -43,14 +43,30 @@ verktygskedjeprov (endast temporär katalog) och kostnads-/regionunderlag (egen
 fil). De var underuppdrag till denna leverans, inte egna GitHub Issues eller
 långlivade migreringsbrancher. Övriga uppgifter är dokumenterade, inte delegerade.
 
+## Reviderad databasriktning
+
+Planerings-PR: [#97](https://github.com/johkin/forena/pull/97), fortfarande utkast.
+Supabase PostgreSQL behålls enligt ADR-008. Cloud SQL är ett senare alternativ,
+inte ett beroende för backend eller frontend. Befintlig säkerhet behålls tills
+motsvarande backendregler är testade. M20 ger separat verifiering av portabilitet.
+Inga databaser har ändrats eller provisionerats; inga nya prisuppgifter verifierats.
+Tidigare budget och M00:s kontrollantal avser första planversionen.
+Den reviderade planens 209 lokala länkar, 23 uppgiftsbeskrivningar och
+beroendegraf har kontrollerats; Cloud SQL-uppgiften blockerar inte backendpiloten.
+Inga apptester kördes lokalt för denna rena textändring.
+
+M01 startas som egen branch från aktuell main efter att planunderlaget mergats,
+i enlighet med AGENTS.md; inga beroende PR:er staplas på planeringsbranchen.
+Versionsprovet är klart men Maven Wrapper, container och CI återstår att införa.
+
 ## Nästa ordning
 
 1. M01: grundprojekt med låsta versioner, Maven Wrapper, container och CI samt
    struktur-/modultester. Isolerat prov finns; repots bygge är ännu inte infört.
 2. M04 och M17 kan inventeras oberoende. M02 och M03 följer M01.
 3. M05/M06 förbereder första svarflödet. M07 flyttar hela flödet genom ny backend.
-4. M08 förbereder isolerad molntestdrift parallellt. Ingen skarp Cloud SQL-
-   växling innan M12/M13 och alla pilotens beroenden är verifierade.
+4. M08 förbereder Cloud Run med verifierad anslutning till Supabase PostgreSQL.
+   M13 är backendpilot på samma databas. M12:s Cloud SQL-flytt är vilande.
 
 Övriga uppgifter i indexet är planerade. Ingen är markerad implementerad.
 M15A/M15B separerar kanalerna och M18A/M18B/M18C separerar katalogflytt, Vite och hosting. Fler självständiga
@@ -61,13 +77,13 @@ uppgifter krävs för kvarvarande verksamhetsflöden innan pilotens cutover-grin
 | Fråga | När krävs svaret? | Nuvarande hantering |
 | --- | --- | --- |
 | Region och same-origin-stöd | M08 innan Terraform-plan låses | europe-west1 kandidat, europe-north2 alternativ; båda kräver verifiering |
-| SLO, RPO, RTO och SQL HA | Före produktionsbudget/provisionering | HA-budget reserveras; ingen tillgänglighetsnivå påstås |
+| SLO, RPO, RTO och backup/PITR | Före produktionsbudget/aktivering | Verifiera stöd och pris i vald Supabaseplan; Cloud SQL HA är endast jämförelse |
 | Faktisk signeringsnyckel, audience/scopes, kontorevokering | M03 före auth-aktivering | Enbart teststub verifierad hittills |
 | Befintlig domän/RP-ID och preview-origins | Före domän-/hostingbyte | Behåll befintlig identitetsleverantör och ändra inte RP-ID utan plan |
 | Auth passkeys/OAuth Terraform-stöd | Före automatisering av dessa fält | Låst providerkälla granskad; faktisk publicerad release/API-roundtrip återstår |
 | SSR/förgenerering och publik datafärskhet | M17 före Vite | Next.js kvar tills beslut och prov |
 | Tillåten livslängd för äldre frontend/API | Före brytande API-ändring | Additiva kontrakt och kompatibilitetsadapter under övergången |
-| Pilotklubb och datafrysningsfönster | M13 efter testrepetition | Ingen produktionspilot vald eller bokad |
+| Pilotklubb och routingfönster | M13 efter testrepetition | Ingen produktionspilot vald eller bokad |
 
 ## Mall vid nästa avslut
 

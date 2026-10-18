@@ -5,7 +5,7 @@ anges att arbetet först ska delas. Alla PR-baser är aktuell `main`.
 
 ## Bakgrund och gemensamma beslut
 
-Målens schema ska vara självständigt från Supabase auth-schemat. JDBC och explicita transaktioner är valt i ADR-003.
+Backendens egna verksamhetsscheman i Supabase PostgreSQL ska kunna köras på vanlig PostgreSQL utan Supabase auth-schema (ADR-008). JDBC och explicita transaktioner är valt i ADR-003.
 
 Läs [repoinstruktionerna](../../../AGENTS.md), [planen](../README.md),
 [nuläget](../inventory.md), [besluten](../decisions.md),
@@ -20,7 +20,7 @@ nödvändigtvis innan beroendena är genomförda. Sökvägarna utgår från repo
 
 ## Ingår
 
-Inför Liquibase och Testcontainers/PostgreSQL17. Separera migrerings- och runtimekonton och stäng av automatisk produktionsmigrering vid appstart. Lägg ett minimalt verkligt schema för backendens versions-/identitetsgrund, utan att kopiera hela verksamheten.
+Inför Liquibase och Testcontainers/PostgreSQL17. Dokumentera schemaägarskap i Supabase: auth/storage förblir leverantörens; befintliga objekt överlåts inte implicit. Separera migrerings- och runtimekonton och stäng av automatisk produktionsmigrering vid appstart. Lägg ett minimalt verkligt schema för backendens versions-/identitetsgrund, utan att kopiera hela verksamheten.
 
 ## Acceptanskriterier
 

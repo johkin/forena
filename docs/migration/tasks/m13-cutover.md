@@ -1,6 +1,6 @@
-# M13: Genomför kontrollerad Cloud SQL-pilot och återställningsövning
+# M13: Genomför kontrollerad backendpilot på Supabase PostgreSQL
 
-Status: planerad. Beroenden: M12, M07, M09, M10, M11, M14, M15A, M15B, M16. Leverans: en avgränsad PR om inte nedan
+Status: planerad. Beroenden: M07, M09, M10, M11, M14, M15A, M15B, M16. Leverans: en avgränsad PR om inte nedan
 anges att arbetet först ska delas. Alla PR-baser är aktuell `main`.
 
 ## Bakgrund och gemensamma beslut
@@ -20,11 +20,11 @@ nödvändigtvis innan beroendena är genomförda. Sökvägarna utgår från repo
 
 ## Ingår
 
-Gör komplett läsar-/skrivarregister för pilotklubben inklusive närvaro, serier/import, medlemskap/admin, disciplinjobb, push och direkt PostgREST. Bryt ut och slutför varje saknad flytt som egen PR före cutover. Frys, dränera, importera, validera och växla exakt en källa. Stäng gamla skrivvägar även för äldre flikar och schemaläggare.
+Gör komplett läsar-/skrivarregister för pilotklubben inklusive närvaro, serier/import, medlemskap/admin, disciplinjobb, push och direkt PostgREST. Bryt ut och slutför varje saknad flytt som egen PR före cutover. Behåll samma Supabase-databas. Dränera pågående anrop och växla respektive skrivkommando till en backendimplementation. Stäng ersatta gamla skrivvägar även för äldre flikar och schemaläggare; inga speglade skrivningar och ingen fallback efter osäkert skrivresultat.
 
 ## Acceptanskriterier
 
-Noll kvarvarande källskrivare för flyttade data, rätt auth-UUID och tenantisolering, komplett svarflöde på Cloud SQL, inga dubbla utskick. Backup/PITR och återställning övad. Efter första målskrivning fungerar testad återföring eller dokumenterad framåträttning.
+Inga ersatta gamla skrivvägar kan kringgå Kotlin-tjänsterna. Rätt auth-UUID och tenantisolering, komplett svarflöde på Supabase PostgreSQL, inga dubbla utskick. Backup/återställning är övad och tillgängligt PITR-stöd verifierat för vald plan. Routingrollback behåller samma databas och kan inte återaktivera en osäker gammal skrivväg.
 
 ## Verifiering
 
