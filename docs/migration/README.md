@@ -14,8 +14,10 @@ befintliga Supabase-beroenden ersätts stegvis med bevarad säkerhet.
 Se ADR-008 i [besluten](decisions.md). Ingen databasflytt eller ny databasinstans
 ska beställas inom nästa implementationssteg.
 
-PR #97 är mergad. Nästa leverans är M21:s isolerade Vercel-teknikprov
-(se ADR-009), som verifierar delar av M01/M02/M06 innan hostingvalet låses. Därefter följer
+PR #97–99 är mergade. M21/M22 har verifierat isolerade Vercel-prov och
+[M22A](m22-scheduler-results.md) dokumenterar verklig Supabase Cron-väckning.
+ADR-009 lämnar hostingvalet öppet tills säkerhets-, registry-, last- och
+kostnadsgränserna är hanterade. Teknikproven verifierar delar av M01/M02/M06. Därefter följer
 M02/M03/M04, svarstjänsten och M07:s kompletta kallelsesvar. M08 verifierar
 Cloud Run → Supabase innan drift aktiveras. M20 tar bort kvarvarande
 Supabase-specifika verksamhetsberoenden när motsvarande flöden har flyttats.

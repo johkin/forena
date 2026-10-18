@@ -1,0 +1,175 @@
+{
+  "deploymentId": "dpl_6zg9xpfoAkMEmFEkhzbqk3p6qaKd",
+  "deploymentUrl": "https://forena-kotlin-1rgvif4i9-johkin.vercel.app",
+  "baseCommit": "2c3e3a60dae8e47f3862f8ca8ca9d4b461341e9a",
+  "imageDigest": "sha256:3d5326f8e0ed40d1a56b4b2b91af1d75f52781ad5365df3c29cce9455636e370",
+  "policy": {
+    "batchSize": 2,
+    "budgetSeconds": 120,
+    "staleAfterSeconds": 120,
+    "reserveSeconds": 5
+  },
+  "seed": {
+    "seeded": [
+      {
+        "id": "300f15df-974b-44ae-98b4-18e8ad2c125d",
+        "delayMs": 1000,
+        "status": 202,
+        "responseReceivedAt": "2026-10-18T16:14:27.689149+00:00"
+      },
+      {
+        "id": "c8e44868-5a1f-49f1-be05-ed96e80cbdd2",
+        "delayMs": 60000,
+        "status": 202,
+        "responseReceivedAt": "2026-10-18T16:14:27.798093+00:00"
+      }
+    ],
+    "noFurtherAppRequests": true
+  },
+  "notBefore": "2026-10-18T16:16:57.798093Z",
+  "http": [
+    {
+      "sentAt": "2026-10-18T16:17:00.128453+00:00",
+      "status": null,
+      "hasError": true,
+      "response": null,
+      "timedOut": true,
+      "requestId": 3,
+      "timeoutMs": 1000
+    },
+    {
+      "sentAt": "2026-10-18T16:18:00.025193+00:00",
+      "status": 200,
+      "hasError": false,
+      "response": {
+        "deferred": [],
+        "selected": [],
+        "completed": [],
+        "stopReason": "drained",
+        "unfinished": []
+      },
+      "timedOut": false,
+      "requestId": 4,
+      "timeoutMs": 180000
+    },
+    {
+      "sentAt": "2026-10-18T16:19:00.034946+00:00",
+      "status": 200,
+      "hasError": false,
+      "response": {
+        "deferred": [],
+        "selected": [],
+        "completed": [],
+        "stopReason": "drained",
+        "unfinished": []
+      },
+      "timedOut": false,
+      "requestId": 5,
+      "timeoutMs": 180000
+    },
+    {
+      "sentAt": "2026-10-18T16:20:00.019458+00:00",
+      "status": 200,
+      "hasError": false,
+      "response": {
+        "deferred": [],
+        "selected": [],
+        "completed": [],
+        "stopReason": "drained",
+        "unfinished": []
+      },
+      "timedOut": false,
+      "requestId": 6,
+      "timeoutMs": 180000
+    },
+    {
+      "sentAt": "2026-10-18T16:21:00.039441+00:00",
+      "status": 200,
+      "hasError": false,
+      "response": {
+        "deferred": [],
+        "selected": [],
+        "completed": [],
+        "stopReason": "drained",
+        "unfinished": []
+      },
+      "timedOut": false,
+      "requestId": 7,
+      "timeoutMs": 180000
+    }
+  ],
+  "cronRuns": [
+    {
+      "end": "2026-10-18T16:17:00.129994+00:00",
+      "runId": 1,
+      "start": "2026-10-18T16:17:00.106212+00:00",
+      "status": "succeeded"
+    },
+    {
+      "end": "2026-10-18T16:18:00.026414+00:00",
+      "runId": 2,
+      "start": "2026-10-18T16:18:00.016285+00:00",
+      "status": "succeeded"
+    },
+    {
+      "end": "2026-10-18T16:19:00.036229+00:00",
+      "runId": 3,
+      "start": "2026-10-18T16:19:00.02312+00:00",
+      "status": "succeeded"
+    },
+    {
+      "end": "2026-10-18T16:20:00.020714+00:00",
+      "runId": 4,
+      "start": "2026-10-18T16:20:00.014996+00:00",
+      "status": "succeeded"
+    },
+    {
+      "end": "2026-10-18T16:21:00.040935+00:00",
+      "runId": 5,
+      "start": "2026-10-18T16:21:00.028928+00:00",
+      "status": "succeeded"
+    }
+  ],
+  "effects": [
+    {
+      "id": "300f15df-974b-44ae-98b4-18e8ad2c125d",
+      "delay_ms": 1000,
+      "status": "COMPLETED",
+      "completion_date": "2026-10-18 16:17:15.875658+00",
+      "completed_at": "2026-10-18 16:17:15.864261+00",
+      "instance_id": "24c42cf6-aef0-4a01-a9f5-6d5b8cc7b13f",
+      "effect_count": 1,
+      "attempts": 2,
+      "attempting_jvms": 2
+    },
+    {
+      "id": "c8e44868-5a1f-49f1-be05-ed96e80cbdd2",
+      "delay_ms": 60000,
+      "status": "COMPLETED",
+      "completion_date": "2026-10-18 16:18:16.018084+00",
+      "completed_at": "2026-10-18 16:18:16.00912+00",
+      "instance_id": "24c42cf6-aef0-4a01-a9f5-6d5b8cc7b13f",
+      "effect_count": 1,
+      "attempts": 2,
+      "attempting_jvms": 2
+    }
+  ],
+  "cleanup": {
+    "jobs": 0,
+    "settings": 0,
+    "responses": 0,
+    "vaultSecrets": 0,
+    "observerLogin": false,
+    "queuedRequests": 0
+  },
+  "dataApiIsolationCheck": {
+    "status": 503,
+    "code": "PGRST002",
+    "verified": false
+  },
+  "notes": [
+    "pg_net PUBLIC grants cannot be revoked by postgres on hosted Supabase.",
+    "First HTTP timeout did not kill the JVM; the first worker completed both publications.",
+    "Cron succeeded means SQL enqueued HTTP, not confirmed business completion."
+  ]
+}

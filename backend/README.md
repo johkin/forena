@@ -150,3 +150,61 @@ skapas automatiskt. Dokumentera deployment-ID, källrevision/hash, region,
 versionskontroll, mättider, observerade begränsningar och kostnadsunderlag.
 Återkalla provcredentials och avaktivera kraschläge när provmiljön avvecklas.
 Ta inte bort projekten utan separat instruktion.
+
+## Schemalagd worker (M22A)
+
+`POST /api/probes/worker` kräver separat `PROBE_WORKER_TOKEN` (minst 32 tecken,
+skild från `PROBE_TOKEN`). Tomt värde stänger workeråtkomsten. Workertokenen
+får inte skapa prov eller köra manuellt återtag. Den vanliga provtokenen får
+inte köra workerendpointen.
+
+Spring-properties styr batch och mjuk tidsbudget: `probe.worker.batch-size=2`,
+`probe.worker.budget=PT120S`, `probe.worker.stale-after=PT120S` och
+`probe.worker.reserve=PT5S`. Testerna använder kortare tider. Arbetaren väljer
+högst batchstorleken, ignorerar färska försök/CRASH och väntar på Moduliths
+kvittens. För BLOCK är frisläppningen avsiktlig felinjektion i teknikprovet.
+
+Kör endast i forena-kotlin:
+
+1. Bygg/verifiera backend och deploya en skyddad preview med separat worker-
+   och provtoken. Förbered `scripts/probe/scheduler-setup.sql` i testprojektet.
+2. Ordna tidsbegränsad åtkomst enbart till denna preview. `scheduler-seed.py`
+   använder `PROBE_BASE_URL`, `PROBE_ACCESS_URL`, `PROBE_TOKEN` och
+   `PROBE_WORKER_TOKEN`, kontrollerar token-gränserna och skapar syntetiska
+   BLOCK-händelser med 1/60 s fördröjning. Inga fler appanrop ska därefter göras
+   av testklienten. Stoppa klienten när fixtures/preview-cookie överlämnats.
+3. Valfri `PROBE_PUBLISHABLE_KEY` kontrollerar att Data API avvisar schema net.
+   Ett 503/PGRST002 är ett blockerande verifieringsresultat för den kontrollen,
+   inte ett godkänt isoleringsbevis. Det uppstod i detta teknikprov och redovisas
+   separat; seed kördes därefter utan den valfria kontrollen.
+4. `--headers-out /vercel/private-headers.json` kan skriva previewns Cookie-
+   header till en privat scratchfil med 0600. Läs/överför den via säker kanal
+   till Vault och radera scratchfilen; skriv aldrig dess innehåll till loggar.
+   En share-URL direkt på pg_net:s POST fungerade inte i denna körning.
+5. Provisionera tre temporära Vault-poster: `forena_kotlin_m22_worker_url`
+   (previewns rena /api/probes/worker-URL), `forena_kotlin_m22_worker_token`
+   och `forena_kotlin_m22_worker_headers` (JSON med preview-Cookie). Behåll
+   Deployment Protection. Inga användar-/produktionscredentials behövs.
+6. Kör `scheduler-activate.sql`. Den väntar minst 150 s, tillåter högst fem
+   HTTP-anrop och högst tolv minuter; första timeouten på 1 s är ett avsiktligt
+   provfel. Normal pg_net-timeout är 180 s, större än workerbudgeten inklusive
+   rimlig uppstartsmarginal. Kontrollera svar/effects via SQL, inte API-pollning.
+7. Exportera endast request-ID, tider, status och syntetiska effekter. Läs
+   aldrig pg_net:s headers eller godtyckliga felkroppar för loggning; även en
+   felrespons kan innehålla en åtkomstlänk. Cron succeeded bevisar inte HTTP-
+   eller verksamhetsframgång.
+8. Kör `scheduler-cleanup.sql` och verifiera inga provjobb, Vault-poster,
+   köade requests eller provresponser. Återkalla previewlänken och stoppa
+   eventuell testklient. Städa även separata transport-preflight-ID:n.
+
+**Plattformsgräns:** alla direkta SQL-loginroller kan läsa pg_net:s köheaders
+och använda dess kö. Grantägaren är supabase_admin; postgres kan inte ändra
+dessa PUBLIC-grants. Vault ändrar inte den tillitsgränsen. En påstått read-only
+observatör har alltså inte en sådan garanti för net-schemat när pg_net är
+installerat. Provet använder bara kontrollerade SQL-konton och kortlivad
+previewåtkomst. Net ska aldrig exponeras via Data API.
+
+Moduliths predicate-API läser alla ofullständiga poster innan filtrering;
+max två starter innebär inte begränsad registry-läsning. Se den fullständiga
+[rapporten](../docs/migration/m22-scheduler-results.md) för tidslinje,
+bevis och kvarvarande produktionsgränser.

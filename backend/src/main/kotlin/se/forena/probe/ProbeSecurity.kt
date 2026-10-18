@@ -20,8 +20,15 @@ import java.security.MessageDigest
 
 @Configuration
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-class ProbeSecurity(@Value("\${probe.token}") private val token: String) {
-    init { require(token.length >= 32) { "PROBE_TOKEN must contain at least 32 characters" } }
+class ProbeSecurity(
+    @Value("\${probe.token}") private val token: String,
+    @Value("\${probe.worker.token:}") private val workerToken: String
+) {
+    init {
+        require(token.length >= 32) { "PROBE_TOKEN must contain at least 32 characters" }
+        require(workerToken.isEmpty() || workerToken.length >= 32) { "Worker token must contain at least 32 characters" }
+        require(workerToken != token) { "Use a separate worker token" }
+    }
 
     @Bean
     fun security(http: HttpSecurity): SecurityFilterChain = http
@@ -30,7 +37,8 @@ class ProbeSecurity(@Value("\${probe.token}") private val token: String) {
         .authorizeHttpRequests {
             it.dispatcherTypeMatchers(DispatcherType.ERROR, DispatcherType.FORWARD).permitAll()
                 .requestMatchers("/", "/index.html", "/probe.js", "/actuator/health").permitAll()
-                .anyRequest().authenticated()
+                .requestMatchers("/api/probes/worker").hasRole("WORKER")
+                .anyRequest().hasRole("PROBE")
         }
         .exceptionHandling { it.authenticationEntryPoint { _, response, _ -> response.sendError(401) } }
         .addFilterBefore(object : OncePerRequestFilter() {
@@ -39,6 +47,10 @@ class ProbeSecurity(@Value("\${probe.token}") private val token: String) {
                 if (supplied != null && MessageDigest.isEqual(token.toByteArray(), supplied.toByteArray())) {
                     SecurityContextHolder.getContext().authentication = UsernamePasswordAuthenticationToken(
                         "isolated-probe", null, listOf(SimpleGrantedAuthority("ROLE_PROBE")))
+                } else if (supplied != null && workerToken.isNotEmpty() &&
+                    MessageDigest.isEqual(workerToken.toByteArray(), supplied.toByteArray())) {
+                    SecurityContextHolder.getContext().authentication = UsernamePasswordAuthenticationToken(
+                        "isolated-worker", null, listOf(SimpleGrantedAuthority("ROLE_WORKER")))
                 }
                 chain.doFilter(request, response)
             }
