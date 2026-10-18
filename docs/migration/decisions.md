@@ -19,7 +19,14 @@ fungerade under aktiv request. M22 måste verifiera säker väckning från noll,
 instanskonkurrens, region, kallstart och kostnad före slutligt hostingbeslut.
 [M22:s första del](m22-results.md) verifierar fra1 i senare runtime-loggar och
 lokal samtidig återtagning med två JVM:er. Ett aktivt HTTP-anrop slutförde även
-60 s arbete efter inaktivitet i ny Vercel-JVM. Schemalagd väckning återstår.
+60 s arbete efter inaktivitet i ny Vercel-JVM.
+[M22A](m22-scheduler-results.md) bevisar nu verklig Supabase Cron-väckning med
+1/60 s arbete, senare anrop utan dubbletter och ett kontrollerat HTTP-timeoutfall.
+Det är fortfarande inget produktionsval: pg_net:s köheaders kan läsas av alla
+direkta SQL-inloggningar och dess PUBLIC-grants kan inte ändras av postgres.
+Data API-isolering gav 503/PGRST002 och är ej verifierad. Modulith 2.1.0:s
+predicate-återtag läser alla ofullständiga poster och behöver begränsas före
+pilot. Ingen plattforms- eller versionsändring görs automatiskt.
 
 ## ADR-008: Behåll Supabase PostgreSQL — aktuell planeringsinriktning
 

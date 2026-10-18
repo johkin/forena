@@ -79,7 +79,14 @@ Det viktiga utfallet är att även en avbruten PROCESSING-post kan återtas.
 Att bara leta efter FAILED räcker inte. Detta bevisar fortfarande manuell,
 ID-styrd återtagning under en aktiv request, inte automatisk schemalagd väckning.
 
-## Nästa avgränsade del av M22
+## Fortsättning
+
+Den schemalagda worker-delen nedan har genomförts i
+[M22A](m22-scheduler-results.md). Rapporten innehåller även nya, verifierade
+begränsningar för pg_net:s SQL-rättigheter och Moduliths registry-läsning.
+Kvarvarande punkter ska läsas tillsammans med det utfallet.
+
+## Ursprunglig överlämning till nästa del av M22
 
 1. **Schemalagd väckning:** implementera ett avgränsat workeranrop med
    tidsbudget och återtag av kvarvarande poster utan att varje ID skickas av

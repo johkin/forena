@@ -124,3 +124,28 @@ Ingen planuppgradering eller cronaktivering har gjorts. Nästa avgränsade del
 är ett workeranrop med tidsbudget och faktisk schemalagd väckning, exempelvis
 med Supabase Cron. Molnkonkurrens, felpunkt efter effekt och full kostnadsbild
 återstår också; M22 är inte avslutad och hostingbeslutet är öppet.
+
+## M22A: schemalagd worker
+
+Bas `2c3e3a6` (PR #99 mergad), branch `test/supabase-cron-worker`.
+[Rapport och överlämning](m22-scheduler-results.md) samt
+[uppgift](tasks/m22a-scheduled-worker.md) beskriver denna separata leverans.
+Worker med egen token återtar högst två valbara publiceringar under mjuk budget
+och skyddar färska försök. Lokal verifiering: 25 JUnit-tester, verklig JVM-krasch/
+omstart, två-JVM-konkurrens samt 1 065 frontendtester/typecheck/lint/build.
+
+Verklig Supabase Cron väckte fra1-previewn efter minst 150 s utan användartrafik.
+1/60 s-händelser fick en effekt och registerkvittens var. Första HTTP-sändaren
+fick avsiktlig timeout; JVM:en fortsatte och slutförde arbetet. Senare Cron-
+anrop skapade inga dubbletter. Detta är inte ett nytt JVM-dödsprov.
+
+Städning verifierad: inga provjobb, Vault-poster, köade requests, HTTP-responser
+eller inställningar; observationskontot NOLOGIN, testklienten stoppad och
+previewlänken återkallad. Kvar finns tomma privata hjälptabeller/funktion och
+installerade pg_cron/pg_net, samt preview och syntetiska effekter.
+
+Hosting är fortsatt öppet: pg_net:s HTTP-credentials är synliga för direkta
+SQL-loginroller; Data API-kontrollen gav 503/PGRST002; predicate-API:t läser hela
+registret före filter. Dessa gränser, faktisk schemalagd JVM-krasch, effekt/kvittens-
+felpunkt, last/anslutningar och kostnader måste hanteras före verksamhetspilot.
+Ordinarie Förena berörs inte.
