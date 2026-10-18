@@ -17,6 +17,9 @@ Java-lifetime-hook har fastställts. Observerat beteende räcker inte som garant
 60 s inom observationsfönstret. Beständig återtagning efter verklig JVM-krasch
 fungerade under aktiv request. M22 måste verifiera säker väckning från noll,
 instanskonkurrens, region, kallstart och kostnad före slutligt hostingbeslut.
+[M22:s första del](m22-results.md) verifierar fra1 i senare runtime-loggar och
+lokal samtidig återtagning med två JVM:er. Ett aktivt HTTP-anrop slutförde även
+60 s arbete efter inaktivitet i ny Vercel-JVM. Schemalagd väckning återstår.
 
 ## ADR-008: Behåll Supabase PostgreSQL — aktuell planeringsinriktning
 

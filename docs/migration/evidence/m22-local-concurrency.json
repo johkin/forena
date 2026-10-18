@@ -1,0 +1,52 @@
+{
+  "backendRevision": "2e0af8f3dc2756ee2d0dcbdfb7c4090f642a495f",
+  "command": "python3 scripts/probe/local-lifecycle.py --concurrent-recovery",
+  "jdk": "Oracle 26.0.2.1+1-7",
+  "postgres": "17.6-alpine",
+  "observations": [
+    {
+      "postResponseCompleted": true,
+      "actualJvmExit": 137,
+      "restartedJvmCompleted": true,
+      "effectCountAfterReplay": 1
+    },
+    {
+      "distinctJvms": 2,
+      "concurrentRecovery": [
+        {
+          "id": "0d8939fe-27ba-4c66-90ee-d99a0ad8e1d2",
+          "responses": [
+            200,
+            200
+          ],
+          "effects": 1,
+          "pendingPublications": 0,
+          "attempts": 3,
+          "attemptingJvms": 2
+        },
+        {
+          "id": "e0825dd4-2bf7-40d6-ad51-bbd9f0918d39",
+          "responses": [
+            200,
+            200
+          ],
+          "effects": 1,
+          "pendingPublications": 0,
+          "attempts": 2,
+          "attemptingJvms": 2
+        },
+        {
+          "id": "fb5e254f-4c8e-44c9-8041-8c5b45e46eae",
+          "responses": [
+            200,
+            200
+          ],
+          "effects": 1,
+          "pendingPublications": 0,
+          "attempts": 2,
+          "attemptingJvms": 1
+        }
+      ]
+    }
+  ]
+}

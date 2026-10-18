@@ -1,15 +1,22 @@
 #!/usr/bin/env python3
 """Real process-death/restart test. Local disposable PostgreSQL; no cloud credentials."""
 import json
+import argparse
+import concurrent.futures
 import contextlib
 import shutil
 import os
 from pathlib import Path
 import subprocess
 import tempfile
+import threading
 import time
 import urllib.request
 import uuid
+
+arguments = argparse.ArgumentParser(description=__doc__)
+arguments.add_argument('--concurrent-recovery', action='store_true', help='Also race two separate JVM workers against one pending event')
+options = arguments.parse_args()
 
 ROOT = Path(__file__).resolve().parents[2]
 JAVA = str(Path(os.environ['JAVA_HOME']) / 'bin/java')
@@ -19,6 +26,7 @@ DOCKER_ENV = {k: v for k, v in os.environ.items() if k not in ['DOCKER_HOST', 'D
 TOKEN = 'local-probe-token-not-for-cloud-credentials'
 container = None
 app = None
+second_app = None
 directory = None
 
 def docker(*args, **kwargs):
@@ -98,12 +106,73 @@ try:
             assert sql(f"select count(*) from forena_probe.probe_effect where id='{crash_id}';") == '1'
             assert sql(f"select count(distinct instance_id) from forena_probe.probe_attempt where run_id='{crash_id}';") == '2'
             print(json.dumps({'postResponseCompleted': True, 'actualJvmExit': 137, 'restartedJvmCompleted': True, 'effectCountAfterReplay': 1}))
+            if options.concurrent_recovery:
+                first_port = port
+                first_env = env
+                with socket.socket() as free_port:
+                    free_port.bind(('127.0.0.1', 0))
+                    port = free_port.getsockname()[1]
+                second_port = port
+                env = env | {'PORT': str(second_port)}
+                second_app = start(log)
+                port = first_port
+                env = first_env
+                def post_to(target_port, path, body):
+                    request = urllib.request.Request(f'http://127.0.0.1:{target_port}{path}',
+                        data=json.dumps(body).encode(), headers={'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json'})
+                    with urllib.request.urlopen(request, timeout=110) as response:
+                        return response.status, json.loads(response.read())
+                # Confirm separate JVM identities through ordinary completed effects.
+                boot_ids = []
+                for target in [first_port, second_port]:
+                    identity = str(uuid.uuid4())
+                    assert post_to(target, '/api/probes', {'id': identity, 'delayMs': 0, 'mode': 'NORMAL'})[0] == 202
+                    for _ in range(100):
+                        boot_id = sql(f"select instance_id from forena_probe.probe_effect where id='{identity}';")
+                        if boot_id: break
+                        time.sleep(.1)
+                    assert boot_id
+                    boot_ids.append(boot_id)
+                assert len(set(boot_ids)) == 2, 'Expected two distinct JVMs'
+                runs=[]
+                for _ in range(3):
+                    shared_id = str(uuid.uuid4())
+                    assert post_to(first_port, '/api/probes', {'id': shared_id, 'delayMs': 1000, 'mode': 'BLOCK'})[0] == 202
+                    for _ in range(100):
+                        failed = sql(f"select count(*) from forena_probe.event_publication where serialized_event like '%{shared_id}%' and status='FAILED';")
+                        if failed == '1': break
+                        time.sleep(.1)
+                    assert failed == '1'
+                    gate = threading.Barrier(2)
+                    def recover(target):
+                        gate.wait(timeout=10)
+                        return post_to(target, f'/api/probes/{shared_id}/recover', {})[0]
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+                        results = list(pool.map(recover, [first_port, second_port]))
+                    assert results == [200, 200], results
+                    effects = int(sql(f"select count(*) from forena_probe.probe_effect where id='{shared_id}';"))
+                    assert effects == 1
+                    for _ in range(100):
+                        unfinished = sql(f"select count(*) from forena_probe.event_publication where serialized_event like '%{shared_id}%' and completion_date is null;")
+                        if unfinished == '0': break
+                        time.sleep(.1)
+                    assert unfinished == '0'
+                    attempts = int(sql(f"select count(*) from forena_probe.probe_attempt where run_id='{shared_id}';"))
+                    attempting_jvms = int(sql(f"select count(distinct instance_id) from forena_probe.probe_attempt where run_id='{shared_id}';"))
+                    runs.append({'id':shared_id,'responses':results,'effects':effects,'pendingPublications':0,
+                        'attempts':attempts,'attemptingJvms':attempting_jvms})
+                print(json.dumps({'distinctJvms':len(set(boot_ids)), 'concurrentRecovery':runs}),flush=True)
+
 except Exception:
     # Preserve diagnostics outside the repo, without printing environment variables or credentials.
     if directory and Path(directory).exists():
         shutil.copytree(directory, '/tmp/forena-lifecycle-failure', dirs_exist_ok=True)
     raise
 finally:
+    if second_app and second_app.poll() is None:
+        second_app.terminate()
+        try: second_app.wait(timeout=10)
+        except subprocess.TimeoutExpired: second_app.kill(); second_app.wait()
     if app and app.poll() is None:
         app.terminate()
         try: app.wait(timeout=10)

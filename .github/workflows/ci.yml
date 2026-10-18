@@ -88,8 +88,8 @@ jobs:
         working-directory: backend
         run: ./mvnw --batch-mode --no-transfer-progress verify
 
-      - name: Verify abrupt JVM death and durable recovery
-        run: python3 scripts/probe/local-lifecycle.py
+      - name: Verify abrupt JVM death and concurrent durable recovery
+        run: python3 scripts/probe/local-lifecycle.py --concurrent-recovery
 
       - name: Retain test and generated architecture reports
         if: always()
