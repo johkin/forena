@@ -89,7 +89,7 @@ jobs:
         run: ./mvnw --batch-mode --no-transfer-progress verify
 
       - name: Verify abrupt JVM death and concurrent durable recovery
-        run: python3 scripts/probe/local-lifecycle.py --concurrent-recovery --scheduled-crash
+        run: python3 scripts/probe/local-lifecycle.py --concurrent-recovery --scheduled-crash --registry-backlog 10000
 
       - name: Verify Data API isolation evidence and rejection checks
         run: |

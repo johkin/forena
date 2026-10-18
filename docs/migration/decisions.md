@@ -42,7 +42,11 @@ valde samma publicering; separata konkurrerande JVM:er verifierades lokalt.
 Felinjektionen är en SQL-styrd teknikprovsmekanism, inte en produktionsfunktion.
 Cron/åtkomst är avstängda och provcredentials neutraliserade, men slutlig
 radrensning är blockerad av leverantörsverktygets requestState-fel.
-Nästa avgränsning är [M22D](tasks/m22d-bounded-registry.md); hostingvalet är öppet.
+[M22D](m22-registry-results.md) inför nu avgränsad worker-materialisering via
+repository-SPI utan egna statusskrivningar. Manuellt teknikprovsåtertag och
+shutdown-diagnostik är fortsatt obegränsade; totalbudgeten är mjuk och SQL-scan
+kan växa med kön. [M22E](tasks/m22e-load-cost.md) verifierar last/anslutningar och
+kostnad innan hosting-/schedulerbeslut. Hostingvalet är öppet.
 
 ## ADR-008: Behåll Supabase PostgreSQL — aktuell planeringsinriktning
 

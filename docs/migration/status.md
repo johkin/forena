@@ -222,3 +222,31 @@ och inte delegerad/startad. Den kan börja lokalt när kodbasen mergats; nästa
 molnprov måste först passera städgrinden. Last/anslutningar/kostnader och
 produktionsmodell för scheduleråtkomst återstår i M22. Ordinarie Förena är
 oförändrat och hostingvalet fortfarande öppet.
+
+
+## M22D: begränsad worker-materialisering
+
+Bas `ad9ac0b` (PR #102 mergad), branch `test/bounded-registry`.
+[Rapport](m22-registry-results.md), [evidens](evidence/m22d-bounded-registry.json)
+och [uppgift](tasks/m22d-bounded-registry.md).
+
+Workern använder nu ett exakt-ID-read-scope via Moduliths publika repository-
+SPI; Modulith äger fortfarande alla claims/statusskrivningar. Låsta versioner
+behålls. Per batch om två: en kandidatläsning/två resultatrader och två exakta
+publiceringsläsningar/två resultatrader, två deserialiseringar både med 100 och
+10 000 extra registry-poster. Lokala tider 228/277 ms är observationer, inte SLA.
+SQL-scan/sort är fortfarande köberoende; manuellt provåtertag och bibliotekets
+shutdown-diagnostik är obegränsade. Egen read-timeout två sekunder är verifierad
+mot låst tabell och återanvändning av poolen, inte en hård totaldeadline.
+
+Verifierat: 36 JUnit-/PostgreSQL-tester, struktur/modultest, två riktiga worker-
+krascher före effekt/efter commit samt tre två-JVM-workeromgångar med 10 000
+färska registerposter kvar. Alla slutade med en effekt/kvittens och backloggen
+orörd. Även äldre lifecyclebaslinje, 1 065 frontendtester/typecheck/lint/build,
+sex Pythonregressioner och offlinebeviskontroll godkända. CI kör samma utökade
+processprov. Inget nytt molnprov eller ändrat applikationsschema i denna uppgift.
+
+M22C:s dokumenterade rensningshinder kvarstår utan ny molnverifiering; lokal
+DB-container är raderad. Nästa självständiga uppgift är
+[M22E](tasks/m22e-load-cost.md): last/anslutningar och kostnadsbild före hosting-
+och schedulerbeslut. Hostingvalet är fortsatt öppet; ordinarie Förena oförändrat.

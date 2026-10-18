@@ -1,6 +1,10 @@
 package se.forena.probe.delivery.internal
 
 import org.springframework.jdbc.core.simple.JdbcClient
+import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.beans.factory.annotation.Value
+import javax.sql.DataSource
+import java.sql.ResultSet
 import org.springframework.stereotype.Repository
 import java.time.Duration
 import java.util.UUID
@@ -9,7 +13,22 @@ data class PendingProbe(val publicationId: UUID, val runId: UUID, val delayMs: L
 
 /** Read-only projection of Modulith 2.1.0's registry; Modulith owns all state transitions. */
 @Repository
-class PendingPublications(private val jdbc: JdbcClient) {
+class PendingPublications(dataSource: DataSource,
+    @Value("\${probe.worker.read-timeout-seconds:2}") timeoutSeconds: Int
+) {
+    private val jdbc: JdbcClient
+    init {
+        require(timeoutSeconds in 1..10)
+        jdbc = JdbcClient.create(JdbcTemplate(dataSource).apply { queryTimeout = timeoutSeconds })
+    }
+
+    fun <T : Any> exact(id: UUID, map: (ResultSet) -> T): List<T> = jdbc.sql("""
+        select * from event_publication
+        where id=:id and completion_date is null and status <> 'COMPLETED'
+          and event_type = 'se.forena.probe.commands.ProbeRequested'
+          and listener_id = 'se.forena.probe.effects.internal.ProbeListener.on(se.forena.probe.commands.ProbeRequested)'
+    """).param("id", id).query { rs, _ -> map(rs) }.list()
+
     fun oldest(staleAfter: Duration, limit: Int): List<PendingProbe> = jdbc.sql("""
         select p.id publication_id, (p.serialized_event::jsonb ->> 'id')::uuid run_id,
                (p.serialized_event::jsonb ->> 'delayMs')::bigint delay_ms

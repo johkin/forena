@@ -17,7 +17,10 @@ import uuid
 arguments = argparse.ArgumentParser(description=__doc__)
 arguments.add_argument('--concurrent-recovery', action='store_true', help='Also race two separate JVM workers against one pending event')
 arguments.add_argument('--scheduled-crash', action='store_true', help='Test SQL-armed one-shot faults through the worker before and after effect commit')
+arguments.add_argument('--registry-backlog', type=int, default=0, help='Keep fresh registry rows throughout worker crash and concurrency tests')
 options = arguments.parse_args()
+if not 0 <= options.registry_backlog <= 100000 or (options.registry_backlog and not options.scheduled_crash):
+    arguments.error('--registry-backlog requires --scheduled-crash and a size from 0 to 100000')
 
 ROOT = Path(__file__).resolve().parents[2]
 JAVA = str(Path(os.environ['JAVA_HOME']) / 'bin/java')
@@ -109,6 +112,23 @@ try:
             assert sql(f"select count(*) from forena_probe.probe_effect where id='{crash_id}';") == '1'
             assert sql(f"select count(distinct instance_id) from forena_probe.probe_attempt where run_id='{crash_id}';") == '2'
             print(json.dumps({'postResponseCompleted': True, 'actualJvmExit': 137, 'restartedJvmCompleted': True, 'effectCountAfterReplay': 1}))
+            if options.registry_backlog:
+                # Fresh synthetic rows must remain untouched throughout actual JVM crashes/races.
+                # Half belong to the real listener. They have no business rows and are never dispatched.
+                sql(f"""
+                    with fixture as materialized (
+                        select n, gen_random_uuid() id from generate_series(1, {options.registry_backlog}) n
+                    )
+                    insert into forena_probe.event_publication(id, listener_id, event_type, serialized_event,
+                        publication_date, status, completion_attempts)
+                    select f.id,
+                        case when f.n % 2 = 0 then p.listener_id else 'm22d-process-backlog' end,
+                        p.event_type, jsonb_set(p.serialized_event::jsonb, '{{id}}', to_jsonb(f.id::text))::text,
+                        clock_timestamp() + interval '1 day',
+                        case when f.n % 4 < 2 then 'FAILED' else 'PROCESSING' end, 1
+                    from fixture f
+                    cross join forena_probe.event_publication p where p.serialized_event like '%{normal_id}%';
+                """)
             if options.scheduled_crash:
                 fault_results = []
                 for point, expected_effects in [('BEFORE_EFFECT', 0), ('AFTER_EFFECT_COMMIT', 1)]:
@@ -198,6 +218,14 @@ try:
                     runs.append({'id':shared_id,'responses':results,'effects':effects,'pendingPublications':0,
                         'attempts':attempts,'attemptingJvms':attempting_jvms})
                 print(json.dumps({'distinctJvms':len(set(boot_ids)), 'concurrentRecovery':runs}),flush=True)
+
+            if options.registry_backlog:
+                remaining = int(sql("select count(*) from forena_probe.event_publication where publication_date > clock_timestamp() + interval '12 hours' and completion_date is null and last_resubmission_date is null and completion_attempts=1;"))
+                assert remaining == options.registry_backlog
+                print(json.dumps({'registryBacklog': options.registry_backlog, 'untouchedAfterCrashesAndRaces': remaining}), flush=True)
+                # The vendor shutdown diagnostic remains unbounded; remove this disposable fixture
+                # after assertions so teardown does not write thousands of unrelated log lines.
+                sql("delete from forena_probe.event_publication where publication_date > clock_timestamp() + interval '12 hours';")
 
 except Exception:
     # Preserve diagnostics outside the repo, without printing environment variables or credentials.
