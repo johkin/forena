@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+ <changeSet id="probe-001" author="forena">
+  <sqlFile path="probe.sql" relativeToChangelogFile="true"/>
+  <sqlFile path="modulith-postgresql.sql" relativeToChangelogFile="true"/>
+  <sql>
+   GRANT USAGE ON SCHEMA forena_probe TO forena_probe_runtime;
+   GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA forena_probe TO forena_probe_runtime;
+   GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA forena_probe TO forena_probe_runtime;
+   REVOKE ALL ON forena_probe.databasechangelog, forena_probe.databasechangeloglock FROM forena_probe_runtime;
+  </sql>
+ </changeSet>
+</databaseChangeLog>

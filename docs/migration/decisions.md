@@ -3,6 +3,21 @@
 Status anger målbeslut för kommande implementation, inte redan införd teknik.
 Källkodsverifierat nuläge finns i [inventeringen](inventory.md).
 
+## ADR-009: Prova Vercel före val av backendhosting
+
+Efter diskussion om samordning och kostnad provas Vercel med Kotlin/JDK 26
+som container i det isolerade projektet `forena-kotlin` (M21). Supabase behålls
+för PostgreSQL/Auth. Detta är ett hostingprov, inte ett bevisat produktionsval.
+Cloud Run och Firebase-flytt är inte förutsättningar för provet; nuvarande
+Next.js/Vercel fortsätter. Utvärdera framför allt beständigt arbete efter
+HTTP-response och återtagning efter abrupt instansförlust. Inget dokumenterat
+Java-lifetime-hook har fastställts. Observerat beteende räcker inte som garanti.
+
+[Resultatet från M21](vercel-probe-results.md) visar 10 s slutförande men inte
+60 s inom observationsfönstret. Beständig återtagning efter verklig JVM-krasch
+fungerade under aktiv request. M22 måste verifiera säker väckning från noll,
+instanskonkurrens, region, kallstart och kostnad före slutligt hostingbeslut.
+
 ## ADR-008: Behåll Supabase PostgreSQL — aktuell planeringsinriktning
 
 Efter diskussion om Cloud SQL:s grundkostnad planeras backendmigreringen med

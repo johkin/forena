@@ -45,7 +45,7 @@ långlivade migreringsbrancher. Övriga uppgifter är dokumenterade, inte delege
 
 ## Reviderad databasriktning
 
-Planerings-PR: [#97](https://github.com/johkin/forena/pull/97), fortfarande utkast.
+Planerings-PR: [#97](https://github.com/johkin/forena/pull/97), mergad som `ce0d23a`.
 Supabase PostgreSQL behålls enligt ADR-008. Cloud SQL är ett senare alternativ,
 inte ett beroende för backend eller frontend. Befintlig säkerhet behålls tills
 motsvarande backendregler är testade. M20 ger separat verifiering av portabilitet.
@@ -55,20 +55,27 @@ Den reviderade planens 209 lokala länkar, 23 uppgiftsbeskrivningar och
 beroendegraf har kontrollerats; Cloud SQL-uppgiften blockerar inte backendpiloten.
 Inga apptester kördes lokalt för denna rena textändring.
 
-M01 startas som egen branch från aktuell main efter att planunderlaget mergats,
-i enlighet med AGENTS.md; inga beroende PR:er staplas på planeringsbranchen.
-Versionsprovet är klart men Maven Wrapper, container och CI återstår att införa.
+M21:s teknikprov startades på `spike/vercel-kotlin` från `ce0d23a` på main.
+Det testar delar av M01/M02/M06; inga beroende PR:er staplas på planeringsbranchen.
+Maven Wrapper, låst container, 9 backendtester och CI-jobb finns nu i M21:s
+separata ändring. Lokal Maven-verifiering och appens tester/typecheck/lint/build
+är godkända. Publicerad Vercel-preview och Supabase-JDBC-prov är körda, se
+[provrapporten](vercel-probe-results.md) med källmanifest och exakta resultat.
+10 s efter HTTP-svar lyckades; 60 s blev inte klart inom 90 s. Verklig JVM-krasch
+återtogs av ny instans, med en effekt efter upprepat återtag. Hostingbeslutet är
+fortfarande öppet. M22 beskriver nästa leveransprov, inte en startad session.
 
 ## Nästa ordning
 
 1. M01: grundprojekt med låsta versioner, Maven Wrapper, container och CI samt
-   struktur-/modultester. Isolerat prov finns; repots bygge är ännu inte infört.
+   struktur-/modultester. M21 inför ett isolerat bygge; verksamhetsgrundprojektet återstår.
 2. M04 och M17 kan inventeras oberoende. M02 och M03 följer M01.
 3. M05/M06 förbereder första svarflödet. M07 flyttar hela flödet genom ny backend.
 4. M08 förbereder Cloud Run med verifierad anslutning till Supabase PostgreSQL.
    M13 är backendpilot på samma databas. M12:s Cloud SQL-flytt är vilande.
 
-Övriga uppgifter i indexet är planerade. Ingen är markerad implementerad.
+Övriga verksamhetsuppgifter i indexet är planerade. M21 är ett genomfört teknikprov,
+inte implementering av verksamhetsbackend. M22 följer innan hostingvalet fastställs.
 M15A/M15B separerar kanalerna och M18A/M18B/M18C separerar katalogflytt, Vite och hosting. Fler självständiga
 uppgifter krävs för kvarvarande verksamhetsflöden innan pilotens cutover-grind.
 
