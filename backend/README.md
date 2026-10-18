@@ -153,6 +153,10 @@ Ta inte bort projekten utan separat instruktion.
 
 ## Schemalagd worker (M22A)
 
+Uppföljning: [M22B-rapporten](../docs/migration/m22-isolation-results.md)
+förklarar Data API:s 503 med avsiktlig avstängning och verifierar pg_net-gränsen.
+JDBC kräver inte Data API; behåll det avstängt i Kotlin-testprojektet.
+
 `POST /api/probes/worker` kräver separat `PROBE_WORKER_TOKEN` (minst 32 tecken,
 skild från `PROBE_TOKEN`). Tomt värde stänger workeråtkomsten. Workertokenen
 får inte skapa prov eller köra manuellt återtag. Den vanliga provtokenen får
@@ -208,3 +212,40 @@ Moduliths predicate-API läser alla ofullständiga poster innan filtrering;
 max två starter innebär inte begränsad registry-läsning. Se den fullständiga
 [rapporten](../docs/migration/m22-scheduler-results.md) för tidslinje,
 bevis och kvarvarande produktionsgränser.
+
+## Data API och SQL-gränser (M22B)
+
+Resultat och begränsningar finns i [M22B](../docs/migration/m22-isolation-results.md).
+Lokalt, utan molncredentials:
+
+```sh
+python3 scripts/probe/isolation-check.py --verify-evidence docs/migration/evidence/m22-isolation.json
+python3 -m unittest discover -s scripts/probe -p 'test_isolation_check.py'
+```
+
+För ett nytt verkligt prov, använd bara Supabase-projektet forena-kotlin
+(`ckzrtxqjskosqzoitymc`) och verifiera projekt-ID före varje mutation:
+
+1. Kör `scripts/probe/isolation-audit.sql` och spara ursprungliga roll-/databas-
+   inställningar för authenticator. Setup förutsätter inget db_schemas-override,
+   ingen befintlig fixtur och bara syntetiska data. Behåll återställningen redo.
+2. Kör `isolation-setup.sql` atomärt som provider-/testbootstrap. Det exponerar
+   tillfälligt enbart kontrollschemat; ändra aldrig Data API i ordinarie Förena.
+3. Från en godkänd testklient med nätåtkomst, sätt `PROBE_PUBLISHABLE_KEY` till
+   testprojektets publishable key via säker credentialkanal och kör
+   `python3 scripts/probe/isolation-check.py`. Skriv inte nyckeln i kommandoraden.
+   Alternativt kör samma fallista med provider-pg_net och bevara endast status,
+   tillåtna felkoder och exakt syntetisk kontrollrad, som i M22B-beviset.
+   Registrera pg_net-request-ID:n och läs aldrig råa headers/felkroppar till logg.
+4. Kör `isolation-sql-roles.sql` för markörprovet, och audit för effektiva grants.
+   Markörprovet använder anon/authenticated; runtime/observer kräver endast
+   katalogkontroll. Utöka inte rollmedlemskap för att få SET ROLE att fungera.
+5. Även vid fel: kör reset/notify-delen i `isolation-cleanup.sql` och COMMIT.
+   Bekräfta att kontrollraden inte längre är tillgänglig via HTTP medan schemat
+   finns kvar, därefter DROP-delen i separat operation. Ta bort bara noterade
+   prov-ID:n från net-kön och responserna. Kör audit igen och jämför med basen.
+
+M22B återställde avsiktligt avstängt Data API; en ny sådan kontroll ger därför
+503/PGRST002 och ska inte godkännas som frisk schemaisolering. Lämna
+`PROBE_PUBLISHABLE_KEY` osatt i scheduler-seed.py när Data API ska vara avstängt.
+Återaktivera inte API:t enbart för kommande JDBC-/Cron-prov.

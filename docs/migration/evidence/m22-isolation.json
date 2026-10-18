@@ -1,0 +1,227 @@
+{
+  "task": "M22B",
+  "base": "e43d752e9792124bd3ec8c2aaa3ed83462afb177",
+  "project": "forena-kotlin",
+  "projectRef": "ckzrtxqjskosqzoitymc",
+  "transport": "Supabase pg_net via controlled SQL; only publishable API key, no Vercel access",
+  "diagnosis": {
+    "logWindowUtc": ["2026-10-18T16:05:00Z", "2026-10-18T17:05:00Z"],
+    "logSource": "postgrest_logs",
+    "configuredSchemas": "pg_pgrst_no_exposed_schemas",
+    "databaseError": "3F000",
+    "meaning": "Data API intentionally disabled; confirmed by user and Supabase documentation",
+    "temporaryOverride": "forena_probe_api_check",
+    "authenticatedHttpTested": false
+  },
+  "baseline": [
+    {
+      "id": 8,
+      "status_code": 503,
+      "timed_out": false,
+      "code": "PGRST002"
+    }
+  ],
+  "observations": [
+    {
+      "name": "control-read",
+      "requestId": 9,
+      "status": 200,
+      "code": null,
+      "body": [
+        {
+          "id": 1,
+          "marker": "m22b-synthetic-control"
+        }
+      ]
+    },
+    {
+      "name": "control-write-denied",
+      "requestId": 10,
+      "status": 401,
+      "code": "42501"
+    },
+    {
+      "name": "net-GET",
+      "requestId": 11,
+      "status": 406,
+      "code": "PGRST106"
+    },
+    {
+      "name": "net-POST",
+      "requestId": 12,
+      "status": 406,
+      "code": "PGRST106"
+    },
+    {
+      "name": "forena_probe-GET",
+      "requestId": 13,
+      "status": 406,
+      "code": "PGRST106"
+    },
+    {
+      "name": "forena_probe-POST",
+      "requestId": 14,
+      "status": 406,
+      "code": "PGRST106"
+    },
+    {
+      "name": "forena_probe_scheduler-GET",
+      "requestId": 15,
+      "status": 406,
+      "code": "PGRST106"
+    },
+    {
+      "name": "forena_probe_scheduler-POST",
+      "requestId": 16,
+      "status": 406,
+      "code": "PGRST106"
+    },
+    {
+      "name": "vault-GET",
+      "requestId": 17,
+      "status": 406,
+      "code": "PGRST106"
+    },
+    {
+      "name": "vault-POST",
+      "requestId": 18,
+      "status": 406,
+      "code": "PGRST106"
+    },
+    {
+      "name": "auth-GET",
+      "requestId": 19,
+      "status": 406,
+      "code": "PGRST106"
+    },
+    {
+      "name": "auth-POST",
+      "requestId": 20,
+      "status": 406,
+      "code": "PGRST106"
+    },
+    {
+      "name": "scheduler-rpc",
+      "requestId": 21,
+      "status": 406,
+      "code": "PGRST106"
+    }
+  ],
+  "sqlRoleTest": {
+    "checked_at": "2026-10-18T17:07:24.962945+00:00",
+    "interpretation": "Reproduces platform limitation, NOT a security pass",
+    "committed_outbound_requests": 0,
+    "synthetic_header_readable_by": [
+      "anon",
+      "authenticated"
+    ]
+  },
+  "restored": [
+    {
+      "id": 23,
+      "status_code": 503,
+      "timed_out": false,
+      "code": "PGRST002"
+    }
+  ],
+  "auditAfterCleanup": {
+    "jobs": 0,
+    "database": "postgres",
+    "checked_at": "2026-10-18T17:08:35.479267+00:00",
+    "net_owners": [
+      {
+        "acl": "{supabase_admin=arwdDxtm/supabase_admin,=arwdDxtm/supabase_admin}",
+        "owner": "supabase_admin",
+        "object": "_http_response"
+      },
+      {
+        "acl": "{supabase_admin=arwdDxtm/supabase_admin,=arwdDxtm/supabase_admin}",
+        "owner": "supabase_admin",
+        "object": "http_request_queue"
+      }
+    ],
+    "role_access": [
+      {
+        "role": "forena_probe_runtime",
+        "login": true,
+        "net_usage": true,
+        "probe_usage": true,
+        "vault_usage": false,
+        "queue_insert": true,
+        "queue_select": true,
+        "scheduler_usage": false,
+        "scheduler_execute": false,
+        "queue_select_grant": false
+      },
+      {
+        "role": "authenticated",
+        "login": false,
+        "net_usage": true,
+        "probe_usage": false,
+        "vault_usage": false,
+        "queue_insert": true,
+        "queue_select": true,
+        "scheduler_usage": false,
+        "scheduler_execute": false,
+        "queue_select_grant": false
+      },
+      {
+        "role": "anon",
+        "login": false,
+        "net_usage": true,
+        "probe_usage": false,
+        "vault_usage": false,
+        "queue_insert": true,
+        "queue_select": true,
+        "scheduler_usage": false,
+        "scheduler_execute": false,
+        "queue_select_grant": false
+      },
+      {
+        "role": "postgres",
+        "login": true,
+        "net_usage": true,
+        "probe_usage": true,
+        "vault_usage": true,
+        "queue_insert": true,
+        "queue_select": true,
+        "scheduler_usage": true,
+        "scheduler_execute": true,
+        "queue_select_grant": false
+      },
+      {
+        "role": "forena_probe_observer",
+        "login": false,
+        "net_usage": true,
+        "probe_usage": true,
+        "vault_usage": false,
+        "queue_insert": true,
+        "queue_select": true,
+        "scheduler_usage": false,
+        "scheduler_execute": false,
+        "queue_select_grant": false
+      }
+    ],
+    "api_overrides": [
+      {
+        "role": "authenticator",
+        "database": null,
+        "settings": [
+          "session_preload_libraries=supautils, safeupdate",
+          "statement_timeout=8s",
+          "lock_timeout=8s"
+        ]
+      }
+    ],
+    "fixture_exists": false,
+    "queued_requests": 0,
+    "stored_responses": 0
+  },
+  "limits": [
+    "No authenticated end-user JWT HTTP test; authenticated SQL role tested only.",
+    "Custom runtime/observer effective privileges audited; SET ROLE disabled, no JDBC login attempted.",
+    "API schema rejection verified only for temporary fixture-only exposure, not a production configuration.",
+    "No real header credentials read; synthetic queue row deleted before commit.",
+    "Data API remains intentionally disabled. 503 is not considered a successful isolation check."
+  ]
+}

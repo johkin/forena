@@ -5,6 +5,10 @@ Datum: 2026-10-18. Bas: PR #99, mergad som
 `test/supabase-cron-worker` från denna main. Detta avslutar
 [M22A](tasks/m22a-scheduled-worker.md), inte hela M22 eller hostingbeslutet.
 
+Senare uppföljning: [M22B](m22-isolation-results.md) förklarar 503 med avsiktligt
+avstängt Data API och verifierar schemaavvisning i ett tillfälligt kontrollprov.
+Nedan återges M22A:s dåvarande observationer; pg_net:s SQL-gräns kvarstår.
+
 ## Ändrat beteende
 
 `POST /api/probes/worker` hittar högst två gamla publiceringar åt gången i
