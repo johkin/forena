@@ -118,6 +118,15 @@ testklienten och ge den testprojektets runtimecredentials via miljön. Sätt
 För skyddad preview används en uttryckligen godkänd temporär `PROBE_ACCESS_URL`
 som sätter åtkomstcookie, eller vid behov befintlig `PROBE_BYPASS`.
 Sätt `PROBE_TEST_CRASH=true` endast när kraschläget är avsiktligt aktiverat.
+
+`cloud-recovery.py` är det separata M22-provet för 60 s återtag under aktiv
+request efter 90 s utan apptrafik. Det använder samma klientberoenden och
+miljövariabler som ovan samt `PROBE_ACCESS_URL`. DB-kontot ska endast ha SELECT
+på probe_run, probe_attempt, probe_effect och event_publication; skriptet
+kontrollerar att det inte kan skriva effekter eller skapa tabeller.
+`PROBE_EXISTING_RUN_ID` kan ange en redan oavslutad syntetisk körning att
+återta först. Klienten verifierar omleverans och unik effekt direkt i DB.
+Detta aktiverar ingen scheduler och bevisar inte automatisk väckning.
 Skriptet accepterar bara `forena-kotlin-*.vercel.app` och testprojektets ref.
 
 **Vercel Sandbox är endast bygg-/testklient.** Dess JVM-resultat är inte bevis

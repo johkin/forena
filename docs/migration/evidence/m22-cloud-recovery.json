@@ -1,0 +1,60 @@
+{
+  "deployment": "https://forena-kotlin-huofwvbc7-johkin.vercel.app",
+  "tests": [
+    {
+      "name": "existing-stale-publication",
+      "id": "22e40263-e8d3-451c-a7d2-e81bd9ec74b4",
+      "before": {
+        "effects": 0,
+        "pending": 1,
+        "instanceIds": [
+          "53709386-d4ba-4207-bbed-e4273e9cd342"
+        ]
+      },
+      "status": 200,
+      "requestMs": 76014,
+      "responseReceivedAt": "2026-10-18T15:14:07.894657+00:00",
+      "completedAt": "2026-10-18 15:14:07.2101",
+      "completedBy": "28aa4ed4-5518-4c20-8b57-a9f1d880d2c5",
+      "repeatedRecoveryMs": 15981,
+      "after": {
+        "effects": 1,
+        "pending": 0,
+        "instanceIds": [
+          "28aa4ed4-5518-4c20-8b57-a9f1d880d2c5",
+          "53709386-d4ba-4207-bbed-e4273e9cd342"
+        ]
+      }
+    },
+    {
+      "name": "60s-recovery-after-preview-idle",
+      "id": "5b546cc1-ad94-420c-99be-722cab1def51",
+      "before": {
+        "effects": 0,
+        "pending": 1,
+        "instanceIds": [
+          "94646635-16a1-4b5e-8a24-8849cc04b6d7"
+        ]
+      },
+      "status": 200,
+      "requestMs": 75706,
+      "responseReceivedAt": "2026-10-18T15:17:10.190604+00:00",
+      "completedAt": "2026-10-18 15:17:09.545816",
+      "completedBy": "cc1ec245-4c14-4b6d-88bf-210901a5529f",
+      "repeatedRecoveryMs": 16124,
+      "after": {
+        "effects": 1,
+        "pending": 0,
+        "instanceIds": [
+          "94646635-16a1-4b5e-8a24-8849cc04b6d7",
+          "cc1ec245-4c14-4b6d-88bf-210901a5529f"
+        ]
+      }
+    }
+  ],
+  "deploymentId": "dpl_B4MZhMxb7qsx53uAb7rmwLTtared",
+  "sourceCommit": "5dd9ff05d73bfcd89dd4b8d8116395d09b4f714f",
+  "clientScriptSha256": "9d7d2e589cfbe6c79540a33e1f36a85d8a16210a825bb1bad3bc06da0a04d11f",
+  "idleObservationSeconds": 90,
+  "observerPermissions": "SELECT only; LOGIN disabled after client stopped"
+}

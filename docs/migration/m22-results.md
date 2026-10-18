@@ -5,7 +5,8 @@ Datum: 2026-10-18. PR #98 är mergad som
 Denna avgränsade fortsättning har mål och acceptanskriterier i
 [M22](tasks/m22-vercel-delivery.md). Backendens runtimekod och schema är
 oförändrade; ett lokalt två-JVM-prov har lagts till i befintligt processprov
-och aktiverats i CI. Hela M22 är ännu inte klar.
+och aktiverats i CI. Långt återtag efter inaktivitet är också verifierat i
+riktig Vercel-preview. Hela M22 är ännu inte klar.
 
 ## Genomfört nu
 
@@ -50,47 +51,73 @@ Vercels officiella dokumentation lästes 2026-10-18:
   Misslyckade körningar återförsöks inte automatiskt och dubbla/missade
   anrop kan förekomma. Beständiga poster behöver återtas vid senare körning.
 
-## Vad som kan köras härnäst
+## Långt återtag i verklig Vercel-preview — godkänt
 
-1. **Långt återtag inom aktiv request:** skapa en syntetisk BLOCK-händelse med
-   60 s fördröjning, observera beständig oavslutad post utan apptrafik, vänta
-   ut inaktivitet och begär autentiserat återtag. Håll requesten aktiv tills
-   effekten är sparad. Upprepa återtag och kontrollera unik effekt i DB.
-   Detta bevisar manuell återtagning efter inaktivitet, inte schemalagd väckning.
-2. **Samtidiga återtag i molnet:** samma prov från två klientanrop. För att
-   påstå två Vercel-instanser krävs olika instans-ID:n; två HTTP-anrop räcker
-   inte. Lokala provet ovan bevisar redan konkurrens mellan två JVM:er.
-En läsande kontroll i testdatabasen cirka 15:07 UTC visade att den ursprungliga
-60-sekundershändelsen fortfarande hade status PROCESSING, en försöksrad och
-varken effekt eller kvittens. Nästa workerprov måste därför även hantera
-avbrutna PROCESSING-poster, inte bara FAILED.
+Deployment `dpl_B4MZhMxb7qsx53uAb7rmwLTtared` byggdes från Git-commit
+`5dd9ff05d73bfcd89dd4b8d8116395d09b4f714f` med ny provtoken. Runtime-loggarna
+anger fra1. Backendens kod och schema är samma som i M21. Testklienten var en
+separat Vercel Sandbox, inte miljön där backendens JVM kördes.
 
-3. **Schemalagd väckning:** implementera ett avgränsat workeranrop med
+| Prov | Före återtag | Aktiv HTTP-request | Efter upprepat återtag |
+| --- | --- | --- | --- |
+| Ursprunglig M21-händelse `22e40263-e8d3-451c-a7d2-e81bd9ec74b4` | PROCESSING i flera timmar; 0 effekter, 1 oavslutad post | 76 014 ms, HTTP 200; effekt 15:14:07.210100 UTC | 1 effekt, 0 oavslutade poster, 2 JVM-ID:n; upprepningen tog 15 981 ms |
+| Ny BLOCK-händelse `5b546cc1-ad94-420c-99be-722cab1def51`, 60 s | 202 mottaget 15:14:24.475611 UTC; därefter 90 s utan appanrop; 0 effekter, 1 oavslutad post | 75 706 ms, HTTP 200; effekt 15:17:09.545816 UTC | 1 effekt, 0 oavslutade poster, 2 JVM-ID:n; upprepningen tog 16 124 ms |
+
+[Molnresultat och klientens SHA-256](evidence/m22-cloud-recovery.json) innehåller
+instans-ID:n och DB-observationerna. Ingen apppollning höll JVM:en aktiv under
+inaktivitetsfönstret. Nytt instans-ID efteråt belägger omstart; vi har inte
+mätt hela plattformens globala instansantal. Mätningen omfattar även eventuell
+kallstart och är inte ett leverans-SLO eller en latensfördelning.
+
+`python3 scripts/probe/cloud-recovery.py` reproducerar provet med
+[klientkonfigurationen](../../backend/README.md). Valfria `PROBE_EXISTING_RUN_ID`
+anger en befintlig oavslutad syntetisk körning. Hårdkoda inte det redan
+slutförda körnings-ID:t ovan vid nästa prov. Klienten verifierar TLS och att
+observationskontot inte kan skapa tabeller eller skriva effekter.
+
+Det viktiga utfallet är att även en avbruten PROCESSING-post kan återtas.
+Att bara leta efter FAILED räcker inte. Detta bevisar fortfarande manuell,
+ID-styrd återtagning under en aktiv request, inte automatisk schemalagd väckning.
+
+## Nästa avgränsade del av M22
+
+1. **Schemalagd väckning:** implementera ett avgränsat workeranrop med
    tidsbudget och återtag av kvarvarande poster utan att varje ID skickas av
-   klienten. Välj därefter Vercel Cron i testprojektets production-miljö eller
-   verifiera en extern schemaläggare, exempelvis befintlig Supabase Cron.
-   [Supabase Cron](https://supabase.com/docs/guides/cron) stöder HTTP-jobb
-   och korta intervall; [schemaläggningsguiden](https://supabase.com/docs/guides/functions/schedule-functions)
+   klienten. Verifiera ålder, status, begränsat batchantal, timeout och att ett
+   avbrutet försök återtas i en senare körning. Behåll Modulith-registret.
+2. **Välj och prova schemaläggare:** Vercel Cron kräver testprojektets
+   production-miljö; täta intervall kräver Pro/Enterprise. Alternativt kan
+   [Supabase Cron](https://supabase.com/docs/guides/cron) göra HTTP-anrop med
+   korta intervall. [Schemaläggningsguiden](https://supabase.com/docs/guides/functions/schedule-functions)
    beskriver pg_cron, pg_net och Vault. Testprojektet har Vault 0.3.1 installerat;
-   pg_cron 1.6.4 och pg_net 0.20.4 är tillgängliga men inte installerade. Det
-   ger ett möjligt prov utan tredje leverantör eller uppgraderad Vercelplan.
-   Själva HTTP-väckningen, tidsgränserna och previewåtkomsten är fortfarande
-   otestade. Inga extensions har aktiverats.
-4. **Krasch efter effekt före kvittens:** kräver en kontrollerad felpunkt som
-   dagens provkod saknar. Kör separat från befintlig CRASH, som kraschar
-   före effekten. Verifiera både den hållbara effekten och leveransposten.
+   pg_cron 1.6.4 och pg_net 0.20.4 är tillgängliga men inte installerade.
+   Det möjliggör ett prov med befintliga två leverantörer. HTTP-timeout,
+   previewåtkomst, secretrotation och faktisk schemalagd väckning måste provas.
+3. **Samtidiga workers i molnet:** två HTTP-anrop bevisar inte två instanser.
+   Registrera JVM-ID:n och jämför med det lokala två-JVM-provet. Prova även
+   konkurrens om flera kvarvarande poster och återtag efter avbruten request.
+4. **Krasch efter effekt före kvittens:** fastställ först transaktionsgränsen
+   mellan DB-effekten och registerkvittensen. Lägg till en kontrollerad felpunkt;
+   dagens CRASH kraschar före effekten och provar inte denna gräns. Bevisa
+   förväntad rollback eller idempotent återtagning beroende på transaktionerna.
+5. **Dimensionering och beslut:** mät anslutningar, upprepade kallstarter och
+   faktisk kostnad för utveckling/test/produktion före hostingbeslut.
 
-Fortsatta autentiserade molnprov kräver att testklienten får en begränsad
-DB-credential, provtoken och godkänd previewåtkomst. Det tidigare nekade
-överföringssteget inväntar uttryckligt godkännande; hemliga värden från
-föregående verktygssession finns inte kvar i denna sessions minne och ska
-inte återskapas ur loggar. Skyddade värden kan behöva provisioneras på nytt
-för en ny testpreview utan att ändra den gamla deploymentens bevis.
+## Auktorisering och städning
 
-Ingen automatisk schemaändring, cronaktivering, production-deploy eller
-planändring ingår i denna del. Ingen testklient i Vercel Sandbox har startats.
-Ordinarie Förena och dess data/utskick är oförändrade.
+Användaren har uttryckligen godkänt credentialöverföring för detta och kommande
+isolerade test. Föregående hemligheter återskapades inte ur loggar. En ny
+previewtoken provisionerades i testprojektet; runtime-lösenordet i Vercel
+ändrades inte. Ett separat konto fick enbart SELECT på provtabellerna och
+saknar superuser, BYPASSRLS, schemaskapande och rätt att skriva effekter.
 
-Full kostnadsbild, leverans-SLO, återtag efter upprepade avbrott, anslutningsbudget
-och ett slutligt hostingbeslut återstår. Dagens kraschprov bevisar DB-idempotens,
-inte exakt ett externt mejl.
+Testklienten är stoppad efter cirka 8,3 minuter och observationskontots LOGIN
+är avstängt. Vid nästa prov provisioneras nytt lösenord och LOGIN aktiveras
+under provets livstid. Preview, begränsad roll och syntetiska resultat finns
+kvar. Deployment Protection är aktiverat; temporär åtkomstlänk är inte sparad
+här. Inga cronjobb, extensions, production-deployments eller planändringar
+aktiverades. Verksamhetsschema och ordinarie Förena med data/utskick är oförändrade.
+
+Externa utskick behöver fortfarande egen idempotens; en unik DB-effekt bevisar
+inte exakt ett mejl. M22:s återstående delar ovan är dokumenterade, inte
+startade som separata agenter eller GitHub Issues.

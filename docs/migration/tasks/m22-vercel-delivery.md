@@ -1,6 +1,7 @@
 # M22: Beständig leverans och väckning på Vercel
 
-Status: delvis genomförd. Regionkontroll och lokalt konkurrensprov är körda;
+Status: delvis genomförd. Regionkontroll, lokalt konkurrensprov och långt
+återtag efter inaktivitet i Vercel är körda;
 schemalagd molnleverans och hostingbeslut återstår. Ingen separat GitHub Issue.
 Beroende: M21 mergad via PR #98 som `2e0af8f`. Följ AGENTS.md.
 Se [delresultat och nästa prov](../m22-results.md).

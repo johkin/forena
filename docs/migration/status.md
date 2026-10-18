@@ -111,8 +111,16 @@ fra1-runtime i Git-previewn och ett reproducerbart lokalt konkurrensprov med
 två separata JVM:er. Tre omgångar gav en effekt och noll oavslutade publiceringar.
 Krasch-/omstartsprovet passerade också. CI aktiverar samma två-JVM-prov.
 
+Även verkligt långt återtag är nu godkänt: den ursprungliga PROCESSING-posten
+och en ny 60-sekundershändelse efter 90 s utan apptrafik återtogs i ny JVM,
+med cirka 76 s aktiva HTTP-anrop. Upprepat återtag gav en effekt och noll
+oavslutade poster i båda fallen. Resultat och exakta deployment-/klienthashar
+finns i delrapporten. Observationskontot har endast läsrättigheter; LOGIN är
+avstängt och den tillfälliga testklienten är stoppad. Användaren har godkänt
+credentialöverföring för detta och kommande isolerade test.
+
 Vercel Cron kräver production-deployment och Hobby stödjer endast dagliga jobb.
-Ingen planuppgradering eller cronaktivering har gjorts. Manuellt långt återtag,
-schemalagd väckning, molnkonkurrens, felpunkt efter effekt och full kostnadsbild
-återstår; M22 är inte avslutad och hostingbeslutet är öppet. Molnklientens
-credentialöverföring inväntar uttryckligt godkännande efter tidigare autoreview-nekande.
+Ingen planuppgradering eller cronaktivering har gjorts. Nästa avgränsade del
+är ett workeranrop med tidsbudget och faktisk schemalagd väckning, exempelvis
+med Supabase Cron. Molnkonkurrens, felpunkt efter effekt och full kostnadsbild
+återstår också; M22 är inte avslutad och hostingbeslutet är öppet.
