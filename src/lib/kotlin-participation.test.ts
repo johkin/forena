@@ -16,6 +16,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.stubEnv("FORENA_PARTICIPATION_BACKEND", "kotlin");
   vi.stubEnv("FORENA_KOTLIN_API_URL", "https://api.test");
+  vi.stubEnv("FORENA_KOTLIN_SERVICE_URL", undefined);
   vi.stubEnv("SITE_URL", "https://web.test");
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://ckzrtxqjskosqzoitymc.supabase.co");
   mocks.getUser.mockResolvedValue({ data: { user: { id: "subject" } }, error: null });
@@ -88,4 +89,30 @@ it("keeps legacy as the default and fails closed on misspelled selections", asyn
   vi.stubEnv("FORENA_PARTICIPATION_BACKEND", undefined); expect(kotlinParticipationSelected()).toBe(false);
   vi.stubEnv("FORENA_PARTICIPATION_BACKEND", "legacy"); expect(kotlinParticipationSelected()).toBe(false);
   vi.stubEnv("FORENA_PARTICIPATION_BACKEND", "kotln"); expect((await list()).status).toBe(503); expect(mocks.from).not.toHaveBeenCalled();
+});
+
+it.each([
+  ["http://backend.internal", "http://backend.internal"],
+  ["http://backend.internal/service/backend", "http://backend.internal/service/backend"],
+  ["https://binding.test/private/backend/", "https://binding.test/private/backend"],
+])("uses the server-owned service binding and preserves its routing prefix: %s", async (binding, prefix) => {
+  vi.stubEnv("FORENA_KOTLIN_SERVICE_URL", binding);
+  vi.stubEnv("FORENA_KOTLIN_API_URL", "https://unused-public-api.test");
+  expect((await list()).status).toBe(200);
+  expect(vi.mocked(fetch).mock.calls[0][0]).toBe(`${prefix}/api/activities/${id}/my-invitations`);
+  vi.mocked(fetch).mockResolvedValue(Response.json({ ok: true }));
+  expect((await respond({ response: "accepted" })).status).toBe(200);
+  expect(vi.mocked(fetch).mock.calls[1][0]).toBe(`${prefix}/api/invitations/${id}/respond`);
+});
+it("preserves a binding query without exposing it to the browser", async () => {
+  vi.stubEnv("FORENA_KOTLIN_SERVICE_URL", "https://binding.test/backend/?routing=synthetic-private-marker");
+  const result = await list();
+  expect(vi.mocked(fetch).mock.calls[0][0]).toBe(`https://binding.test/backend/api/activities/${id}/my-invitations?routing=synthetic-private-marker`);
+  expect(await result.text()).not.toContain("synthetic-private-marker");
+});
+it.each(["", "ftp://binding.test/", "https://user:secret@binding.test/", "https://binding.test/#fragment"])("fails closed on invalid service binding %s without public fallback", async binding => {
+  vi.stubEnv("FORENA_KOTLIN_SERVICE_URL", binding);
+  expect((await list()).status).toBe(503);
+  expect(mocks.createClient).not.toHaveBeenCalled();
+  expect(fetch).not.toHaveBeenCalled();
 });
