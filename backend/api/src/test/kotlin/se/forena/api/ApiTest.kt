@@ -406,6 +406,10 @@ class ApiTest {
         assertThat(request("/api/activities/$activity/my-invitations").statusCode()).isEqualTo(200)
         jwksAvailable = false
         try {
+            val health = request("/actuator/health", bearer=null)
+            assertThat(health.statusCode()).isEqualTo(503)
+            assertThat(json.readTree(health.body()).get("status").asString()).isEqualTo("DOWN")
+            assertThat(health.body()).doesNotContain("components", "authKeys", "/jwks", "exception")
             // A cached, already trusted key remains usable during an outage.
             assertThat(request("/api/activities/$activity/my-invitations").statusCode()).isEqualTo(200)
             val unknown = RSAKeyGenerator(2048).keyID(UUID.randomUUID().toString()).generate()
@@ -417,6 +421,7 @@ class ApiTest {
             assertThat(row()["revision"]).isEqualTo(0L)
             assertThat(history()).isZero(); assertThat(dirty()).isZero()
         } finally { jwksAvailable = true }
+        assertThat(request("/actuator/health", bearer=null).statusCode()).isEqualTo(200)
     }
 
     @Test fun `runtime grants stay limited and Kotlin authorization survives rollback and connection reuse`() {

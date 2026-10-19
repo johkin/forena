@@ -3,6 +3,32 @@
 Uppdaterad 2026-10-19. Inventeringsbas: `c379a96719490bc4edbfcb0a4ee7a1947684ddce`.
 Planens uppgifter finns i [uppgiftsindex](tasks/README.md).
 
+## Bekräftat TLS-fel vid Auth-nyckelhämtning
+
+Efter PR #124, main `312cb51`, svarar aktivitetens API 503 utan att logga ut.
+Vercel-loggarna för `dpl_AEEyQRwtotNvNfEx8jXd4dousebK` visar den
+2026-10-19 21:38 UTC `api_auth_failed stage=jwt reason=jwks_tls`.
+Det bekräftar TLS-fel på Kotlin → Supabase JWKS, före familjeåtkomst.
+
+Branch `fix/auth-platform-ca` använder samma Auth-HTTP-klient för JWKS och
+`/user`. Truststore förenar Java-, system- och uttryckliga plattforms-CA-rötter;
+entrypointen bevarar CA-sökvägen före miljörensning. Klienten behåller normal
+kedje-/värdnamnsverifiering, nekar redirects och stoppar felaktig CA-konfiguration.
+Release-health hämtar nu också Auths publika nycklar med samma klient, så ett
+kvarstående TLS-fel stoppar promotion i stället för att passera enbart JDBC-health.
+
+Lokala TLS-prov verifierar extra CA, nekad okänd CA och fel värdnamn samt
+saknad/felaktig CA-konfiguration. Molnverifiering och inloggat aktivitetsflöde
+återstår efter merge; exakt certifikatkedja i Vercel har inte kunnat inspekteras.
+Ett verkligt HTTPS-prov mot målprojektets JWKS återskapar `jwks_tls` med
+enbart den paketerade JDK:ns rötter och lyckas med den nya klientens systemrötter
+genom arbetsmiljöns proxy. Inga Auth-konton, sessionsdata eller verksamhetsdata
+behövs för det provet. Det verifierar CA-mekanismen lokalt, inte Vercels kedja.
+Slutkontroller godkända: Java 25 Maven verify med 41 tester, 1 142 Vitest-tester,
+båda apparnas typkontroll, lint, Next-produktionsbygge, nio releasegrindtester
+och Actionlint. Health-regressionen stoppar vid nekad nyckelhämtning och
+återhämtar sig utan att exponera komponenter, URL:er eller exceptiontext.
+
 ## Fortsatt utloggning: verifieringsfel och säker auth-diagnostik
 
 Branch `fix/jwt-verification-diagnostics` från main `5cc4759`.

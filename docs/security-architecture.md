@@ -13,6 +13,11 @@ bevarar appsessionen; signatur- och claimfel ger fortsatt 401. Ingen begäran
 släpps igenom när nycklar inte kan verifieras. Auth-diagnostik loggar bara fasta
 felkategorier för TLS, timeout, HTTP/transport, token/claims och saknad Bearer,
 aldrig tokens, claims, URL:er, exceptiontext eller stacktraces.
+Auth-klientens truststore förenar Java-rötter, containerns system-CA och
+plattformens uttryckliga CA-fil. Samma klient används för JWKS och `/user`;
+värdnamnsverifiering och certifikatkedjekontroll behålls. Saknad/felaktig
+uttrycklig CA-konfiguration stoppar start. Release-health kontrollerar också
+hämtningen av publika Auth-nycklar, utan detaljer i det publika svaret.
 Klientens sessionsdata är ingen behörighetskälla;
 Kotlin verifierar JWT, aktuell Auth-session, lokala spärrar och personåtkomst.
 Auth-user_metadata används inte för behörighet. Runtimekonfigurationen är

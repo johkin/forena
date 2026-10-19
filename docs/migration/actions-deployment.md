@@ -37,7 +37,8 @@ releasepaketeringen hoppar endast över deras återkörning. Vercel CLI är lås
 
 Kontroller före `vercel promote`:
 
-1. `/actuator/health` måste ge `status: UP`, inklusive JDBC-kontrollen.
+1. `/actuator/health` måste ge `status: UP`, inklusive JDBC och HTTPS-hämtning
+   av Supabase Auths publika signeringsnycklar.
 2. `/app-version.json` måste matcha den faktiskt paketerade frontendens version.
 3. `/login` måste kunna hämtas.
 
@@ -79,6 +80,11 @@ key, valfri aktivitet och version. Databas-/Auth-admincredentials får aldrig
 publiceras i frontendfiler eller Actions-artifakter. `config.json` och
 versionsfilen har `no-store`. Runtime-API:t får bara sitt begränsade DB-konto;
 startskriptets miljöfilter nekar migreringsläge och generella Spring-/JVM-överstyrningar.
+Auth-HTTPS-klienten läser Java- och systemrötter samt plattformens CA-fil via
+`SSL_CERT_FILE` och `NODE_EXTRA_CA_CERTS`. Sökvägarna förs vidare som
+`FORENA_AUTH_CA_BUNDLE` respektive `FORENA_AUTH_EXTRA_CA_BUNDLE`.
+Certifikat- och värdnamnskontroll behålls;
+ett uttryckligt felaktigt CA-paket stoppar start.
 
 ## Verifiering och återgång
 

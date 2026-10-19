@@ -18,5 +18,7 @@ exec env -i \
   FORENA_AUTH_ISSUER=https://ckzrtxqjskosqzoitymc.supabase.co/auth/v1 \
   FORENA_AUTH_JWKS_URI=https://ckzrtxqjskosqzoitymc.supabase.co/auth/v1/.well-known/jwks.json \
   FORENA_AUTH_PUBLISHABLE_KEY="${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:?}" \
+  FORENA_AUTH_CA_BUNDLE="${SSL_CERT_FILE:-}" \
+  FORENA_AUTH_EXTRA_CA_BUNDLE="${NODE_EXTRA_CA_CERTS:-}" \
   FORENA_MIGRATE=false \
   /opt/java/bin/java -jar /app/forena-api.jar

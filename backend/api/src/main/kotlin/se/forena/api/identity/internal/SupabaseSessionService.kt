@@ -1,13 +1,10 @@
 package se.forena.api.identity.internal
 
 import java.net.URI
-import java.net.HttpURLConnection
-import java.time.Duration
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
-import org.springframework.http.client.SimpleClientHttpRequestFactory
 import org.springframework.stereotype.Service
 import org.springframework.web.client.HttpStatusCodeException
 import org.springframework.web.client.RestClientException
@@ -17,24 +14,18 @@ import se.forena.api.identity.InactiveSession
 import se.forena.api.identity.ProviderSessionVerifier
 import se.forena.api.identity.SessionVerificationUnavailable
 import tools.jackson.databind.json.JsonMapper
+import se.forena.api.identity.AuthHttpRequestFactory
 
 /** Online provider check, without admin credentials, cache, retries or Auth-table access. */
 @Service
 class SupabaseSessionService(
     @Value("\${forena.auth.issuer}") issuer: String,
     @Value("\${forena.auth.publishable-key}") private val publishableKey: String,
-    private val json: JsonMapper
+    private val json: JsonMapper,
+    requests: AuthHttpRequestFactory
 ) : ProviderSessionVerifier {
     private val endpoint = issuer + "/user"
-    private val client = RestTemplate(object : SimpleClientHttpRequestFactory() {
-        override fun prepareConnection(connection: HttpURLConnection, httpMethod: String) {
-            super.prepareConnection(connection, httpMethod)
-            connection.instanceFollowRedirects = false
-        }
-    }.also {
-        it.setConnectTimeout(Duration.ofSeconds(2))
-        it.setReadTimeout(Duration.ofSeconds(2))
-    })
+    private val client = RestTemplate(requests)
 
     init {
         // Migration-only mode has no issuer. The web JwtDecoder rejects an absent issuer.
