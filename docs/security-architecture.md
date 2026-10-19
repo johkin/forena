@@ -16,6 +16,13 @@ Supabase `/user` utan adminnyckel eller Auth-tabellgrants. Lokala prov och
 [verkligt Auth-only-prov samt hela Kotlin-/databasprovet](migration/target-auth-lifecycle.md)
 är gröna i målprojektet. Browser, övriga Auth-metoder och driftsatt runtime
 är fortsatt separata aktiveringsgrindar.
+Det avskilda [Next-/browserprovet](migration/browser-participation.md) använder
+aktuellt `getUser()` och samma SSR-sessions bearer-token. Kotlin kontrollerar
+identitet och familj igen. Backendval och API-origin kommer enbart från
+servermiljön; browserns headers kan inte välja mål eller identitet. Skrivningens
+Origin jämförs med kanonisk `SITE_URL`. Inga cookies, adminnycklar eller
+databascredentials vidarebefordras. Tekniska fel ger 503/no-store utan retry
+eller legacy-fallback; ordinarie routing är fortsatt oförändrad.
 Gamla appens kontroller nedan gäller
 fortsatt dess befintliga databas och kanaler.
 

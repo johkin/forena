@@ -11,7 +11,10 @@ Implementerat:
 - Svar, revision, revisionshistorik (konto/kanal) och beständig signalversion i en transaktion.
 - Signerade webbsessioner, familjeavgränsning i Kotlin och livscykellås.
 
-Ingen Next-adapter eller molndeploy ingår. [Målmiljö/Auth-arbetet](../../docs/migration/target-auth-lifecycle.md)
+En avskild [Next-/browserkoppling](../../docs/migration/browser-participation.md)
+finns nu bakom serverkonfiguration som är avstängd som standard. Ordinarie
+översikt är inte omkopplad och ingen API-deploy ingår.
+[Målmiljö/Auth-arbetet](../../docs/migration/target-auth-lifecycle.md)
 har verifierat det privata schemat i `forena-kotlin`: separata begränsade
 LOGIN-roller, JDBC med betrodd CA/hostname-verifiering, paketerad Liquibase
 med oförändrad återkörning och hela `TargetAuthIT` är godkända i en tillfällig

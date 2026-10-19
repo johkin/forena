@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getSiteUrl } from "@/lib/site-url";
 import { createClient } from "@/lib/supabase/server";
+import { kotlinParticipationSelected } from "@/lib/kotlin-participation";
 
 export async function requestMagicLink(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
@@ -51,8 +52,10 @@ export async function signInWithPassword(formData: FormData) {
     redirect(`/login?mode=password&next=${encodeURIComponent(next)}&error=${encodeURIComponent("Fel e-postadress eller lösenord")}`);
   }
 
-  const { error: claimError } = await supabase.rpc("claim_person_account");
-  if (claimError) console.error("[auth] player account claim failed", { message: claimError.message });
+  if (!kotlinParticipationSelected()) {
+    const { error: claimError } = await supabase.rpc("claim_person_account");
+    if (claimError) console.error("[auth] player account claim failed", { message: claimError.message });
+  }
   redirect(next);
 }
 
@@ -79,8 +82,10 @@ export async function signUpWithPassword(formData: FormData) {
   }
 
   if (data.session) {
-    const { error: claimError } = await supabase.rpc("claim_person_account");
-    if (claimError) console.error("[auth] player account claim failed", { message: claimError.message });
+    if (!kotlinParticipationSelected()) {
+      const { error: claimError } = await supabase.rpc("claim_person_account");
+      if (claimError) console.error("[auth] player account claim failed", { message: claimError.message });
+    }
     redirect(next);
   }
 

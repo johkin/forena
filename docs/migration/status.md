@@ -3,6 +3,51 @@
 Uppdaterad 2026-10-19. Inventeringsbas: `c379a96719490bc4edbfcb0a4ee7a1947684ddce`.
 Planens uppgifter finns i [uppgiftsindex](tasks/README.md).
 
+## M07: avskilt browserflöde genom Next och Kotlin godkänt
+
+Branch `feat/kotlin-browser-flow`, från main `548d627` efter mergad PR #114.
+[Körinstruktion och gränser](browser-participation.md),
+[källbunden browser-/databasevidens](evidence/browser-participation-results.json).
+
+De två befintliga Next-rutterna för familjekallelser/svar har nu en serverstyrd
+Kotlin-adapter som är avstängd som standard. Den avskilda sidan
+`/migration/participation` använder nya seedens ID och återanvänder inloggning,
+sidskal, kontomeny, footer och svarskomponent. Kontraktstyperna importeras från
+den genererade Kotlin-specen. Fel/timeout/redirect ger ingen retry eller
+legacy-fallback. Origin-skyddet använder kanonisk `SITE_URL` och verifieras även
+när Next har en intern request-URL bakom en proxy.
+
+Verifierat 2026-10-19 kl. 13:48 svensk tid i tillfällig Vercel Sandbox i
+Frankfurt: **14 godkända browserkontroller** med riktig lösenordsinloggning,
+SSR-cookies, Next → Kotlin → privat JDBC-databas. Två barn läses; svar,
+kommentar, nej, återställning och omläsning fungerar. Kommentarändring bevarar
+svarstid och signalversion, identisk upprepning skapar inget nytt. Annan familj
+nekas med 404/403 och gamla cookies efter logout med 401 utan ändrad historik.
+Ett verkligt avbrott av API-processen ger 503 utan fallback eller databasändring.
+Mobilbredder 320/390/768 och desktop 1440 har ingen horisontell overflow;
+meny/Escape och komponentsidans kontomenyvariant är verifierade. Mobil- och
+desktopbilder granskade.
+
+Seeden och ettkommando-körningen är versionshanterade. Både full körning med
+byggen och slutlig återkörning med samma artefakter är godkända. Privilegierade
+credentials används endast i testprocessen; Next och Chromium får inga sådana,
+och API:t får bara runtime-credential. Testet städar i `finally`. Slutlig
+oberoende SQL bekräftar **noll syntetiska browserkonton och noll rader i alla
+tio verksamhetstabeller**, fem oförändrade Liquibase-steg och nekade klientgrants.
+Sandboxen är stoppad utan beständig snapshot eller publika portar.
+
+Lokala kontroller: **1 096 Vitest-tester i 133 filer**, typkontroll, lint och
+produktionsbygge godkända. API-JAR byggd med låst verktygskedja; paketstegets
+tester överhoppades, verklig browserkörning utfördes separat. Alla registrerade
+källhashar matchar ändringen. Fel projektref nekas före nätanrop och tar bort
+äldre resultatfil. Arbetsbranchen har automatiska Vercel-deployer avstängda i
+båda konfigurationerna. Ingen API-deploy, bootstrap eller vanlig routingaktivering.
+
+Återstår före hela M07: ordinarie översiktens aktivitets-/ID-läsning från nya
+databasen, full signalworker och aktivering/återgång i driftsatt runtime.
+Browser-PKCE och övriga Auth-metoder är separata grindar. Data API-cachefelet
+från PR #114 ändrades inte; det nya browserflödet behöver inte Data API.
+
 ## Målmiljö och Auth-livscykel: Auth-/API-/databasprov godkända
 
 Arbetsbranch `feat/target-api-verification`, bas main `187bfd2` (PR #113 mergad),

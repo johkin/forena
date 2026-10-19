@@ -6,7 +6,8 @@
       "main": false,
       "feat/participation-api": false,
       "feat/target-auth-lifecycle": false,
-      "feat/target-api-verification": false
+      "feat/target-api-verification": false,
+      "feat/kotlin-browser-flow": false
     }
   },
   "regions": [

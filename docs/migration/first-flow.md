@@ -1,9 +1,10 @@
 # Första verksamhets-API:t: familjens kallelsesvar
 
-Status 2026-10-19: API-delen implementerad lokalt i `backend/api`, på
-`feat/participation-api` från aktuell main (`1b60bb8`). Ingen molndeploy eller
-omkoppling av Next.js har gjorts. Detta är en del av M02/M03/M05/M07, inte
-slutlig acceptans av hela browserflödet.
+Status 2026-10-19: API-delen finns i `backend/api` och har klarat verkligt
+Auth-/databasprov efter PR #114. På `feat/kotlin-browser-flow`, från main
+`548d627`, har även en avskild browservy med serverstyrd Next-adapter och
+syntetisk seed införts. Ingen API-deploy eller omkoppling av ordinarie översikt
+ingår. Detta är en del av M02/M03/M05/M07, inte slutlig acceptans av hela M07.
 Modulen heter `activities` enligt ADR-015; `InvitationService` hanterar kallelser
 inom aktivitetsdomänen. `identity` äger konto/session och familjeåtkomst.
 
@@ -46,6 +47,13 @@ Kotlin-tjänsten är ensam producent av historik/signalversion; inga triggers
 eller Modulith-producenter skriver samma händelse en gång till.
 Signalversionen är endast beständig invalidering; ingen signalworker är ännu inkopplad.
 
+De befintliga Next-rutterna kan nu väljas till Kotlin genom servermiljön i
+en avskild testprocess. Standard är fortsatt legacy. Browserns SSR-session
+verifieras och dess bearer-token skickas vidare utan cookies/adminnycklar.
+`/migration/participation` återanvänder det gemensamma sidskalet och
+svarskomponenten med nya seedens aktivitets-ID. Läs
+[browserflödet och dess körinstruktion](browser-participation.md).
+
 ## Lokala verifieringsgrindar
 
 JUnit kör riktig signerad JWT → HTTP → begränsad JDBC → PostgreSQL med egna
@@ -64,22 +72,21 @@ Liquibase/Testcontainers i stället för reset av gamla databasen.
 
 ## Nästa steg före aktivering
 
-Uppföljning 2026-10-19: tomt privat schema och NOLOGIN-roller är provisionerade
-i `forena-kotlin`. Onlinekontroll av Auth-status är implementerad och lokalt
-testad. Credentials, Liquibase i molnet och riktig Auth-livscykel återstår;
-se [målmiljö/Auth](target-auth-lifecycle.md). Det ersätter inte grindarna nedan.
+Uppföljning 2026-10-19: begränsade LOGIN-roller, JDBC med betrodd CA/hostname,
+femstegsmigrering/återkörning och riktig Auth-livscykel är verifierade i
+`forena-kotlin`; se [målmiljö/Auth](target-auth-lifecycle.md). Även den avskilda
+browserkedjan har verifierats i Vercel Sandbox enligt
+[browserunderlaget](browser-participation.md). Det ersätter inte grindarna nedan.
 
-1. Provisionera den rena målmiljön med nya syntetiska konton och verksamhetsdata.
-   Verifiera verklig issuer/audience/JWKS, inloggningssätt och Auth-livscykel.
-   Leverantörens utloggning/radering behöver kopplas till lokal spärr eller en
-   uttryckligt accepterad tokenlivslängd. Lokal JWT-verifiering ger inte omedelbar
-   extern sessionsrevokering.
+1. Inför ordinarie aktivitets-/ID-läsning från den nya databasen och kontrollera
+   hela översiktens familjedata. Den avskilda testsidan använder ett servervalt
+   seed-ID och ersätter inte denna läsning. Gamla och nya test-ID:n blandas inte.
 2. Koppla full signalberäkning till beständigt ansvar enligt M06. Den nuvarande
    signalversionen är ingen kö och inga notifieringar eller signaler har levererats.
-3. Inför serverägd Next-adapter för dessa endpoints och den nya miljöns data.
-   Behåll bearer-verifiering i backend; ingen skrivfallback efter timeout. Prova
-   browser, omläsning och äldre payload tillsammans. Provisionerings-/aktivitets-
-   läsning måste ge den nya frontendens ID:n, inte gamla testdatabasens.
+3. Verifiera återstående Auth-metoder och browser-PKCE separat. Lösenordsflödets
+   SSR-cookies, svar/kommentar/återställning, omläsning, äldre snabbpayload,
+   familjeavgränsning och logout är verifierade i det avskilda browserprovet.
+   Bearer-verifiering i backend och avsaknad av skrivfallback behålls.
 4. Öva aktivering/återgång och dränering i avsedd miljö. Aktivera först när
    Vercel-lagringsfrågan är hanterad. Inga nya molnbyggen startas i denna leverans.
 

@@ -21,9 +21,10 @@ export type AppHeaderProps = {
   loginHref?: string;
   logoutDestination?: string;
   adminHref?: string;
+  accountMenu?: "full" | "session";
 };
 
-export function AppHeader({ homeHref = "/", navigation, organization, team, workspaces, accountEmail, loginHref, logoutDestination = "/", adminHref, sidebarNavigation = false }: AppHeaderProps) {
+export function AppHeader({ homeHref = "/", navigation, organization, team, workspaces, accountEmail, loginHref, logoutDestination = "/", adminHref, sidebarNavigation = false, accountMenu = "full" }: AppHeaderProps) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -61,7 +62,7 @@ export function AppHeader({ homeHref = "/", navigation, organization, team, work
   return <header className="topbar">
     <a className="brand" href={homeHref} aria-label="Förena startsida"><span className="brand-mark">F</span><span>Förena</span></a>
     <div className="topbar-actions">
-      {accountEmail ? <NotificationSettings /> : <a className="secondary" href={loginHref ?? `/login?next=${encodeURIComponent(team && organization ? `/o/${organization.slug}/t/${team.slug}` : homeHref)}`}>Logga in</a>}
+      {accountEmail ? accountMenu === "full" ? <NotificationSettings /> : null : <a className="secondary" href={loginHref ?? `/login?next=${encodeURIComponent(team && organization ? `/o/${organization.slug}/t/${team.slug}` : homeHref)}`}>Logga in</a>}
       <button ref={triggerRef} className={`header-menu-trigger ${sidebarNavigation ? "sidebar-menu-trigger" : ""}`} type="button" aria-label={open ? "Stäng meny" : "Öppna meny"} aria-expanded={open} aria-controls="header-menu" onClick={() => setOpen((value) => !value)}>
         <span aria-hidden="true">{open ? "×" : "☰"}</span><span>Meny</span>
       </button>
@@ -69,7 +70,7 @@ export function AppHeader({ homeHref = "/", navigation, organization, team, work
     {open ? <MenuScrollLock><div className="header-menu-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}>
       <div ref={menuRef} id="header-menu" className="header-menu-panel" role="dialog" aria-modal="true" aria-label="Huvudmeny" tabIndex={-1} onClick={(event) => { if ((event.target as HTMLElement).closest("a, nav button")) setOpen(false); }}>
         <div className="header-menu-heading"><strong>Meny</strong><button type="button" aria-label="Stäng meny" onClick={() => setOpen(false)}>×</button></div>
-        <AppMenuContent organization={organization} team={team} workspaces={workspaces} navigation={navigation} accountEmail={accountEmail} loginHref={loginHref} homeHref={homeHref} logoutDestination={logoutDestination} adminHref={adminHref} />
+        <AppMenuContent organization={organization} team={team} workspaces={workspaces} navigation={navigation} accountEmail={accountEmail} loginHref={loginHref} homeHref={homeHref} logoutDestination={logoutDestination} adminHref={adminHref} accountMenu={accountMenu} />
       </div>
     </div></MenuScrollLock> : null}
   </header>;
@@ -80,17 +81,17 @@ function MenuScrollLock({ children }: { children: ReactNode }) {
   return children;
 }
 
-export function AppMenuContent({ organization, team, workspaces, navigation, accountEmail, adminHref, loginHref, homeHref = "/", logoutDestination = "/" }: AppHeaderProps) {
+export function AppMenuContent({ organization, team, workspaces, navigation, accountEmail, adminHref, loginHref, homeHref = "/", logoutDestination = "/", accountMenu = "full" }: AppHeaderProps) {
   return <>
-        {accountEmail ? <div className="header-menu-section"><NavigationLinks label="Personligt" items={[{ href: "/", label: "Min översikt" }]} /></div> : null}
+        {accountEmail ? <div className="header-menu-section"><NavigationLinks label="Personligt" items={[{ href: accountMenu === "session" ? homeHref : "/", label: accountMenu === "session" ? "Familjens kallelser" : "Min översikt" }]} /></div> : null}
         {organization && workspaces?.length ? <div className="header-menu-section"><p className="eyebrow">Arbetsyta</p><WorkspaceSwitcher organization={organization} team={team} workspaces={workspaces} /></div> : null}
         {navigation ? <div className="header-menu-section header-menu-navigation">{navigation}</div> : null}
         {organization && accountEmail ? <div className="header-menu-section header-menu-account"><p className="eyebrow">Assistent</p><NavigationLinks label="Assistent" items={[{ href: `/o/${organization.slug}/memories`, label: "Minnen" }, ...(adminHref ? [{ href: `/o/${organization.slug}/activity-settings`, label: "Aktivitetsinställningar" }] : [])]} /></div> : null}
         {organization ? <div className="header-menu-section header-menu-account"><p className="eyebrow">Förening</p><OrganizationMenu organizationSlug={organization.slug} canAdminister={Boolean(adminHref)} /></div> : !navigation && !accountEmail ? <div className="header-menu-section"><NavigationLinks label="Navigation" items={[{ href: homeHref, label: "Översikt" }]} /></div> : null}
         <div className="header-menu-section header-menu-account">
-          {accountEmail ? <><p className="eyebrow">Konto</p><small className="header-menu-email">{accountEmail}</small><a href="/profile">Min profil</a><SystemAdminLink accountEmail={accountEmail}/><LogoutButton destination={logoutDestination} /></>
+          {accountEmail ? <><p className="eyebrow">Konto</p><small className="header-menu-email">{accountEmail}</small>{accountMenu === "full" ? <><a href="/profile">Min profil</a><SystemAdminLink accountEmail={accountEmail}/></> : null}<LogoutButton destination={logoutDestination} /></>
             : <a href={loginHref ?? `/login?next=${encodeURIComponent(homeHref)}`}>Logga in</a>}
-          <a href="/connect">Anslut AI</a>
+          {accountMenu === "full" ? <a href="/connect">Anslut AI</a> : null}
           <a href="/components">Komponenter</a>
         </div>
   </>;

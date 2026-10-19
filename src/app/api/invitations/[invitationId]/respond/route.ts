@@ -1,6 +1,7 @@
 import { invitationAvailable } from "@/lib/invitation-availability";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { forwardKotlinParticipation, kotlinParticipationSelected } from "@/lib/kotlin-participation";
 
 const allowedResponses = new Set(["pending", "accepted", "declined"]);
 
@@ -9,6 +10,7 @@ type Props = {
 };
 
 export async function PUT(request: Request, { params }: Props) {
+  if (kotlinParticipationSelected()) return forwardKotlinParticipation(request, "respond", (await params).invitationId);
   const { invitationId } = await params;
   const body: unknown = await request.json().catch(() => null);
   const response =
