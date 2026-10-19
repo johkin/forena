@@ -5,6 +5,15 @@ Planens uppgifter finns i [uppgiftsindex](tasks/README.md).
 
 ## Actions-deploy för parallell Kotlin-sajt: implementation på branch
 
+Uppföljning efter merge av PR #117: main-CI `39262001035` föll i det befintliga
+WhatsApp-pgTAP-testet, medan frontend- och båda Kotlin-jobben passerade.
+Omkörning av enbart misslyckade jobb på samma `b3ff6ef` blev grön och startade
+deployflödena. Orsaken är testernas transaktionsfasta `now()` som kan hamna före
+parkopplingsbevisens `clock_timestamp()` efter en sekundgräns. Lokalt PostgreSQL-
+prov med avsiktlig fördröjning återskapar skillnaden. Rättningen använder aktuella
+händelsetider i de två WhatsApp-testfilerna och tvingar en sekundgräns för att
+fånga regressionen. Inga produktionsfunktioner, migrationer eller CI-grindar ändras.
+
 Branch `ci/kotlin-vercel-deploy`, från main `e0953a3` efter PR #116.
 Användaren har kopplat bort Vercels Git-integration för den nya sajten och
 beställt deploy av frontend/backend genom GitHub Actions.
