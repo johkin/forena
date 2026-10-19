@@ -5,5 +5,6 @@ import nextTypescript from "eslint-config-next/typescript";
 export default defineConfig([
   ...nextVitals,
   ...nextTypescript,
-  globalIgnores([".next/**", "coverage/**", "next-env.d.ts"]),
+  { files: ["frontend/**/*.{ts,tsx}"], rules: { "@next/next/no-html-link-for-pages": "off" } },
+  globalIgnores([".next/**", "frontend/dist/**", "coverage/**", "next-env.d.ts"]),
 ]);

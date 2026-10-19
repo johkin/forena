@@ -3,6 +3,7 @@
   "framework": "nextjs",
   "git": {
     "deploymentEnabled": {
+      "feat/browser-frontend": false,
       "fix/kotlin-service-transport": false,
       "fix/kotlin-runtime-health": false,
       "chore/java25": false,

@@ -51,7 +51,9 @@ def jdbc(operation, path, state):
     q.update(sslmode=["verify-full"], sslrootcert=[str(ROOT / "backend/certs/supabase-ca.crt")], connectTimeout=["10"], socketTimeout=["30"])
     env = os.environ.copy()
     env["FORENA_TEST_JDBC_URL"] = "jdbc:" + urllib.parse.urlunsplit(p._replace(query=urllib.parse.urlencode(q, doseq=True)))
-    jars = list((Path.home() / ".m2/repository/org/postgresql/postgresql").glob("*/postgresql-*.jar"))
+    configured_jar = os.environ.get("FORENA_TEST_JDBC_JAR")
+    jars = [Path(configured_jar)] if configured_jar else list((Path.home() / ".m2/repository/org/postgresql/postgresql").glob("*/postgresql-*.jar"))
+    jars = [jar for jar in jars if jar.is_file()]
     if len(jars) != 1:
         raise SeedError("Build the API with the pinned toolchain first")
     properties = path.with_suffix(".properties")
@@ -83,10 +85,13 @@ def auth(method, path, body=None, expected=200):
 
 def cleanup(path, state):
     failures = []
-    try:
-        jdbc("cleanup", path, state)
-    except Exception:
-        failures.append("database cleanup")
+    # SQL fixtures are inserted only after both Auth users exist. A failed
+    # read-only connection preflight with no created users needs no SQL cleanup.
+    if state["users"]:
+        try:
+            jdbc("cleanup", path, state)
+        except Exception:
+            failures.append("database cleanup")
     for subject in state["users"]:
         try:
             # Idempotent recovery: allow an account already deleted by a prior cleanup.
