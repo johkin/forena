@@ -6,6 +6,8 @@ import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 import java.time.Duration
 
+data class EffectStatus(val completedAt: String?, val completedBy: String?, val attempts: Long)
+
 @Service
 class EffectControl(private val jdbc: JdbcClient) {
     @Transactional(readOnly = true)
@@ -19,10 +21,10 @@ class EffectControl(private val jdbc: JdbcClient) {
     }
 
     @Transactional(readOnly = true)
-    fun status(id: UUID): Map<String, Any?> {
+    fun status(id: UUID): EffectStatus {
         val completed = jdbc.sql("select completed_at, instance_id from probe_effect where id=:id")
-            .param("id", id).query { rs, _ -> mapOf<String, Any?>("completed_at" to rs.getObject("completed_at"), "instance_id" to rs.getString("instance_id")) }.optional().orElse(emptyMap())
+            .param("id", id).query { rs, _ -> Pair(rs.getObject("completed_at")?.toString(), rs.getString("instance_id")) }.optional().orElse(null)
         val attempts = jdbc.sql("select count(*) from probe_attempt where run_id=:id").param("id", id).query(Long::class.java).single()
-        return mapOf("completedAt" to completed["completed_at"]?.toString(), "completedBy" to completed["instance_id"], "attempts" to attempts)
+        return EffectStatus(completed?.first, completed?.second, attempts)
     }
 }

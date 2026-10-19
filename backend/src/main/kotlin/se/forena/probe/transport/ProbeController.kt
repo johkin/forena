@@ -12,7 +12,12 @@ import se.forena.probe.commands.ProbeReceipt
 import se.forena.probe.commands.ProbeRequested
 import se.forena.probe.effects.EffectControl
 import java.time.Duration
+import java.time.Instant
 import java.util.UUID
+
+data class ProbeStatus(val id: UUID, val requestedAt: Instant, val mode: ProbeMode,
+                       val completedAt: String?, val completedBy: String?, val attempts: Long)
+data class ProbeError(val error: String)
 
 @RestController
 @RequestMapping("/api/probes")
@@ -31,23 +36,24 @@ class ProbeController(
     }
 
     @GetMapping("/{id}")
-    fun status(@PathVariable id: UUID): Map<String, Any?> {
+    fun status(@PathVariable id: UUID): ProbeStatus {
         val event = commands.find(id) ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
-        return mapOf("id" to event.id, "requestedAt" to event.requestedAt, "mode" to event.mode) + effects.status(id)
+        val effect = effects.status(id)
+        return ProbeStatus(event.id, event.requestedAt, event.mode, effect.completedAt, effect.completedBy, effect.attempts)
     }
 
     @PostMapping("/{id}/recover")
-    fun recover(@PathVariable id: UUID): Map<String, Any?> {
+    fun recover(@PathVariable id: UUID): ProbeStatus {
         commands.find(id) ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
         effects.release(id)
         publications.resubmitIncompletePublications { (it.event as? ProbeRequested)?.id == id }
         // Keep this recovery invocation alive until completion; an async re-dispatch alone is insufficient.
         val deadline = System.nanoTime() + Duration.ofSeconds(100).toNanos()
-        while (effects.status(id)["completedAt"] == null && System.nanoTime() < deadline) Thread.sleep(100)
-        if (effects.status(id)["completedAt"] == null) throw ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT)
+        while (effects.status(id).completedAt == null && System.nanoTime() < deadline) Thread.sleep(100)
+        if (effects.status(id).completedAt == null) throw ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT)
         return status(id)
     }
 
     @ExceptionHandler(IllegalArgumentException::class)
-    fun invalid(): ResponseEntity<Map<String, String>> = ResponseEntity.badRequest().body(mapOf("error" to "Invalid probe request or conflicting idempotency key"))
+    fun invalid(): ResponseEntity<ProbeError> = ResponseEntity.badRequest().body(ProbeError("Invalid probe request or conflicting idempotency key"))
 }

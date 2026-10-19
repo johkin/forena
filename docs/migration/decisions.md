@@ -3,6 +3,158 @@
 Status anger målbeslut för kommande implementation, inte redan införd teknik.
 Källkodsverifierat nuläge finns i [inventeringen](inventory.md).
 
+## ADR-015: Activities-modul och tydlig Kotlin-filstruktur
+
+**Beslut 2026-10-19 på användarens instruktion:** första verksamhets-API:ts
+modul heter `activities` och äger aktiviteter samt deras kallelser och svar.
+Det ersätter namnet `participation` och den preliminära uppdelningen i ADR-002
+för det nu implementerade flödet. `InvitationService` är en tjänst inom modulen,
+inte en egen modul. `identity` äger verifierad aktör, konto/session och familjeåtkomst.
+Beroendet är `activities` → `identity`; interna repositories delas inte mellan moduler.
+
+Tjänster har suffixet `Service`. Varje moduls interna databasmodeller ligger i
+`Entities.kt` och repository-interface i `Repositories.kt`. DTO:er separeras från
+tjänstelogik; deserialisering och feltyper har egna filer. Paketnamn, imports,
+Springdoc-skanning och Modulith-test följer `activities`. HTTP/JSON/OpenAPI,
+databasnamn och migrationer ändras inte av denna omstrukturering.
+
+## ADR-014: Ingen inloggningssession i affärshistoriken
+
+**Beslut 2026-10-19 på användarens uttryckliga instruktion:** kallelsesvarens
+historik sparar konto-ID, tid, kanal, tidigare/nytt svar och revision, men inget
+`session_id`. Detta ersätter sessionsfältet i ADR-013:s historikmodell.
+
+Liquibase-steg 005 tar bort endast `invitation_history.session_id`; rader,
+konto-ID, revisioner och övriga data bevaras. Repository-modellen och tjänstens
+historikskrivning saknar fältet. Konto och inloggningssession verifieras fortsatt
+för varje anrop och lokal sessionsspärr ligger kvar i autentiseringslagret.
+
+Framtida separat teknisk audit-loggning kan läsa `session_id` från den aktuella,
+verifierade JWT-tokenen i Spring Security. Ingen audit-logg eller tokenlagring
+införs nu. Steg 005 och nya runtime-versionen ska aktiveras tillsammans; äldre
+runtime försöker skriva den borttagna kolumnen.
+
+## ADR-013: All svarslogik i Spring Boot-tjänsten
+
+**Beslut 2026-10-19 på användarens uttryckliga instruktion:** all affärslogik för
+verksamhets-API:ts kallelsesvar ska synas i Spring Boot. Även transaktionen ska
+ägas deklarativt av en `@Service`, inte av en manuell transaktionshjälpare.
+Detta ersätter trigger-/revisionskontextdelen av ADR-011/012.
+Sessionsfältet i historiken nedan ersätts av ADR-014.
+
+`InvitationService.respond` är `@Transactional`. Där finns konto/session, familj och
+organisation, livscykelkontroll, normalisering av kommentar, pending-återställning,
+svarstid, revisionsökning, historik och signalversion. Historiken får verifierat
+konto/session som vanliga fält. Identiskt tillstånd skriver ingenting. Kommentar-
+ändring bevarar svarstiden och ökar inte signalversionen. Läsmetoden använder
+`@Transactional(readOnly = true)`. Controllern översätter endast HTTP och DTO:er.
+Ingen produktionskod använder TransactionTemplate eller transaktionslokala
+identitetsinställningar längre.
+
+Alla skrivare låser aktivitet före kallelse med genererade repository-frågor.
+Aktivitetslåset skyddar mot samtidig inställning/ändrade tider och serialiserar
+skapande/ökning av aktivitetens gemensamma signalrad. Svar på olika kallelser
+för samma aktivitet serialiseras därmed också; olika aktiviteter är oberoende.
+`clock_timestamp()` hämtas efter låsen för korrekt tid efter låsväntan.
+Svar, revision, historik och signalversion sparas via Spring Data JDBC-repositories
+i samma transaktion; varje fel återställer samtliga skrivningar.
+
+Liquibase-steg 004 tar bort `invitation_guard`, `invitation_record` och deras
+funktioner `guard_response`/`record_response`. Efter samtliga steg finns inga
+egna databasfunktioner, procedurer eller verksamhetstriggers i `forena`.
+Tidigare steg är oförändrade för uppgradering och befintliga svar/historik/
+signalversioner bevaras. Nycklar, FK, NOT NULL, UNIQUE och CHECK-constraints
+behålls som dataintegritet, utan automatiska sidoeffekter.
+
+Runtime behöver nu skriva svarstid/revision, infoga historik samt läsa/infoga/
+öka signalversionen. Historiken kan inte uppdateras/raderas, kallelsens identitet
+kan inte ändras och rollen får varken DDL eller schemaägarbehörighet.
+`UPDATE(status)` på aktivitet krävs av PostgreSQL för `SELECT FOR UPDATE`;
+repositoryt exponerar ingen aktivitets-skrivmetod. Inga klientgrants införs.
+En enda native `@Query` återstår: PostgreSQLs inbyggda klocka, ingen affärsregel.
+
+Steg 004 och den nya runtime-versionen hör ihop: stoppa äldre API-runtime före
+migreringen och starta den nya efteråt. Äldre kod förutsätter triggers och ska
+inte användas mot steg 004. API:t är ännu inte driftsatt; ingen molndatabasändring
+görs i denna leverans. Gamla appens funktioner/triggers berörs inte.
+
+## ADR-012: Behörighet i Kotlin, ingen RLS i verksamhets-API:t
+
+Trigger-/revisionskontextdelen nedan ersätts av ADR-013.
+
+**Beslut 2026-10-19 på användarens uttryckliga instruktion:** ta bort RLS för
+Spring Boot-verksamhets-API:t så att åtkomstreglerna syns i Kotlin. Detta ersätter
+RLS-delen av ADR-010/011 för det privata `forena`-schemat, inte gamla appens RLS.
+
+`ActorTransactions` kontrollerar konto och lokal sessionsspärr. `FamilyAccessService`
+härleder aktiva egen-/målsmanskopplingar för verifierat subjekt och organisation.
+`InvitationService` avgränsar läsning till dessa personer, nekar främmande aktiviteter,
+kontrollerar skrivrätt före radlås och igen efter låset. Organisation/person
+följer den oföränderliga kallelsenyckeln, inte klientens body eller JWT-metadata.
+
+Liquibase-steg `api-003-application-authorization` tar bort policyer, stänger av
+RLS och tar bort `can_act_for`. Tidigare steg ändras inte. Schemat är fortsatt
+privat och får inte exponeras i Data API; PUBLIC och eventuella Supabase-
+klientroller saknar åtkomst. Runtime får inga utökade skrivrättigheter.
+
+Integritets-/revisionsloggningstriggers behålls: aktivitetslåset skyddar livscykeln,
+och svar/historik/signalversion förblir atomära. Den transaktionslokala identiteten
+används **enbart för historik**, inte för behörighet. Den sätts först när ett
+behörigt, ändrat svar faktiskt ska sparas; läsningar, nekade svar och identiska
+upprepningar sätter ingen databaskontext. `clock_timestamp` används fortsatt för
+tidsregler efter låsväntan. Detta är två små tekniska repository-frågor, ingen
+handskriven CRUD. Att flytta även revisionsloggningen från triggers är separat.
+
+Databasrollen är nu en betrodd backendroll med läsning över familjegränser;
+direkt SQL är ingen användarbehörighetsgräns. HTTP-tester måste verifiera familj,
+organisation, återkallade kopplingar och spärrade sessioner utan hjälp från RLS.
+
+## ADR-011: Spring Data JDBC för verksamhets-API:t
+
+RLS-/identitetsdelen nedan ersätts av ADR-012.
+
+**Beslut 2026-10-19 på användarens instruktion:** verksamhets-API:t använder
+Spring Data JDBC och smala `Repository`-interface. Detta ersätter ADR-003:s val
+av handskriven CRUD med JdbcClient/JdbcTemplate för `backend/api`. Spring Boot
+4.1.0:s BOM låser Spring Data JDBC/Relational till 4.1.0; ingen JPA införs.
+
+Läsningar, existenskontroller och svarsskrivning använder genererade frågor.
+Sammansatta familjenycklar mappas med `@Id`/`@Embedded`. Svar låses med
+`@Lock(PESSIMISTIC_WRITE)` på en härledd fråga. `@ReadOnlyProperty` hindrar ORM-
+uppdatering av identitet, svarstid och revision; databastriggers äger dessa fält.
+Applikationstjänsten äger fortsatt transaktionen, familjekontroll och felöversättning.
+
+Två PostgreSQL-specifika `@Query`-metoder behålls i `DatabaseSessionRepository`:
+transaktionslokal `set_config` för verifierad identitet och `clock_timestamp`
+för livscykelkontroll. De saknar härledd CRUD-motsvarighet. Det finns ingen
+JdbcTemplate/JdbcClient eller handskriven CRUD i API:ts produktionskod, men detta
+är **inte** ett påstående om att all SQL försvinner: Liquibase/RLS/triggers och
+SQL för negativa säkerhetsprov ligger kvar. M21/M22-teknikprovets specialiserade
+registry-/worker-SQL är fortsatt separat och ingår inte i denna repository-flytt.
+
+## ADR-010: Ren start för verksamhets-API:t, inga gamla testdata
+
+RLS-delen nedan ersätts av ADR-012; beslutet om ren databas gäller fortsatt.
+
+**Beslut 2026-10-19 på användarens uttryckliga instruktion:** gamla Förena-
+projektet innehåller bara testdata och behöver inte datamigreras. Ny backend
+får ett tomt privat `forena`-schema och egen Liquibase-historik. Ingen import,
+UUID-mappning eller överföring av gamla tabeller, triggers, köer eller testkonton
+ingår. Supabase är fortsatt mål för PostgreSQL/Auth enligt ADR-008/009.
+
+Detta ersätter första flödets övergång genom samma gamla verksamhetsdatabas
+i ADR-007 och tidigare M05/M07-plan. Gamla frontend/kanaler ligger kvar tills
+motsvarande funktioner kan aktiveras i den rena miljön. Det nya API:t får aldrig
+skriva till den gamla databasen som reserv. Att gamla data inte importeras ger
+ingen rätt att radera det gamla projektet eller ändra dess Auth-inställningar.
+
+Första implementationen finns i `backend/api`, separat från M21/M22-provet.
+Läsning och svar, familje-RLS, livscykellås och atomär revisionshistorik ingår.
+En beständig signalversion sparas, men full signalreaktion, Auth-livscykel,
+provisionering av verksamhetsdata, Next-adapter och driftaktivering återstår.
+Se [första flödet](first-flow.md). Vercel-lagringsvarningen motiverar att denna
+leverans byggs och provas lokalt utan nya molndeploys.
+
 ## ADR-009: Vercel + Supabase är aktuell inriktning
 
 **Beslut 2026-10-18 (M22F):** fortsätt med Vercel för app/backend och Supabase
@@ -118,6 +270,9 @@ Behåll samma repo och npm/package-lock. Introducera `backend/`, `infra/` och
 när scripts, testimporter, deploy och cache-nycklar kan verifieras tillsammans.
 
 ## ADR-002: Modulär monolit — fastställt, gränser preliminära
+
+För första verksamhets-API:t ersätts activities/participation-uppdelningen nedan
+av den gemensamma `activities`-modulen enligt ADR-015. Övriga gränser är hypoteser.
 
 Ett Maven-projekt och en backendtjänst på Vercel enligt ADR-009. Verksamhetspaket under exempelvis
 `se.forena`: `organization`, `activities`, `participation`, `duties`,

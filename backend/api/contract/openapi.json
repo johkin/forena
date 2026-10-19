@@ -1,0 +1,271 @@
+{
+  "components": {
+    "schemas": {
+      "ApiError": {
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "type": "object"
+      },
+      "FamilyInvitation": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "person_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "response": {
+            "enum": [
+              "pending",
+              "accepted",
+              "declined"
+            ],
+            "type": "string"
+          },
+          "response_comment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "person_id",
+          "response",
+          "response_comment"
+        ],
+        "type": "object"
+      },
+      "FamilyInvitations": {
+        "properties": {
+          "invitations": {
+            "items": {
+              "$ref": "#/components/schemas/FamilyInvitation"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "invitations"
+        ],
+        "type": "object"
+      },
+      "InvitationResponseResult": {
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "type": "object"
+      },
+      "RespondToInvitationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "comment": {
+            "description": "Omitted preserves the comment; null or blank clears it. Trimmed and truncated to 500 Unicode code points. Pending always clears it.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "response": {
+            "enum": [
+              "pending",
+              "accepted",
+              "declined"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "response"
+        ],
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "bearerFormat": "JWT",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "title": "Förena family invitations API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/activities/{activityId}/my-invitations": {
+      "get": {
+        "description": "Only own people and active guardian links. Future invitations return an empty list. Cache-Control: no-store.",
+        "operationId": "getMyInvitations",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "activityId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FamilyInvitations"
+                }
+              }
+            },
+            "description": "Family invitations"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid activity UUID"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Missing, invalid or locally inactive web session"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Activity unavailable to family"
+          }
+        },
+        "tags": [
+          "invitation-controller"
+        ]
+      }
+    },
+    "/api/invitations/{invitationId}/respond": {
+      "put": {
+        "description": "Identical state creates no revision. Concurrent commands serialize in database lock order; a delayed different answer can replace an earlier one. Cache-Control: no-store.",
+        "operationId": "respondToInvitation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invitationId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RespondToInvitationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationResponseResult"
+                }
+              }
+            },
+            "description": "Committed or unchanged state"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid body or invitation UUID"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Missing, invalid or locally inactive web session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invitation unavailable to family"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Activity cancelled, ended or invitation not sent"
+          }
+        },
+        "tags": [
+          "invitation-controller"
+        ]
+      }
+    }
+  },
+  "security": [
+    {
+      "bearer": []
+    }
+  ],
+  "servers": [
+    {
+      "url": "/"
+    }
+  ]
+}

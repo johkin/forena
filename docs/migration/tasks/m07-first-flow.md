@@ -1,11 +1,13 @@
 # M07: Koppla första kompletta svarflödet till Kotlin
 
-Status: planerad. Beroenden: M05, M06. Leverans: en avgränsad PR om inte nedan
+Status: delvis implementerad (2026-10-19). Beroenden: M05, M06. Leverans: en avgränsad PR om inte nedan
 anges att arbetet först ska delas. Alla PR-baser är aktuell `main`.
+
+API och versionshanterat OpenAPI/TS-kontrakt finns i `backend/api`. Next-adapter, browserflöde och driftaktivering återstår. ADR-010 ersätter den gamla gemensamma databasen med ren start utan dataimport. Se [första flödet](../first-flow.md) för aktuell avgränsning.
 
 ## Bakgrund och gemensamma beslut
 
-Flytta transportansvaret utan dataflytt. Befintliga UI-komponenter och öppna flikar måste fungera. first-flow.md innehåller hela verifieringsmatrisen.
+Ren start utan gamla testdata enligt ADR-010. Befintliga UI-komponenter återanvänds när de kopplas till den nya miljön; tidigare antagande om samma databas gäller inte längre. first-flow.md beskriver aktuell ordning.
 
 Läs [repoinstruktionerna](../../../AGENTS.md), [planen](../README.md),
 [nuläget](../inventory.md), [besluten](../decisions.md),

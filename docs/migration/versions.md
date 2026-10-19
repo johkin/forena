@@ -91,3 +91,20 @@ signaturer. M01 ska verifiera publicerade checksummor före ordinarie användnin
 Miljöns proxy och TLS-kontroll behölls. `supabase.com/changelog.md` och Java.net-
 åtkomst nekades av nätpolicyn; Supabase-produktstatus och officiella Google-priser
 är därför fortfarande separata grindar enligt [kostnadsunderlaget](costs-and-regions.md).
+
+## Springdoc i första verksamhets-API:t
+
+`backend/api` låser `springdoc-openapi-starter-webmvc-api` till **3.1.1** med
+Spring Boot 4.1.0, Kotlin 2.4.20 och Jackson 3.1.4 från Boot. Den officiella
+[dokumentationen](https://springdoc.org/) anger springdoc 3.x för Boot 4;
+Maven Central publicerar 3.1.1 som stabil version. Kompatibiliteten verifieras
+här genom riktig HTTP-generering, JWT-skydd, nullable-/required-fält, enums och
+körning av API:ts integrationstester. Ingen Swagger UI- eller MCP-modul införs.
+
+## Spring Data JDBC i verksamhets-API:t
+
+`spring-boot-starter-data-jdbc` använder Boot 4.1.0:s låsta BOM och ger Spring
+Data JDBC/Relational/Commons **4.1.0**. Repositories, sammansatta ID:n, read-only-
+fält och pessimistiska lås verifieras mot PostgreSQL 17.6 med begränsad runtime.
+Se [ADR-013](decisions.md) för tjänstens transaktioner och den enda native-frågan:
+PostgreSQLs inbyggda klocka. Revisionsloggningen använder genererade repositories.

@@ -12,6 +12,6 @@ class EffectsModuleTest : DatabaseTest() {
     @Autowired lateinit var effects: EffectControl
     @Test
     fun `effects module exposes its read contract without HTTP`() {
-        assertThat(effects.status(UUID.randomUUID())["completedAt"]).isNull()
+        assertThat(effects.status(UUID.randomUUID()).completedAt).isNull()
     }
 }

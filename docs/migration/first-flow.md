@@ -1,117 +1,83 @@
-# Första kompletta flödet: besvara en kallelse
+# Första verksamhets-API:t: familjens kallelsesvar
 
-Aktuell inriktning enligt ADR-009 (M22F): Vercel + Supabase. Google Cloud-
-kopplingar utvärderas först vid ett dokumenterat konkret hinder. Tidigare
-GCP-priser och lösningsförslag nedan är historiska alternativ, inte aktivt arbete.
+Status 2026-10-19: API-delen implementerad lokalt i `backend/api`, på
+`feat/participation-api` från aktuell main (`1b60bb8`). Ingen molndeploy eller
+omkoppling av Next.js har gjorts. Detta är en del av M02/M03/M05/M07, inte
+slutlig acceptans av hela browserflödet.
+Modulen heter `activities` enligt ADR-015; `InvitationService` hanterar kallelser
+inom aktivitetsdomänen. `identity` äger konto/session och familjeåtkomst.
 
+## Ren databas enligt användarens beslut
 
-Status: föreslaget första verksamhetsflöde, inte implementerat.
-Beroenden: M01–M07 enligt [uppgifterna](tasks/README.md).
-Beslut: [ADR-003–007](decisions.md). Säkerhetsbas:
-[befintlig säkerhetsarkitektur](../security-architecture.md).
+[ADR-010](decisions.md) ersätter den tidigare planen att använda gamla
+verksamhetsdatabasen övergångsvis. Gamla Förena-projektet innehåller testdata
+som inte ska importeras. Det nya API:t får eget tomt privat `forena`-schema,
+egen Liquibase-historik, schemaägare och begränsad runtime-roll. Auth och Storage
+förblir leverantörsägda. Ingen radering av gamla projektet ingår.
 
-## Avgränsat användarresultat
+## Implementerat och verifierbart
 
-En inloggad person eller målsman öppnar familjens kallelse, ser nuvarande svar,
-svarar ja/nej, ändrar eller återställer svaret och ser resultatet efter omladdning.
-Utelämnad kommentar bevarar tidigare text. Explicit tom kommentar rensar den;
-`pending` rensar kommentar och svarstid. Felaktig, tidig, inställd eller avslutad
-kallelse ger samma begripliga fel som i dag. Obehöriga får inga privata uppgifter.
+- `GET /api/activities/{activityId}/my-invitations`: egna personer och aktiva
+  målsmanskopplingar, aldrig andra familjer. Före utskick returneras tom lista.
+- `PUT /api/invitations/{invitationId}/respond`: ja/nej/pending, kommentar,
+  ändring och återställning. Utelämnad kommentar bevaras; null/tom rensar;
+  `pending` rensar kommentar och svarstid. Ogiltiga typer och okända bodyfält nekas.
+- JWT-signatur och webbsessionsclaims kontrolleras före databasen. Metadata
+  ger inga rättigheter; familjeåtkomst kommer från aktiva databasrelationer.
+- Spring Data JDBC-repositories med genererad CRUD, begränsad runtime-roll
+  och uttryckliga åtkomstregler i Kotlin enligt ADR-012; ingen RLS i det privata
+  API-schemat. Konto/session kontrolleras per transaktion, familj/organisation
+  före läsresultat och före/efter skrivlås. Ingen databaskontext sätts.
+- `@Service`/`@Transactional` äger all svarslogik enligt ADR-013. Läsmetoden är
+  read-only. Repositories sparar svarstid, revision, historik och signalversion;
+  inga egna databasfunktioner/procedurer eller verksamhetstriggers finns efter steg 004.
+- Samma transaktion skriver svar, revision, historik med konto/kanal (inget sessions-ID enligt ADR-014)
+  och en beständig signalversion. Kommentartext och token sparas inte i historik.
+- Aktivitetslås skyddar mot samtidig inställning och avslut. Upprepning av samma
+  tillstånd skapar ingen ny historik. Olika samtidiga svar serialiseras; ingen
+  klientrevision krävs i version 0.1, så en sen annorlunda begäran kan ersätta svaret.
 
-Detta är hela svarskommandot med läsning, behörighet, skrivtransaktion,
-historik och befintlig signalreaktion. Skapande/utskick av kallelsen använder
-befintlig lösning tills M09/M10. Ingen ny UI-funktion eller kanal införs här.
-MCP får inte samtidigt utökas från läsning/utkast till skrivning.
+[API-README](../../backend/api/README.md) beskriver körning, bootstrap, exakt
+Auth-policy och gränser. [OpenAPI](../../backend/api/contract/openapi.json) och
+[genererade TS-typer](../../backend/api/contract/generated.ts) är versionshanterade. Specen genereras med springdoc 3.1.1 från REST-controllers
+med typade request-/svarsklasser. Maven-verifieringen exporterar den via den
+bearer-skyddade `/v3/api-docs`; CI genererar och jämför både spec och TS-typer.
+Kotlin-tjänsten är ensam producent av historik/signalversion; inga triggers
+eller Modulith-producenter skriver samma händelse en gång till.
+Signalversionen är endast beständig invalidering; ingen signalworker är ännu inkopplad.
 
-## Konkreta befintliga filer
+## Lokala verifieringsgrindar
 
-- `src/components/overview-invitation-response.tsx`: snabbsvar i översikt.
-- `src/app/api/invitations/[invitationId]/respond/route.ts` och `.test.ts`:
-  PUT, validering, session, läsning, livscykelfel, uppdatering och HTTP-kontrakt.
-- `src/app/api/activities/[activityId]/my-invitations/route.ts` och `.test.ts`:
-  underlag för familjens egna kallelser.
-- `src/data/personal-dashboard.ts`, `src/data/team-dashboard.ts`:
-  omgivande läsningar och uppdatering av översikten.
-- `src/lib/invitation-availability.ts`, `src/lib/invitation-availability.test.ts`:
-  tidigaste svarstid.
-- `supabase/migrations/20260923211000_activity_events.sql`: svarshistorik.
-- `supabase/migrations/20261008183546_capability_signals.sql`: beständig
-  `activity.invitation_response_changed` och signalreaktion.
-- `supabase/migrations/20261011231144_lock_completed_invitation_responses.sql`:
-  databasens lås mot samtidig inställning/tidsändring.
-- `supabase/tests/invitations_rls_test.sql`,
-  `supabase/tests/invitation_response_lifecycle_test.sql` och
-  `supabase/tests/capability_signals_test.sql`: säkerhets- och regressionsunderlag.
+JUnit kör riktig signerad JWT → HTTP → begränsad JDBC → PostgreSQL med egna
+syntetiska familjer. Testerna omfattar egen person/två barn, annan familj,
+återkallad koppling, blockerat konto/session, fel claims/signatur/algoritm,
+ES256/RS256, JWKS-rotation/nätfel, livscykelkonflikter, samtidiga skrivare,
+upprepning, historik, rollback vid historik-/signalfel, låsväntan över sluttid och
+signalversion vid samtidiga svar på olika kallelser. Separata migrationstester
+installerar tomt schema respektive uppgraderar alla fyra tidigare baslinjer,
+validerar och återkör med bevarade syntetiska data. Modulith-gränser verifieras.
 
-## Första övergången: ny backend, samma primära databas
+API-jobbet läggs till CI:s obligatoriska `verify` utan att ta bort befintliga
+kontroller. Testresultat och ej körda grindar redovisas i [status](status.md).
+Gamla Supabase-migrationer har inte ändrats: det nya schemat verifieras med
+Liquibase/Testcontainers i stället för reset av gamla databasen.
 
-```mermaid
-sequenceDiagram
-    participant W as Befintlig React/Next.js
-    participant N as Next.js kompatibilitetsadapter
-    participant B as Kotlin participation API
-    participant P as Befintlig Supabase Postgres
-    participant J as Befintlig signalworker
-    W->>N: Samma läs-/PUT-kontrakt och session
-    N->>B: Verifierbar access token, samma request-ID
-    B->>B: JWT + användar-/familje-/lagkontroll
-    B->>P: Svarstransaktion med avgränsad identitetskontext
-    P->>P: RLS, livscykellås, svar, historik, domänhändelse
-    P-->>B: Commit eller explicit konflikt
-    B-->>W: Via adaptern, oförändrat kontrakt
-    J->>P: Beständig signalhantering med befintliga kvittenser
-    W->>N: Läs om aktuellt svar
-```
+## Nästa steg före aktivering
 
-Next-adaptern hämtar användarens verkliga access token på servern; den skapar
-ingen ny användartoken. Backend verifierar token själv. En gemensam databas
-innebär ingen datareplikering eller dubbelskrivning. Gamla Telegram-/WhatsApp-
-svar fortsätter genom sina befintliga kontroller tills kanalerna flyttas.
+1. Provisionera den rena målmiljön med nya syntetiska konton och verksamhetsdata.
+   Verifiera verklig issuer/audience/JWKS, inloggningssätt och Auth-livscykel.
+   Leverantörens utloggning/radering behöver kopplas till lokal spärr eller en
+   uttryckligt accepterad tokenlivslängd. Lokal JWT-verifiering ger inte omedelbar
+   extern sessionsrevokering.
+2. Koppla full signalberäkning till beständigt ansvar enligt M06. Den nuvarande
+   signalversionen är ingen kö och inga notifieringar eller signaler har levererats.
+3. Inför serverägd Next-adapter för dessa endpoints och den nya miljöns data.
+   Behåll bearer-verifiering i backend; ingen skrivfallback efter timeout. Prova
+   browser, omläsning och äldre payload tillsammans. Provisionerings-/aktivitets-
+   läsning måste ge den nya frontendens ID:n, inte gamla testdatabasens.
+4. Öva aktivering/återgång och dränering i avsedd miljö. Aktivera först när
+   Vercel-lagringsfrågan är hanterad. Inga nya molnbyggen startas i denna leverans.
 
-M05 ska bevisa att JDBC kan använda en begränsad runtime-roll och
-transaktionslokal, serverbyggd claims-kontext utan att kringgå RLS. Poolade
-anslutningar måste testas mellan två användare, även efter rollback/timeout.
-Använd aldrig klientens JSON eller en databasägarroll som reserv.
-M07 aktiveras först när detta och familjens läsning fungerar end-to-end.
-
-Svarets befintliga trigger fortsätter äga historik och signalhändelse. M06:s
-Registry-prov får inte publicera en dubblett av den. Det avgör övergången för
-kommande Kotlin-ägda reaktioner och målmiljön; det är inget krav att byta alla
-befintliga köer för att flytta en endpoint.
-
-## Verifieringsmatris för M07
-
-| Fall | Förväntat resultat |
-| --- | --- |
-| Egen person; målsman med två barn; ledare med bredare läsåtkomst | Enbart den valda och faktiskt tillåtna kallelsen ändras; läsning av egna svar förblir familjeavgränsad |
-| Annat lag, annan klubb, återkallad familje-/rollkoppling | Nekad åtkomst, ingen ändring/historik/händelse och ingen dataläcka |
-| Saknad/utgången token, fel issuer/audience/scope eller otillåten grant | Nekat innan verksamhetsåtkomst |
-| Ja → nej → pending, explicit/utelämnad kommentar | Samma fält- och tidssemantik som befintligt API |
-| Före utskick, inställt, avslutat, samtidig inställning/tidsändring | Atomärt nekande eller korrekt serialiserad skrivning, 409 för livscykelkonflikt |
-| Repetition efter timeout eller två samtidiga svar | Dokumenterad ordning och inga extra sidoeffekter för oförändrat tillstånd; äldre kanalkvittenser kan inte skriva över senare svar |
-| Commit och krasch före HTTP-svar; rollback; signalworker nere | Svar/historik/händelse förblir konsistenta; beständigt arbete kan återtas |
-| Äldre öppen frontendflik, snabbknapp och aktivitetsdialog | Samma URL, request/response och UI-tillstånd; omladdning visar sparat svar |
-| Två poolade användare efter fel | Ingen claims- eller rollkontext läcker mellan transaktioner |
-
-Kör JUnit/regler, Modulithstruktur, PostgreSQL/Testcontainers och relevanta
-befintliga Vitest/pgTAP-tester samt ett browserflöde med syntetiska användare.
-Dokumentera varje faktiskt körd miljö. Enbart mockade HTTP-tester räcker inte.
-Ingen notifiering ska skickas bara för att ett svar återspelas. Revisionspost med
-konto och kanal tillkommer explicit om nuvarande historik inte räcker; detta
-är målkrav och får inte beskrivas som redan implementerat.
-
-## Aktivering, återgång och senare Cloud SQL-flytt
-
-Aktivering är miljöägd serverrouting för dessa endpoints, inte ett klientval av
-databaskälla. Dränera gamla anrop och rikta nya anrop till en implementation.
-Ingen automatisk skrivfallback efter timeout: resultatet kan redan vara sparat.
-Återgång före dataflytt växlar implementation men behåller samma databas och
-kontrakt. Kvittera pågående anrop och kontrollera sidoeffekter vid växling.
-
-M12 är nu ett vilande Cloud SQL-alternativ enligt ADR-008; M13 flyttar backendansvar på samma databas. Om separat dataflytt senare beslutas får den ske först när samtliga skrivare till klubbens sammanhängande
-data kan stängas av eller ledas till målbackend: aktiviteter, svar, närvaro,
-pass, kanalwebhooks, RPC:er, workers och direkt PostgREST från gamla flikar.
-Delade identiteter och kataloger behöver separat mappning. Det räcker inte att
-kopiera `invitations` medan aktiviteter, behörigheter och cron bor kvar.
-Cloud SQL-acceptans kräver samma flöde mot importerade testdata, bevarade UUID,
-relationer, historik och leveranskvitton samt övad frysning och återställning.
+Gamla Telegram-/WhatsApp-/MCP-flöden är inte anslutna till den nya verksamhets-
+databasen. Återgång av UI-routing får inte låtsas att gamla och nya testdata
+är samma dataset. Datakopiering eller dubbelskrivning behövs inte för ren start.

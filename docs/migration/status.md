@@ -1,7 +1,89 @@
 # Migreringsstatus
 
-Uppdaterad 2026-10-18. Inventeringsbas: `c379a96719490bc4edbfcb0a4ee7a1947684ddce`.
+Uppdaterad 2026-10-19. Inventeringsbas: `c379a96719490bc4edbfcb0a4ee7a1947684ddce`.
 Planens uppgifter finns i [uppgiftsindex](tasks/README.md).
+
+## Första verksamhets-API:t: för granskning, ren start
+
+Leverans på `feat/participation-api`, från main `1b60bb8b5978041f469f024f100432c72dbd44d4`.
+[ADR-010](decisions.md) fastställer användarens beslut att inte importera gamla
+projektets testdata. Nytt privat `forena`-schema och egna Liquibase-migrationer;
+`backend/api` är en separat app från M21/M22-provet.
+
+Ändrat beteende: API för familjens kallelser och för att svara, ändra eller
+återställa svaret. Explicit familje-/organisationskontroll i Kotlin utan RLS enligt ADR-012,
+JWT-verifiering, konto-/sessionsspärr, livscykellås och atomär
+svarshistorik/signalversion. OpenAPI och reproducerbart genererade TS-typer.
+CRUD i verksamhets-API:t är nu genererad med Spring Data JDBC 4.1.0 och smala
+Repository-interface enligt ADR-011. Modulen heter `activities` och äger aktivitet/
+kallelse enligt ADR-015; den beror på `identity` för konto/session och familj.
+Tjänster har suffixet `Service`, databasmodeller ligger i `Entities.kt` och
+repository-interface i `Repositories.kt` inom varje modul. DTO:er är separata.
+All svarslogik ligger i `InvitationService`, en
+`@Service` med `@Transactional` enligt ADR-013; läsning är read-only. Ingen manuell
+transaktionshantering eller databaskontext behövs. Steg 004 tar bort båda triggers
+med funktioner; inga egna databasfunktioner/procedurer finns kvar. Pessimistiska
+lås tas aktivitet → kallelse; historik och signalversion skrivs via repositories.
+Runtime får smala skrivgrants för dessa fält/tabeller; identitet och historikens
+oföränderlighet skyddas fortsatt. En native @Query återstår för databasens klocka.
+Steg 005 tar bort `session_id` från affärshistoriken enligt ADR-014; konto-ID
+bevaras. Verifierad tokens sessions-ID används fortsatt i autentiseringens
+spärrkontroll och kan hämtas för framtida separat teknisk audit-loggning.
+Ingen audit-logg införs nu. Teknikprovets registry-SQL är separat och inte omskriven.
+CI får ett separat obligatoriskt API-jobb; befintliga kontroller behålls.
+Se [första flödet](first-flow.md) och [körinstruktionerna](../../backend/api/README.md).
+
+Lokal verifiering för leveransen:
+
+- API Maven `verify`: 30 tester, inga fel eller överhoppade. Riktiga ES256/RS256-
+  signaturer och lokal JWKS-server, HTTP, PostgreSQL 17.6/Testcontainers med
+  begränsad runtime och schemaägare, familje-/klubbgränser utan RLS, rollback,
+  samtidiga skrivare/inställning, historik och Modulith-struktur. Nya prov täcker
+  två målsmän för samma person med sammansatt ID samt att repository-save inte
+  kan skriva kallelsens oföränderliga identitet. Svarstid och revision ägs nu
+  av Kotlin-tjänsten och verifieras genom HTTP.
+- Tom Liquibase-installation och uppgradering från alla fyra tidigare baslinjer,
+  validate/återkörning, borttagna policyer/RLS/funktioner/verksamhetstriggers,
+  återkallade klientgrants, bevarade syntetiska svar/historik/signalversioner och
+  negativa constraints ingår. HTTP-prov täcker återkallad familjeläsning,
+  nekad skrivning före främmande radlås och inga historikskrivningar vid läsning/
+  nekade svar/identiska upprepningar. Nya prov täcker samtidiga olika svar,
+  olika kallelsers gemensamma signalrad, sluttid efter låsväntan och rollback
+  av svar/historik/revision om signalens skrivning misslyckas.
+- Paketerad JAR: verklig bootstrap, migreringsläge två gånger utan HTTP,
+  runtime utan ägarcredential, health, bearerkrav och SIGTERM verifierade lokalt.
+- Befintliga Vitest: 131 filer, 1 065 tester godkända. Typkontroll, lint och
+  produktionsbygge godkända lokalt. Bygget krävde egna lokala dependencies och
+  subprocessrättigheter; tidigare miljöfel är lösta, inga kontroller avstängda.
+- Springdoc 3.1.1 genererar OpenAPI via riktig bearer-skyddad HTTP från
+  REST-controllers och typade DTO:er; required/nullable, enumvärden och typade
+  felkontrakt verifieras. Export och TS-generation jämförs med Git i CI.
+- Teknikprovets controllers har också data classes för status och fel med
+  bevarade JSON-fält. Maven `verify`: 45 tester, inklusive HTTP-kontraktsprov.
+- OpenAPI-generation utan diff och CI-jobbens beroenden verifierade.
+
+PR-förberedelse: API-konfigurationen har bytts från `application.properties`
+till `application.yaml` med samtliga 24 värden bevarade. Ren Maven-verifiering
+och prov av den paketerade appen körs även med YAML. Automatiska Vercel-byggen
+är avstängda för just `feat/participation-api` i webb- och provkonfigurationen
+på grund av lagringsvarningen; GitHub CI behåller samtliga obligatoriska jobb.
+[PR #112](https://github.com/johkin/forena/pull/112) innehåller också springdoc-
+integrationen och typade svar för alla egna REST-controllers. Okända bodyfält,
+fel kommentartyper och numeriska enumvärden nekas; utelämnad kommentar och null
+behåller olika betydelser. CI-status för den publicerade committen redovisas i PR:n.
+
+Inte aktiverade: Vercel-deploy, verklig Supabase-inloggning,
+passkey/OAuth/MCP, browser → Next-adapter eller full signalworker. Gamla
+Supabase-migrationer är oförändrade; inget reset/pgTAP körs mot gamla projektet.
+Det nya schemat verifieras med Liquibase/Testcontainers, inga molndatabaser har
+ändrats. Ingen dataöverföring, gammal projektradering eller nya Vercel-byggen.
+
+M02/M03/M05/M07 är delvis levererade; helheten får inte markeras färdig.
+Nästa steg är nya syntetiska verksamhetsdata, verifierad Auth-livscykel,
+full signalreaktion och därefter Next-adapter/browserprov i den rena miljön.
+Extern Auth-utloggning/radering kan inte lovas slå igenom omedelbart med endast
+lokal JWT-verifiering: koppla lokal spärr eller besluta tokenlivslängd före pilot.
+Vercel-lagringsvarningen behöver hanteras före driftaktivering.
 
 ## M00: Nuläge, beslut och migreringsplan
 

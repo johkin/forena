@@ -1,9 +1,25 @@
 # Arkitektur
 
-Den stegvisa målarkitekturen för Kotlin/Spring Boot och Google Cloud finns i
+Den stegvisa målarkitekturen för Kotlin/Spring Boot på Vercel och Supabase finns i
 [migreringsplanen](migration/README.md) och dess [beslut](migration/decisions.md).
 Beskrivningen nedan avser nuvarande lösning och befintliga principer; målteknik
 är inte införd bara för att den dokumenterats.
+
+Det första separata verksamhets-API:t finns nu i `backend/api`: familjens
+kallelseläsning och svar med Spring Data JDBC-repositories, Liquibase och åtkomstkontroller i Kotlin (ADR-012). Det använder
+ett nytt tomt `forena`-schema enligt ADR-010, utan gamla projektets testdata.
+Enligt ADR-013 äger en Spring `@Service` med `@Transactional` hela svarslogiken,
+inklusive historik och signalversion; inga verksamhetstriggers eller egna
+procedurer används i det nya API-schemat. Nuvarande Next.js-app är ännu inte omkopplad. Se [API-underlaget](../backend/api/README.md)
+för säkerhetsgränser, verifiering och återstående aktivering. REST-controllers
+använder typade Kotlin data classes för svar. OpenAPI genereras från controller-
+signaturer och DTO-annoteringar med springdoc, och TypeScript-typer härleds från
+exporten i CI; kontraktsspecen underhålls inte separat för hand.
+Kotlin-tjänster namnges med suffixet `Service`, exempelvis `InvitationService`.
+Varje moduls interna databasmodeller samlas i `Entities.kt` och repository-
+interface i `Repositories.kt`. DTO:er ligger i separata filer från tjänstelogiken;
+modulen `activities` äger aktiviteter/kallelser och `identity` konto/session och
+familjeåtkomst. Modulith verifierar beroendet `activities` → `identity` (ADR-015).
 
 Förena byggs som en multi-tenant-applikation där varje skrivning går genom ett
 validerat applikationskommando. Gränssnitt och AI-assistent använder samma
