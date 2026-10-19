@@ -56,7 +56,11 @@ ALTER ROLE forena_api_runtime PASSWORD 'local-runtime-only';
             log.seek(0)
             assert "Tomcat started" not in log.read(), "Migration mode must not open HTTP"
         changes = docker("exec", container, "psql", "-U", "postgres", "-Atc", "select count(*) from forena.databasechangelog")
-        assert changes == "4"
+        assert changes == "5"
+        session_columns = docker("exec", container, "psql", "-U", "postgres", "-Atc",
+                                 "select count(*) from information_schema.columns where table_schema='forena' "
+                                 "and table_name='invitation_history' and column_name='session_id'")
+        assert session_columns == "0", "Login sessions must not be stored in business history"
         functions = docker("exec", container, "psql", "-U", "postgres", "-Atc",
                            "select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='forena'")
         assert functions == "0", "Business logic must not live in database functions or procedures"

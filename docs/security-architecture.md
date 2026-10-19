@@ -7,8 +7,9 @@ konto/session, aktiva familjekopplingar samt organisationsgränser kontrolleras
 för läsning och skrivning. Ingen RLS används i detta privata schema. Det får
 inte exponeras i Data API och klientroller har inga grants. Enligt ADR-013
 äger `@Service`/`@Transactional` hela svarsflödet: inga egna databasfunktioner,
-procedurer eller verksamhetstriggers används, och historiken får verifierad
-aktör som vanliga fält. Runtime får aldrig schemaägar- eller service-role-credentials.
+procedurer eller verksamhetstriggers används. Historiken får verifierat konto-ID;
+ADR-014 tar bort inloggningssessionen från affärsdata. Sessions-ID finns fortsatt
+i verifierad token och används för lokal sessionsspärr. Runtime får aldrig schemaägar- eller service-role-credentials.
 Se [API:ts säkerhetsgränser](../backend/api/README.md), särskilt begränsningen
 kring extern Auth-revokering före pilot. Gamla appens kontroller nedan gäller
 fortsatt dess befintliga databas och kanaler.

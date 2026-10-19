@@ -3,12 +3,29 @@
 Status anger målbeslut för kommande implementation, inte redan införd teknik.
 Källkodsverifierat nuläge finns i [inventeringen](inventory.md).
 
+## ADR-014: Ingen inloggningssession i affärshistoriken
+
+**Beslut 2026-10-19 på användarens uttryckliga instruktion:** kallelsesvarens
+historik sparar konto-ID, tid, kanal, tidigare/nytt svar och revision, men inget
+`session_id`. Detta ersätter sessionsfältet i ADR-013:s historikmodell.
+
+Liquibase-steg 005 tar bort endast `invitation_history.session_id`; rader,
+konto-ID, revisioner och övriga data bevaras. Repository-modellen och tjänstens
+historikskrivning saknar fältet. Konto och inloggningssession verifieras fortsatt
+för varje anrop och lokal sessionsspärr ligger kvar i autentiseringslagret.
+
+Framtida separat teknisk audit-loggning kan läsa `session_id` från den aktuella,
+verifierade JWT-tokenen i Spring Security. Ingen audit-logg eller tokenlagring
+införs nu. Steg 005 och nya runtime-versionen ska aktiveras tillsammans; äldre
+runtime försöker skriva den borttagna kolumnen.
+
 ## ADR-013: All svarslogik i Spring Boot-tjänsten
 
 **Beslut 2026-10-19 på användarens uttryckliga instruktion:** all affärslogik för
 verksamhets-API:ts kallelsesvar ska synas i Spring Boot. Även transaktionen ska
 ägas deklarativt av en `@Service`, inte av en manuell transaktionshjälpare.
 Detta ersätter trigger-/revisionskontextdelen av ADR-011/012.
+Sessionsfältet i historiken nedan ersätts av ADR-014.
 
 `Invitations.respond` är `@Transactional`. Där finns konto/session, familj och
 organisation, livscykelkontroll, normalisering av kommentar, pending-återställning,

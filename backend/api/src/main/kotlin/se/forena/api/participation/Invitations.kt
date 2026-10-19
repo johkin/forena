@@ -97,7 +97,7 @@ class Invitations(
                     }, revision = current.revision + 1)
                 invitations.save(updated)
                 history.save(InvitationHistoryRecord(invitationId = current.id, organizationId = current.organizationId,
-                    actorSubject = actor.subject, sessionId = actor.session, channel = "web", changedAt = now,
+                    actorSubject = actor.subject, channel = "web", changedAt = now,
                     previousResponse = current.response, response = updated.response, revision = updated.revision))
                 if (responseChanged) {
                     val signal = signals.findById(current.activityId).orElse(null)

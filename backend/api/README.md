@@ -8,7 +8,7 @@ Implementerat:
 
 - `GET /api/activities/{activityId}/my-invitations` – egna personer och aktiva målsmanskopplingar.
 - `PUT /api/invitations/{invitationId}/respond` – svara, ändra kommentar eller återställa till `pending`.
-- Svar, revision, revisionshistorik (konto/session/kanal) och beständig signalversion i en transaktion.
+- Svar, revision, revisionshistorik (konto/kanal) och beständig signalversion i en transaktion.
 - Signerade webbsessioner, familjeavgränsning i Kotlin och livscykellås.
 
 Ingen Next-adapter eller molndeploy ingår. Skapande av konton, familjer,
@@ -72,7 +72,7 @@ Det skyddar mot samtidiga aktivitetsändringar och serialiserar även skapande/
 Efter låsen kontrolleras utskick, sluttid och inställning med aktuell databastid.
 
 Tjänsten normaliserar kommentar och beräknar pending-återställning, svarstid och
-revision. Den sparar svar, historik (verifierat konto/session/kanal) och eventuell
+revision. Den sparar svar, historik (verifierat konto/kanal) och eventuell
 signalversion genom repositories i samma transaktion. Identisk upprepning skriver
 ingenting; ändrad kommentar behåller svarstid och påverkar inte signalversionen.
 Varje fel rullar tillbaka allt. `@ReadOnlyProperty` skyddar kallelsens identitet.
@@ -83,6 +83,8 @@ eller verksamhetstriggers i `forena`. Endast en teknisk `@Query` återstår:
 `DatabaseClockRepository` hämtar PostgreSQLs inbyggda `clock_timestamp()`.
 Tidigare migrationer är oförändrade; steg 003 tar bort RLS och steg 004 tar bort
 triggers/funktioner utan att radera svar, historik eller signalversioner.
+Steg 005 tar bort enbart historikens `session_id`; konto-ID och övrig historik
+bevaras. Ingen teknisk audit-logg införs nu.
 SQL för schema, nycklar och constraints finns kvar. Teknikprovets worker-/registry-
 frågor i `backend/src` och gamla appens databaslogik ingår inte i denna ändring.
 
@@ -92,7 +94,8 @@ frågor i `backend/src` och gamla appens databaslogik ingår inte i denna ändri
    Sätt separata starka lösenord för rollerna genom miljöns hemlighetshantering.
    Exponera inte `forena` i Supabase Data API. Använd direkt PostgreSQL eller
    en verifierad JDBC-kompatibel pooladress med TLS i molnmiljön.
-2. Stoppa eventuell äldre API-runtime före steg 004; den förutsätter triggers.
+2. Stoppa eventuell äldre API-runtime före steg 004/005; den förutsätter triggers
+   eller historikens tidigare sessionskolumn.
    Kör releasestegets migrering separat med ägarkontot:
 
    ```sh
@@ -117,8 +120,10 @@ frågor i `backend/src` och gamla appens databaslogik ingår inte i denna ändri
 
 Runtime har högst fyra databasanslutningar och fem sekunders väntan på poolen.
 Verifierad token ger aktören till Kotlin-kodens åtkomstkontroller och historikens
-konto/session. Ingen identitet sätts på databasanslutningen. Klientens JSON,
-headers och `user_metadata` ger inga familjerättigheter. Inget `service_role`-konto
+konto-ID. Sessions-ID används bara i autentiseringslagret och sparas inte i
+verksamhetsdata enligt ADR-014. Framtida separat teknisk audit-loggning kan läsa
+`session_id` från den aktuella verifierade tokenen. Ingen identitet sätts på
+databasanslutningen. Klientens JSON, headers och `user_metadata` ger inga familjerättigheter. Inget `service_role`-konto
 används.
 
 ## Autentisering och samtidighet

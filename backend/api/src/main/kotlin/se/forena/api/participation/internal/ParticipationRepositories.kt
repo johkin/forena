@@ -58,7 +58,6 @@ data class InvitationHistoryRecord(
     val invitationId: UUID,
     val organizationId: UUID,
     val actorSubject: UUID,
-    val sessionId: UUID,
     val channel: String,
     val changedAt: Instant,
     val previousResponse: String,

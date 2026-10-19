@@ -29,7 +29,7 @@ förblir leverantörsägda. Ingen radering av gamla projektet ingår.
 - `@Service`/`@Transactional` äger all svarslogik enligt ADR-013. Läsmetoden är
   read-only. Repositories sparar svarstid, revision, historik och signalversion;
   inga egna databasfunktioner/procedurer eller verksamhetstriggers finns efter steg 004.
-- Samma transaktion skriver svar, revision, historik med konto/session/kanal
+- Samma transaktion skriver svar, revision, historik med konto/kanal (inget sessions-ID enligt ADR-014)
   och en beständig signalversion. Kommentartext och token sparas inte i historik.
 - Aktivitetslås skyddar mot samtidig inställning och avslut. Upprepning av samma
   tillstånd skapar ingen ny historik. Olika samtidiga svar serialiseras; ingen
@@ -52,7 +52,7 @@ syntetiska familjer. Testerna omfattar egen person/två barn, annan familj,
 ES256/RS256, JWKS-rotation/nätfel, livscykelkonflikter, samtidiga skrivare,
 upprepning, historik, rollback vid historik-/signalfel, låsväntan över sluttid och
 signalversion vid samtidiga svar på olika kallelser. Separata migrationstester
-installerar tomt schema respektive uppgraderar alla tre tidigare baslinjer,
+installerar tomt schema respektive uppgraderar alla fyra tidigare baslinjer,
 validerar och återkör med bevarade syntetiska data. Modulith-gränser verifieras.
 
 API-jobbet läggs till CI:s obligatoriska `verify` utan att ta bort befintliga

@@ -202,7 +202,8 @@ class ApiTest {
         assertThat(history()).isEqualTo(5); assertThat(dirty()).isEqualTo(3)
         assertThat(request("/api/activities/$activity/my-invitations").body()).contains("pending")
         val audit = admin.queryForMap("select * from forena.invitation_history where invitation_id=? order by revision limit 1", invitation)
-        assertThat(audit["actor_subject"]).isEqualTo(parent); assertThat(audit["session_id"]).isEqualTo(session)
+        assertThat(audit["actor_subject"]).isEqualTo(parent)
+        assertThat(audit).doesNotContainKey("session_id")
         assertThat(audit["channel"]).isEqualTo("web")
     }
 

@@ -15,7 +15,7 @@ import org.junit.jupiter.params.provider.ValueSource
 import org.testcontainers.postgresql.PostgreSQLContainer
 
 class MigrationTest {
-    @ParameterizedTest @ValueSource(ints = [0, 1, 2, 3])
+    @ParameterizedTest @ValueSource(ints = [0, 1, 2, 3, 4])
     fun `empty install or previous baseline upgrade validates and is repeatable without data loss`(baseline: Int) {
         PostgreSQLContainer("postgres:17.6-alpine").withInitScript("init.sql").use { pg ->
             pg.start()
@@ -58,7 +58,7 @@ class MigrationTest {
                     migrations.validate()
                     connection.createStatement().use { statement ->
                         statement.executeQuery("select count(*) from forena.databasechangelog").use {
-                            it.next(); assertThat(it.getInt(1)).isEqualTo(4)
+                            it.next(); assertThat(it.getInt(1)).isEqualTo(5)
                         }
                         statement.executeQuery("select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='forena' and c.relkind='r' and c.relname not like 'databasechangelog%' and (c.relrowsecurity or c.relforcerowsecurity)").use {
                             it.next(); assertThat(it.getInt(1)).isZero()
@@ -67,6 +67,9 @@ class MigrationTest {
                             statement.executeQuery("select has_schema_privilege('$role','forena','USAGE') or has_table_privilege('$role','forena.invitation','SELECT')").use {
                                 it.next(); assertThat(it.getBoolean(1)).isFalse()
                             }
+                        }
+                        statement.executeQuery("select count(*) from information_schema.columns where table_schema='forena' and table_name='invitation_history' and column_name='session_id'").use {
+                            it.next(); assertThat(it.getInt(1)).isZero()
                         }
                         statement.executeQuery("select count(*) from pg_policies where schemaname='forena'").use {
                             it.next(); assertThat(it.getInt(1)).isZero()

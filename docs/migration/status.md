@@ -22,20 +22,23 @@ med funktioner; inga egna databasfunktioner/procedurer finns kvar. Pessimistiska
 lås tas aktivitet → kallelse; historik och signalversion skrivs via repositories.
 Runtime får smala skrivgrants för dessa fält/tabeller; identitet och historikens
 oföränderlighet skyddas fortsatt. En native @Query återstår för databasens klocka.
-Teknikprovets registry-SQL är separat och inte omskriven.
+Steg 005 tar bort `session_id` från affärshistoriken enligt ADR-014; konto-ID
+bevaras. Verifierad tokens sessions-ID används fortsatt i autentiseringens
+spärrkontroll och kan hämtas för framtida separat teknisk audit-loggning.
+Ingen audit-logg införs nu. Teknikprovets registry-SQL är separat och inte omskriven.
 CI får ett separat obligatoriskt API-jobb; befintliga kontroller behålls.
 Se [första flödet](first-flow.md) och [körinstruktionerna](../../backend/api/README.md).
 
 Lokal verifiering för leveransen:
 
-- API Maven `verify`: 29 tester, inga fel eller överhoppade. Riktiga ES256/RS256-
+- API Maven `verify`: 30 tester, inga fel eller överhoppade. Riktiga ES256/RS256-
   signaturer och lokal JWKS-server, HTTP, PostgreSQL 17.6/Testcontainers med
   begränsad runtime och schemaägare, familje-/klubbgränser utan RLS, rollback,
   samtidiga skrivare/inställning, historik och Modulith-struktur. Nya prov täcker
   två målsmän för samma person med sammansatt ID samt att repository-save inte
   kan skriva kallelsens oföränderliga identitet. Svarstid och revision ägs nu
   av Kotlin-tjänsten och verifieras genom HTTP.
-- Tom Liquibase-installation och uppgradering från alla tre tidigare baslinjer,
+- Tom Liquibase-installation och uppgradering från alla fyra tidigare baslinjer,
   validate/återkörning, borttagna policyer/RLS/funktioner/verksamhetstriggers,
   återkallade klientgrants, bevarade syntetiska svar/historik/signalversioner och
   negativa constraints ingår. HTTP-prov täcker återkallad familjeläsning,
