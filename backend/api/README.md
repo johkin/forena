@@ -4,6 +4,23 @@ Separat Spring Boot/Kotlin-app; teknikprovet i `backend/` är fortsatt isolerat.
 Nytt tomt PostgreSQL-schema `forena`, ingen import av gamla Förena-projektets
 testdata eller SQL-migrationshistorik. Se [ADR-010](../../docs/migration/decisions.md).
 
+## Java och containerbygge
+
+API:t kompileras och körs med **Java 25**, utan krav på Oracle eller exakt patch.
+CI och release använder Temurin 25. Kotlin använder `java.version` som JVM-mål.
+Spring Boots `build-image` får `BP_JVM_VERSION=25` via pluginens buildpack-miljö:
+
+```sh
+backend/mvnw -f backend/api/pom.xml --batch-mode --no-transfer-progress verify
+backend/mvnw -f backend/api/pom.xml --batch-mode --no-transfer-progress spring-boot:build-image
+```
+
+Det befintliga releaseflödet paketerar fortfarande JAR och JDK i Dockerfile.
+Buildpack-imagens bygge/start är ännu inte verifierat: den lokala Docker-miljön
+får slut på disk vid uppackning av Paketo-buildern. Ett byte av imagebyggare
+behöver också bevara runtimekonfigurationen, databasens CA och startkontrollerna.
+Teknikprovet i `backend/` behåller sin historiska Java 26-verktygskedja.
+
 Implementerat:
 
 - `GET /api/activities/{activityId}/my-invitations` – egna personer och aktiva målsmanskopplingar.

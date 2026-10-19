@@ -63,9 +63,12 @@ jobs:
         run: |
           npm ci
           npm install --global "vercel@$VERCEL_CLI_VERSION"
-          scripts/probe/install-jdk.sh "$RUNNER_TEMP/forena-jdk"
-          echo "JAVA_HOME=$RUNNER_TEMP/forena-jdk" >> "$GITHUB_ENV"
-          echo "$RUNNER_TEMP/forena-jdk/bin" >> "$GITHUB_PATH"
+
+      - name: Set up Java 25
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '25'
 
       - name: Select isolated Kotlin deployment configuration
         run: |
