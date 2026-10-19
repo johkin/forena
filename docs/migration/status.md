@@ -32,11 +32,18 @@ Lokal verifiering för leveransen:
   subprocessrättigheter; tidigare miljöfel är lösta, inga kontroller avstängda.
 - OpenAPI-generation utan diff och CI-jobbens beroenden verifierade.
 
-Inte körda/aktiverade: GitHub CI, Vercel-deploy, verklig Supabase-inloggning,
+PR-förberedelse: API-konfigurationen har bytts från `application.properties`
+till `application.yaml` med samtliga 24 värden bevarade. Ren Maven-verifiering
+och prov av den paketerade appen körs även med YAML. Automatiska Vercel-byggen
+är avstängda för just `feat/participation-api` i webb- och provkonfigurationen
+på grund av lagringsvarningen; GitHub CI behåller samtliga obligatoriska jobb.
+CI-status för den publicerade committen redovisas i PR:n.
+
+Inte aktiverade: Vercel-deploy, verklig Supabase-inloggning,
 passkey/OAuth/MCP, browser → Next-adapter eller full signalworker. Gamla
 Supabase-migrationer är oförändrade; inget reset/pgTAP körs mot gamla projektet.
 Det nya schemat verifieras med Liquibase/Testcontainers, inga molndatabaser har
-ändrats. Ingen dataöverföring, gammal projektradering eller nya molnbyggen.
+ändrats. Ingen dataöverföring, gammal projektradering eller nya Vercel-byggen.
 
 M02/M03/M05/M07 är delvis levererade; helheten får inte markeras färdig.
 Nästa steg är nya syntetiska verksamhetsdata, verifierad Auth-livscykel,

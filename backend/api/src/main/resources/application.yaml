@@ -1,0 +1,47 @@
+spring:
+  application:
+    name: forena-api
+  lifecycle:
+    timeout-per-shutdown-phase: 5s
+  datasource:
+    url: "${FORENA_JDBC_URL}"
+    username: "${FORENA_DB_USERNAME:forena_api_runtime}"
+    password: "${FORENA_DB_PASSWORD}"
+    hikari:
+      maximum-pool-size: 4
+      minimum-idle: 0
+      connection-timeout: 5000
+      connection-init-sql: SET search_path TO forena,pg_catalog
+  liquibase:
+    enabled: "${FORENA_MIGRATE:false}"
+    change-log: classpath:db/changelog.xml
+    default-schema: forena
+    user: "${FORENA_MIGRATION_USERNAME:forena_api_owner}"
+    password: "${FORENA_MIGRATION_PASSWORD:}"
+  modulith:
+    events:
+      jdbc:
+        schema-initialization:
+          enabled: false
+      republish-outstanding-events-on-restart: false
+
+server:
+  port: "${PORT:8080}"
+  shutdown: graceful
+  error:
+    include-message: never
+    include-stacktrace: never
+
+forena:
+  auth:
+    issuer: "${FORENA_AUTH_ISSUER}"
+    jwks-uri: "${FORENA_AUTH_JWKS_URI}"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
