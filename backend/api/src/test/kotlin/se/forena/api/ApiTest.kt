@@ -409,7 +409,13 @@ class ApiTest {
             // A cached, already trusted key remains usable during an outage.
             assertThat(request("/api/activities/$activity/my-invitations").statusCode()).isEqualTo(200)
             val unknown = RSAKeyGenerator(2048).keyID(UUID.randomUUID().toString()).generate()
-            assertThat(respond("""{"response":"accepted"}""", token(signingKey=unknown)).statusCode()).isEqualTo(401)
+            val result = respond("""{"response":"accepted"}""", token(signingKey=unknown))
+            assertThat(result.statusCode()).isEqualTo(503)
+            assertThat(result.headers().firstValue("cache-control").orElse("")).contains("no-store")
+            assertThat(result.headers().firstValue("www-authenticate")).isEmpty()
+            assertThat(result.body()).isEqualTo("""{"error":"Sessionen kan inte verifieras just nu."}""")
+            assertThat(row()["revision"]).isEqualTo(0L)
+            assertThat(history()).isZero(); assertThat(dirty()).isZero()
         } finally { jwksAvailable = true }
     }
 

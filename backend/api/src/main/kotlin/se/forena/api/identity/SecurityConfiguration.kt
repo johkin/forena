@@ -16,8 +16,6 @@ import org.springframework.security.oauth2.core.OAuth2TokenValidator
 import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm
 import org.springframework.security.oauth2.jwt.Jwt
-import org.springframework.security.oauth2.jwt.BadJwtException
-import org.springframework.security.oauth2.jwt.JwtException
 import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.security.oauth2.jwt.JwtValidators
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
@@ -28,6 +26,7 @@ import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthen
 import org.springframework.security.web.AuthenticationEntryPoint
 import se.forena.api.http.ApiError
 import tools.jackson.databind.json.JsonMapper
+import org.slf4j.LoggerFactory
 
 @Configuration
 @ConditionalOnWebApplication
@@ -53,19 +52,24 @@ class SecurityConfiguration {
                 it.setJwtValidator(org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator(
                     JwtValidators.createDefaultWithIssuer(issuer), WebSessionValidator()))
             }
-        return JwtDecoder { encoded ->
-            try { delegate.decode(encoded) }
-            catch (ex: JwtException) { throw BadJwtException("Token could not be verified") }
-        }
+        return AuthJwtDecoder(delegate)
     }
 
     @Bean
     fun security(http: HttpSecurity, json: JsonMapper): SecurityFilterChain {
         val unauthorized = AuthenticationEntryPoint { request, response, exception ->
-            BearerTokenAuthenticationEntryPoint().commence(request, response, exception)
+            val unavailable = exception is JwtVerificationUnavailable
+            if (unavailable) response.status = 503
+            else {
+                if (request.getHeader("Authorization").isNullOrBlank())
+                    LoggerFactory.getLogger(SecurityConfiguration::class.java)
+                        .warn("api_auth_failed stage=request reason=missing_bearer")
+                BearerTokenAuthenticationEntryPoint().commence(request, response, exception)
+            }
             response.contentType = "application/json"
             response.setHeader("Cache-Control", "no-store")
-            json.writeValue(response.outputStream, ApiError("Inloggning krävs."))
+            json.writeValue(response.outputStream, ApiError(if (unavailable)
+                "Sessionen kan inte verifieras just nu." else "Inloggning krävs."))
         }
         return http
         .csrf { it.disable() }

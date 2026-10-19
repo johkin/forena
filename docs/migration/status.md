@@ -3,6 +3,28 @@
 Uppdaterad 2026-10-19. Inventeringsbas: `c379a96719490bc4edbfcb0a4ee7a1947684ddce`.
 Planens uppgifter finns i [uppgiftsindex](tasks/README.md).
 
+## Fortsatt utloggning: verifieringsfel och säker auth-diagnostik
+
+Branch `fix/jwt-verification-diagnostics` från main `5cc4759`.
+PR #123 är driftsatt som `dpl_EUYYWmGiPs1Ny4anhd7XQJj4gh5z`, men användaren
+rapporterar fortsatt utloggning vid aktivitetshämtning. Cookie-rättningen var
+inte tillräcklig; molnfelets exakta orsak är fortfarande inte fastställd.
+Browserns Response är `{"error":"Inloggning krävs."}`, vilket identifierar
+Kotlin-säkerhetsfiltrets 401 före aktivitetshanteraren, inte Vercels HTML-skydd.
+
+JWT-decodern gjorde tidigare alla verifieringsfel till 401, inklusive ett
+otillgängligt JWKS-endpoint. Nu ger TLS-, timeout-, HTTP- och anslutningsfel
+503/no-store utan att återkalla browserns appsession. Ogiltiga tokens/claims
+ger fortsatt 401 och inga operationer tillåts utan verifierad signatur.
+Loggar skiljer fasta felkategorier och saknad Bearer utan känslig feltext.
+API-regressionen provar ett verkligt HTTP-503 från nyckelservern, oförändrad
+databas, fortsatt cached-key-verifiering och rotation. Separata tester täcker
+TLS/timeout och frånvaro av token/exceptiontext i loggarna.
+Efter merge behövs ett nytt molnanrop för att läsa exakt felkategori; detta
+är inte ett påstående att den faktiska anslutningsorsaken är åtgärdad.
+Lokalt godkänt: Maven verify med 38 tester på Java 25, 1 142 Vitest-tester,
+båda apparnas typkontroll, lint och befintliga Next-appens produktionsbygge.
+
 ## Browserpilot: rättning för Vercel Deployment Protection
 
 Branch `fix/protected-browser-api`, från main `596f8b0` (PR #122 mergad).
