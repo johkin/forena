@@ -48,10 +48,12 @@ Efter godkänt startprov sparas imagen som Actions-artifakten
 `docker load`; `verify` kräver att native-jobbet lyckas.
 
 Native-metadata under `src/main/resources/META-INF/native-image` registrerar
-Hibernate Validators genererade JBoss-logger och dess konstruktor uttryckligen.
+Hibernate Validators genererade JBoss-logger/konstruktor och meddelandeklassens
+`INSTANCE`-fält uttryckligen. Det täcker båda genererade JBoss-klasserna i JAR:en.
 Första CI-provet byggde imagen men stoppades vid start med `Invalid logger
 interface`: den ärvda, villkorliga metadataregistreringen räckte inte för
-Hibernate Validator 9.1/JBoss Logging 3.6. Valideringen behålls aktiverad.
+Hibernate Validator 9.1/JBoss Logging 3.6. Nästa prov kom förbi loggern men
+behövde även `Messages_$bundle`. Valideringen behålls aktiverad.
 
 Det befintliga releaseflödet paketerar fortfarande JAR och JDK i Dockerfile.
 Lokalt prov 2026-10-19: `-Pnative spring-boot:build-image` passerade AOT utan

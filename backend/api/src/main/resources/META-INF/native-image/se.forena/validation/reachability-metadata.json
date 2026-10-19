@@ -8,6 +8,10 @@
           "parameterTypes": ["org.jboss.logging.Logger"]
         }
       ]
+    },
+    {
+      "type": "org.hibernate.validator.internal.util.logging.Messages_$bundle",
+      "fields": [{"name": "INSTANCE"}]
     }
   ]
 }
