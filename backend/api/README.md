@@ -12,8 +12,11 @@ Implementerat:
 - Signerade webbsessioner, familjeavgränsning i Kotlin och livscykellås.
 
 Ingen Next-adapter eller molndeploy ingår. [Målmiljö/Auth-arbetet](../../docs/migration/target-auth-lifecycle.md)
-har provisionerat ett tomt privat schema och NOLOGIN-roller i `forena-kotlin`.
-Liquibase, credentials och verklig inloggning där återstår. Skapande av konton, familjer,
+har verifierat det privata schemat i `forena-kotlin`: separata begränsade
+LOGIN-roller, JDBC med betrodd CA/hostname-verifiering, paketerad Liquibase
+med oförändrad återkörning och hela `TargetAuthIT` är godkända i en tillfällig
+Vercel Sandbox. Fixturer och Auth-konton är städade, Sandboxen stoppad.
+Skapande av konton, familjer,
 aktiviteter och kallelser är ännu inget publikt API. Testerna skapar egna
 syntetiska data. Inga utskick eller fullständiga signalberäkningar görs här.
 
@@ -160,8 +163,8 @@ cache eller fallback. Runtime har ingen Auth-adminnyckel eller Auth-tabellåtkom
 Bearer-tokenen finns bara under anropet och sparas inte i historik.
 
 Detta är lokalt verifierat med riktig HTTP mot en kontrollerad Auth-fixtur.
-Verkligt driftad Supabase-revision måste fortfarande klara `TargetAuthIT` innan
-pilot; källkodens `/user`-kontroll är inte ett molnbevis. Revokering efter sista
+Verkligt driftad Supabase-revision har klarat hela `TargetAuthIT` i målprojektet;
+resultat och återstående pilotgrindar finns i målmiljödokumentet. Revokering efter sista
 kontrollen stoppar inte ett redan pågående kommando. Timebox/inaktivitet och
 övriga Auth-metoder behöver separata prov. Se [full körinstruktion och gränser](../../docs/migration/target-auth-lifecycle.md).
 

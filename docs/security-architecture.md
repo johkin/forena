@@ -13,8 +13,9 @@ i verifierad token och används för lokal sessionsspärr. Runtime får aldrig s
 Se [API:ts säkerhetsgränser](../backend/api/README.md), särskilt begränsningen
 kring extern Auth-revokering före pilot. ADR-016 tillför onlinekontroll via
 Supabase `/user` utan adminnyckel eller Auth-tabellgrants. Lokala prov och
-[verkligt Auth-only-prov](migration/target-auth-lifecycle.md) är gröna;
-fullt Kotlin-/databasprov i målprojektet är fortfarande en aktiveringsgrind.
+[verkligt Auth-only-prov samt hela Kotlin-/databasprovet](migration/target-auth-lifecycle.md)
+är gröna i målprojektet. Browser, övriga Auth-metoder och driftsatt runtime
+är fortsatt separata aktiveringsgrindar.
 Gamla appens kontroller nedan gäller
 fortsatt dess befintliga databas och kanaler.
 

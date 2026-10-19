@@ -5,7 +5,8 @@
     "deploymentEnabled": {
       "main": false,
       "feat/participation-api": false,
-      "feat/target-auth-lifecycle": false
+      "feat/target-auth-lifecycle": false,
+      "feat/target-api-verification": false
     }
   },
   "regions": [

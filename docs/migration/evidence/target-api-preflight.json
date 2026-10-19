@@ -1,0 +1,122 @@
+{
+  "scope": "target-api-preflight",
+  "project_ref": "ckzrtxqjskosqzoitymc",
+  "source_commit": "187bfd2f274442ef041f4aa264a45ffb0c6a2f1c",
+  "branch": "feat/target-api-verification",
+  "passed": false,
+  "status": "blocked-before-migration",
+  "environment": {
+    "observed_phase": "running",
+    "connectivity": "connected",
+    "observations_current": true,
+    "network_policy_state": "unknown",
+    "runtime_variable_readiness": "unknown",
+    "process_variables_present": [
+      "FORENA_TEST_AUTH_SECRET_KEY",
+      "FORENA_TEST_JDBC_URL",
+      "FORENA_TEST_OWNER_USERNAME",
+      "FORENA_TEST_OWNER_PASSWORD",
+      "FORENA_TEST_RUNTIME_USERNAME",
+      "FORENA_TEST_RUNTIME_PASSWORD"
+    ],
+    "credential_values_recorded": false,
+    "database_password_authentication": "not-verified",
+    "jdbc": {
+      "expected_host": true,
+      "expected_port": true,
+      "expected_database": true,
+      "credentials_in_url": false,
+      "sslmode_in_configured_url": false,
+      "required_sslmode": "verify-full",
+      "owner_username_matches": true,
+      "runtime_username_matches": true
+    },
+    "network": {
+      "vpn_configured": false,
+      "tcp_domain_grants": [],
+      "tcp_ip_grants": [],
+      "tcp_connect_proxy_probe": "connection-refused",
+      "tcp_proxy": "proxy:8088",
+      "destination": "aws-1-eu-central-1.pooler.supabase.com:5432",
+      "supported_tcp_path": "VPN private-address destinations only; public pooler needs a supported alternate execution path"
+    },
+    "tls": {
+      "environment_ca_imported_into_task_jdk_truststore": true,
+      "hostname_verification_disabled": false,
+      "database_tls_handshake": "not-run"
+    }
+  },
+  "role_correction": {
+    "role": "forena_api_owner",
+    "observed_before": {
+      "login": true,
+      "bypassrls": true,
+      "createdb": true
+    },
+    "sql": "ALTER ROLE forena_api_owner NOBYPASSRLS NOCREATEDB",
+    "bootstrap_rerun": false,
+    "new_roles_created": false
+  },
+  "database": {
+    "observed_at": "2026-10-19T10:54:16.516611+00:00",
+    "roles": [
+      {
+        "name": "forena_api_owner",
+        "login": true,
+        "superuser": false,
+        "bypassrls": false,
+        "createdb": false,
+        "createrole": false
+      },
+      {
+        "name": "forena_api_runtime",
+        "login": true,
+        "superuser": false,
+        "bypassrls": false,
+        "createdb": false,
+        "createrole": false
+      }
+    ],
+    "schema_owner": "forena_api_owner",
+    "business_table_count": 0,
+    "synthetic_auth_user_count": 0,
+    "runtime_owner_membership": false,
+    "client_schema_usage": {
+      "anon": false,
+      "authenticated": false,
+      "service_role": false
+    }
+  },
+  "build": {
+    "status": "passed",
+    "command": "backend/mvnw -s work/target-api-verification/settings.xml -f backend/api/pom.xml --batch-mode --no-transfer-progress -DskipTests package",
+    "jdk": "Oracle 26.0.2.1+1-7",
+    "maven": "3.9.11",
+    "finished_at": "2026-10-19T10:53:52Z",
+    "tests": "skipped",
+    "test_sources": "compiled",
+    "proxy_and_ca_verification": true,
+    "jar_sha256": "d3c7520c9f85b27706fde42ebcb3c17c33c0d7b36cf6a856997e140211791fc4",
+    "target_auth_it_sha256": "018dda8eee08665de4291481e25c4c4dedcf81d53c4a4409dc89ffeb30428cbe"
+  },
+  "checks_not_run": [
+    "JDBC owner/runtime password authentication",
+    "database TLS CA and hostname handshake",
+    "packaged Liquibase release",
+    "five-step Liquibase rerun invariance",
+    "TargetAuthIT",
+    "real Auth-to-Kotlin-to-database family isolation",
+    "terminated-session denied API reads/writes and unchanged history"
+  ],
+  "cleanup": {
+    "test_fixtures_created": false,
+    "auth_users_created": false,
+    "synthetic_auth_users_remaining": 0,
+    "business_tables_remaining": 0
+  },
+  "prior_auth_only_evidence": "target-auth-provider-results.json",
+  "auth_only_substitutes_for_target_auth_it": false,
+  "next_routing_activated": false,
+  "cloud_deployed": false,
+  "legacy_project_modified": false
+}
