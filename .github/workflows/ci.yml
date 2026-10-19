@@ -49,6 +49,12 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
 
+      - name: Build the separate browser frontend
+        run: npm run frontend:build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://ckzrtxqjskosqzoitymc.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
+
   database:
     runs-on: ubuntu-latest
     timeout-minutes: 20

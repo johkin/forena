@@ -1,5 +1,6 @@
 "use client";
 
+import { BrowserFrontendExamples } from "./browser-frontend-examples";
 import { TelegramGroupExamples } from "@/components/telegram-group-settings";
 import { AppMenuContent } from "@/components/app-header";
 import { TelegramSettingsExamples } from "@/components/telegram-settings";
@@ -67,6 +68,7 @@ export function ComponentGallery() {
   const [selectedPeople, setSelectedPeople] = useState(new Set(["coach-1", "player-1", "player-2"]));
   const [notice, setNotice] = useState("Prova en knapp.");
   return <>
+    <BrowserFrontendExamples />
     <section><h2>Avskalad kontomeny</h2><p>Kallelsesidans gemensamma meny utan profil, notiser eller administration. Utloggningsknappen är inaktiverad i exemplet.</p><fieldset disabled><legend>Inloggad familj</legend><AppMenuContent accountEmail="familj@example.invalid" accountMenu="session" homeHref="/components" /></fieldset></section>
     <section className="design-introduction"><p className="eyebrow">Förena · Designsystem</p><h2>Varmt, tydligt och nära laget</h2><p>Skogsgrönt, ljusa naturtoner och stora tryckytor. Referenserna visar designens riktning; exemplen nedan använder appens riktiga komponenter.</p><div className="component-example-actions"><a className="secondary" href="/design/components-desktop.html">Desktopreferens</a><a className="secondary" href="/design/components-mobile.html">Mobilreferens</a></div><div className="design-swatches"><span className="design-swatch-primary">Skogsgrönt</span><span className="design-swatch-lime">Lime</span><span className="design-swatch-surface">Varm ljus yta</span></div></section>
     <section><h2>Status &amp; räknare</h2><div className="component-example-actions"><span className="status accepted">Kommer</span><span className="status declined">Kan inte</span><span className="status pending">Ej svarat</span><span className="badge">3</span></div><div className="summary"><div><strong>12</strong><span>kommer</span></div><div><strong>2</strong><span>kan inte</span></div><div><strong>3</strong><span>ej svarat</span></div><div><strong>17</strong><span>kallade</span></div></div><p className="design-callout">Tre personer har ännu inte svarat på kallelsen.</p></section>

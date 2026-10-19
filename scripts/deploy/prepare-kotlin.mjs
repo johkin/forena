@@ -15,10 +15,15 @@ assert.match(key ?? "", /^sb_publishable_[A-Za-z0-9_-]+$/, "Missing publishable 
 assert.equal(pulled.SITE_URL, "https://forena-kotlin.vercel.app", "Set the canonical SITE_URL on forena-kotlin");
 assert.ok(process.env.GITHUB_ENV, "Run this preparation in GitHub Actions");
 appendFileSync(process.env.GITHUB_ENV, `NEXT_PUBLIC_SUPABASE_URL=${url}\nNEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${key}\n`);
+const activity = pulled.FORENA_KOTLIN_TEST_ACTIVITY_ID;
+if (activity) {
+  assert.match(activity, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, "Invalid test activity ID");
+  appendFileSync(process.env.GITHUB_ENV, `FORENA_KOTLIN_TEST_ACTIVITY_ID=${activity}\n`);
+}
 // The container builder forwards build env as Docker arguments. Restrict it to
 // public config and platform metadata/OIDC needed by the Vercel registry.
 const buildEnv = Object.fromEntries(Object.entries(pulled).filter(([name]) =>
-  name.startsWith("VERCEL_") || ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"].includes(name)));
+  name.startsWith("VERCEL_") || ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "FORENA_KOTLIN_TEST_ACTIVITY_ID"].includes(name)));
 writeFileSync(".vercel/.env.production.local", Object.entries(buildEnv)
   .map(([name, value]) => `${name}=${JSON.stringify(value)}`).join("\n") + "\n", { mode: 0o600 });
 console.log("Verified Kotlin project, repository root, target Auth and canonical origin.");

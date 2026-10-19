@@ -23,3 +23,9 @@ public/app-version.json
 /deploy/frontend/public/
 .vercel/
 scripts/deploy/__pycache__/
+
+# Separate static browser application
+/frontend/dist/
+/frontend/public/config.json
+/frontend/public/app-version.json
+/frontend/.evidence/

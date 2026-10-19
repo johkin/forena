@@ -3,6 +3,30 @@
 Uppdaterad 2026-10-19. Inventeringsbas: `c379a96719490bc4edbfcb0a4ee7a1947684ddce`.
 Planens uppgifter finns i [uppgiftsindex](tasks/README.md).
 
+## Separat browser-frontend: första pilotflödet på branch
+
+Branch `feat/browser-frontend`, bas main `b6ae962`. På användarens instruktion
+byggs en separat React/Vite-app parallellt med Next. Inloggning med lösenord
+och familjens kallelsesvar går via browser → Vercel → Kotlin. Gemensamma UI-
+komponenter, design och `/components` återanvänds. Backend/JWT/session/åtkomst
+är oförändrade; inga tabeller, migrationer eller verksamhetsgenvägar införs.
+[Omfattning, körning och återstående funktioner](../../frontend/README.md).
+
+Lokal verifiering: frontendens kontrollerade browserprov passerar loginfel,
+inloggning, Bearer-anrop utan cookies, sparande/omladdning, nekad session,
+kontobyte, utloggning, komponentreferens och tangentbordsmeny. Ingen horisontell
+scroll vid 320/375/390/768/1440 px; mobil/desktop visuellt granskade.
+1 138 Vitest-tester, båda apparnas typkontroll, lint och produktionsbyggen samt
+åtta releasegrindtester är godkända. Actionlint och Vercel CLI 60.1.3:s
+konfigurationsvalidering är godkända.
+Kotlin: Maven verify med 35 tester på Java 25 är godkänt. Fullt
+browser → Kotlin → Supabase-prov stoppades av TCP-policyn vid den läsande
+pooler-kontrollen, före Auth-/verksamhetsseed; återställning av det privata
+provets status är verifierad utan kvarvarande skapade konton eller data.
+Ny Vercel-deployment, riktiga Supabase-browserflödet och full M18B-paritet är
+ännu inte verifierade. Tidigare deployförsök med privat binding nedan avser
+Next-piloten, inte bevis för den nya statiska frontendens drift.
+
 ## Actions-deploy för parallell Kotlin-sajt: implementation på branch
 
 Uppföljning efter merge av PR #117: main-CI `39262001035` föll i det befintliga

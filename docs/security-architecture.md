@@ -1,5 +1,20 @@
 # Säkerhetsarkitektur
 
+## Separat browserpilot mot Kotlin
+
+`frontend/` hanterar bara Supabase Auth och UI. Verksamhetsdata läses/skrivs
+via Kotlin på samma origins `/api/*`, med användarens Bearer-token och utan
+cookies eller redirects. Klientens sessionsdata är ingen behörighetskälla;
+Kotlin verifierar JWT, aktuell Auth-session, lokala spärrar och personåtkomst.
+Auth-user_metadata används inte för behörighet. Runtimekonfigurationen är
+strikt publik och avgränsad till det nya projektet. Privata vyer avmonteras
+vid utloggning, nekad session och kontoändring; ingen verksamhetsdata cachas i
+service worker. En separat localStorage-nyckel används för Auth-sessionen.
+Backendens HTTP-rutter blir publikt adresserbara genom Vercel men kräver JWT,
+med undantag för den informationsbegränsade health-rutten. Den gamla
+Next-appens autentisering och kanaler har fortsatt sin befintliga modell.
+
+
 Det separata Kotlin-API:t för familjens kallelsesvar finns i `backend/api` och
 är ännu inte aktiverat i webben. Det använder ett nytt privat schema enligt
 [ADR-010](migration/decisions.md). Enligt ADR-012 ligger dess behörighet i Kotlin:

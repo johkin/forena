@@ -3,6 +3,26 @@
 Status anger målbeslut för kommande implementation, inte redan införd teknik.
 Källkodsverifierat nuläge finns i [inventeringen](inventory.md).
 
+## ADR-017: Separat browser-frontend för första Kotlin-flödet
+
+**Beslut 2026-10-19 på användarens instruktion:** bygg en separat React/Vite-app
+under `frontend/`, parallellt med dagens Next-app. Första avgränsningen är
+lösenordsinloggning och kallelsesvar. Återanvänd produktionskomponenter och
+utseende; kopiera inte databaslogik, server actions eller hemligheter till
+browsern. Ordinarie funktionsparitet flyttas flöde för flöde när Kotlin har API.
+
+Vercel routar `/api/*` direkt till Kotlin och övrigt till statiska frontendfiler.
+Frontend behöver ingen Node-server, SSR eller privat servicebinding i detta
+flöde. JWT erhålls från det nya Supabase Auth-projektet och skickas som Bearer
+på samma origin. Kotlin behåller JWT-/leverantörsverifiering, konto-/sessions-
+kontroll och familjebehörighet enligt ADR-012/016. Ingen browserstyrd databas-
+eller legacy-fallback införs. Publicering kräver API/JDBC-health och exakt
+statisk frontendversion; nycklar och projektgränser verifieras som tidigare.
+
+M18B:s fulla flytt och publika renderings-/PWA-grindar är fortfarande öppna.
+Gamla Next-appen och dess separata Vercel-projekt fortsätter köras parallellt.
+[Byggning, körning och gränser](../../frontend/README.md).
+
 ## ADR-016: Aktuell Auth-status genom leverantörsadapter före pilot
 
 Implementationsval 2026-10-19 inom användarens uppdrag för målmiljö/Auth:

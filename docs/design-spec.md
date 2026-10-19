@@ -26,6 +26,13 @@ Komponentsidan ska vara en aktuell, gemensam referens för hela systemet.
 Dessa regler beskriver kravet; befintliga luckor i galleriet ska fyllas när de
 berörda UI-delarna ändras och innebär inte att dagens galleri redan är komplett.
 
+Den nya browserpiloten återanvänder `AppHeaderFrame`, `AppShellFrame`,
+`SessionMenu`, `AppFooter` och `ActivityInvitationResponse`. Next-appens
+sidskal använder samma byggdelar. `PasswordLoginForm` och de nya pilotvarianterna
+visas på `/components` i båda apparna, med lokala syntetiska data och utan
+inloggning eller verksamhetsskrivningar. Menyns fokuslås, Escape och mobila
+scrollås delar samma implementation. Se [frontendinstruktionen](../frontend/README.md).
+
 Den avskilda kallelsesidan använder `AppShell` och `ActivityInvitationResponse`
 utan egna meny-, header- eller footer-kopior. Kontomenyns `session`-variant
 visar familjens kallelser och utloggning utan profil, administration och

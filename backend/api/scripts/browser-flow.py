@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Opt-in browser → Next → Kotlin → isolated Supabase test. No deployment or email.
+"""Opt-in browser → frontend → Kotlin → isolated Supabase test. No deployment or email.
 
 Prerequisites: pinned JAVA_HOME, npm ci, npx playwright install --with-deps chromium,
 the six FORENA_TEST_* credentials and FORENA_TEST_TARGET_REF. Never source secrets
@@ -21,7 +21,8 @@ REF = "ckzrtxqjskosqzoitymc"
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--skip-build", action="store_true", help="Use API JAR and Next build made from this exact source/configuration")
+    parser.add_argument("--skip-build", action="store_true", help="Use API JAR and selected frontend build made from this exact source/configuration")
+    parser.add_argument("--browser-frontend", action="store_true", help="Exercise the separate static frontend directly against Kotlin")
     args = parser.parse_args()
     out = ROOT / "backend/api/target/browser-flow"
     out.mkdir(parents=True, exist_ok=True)
@@ -66,7 +67,7 @@ def main():
 
     if not args.skip_build:
         run([str(ROOT / "backend/mvnw"), "-f", "backend/api/pom.xml", "--batch-mode", "--no-transfer-progress", "-DskipTests", "package"], base, "api-build.log")
-        run(["npm", "run", "build"], web_env, "web-build.log")
+        run(["npm", "run", "frontend:build" if args.browser_frontend else "build"], web_env, "web-build.log")
     api = web = None
     logs = []
     try:
@@ -77,7 +78,8 @@ def main():
         logs.append((out / "api.log").open("w"))
         api = subprocess.Popen([java, "-jar", "backend/api/target/forena-api.jar"], cwd=ROOT, env=api_env, stdout=logs[-1], stderr=subprocess.STDOUT)
         logs.append((out / "web.log").open("w"))
-        web = subprocess.Popen(["node", "node_modules/next/dist/bin/next", "start", "-H", "127.0.0.1", "-p", "3000"], cwd=ROOT, env=web_env | {"FORENA_KOTLIN_TEST_ACTIVITY_ID": ids["activity"]}, stdout=logs[-1], stderr=subprocess.STDOUT)
+        command = ["node", "node_modules/vite/bin/vite.js", "preview", "frontend", "--host", "127.0.0.1", "--port", "3000"] if args.browser_frontend else ["node", "node_modules/next/dist/bin/next", "start", "-H", "127.0.0.1", "-p", "3000"]
+        web = subprocess.Popen(command, cwd=ROOT, env=web_env | {"FORENA_KOTLIN_TEST_ACTIVITY_ID": ids["activity"]}, stdout=logs[-1], stderr=subprocess.STDOUT)
         for url, child in [("http://127.0.0.1:8080/actuator/health", api), ("http://127.0.0.1:3000/login?mode=password", web)]:
             for _ in range(80):
                 if child.poll() is not None:
@@ -90,7 +92,8 @@ def main():
                     time.sleep(.25)
             else:
                 raise RuntimeError("Test server readiness timeout")
-        run(["node", "scripts/migration/browser-participation.mjs"], manager | {"FORENA_BROWSER_API_PID": str(api.pid)}, "browser.log", 240)
+        script = "scripts/migration/browser-frontend.mjs" if args.browser_frontend else "scripts/migration/browser-participation.mjs"
+        run(["node", script], manager | {"FORENA_BROWSER_API_PID": str(api.pid)}, "browser.log", 240)
     finally:
         for child in [web, api]:
             if child and child.poll() is None:

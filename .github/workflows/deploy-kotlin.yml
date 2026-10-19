@@ -85,22 +85,13 @@ jobs:
           vercel pull --yes --environment=production --scope "$VERCEL_ORG_ID"
           node scripts/deploy/prepare-kotlin.mjs
 
-      - name: Build frontend and business API for the verified source
-        env:
-          FORENA_CONTAINER_BUILD: "true"
+      - name: Build static frontend and business API for the verified source
         run: |
-          npm run build
+          npm run frontend:build
           backend/mvnw -f backend/api/pom.xml --batch-mode --no-transfer-progress -DskipTests package
           mkdir -p backend/api/target/deploy-jdk
           cp -a "$JAVA_HOME/." backend/api/target/deploy-jdk/
           cp backend/certs/supabase-ca.crt backend/api/target/supabase-ca.crt
-          cp -a .next/standalone deploy/frontend/app
-          mkdir -p deploy/frontend/app/.next
-          cp -a .next/static deploy/frontend/app/.next/static
-          cp -a public deploy/frontend/public
-
-      - name: Verify frontend TLS trust through the release entrypoint
-        run: python3 scripts/deploy/smoke-frontend-tls.py
 
       - name: Build service images and stage production without moving domains
         id: stage
@@ -123,14 +114,16 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           DEPLOYMENT_URL: ${{ steps.stage.outputs.url }}
         run: |
-          vercel curl "$DEPLOYMENT_URL/api/migration/health" --scope "$VERCEL_ORG_ID" -- --silent --show-error --fail --max-time 90 > "$RUNNER_TEMP/kotlin-health.json"
-          HEALTH_FILE="$RUNNER_TEMP/kotlin-health.json" node --input-type=module -e '
+          vercel curl "$DEPLOYMENT_URL/actuator/health" --scope "$VERCEL_ORG_ID" -- --silent --show-error --fail --max-time 90 > "$RUNNER_TEMP/kotlin-health.json"
+          vercel curl "$DEPLOYMENT_URL/app-version.json" --scope "$VERCEL_ORG_ID" -- --silent --show-error --fail --max-time 60 > "$RUNNER_TEMP/frontend-version.json"
+          HEALTH_FILE="$RUNNER_TEMP/kotlin-health.json" VERSION_FILE="$RUNNER_TEMP/frontend-version.json" node --input-type=module -e '
             import { readFileSync } from "node:fs";
             const health = JSON.parse(readFileSync(process.env.HEALTH_FILE, "utf8"));
-            const build = JSON.parse(readFileSync("public/app-version.json", "utf8"));
-            if (health.status !== "ok" || health.version !== build.version) process.exit(1);
+            const remote = JSON.parse(readFileSync(process.env.VERSION_FILE, "utf8"));
+            const build = JSON.parse(readFileSync("frontend/dist/app-version.json", "utf8"));
+            if (health.status !== "UP" || remote.version !== build.version) process.exit(1);
           '
-          vercel curl "$DEPLOYMENT_URL/login?mode=password" --scope "$VERCEL_ORG_ID" -- --silent --show-error --fail --max-time 60 --output /dev/null
+          vercel curl "$DEPLOYMENT_URL/login" --scope "$VERCEL_ORG_ID" -- --silent --show-error --fail --max-time 60 --output /dev/null
 
       - name: Publish the tested deployment if it is still current main
         env:
