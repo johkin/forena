@@ -6,7 +6,7 @@ Beskrivningen nedan avser nuvarande lösning och befintliga principer; måltekni
 är inte införd bara för att den dokumenterats.
 
 Det första separata verksamhets-API:t finns nu i `backend/api`: familjens
-kallelseläsning och svar med JDBC, Liquibase och PostgreSQL-RLS. Det använder
+kallelseläsning och svar med Spring Data JDBC-repositories, Liquibase och PostgreSQL-RLS. Det använder
 ett nytt tomt `forena`-schema enligt ADR-010, utan gamla projektets testdata.
 Nuvarande Next.js-app är ännu inte omkopplad. Se [API-underlaget](../backend/api/README.md)
 för säkerhetsgränser, verifiering och återstående aktivering. REST-controllers

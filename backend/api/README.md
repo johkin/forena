@@ -51,6 +51,28 @@ Alla egna REST-controllers i API:t och teknikprovet returnerar Kotlin data class
 närvaroflagga skiljer utelämnad kommentar från explicit null utan att exponeras
 i JSON eller OpenAPI. Okända/ignorerade fält och numeriska enumvärden nekas.
 
+## Repositories och transaktioner
+
+API:ts produktionskod använder Spring Data JDBC 4.1.0 (låst av Boot-BOM) och
+smala `Repository`-interface. Genererade frågor sköter konto-/sessionskontroll,
+familjekopplingar, personer, aktiviteter och kallelsesvar. Ingen JdbcTemplate
+eller JdbcClient används i API:ts produktionskod. Se [ADR-011](../../docs/migration/decisions.md).
+
+Familjekopplingens sammansatta nyckel mappas med `@Id` och `@Embedded`. Läsning
+hämtar familjen och dess kallelser i batcher, inte en personfråga per kallelse.
+Namn sorteras med databasens kollation och UUID används som sekundär ordning.
+Skrivning tar `@Lock(PESSIMISTIC_WRITE)` på en härledd repository-fråga och
+sparar endast ändrat tillstånd. `@ReadOnlyProperty` skyddar identitet, revision
+och svarstid från genererade UPDATE-frågor. Runtime-rollens kolumngrants och
+RLS är fortsatt oberoende skydd; inga utökade databasrättigheter behövs.
+
+`ActorTransactions` behåller en egen transaktion för varje verifierad aktör.
+`DatabaseSessionRepository` innehåller två avgränsade PostgreSQL-specifika
+`@Query`-metoder för transaktionslokal identitet och databasens aktuella klocka.
+De är tekniska undantag från genererad CRUD. Migreringar, RLS/triggers och
+säkerhetstester använder fortsatt SQL. Teknikprovets worker-/registry-frågor
+ligger kvar separat i `backend/src`; de är inte omskrivna i denna leverans.
+
 ## Databas och körning
 
 1. Kör [bootstrap.sql](scripts/bootstrap.sql) som administratör i en **ny databas**.

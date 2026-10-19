@@ -3,6 +3,27 @@
 Status anger målbeslut för kommande implementation, inte redan införd teknik.
 Källkodsverifierat nuläge finns i [inventeringen](inventory.md).
 
+## ADR-011: Spring Data JDBC för verksamhets-API:t
+
+**Beslut 2026-10-19 på användarens instruktion:** verksamhets-API:t använder
+Spring Data JDBC och smala `Repository`-interface. Detta ersätter ADR-003:s val
+av handskriven CRUD med JdbcClient/JdbcTemplate för `backend/api`. Spring Boot
+4.1.0:s BOM låser Spring Data JDBC/Relational till 4.1.0; ingen JPA införs.
+
+Läsningar, existenskontroller och svarsskrivning använder genererade frågor.
+Sammansatta familjenycklar mappas med `@Id`/`@Embedded`. Svar låses med
+`@Lock(PESSIMISTIC_WRITE)` på en härledd fråga. `@ReadOnlyProperty` hindrar ORM-
+uppdatering av identitet, svarstid och revision; databastriggers äger dessa fält.
+Applikationstjänsten äger fortsatt transaktionen, familjekontroll och felöversättning.
+
+Två PostgreSQL-specifika `@Query`-metoder behålls i `DatabaseSessionRepository`:
+transaktionslokal `set_config` för verifierad identitet och `clock_timestamp`
+för livscykelkontroll. De saknar härledd CRUD-motsvarighet. Det finns ingen
+JdbcTemplate/JdbcClient eller handskriven CRUD i API:ts produktionskod, men detta
+är **inte** ett påstående om att all SQL försvinner: Liquibase/RLS/triggers och
+SQL för negativa säkerhetsprov ligger kvar. M21/M22-teknikprovets specialiserade
+registry-/worker-SQL är fortsatt separat och ingår inte i denna repository-flytt.
+
 ## ADR-010: Ren start för verksamhets-API:t, inga gamla testdata
 
 **Beslut 2026-10-19 på användarens uttryckliga instruktion:** gamla Förena-

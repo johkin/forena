@@ -22,7 +22,8 @@ förblir leverantörsägda. Ingen radering av gamla projektet ingår.
   `pending` rensar kommentar och svarstid. Ogiltiga typer och okända bodyfält nekas.
 - JWT-signatur och webbsessionsclaims kontrolleras före databasen. Metadata
   ger inga rättigheter; familjeåtkomst kommer från aktiva databasrelationer.
-- Begränsad JDBC-roll och transaktionslokal serverbyggd identitet. RLS gäller
+- Spring Data JDBC-repositories med genererad CRUD, begränsad runtime-roll
+  och transaktionslokal serverbyggd identitet. RLS gäller
   läsning, radlås och skrivning. Konto/session kontrolleras per transaktion.
 - Samma transaktion skriver svar, revision, historik med konto/session/kanal
   och en beständig signalversion. Kommentartext och token sparas inte i historik.

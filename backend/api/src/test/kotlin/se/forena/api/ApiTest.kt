@@ -40,6 +40,7 @@ import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import se.forena.api.identity.Actor
 import se.forena.api.identity.ActorTransactions
+import se.forena.api.participation.internal.InvitationRepository
 import org.testcontainers.postgresql.PostgreSQLContainer
 import tools.jackson.databind.json.JsonMapper
 
@@ -76,6 +77,7 @@ class ApiTest {
     @Autowired lateinit var environment: Environment
     @Autowired lateinit var jdbc: JdbcTemplate
     @Autowired lateinit var transactions: ActorTransactions
+    @Autowired lateinit var invitationRecords: InvitationRepository
     @Autowired lateinit var json: JsonMapper
     private val admin by lazy { JdbcTemplate(DriverManagerDataSource(database.jdbcUrl, database.username, database.password)) }
     private lateinit var parent: UUID
@@ -350,6 +352,30 @@ class ApiTest {
     @Test fun `unicode comment truncation does not split surrogate pairs`() {
         assertThat(respond("""{"response":"accepted","comment":"${"😀".repeat(501)}"}""").statusCode()).isEqualTo(200)
         assertThat(row()["response_comment"]).isEqualTo("😀".repeat(500))
+    }
+
+    @Test fun `composite guardian identity keeps two guardians independent`() {
+        admin.update("insert into forena.person_access(person_id,organization_id,subject,kind) values(?,?,?,'guardian')",child1,organization,outsider)
+        assertThat(respond("""{"response":"accepted"}""", token(outsider)).statusCode()).isEqualTo(200)
+        admin.update("update forena.person_access set active=false where person_id=? and subject=?",child1,outsider)
+        assertThat(respond("""{"response":"declined"}""", token(outsider)).statusCode()).isEqualTo(403)
+        assertThat(respond("""{"response":"declined"}""").statusCode()).isEqualTo(200)
+        assertThat(history()).isEqualTo(2)
+    }
+
+    @Test fun `repository save cannot write identity timestamps or revision`() {
+        transactions.asActor(Actor(parent,session)) {
+            val current = invitationRecords.findLockedById(invitation)!!
+            invitationRecords.save(current.copy(response="accepted", personId=other, organizationId=UUID.randomUUID(),
+                activityId=UUID.randomUUID(), revision=999, respondedAt=Instant.EPOCH))
+        }
+        val saved = row()
+        assertThat(saved["person_id"]).isEqualTo(child1)
+        assertThat(saved["organization_id"]).isEqualTo(organization)
+        assertThat(saved["activity_id"]).isEqualTo(activity)
+        assertThat(saved["revision"]).isEqualTo(1L)
+        assertThat(saved["responded_at"].toString()).doesNotContain("1970")
+        assertThat(history()).isEqualTo(1)
     }
 
     @Test fun `springdoc exports the implemented typed authenticated API for client generation`() {

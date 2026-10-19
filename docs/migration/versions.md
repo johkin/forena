@@ -100,3 +100,10 @@ Spring Boot 4.1.0, Kotlin 2.4.20 och Jackson 3.1.4 från Boot. Den officiella
 Maven Central publicerar 3.1.1 som stabil version. Kompatibiliteten verifieras
 här genom riktig HTTP-generering, JWT-skydd, nullable-/required-fält, enums och
 körning av API:ts integrationstester. Ingen Swagger UI- eller MCP-modul införs.
+
+## Spring Data JDBC i verksamhets-API:t
+
+`spring-boot-starter-data-jdbc` använder Boot 4.1.0:s låsta BOM och ger Spring
+Data JDBC/Relational/Commons **4.1.0**. Repositories, sammansatta ID:n, read-only-
+fält och pessimistiska lås verifieras mot PostgreSQL 17.6 med begränsad runtime.
+Se [ADR-011](decisions.md) för de två PostgreSQL-specifika infrastrukturfrågorna.
