@@ -2,9 +2,12 @@
 
 Det separata Kotlin-API:t för familjens kallelsesvar finns i `backend/api` och
 är ännu inte aktiverat i webben. Det använder ett nytt privat schema enligt
-[ADR-010](migration/decisions.md), explicit familjefilter i tjänstens läsningar
-och PostgreSQL-RLS som oberoende databasgräns. Verifierad bearer-identitet sätts
-transaktionslokalt; runtime får aldrig schemaägar- eller service-role-credentials.
+[ADR-010](migration/decisions.md). Enligt ADR-012 ligger dess behörighet i Kotlin:
+konto/session, aktiva familjekopplingar samt organisationsgränser kontrolleras
+för läsning och skrivning. Ingen RLS används i detta privata schema. Det får
+inte exponeras i Data API och klientroller har inga grants. Transaktionslokal
+bearer-identitet används endast för revisionsloggning vid ändrade svar;
+runtime får aldrig schemaägar- eller service-role-credentials.
 Se [API:ts säkerhetsgränser](../backend/api/README.md), särskilt begränsningen
 kring extern Auth-revokering före pilot. Gamla appens kontroller nedan gäller
 fortsatt dess befintliga databas och kanaler.
@@ -23,7 +26,8 @@ innebära att information exponeras.
 - Ge varje användare minsta nödvändiga behörighet.
 - Härled organisation och åtkomst från den autentiserade användaren; lita inte
   på ett organization-, team- eller person-id enbart för att klienten skickar det.
-- Kontrollera behörighet både i applikationslagret och i databasen med RLS.
+- Kontrollera behörighet i applikationslagret. Gamla appens direktåtkomst via
+  Supabase skyddas också av RLS; det privata Spring Boot-API:t följer ADR-012.
 - Logga säkerhetsrelevanta läsningar, inte bara ändringar.
 - Använd inte produktionsdata i utvecklings- eller testmiljöer.
 - Skicka minsta möjliga mängd persondata till externa tjänster, inklusive LLM.
@@ -52,7 +56,8 @@ RESTRICTED
   åtkomst.
 ```
 
-Behörighetskontrollen bör därför utvecklas mot ABAC i kombination med RLS:
+Behörighetskontrollen bör därför utvecklas mot ABAC, med RLS för de kanaler
+som ger klienter direkt databasåtkomst:
 
 ```text
 WHO?       user, role, organization, section, team

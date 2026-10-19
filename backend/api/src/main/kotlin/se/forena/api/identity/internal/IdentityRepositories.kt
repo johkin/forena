@@ -16,16 +16,19 @@ interface AccountRepository : Repository<AccountRecord, UUID> {
     fun existsBySubjectAndEnabledTrue(subject: UUID): Boolean
 }
 
-/** PostgreSQL connection state and wall clock have no derived CRUD equivalent. */
-interface DatabaseSessionRepository : Repository<AccountRecord, UUID> {
+/** Current wall clock, including time spent waiting for row locks. */
+interface DatabaseClockRepository : Repository<AccountRecord, UUID> {
+    @Query("select clock_timestamp()")
+    fun databaseTime(): Instant
+}
+
+/** Audit-only context, set only for changed writes; never used for authorization. */
+interface AuditContextRepository : Repository<AccountRecord, UUID> {
     @Query("""
         select set_config('forena.actor_id', :subject, true) = :subject
            and set_config('forena.session_id', :session, true) = :session
     """)
-    fun bindIdentity(subject: String, session: String): Boolean
-
-    @Query("select clock_timestamp()")
-    fun databaseTime(): Instant
+    fun bindAuditActor(subject: String, session: String): Boolean
 }
 
 @Table(value = "revoked_session", schema = "forena")
@@ -47,7 +50,7 @@ data class PersonAccessRecord(
 
 interface PersonAccessRepository : Repository<PersonAccessRecord, PersonAccessKey> {
     fun findById(id: PersonAccessKey): Optional<PersonAccessRecord>
-    fun findByOrganizationIdAndActiveTrue(organizationId: UUID): List<PersonAccessRecord>
+    fun findByKeySubjectAndOrganizationIdAndActiveTrue(subject: UUID, organizationId: UUID): List<PersonAccessRecord>
 }
 
 @Table(value = "person", schema = "forena")

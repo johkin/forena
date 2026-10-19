@@ -23,8 +23,10 @@ förblir leverantörsägda. Ingen radering av gamla projektet ingår.
 - JWT-signatur och webbsessionsclaims kontrolleras före databasen. Metadata
   ger inga rättigheter; familjeåtkomst kommer från aktiva databasrelationer.
 - Spring Data JDBC-repositories med genererad CRUD, begränsad runtime-roll
-  och transaktionslokal serverbyggd identitet. RLS gäller
-  läsning, radlås och skrivning. Konto/session kontrolleras per transaktion.
+  och uttryckliga åtkomstregler i Kotlin enligt ADR-012; ingen RLS i det privata
+  API-schemat. Konto/session kontrolleras per transaktion, familj/organisation
+  före läsresultat och före/efter skrivlås. Identitet sätts bara för revisionslogg
+  vid ändrade svar; ingen kontextfråga krävs vid läsning eller identisk upprepning.
 - Samma transaktion skriver svar, revision, historik med konto/session/kanal
   och en beständig signalversion. Kommentartext och token sparas inte i historik.
 - Aktivitetslås skyddar mot samtidig inställning och avslut. Upprepning av samma
@@ -46,7 +48,7 @@ syntetiska familjer. Testerna omfattar egen person/två barn, annan familj,
 återkallad koppling, blockerat konto/session, fel claims/signatur/algoritm,
 ES256/RS256, JWKS-rotation/nätfel, livscykelkonflikter, samtidiga skrivare,
 upprepning, historik, rollback och poolad identitet. Separata migrationstester
-installerar tomt schema respektive uppgraderar den nya identitetsbaslinjen,
+installerar tomt schema respektive uppgraderar identitets- och RLS-baslinjerna,
 validerar och återkör med bevarade syntetiska data. Modulith-gränser verifieras.
 
 API-jobbet läggs till CI:s obligatoriska `verify` utan att ta bort befintliga

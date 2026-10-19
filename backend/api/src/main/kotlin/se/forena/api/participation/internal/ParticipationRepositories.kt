@@ -40,7 +40,9 @@ interface InvitationRepository : Repository<InvitationRecord, UUID> {
     fun findByActivityIdAndPersonIdIn(activityId: UUID, personIds: Collection<UUID>): List<InvitationRecord>
 
     @Lock(LockMode.PESSIMISTIC_WRITE)
-    fun findLockedById(id: UUID): InvitationRecord?
+    fun findLockedByIdAndOrganizationIdAndPersonId(id: UUID, organizationId: UUID, personId: UUID): InvitationRecord?
+
+    fun findById(id: UUID): Optional<InvitationRecord>
 
     fun save(invitation: InvitationRecord): InvitationRecord
 }

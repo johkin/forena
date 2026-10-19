@@ -3,7 +3,38 @@
 Status anger målbeslut för kommande implementation, inte redan införd teknik.
 Källkodsverifierat nuläge finns i [inventeringen](inventory.md).
 
+## ADR-012: Behörighet i Kotlin, ingen RLS i verksamhets-API:t
+
+**Beslut 2026-10-19 på användarens uttryckliga instruktion:** ta bort RLS för
+Spring Boot-verksamhets-API:t så att åtkomstreglerna syns i Kotlin. Detta ersätter
+RLS-delen av ADR-010/011 för det privata `forena`-schemat, inte gamla appens RLS.
+
+`ActorTransactions` kontrollerar konto och lokal sessionsspärr. `FamilyAccess`
+härleder aktiva egen-/målsmanskopplingar för verifierat subjekt och organisation.
+`Invitations` avgränsar läsning till dessa personer, nekar främmande aktiviteter,
+kontrollerar skrivrätt före radlås och igen efter låset. Organisation/person
+följer den oföränderliga kallelsenyckeln, inte klientens body eller JWT-metadata.
+
+Liquibase-steg `api-003-application-authorization` tar bort policyer, stänger av
+RLS och tar bort `can_act_for`. Tidigare steg ändras inte. Schemat är fortsatt
+privat och får inte exponeras i Data API; PUBLIC och eventuella Supabase-
+klientroller saknar åtkomst. Runtime får inga utökade skrivrättigheter.
+
+Integritets-/revisionsloggningstriggers behålls: aktivitetslåset skyddar livscykeln,
+och svar/historik/signalversion förblir atomära. Den transaktionslokala identiteten
+används **enbart för historik**, inte för behörighet. Den sätts först när ett
+behörigt, ändrat svar faktiskt ska sparas; läsningar, nekade svar och identiska
+upprepningar sätter ingen databaskontext. `clock_timestamp` används fortsatt för
+tidsregler efter låsväntan. Detta är två små tekniska repository-frågor, ingen
+handskriven CRUD. Att flytta även revisionsloggningen från triggers är separat.
+
+Databasrollen är nu en betrodd backendroll med läsning över familjegränser;
+direkt SQL är ingen användarbehörighetsgräns. HTTP-tester måste verifiera familj,
+organisation, återkallade kopplingar och spärrade sessioner utan hjälp från RLS.
+
 ## ADR-011: Spring Data JDBC för verksamhets-API:t
+
+RLS-/identitetsdelen nedan ersätts av ADR-012.
 
 **Beslut 2026-10-19 på användarens instruktion:** verksamhets-API:t använder
 Spring Data JDBC och smala `Repository`-interface. Detta ersätter ADR-003:s val
@@ -25,6 +56,8 @@ SQL för negativa säkerhetsprov ligger kvar. M21/M22-teknikprovets specialisera
 registry-/worker-SQL är fortsatt separat och ingår inte i denna repository-flytt.
 
 ## ADR-010: Ren start för verksamhets-API:t, inga gamla testdata
+
+RLS-delen nedan ersätts av ADR-012; beslutet om ren databas gäller fortsatt.
 
 **Beslut 2026-10-19 på användarens uttryckliga instruktion:** gamla Förena-
 projektet innehåller bara testdata och behöver inte datamigreras. Ny backend

@@ -9,7 +9,7 @@ Implementerat:
 - `GET /api/activities/{activityId}/my-invitations` – egna personer och aktiva målsmanskopplingar.
 - `PUT /api/invitations/{invitationId}/respond` – svara, ändra kommentar eller återställa till `pending`.
 - Svar, revision, revisionshistorik (konto/session/kanal) och beständig signalversion i en transaktion.
-- Signerade webbsessioner, databasägd familjeavgränsning och livscykellås.
+- Signerade webbsessioner, familjeavgränsning i Kotlin och livscykellås.
 
 Ingen Next-adapter eller molndeploy ingår. Skapande av konton, familjer,
 aktiviteter och kallelser är ännu inget publikt API. Testerna skapar egna
@@ -63,15 +63,23 @@ hämtar familjen och dess kallelser i batcher, inte en personfråga per kallelse
 Namn sorteras med databasens kollation och UUID används som sekundär ordning.
 Skrivning tar `@Lock(PESSIMISTIC_WRITE)` på en härledd repository-fråga och
 sparar endast ändrat tillstånd. `@ReadOnlyProperty` skyddar identitet, revision
-och svarstid från genererade UPDATE-frågor. Runtime-rollens kolumngrants och
-RLS är fortsatt oberoende skydd; inga utökade databasrättigheter behövs.
+och svarstid från genererade UPDATE-frågor. Runtime-rollens kolumngrants är
+oförändrade. Åtkomstkontrollerna ligger i Kotlin enligt [ADR-012](../../docs/migration/decisions.md).
+`FamilyAccess` hämtar bara verifierat subjekts aktiva kopplingar i aktuell
+organisation. `Invitations` filtrerar läsningen till familjen och kontrollerar
+skrivrätt före och efter radlåset. Främmande aktivitet ger 404, främmande kallelse 403.
 
-`ActorTransactions` behåller en egen transaktion för varje verifierad aktör.
-`DatabaseSessionRepository` innehåller två avgränsade PostgreSQL-specifika
-`@Query`-metoder för transaktionslokal identitet och databasens aktuella klocka.
-De är tekniska undantag från genererad CRUD. Migreringar, RLS/triggers och
-säkerhetstester använder fortsatt SQL. Teknikprovets worker-/registry-frågor
-ligger kvar separat i `backend/src`; de är inte omskrivna i denna leverans.
+`ActorTransactions` behåller en egen transaktion med konto-/sessionskontroll för
+varje verifierad aktör, men sätter ingen RLS-identitet. `AuditContextRepository`
+sätter enbart revisionsloggens konto/session, först när ett ändrat svar ska
+sparas. Läsningar och identiska upprepningar behöver inte denna extra fråga.
+`DatabaseClockRepository` hämtar PostgreSQLs aktuella klocka för tidsregler.
+Dessa två tekniska `@Query`-metoder är undantag från genererad CRUD. Migrationer,
+integritets-/historiktriggers och säkerhetstester använder fortsatt SQL.
+Teknikprovets worker-/registry-frågor ligger kvar separat i `backend/src`.
+
+Liquibase-steg 003 tar bort RLS-policyer och `can_act_for` samt stänger av RLS.
+Steg 001/002 är oförändrade för att befintliga installationer ska kunna uppgraderas.
 
 ## Databas och körning
 
@@ -102,9 +110,10 @@ ligger kvar separat i `backend/src`; de är inte omskrivna i denna leverans.
    Port är `PORT` eller 8080. `/actuator/health` är publik utan detaljer.
 
 Runtime har högst fyra databasanslutningar och fem sekunders väntan på poolen.
-Transaktionslokal identitet skapas från verifierad token och rensas av PostgreSQL
-vid commit/rollback. Klientens JSON, headers och `user_metadata` kan inte välja
-databasidentitet eller ge familjerättigheter. Inget `service_role`-konto används.
+Verifierad token ger aktören till Kotlin-kodens åtkomstkontroller. Enbart vid
+ändrad skrivning sätts transaktionslokal revisionsidentitet, som rensas vid
+commit/rollback. Klientens JSON, headers och `user_metadata` ger inga
+familjerättigheter. Inget `service_role`-konto används.
 
 ## Autentisering och samtidighet
 
@@ -131,12 +140,15 @@ fördröjd annorlunda begäran kan alltså ersätta ett nyare svar. Gör ingen
 automatisk fallback till gamla backend efter timeout.
 
 Schemaägda triggerfunktioner har fasta sökvägar och saknar publika körgrants.
-De får enbart låsa aktivitetens livscykel respektive skriva historik/signalversion.
-Runtime får endast uppdatera svar och kommentar på RLS-tillåtna kallelser.
-Tjänsten filtrerar dessutom uttryckligen på kontots aktiva familjekopplingar.
-Databaskontexten är serverbetrodd: den som stjäl runtime-kontots SQL-credential
-kan själv sätta identitetsinställningarna. Kontot får därför aldrig lämnas till
-klienter; RLS ersätter inte skydd av backend eller JDBC-credentialen.
+De får enbart låsa aktivitetens livscykel respektive skriva historik/signalversion;
+de innehåller inga familje- eller organisationsbehörighetsregler.
+Runtime får endast uppdatera svar och kommentar; identitet, revision, svarstid,
+historik och signalversion skyddas av befintliga kolumngrants och triggers.
+Det finns ingen RLS i `forena`: runtime-kontot kan läsa över familjegränser och
+Kotlin måste alltid kontrollera åtkomsten. Kontot får aldrig lämnas till klienter,
+och schemat får inte exponeras via Supabase Data API. Migrationen återkallar
+åtkomst för PUBLIC samt eventuella anon/authenticated/service_role-roller.
+Gamla appens Supabase-schema och RLS ändras inte.
 Historiken sparar inte kommentartext eller token. `activity_signal_state` är
 en beständig invalideringsversion, inte en outbox eller ett löfte om levererad
 notifiering. Signalworker/Modulith-reaktion kopplas in i ett senare steg.

@@ -36,6 +36,11 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.core.env.Environment
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.datasource.DriverManagerDataSource
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
+import org.mockito.Mockito.clearInvocations
+import org.mockito.Mockito.verify
+import org.mockito.Mockito.verifyNoInteractions
+import se.forena.api.identity.internal.AuditContextRepository
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import se.forena.api.identity.Actor
@@ -66,7 +71,7 @@ class ApiTest {
             registry.add("spring.datasource.url") { database.jdbcUrl }
             registry.add("spring.datasource.username") { "forena_api_runtime" }
             registry.add("spring.datasource.password") { "local-runtime-only" }
-            registry.add("spring.datasource.hikari.maximum-pool-size") { 1 }
+            registry.add("spring.datasource.hikari.maximum-pool-size") { 4 }
             registry.add("spring.liquibase.enabled") { true }
             registry.add("spring.liquibase.user") { "forena_api_owner" }
             registry.add("spring.liquibase.password") { "local-owner-only" }
@@ -77,6 +82,7 @@ class ApiTest {
     @Autowired lateinit var environment: Environment
     @Autowired lateinit var jdbc: JdbcTemplate
     @Autowired lateinit var transactions: ActorTransactions
+    @MockitoSpyBean lateinit var auditContext: AuditContextRepository
     @Autowired lateinit var invitationRecords: InvitationRepository
     @Autowired lateinit var json: JsonMapper
     private val admin by lazy { JdbcTemplate(DriverManagerDataSource(database.jdbcUrl, database.username, database.password)) }
@@ -144,6 +150,40 @@ class ApiTest {
         assertThat(request("/api/activities/${UUID.randomUUID()}/my-invitations").statusCode()).isEqualTo(404)
     }
 
+    @Test fun `reads rejected writes and identical responses never bind audit context`() {
+        clearInvocations(auditContext)
+        assertThat(request("/api/activities/$activity/my-invitations").statusCode()).isEqualTo(200)
+        assertThat(respond("""{"response":"accepted"}""",token(outsider)).statusCode()).isEqualTo(403)
+        verifyNoInteractions(auditContext)
+        assertThat(respond("""{"response":"accepted"}""").statusCode()).isEqualTo(200)
+        verify(auditContext).bindAuditActor(parent.toString(),session.toString())
+        clearInvocations(auditContext)
+        assertThat(respond("""{"response":"accepted"}""").statusCode()).isEqualTo(200)
+        assertThat(request("/api/activities/$activity/my-invitations").statusCode()).isEqualTo(200)
+        verifyNoInteractions(auditContext)
+    }
+
+    @Test fun `inactive family links deny reads even when the activity and organization exist`() {
+        admin.update("update forena.person_access set active=false where subject=?",parent)
+        assertThat(request("/api/activities/$activity/my-invitations").statusCode()).isEqualTo(404)
+        admin.update("update forena.activity set invitation_send_at=now()+interval '1 day' where id=?",activity)
+        assertThat(request("/api/activities/$activity/my-invitations").statusCode()).isEqualTo(404)
+        assertThat(respond("""{"response":"accepted"}""").statusCode()).isEqualTo(403)
+        assertThat(history()).isZero(); assertThat(dirty()).isZero()
+    }
+
+    @Test fun `unauthorized writes are rejected before locking another familys invitation`() {
+        DriverManager.getConnection(database.jdbcUrl, database.username, database.password).use { connection ->
+            connection.autoCommit = false
+            connection.prepareStatement("select id from forena.invitation where id=? for update").use {
+                it.setObject(1,invitation); it.executeQuery().close()
+            }
+            val result = CompletableFuture.supplyAsync { respond("""{"response":"accepted"}""", token(outsider)) }
+            assertThat(result.get(5,java.util.concurrent.TimeUnit.SECONDS).statusCode()).isEqualTo(403)
+        }
+        assertThat(history()).isZero(); assertThat(dirty()).isZero()
+    }
+
     @Test fun `answer change reset reload and comments preserve time and atomic history`() {
         val accepted = respond("""{"response":"accepted","comment":"  Ses snart  "}""")
         assertThat(accepted.statusCode()).isEqualTo(200)
@@ -196,6 +236,7 @@ class ApiTest {
         admin.update("update forena.account set enabled=true where subject=?", parent)
         admin.update("insert into forena.revoked_session(id,subject) values(?,?)", session, parent)
         assertThat(respond("""{"response":"accepted"}""").statusCode()).isEqualTo(401)
+        assertThat(request("/api/activities/$activity/my-invitations").statusCode()).isEqualTo(401)
         assertThat(history()).isZero(); assertThat(dirty()).isZero()
     }
 
@@ -253,25 +294,27 @@ class ApiTest {
         } finally { jwksAvailable = true }
     }
 
-    @Test fun `runtime has no owner grants and no transaction identity leaks after rollback`() {
+    @Test fun `runtime grants stay limited and Kotlin authorization survives rollback and connection reuse`() {
         assertThat(jdbc.queryForObject("select rolsuper or rolbypassrls from pg_roles where rolname=current_user", Boolean::class.java)).isFalse()
         assertThat(jdbc.queryForObject("select pg_has_role(current_user,'forena_api_owner','MEMBER')", Boolean::class.java)).isFalse()
         assertThat(jdbc.queryForObject("select has_schema_privilege(current_user,'forena','CREATE')", Boolean::class.java)).isFalse()
-        assertThat(jdbc.queryForObject("select count(*) from forena.invitation", Long::class.java)).isZero()
-        transactions.asActor(Actor(parent, session)) {
-            assertThat(jdbc.queryForObject("select count(*) from forena.invitation where id=?", Long::class.java, invitation)).isEqualTo(1)
-        }
-        assertThat(jdbc.queryForObject("select count(*) from forena.invitation", Long::class.java)).isZero()
+        // RLS is disabled: HTTP isolation must be proven without help from database policies.
+        assertThat(jdbc.queryForObject("select count(*) from forena.invitation where activity_id=?", Long::class.java,activity)).isEqualTo(4)
         assertThatThrownBy { transactions.asActor(Actor(parent, session)) {
+            transactions.bindAuditActor(Actor(parent, session))
             jdbc.update("update forena.invitation set response='accepted' where id=?", invitation)
             throw IllegalStateException("force rollback")
         } }.isInstanceOf(IllegalStateException::class.java)
         assertThat(history()).isZero(); assertThat(dirty()).isZero()
-        assertThat(jdbc.queryForObject("select count(*) from forena.invitation", Long::class.java)).isZero()
-        transactions.asActor(Actor(outsider, UUID.randomUUID())) {
-            assertThat(jdbc.queryForObject("select count(*) from forena.invitation where id=?", Long::class.java, invitation)).isZero()
-            assertThat(jdbc.update("update forena.invitation set response='accepted' where id=?", invitation)).isZero()
+        repeat(3) {
+            assertThat(respond("""{"response":"accepted"}""", token(outsider)).statusCode()).isEqualTo(403)
+            assertThat(respond("""{"response":"accepted"}""").statusCode()).isEqualTo(200)
+            val ownList = request("/api/activities/$activity/my-invitations", bearer=token(outsider))
+            assertThat(ownList.statusCode()).isEqualTo(200)
+            assertThat(ownList.body()).contains(other.toString()).doesNotContain(child1.toString(),own.toString())
         }
+        assertThat(jdbc.queryForObject("select nullif(current_setting('forena.actor_id',true),'')",String::class.java)).isNull()
+        assertThat(jdbc.queryForObject("select nullif(current_setting('forena.session_id',true),'')",String::class.java)).isNull()
         for (sql in listOf("create table forena.forbidden(id int)", "update forena.invitation set person_id='$other' where id='$invitation'",
             "delete from forena.invitation", "insert into forena.invitation_history default values", "select * from forena.activity_signal_state", "select * from forena.team")) {
             assertThatThrownBy { jdbc.execute(sql) }.describedAs(sql).isInstanceOf(org.springframework.dao.DataAccessException::class.java)
@@ -333,10 +376,6 @@ class ApiTest {
         assertThat(request("/api/invitations/$foreignInvitation/respond", """{"response":"accepted"}""").statusCode()).isEqualTo(403)
         assertThatThrownBy { admin.update("insert into forena.invitation(id,organization_id,activity_id,person_id) values(?,?,?,?)",UUID.randomUUID(),organization,activity,foreignPerson) }
             .isInstanceOf(org.springframework.dao.DataIntegrityViolationException::class.java)
-        transactions.asActor(Actor(parent,session)) {
-            assertThat(jdbc.queryForObject("select count(*) from forena.person where id=?", Long::class.java, foreignPerson)).isZero()
-            assertThat(jdbc.queryForObject("select count(*) from forena.invitation_history where invitation_id=?", Long::class.java,foreignInvitation)).isZero()
-        }
     }
 
     @Test fun `audit failure rolls back the answer revision and signal version`() {
@@ -365,7 +404,8 @@ class ApiTest {
 
     @Test fun `repository save cannot write identity timestamps or revision`() {
         transactions.asActor(Actor(parent,session)) {
-            val current = invitationRecords.findLockedById(invitation)!!
+            val current = invitationRecords.findLockedByIdAndOrganizationIdAndPersonId(invitation,organization,child1)!!
+            transactions.bindAuditActor(Actor(parent,session))
             invitationRecords.save(current.copy(response="accepted", personId=other, organizationId=UUID.randomUUID(),
                 activityId=UUID.randomUUID(), revision=999, respondedAt=Instant.EPOCH))
         }

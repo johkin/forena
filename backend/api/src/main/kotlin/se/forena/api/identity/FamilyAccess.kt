@@ -8,12 +8,12 @@ import se.forena.api.identity.internal.PersonRepository
 
 data class FamilyPerson(val id: UUID, val name: String)
 
-/** Application-level family checks complement RLS; no permissions come from token metadata. */
+/** Family authorization lives here; no permissions come from token metadata. */
 @Service
 class FamilyAccess(private val links: PersonAccessRepository, private val people: PersonRepository) {
     fun people(actor: Actor, organization: UUID): List<FamilyPerson> {
-        val ids = links.findByOrganizationIdAndActiveTrue(organization)
-            .filter { it.key.subject == actor.subject }.map { it.key.personId }
+        val ids = links.findByKeySubjectAndOrganizationIdAndActiveTrue(actor.subject, organization)
+            .map { it.key.personId }
         if (ids.isEmpty()) return emptyList()
         return people.findByIdInOrderByDisplayNameAsc(ids)
             .filter { it.organizationId == organization }.map { FamilyPerson(it.id, it.displayName) }

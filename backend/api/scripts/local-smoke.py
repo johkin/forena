@@ -56,7 +56,11 @@ ALTER ROLE forena_api_runtime PASSWORD 'local-runtime-only';
             log.seek(0)
             assert "Tomcat started" not in log.read(), "Migration mode must not open HTTP"
         changes = docker("exec", container, "psql", "-U", "postgres", "-Atc", "select count(*) from forena.databasechangelog")
-        assert changes == "2"
+        assert changes == "3"
+        rls = docker("exec", container, "psql", "-U", "postgres", "-Atc",
+                     "select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace "
+                     "where n.nspname='forena' and (c.relrowsecurity or c.relforcerowsecurity)")
+        assert rls == "0", "Business API authorization must not depend on RLS"
         env.pop("FORENA_MIGRATION_USERNAME")
         env.pop("FORENA_MIGRATION_PASSWORD")
         with socket.socket() as available:

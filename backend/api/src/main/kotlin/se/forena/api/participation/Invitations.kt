@@ -48,7 +48,12 @@ class Invitations(
     }
 
     fun respond(actor: Actor, invitation: UUID, change: ResponseChange) = transactions.asActor(actor) {
-        val current = invitations.findLockedById(invitation)
+        // No RLS: authorize before locking, then lock the same immutable identity.
+        val identity = invitations.findById(invitation).orElse(null)
+            ?: throw InvitationProblem(403, "Kallelsen är inte tillgänglig.")
+        if (!family.canActFor(actor, identity.personId, identity.organizationId))
+            throw InvitationProblem(403, "Kallelsen är inte tillgänglig.")
+        val current = invitations.findLockedByIdAndOrganizationIdAndPersonId(invitation, identity.organizationId, identity.personId)
             ?: throw InvitationProblem(403, "Kallelsen är inte tillgänglig.")
         if (!family.canActFor(actor, current.personId, current.organizationId))
             throw InvitationProblem(403, "Kallelsen är inte tillgänglig.")
@@ -66,6 +71,7 @@ class Invitations(
         }
         if (change.response != current.response || comment != current.responseComment) {
             try {
+                transactions.bindAuditActor(actor)
                 invitations.save(current.copy(response = change.response, responseComment = comment))
             } catch (ex: RuntimeException) {
                 // Spring Data may propagate or wrap trigger constraints; PostgreSQL remains authoritative.

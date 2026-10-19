@@ -131,7 +131,7 @@ jobs:
           echo "JAVA_HOME=$RUNNER_TEMP/forena-jdk" >> "$GITHUB_ENV"
           echo "$RUNNER_TEMP/forena-jdk/bin" >> "$GITHUB_PATH"
 
-      - name: Verify business API, JWT, RLS and migrations
+      - name: Verify business API, JWT, Kotlin authorization and migrations
         run: backend/mvnw -f backend/api/pom.xml --batch-mode --no-transfer-progress verify
 
       - name: Verify packaged migration and runtime modes

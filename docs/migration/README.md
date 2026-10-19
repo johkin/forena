@@ -15,7 +15,8 @@ skiljer implementerad API-del från återstående UI-/Auth-/driftaktivering.
 Behåll Supabase som PostgreSQL-värd och Auth-leverantör under backendmigreringen.
 Cloud SQL är ett senare alternativ, inte ett villkor för att flytta backend.
 Verksamhetskoden använder Spring Data JDBC-repositories enligt ADR-011, Liquibase
-och portabla PostgreSQL-objekt;
+och portabla PostgreSQL-objekt. Behörigheten för det privata API:t ligger i
+Kotlin enligt ADR-012, utan RLS;
 befintliga Supabase-beroenden ersätts stegvis med bevarad säkerhet.
 Se ADR-008 i [besluten](decisions.md). Ingen databasflytt eller ny databasinstans
 ska beställas inom nästa implementationssteg.

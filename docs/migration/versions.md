@@ -106,4 +106,5 @@ körning av API:ts integrationstester. Ingen Swagger UI- eller MCP-modul införs
 `spring-boot-starter-data-jdbc` använder Boot 4.1.0:s låsta BOM och ger Spring
 Data JDBC/Relational/Commons **4.1.0**. Repositories, sammansatta ID:n, read-only-
 fält och pessimistiska lås verifieras mot PostgreSQL 17.6 med begränsad runtime.
-Se [ADR-011](decisions.md) för de två PostgreSQL-specifika infrastrukturfrågorna.
+Se [ADR-012](decisions.md) för de två PostgreSQL-specifika frågorna för klocka
+och revisionsloggning; de används inte för RLS.

@@ -3,4 +3,5 @@
  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
  <changeSet id="api-001-identity" author="forena"><sqlFile path="identity.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
  <changeSet id="api-002-participation" author="forena"><sqlFile path="participation.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
+ <changeSet id="api-003-application-authorization" author="forena"><sqlFile path="application-authorization.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
 </databaseChangeLog>
