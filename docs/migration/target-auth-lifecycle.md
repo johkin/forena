@@ -4,7 +4,56 @@ Status 2026-10-19: bootstrap verifierad i `forena-kotlin`; verkligt Auth-prov
 **godkänt, 18 kontroller** på källcommit `a72d5de`. ES256-signatur mot riktiga
 JWKS, inloggning, refresh, lokal/global logout, spärr/återöppning och soft delete
 är verifierade. Kotlin-/databasprovet `TargetAuthIT` och moln-JDBC/Liquibase är
-**inte körda**. Detta fortsätter M02/M03, inte godkänd driftaktivering eller hela M07.
+**inte körda**. Fortsatt preflight efter PR #113 bekräftar LOGIN och satta
+processvariabler, men stödd TCP-åtkomst saknas. Detta fortsätter M02/M03,
+inte godkänd driftaktivering eller hela M07.
+
+## API-preflight efter mergad PR #113
+
+På `feat/target-api-verification`, från `main` på `187bfd2`, kontrollerades
+miljön 2026-10-19 kl. 12:54 svensk tid. Imagen innehöll först en äldre
+`work`-checkout; rätt källrevision hämtades före bygget.
+[Preflight-evidens](evidence/target-api-preflight.json) skiljer observerad
+konfiguration från verifierad databasautentisering och genomfört målmiljöprov.
+
+- Alla sex `FORENA_TEST_*`-variabler för Auth/JDBC/roller är satta i processen.
+  Miljötjänstens readiness för variabler och nätpolicy är dock fortfarande
+  `unknown`; satta variabler bevisar inte giltiga lösenord.
+- JDBC-värdet har avsedd poolerhost, port 5432 och databas `postgres`, utan
+  credentials i URL:en, men saknar `sslmode`. Lägg till `sslmode=verify-full`
+  och verifierad `sslrootcert` för körningen; sänk aldrig TLS-kontrollen.
+  Rollnamnen matchar de avsedda namnen med projektsuffix.
+- SQL bekräftar LOGIN på båda rollerna. Ägarrollen hade oväntat `BYPASSRLS`
+  och `CREATEDB`; dessa återkallades med
+  `ALTER ROLE forena_api_owner NOBYPASSRLS NOCREATEDB`. Efterkontrollen
+  bekräftar att båda rollerna saknar superuser/BYPASSRLS/CREATEDB/CREATEROLE,
+  runtime saknar ägarmedlemskap och klientroller saknar schemaåtkomst.
+  Inga nya roller skapades och bootstrap kördes inte igen.
+- Schemaägaren är `forena_api_owner`. Schemat har fortsatt noll tabeller;
+  noll syntetiska `forena-auth-*`-konton finns kvar. Denna preflight skapade
+  inga Auth-konton eller verksamhetsfixturer.
+- Paketerad JAR byggdes med Oracle JDK `26.0.2.1+1-7` från det låsta,
+  checksummeverifierade installationsscriptet och Maven `3.9.11`.
+  Testkällor kompilerades; tester var **överhoppade** med `-DskipTests package`.
+  Explicit Maven-proxy användes i en lokal `settings.xml`; miljöns CA lades
+  i en lokal JDK-truststore. TLS-verifiering behölls. Filerna ligger under
+  `work/target-api-verification/` och är inte versionshanterade.
+
+Blockeraren är transporten: `/etc/codex/network-policy.json` har tomma
+`tcp_network_access.domains` och `ip_ranges`, samt `vpn_configured: false`.
+Anslutning till angiven TCP-proxy `proxy:8088` gav `connection refused`.
+HTTP-tillåtelse för poolerhosten ger inte PostgreSQL-åtkomst. Den lästa
+runtime-anvisningen beskriver TCP CONNECT endast för privata adresser via VPN;
+en domängrant ensam löser därför inte den publika Supabase-poolerns åtkomst.
+En körmiljö med stödd publik PostgreSQL-åtkomst, eller en godkänd privat
+anslutningsväg till samma databas, krävs innan fortsättning.
+
+JDBC-lösenord, databasens CA/hostname-handshake, separat paketerad Liquibase,
+oförändrad femstegshistorik vid återkörning och hela `TargetAuthIT` är **ej
+verifierade/ej körda**. Inget godkänt `target-auth-results.json` har skapats.
+Auth-only-resultatet nedan kvarstår separat. Ingen Next.js-omkoppling,
+Data API-exponering eller molndeploy gjordes. Äldre miljöobservationer nedan
+beskriver läget före denna preflight.
 
 ## Fortsättning från PR #113
 
@@ -55,12 +104,13 @@ först efter avslutade prov och bekräftad städning. Filen har scope
 Utebliven fil eller `passed: false` är inte ett godkänt prov. Inte heller
 ett godkänt Auth-prov bevisar familjeåtkomst eller nekade databasändringar.
 
-## Avsedd miljö och utförd bootstrap
+## Avsedd miljö och ursprungligen utförd bootstrap
 
 - Projekt: `forena-kotlin`, `ckzrtxqjskosqzoitymc`, eu-central-1.
 - Privat nytt schema `forena`, ägare `forena_api_owner`.
-- Ägare och `forena_api_runtime` är separata, **NOLOGIN**, utan superuser,
-  BYPASSRLS, CREATEDB eller CREATEROLE. Inga lösenord har satts.
+- Vid bootstrap var ägare och `forena_api_runtime` separata **NOLOGIN**-roller,
+  utan superuser, BYPASSRLS, CREATEDB eller CREATEROLE, utan satta lösenord.
+  Aktuell LOGIN-status beskrivs i API-preflight ovan.
 - Runtime är inte medlem i ägarrollen. `anon`, `authenticated` och `service_role`
   saknar schemaåtkomst. Supabases säkerhetsrådgivare gav inga anmärkningar.
 - Schemat är tomt: Liquibase och verksamhetsdata återstår. Auth-provkontot är städat.

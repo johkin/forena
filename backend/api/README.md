@@ -12,8 +12,11 @@ Implementerat:
 - Signerade webbsessioner, familjeavgränsning i Kotlin och livscykellås.
 
 Ingen Next-adapter eller molndeploy ingår. [Målmiljö/Auth-arbetet](../../docs/migration/target-auth-lifecycle.md)
-har provisionerat ett tomt privat schema och NOLOGIN-roller i `forena-kotlin`.
-Liquibase, credentials och verklig inloggning där återstår. Skapande av konton, familjer,
+har provisionerat ett tomt privat schema i `forena-kotlin`. Efter PR #113 är
+LOGIN verifierad på de begränsade ägar-/runtimerollerna och processvariablerna
+är satta. Databasautentisering, TLS-handshake, Liquibase och hela `TargetAuthIT`
+återstår på grund av saknad stödd TCP-åtkomst. Separat Auth-only-prov är godkänt.
+Skapande av konton, familjer,
 aktiviteter och kallelser är ännu inget publikt API. Testerna skapar egna
 syntetiska data. Inga utskick eller fullständiga signalberäkningar görs här.
 
