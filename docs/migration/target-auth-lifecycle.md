@@ -1,8 +1,48 @@
 # Ren målmiljö och Auth-livscykel
 
 Status 2026-10-19: bootstrap verifierad i `forena-kotlin`; Auth-adapter och
-lokala tester implementerade. Verklig inloggning och moln-JDBC är **inte körda**.
+lokala tester implementerade. Verkligt Auth-adminanrop har körts men nekats
+med **401 `no_authorization`**: `FORENA_TEST_AUTH_SECRET_KEY` innehåller en
+publishable key, inte en adminnyckel. Verklig inloggning och moln-JDBC är **inte körda**.
 Detta fortsätter M02/M03, inte godkänd driftaktivering eller hela M07.
+
+## Fortsättning från PR #113
+
+På branch `feat/target-auth-lifecycle`, källcommit `291b95c`, är projektets
+HTTPS-adress nåbar. Både adminanrop med nyckeln enbart i `apikey` och det äldre
+provets dubbla headers gav 401 `no_authorization`. Nyckelvärdet har inte loggats.
+Körmiljöns status rapporterar ingen verifierad credential-readiness. Uppdatera
+`FORENA_TEST_AUTH_SECRET_KEY` i miljökonfigurationen till testprojektets
+`sb_secret_…`; lägg aldrig nyckeln i chatten eller Git.
+
+Oberoende SQL-läsning bekräftar noll syntetiska Auth-provkonton och noll tabeller
+i `forena`. Båda rollerna är fortsatt NOLOGIN utan superuser/BYPASSRLS.
+Bootstrap har inte körts igen. JDBC-URL och båda rollernas credentials saknas;
+exekverarens nätpolicy har inga TCP-grants. Fullt `TargetAuthIT` kräver därför
+fortfarande credential-/nätkonfiguration och separat Liquibase-release.
+Se [det blockerade körförsöket](evidence/target-auth-attempt.json).
+
+Ett separat [Auth-prov utan databas](../../backend/api/scripts/target-auth-probe.py)
+kan köras först, med Python 3 och `cryptography` tillgängligt:
+
+```sh
+FORENA_TEST_TARGET_REF=ckzrtxqjskosqzoitymc python3 backend/api/scripts/target-auth-probe.py
+```
+
+Det använder bara testprojektets Auth-API och nya syntetiska konton utan utskick.
+Det verifierar JWT-signaturen mot riktiga JWKS samt issuer/audience/claims,
+refresh, tidigare JWT och refresh efter lokal/global logout, annan kvarvarande
+session, ny inloggning, spärr/återöppning och soft delete. En hard delete och
+efterföljande 404 bekräftar städning. Publishable key i adminvariabeln nekas
+före nätanrop; okända opaka nätsecret-placeholders lämnas åt miljöns proxy.
+API-nycklar skickas i `apikey`, bearer-header används endast för användar-JWT.
+Redirect följs inte och TLS-verifiering behålls.
+
+Resultatet skrivs till `backend/api/target/target-auth-provider-results.json`
+först efter avslutade prov och bekräftad städning. Filen har scope
+`auth-provider-only`; den kan aldrig ersätta resultatet från `TargetAuthIT`.
+Utebliven fil eller `passed: false` är inte ett godkänt prov. Inte heller
+ett godkänt Auth-prov bevisar familjeåtkomst eller nekade databasändringar.
 
 ## Avsedd miljö och utförd bootstrap
 

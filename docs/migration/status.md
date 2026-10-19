@@ -3,7 +3,7 @@
 Uppdaterad 2026-10-19. Inventeringsbas: `c379a96719490bc4edbfcb0a4ee7a1947684ddce`.
 Planens uppgifter finns i [uppgiftsindex](tasks/README.md).
 
-## Målmiljö och Auth-livscykel: bootstrap klar, molnprov återstår
+## Målmiljö och Auth-livscykel: Auth-försök blockerat av fel nyckeltyp
 
 Arbetsbranch `feat/target-auth-lifecycle`, bas main `b0bfae9` (PR #112 mergad).
 [Körning och begränsningar](target-auth-lifecycle.md), [evidens](evidence/target-auth-readiness.json).
@@ -13,7 +13,7 @@ roller utan superuser/BYPASSRLS/DDL-grants till runtime. Klientroller saknar
 schemaåtkomst och runtime är inte medlem i ägarrollen. Bootstrap använder
 tillfällig SET-rätt för administrativ schemaägartilldelning, därefter avstängd.
 Kontrollerat genom oberoende SQL-läsning; säkerhetsrådgivaren gav inga anmärkningar.
-Inga Auth-konton, lösenord eller verksamhetstabeller har skapats i molnet.
+Inga Auth-konton, lösenord eller verksamhetstabeller har skapats i detta arbetssteg.
 Liquibase förblir ensam ägare av verksamhetstabellerna när releasejobbet körs.
 
 ADR-016 inför `ProviderSessionVerifier` och onlinekontroll av samma JWT via
@@ -31,16 +31,25 @@ migrering två gånger och runtime utan ägarcredential godkända. Befintlig app
 1 065 tester, typecheck, lint och produktionsbygge godkända. Kontraktet genererat
 från riktig Spring HTTP och reproducerat bytevis. Exakta källhashar finns i evidensen.
 
-**Ej körda:** `TargetAuthIT`, verkliga Auth-metoder/JWKS, moln-JDBC/Liquibase,
-browser och molnruntime. Körmiljön saknar än så länge Auth-host/credentials och
-TCP-/rollcredentials. Incheckat opt-in-prov kräver vald testref och TLS, skapar
+**Verkligt körförsök från PR #113:** målprojektets HTTPS är nåbar, men
+Auth-adminanrop gav 401 `no_authorization`. `FORENA_TEST_AUTH_SECRET_KEY`
+innehåller en publishable key och behöver rättas i miljökonfigurationen.
+Inga testkonton skapades; oberoende SQL bekräftar noll syntetiska provkonton
+och noll verksamhetstabeller. Bootstrap är orörd. Separat Auth-prov utan JDBC
+finns nu som script; det nekar fel nyckeltyp innan nätanrop och skriver separat
+evidens först efter städning. [Försökets evidens](evidence/target-auth-attempt.json).
+
+**Ej körda:** `TargetAuthIT`, verklig inloggning/JWKS/livscykel, moln-JDBC/Liquibase,
+browser och molnruntime. JDBC-/rollcredentials och TCP-grants saknas.
+Incheckat opt-in-prov kräver vald testref och TLS, skapar
 bara egna syntetiska konton/data och städar efteråt. Det är kompilerat, inte
 ett verifierat molnresultat. Positiv `/user`-semantik i offentlig Auth-källa får
 inte ersätta detta prov eller påstå omedelbar revokering i målmiljön.
 
 Vercel-byggen är avstängda för arbetsbranchen i båda befintliga konfigurationerna.
 Inga nya molnbyggen eller omkoppling av Next.js ingår. Nästa beroende steg är
-credentials/nätåtkomst, separat Liquibase-release och verkligt Auth-/API-prov.
+rätt Auth-adminnyckel, JDBC-/rollcredentials och nätåtkomst, separat Liquibase-release
+och verkligt Auth-/API-prov.
 
 ## Första verksamhets-API:t: för granskning, ren start
 
