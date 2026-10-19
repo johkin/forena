@@ -15,9 +15,36 @@ backend/mvnw -f backend/api/pom.xml --batch-mode --no-transfer-progress verify
 backend/mvnw -f backend/api/pom.xml --batch-mode --no-transfer-progress spring-boot:build-image
 ```
 
+Ett native-bygge använder samma mål med Maven-profilen `native`:
+
+```sh
+backend/mvnw -f backend/api/pom.xml --batch-mode --no-transfer-progress -Pnative spring-boot:build-image
+```
+
+Profilen aktiverar GraalVM-pluginen och Spring Boots ärvda AOT-steg. Buildpacks
+hämtar GraalVM och producerar en körbar native-container; ingen separat
+native-Dockerfile eller lokalt installerad GraalVM krävs. Docker krävs.
+`DatabaseConfiguration` anger PostgreSQL-dialekten som en bean så att AOT inte
+behöver ansluta till databasen. Bygg utan Auth-/databascredentials och med
+`FORENA_MIGRATE` utelämnad. Runtime får sina anslutningar och credentials via
+miljövariabler som tidigare. Spring-profiler och villkor som påverkar vilka
+beans som finns avgörs däremot vid AOT-bygget.
+
+Migreringen körs fortsatt separat med JVM-JAR:en. Native-profilen avser
+webbprocessen; växling till migrationsläge med `FORENA_MIGRATE=true` i samma
+native-image är inte verifierad.
+Se [Spring Boots native-guide](https://docs.spring.io/spring-boot/how-to/native-image/developing-your-first-application.html)
+och [JDBC/AOT-konfiguration](https://docs.spring.io/spring-boot/reference/data/sql.html).
+
 Det befintliga releaseflödet paketerar fortfarande JAR och JDK i Dockerfile.
-Buildpack-imagens bygge/start är ännu inte verifierat: den lokala Docker-miljön
-får slut på disk vid uppackning av Paketo-buildern. Ett byte av imagebyggare
+Lokalt prov 2026-10-19: `-Pnative spring-boot:build-image` passerade AOT utan
+Auth-/databascredentials och utan databasanslutning. Uppackningen av standard-
+buildern `paketobuildpacks/builder-noble-java-tiny:latest` fyllde Docker/VFS-
+miljöns disk trots cirka 21 GiB ledigt före försöket. Bygget avbröts och Docker
+återställde diskutrymmet. Native-kompilering, start, TLS och verksamhetsanrop
+är därför **inte verifierade**, och ingen uppstartsjämförelse har gjorts.
+Ett nytt containerprov behöver en miljö med mer diskutrymme eller effektivare
+Docker-lagring. Ett byte av imagebyggare
 behöver också bevara runtimekonfigurationen, databasens CA och startkontrollerna.
 Teknikprovet i `backend/` behåller sin historiska Java 26-verktygskedja.
 
