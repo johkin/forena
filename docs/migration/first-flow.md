@@ -64,6 +64,11 @@ Liquibase/Testcontainers i stället för reset av gamla databasen.
 
 ## Nästa steg före aktivering
 
+Uppföljning 2026-10-19: tomt privat schema och NOLOGIN-roller är provisionerade
+i `forena-kotlin`. Onlinekontroll av Auth-status är implementerad och lokalt
+testad. Credentials, Liquibase i molnet och riktig Auth-livscykel återstår;
+se [målmiljö/Auth](target-auth-lifecycle.md). Det ersätter inte grindarna nedan.
+
 1. Provisionera den rena målmiljön med nya syntetiska konton och verksamhetsdata.
    Verifiera verklig issuer/audience/JWKS, inloggningssätt och Auth-livscykel.
    Leverantörens utloggning/radering behöver kopplas till lokal spärr eller en

@@ -24,7 +24,8 @@ class InvitationController(private val invitationService: InvitationService) {
     @Operation(operationId = "getMyInvitations", description = "Only own people and active guardian links. Future invitations return an empty list. Cache-Control: no-store.")
     @ApiResponse(responseCode = "200", description = "Family invitations", useReturnTypeSchema = true)
     @ApiResponse(responseCode = "400", description = "Invalid activity UUID", content = [Content(schema = Schema(implementation = ApiError::class))])
-    @ApiResponse(responseCode = "401", description = "Missing, invalid or locally inactive web session", content = [Content(schema = Schema(implementation = ApiError::class))])
+    @ApiResponse(responseCode = "401", description = "Missing, invalid, locally inactive or provider-inactive web session", content = [Content(schema = Schema(implementation = ApiError::class))])
+    @ApiResponse(responseCode = "503", description = "Current Auth session cannot be verified; no fallback", content = [Content(schema = Schema(implementation = ApiError::class))])
     @ApiResponse(responseCode = "404", description = "Activity unavailable to family", content = [Content(schema = Schema(implementation = ApiError::class))])
     fun list(@Parameter(hidden = true) @AuthenticationPrincipal jwt: Jwt, @PathVariable activityId: UUID): ResponseEntity<FamilyInvitations> =
         ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(invitationService.list(actor(jwt), activityId))
@@ -33,7 +34,8 @@ class InvitationController(private val invitationService: InvitationService) {
     @Operation(operationId = "respondToInvitation", description = "Identical state creates no revision. Concurrent commands serialize in database lock order; a delayed different answer can replace an earlier one. Cache-Control: no-store.")
     @ApiResponse(responseCode = "200", description = "Committed or unchanged state", useReturnTypeSchema = true)
     @ApiResponse(responseCode = "400", description = "Invalid body or invitation UUID", content = [Content(schema = Schema(implementation = ApiError::class))])
-    @ApiResponse(responseCode = "401", description = "Missing, invalid or locally inactive web session", content = [Content(schema = Schema(implementation = ApiError::class))])
+    @ApiResponse(responseCode = "401", description = "Missing, invalid, locally inactive or provider-inactive web session", content = [Content(schema = Schema(implementation = ApiError::class))])
+    @ApiResponse(responseCode = "503", description = "Current Auth session cannot be verified; no fallback", content = [Content(schema = Schema(implementation = ApiError::class))])
     @ApiResponse(responseCode = "403", description = "Invitation unavailable to family", content = [Content(schema = Schema(implementation = ApiError::class))])
     @ApiResponse(responseCode = "409", description = "Activity cancelled, ended or invitation not sent", content = [Content(schema = Schema(implementation = ApiError::class))])
     fun respond(@Parameter(hidden = true) @AuthenticationPrincipal jwt: Jwt, @PathVariable invitationId: UUID,
@@ -42,5 +44,5 @@ class InvitationController(private val invitationService: InvitationService) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(InvitationResponseResult())
     }
 
-    private fun actor(jwt: Jwt) = Actor(UUID.fromString(jwt.subject), UUID.fromString(jwt.getClaimAsString("session_id")))
+    private fun actor(jwt: Jwt) = Actor(UUID.fromString(jwt.subject), UUID.fromString(jwt.getClaimAsString("session_id")), jwt.tokenValue)
 }

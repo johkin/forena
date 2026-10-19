@@ -3,6 +3,28 @@
 Status anger målbeslut för kommande implementation, inte redan införd teknik.
 Källkodsverifierat nuläge finns i [inventeringen](inventory.md).
 
+## ADR-016: Aktuell Auth-status genom leverantörsadapter före pilot
+
+Implementationsval 2026-10-19 inom användarens uppdrag för målmiljö/Auth:
+behåll lokal asymmetrisk JWT-verifiering och lokala konto-/sessionsspärrar.
+Kontrollera också aktuell session via samma Supabase-issuers `/user` med
+bearer-token och publishable key. Provideradaptern ligger bakom
+`ProviderSessionVerifier`; verksamhetsschema och Liquibase förblir portabla.
+Ingen Auth-tabellåtkomst, ägaröverföring, service-role eller adminnyckel krävs
+av runtime. Auth-admin används endast av opt-in-provet för syntetiska konton.
+
+Läsning kontrolleras före verksamhetsåtkomst; skrivning också efter radlås.
+Kända inaktiva tokens ger 401. Teknisk osäkerhet ger 503/no-store, utan retry,
+positiv sessionscache eller fallback. Detta gör Auth-tillgänglighet och latens
+till ett beroende för verksamhetsanrop. Revokering efter sista kontrollen kan
+inte återkalla pågående/committat arbete. Leverantörens sessionstidsgränser antas
+inte få starkare garantier än de som verifieras med riktig refresh/livscykel.
+
+Lokala tester styrker adapterbeteendet, inte driftens implementation av `/user`.
+Verkligt `TargetAuthIT` för utloggning, spärr/radering och tidigare JWT måste
+passera före pilot. Om det inte gör det förblir aktivering blockerad tills
+en verifierad livscykelmekanism finns. Se [målmiljö och körning](target-auth-lifecycle.md).
+
 ## ADR-015: Activities-modul och tydlig Kotlin-filstruktur
 
 **Beslut 2026-10-19 på användarens instruktion:** första verksamhets-API:ts

@@ -41,8 +41,9 @@ server:
 
 forena:
   auth:
-    issuer: "${FORENA_AUTH_ISSUER}"
-    jwks-uri: "${FORENA_AUTH_JWKS_URI}"
+    issuer: "${FORENA_AUTH_ISSUER:}"
+    jwks-uri: "${FORENA_AUTH_JWKS_URI:}"
+    publishable-key: "${FORENA_AUTH_PUBLISHABLE_KEY:}"
 
 management:
   endpoints:

@@ -61,6 +61,8 @@ class InvitationService(
         val current = invitations.findLockedByIdAndOrganizationIdAndActivityIdAndPersonId(
             invitation, identity.organizationId, identity.activityId, identity.personId)
             ?: throw InvitationProblem(403, "Kallelsen är inte tillgänglig.")
+        // A logout, ban or local block committed while waiting must deny this write.
+        sessions.requireActive(actor)
         if (!family.canActFor(actor, current.personId, current.organizationId))
             throw InvitationProblem(403, "Kallelsen är inte tillgänglig.")
         val now = clock.now()

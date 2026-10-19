@@ -105,7 +105,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiError"];
                 };
             };
-            /** @description Missing, invalid or locally inactive web session */
+            /** @description Missing, invalid, locally inactive or provider-inactive web session */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -116,6 +116,15 @@ export interface operations {
             };
             /** @description Activity unavailable to family */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Current Auth session cannot be verified; no fallback */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -158,7 +167,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiError"];
                 };
             };
-            /** @description Missing, invalid or locally inactive web session */
+            /** @description Missing, invalid, locally inactive or provider-inactive web session */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -178,6 +187,15 @@ export interface operations {
             };
             /** @description Activity cancelled, ended or invitation not sent */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Current Auth session cannot be verified; no fallback */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

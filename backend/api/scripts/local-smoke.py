@@ -40,8 +40,8 @@ def main():
                 time.sleep(0.2)
         bootstrap = (ROOT / "backend/api/scripts/bootstrap.sql").read_text()
         docker("exec", "-i", container, "psql", "-U", "postgres", "-v", "ON_ERROR_STOP=1", input=bootstrap + """
-ALTER ROLE forena_api_owner PASSWORD 'local-owner-only';
-ALTER ROLE forena_api_runtime PASSWORD 'local-runtime-only';
+ALTER ROLE forena_api_owner LOGIN PASSWORD 'local-owner-only';
+ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
 """)
         port = docker("port", container, "5432/tcp").rsplit(":", 1)[1]
         env = os.environ.copy()
@@ -78,6 +78,7 @@ ALTER ROLE forena_api_runtime PASSWORD 'local-runtime-only';
             available.bind(("127.0.0.1", 0))
             http_port = available.getsockname()[1]
         env.update(FORENA_MIGRATE="false", PORT=str(http_port),
+                   FORENA_AUTH_PUBLISHABLE_KEY="sb_publishable_smoke_placeholder",
                    FORENA_AUTH_ISSUER="https://example.invalid/auth/v1",
                    FORENA_AUTH_JWKS_URI="https://example.invalid/auth/v1/.well-known/jwks.json")
         with tempfile.TemporaryFile(mode="w+") as log:

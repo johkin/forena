@@ -11,7 +11,10 @@ procedurer eller verksamhetstriggers används. Historiken får verifierat konto-
 ADR-014 tar bort inloggningssessionen från affärsdata. Sessions-ID finns fortsatt
 i verifierad token och används för lokal sessionsspärr. Runtime får aldrig schemaägar- eller service-role-credentials.
 Se [API:ts säkerhetsgränser](../backend/api/README.md), särskilt begränsningen
-kring extern Auth-revokering före pilot. Gamla appens kontroller nedan gäller
+kring extern Auth-revokering före pilot. ADR-016 tillför onlinekontroll via
+Supabase `/user` utan adminnyckel eller Auth-tabellgrants; lokala prov är gröna,
+men verklig Auth-livscykel i målprojektet är fortfarande en aktiveringsgrind.
+Gamla appens kontroller nedan gäller
 fortsatt dess befintliga databas och kanaler.
 
 Förena hanterar uppgifter om barn, vårdnadshavare, ledare och andra medlemmar.

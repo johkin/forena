@@ -55,6 +55,13 @@ class ApiTest {
         var key = RSAKeyGenerator(2048).keyID("first").generate()
         val ecKey = ECKeyGenerator(Curve.P_256).keyID("ec").generate()
         @Volatile var jwksAvailable = true
+        val providerSessions = java.util.concurrent.ConcurrentHashMap<UUID,UUID>()
+        val providerUsers = java.util.concurrent.ConcurrentHashMap<UUID,String>()
+        val providerCalls = java.util.concurrent.atomic.AtomicInteger()
+        val providerRedirects = java.util.concurrent.atomic.AtomicInteger()
+        @Volatile var providerStatus = 200
+        @Volatile var providerBody: String? = null
+        @Volatile var providerDelayMillis = 0L
         val jwks = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).also { server ->
             server.createContext("/jwks") { exchange ->
                 val bytes = JWKSet(listOf(key.toPublicJWK(), ecKey.toPublicJWK())).toString().toByteArray()
@@ -62,6 +69,30 @@ class ApiTest {
                 exchange.sendResponseHeaders(if (jwksAvailable) 200 else 503, bytes.size.toLong())
                 exchange.responseBody.use { it.write(bytes) }
             }
+            server.createContext("/auth/v1/user") { exchange ->
+                providerCalls.incrementAndGet()
+                val claims = SignedJWT.parse(exchange.requestHeaders.getFirst("Authorization").removePrefix("Bearer ")).jwtClaimsSet
+                val subject = UUID.fromString(claims.subject)
+                val session = UUID.fromString(claims.getStringClaim("session_id"))
+                val error = if (providerSessions[session] != subject) "session_not_found" else providerUsers[subject] ?: "user_not_found"
+                val status = if (providerStatus != 200) providerStatus else if (error == "active") 200 else 403
+                val body = providerBody ?: if (status == 200) """{"id":"$subject","is_anonymous":false,"user_metadata":{"role":"admin"}}"""
+                    else """{"code":$status,"error_code":"${if (providerStatus != 200) "unexpected_failure" else error}"}"""
+                assertThat(exchange.requestHeaders.getFirst("apikey")).isEqualTo("sb_publishable_local_test")
+                Thread.sleep(providerDelayMillis)
+                val bytes = body.toByteArray()
+                exchange.responseHeaders.add("Content-Type","application/json")
+                if (status == 302) exchange.responseHeaders.add("Location","http://127.0.0.1:${server.address.port}/redirect-target")
+                runCatching {
+                    exchange.sendResponseHeaders(status,bytes.size.toLong())
+                    exchange.responseBody.use { it.write(bytes) }
+                }
+            }
+            server.createContext("/redirect-target") { exchange ->
+                providerRedirects.incrementAndGet()
+                exchange.sendResponseHeaders(500,-1); exchange.close()
+            }
+            server.executor = java.util.concurrent.Executors.newCachedThreadPool()
             server.start()
         }
         val issuer = "http://127.0.0.1:${jwks.address.port}/auth/v1"
@@ -75,6 +106,7 @@ class ApiTest {
             registry.add("spring.liquibase.user") { "forena_api_owner" }
             registry.add("spring.liquibase.password") { "local-owner-only" }
             registry.add("forena.auth.issuer") { issuer }
+            registry.add("forena.auth.publishable-key") { "sb_publishable_local_test" }
             registry.add("forena.auth.jwks-uri") { "http://127.0.0.1:${jwks.address.port}/jwks" }
         }
     }
@@ -101,6 +133,8 @@ class ApiTest {
         organization = UUID.randomUUID(); activity = UUID.randomUUID()
         own = UUID.randomUUID(); child1 = UUID.randomUUID(); child2 = UUID.randomUUID(); other = UUID.randomUUID()
         admin.update("insert into forena.account(subject) values(?),(?)", parent, outsider)
+        providerUsers[parent] = "active"; providerUsers[outsider] = "active"
+        providerSessions[session] = parent; providerSessions[outsider] = outsider
         admin.update("insert into forena.organization(id,name) values(?,'Klubb')", organization)
         for ((index, person) in listOf(own, child1, child2, other).withIndex()) {
             admin.update("insert into forena.person(id,organization_id,display_name) values(?,?,?)", person, organization, "Person $index")
@@ -119,7 +153,7 @@ class ApiTest {
 
     private fun token(subject: UUID = parent, signingKey: RSAKey = key, changes: Map<String, Any?> = emptyMap()): String {
         val claims = mutableMapOf<String, Any?>("iss" to issuer, "sub" to subject.toString(), "aud" to listOf("authenticated"),
-            "role" to "authenticated", "session_id" to session.toString(), "is_anonymous" to false,
+            "role" to "authenticated", "session_id" to (if (subject == outsider) outsider else session).toString(), "is_anonymous" to false,
             "iat" to Date.from(Instant.now().minusSeconds(1)), "exp" to Date.from(Instant.now().plusSeconds(300)))
         claims.putAll(changes)
         val builder = JWTClaimsSet.Builder()
@@ -138,6 +172,91 @@ class ApiTest {
     private fun row() = admin.queryForMap("select * from forena.invitation where id=?", invitation)
     private fun history() = admin.queryForObject("select count(*) from forena.invitation_history where invitation_id=?", Long::class.java, invitation)!!
     private fun dirty() = admin.queryForObject("select coalesce((select dirty_revision from forena.activity_signal_state where activity_id=?),0)", Long::class.java, activity)!!
+
+    @Test fun `provider logout ban deletion and mismatched session deny reads and writes without effects`() {
+        val bearer = token()
+        fun denied() {
+            assertThat(request("/api/activities/$activity/my-invitations", bearer=bearer).statusCode()).isEqualTo(401)
+            assertThat(respond("""{"response":"accepted"}""", bearer).statusCode()).isEqualTo(401)
+            assertThat(row()["revision"]).isEqualTo(0L)
+            assertThat(history()).isZero(); assertThat(dirty()).isZero()
+        }
+        assertThat(request("/api/activities/$activity/my-invitations", bearer=bearer).statusCode()).isEqualTo(200)
+        providerSessions.remove(session)
+        denied()
+        providerSessions[session] = outsider
+        denied()
+        providerSessions[session] = parent
+        providerUsers[parent] = "user_banned"
+        denied()
+        providerUsers[parent] = "active"
+        assertThat(request("/api/activities/$activity/my-invitations", bearer=bearer).statusCode()).isEqualTo(200)
+        providerUsers.remove(parent)
+        denied()
+    }
+
+    @Test fun `provider failures fail closed with no-store 503 and sanitized errors then recover`() {
+        val bearer = token()
+        assertThat(request("/api/activities/$activity/my-invitations", bearer=bearer).statusCode()).isEqualTo(200)
+        try {
+            for (status in listOf(302,429,500,401,403)) {
+                providerStatus = status
+                val result = respond("""{"response":"accepted"}""",bearer)
+                assertThat(result.statusCode()).describedAs("provider HTTP $status").isEqualTo(503)
+                assertThat(result.headers().firstValue("cache-control").orElse("")).contains("no-store")
+                assertThat(result.body()).doesNotContain("unexpected_failure", parent.toString(), session.toString(), bearer)
+                assertThat(history()).isZero(); assertThat(dirty()).isZero()
+            }
+            providerStatus = 200
+            for (body in listOf("not-json", "{}")) {
+                providerBody = body
+                assertThat(respond("""{"response":"accepted"}""",bearer).statusCode()).isIn(401,503)
+            }
+        } finally { providerStatus = 200; providerBody = null }
+        assertThat(providerRedirects.get()).isZero()
+        assertThat(respond("""{"response":"accepted"}""",bearer).statusCode()).isEqualTo(200)
+    }
+
+    @Test fun `provider timeout denies mutation even with cached signing key`() {
+        val bearer = token()
+        assertThat(request("/api/activities/$activity/my-invitations",bearer=bearer).statusCode()).isEqualTo(200)
+        providerDelayMillis = 2500
+        try {
+            assertThat(respond("""{"response":"accepted"}""",bearer).statusCode()).isEqualTo(503)
+            assertThat(row()["revision"]).isEqualTo(0L)
+            assertThat(history()).isZero(); assertThat(dirty()).isZero()
+        } finally { providerDelayMillis = 0 }
+    }
+
+    @Test fun `invalid JWT never reaches provider and provider metadata grants no family access`() {
+        val credential = token()
+        val actor = se.forena.api.identity.Actor(parent,session,credential)
+        assertThat(actor.toString()).doesNotContain(credential)
+        assertThat(json.writeValueAsString(actor)).doesNotContain(credential)
+        val before = providerCalls.get()
+        assertThat(respond("""{"response":"accepted"}""", token(changes=mapOf("aud" to "wrong"))).statusCode()).isEqualTo(401)
+        assertThat(providerCalls.get()).isEqualTo(before)
+        assertThat(respond("""{"response":"accepted"}""", token(outsider)).statusCode()).isEqualTo(403)
+    }
+
+    @Test fun `logout committed during activity lock wait rejects the pending write`() {
+        DriverManager.getConnection(database.jdbcUrl, database.username, database.password).use { connection ->
+            connection.autoCommit = false
+            connection.prepareStatement("select id from forena.activity where id=? for update").use {
+                it.setObject(1,activity); it.executeQuery().close()
+            }
+            val result = CompletableFuture.supplyAsync { respond("""{"response":"accepted"}""") }
+            try {
+                await().atMost(java.time.Duration.ofSeconds(10)).until {
+                    admin.queryForObject("select count(*) from pg_stat_activity where usename='forena_api_runtime' and wait_event_type='Lock'",Long::class.java)!! > 0
+                }
+                providerSessions.remove(session)
+            } finally { connection.rollback() }
+            assertThat(result.get(10,java.util.concurrent.TimeUnit.SECONDS).statusCode()).isEqualTo(401)
+            assertThat(row()["revision"]).isEqualTo(0L)
+            assertThat(history()).isZero(); assertThat(dirty()).isZero()
+        }
+    }
 
     @Test fun `parent reads own and two children but not another family`() {
         val result = request("/api/activities/$activity/my-invitations")

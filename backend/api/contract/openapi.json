@@ -157,7 +157,7 @@
                 }
               }
             },
-            "description": "Missing, invalid or locally inactive web session"
+            "description": "Missing, invalid, locally inactive or provider-inactive web session"
           },
           "404": {
             "content": {
@@ -168,6 +168,16 @@
               }
             },
             "description": "Activity unavailable to family"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Current Auth session cannot be verified; no fallback"
           }
         },
         "tags": [
@@ -229,7 +239,7 @@
                 }
               }
             },
-            "description": "Missing, invalid or locally inactive web session"
+            "description": "Missing, invalid, locally inactive or provider-inactive web session"
           },
           "403": {
             "content": {
@@ -250,6 +260,16 @@
               }
             },
             "description": "Activity cancelled, ended or invitation not sent"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Current Auth session cannot be verified; no fallback"
           }
         },
         "tags": [

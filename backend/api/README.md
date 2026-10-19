@@ -11,7 +11,9 @@ Implementerat:
 - Svar, revision, revisionshistorik (konto/kanal) och beständig signalversion i en transaktion.
 - Signerade webbsessioner, familjeavgränsning i Kotlin och livscykellås.
 
-Ingen Next-adapter eller molndeploy ingår. Skapande av konton, familjer,
+Ingen Next-adapter eller molndeploy ingår. [Målmiljö/Auth-arbetet](../../docs/migration/target-auth-lifecycle.md)
+har provisionerat ett tomt privat schema och NOLOGIN-roller i `forena-kotlin`.
+Liquibase, credentials och verklig inloggning där återstår. Skapande av konton, familjer,
 aktiviteter och kallelser är ännu inget publikt API. Testerna skapar egna
 syntetiska data. Inga utskick eller fullständiga signalberäkningar görs här.
 
@@ -98,8 +100,10 @@ frågor i `backend/src` och gamla appens databaslogik ingår inte i denna ändri
 
 ## Databas och körning
 
-1. Kör [bootstrap.sql](scripts/bootstrap.sql) som administratör i en **ny databas**.
-   Sätt separata starka lösenord för rollerna genom miljöns hemlighetshantering.
+1. Kör [bootstrap.sql](scripts/bootstrap.sql) som administratör i den rena målmiljön.
+   Scriptet skapar NOLOGIN-roller. Sätt separata starka lösenord genom miljöns
+   hemlighetshantering och aktivera LOGIN inför migrering/runtime.
+   I `forena-kotlin` är bootstrap redan verifierad; kör inte scriptet igen där.
    Exponera inte `forena` i Supabase Data API. Använd direkt PostgreSQL eller
    en verifierad JDBC-kompatibel pooladress med TLS i molnmiljön.
 2. Stoppa eventuell äldre API-runtime före steg 004/005; den förutsätter triggers
@@ -121,7 +125,8 @@ frågor i `backend/src` och gamla appens databaslogik ingår inte i denna ändri
    ```
 
    Obligatoriskt: `FORENA_JDBC_URL`, `FORENA_DB_PASSWORD`, `FORENA_AUTH_ISSUER`
-   och `FORENA_AUTH_JWKS_URI`. `FORENA_DB_USERNAME` är normalt `forena_api_runtime`.
+   och `FORENA_AUTH_JWKS_URI` samt `FORENA_AUTH_PUBLISHABLE_KEY` (`sb_publishable_…`).
+   `FORENA_DB_USERNAME` är normalt `forena_api_runtime`, med projektsuffix för poolern.
    Issuer är projektets exakta `/auth/v1`-adress; JWKS är dess
    `/auth/v1/.well-known/jwks.json`. HTTPS krävs utom för lokala loopbacktester.
    Port är `PORT` eller 8080. `/actuator/health` är publik utan detaljer.
@@ -140,17 +145,25 @@ Enbart bearer-token för webbsessioner: RS256/ES256, exakt issuer, audience
 `authenticated`, samma roll, UUID-subjekt och `session_id`, `exp`/`iat` och
 `is_anonymous=false`. MCP/OAuth-grants (`client_id`, scope/scopes/grant_id),
 HS256, anonyma token och cookie-fallback nekas. Supabases faktiska inställningar
-ska verifieras i den nya miljön innan aktivering; inga molnkonton ändras här.
+ska verifieras i den nya miljön innan aktivering; inga Auth-konton ändras här.
 JWKS hämtas med två sekunders anslutnings-/lästimeout och Spring/Nimbus cache;
 okänd nyckel som inte kan verifieras nekas även när nyckelservern är nere.
 En redan cachelagrad giltig nyckel kan fortsatt användas.
 
 `account.enabled` och `revoked_session` kontrolleras för varje transaktion;
 familjekopplingar hämtas från databasen. Lokal revokering kräver ett separat
-administrationsflöde. Utloggning eller radering enbart hos Auth-leverantören
-upptäcks inte omedelbart av lokal JWT-verifiering: en redan utfärdad token kan
-gälla till `exp` om kontot/sessionen inte också spärras lokalt. Detta måste
-hanteras vid Auth-integrationen innan pilot, inte döljas som full M03-acceptans.
+administrationsflöde. En provideradapter kontrollerar dessutom aktuell token via
+Supabase Auth `/user`, med publishable key och samma exakta issuer. Skrivningar
+kontrolleras igen efter radlåsen. Kända inaktiva sessioner ger 401; Auth-fel,
+timeout, 429, redirect och okända svar nekar med generiskt 503/no-store utan retry,
+cache eller fallback. Runtime har ingen Auth-adminnyckel eller Auth-tabellåtkomst.
+Bearer-tokenen finns bara under anropet och sparas inte i historik.
+
+Detta är lokalt verifierat med riktig HTTP mot en kontrollerad Auth-fixtur.
+Verkligt driftad Supabase-revision måste fortfarande klara `TargetAuthIT` innan
+pilot; källkodens `/user`-kontroll är inte ett molnbevis. Revokering efter sista
+kontrollen stoppar inte ett redan pågående kommando. Timebox/inaktivitet och
+övriga Auth-metoder behöver separata prov. Se [full körinstruktion och gränser](../../docs/migration/target-auth-lifecycle.md).
 
 Samtidiga svar serialiseras med radlås. Senast utförda olika kommando gäller;
 version 0.1 har ingen `If-Match`/förväntad revision. Upprepning av exakt samma
