@@ -3,12 +3,64 @@
 Status 2026-10-19: bootstrap verifierad i `forena-kotlin`; verkligt Auth-prov
 **godkänt, 18 kontroller** på källcommit `a72d5de`. ES256-signatur mot riktiga
 JWKS, inloggning, refresh, lokal/global logout, spärr/återöppning och soft delete
-är verifierade. Kotlin-/databasprovet `TargetAuthIT` och moln-JDBC/Liquibase är
-**inte körda**. Fortsatt preflight efter PR #113 bekräftar LOGIN och satta
-processvariabler, men stödd TCP-åtkomst saknas. Detta fortsätter M02/M03,
-inte godkänd driftaktivering eller hela M07.
+är verifierade. Även hela Kotlin-/databasprovet `TargetAuthIT` samt separat
+paketerad Liquibase och återkörning är nu **godkända** i Vercel Sandbox,
+på källcommit `8cdc088`. Detta fortsätter M02/M03, inte godkänd driftaktivering
+eller hela M07.
 
-## API-preflight efter mergad PR #113
+## Godkänt målmiljöprov i Vercel Sandbox
+
+Efter den blockerade preflighten nedan kördes hela provet 2026-10-19
+kl. 13:13 svensk tid på `feat/target-api-verification`, från main `187bfd2`.
+Källcommit `8cdc088` har samma API-/testkod som main. Inga kodändringar behövdes.
+[TargetAuthIT-resultatet](evidence/target-auth-results.json) är separat från
+Auth-only-resultatet. [Källhashar, migrationshistorik och efterkontroller](evidence/target-api-verification.json)
+knyter körningen till samtliga API-källor, låst verktygskedja och JAR-hash.
+
+- En tillfällig Vercel Sandbox i `fra1`, projekt `forena-kotlin`, användes
+  utan publika portar eller beständig snapshot. Miljön är **stoppad** efter
+  hämtad evidens; API:t driftsattes inte och Next.js kopplades inte om.
+  Arbetsbranchen lades även till i båda befintliga `deploymentEnabled`-
+  undantagen så kommande pushar inte startar vanliga Vercel-previewbyggen.
+- De sex konfigurerade variablerna hade nu readiness `ready` och den ordinarie
+  körmiljöns nätpolicy var `enforced`. Dess publika TCP-begränsning kvarstod;
+  Sandboxens egen internetåtkomst löste transporten. Credentials överfördes
+  krypterat till en tillfällig nyckel i Sandboxen, utan klartextvärden i loggar
+  eller kommandoradsargument. Inga credentials sparades i evidensen.
+- JAR byggdes med checksummeverifierad Oracle JDK `26.0.2.1+1-7` och Maven
+  `3.9.11`. Supabases CA från `backend/certs/supabase-ca.crt` användes med
+  `sslmode=verify-full`. Separat Java-handshake verifierade betrodd CA,
+  hostname och TLS 1.3. Båda rollernas verkliga JDBC-inloggning fungerade.
+- Paketerad `FORENA_MIGRATE=true java -jar backend/api/target/forena-api.jar`
+  kördes som ägarrollen, utan HTTP-server och utan Auth-adminnyckel i
+  releaseprocessen. Första körningen: **5 nya, 0 tidigare, totalt 5 steg**.
+  Andra körningen: **0 nya, 5 tidigare, totalt 5 steg**. Hela historikposterna,
+  inklusive checksummor och exekveringstider, var identiska efter återkörning.
+- Hela `TargetAuthIT` kördes med kommandot längre ned: **1 test, 0 fel,
+  0 överhoppade**. Riktig lösenordsinloggning, asymmetrisk signatur/JWKS,
+  familjeavgränsning, accepterat svar och refresh fungerade. Annan familj fick
+  404 vid läsning och 403 vid skrivning. Tidigare JWT gav 401 vid både läsning
+  och skrivning efter lokal/global logout, spärr och soft delete. Annan session
+  överlevde lokal logout; ny inloggning och återöppning fungerade.
+- Nekade skrivningar lämnade historiken på exakt den enda godkända svarsposten.
+  Testets `finally` städade fixturer och Auth-konton. JDBC och oberoende
+  administrativ SQL bekräftade **noll syntetiska Auth-konton och noll rader i
+  samtliga tio verksamhetstabeller** efteråt. Liquibase-historiken har fem steg.
+  Roller är fortsatt LOGIN utan överprivilegier; runtime saknar ägarmedlemskap,
+  schema-CREATE och läsrätt till `auth.users`/`auth.sessions`. Klientroller
+  saknar schema-USAGE. Säkerhetsrådgivaren gav inga anmärkningar.
+
+En extra HTTP-kontroll av Data API gav **503/PGRST002**, schema-cachefel.
+Det är ett separat, ofullständigt exponeringsprov; det räknas inte som
+bekräftad PGRST106-avvisning. Data API-konfigurationen ändrades inte och SQL
+bekräftar fortsatt nekade klientgrants. Bootstrap kördes inte igen och gamla
+Förena-projektet ändrades inte.
+
+Browser-PKCE, passkeys, magic-link/mejlleverans, OAuth/MCP, full signalworker
+och driftsatt Vercel-runtime är fortsatt **ej verifierade**. Målmiljöprovet
+bevisar API-/databasflödet i denna körning, inte dessa återstående grindar.
+
+## Historisk API-preflight efter mergad PR #113
 
 På `feat/target-api-verification`, från `main` på `187bfd2`, kontrollerades
 miljön 2026-10-19 kl. 12:54 svensk tid. Imagen innehöll först en äldre
@@ -48,14 +100,14 @@ en domängrant ensam löser därför inte den publika Supabase-poolerns åtkomst
 En körmiljö med stödd publik PostgreSQL-åtkomst, eller en godkänd privat
 anslutningsväg till samma databas, krävs innan fortsättning.
 
-JDBC-lösenord, databasens CA/hostname-handshake, separat paketerad Liquibase,
-oförändrad femstegshistorik vid återkörning och hela `TargetAuthIT` är **ej
-verifierade/ej körda**. Inget godkänt `target-auth-results.json` har skapats.
+Vid denna preflight var JDBC-lösenord, databasens CA/hostname-handshake,
+separat paketerad Liquibase, oförändrad femstegshistorik vid återkörning och hela
+`TargetAuthIT` **ej verifierade/ej körda**. Då fanns inget godkänt `target-auth-results.json`.
 Auth-only-resultatet nedan kvarstår separat. Ingen Next.js-omkoppling,
 Data API-exponering eller molndeploy gjordes. Äldre miljöobservationer nedan
 beskriver läget före denna preflight.
 
-## Fortsättning från PR #113
+## Historiskt Auth-only-prov från PR #113
 
 På branch `feat/target-auth-lifecycle` kördes Auth-provet 2026-10-19
 12:06 svensk tid. Den tidigare adminnyckelblockeringen är löst i körmiljön;
@@ -73,13 +125,14 @@ som historiskt underlag.
 - Soft delete nekade JWT med 403 `session_not_found` och refresh med 400.
   Avslutande hard delete följd av 404 bekräftade städning. Inga mejl skickades.
 
-Oberoende SQL-läsning efter provet bekräftar noll syntetiska Auth-provkonton och
-noll tabeller i `forena`. Båda rollerna är fortsatt NOLOGIN utan
+Oberoende SQL-läsning efter Auth-only-provet bekräftade noll syntetiska Auth-provkonton och
+noll tabeller i `forena`. Båda rollerna var då NOLOGIN utan
 superuser/BYPASSRLS/CREATEDB/CREATEROLE. Runtime saknar ägarmedlemskap och
 klientroller saknar schemaåtkomst. Bootstrap har inte körts igen.
-JDBC-URL och båda rollernas credentials saknas; exekverarens nätpolicy har inga
-TCP-grants. Fullt `TargetAuthIT` kräver fortfarande credential-/nätkonfiguration
-och separat Liquibase-release. Auth-provet bevisar `/user`-beteendet vid denna
+JDBC-URL och båda rollernas credentials saknades; exekverarens nätpolicy hade inga
+TCP-grants. Fullt `TargetAuthIT` krävde då credential-/nätkonfiguration
+och separat Liquibase-release; detta är nu utfört i Sandbox enligt ovan.
+Auth-only-provet bevisar `/user`-beteendet vid denna
 körning, inte Kotlin-API:ts familjeavgränsning eller nekade databasändringar.
 
 Det separata [Auth-provet utan databas](../../backend/api/scripts/target-auth-probe.py)
@@ -113,7 +166,8 @@ ett godkänt Auth-prov bevisar familjeåtkomst eller nekade databasändringar.
   Aktuell LOGIN-status beskrivs i API-preflight ovan.
 - Runtime är inte medlem i ägarrollen. `anon`, `authenticated` och `service_role`
   saknar schemaåtkomst. Supabases säkerhetsrådgivare gav inga anmärkningar.
-- Schemat är tomt: Liquibase och verksamhetsdata återstår. Auth-provkontot är städat.
+- Schemat var tomt vid bootstrap. Det är nu Liquibase-migrerat enligt ovan;
+  inga syntetiska verksamhetsrader eller Auth-provkonton finns kvar.
   Teknikprovets scheman finns kvar separat. Gamla Förena-projektet ändras inte.
 
 [Bootstrap](../../backend/api/scripts/bootstrap.sql) kördes genom Supabases
@@ -153,7 +207,7 @@ proaktivt av `/user`; de behöver verifieras separat tillsammans med refresh.
 Nuvarande offentliga Auth-källa laddar konto och `session_id` för `/user` och
 nekar saknade sessioner/spärrade konton. **Det bevisar inte vilken revision det
 driftade projektet kör.** Auth-provet ovan verifierar nu detta beteende i målprojektet.
-Fullt `TargetAuthIT` blockerar fortfarande pilot:
+`TargetAuthIT` är nu godkänt; övriga pilotgrindar ovan återstår:
 
 - [Auth-kontroll](https://github.com/supabase/auth/blob/master/internal/api/auth.go)
 - [UserGet](https://github.com/supabase/auth/blob/master/internal/api/user.go)

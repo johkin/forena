@@ -1,0 +1,324 @@
+{
+  "source_commit": "8cdc0888aece79ed1ba3232d5aced600eea60980",
+  "base_main": "187bfd2f274442ef041f4aa264a45ffb0c6a2f1c",
+  "source_sha256": {
+    "backend/api/src/main/kotlin/se/forena/api/ApiDocumentation.kt": "4b22d910ef61a7c296a87dea9330644aa55851d98ddbff070c322fce75737ece",
+    "backend/api/src/main/kotlin/se/forena/api/ApiErrors.kt": "e49319f6b84f312999febe1bcfe1323d0ca0fb20e0010d646eeb39a13168e8d9",
+    "backend/api/src/main/kotlin/se/forena/api/ForenaApplication.kt": "3b3b04108a101feea87dad1ec332a79ef6cd24134496765021bdd41b873dabe9",
+    "backend/api/src/main/kotlin/se/forena/api/activities/InvitationController.kt": "0aa4179606706340d53516e9132b9d3f5e6c490fe6223af8df18de547bac2d4b",
+    "backend/api/src/main/kotlin/se/forena/api/activities/InvitationDtos.kt": "d4cb78b23ebe55a8963bfa762ea48564388224d7864951b7dcede5bb494c6fb2",
+    "backend/api/src/main/kotlin/se/forena/api/activities/InvitationProblem.kt": "8ee367e76dbbc90184d4e3fe1dbadb6b0ec1dc0c419e93607cd1f70671b39236",
+    "backend/api/src/main/kotlin/se/forena/api/activities/InvitationService.kt": "8ea34d2d943bc2a1bc25d5e5d0c4a5f26b1718b8a18655563a75b1337836e42c",
+    "backend/api/src/main/kotlin/se/forena/api/activities/StrictCommentDeserializer.kt": "0eccc76da0fbf1ba9e7a35b31bc728153b8f1d465092eae86d58af0e5358da4e",
+    "backend/api/src/main/kotlin/se/forena/api/activities/internal/Entities.kt": "c350729b2aee341913a143025e3c54844ac4b6b6f5554b1048c30716c5b97b8b",
+    "backend/api/src/main/kotlin/se/forena/api/activities/internal/Repositories.kt": "3f2c6826d8cf98db615de2198c52ec4c0534dd09258cf08ae28c9cf26c71afcb",
+    "backend/api/src/main/kotlin/se/forena/api/http/ApiError.kt": "5a0a7e7b1ba47770c8b468839824d0313fbded9c2cfe708beb5d44e70e9475b6",
+    "backend/api/src/main/kotlin/se/forena/api/identity/DatabaseClockService.kt": "75a8bc4fd2756d01fed5cf0fb6a45c6127122a0013bd772b0687df3cbf2570b1",
+    "backend/api/src/main/kotlin/se/forena/api/identity/FamilyAccessService.kt": "b8ee1fffc13a04ffd98980af306cba343475dc7a82dd6748b73cb58435d17134",
+    "backend/api/src/main/kotlin/se/forena/api/identity/IdentityDtos.kt": "f0a9b348b6bc06efcdc6e16e4de1a040e7fe1c3d9af1a851d5c4f63a646b0f60",
+    "backend/api/src/main/kotlin/se/forena/api/identity/InactiveSession.kt": "44a9e6032177aff29c0f616221b5069845ee4f24124faebdbe27dcbeed088377",
+    "backend/api/src/main/kotlin/se/forena/api/identity/ProviderSessionVerifier.kt": "9a51076a4d902ea50b8352f891cb90de6f52d6447e88b4158e29a5c89eb16902",
+    "backend/api/src/main/kotlin/se/forena/api/identity/SecurityConfiguration.kt": "b8918893ec1a190596ddde7a9fa1ab7fe601ee4204e8933e99fc82512d428482",
+    "backend/api/src/main/kotlin/se/forena/api/identity/SessionService.kt": "65804410135d494a01c2d3edaa0a40726be49e2b7a36258e72f6e7de40e63841",
+    "backend/api/src/main/kotlin/se/forena/api/identity/SessionVerificationUnavailable.kt": "bd60e676401428e6005d88a1f6f0fe3680b206d715bb9640ec56114d0f203489",
+    "backend/api/src/main/kotlin/se/forena/api/identity/internal/Entities.kt": "deb0fcd90a3c55ea0dd56c2a32c8d7fc45695b81f8ee41e65cf4fb8f4ec1f08f",
+    "backend/api/src/main/kotlin/se/forena/api/identity/internal/Repositories.kt": "a912246a91a6391bca0a7dbf564db379baf507de88d46c8c5ecb840db9e6f475",
+    "backend/api/src/main/kotlin/se/forena/api/identity/internal/SupabaseSessionService.kt": "23f556e6df11c86e8585dad03eea510236f8138863a03b23abd5e33ac0e46f84",
+    "backend/api/src/main/resources/application.yaml": "9b129464b6de7cbcfb0f5b6cd60f94c488ce8565b7a383752ec18aac3350be98",
+    "backend/api/src/main/resources/db/application-authorization.sql": "d73b5ceb3cdd87ddc462f21e85e772e68b6c11269f67267c06c5c3e4fe9dbe3b",
+    "backend/api/src/main/resources/db/application-response.sql": "ceb130cfea52732b69ab105945602cf521121652a7bdd590cf77a22351e2339e",
+    "backend/api/src/main/resources/db/changelog.xml": "4c0ed50cccc480181fa3896030d091a5dfb63742fdc788d0af89611ae8b0283d",
+    "backend/api/src/main/resources/db/history-without-session.sql": "656b85c208096f905e8d5e6e7eae9e9292affb09ff747d8b66b47758df48c9a0",
+    "backend/api/src/main/resources/db/identity.sql": "ff6a34282e10f08fdb268577e84a312457e17fe4d819a514e0dedb3c4257b121",
+    "backend/api/src/main/resources/db/participation.sql": "c0c06ba54df316cace64045a301c8c8d5c23c50ecf5e83ee395462d2df629c07",
+    "backend/api/src/test/kotlin/se/forena/api/ApiTest.kt": "bc273e7ea49eded266850b29166280c24c26b85f2a5186f4bbf3cc65c102055b",
+    "backend/api/src/test/kotlin/se/forena/api/ArchitectureTest.kt": "598b80ce554a62264416a011bbf2d9ea43cee0d007155eae2889543074e710b0",
+    "backend/api/src/test/kotlin/se/forena/api/MigrationTest.kt": "240c3dae73fc408df471b4f7b8de29a9ec7fa41cb3b2da1b8646b5effceb65e2",
+    "backend/api/src/test/kotlin/se/forena/api/TargetAuthIT.kt": "018dda8eee08665de4291481e25c4c4dedcf81d53c4a4409dc89ffeb30428cbe",
+    "backend/api/src/test/resources/init.sql": "3533264f0688a2c38c60903c562a2d8fee24d75765860f900071743ff52367c3",
+    "backend/api/pom.xml": "929aad93ed6688b9184ad194ca80e1b88815e2fe74aa60c505c72a7325b5868f",
+    "backend/api/.env.target.example": "3296ecf7bce1518b345e6e9685ce37eb08ee465c64c9828edc6a212e879051d4",
+    "scripts/probe/install-jdk.sh": "884ab4d219e11d43760f7c253a2e53330f0003fb589268f10ae5f6c371a9a8af"
+  },
+  "jar_sha256": "de98b85721a12db5b031e3ca8bc633da1cc408821476f49f1e66d92b866c8a75",
+  "tls": {
+    "trusted_ca": true,
+    "hostname_verified": true,
+    "protocol": "TLSv1.3"
+  },
+  "ca_sha256": "700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7",
+  "role_connections": [
+    {
+      "connection": "OWNER",
+      "rows": [
+        {
+          "role": "forena_api_owner",
+          "ssl": false,
+          "tls_version": null
+        }
+      ]
+    },
+    {
+      "connection": "RUNTIME",
+      "rows": [
+        {
+          "role": "forena_api_runtime",
+          "ssl": false,
+          "tls_version": null
+        }
+      ]
+    }
+  ],
+  "liquibase": {
+    "first_history": [
+      {
+        "id": "api-001-identity",
+        "author": "forena",
+        "filename": "db/changelog.xml",
+        "dateexecuted": "2026-10-19 11:12:05.52695",
+        "orderexecuted": 1,
+        "exectype": "EXECUTED",
+        "md5sum": "9:c81ec97417e382919fd31bb5334e7d1d",
+        "deployment_id": "2408323746"
+      },
+      {
+        "id": "api-002-participation",
+        "author": "forena",
+        "filename": "db/changelog.xml",
+        "dateexecuted": "2026-10-19 11:12:05.64108",
+        "orderexecuted": 2,
+        "exectype": "EXECUTED",
+        "md5sum": "9:f50a61b38c82111e85265ed2d47d5fb4",
+        "deployment_id": "2408323746"
+      },
+      {
+        "id": "api-003-application-authorization",
+        "author": "forena",
+        "filename": "db/changelog.xml",
+        "dateexecuted": "2026-10-19 11:12:05.687376",
+        "orderexecuted": 3,
+        "exectype": "EXECUTED",
+        "md5sum": "9:99af20194db44cab0ca24a797c16ba77",
+        "deployment_id": "2408323746"
+      },
+      {
+        "id": "api-004-application-response",
+        "author": "forena",
+        "filename": "db/changelog.xml",
+        "dateexecuted": "2026-10-19 11:12:05.718029",
+        "orderexecuted": 4,
+        "exectype": "EXECUTED",
+        "md5sum": "9:d7741385150c716de13fbb9fbc0793ce",
+        "deployment_id": "2408323746"
+      },
+      {
+        "id": "api-005-history-without-session",
+        "author": "forena",
+        "filename": "db/changelog.xml",
+        "dateexecuted": "2026-10-19 11:12:05.742379",
+        "orderexecuted": 5,
+        "exectype": "EXECUTED",
+        "md5sum": "9:a47a42bbb472a462d67e201898c1498a",
+        "deployment_id": "2408323746"
+      }
+    ],
+    "rerun_history_identical": true,
+    "first_history_sha256": "971f1461e483017a77cce4d9adbc79699962c8314195c8bc0853ff908aa5f1c5",
+    "second_history_sha256": "971f1461e483017a77cce4d9adbc79699962c8314195c8bc0853ff908aa5f1c5",
+    "first_run": {
+      "exit_code": 0,
+      "run": 5,
+      "previously_run": 0,
+      "total": 5
+    },
+    "second_run": {
+      "exit_code": 0,
+      "run": 0,
+      "previously_run": 5,
+      "total": 5
+    },
+    "http_server_started": false,
+    "migration_role": "forena_api_owner"
+  },
+  "cleanup_jdbc": [
+    {
+      "connection": "OWNER",
+      "rows": [
+        {
+          "table_name": "account",
+          "rows": 0
+        },
+        {
+          "table_name": "organization",
+          "rows": 0
+        },
+        {
+          "table_name": "team",
+          "rows": 0
+        },
+        {
+          "table_name": "person",
+          "rows": 0
+        },
+        {
+          "table_name": "person_access",
+          "rows": 0
+        },
+        {
+          "table_name": "activity",
+          "rows": 0
+        },
+        {
+          "table_name": "invitation",
+          "rows": 0
+        },
+        {
+          "table_name": "invitation_history",
+          "rows": 0
+        },
+        {
+          "table_name": "activity_signal_state",
+          "rows": 0
+        },
+        {
+          "table_name": "revoked_session",
+          "rows": 0
+        }
+      ]
+    }
+  ],
+  "data_api": {
+    "http_status": 503,
+    "error_code": "PGRST002",
+    "private_schema_rejected": false,
+    "status": "inconclusive",
+    "configuration_changed": false,
+    "note": "Additional HTTP diagnostic returned schema cache error 503/PGRST002, not proof of schema exposure. SQL confirms client roles have no schema USAGE. No Data API configuration was changed."
+  },
+  "target_auth_it": {
+    "project_ref": "ckzrtxqjskosqzoitymc",
+    "checked_at": "2026-10-19T11:13:03.233279919Z",
+    "passed": true,
+    "checks": [
+      "real-password-login",
+      "issuer-audience-asymmetric-signature",
+      "family-isolation",
+      "refresh",
+      "local-logout-old-jwt-denied",
+      "other-session-preserved",
+      "global-logout",
+      "relogin",
+      "provider-ban",
+      "provider-soft-delete",
+      "no-rejected-writes",
+      "cleanup"
+    ],
+    "not_tested": [
+      "email-delivery",
+      "browser-pkce",
+      "passkeys",
+      "oauth-mcp",
+      "cloud-runtime"
+    ]
+  },
+  "scope": "target-auth-api-and-database",
+  "project_ref": "ckzrtxqjskosqzoitymc",
+  "passed": true,
+  "execution": {
+    "provider": "Vercel Sandbox",
+    "project": "forena-kotlin",
+    "project_id": "prj_V1a7hd39ABj3w5ARUOATF31XMWX9",
+    "session_id": "sbx_jcH9Y8Aa1VKEyNC8ZdGq7MSrabXw",
+    "region": "fra1",
+    "vcpus": 2,
+    "memory_mb": 4096,
+    "persistent": false,
+    "public_ports": [],
+    "status": "stopped",
+    "duration_ms": 401964,
+    "image": "vercel/sandbox/universal@sha256:c77f7436b9bc0a8b01ef7b09dbcea2de6a18a9fe2aafa89996d2da193da72cf0",
+    "credential_transfer": "RSA-OAEP/SHA-256 to an ephemeral sandbox-only key; plaintext values never logged"
+  },
+  "jdbc": {
+    "host": "aws-1-eu-central-1.pooler.supabase.com",
+    "port": 5432,
+    "database": "postgres",
+    "sslmode": "verify-full",
+    "sslrootcert": "backend/certs/supabase-ca.crt",
+    "credentials_in_url": false
+  },
+  "build": {
+    "jdk": "Oracle 26.0.2.1+1-7",
+    "maven": "3.9.11",
+    "package_status": "passed",
+    "package_tests": "skipped",
+    "target_auth_it_command": "backend/mvnw -f backend/api/pom.xml --batch-mode --no-transfer-progress -Dtest=TargetAuthIT test",
+    "tests": 1,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "independent_sql": {
+    "observed_at": "2026-10-19T11:15:35.974935+00:00",
+    "synthetic_auth_users": 0,
+    "roles": [
+      {
+        "name": "forena_api_owner",
+        "login": true,
+        "superuser": false,
+        "bypassrls": false,
+        "createdb": false,
+        "createrole": false
+      },
+      {
+        "name": "forena_api_runtime",
+        "login": true,
+        "superuser": false,
+        "bypassrls": false,
+        "createdb": false,
+        "createrole": false
+      }
+    ],
+    "client_schema_usage": {
+      "anon": false,
+      "authenticated": false,
+      "service_role": false
+    },
+    "runtime_owner_membership": false,
+    "runtime_schema_create": false,
+    "runtime_auth_users_select": false,
+    "runtime_auth_sessions_select": false,
+    "liquibase_steps": 5,
+    "business_rows": {
+      "account": 0,
+      "organization": 0,
+      "team": 0,
+      "person": 0,
+      "person_access": 0,
+      "activity": 0,
+      "invitation": 0,
+      "invitation_history": 0,
+      "activity_signal_state": 0,
+      "revoked_session": 0
+    }
+  },
+  "security_advisor_lints": [],
+  "bootstrap_rerun": false,
+  "new_roles_created": false,
+  "next_routing_activated": false,
+  "api_deployed": false,
+  "legacy_project_modified": false,
+  "role_connections_note": "pg_stat_ssl describes the pooler-to-database backend connection; client-to-pooler TLS was independently verified with Oracle JDK and JDBC verify-full.",
+  "no_rejected_writes": {
+    "asserted_final_history_count_before_cleanup": 1,
+    "denied_reads": "401 after local/global logout, ban and soft delete",
+    "denied_writes": "401 after local/global logout, ban and soft delete; 403 for unrelated family",
+    "unrelated_family_read": 404
+  },
+  "logs_sha256": {
+    "build.log": "47fde3544ce87f58d43f263defa713814244f1589d4b49135f1b3c734248a9ed",
+    "migrate1.log": "56567ba68788a22380d5c5852c4f92a777c5c7635d2699ab0817549b53e00cd5",
+    "migrate2.log": "ed2a46d91223b0abf40dc4944ee516a59717f565380508cefc7e54a6767b38f8",
+    "test.log": "c8de76092c3e45b2f1c9d4c17dabf4c00e6a0aa5dd9454c8e59f85bd3318e089"
+  }
+}

@@ -3,18 +3,24 @@
 Uppdaterad 2026-10-19. Inventeringsbas: `c379a96719490bc4edbfcb0a4ee7a1947684ddce`.
 Planens uppgifter finns i [uppgiftsindex](tasks/README.md).
 
-## Målmiljö och Auth-livscykel: verkligt Auth-prov godkänt, API-/databasprov återstår
+## Målmiljö och Auth-livscykel: Auth-/API-/databasprov godkända
 
-Arbetsbranch `feat/target-auth-lifecycle`, bas main `b0bfae9` (PR #112 mergad).
-[Körning och begränsningar](target-auth-lifecycle.md), [evidens](evidence/target-auth-readiness.json).
+Arbetsbranch `feat/target-api-verification`, bas main `187bfd2` (PR #113 mergad),
+[PR #114](https://github.com/johkin/forena/pull/114).
+Målmiljökörning på källcommit `8cdc088`, oförändrad API-/testkod från main.
+[Körning och begränsningar](target-auth-lifecycle.md),
+[målmiljöevidens](evidence/target-api-verification.json) och
+[TargetAuthIT-resultat](evidence/target-auth-results.json).
 
-`forena-kotlin` har nu ett nytt tomt privat `forena`-schema, separata NOLOGIN-
+`forena-kotlin` har nu ett Liquibase-migrerat privat `forena`-schema, separata LOGIN-
 roller utan superuser/BYPASSRLS/DDL-grants till runtime. Klientroller saknar
 schemaåtkomst och runtime är inte medlem i ägarrollen. Bootstrap använder
 tillfällig SET-rätt för administrativ schemaägartilldelning, därefter avstängd.
 Kontrollerat genom oberoende SQL-läsning; säkerhetsrådgivaren gav inga anmärkningar.
-Inga beständiga Auth-provkonton eller verksamhetstabeller har lämnats efter Auth-provet.
-Liquibase förblir ensam ägare av verksamhetstabellerna när releasejobbet körs.
+Inga syntetiska Auth-provkonton eller verksamhetsrader har lämnats efter provet.
+Liquibase äger verksamhetstabellerna och sin femstegshistorik. Ägarrollens
+oväntade BYPASSRLS/CREATEDB återkallades under preflight före migreringen.
+Bootstrap har inte körts igen.
 
 ADR-016 inför `ProviderSessionVerifier` och onlinekontroll av samma JWT via
 Supabase `/user`, ovanpå lokal signatur- och konto-/sessionskontroll. Skrivningar
@@ -42,18 +48,33 @@ noll verksamhetstabeller, fortsatt NOLOGIN och oförändrade rollgränser.
 Bootstrap har inte körts igen. [Aktuell evidens](evidence/target-auth-provider-results.json).
 [Historiskt blockerat försök](evidence/target-auth-attempt.json) behålls.
 
-**Ej körda:** `TargetAuthIT`, moln-JDBC/Liquibase, browser och molnruntime.
-JDBC-/rollcredentials och TCP-grants saknas fortfarande. Auth-only-resultatet
-verifierar leverantörens `/user`-beteende vid körningen; familjeåtkomst och nekade
-skrivningar/historik i Kotlin-API:t återstår att verifiera i målmiljön.
-Incheckat opt-in-prov kräver vald testref och TLS, skapar bara egna syntetiska
-konton/data och städar efteråt. Lokala resultat ovan är tidigare verifiering,
-inte en omkörning i detta dokumentationssteg.
+**Verkligt Auth-/API-/databasprov godkänt:** hela `TargetAuthIT` kördes
+2026-10-19 kl. 13:13 svensk tid i en tillfällig Vercel Sandbox i Frankfurt:
+**1 test, 0 fel, 0 överhoppade**. Verklig JDBC-inloggning för båda begränsade
+rollerna och TLS 1.3 med betrodd Supabase-CA/hostname är verifierade. Paketerad
+Liquibase kördes separat som ägarrollen: första gången 5 nya steg; andra gången
+0 nya och alla fem fullständiga historikposter exakt oförändrade.
+
+Riktig lösenordsinloggning/signatur/JWKS, accepterat svar, refresh,
+familjeavgränsning, lokal/global logout, kvarvarande annan session,
+ny inloggning, spärr/återöppning och soft delete fungerade. Tidigare JWT gav
+401 på både API-läsning och skrivning efter avslut/spärr; annan familj fick
+404/403. Nekade skrivningar skapade ingen extra historik. Efter testets
+städning bekräftade JDBC och oberoende SQL noll syntetiska Auth-konton och
+noll rader i samtliga tio verksamhetstabeller. Säkerhetsrådgivaren gav inga
+anmärkningar. Sandboxen är stoppad utan beständig snapshot eller publika portar.
+
+En extra Data API-kontroll gav 503/PGRST002 (schema-cachefel), inte en verifierad
+PGRST106-avvisning; detta är redovisat separat i evidensen. Klientroller saknar
+fortsatt schemaåtkomst och ingen Data API-konfiguration ändrades.
+**Ej körda:** browser-PKCE, passkeys, magic-link/mejlleverans, OAuth/MCP, full
+signalworker och driftsatt molnruntime. Lokala resultat tidigare i avsnittet
+är tidigare verifiering; denna fortsättning ändrar dokumentation/evidens och
+lägger arbetsbranchen i befintliga Vercel-undantag för automatiska deployer.
 
 Vercel-byggen är avstängda för arbetsbranchen i båda befintliga konfigurationerna.
-Inga nya molnbyggen eller omkoppling av Next.js ingår. Nästa beroende steg är
-JDBC-/rollcredentials och TCP-nätåtkomst, separat Liquibase-release
-och verkligt Auth-/API-prov.
+Ingen API-deploy eller omkoppling av Next.js ingår. Nästa beroende arbete är
+de återstående browser-/Auth-/runtimegrindarna; hela M03/M07 är inte accepterade.
 
 ## Första verksamhets-API:t: för granskning, ren start
 
