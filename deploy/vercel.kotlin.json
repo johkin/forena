@@ -8,7 +8,7 @@
       "runtime": "container",
       "entrypoint": "Dockerfile.vercel",
       "bindings": [
-        { "type": "service", "service": "backend", "format": "url", "env": "FORENA_KOTLIN_API_URL" }
+        { "type": "service", "service": "backend", "format": "url", "env": "FORENA_KOTLIN_SERVICE_URL" }
       ]
     },
     "backend": {

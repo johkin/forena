@@ -22,7 +22,7 @@ class ReleaseGuards(unittest.TestCase):
                                NEXT_PUBLIC_SUPABASE_URL=AUTH,
                                NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="sb_publishable_synthetic",
                                SITE_URL="https://forena-kotlin.vercel.app",
-                               FORENA_KOTLIN_API_URL="https://bound-api.test",
+                               FORENA_KOTLIN_SERVICE_URL="http://bound-api.internal/service/backend/",
                                FORENA_DB_USERNAME="forena_api_runtime.ckzrtxqjskosqzoitymc",
                                FORENA_JDBC_URL=JDBC, FORENA_DB_PASSWORD="synthetic-runtime",
                                SUPABASE_SECRET_KEY="poison-admin", FORENA_TEST_AUTH_SECRET_KEY="poison-test",
@@ -60,7 +60,7 @@ class ReleaseGuards(unittest.TestCase):
             self.assertEqual(result.stdout, "")
 
     def test_frontend_requires_binding(self):
-        result = self.run_entrypoint("deploy/frontend/entrypoint.sh", FORENA_KOTLIN_API_URL="")
+        result = self.run_entrypoint("deploy/frontend/entrypoint.sh", FORENA_KOTLIN_SERVICE_URL="")
         self.assertNotEqual(result.returncode, 0)
 
     def prepare(self, project_id="prj_V1a7hd39ABj3w5ARUOATF31XMWX9", root=None, auth=AUTH):

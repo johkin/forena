@@ -27,7 +27,10 @@ CI för samma SHA; releasepaketeringen använder `-DskipTests`. Vercel CLI är l
 till 60.1.3 och de två Actions-referenserna är låsta till commit-SHA.
 `vercel build --prod` bygger/pushar containerbilderna till Vercels registry;
 `vercel deploy --prebuilt --prod --skip-domain` skapar en stagingdeployment med
-produktionskonfiguration utan att flytta domäner.
+produktionskonfiguration utan att flytta den kanoniska adressen. Vercel kan ändå
+tilldela sitt genererade team-alias redan i stagingsteget; det är observerat i
+första körningen. Använd den exakta deployment-URL:en för provet och den kanoniska
+adressen för publicerad kod.
 
 `vercel curl` använder deployidentiteten för skyddade anrop. Kontrollen kräver:
 
@@ -71,7 +74,11 @@ Root Directory, SITE_URL, runtime-användarnamn och JDBC-URL har förberetts i
 Vercel utan deployment. Runtime-lösenordet och GitHub-miljön återstår att
 konfigurera direkt i respektive tjänst. Inga hemliga värden har hämtats tillbaka.
 
-Sätt inte `FORENA_KOTLIN_API_URL` manuellt: Services-bindingen injicerar den.
+Sätt inte `FORENA_KOTLIN_SERVICE_URL` manuellt: Services-bindingen injicerar den.
+En servicebinding behandlas som en intern bas-URL: HTTP och en eventuell
+routingprefix/sökparameter bevaras när API-sökvägen läggs till. Det separata
+`FORENA_KOTLIN_API_URL` behåller sina striktare originregler för direktkopplade
+lokala browserprov; en trasig servicebinding ger aldrig fallback till den.
 Auth issuer/JWKS och backendval är låsta till nya projektet i startskripten.
 Det privata API:t saknar publik rewrite; browserns API-anrop går genom Nexts
 befintliga adapter med verifierad användartoken. Ingen automatisk legacy-fallback.
@@ -85,6 +92,11 @@ Projektets äldre secrets kan fortsatt finnas i containerns ursprungliga startmi
 detta är inte en separat hemlighetsgräns mot komprometterad containerkod.
 Bygget tillåter endast publik Auth-konfiguration och Vercels egna metadata/OIDC
 i den lokala bygg-envfilen. Envfiler laddas aldrig upp som Actions-artifakter.
+
+Hälsokontrollen loggar bara fasta felsteg (`configuration`, `upstream`,
+`response`) och eventuell HTTP-status. Bindingens URL, sökparametrar, tokens,
+felkropp och exceptiontext loggas inte. Ogiltig runtime-användare eller JDBC-
+konfiguration ger också ett fast startfel utan de konfigurerade värdena.
 
 ## Databas, testdata och återgång
 
