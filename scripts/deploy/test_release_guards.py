@@ -69,6 +69,14 @@ class ReleaseGuards(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertEqual(result.stdout, "")
 
+    def test_api_keeps_platform_ca_path_without_inheriting_java_overrides(self):
+        result = self.run_entrypoint("backend/api/scripts/container-entrypoint.sh",
+                                     SSL_CERT_FILE="/run/platform/ca.pem", NODE_EXTRA_CA_CERTS="/run/platform/extra.pem")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("FORENA_AUTH_CA_BUNDLE=/run/platform/ca.pem", json.loads(result.stdout))
+        self.assertIn("FORENA_AUTH_EXTRA_CA_BUNDLE=/run/platform/extra.pem", json.loads(result.stdout))
+        self.assertNotIn("poison", result.stdout)
+
     def test_frontend_requires_binding(self):
         result = self.run_entrypoint("deploy/frontend/entrypoint.sh", FORENA_KOTLIN_SERVICE_URL="")
         self.assertNotEqual(result.returncode, 0)

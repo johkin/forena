@@ -21,6 +21,25 @@ får slut på disk vid uppackning av Paketo-buildern. Ett byte av imagebyggare
 behöver också bevara runtimekonfigurationen, databasens CA och startkontrollerna.
 Teknikprovet i `backend/` behåller sin historiska Java 26-verktygskedja.
 
+## HTTPS till Supabase Auth
+
+JWKS-hämtning och kontrollen mot Auth `/user` använder samma HTTP-klient.
+Dess truststore kombinerar Java-standardens rötter med containerns
+`/etc/ssl/certs/ca-certificates.crt` och ett eventuellt plattforms-CA-paket.
+Entrypointen förmedlar sökvägarna från `SSL_CERT_FILE` och
+`NODE_EXTRA_CA_CERTS` till `FORENA_AUTH_CA_BUNDLE` respektive
+`FORENA_AUTH_EXTRA_CA_BUNDLE`, före miljörensningen. Båda läses om båda finns.
+Ett uttryckligt felaktigt CA-paket stoppar starten. Klienten behåller
+värdnamns-/kedjeverifiering, nekar redirects och har två sekunders timeout.
+Inga JVM-flaggor eller admincredentials ärvs för att konfigurera TLS.
+
+Startup loggar endast antal CA-certifikat per källa. `/actuator/health`
+kontrollerar både databasen och hämtning av publika Auth-nycklar med samma
+TLS-klient som JWT-verifieringen. Ett fel stoppar releasepromotion; publika
+health-svar visar inga URL:er, nycklar eller felorsaker. API-anrop med redan
+cachad och betrodd signeringsnyckel kan fortfarande verifieras under ett
+tillfälligt nyckelserveravbrott.
+
 Implementerat:
 
 - `GET /api/activities/{activityId}/my-invitations` – egna personer och aktiva målsmanskopplingar.

@@ -2,7 +2,6 @@ package se.forena.api.identity
 
 import java.net.URI
 import java.time.Instant
-import java.time.Duration
 import jakarta.servlet.DispatcherType
 import java.util.UUID
 import org.springframework.beans.factory.annotation.Value
@@ -20,7 +19,6 @@ import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.security.oauth2.jwt.JwtValidators
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
 import org.springframework.security.web.SecurityFilterChain
-import org.springframework.http.client.SimpleClientHttpRequestFactory
 import org.springframework.web.client.RestTemplate
 import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint
 import org.springframework.security.web.AuthenticationEntryPoint
@@ -33,17 +31,14 @@ import org.slf4j.LoggerFactory
 class SecurityConfiguration {
     @Bean
     fun decoder(@Value("\${forena.auth.issuer}") issuer: String,
-                @Value("\${forena.auth.jwks-uri}") jwks: String): JwtDecoder {
+                @Value("\${forena.auth.jwks-uri}") jwks: String,
+                requests: AuthHttpRequestFactory): JwtDecoder {
         for (value in listOf(issuer, jwks)) {
             val uri = URI(value)
             require(uri.host != null && uri.userInfo == null && uri.query == null && uri.fragment == null &&
                 (uri.scheme == "https" || (uri.scheme == "http" && uri.host in listOf("127.0.0.1", "localhost", "[::1]")))) {
                 "Auth endpoints must use HTTPS (HTTP is allowed only on loopback for local tests)"
             }
-        }
-        val requests = SimpleClientHttpRequestFactory().also {
-            it.setConnectTimeout(Duration.ofSeconds(2))
-            it.setReadTimeout(Duration.ofSeconds(2))
         }
         val delegate = NimbusJwtDecoder.withJwkSetUri(jwks)
             .restOperations(RestTemplate(requests))
