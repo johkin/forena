@@ -56,7 +56,14 @@ ALTER ROLE forena_api_runtime PASSWORD 'local-runtime-only';
             log.seek(0)
             assert "Tomcat started" not in log.read(), "Migration mode must not open HTTP"
         changes = docker("exec", container, "psql", "-U", "postgres", "-Atc", "select count(*) from forena.databasechangelog")
-        assert changes == "3"
+        assert changes == "4"
+        functions = docker("exec", container, "psql", "-U", "postgres", "-Atc",
+                           "select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='forena'")
+        assert functions == "0", "Business logic must not live in database functions or procedures"
+        triggers = docker("exec", container, "psql", "-U", "postgres", "-Atc",
+                          "select count(*) from pg_trigger t join pg_class c on c.oid=t.tgrelid "
+                          "join pg_namespace n on n.oid=c.relnamespace where n.nspname='forena' and not t.tgisinternal")
+        assert triggers == "0", "Business logic must not live in custom database triggers"
         rls = docker("exec", container, "psql", "-U", "postgres", "-Atc",
                      "select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace "
                      "where n.nspname='forena' and (c.relrowsecurity or c.relforcerowsecurity)")

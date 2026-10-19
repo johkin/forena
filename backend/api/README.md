@@ -61,25 +61,30 @@ eller JdbcClient används i API:ts produktionskod. Se [ADR-011](../../docs/migra
 Familjekopplingens sammansatta nyckel mappas med `@Id` och `@Embedded`. Läsning
 hämtar familjen och dess kallelser i batcher, inte en personfråga per kallelse.
 Namn sorteras med databasens kollation och UUID används som sekundär ordning.
-Skrivning tar `@Lock(PESSIMISTIC_WRITE)` på en härledd repository-fråga och
-sparar endast ändrat tillstånd. `@ReadOnlyProperty` skyddar identitet, revision
-och svarstid från genererade UPDATE-frågor. Runtime-rollens kolumngrants är
-oförändrade. Åtkomstkontrollerna ligger i Kotlin enligt [ADR-012](../../docs/migration/decisions.md).
-`FamilyAccess` hämtar bara verifierat subjekts aktiva kopplingar i aktuell
-organisation. `Invitations` filtrerar läsningen till familjen och kontrollerar
-skrivrätt före och efter radlåset. Främmande aktivitet ger 404, främmande kallelse 403.
+`Invitations` är en `@Service`: `respond` använder `@Transactional`, `list`
+`@Transactional(readOnly = true)`. Konto/session och familje-/organisationsåtkomst
+kontrolleras i Kotlin enligt ADR-012/013. Främmande aktivitet ger 404, främmande
+kallelse 403. Skrivbehörighet kontrolleras före och efter låsväntan.
 
-`ActorTransactions` behåller en egen transaktion med konto-/sessionskontroll för
-varje verifierad aktör, men sätter ingen RLS-identitet. `AuditContextRepository`
-sätter enbart revisionsloggens konto/session, först när ett ändrat svar ska
-sparas. Läsningar och identiska upprepningar behöver inte denna extra fråga.
-`DatabaseClockRepository` hämtar PostgreSQLs aktuella klocka för tidsregler.
-Dessa två tekniska `@Query`-metoder är undantag från genererad CRUD. Migrationer,
-integritets-/historiktriggers och säkerhetstester använder fortsatt SQL.
-Teknikprovets worker-/registry-frågor ligger kvar separat i `backend/src`.
+Skrivningen låser först aktivitet, sedan kallelse med `@Lock(PESSIMISTIC_WRITE)`.
+Det skyddar mot samtidiga aktivitetsändringar och serialiserar även skapande/
+ökning av den gemensamma signalraden för olika kallelser på samma aktivitet.
+Efter låsen kontrolleras utskick, sluttid och inställning med aktuell databastid.
 
-Liquibase-steg 003 tar bort RLS-policyer och `can_act_for` samt stänger av RLS.
-Steg 001/002 är oförändrade för att befintliga installationer ska kunna uppgraderas.
+Tjänsten normaliserar kommentar och beräknar pending-återställning, svarstid och
+revision. Den sparar svar, historik (verifierat konto/session/kanal) och eventuell
+signalversion genom repositories i samma transaktion. Identisk upprepning skriver
+ingenting; ändrad kommentar behåller svarstid och påverkar inte signalversionen.
+Varje fel rullar tillbaka allt. `@ReadOnlyProperty` skyddar kallelsens identitet.
+Ingen produktionskod använder TransactionTemplate eller `set_config`.
+
+Efter Liquibase-steg 004 finns inga egna databasfunktioner, lagrade procedurer
+eller verksamhetstriggers i `forena`. Endast en teknisk `@Query` återstår:
+`DatabaseClockRepository` hämtar PostgreSQLs inbyggda `clock_timestamp()`.
+Tidigare migrationer är oförändrade; steg 003 tar bort RLS och steg 004 tar bort
+triggers/funktioner utan att radera svar, historik eller signalversioner.
+SQL för schema, nycklar och constraints finns kvar. Teknikprovets worker-/registry-
+frågor i `backend/src` och gamla appens databaslogik ingår inte i denna ändring.
 
 ## Databas och körning
 
@@ -87,7 +92,8 @@ Steg 001/002 är oförändrade för att befintliga installationer ska kunna uppg
    Sätt separata starka lösenord för rollerna genom miljöns hemlighetshantering.
    Exponera inte `forena` i Supabase Data API. Använd direkt PostgreSQL eller
    en verifierad JDBC-kompatibel pooladress med TLS i molnmiljön.
-2. Kör releasestegets migrering separat med ägarkontot:
+2. Stoppa eventuell äldre API-runtime före steg 004; den förutsätter triggers.
+   Kör releasestegets migrering separat med ägarkontot:
 
    ```sh
    FORENA_MIGRATE=true java -jar backend/api/target/forena-api.jar
@@ -110,10 +116,10 @@ Steg 001/002 är oförändrade för att befintliga installationer ska kunna uppg
    Port är `PORT` eller 8080. `/actuator/health` är publik utan detaljer.
 
 Runtime har högst fyra databasanslutningar och fem sekunders väntan på poolen.
-Verifierad token ger aktören till Kotlin-kodens åtkomstkontroller. Enbart vid
-ändrad skrivning sätts transaktionslokal revisionsidentitet, som rensas vid
-commit/rollback. Klientens JSON, headers och `user_metadata` ger inga
-familjerättigheter. Inget `service_role`-konto används.
+Verifierad token ger aktören till Kotlin-kodens åtkomstkontroller och historikens
+konto/session. Ingen identitet sätts på databasanslutningen. Klientens JSON,
+headers och `user_metadata` ger inga familjerättigheter. Inget `service_role`-konto
+används.
 
 ## Autentisering och samtidighet
 
@@ -139,11 +145,11 @@ svar och kommentar skriver ingen historik eller signalversion. En äldre,
 fördröjd annorlunda begäran kan alltså ersätta ett nyare svar. Gör ingen
 automatisk fallback till gamla backend efter timeout.
 
-Schemaägda triggerfunktioner har fasta sökvägar och saknar publika körgrants.
-De får enbart låsa aktivitetens livscykel respektive skriva historik/signalversion;
-de innehåller inga familje- eller organisationsbehörighetsregler.
-Runtime får endast uppdatera svar och kommentar; identitet, revision, svarstid,
-historik och signalversion skyddas av befintliga kolumngrants och triggers.
+Det finns inga verksamhetstriggers. Runtime får uppdatera svar, kommentar,
+svarstid och revision, infoga historik samt läsa/infoga/öka signalversionen.
+Historiken saknar UPDATE/DELETE-grants och kallelsens identitet är skrivskyddad.
+`UPDATE(status)` på aktivitet behövs för PostgreSQLs `SELECT FOR UPDATE`;
+repositoryt exponerar ingen aktivitets-skrivmetod. Rollen saknar DDL/ägarrätt.
 Det finns ingen RLS i `forena`: runtime-kontot kan läsa över familjegränser och
 Kotlin måste alltid kontrollera åtkomsten. Kontot får aldrig lämnas till klienter,
 och schemat får inte exponeras via Supabase Data API. Migrationen återkallar

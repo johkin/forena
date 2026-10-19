@@ -38,9 +38,7 @@ class InvitationController(private val invitations: Invitations) {
     @ApiResponse(responseCode = "409", description = "Activity cancelled, ended or invitation not sent", content = [Content(schema = Schema(implementation = ApiError::class))])
     fun respond(@Parameter(hidden = true) @AuthenticationPrincipal jwt: Jwt, @PathVariable invitationId: UUID,
                 @RequestBody body: RespondToInvitationRequest): ResponseEntity<InvitationResponseResult> {
-        val text = body.comment?.trim()
-            ?.codePoints()?.limit(500)?.toArray()?.let { String(it, 0, it.size) }?.ifEmpty { null }
-        invitations.respond(actor(jwt), invitationId, ResponseChange(body.response.value, body.commentProvided, text))
+        invitations.respond(actor(jwt), invitationId, ResponseChange(body.response.value, body.commentProvided, body.comment))
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(InvitationResponseResult())
     }
 

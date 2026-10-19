@@ -3,7 +3,52 @@
 Status anger målbeslut för kommande implementation, inte redan införd teknik.
 Källkodsverifierat nuläge finns i [inventeringen](inventory.md).
 
+## ADR-013: All svarslogik i Spring Boot-tjänsten
+
+**Beslut 2026-10-19 på användarens uttryckliga instruktion:** all affärslogik för
+verksamhets-API:ts kallelsesvar ska synas i Spring Boot. Även transaktionen ska
+ägas deklarativt av en `@Service`, inte av en manuell transaktionshjälpare.
+Detta ersätter trigger-/revisionskontextdelen av ADR-011/012.
+
+`Invitations.respond` är `@Transactional`. Där finns konto/session, familj och
+organisation, livscykelkontroll, normalisering av kommentar, pending-återställning,
+svarstid, revisionsökning, historik och signalversion. Historiken får verifierat
+konto/session som vanliga fält. Identiskt tillstånd skriver ingenting. Kommentar-
+ändring bevarar svarstiden och ökar inte signalversionen. Läsmetoden använder
+`@Transactional(readOnly = true)`. Controllern översätter endast HTTP och DTO:er.
+Ingen produktionskod använder TransactionTemplate eller transaktionslokala
+identitetsinställningar längre.
+
+Alla skrivare låser aktivitet före kallelse med genererade repository-frågor.
+Aktivitetslåset skyddar mot samtidig inställning/ändrade tider och serialiserar
+skapande/ökning av aktivitetens gemensamma signalrad. Svar på olika kallelser
+för samma aktivitet serialiseras därmed också; olika aktiviteter är oberoende.
+`clock_timestamp()` hämtas efter låsen för korrekt tid efter låsväntan.
+Svar, revision, historik och signalversion sparas via Spring Data JDBC-repositories
+i samma transaktion; varje fel återställer samtliga skrivningar.
+
+Liquibase-steg 004 tar bort `invitation_guard`, `invitation_record` och deras
+funktioner `guard_response`/`record_response`. Efter samtliga steg finns inga
+egna databasfunktioner, procedurer eller verksamhetstriggers i `forena`.
+Tidigare steg är oförändrade för uppgradering och befintliga svar/historik/
+signalversioner bevaras. Nycklar, FK, NOT NULL, UNIQUE och CHECK-constraints
+behålls som dataintegritet, utan automatiska sidoeffekter.
+
+Runtime behöver nu skriva svarstid/revision, infoga historik samt läsa/infoga/
+öka signalversionen. Historiken kan inte uppdateras/raderas, kallelsens identitet
+kan inte ändras och rollen får varken DDL eller schemaägarbehörighet.
+`UPDATE(status)` på aktivitet krävs av PostgreSQL för `SELECT FOR UPDATE`;
+repositoryt exponerar ingen aktivitets-skrivmetod. Inga klientgrants införs.
+En enda native `@Query` återstår: PostgreSQLs inbyggda klocka, ingen affärsregel.
+
+Steg 004 och den nya runtime-versionen hör ihop: stoppa äldre API-runtime före
+migreringen och starta den nya efteråt. Äldre kod förutsätter triggers och ska
+inte användas mot steg 004. API:t är ännu inte driftsatt; ingen molndatabasändring
+görs i denna leverans. Gamla appens funktioner/triggers berörs inte.
+
 ## ADR-012: Behörighet i Kotlin, ingen RLS i verksamhets-API:t
+
+Trigger-/revisionskontextdelen nedan ersätts av ADR-013.
 
 **Beslut 2026-10-19 på användarens uttryckliga instruktion:** ta bort RLS för
 Spring Boot-verksamhets-API:t så att åtkomstreglerna syns i Kotlin. Detta ersätter

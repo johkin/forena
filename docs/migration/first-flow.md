@@ -25,8 +25,10 @@ förblir leverantörsägda. Ingen radering av gamla projektet ingår.
 - Spring Data JDBC-repositories med genererad CRUD, begränsad runtime-roll
   och uttryckliga åtkomstregler i Kotlin enligt ADR-012; ingen RLS i det privata
   API-schemat. Konto/session kontrolleras per transaktion, familj/organisation
-  före läsresultat och före/efter skrivlås. Identitet sätts bara för revisionslogg
-  vid ändrade svar; ingen kontextfråga krävs vid läsning eller identisk upprepning.
+  före läsresultat och före/efter skrivlås. Ingen databaskontext sätts.
+- `@Service`/`@Transactional` äger all svarslogik enligt ADR-013. Läsmetoden är
+  read-only. Repositories sparar svarstid, revision, historik och signalversion;
+  inga egna databasfunktioner/procedurer eller verksamhetstriggers finns efter steg 004.
 - Samma transaktion skriver svar, revision, historik med konto/session/kanal
   och en beständig signalversion. Kommentartext och token sparas inte i historik.
 - Aktivitetslås skyddar mot samtidig inställning och avslut. Upprepning av samma
@@ -38,7 +40,8 @@ Auth-policy och gränser. [OpenAPI](../../backend/api/contract/openapi.json) och
 [genererade TS-typer](../../backend/api/contract/generated.ts) är versionshanterade. Specen genereras med springdoc 3.1.1 från REST-controllers
 med typade request-/svarsklasser. Maven-verifieringen exporterar den via den
 bearer-skyddade `/v3/api-docs`; CI genererar och jämför både spec och TS-typer.
-Ingen trigger eller Modulith-producent skriver samma händelse två gånger.
+Kotlin-tjänsten är ensam producent av historik/signalversion; inga triggers
+eller Modulith-producenter skriver samma händelse en gång till.
 Signalversionen är endast beständig invalidering; ingen signalworker är ännu inkopplad.
 
 ## Lokala verifieringsgrindar
@@ -47,8 +50,9 @@ JUnit kör riktig signerad JWT → HTTP → begränsad JDBC → PostgreSQL med e
 syntetiska familjer. Testerna omfattar egen person/två barn, annan familj,
 återkallad koppling, blockerat konto/session, fel claims/signatur/algoritm,
 ES256/RS256, JWKS-rotation/nätfel, livscykelkonflikter, samtidiga skrivare,
-upprepning, historik, rollback och poolad identitet. Separata migrationstester
-installerar tomt schema respektive uppgraderar identitets- och RLS-baslinjerna,
+upprepning, historik, rollback vid historik-/signalfel, låsväntan över sluttid och
+signalversion vid samtidiga svar på olika kallelser. Separata migrationstester
+installerar tomt schema respektive uppgraderar alla tre tidigare baslinjer,
 validerar och återkör med bevarade syntetiska data. Modulith-gränser verifieras.
 
 API-jobbet läggs till CI:s obligatoriska `verify` utan att ta bort befintliga

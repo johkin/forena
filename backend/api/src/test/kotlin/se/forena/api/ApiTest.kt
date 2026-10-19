@@ -38,13 +38,12 @@ import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.datasource.DriverManagerDataSource
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
 import org.mockito.Mockito.clearInvocations
-import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
-import se.forena.api.identity.internal.AuditContextRepository
+import se.forena.api.participation.internal.InvitationHistoryRepository
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
-import se.forena.api.identity.Actor
-import se.forena.api.identity.ActorTransactions
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.support.TransactionTemplate
 import se.forena.api.participation.internal.InvitationRepository
 import org.testcontainers.postgresql.PostgreSQLContainer
 import tools.jackson.databind.json.JsonMapper
@@ -81,8 +80,8 @@ class ApiTest {
     }
     @Autowired lateinit var environment: Environment
     @Autowired lateinit var jdbc: JdbcTemplate
-    @Autowired lateinit var transactions: ActorTransactions
-    @MockitoSpyBean lateinit var auditContext: AuditContextRepository
+    @Autowired lateinit var transactionManager: PlatformTransactionManager
+    @MockitoSpyBean lateinit var historyRecords: InvitationHistoryRepository
     @Autowired lateinit var invitationRecords: InvitationRepository
     @Autowired lateinit var json: JsonMapper
     private val admin by lazy { JdbcTemplate(DriverManagerDataSource(database.jdbcUrl, database.username, database.password)) }
@@ -150,17 +149,17 @@ class ApiTest {
         assertThat(request("/api/activities/${UUID.randomUUID()}/my-invitations").statusCode()).isEqualTo(404)
     }
 
-    @Test fun `reads rejected writes and identical responses never bind audit context`() {
-        clearInvocations(auditContext)
+    @Test fun `reads rejected writes and identical responses never write history`() {
+        clearInvocations(historyRecords)
         assertThat(request("/api/activities/$activity/my-invitations").statusCode()).isEqualTo(200)
         assertThat(respond("""{"response":"accepted"}""",token(outsider)).statusCode()).isEqualTo(403)
-        verifyNoInteractions(auditContext)
+        verifyNoInteractions(historyRecords)
         assertThat(respond("""{"response":"accepted"}""").statusCode()).isEqualTo(200)
-        verify(auditContext).bindAuditActor(parent.toString(),session.toString())
-        clearInvocations(auditContext)
+        assertThat(history()).isEqualTo(1)
+        clearInvocations(historyRecords)
         assertThat(respond("""{"response":"accepted"}""").statusCode()).isEqualTo(200)
         assertThat(request("/api/activities/$activity/my-invitations").statusCode()).isEqualTo(200)
-        verifyNoInteractions(auditContext)
+        verifyNoInteractions(historyRecords)
     }
 
     @Test fun `inactive family links deny reads even when the activity and organization exist`() {
@@ -300,9 +299,8 @@ class ApiTest {
         assertThat(jdbc.queryForObject("select has_schema_privilege(current_user,'forena','CREATE')", Boolean::class.java)).isFalse()
         // RLS is disabled: HTTP isolation must be proven without help from database policies.
         assertThat(jdbc.queryForObject("select count(*) from forena.invitation where activity_id=?", Long::class.java,activity)).isEqualTo(4)
-        assertThatThrownBy { transactions.asActor(Actor(parent, session)) {
-            transactions.bindAuditActor(Actor(parent, session))
-            jdbc.update("update forena.invitation set response='accepted' where id=?", invitation)
+        assertThatThrownBy { TransactionTemplate(transactionManager).executeWithoutResult {
+            jdbc.update("update forena.invitation set revision=revision+1 where id=?", invitation)
             throw IllegalStateException("force rollback")
         } }.isInstanceOf(IllegalStateException::class.java)
         assertThat(history()).isZero(); assertThat(dirty()).isZero()
@@ -313,15 +311,13 @@ class ApiTest {
             assertThat(ownList.statusCode()).isEqualTo(200)
             assertThat(ownList.body()).contains(other.toString()).doesNotContain(child1.toString(),own.toString())
         }
-        assertThat(jdbc.queryForObject("select nullif(current_setting('forena.actor_id',true),'')",String::class.java)).isNull()
-        assertThat(jdbc.queryForObject("select nullif(current_setting('forena.session_id',true),'')",String::class.java)).isNull()
         for (sql in listOf("create table forena.forbidden(id int)", "update forena.invitation set person_id='$other' where id='$invitation'",
-            "delete from forena.invitation", "insert into forena.invitation_history default values", "select * from forena.activity_signal_state", "select * from forena.team")) {
+            "delete from forena.invitation", "update forena.invitation_history set channel='web'", "delete from forena.invitation_history", "delete from forena.activity_signal_state", "select * from forena.team")) {
             assertThatThrownBy { jdbc.execute(sql) }.describedAs(sql).isInstanceOf(org.springframework.dao.DataAccessException::class.java)
         }
     }
 
-    @Test fun `cancellation locks and direct SQL still enforce lifecycle in the database`() {
+    @Test fun `Kotlin lifecycle check waits for a concurrent cancellation`() {
         DriverManager.getConnection(database.jdbcUrl, database.username, database.password).use { connection ->
             connection.autoCommit = false
             connection.prepareStatement("update forena.activity set status='cancelled' where id=?").use { it.setObject(1,activity); it.executeUpdate() }
@@ -332,36 +328,63 @@ class ApiTest {
             connection.commit()
             assertThat(result.get().statusCode()).isEqualTo(409)
         }
-        assertThatThrownBy { transactions.asActor(Actor(parent,session)) {
-            jdbc.update("update forena.invitation set response='accepted' where id=?", invitation)
-        } }.isInstanceOf(org.springframework.dao.DataIntegrityViolationException::class.java)
         assertThat(history()).isZero(); assertThat(dirty()).isZero()
     }
 
-    @Test fun `separate database connections serialize different answers with consistent revision history`() {
-        fun open() = DriverManager.getConnection(database.jdbcUrl, "forena_api_runtime", "local-runtime-only").also { c ->
-            c.autoCommit = false
-            c.prepareStatement("select set_config('forena.actor_id',?,true),set_config('forena.session_id',?,true)").use {
-                it.setString(1,parent.toString()); it.setString(2,session.toString()); it.execute()
-            }
+    private fun awaitRuntimeLocks(count: Long) {
+        await().atMost(java.time.Duration.ofSeconds(5)).until {
+            admin.queryForObject("select count(*) from pg_stat_activity where usename='forena_api_runtime' and wait_event_type='Lock'", Long::class.java)!! >= count
         }
-        open().use { first ->
-            first.prepareStatement("update forena.invitation set response='accepted' where id=?").use { it.setObject(1,invitation); it.executeUpdate() }
-            val second = CompletableFuture.supplyAsync {
-                open().use { c ->
-                    c.prepareStatement("update forena.invitation set response='declined' where id=?").use { it.setObject(1,invitation); it.executeUpdate() }
-                    c.commit()
-                }
-            }
-            await().atMost(java.time.Duration.ofSeconds(5)).until {
-                admin.queryForObject("select exists(select 1 from pg_stat_activity where usename='forena_api_runtime' and wait_event_type='Lock')", Boolean::class.java) == true
-            }
-            first.commit(); second.get()
+    }
+
+    @Test fun `separate HTTP transactions serialize different answers with consistent revision history`() {
+        DriverManager.getConnection(database.jdbcUrl, database.username, database.password).use { gate ->
+            gate.autoCommit = false
+            gate.prepareStatement("select id from forena.invitation where id=? for update").use { it.setObject(1,invitation); it.executeQuery().close() }
+            val first = CompletableFuture.supplyAsync { respond("""{"response":"accepted"}""") }
+            awaitRuntimeLocks(1)
+            val second = CompletableFuture.supplyAsync { respond("""{"response":"declined"}""") }
+            awaitRuntimeLocks(2)
+            gate.commit()
+            assertThat(first.get().statusCode()).isEqualTo(200)
+            assertThat(second.get().statusCode()).isEqualTo(200)
         }
         assertThat(row()["response"]).isEqualTo("declined")
         assertThat(row()["revision"]).isEqualTo(2L)
         assertThat(history()).isEqualTo(2); assertThat(dirty()).isEqualTo(2)
         assertThat(admin.queryForObject("select previous_response from forena.invitation_history where invitation_id=? and revision=2", String::class.java, invitation)).isEqualTo("accepted")
+    }
+
+    @Test fun `different invitations serialize creation and increment of the shared activity signal`() {
+        val secondId = admin.queryForObject("select id from forena.invitation where activity_id=? and person_id=?", UUID::class.java,activity,child2)!!
+        DriverManager.getConnection(database.jdbcUrl, database.username, database.password).use { gate ->
+            gate.autoCommit = false
+            gate.prepareStatement("select id from forena.activity where id=? for update").use { it.setObject(1,activity); it.executeQuery().close() }
+            val first = CompletableFuture.supplyAsync { respond("""{"response":"accepted"}""") }
+            val second = CompletableFuture.supplyAsync { request("/api/invitations/$secondId/respond", """{"response":"accepted"}""") }
+            awaitRuntimeLocks(2)
+            gate.commit()
+            assertThat(first.get().statusCode()).isEqualTo(200)
+            assertThat(second.get().statusCode()).isEqualTo(200)
+        }
+        assertThat(dirty()).isEqualTo(2)
+        assertThat(admin.queryForObject("select count(*) from forena.invitation_history where invitation_id in (?,?)", Long::class.java,invitation,secondId)).isEqualTo(2)
+    }
+
+    @Test fun `activity ending while waiting for a lock rejects the response using current time`() {
+        admin.update("update forena.activity set starts_at=clock_timestamp()-interval '1 hour',ends_at=clock_timestamp()+interval '1 second' where id=?",activity)
+        DriverManager.getConnection(database.jdbcUrl, database.username, database.password).use { gate ->
+            gate.autoCommit = false
+            gate.prepareStatement("select id from forena.activity where id=? for update").use { it.setObject(1,activity); it.executeQuery().close() }
+            val result = CompletableFuture.supplyAsync { respond("""{"response":"accepted"}""") }
+            awaitRuntimeLocks(1)
+            await().atMost(java.time.Duration.ofSeconds(5)).until {
+                admin.queryForObject("select ends_at<=clock_timestamp() from forena.activity where id=?",Boolean::class.java,activity) == true
+            }
+            gate.commit()
+            assertThat(result.get().statusCode()).isEqualTo(409)
+        }
+        assertThat(history()).isZero(); assertThat(dirty()).isZero()
     }
 
     @Test fun `a different organization is invisible and composite foreign keys reject cross organization invitations`() {
@@ -388,6 +411,16 @@ class ApiTest {
         } finally { admin.execute("alter table forena.invitation_history drop constraint test_audit_failure") }
     }
 
+    @Test fun `signal failure rolls back answer history and revision together`() {
+        admin.execute("alter table forena.activity_signal_state add constraint test_signal_failure check(false) not valid")
+        try {
+            assertThat(respond("""{"response":"accepted"}""").statusCode()).isEqualTo(409)
+            assertThat(row()["response"]).isEqualTo("pending")
+            assertThat(row()["revision"]).isEqualTo(0L)
+            assertThat(history()).isZero(); assertThat(dirty()).isZero()
+        } finally { admin.execute("alter table forena.activity_signal_state drop constraint test_signal_failure") }
+    }
+
     @Test fun `unicode comment truncation does not split surrogate pairs`() {
         assertThat(respond("""{"response":"accepted","comment":"${"😀".repeat(501)}"}""").statusCode()).isEqualTo(200)
         assertThat(row()["response_comment"]).isEqualTo("😀".repeat(500))
@@ -402,12 +435,11 @@ class ApiTest {
         assertThat(history()).isEqualTo(2)
     }
 
-    @Test fun `repository save cannot write identity timestamps or revision`() {
-        transactions.asActor(Actor(parent,session)) {
-            val current = invitationRecords.findLockedByIdAndOrganizationIdAndPersonId(invitation,organization,child1)!!
-            transactions.bindAuditActor(Actor(parent,session))
+    @Test fun `repository save cannot write immutable invitation identity`() {
+        TransactionTemplate(transactionManager).executeWithoutResult {
+            val current = invitationRecords.findLockedByIdAndOrganizationIdAndActivityIdAndPersonId(invitation,organization,activity,child1)!!
             invitationRecords.save(current.copy(response="accepted", personId=other, organizationId=UUID.randomUUID(),
-                activityId=UUID.randomUUID(), revision=999, respondedAt=Instant.EPOCH))
+                activityId=UUID.randomUUID(), revision=1, respondedAt=Instant.now()))
         }
         val saved = row()
         assertThat(saved["person_id"]).isEqualTo(child1)
@@ -415,7 +447,8 @@ class ApiTest {
         assertThat(saved["activity_id"]).isEqualTo(activity)
         assertThat(saved["revision"]).isEqualTo(1L)
         assertThat(saved["responded_at"].toString()).doesNotContain("1970")
-        assertThat(history()).isEqualTo(1)
+        // No hidden trigger writes history; the service explicitly owns that operation.
+        assertThat(history()).isZero()
     }
 
     @Test fun `springdoc exports the implemented typed authenticated API for client generation`() {

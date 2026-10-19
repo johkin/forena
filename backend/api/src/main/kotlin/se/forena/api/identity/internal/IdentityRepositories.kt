@@ -22,15 +22,6 @@ interface DatabaseClockRepository : Repository<AccountRecord, UUID> {
     fun databaseTime(): Instant
 }
 
-/** Audit-only context, set only for changed writes; never used for authorization. */
-interface AuditContextRepository : Repository<AccountRecord, UUID> {
-    @Query("""
-        select set_config('forena.actor_id', :subject, true) = :subject
-           and set_config('forena.session_id', :session, true) = :session
-    """)
-    fun bindAuditActor(subject: String, session: String): Boolean
-}
-
 @Table(value = "revoked_session", schema = "forena")
 data class RevokedSessionRecord(@Id val id: UUID, val subject: UUID)
 

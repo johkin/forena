@@ -8,7 +8,9 @@ Beskrivningen nedan avser nuvarande lösning och befintliga principer; måltekni
 Det första separata verksamhets-API:t finns nu i `backend/api`: familjens
 kallelseläsning och svar med Spring Data JDBC-repositories, Liquibase och åtkomstkontroller i Kotlin (ADR-012). Det använder
 ett nytt tomt `forena`-schema enligt ADR-010, utan gamla projektets testdata.
-Nuvarande Next.js-app är ännu inte omkopplad. Se [API-underlaget](../backend/api/README.md)
+Enligt ADR-013 äger en Spring `@Service` med `@Transactional` hela svarslogiken,
+inklusive historik och signalversion; inga verksamhetstriggers eller egna
+procedurer används i det nya API-schemat. Nuvarande Next.js-app är ännu inte omkopplad. Se [API-underlaget](../backend/api/README.md)
 för säkerhetsgränser, verifiering och återstående aktivering. REST-controllers
 använder typade Kotlin data classes för svar. OpenAPI genereras från controller-
 signaturer och DTO-annoteringar med springdoc, och TypeScript-typer härleds från

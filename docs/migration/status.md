@@ -15,26 +15,34 @@ projektets testdata. Nytt privat `forena`-schema och egna Liquibase-migrationer;
 JWT-verifiering, konto-/sessionsspärr, livscykellås och atomär
 svarshistorik/signalversion. OpenAPI och reproducerbart genererade TS-typer.
 CRUD i verksamhets-API:t är nu genererad med Spring Data JDBC 4.1.0 och smala
-Repository-interface enligt ADR-011. Pessimistiskt lås och read-only-fält
-bevarar samtidighets- och kolumnrättigheterna. Två PostgreSQL-specifika @Query-
-metoder för revisionsidentitet vid ändrade svar samt klocka finns kvar; migrationer och säkerhetsprov
-använder fortsatt SQL. Teknikprovets registry-SQL är separat och inte omskriven.
+Repository-interface enligt ADR-011. All svarslogik ligger i `Invitations`, en
+`@Service` med `@Transactional` enligt ADR-013; läsning är read-only. Ingen manuell
+transaktionshantering eller databaskontext behövs. Steg 004 tar bort båda triggers
+med funktioner; inga egna databasfunktioner/procedurer finns kvar. Pessimistiska
+lås tas aktivitet → kallelse; historik och signalversion skrivs via repositories.
+Runtime får smala skrivgrants för dessa fält/tabeller; identitet och historikens
+oföränderlighet skyddas fortsatt. En native @Query återstår för databasens klocka.
+Teknikprovets registry-SQL är separat och inte omskriven.
 CI får ett separat obligatoriskt API-jobb; befintliga kontroller behålls.
 Se [första flödet](first-flow.md) och [körinstruktionerna](../../backend/api/README.md).
 
 Lokal verifiering för leveransen:
 
-- API Maven `verify`: 25 tester, inga fel eller överhoppade. Riktiga ES256/RS256-
+- API Maven `verify`: 29 tester, inga fel eller överhoppade. Riktiga ES256/RS256-
   signaturer och lokal JWKS-server, HTTP, PostgreSQL 17.6/Testcontainers med
   begränsad runtime och schemaägare, familje-/klubbgränser utan RLS, rollback,
   samtidiga skrivare/inställning, historik och Modulith-struktur. Nya prov täcker
   två målsmän för samma person med sammansatt ID samt att repository-save inte
-  kan skriva identitet, revision eller svarstid.
-- Tom Liquibase-installation och uppgradering från identitets- och RLS-baslinjerna,
-  validate/återkörning, borttagna policyer/RLS, återkallade klientgrants, bevarade
-  syntetiska data och negativa constraints ingår. Tre nya HTTP-prov täcker
-  återkallad familjeläsning, nekad skrivning före främmande radlås och att
-  läsningar/nekade svar/identiska upprepningar inte sätter revisionskontext.
+  kan skriva kallelsens oföränderliga identitet. Svarstid och revision ägs nu
+  av Kotlin-tjänsten och verifieras genom HTTP.
+- Tom Liquibase-installation och uppgradering från alla tre tidigare baslinjer,
+  validate/återkörning, borttagna policyer/RLS/funktioner/verksamhetstriggers,
+  återkallade klientgrants, bevarade syntetiska svar/historik/signalversioner och
+  negativa constraints ingår. HTTP-prov täcker återkallad familjeläsning,
+  nekad skrivning före främmande radlås och inga historikskrivningar vid läsning/
+  nekade svar/identiska upprepningar. Nya prov täcker samtidiga olika svar,
+  olika kallelsers gemensamma signalrad, sluttid efter låsväntan och rollback
+  av svar/historik/revision om signalens skrivning misslyckas.
 - Paketerad JAR: verklig bootstrap, migreringsläge två gånger utan HTTP,
   runtime utan ägarcredential, health, bearerkrav och SIGTERM verifierade lokalt.
 - Befintliga Vitest: 131 filer, 1 065 tester godkända. Typkontroll, lint och
