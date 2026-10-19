@@ -34,6 +34,9 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Verify Kotlin release credential and target boundaries
+        run: python3 -m unittest discover -s scripts/deploy -p 'test_*.py'
+
       - name: Run type checking
         run: npm run typecheck
 

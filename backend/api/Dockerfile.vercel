@@ -1,0 +1,14 @@
+# syntax=docker/dockerfile:1
+# Context: backend/api/. Use the existing checksum-pinned Oracle JDK installation.
+FROM --platform=linux/amd64 debian:bookworm-slim@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates libstdc++6 zlib1g && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+# JDK and API JAR are built by Actions for the exact CI-verified source commit.
+COPY --chown=10001:10001 target/deploy-jdk/ /opt/java/
+COPY --chown=10001:10001 target/forena-api.jar /app/forena-api.jar
+COPY --chown=10001:10001 target/supabase-ca.crt /app/supabase-ca.crt
+COPY --chmod=0555 scripts/container-entrypoint.sh /entrypoint.sh
+USER 10001:10001
+ENV PORT=80
+EXPOSE 80
+ENTRYPOINT ["sh", "/entrypoint.sh"]

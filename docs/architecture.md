@@ -27,6 +27,11 @@ Kotlin. Backend väljs endast i servermiljön och är `legacy` som standard.
 Testläget använder nya seedens ID:n och gör ingen fallback efter ett misslyckat
 Kotlin-anrop. Ordinarie översikt är fortsatt inte omkopplad.
 
+[Actions-deployen för Kotlin-sajten](migration/actions-deployment.md) paketerar
+Next standalone och verksamhets-API:t som två Vercel Services-containrar i en
+gemensam deployment. Endast Next har publik ingress; API nås via servicebinding.
+Den gamla sajtens byggkonfiguration och projekt-ID är separata.
+
 Förena byggs som en multi-tenant-applikation där varje skrivning går genom ett
 validerat applikationskommando. Gränssnitt och AI-assistent använder samma
 kommandon; AI:n får aldrig direkt databasåtkomst.

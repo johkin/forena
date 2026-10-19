@@ -87,6 +87,12 @@ demoförening och används tills registreringsflödet kopplas till gränssnittet
 
 ## Driftsättning
 
+Nya Kotlin-sajten har ett separat [Actions-flöde för frontend och backend](docs/migration/actions-deployment.md)
+till `forena-kotlin`. Det väntar på grön CI för samma main-commit, provar en
+stagingdeployment och publicerar därefter båda tjänsterna tillsammans.
+Engångskonfiguration och gränser för den nya miljön finns i körinstruktionen.
+Det befintliga produktionsflödet nedan gäller den gamla sajten och databasen.
+
 Pull requests verifieras av GitHub Actions genom att databasen byggs från
 migrationerna, databastyper kan genereras och appens tester, typkontroll, lint
 och produktionsbygge körs. Appkontrollerna och databaskontrollerna körs i parallella
@@ -102,10 +108,10 @@ Npm-cachen för appjobbet behålls. Vid byte av CLI-version uppdateras
 När en ändring landar på `main` kör GitHub Actions databasmigrationer om filer i
 `supabase/migrations` har ändrats. Båda Edge-arbetarna driftsätts efter
 migrationerna från samma verifierade commit. Worker-workflowet kan också startas
-manuellt från `main` via `workflow_dispatch`. Vercels Git-integration driftsätter webbappen automatiskt
-från `main`; den väntar inte på att databasmigrationerna ska bli klara. Håll därför
-ändringar i webbappen kompatibla med både den gamla och den nya databasschemat
-under driftsättning.
+manuellt från `main` via `workflow_dispatch`. Workflowen `Deploy production`
+väntar på grön CI och kör migrationer och Edge-arbetare före den gamla webbappens
+Vercel-deploy. Håll schemaändringar kompatibla med den redan körande webbversionen
+under driftsättning. Det nya Kotlin-flödet använder ett separat projekt-ID.
 
 Lägg följande secrets i GitHub-miljön `production`:
 
