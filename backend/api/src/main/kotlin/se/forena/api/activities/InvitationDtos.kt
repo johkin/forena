@@ -1,12 +1,9 @@
-package se.forena.api.participation
+package se.forena.api.activities
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonValue
+import java.util.UUID
 import io.swagger.v3.oas.annotations.media.Schema
-import tools.jackson.core.JsonParser
-import tools.jackson.core.JsonToken
-import tools.jackson.databind.DeserializationContext
-import tools.jackson.databind.ValueDeserializer
 import tools.jackson.databind.annotation.JsonDeserialize
 
 enum class InvitationResponse(@get:JsonValue val value: String) {
@@ -38,11 +35,14 @@ data class RespondToInvitationRequest(
         private set
 }
 
-/** Jackson must not coerce JSON numbers/booleans into comment text. */
-class StrictCommentDeserializer : ValueDeserializer<String>() {
-    override fun deserialize(parser: JsonParser, context: DeserializationContext): String =
-        if (parser.currentToken() == JsonToken.VALUE_STRING) parser.string
-        else context.reportInputMismatch(String::class.java, "Comment must be a string or null")
-}
-
 data class InvitationResponseResult(@get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val ok: Boolean = true)
+
+data class FamilyInvitation(
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val id: UUID,
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val person_id: UUID,
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val response: InvitationResponse,
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED, types = ["string", "null"]) val response_comment: String?,
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val name: String
+)
+data class FamilyInvitations(@get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val invitations: List<FamilyInvitation>)
+data class ResponseChange(val response: String, val commentProvided: Boolean, val comment: String?)

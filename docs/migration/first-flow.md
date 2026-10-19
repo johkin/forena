@@ -4,6 +4,8 @@ Status 2026-10-19: API-delen implementerad lokalt i `backend/api`, på
 `feat/participation-api` från aktuell main (`1b60bb8`). Ingen molndeploy eller
 omkoppling av Next.js har gjorts. Detta är en del av M02/M03/M05/M07, inte
 slutlig acceptans av hela browserflödet.
+Modulen heter `activities` enligt ADR-015; `InvitationService` hanterar kallelser
+inom aktivitetsdomänen. `identity` äger konto/session och familjeåtkomst.
 
 ## Ren databas enligt användarens beslut
 

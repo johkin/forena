@@ -5,7 +5,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import se.forena.api.identity.InactiveSession
-import se.forena.api.participation.InvitationProblem
+import se.forena.api.activities.InvitationProblem
 import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 

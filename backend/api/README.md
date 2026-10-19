@@ -58,10 +58,18 @@ smala `Repository`-interface. Genererade frågor sköter konto-/sessionskontroll
 familjekopplingar, personer, aktiviteter och kallelsesvar. Ingen JdbcTemplate
 eller JdbcClient används i API:ts produktionskod. Se [ADR-011](../../docs/migration/decisions.md).
 
+Tjänster använder suffixet `Service`: `InvitationService`, `SessionService`,
+`FamilyAccessService` och `DatabaseClockService`. Inom varje moduls `internal`-
+paket samlas databasmodeller i `Entities.kt` och repository-interface i
+`Repositories.kt`. DTO:er ligger i separata filer från tjänsterna. Modulen
+`activities` äger aktiviteter och kallelser; `identity` äger konto/session och
+familjeåtkomst. Repositories och entities är interna inom respektive modul.
+Se ADR-015 för modulnamnet och namnkonventionerna.
+
 Familjekopplingens sammansatta nyckel mappas med `@Id` och `@Embedded`. Läsning
 hämtar familjen och dess kallelser i batcher, inte en personfråga per kallelse.
 Namn sorteras med databasens kollation och UUID används som sekundär ordning.
-`Invitations` är en `@Service`: `respond` använder `@Transactional`, `list`
+`InvitationService` är en `@Service`: `respond` använder `@Transactional`, `list`
 `@Transactional(readOnly = true)`. Konto/session och familje-/organisationsåtkomst
 kontrolleras i Kotlin enligt ADR-012/013. Främmande aktivitet ger 404, främmande
 kallelse 403. Skrivbehörighet kontrolleras före och efter låsväntan.

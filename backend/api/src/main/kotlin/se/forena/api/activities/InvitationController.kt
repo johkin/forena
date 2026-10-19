@@ -1,4 +1,4 @@
-package se.forena.api.participation
+package se.forena.api.activities
 
 import java.util.UUID
 import org.springframework.http.CacheControl
@@ -19,7 +19,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse
 import se.forena.api.http.ApiError
 
 @RestController
-class InvitationController(private val invitations: Invitations) {
+class InvitationController(private val invitationService: InvitationService) {
     @GetMapping("/api/activities/{activityId}/my-invitations", produces = ["application/json"])
     @Operation(operationId = "getMyInvitations", description = "Only own people and active guardian links. Future invitations return an empty list. Cache-Control: no-store.")
     @ApiResponse(responseCode = "200", description = "Family invitations", useReturnTypeSchema = true)
@@ -27,7 +27,7 @@ class InvitationController(private val invitations: Invitations) {
     @ApiResponse(responseCode = "401", description = "Missing, invalid or locally inactive web session", content = [Content(schema = Schema(implementation = ApiError::class))])
     @ApiResponse(responseCode = "404", description = "Activity unavailable to family", content = [Content(schema = Schema(implementation = ApiError::class))])
     fun list(@Parameter(hidden = true) @AuthenticationPrincipal jwt: Jwt, @PathVariable activityId: UUID): ResponseEntity<FamilyInvitations> =
-        ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(invitations.list(actor(jwt), activityId))
+        ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(invitationService.list(actor(jwt), activityId))
 
     @PutMapping("/api/invitations/{invitationId}/respond", consumes = ["application/json"], produces = ["application/json"])
     @Operation(operationId = "respondToInvitation", description = "Identical state creates no revision. Concurrent commands serialize in database lock order; a delayed different answer can replace an earlier one. Cache-Control: no-store.")
@@ -38,7 +38,7 @@ class InvitationController(private val invitations: Invitations) {
     @ApiResponse(responseCode = "409", description = "Activity cancelled, ended or invitation not sent", content = [Content(schema = Schema(implementation = ApiError::class))])
     fun respond(@Parameter(hidden = true) @AuthenticationPrincipal jwt: Jwt, @PathVariable invitationId: UUID,
                 @RequestBody body: RespondToInvitationRequest): ResponseEntity<InvitationResponseResult> {
-        invitations.respond(actor(jwt), invitationId, ResponseChange(body.response.value, body.commentProvided, body.comment))
+        invitationService.respond(actor(jwt), invitationId, ResponseChange(body.response.value, body.commentProvided, body.comment))
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(InvitationResponseResult())
     }
 

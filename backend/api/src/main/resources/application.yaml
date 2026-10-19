@@ -54,7 +54,7 @@ management:
       show-details: never
 
 springdoc:
-  packages-to-scan: se.forena.api.participation
+  packages-to-scan: se.forena.api.activities
   paths-to-match: /api/**
   writer-with-order-by-keys: true
   override-with-generic-response: false

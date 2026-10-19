@@ -15,6 +15,11 @@ för säkerhetsgränser, verifiering och återstående aktivering. REST-controll
 använder typade Kotlin data classes för svar. OpenAPI genereras från controller-
 signaturer och DTO-annoteringar med springdoc, och TypeScript-typer härleds från
 exporten i CI; kontraktsspecen underhålls inte separat för hand.
+Kotlin-tjänster namnges med suffixet `Service`, exempelvis `InvitationService`.
+Varje moduls interna databasmodeller samlas i `Entities.kt` och repository-
+interface i `Repositories.kt`. DTO:er ligger i separata filer från tjänstelogiken;
+modulen `activities` äger aktiviteter/kallelser och `identity` konto/session och
+familjeåtkomst. Modulith verifierar beroendet `activities` → `identity` (ADR-015).
 
 Förena byggs som en multi-tenant-applikation där varje skrivning går genom ett
 validerat applikationskommando. Gränssnitt och AI-assistent använder samma

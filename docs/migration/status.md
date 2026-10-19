@@ -15,7 +15,11 @@ projektets testdata. Nytt privat `forena`-schema och egna Liquibase-migrationer;
 JWT-verifiering, konto-/sessionsspärr, livscykellås och atomär
 svarshistorik/signalversion. OpenAPI och reproducerbart genererade TS-typer.
 CRUD i verksamhets-API:t är nu genererad med Spring Data JDBC 4.1.0 och smala
-Repository-interface enligt ADR-011. All svarslogik ligger i `Invitations`, en
+Repository-interface enligt ADR-011. Modulen heter `activities` och äger aktivitet/
+kallelse enligt ADR-015; den beror på `identity` för konto/session och familj.
+Tjänster har suffixet `Service`, databasmodeller ligger i `Entities.kt` och
+repository-interface i `Repositories.kt` inom varje modul. DTO:er är separata.
+All svarslogik ligger i `InvitationService`, en
 `@Service` med `@Transactional` enligt ADR-013; läsning är read-only. Ingen manuell
 transaktionshantering eller databaskontext behövs. Steg 004 tar bort båda triggers
 med funktioner; inga egna databasfunktioner/procedurer finns kvar. Pessimistiska

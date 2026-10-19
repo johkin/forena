@@ -3,6 +3,21 @@
 Status anger målbeslut för kommande implementation, inte redan införd teknik.
 Källkodsverifierat nuläge finns i [inventeringen](inventory.md).
 
+## ADR-015: Activities-modul och tydlig Kotlin-filstruktur
+
+**Beslut 2026-10-19 på användarens instruktion:** första verksamhets-API:ts
+modul heter `activities` och äger aktiviteter samt deras kallelser och svar.
+Det ersätter namnet `participation` och den preliminära uppdelningen i ADR-002
+för det nu implementerade flödet. `InvitationService` är en tjänst inom modulen,
+inte en egen modul. `identity` äger verifierad aktör, konto/session och familjeåtkomst.
+Beroendet är `activities` → `identity`; interna repositories delas inte mellan moduler.
+
+Tjänster har suffixet `Service`. Varje moduls interna databasmodeller ligger i
+`Entities.kt` och repository-interface i `Repositories.kt`. DTO:er separeras från
+tjänstelogik; deserialisering och feltyper har egna filer. Paketnamn, imports,
+Springdoc-skanning och Modulith-test följer `activities`. HTTP/JSON/OpenAPI,
+databasnamn och migrationer ändras inte av denna omstrukturering.
+
 ## ADR-014: Ingen inloggningssession i affärshistoriken
 
 **Beslut 2026-10-19 på användarens uttryckliga instruktion:** kallelsesvarens
@@ -27,7 +42,7 @@ verksamhets-API:ts kallelsesvar ska synas i Spring Boot. Även transaktionen ska
 Detta ersätter trigger-/revisionskontextdelen av ADR-011/012.
 Sessionsfältet i historiken nedan ersätts av ADR-014.
 
-`Invitations.respond` är `@Transactional`. Där finns konto/session, familj och
+`InvitationService.respond` är `@Transactional`. Där finns konto/session, familj och
 organisation, livscykelkontroll, normalisering av kommentar, pending-återställning,
 svarstid, revisionsökning, historik och signalversion. Historiken får verifierat
 konto/session som vanliga fält. Identiskt tillstånd skriver ingenting. Kommentar-
@@ -71,9 +86,9 @@ Trigger-/revisionskontextdelen nedan ersätts av ADR-013.
 Spring Boot-verksamhets-API:t så att åtkomstreglerna syns i Kotlin. Detta ersätter
 RLS-delen av ADR-010/011 för det privata `forena`-schemat, inte gamla appens RLS.
 
-`ActorTransactions` kontrollerar konto och lokal sessionsspärr. `FamilyAccess`
+`ActorTransactions` kontrollerar konto och lokal sessionsspärr. `FamilyAccessService`
 härleder aktiva egen-/målsmanskopplingar för verifierat subjekt och organisation.
-`Invitations` avgränsar läsning till dessa personer, nekar främmande aktiviteter,
+`InvitationService` avgränsar läsning till dessa personer, nekar främmande aktiviteter,
 kontrollerar skrivrätt före radlås och igen efter låset. Organisation/person
 följer den oföränderliga kallelsenyckeln, inte klientens body eller JWT-metadata.
 
@@ -255,6 +270,9 @@ Behåll samma repo och npm/package-lock. Introducera `backend/`, `infra/` och
 när scripts, testimporter, deploy och cache-nycklar kan verifieras tillsammans.
 
 ## ADR-002: Modulär monolit — fastställt, gränser preliminära
+
+För första verksamhets-API:t ersätts activities/participation-uppdelningen nedan
+av den gemensamma `activities`-modulen enligt ADR-015. Övriga gränser är hypoteser.
 
 Ett Maven-projekt och en backendtjänst på Vercel enligt ADR-009. Verksamhetspaket under exempelvis
 `se.forena`: `organization`, `activities`, `participation`, `duties`,

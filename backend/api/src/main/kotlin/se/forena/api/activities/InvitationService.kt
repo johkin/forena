@@ -1,36 +1,24 @@
-package se.forena.api.participation
+package se.forena.api.activities
 
 import java.util.UUID
 import org.springframework.stereotype.Service
 import se.forena.api.identity.Actor
-import se.forena.api.identity.ActiveSessions
-import se.forena.api.identity.DatabaseClock
+import se.forena.api.identity.SessionService
+import se.forena.api.identity.DatabaseClockService
 import org.springframework.transaction.annotation.Transactional
-import se.forena.api.identity.FamilyAccess
-import se.forena.api.participation.internal.ActivityRepository
-import se.forena.api.participation.internal.InvitationRepository
-import se.forena.api.participation.internal.InvitationHistoryRecord
-import se.forena.api.participation.internal.InvitationHistoryRepository
-import se.forena.api.participation.internal.ActivitySignalRecord
-import se.forena.api.participation.internal.ActivitySignalRepository
-import io.swagger.v3.oas.annotations.media.Schema
-
-data class FamilyInvitation(
-    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val id: UUID,
-    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val person_id: UUID,
-    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val response: InvitationResponse,
-    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED, types = ["string", "null"]) val response_comment: String?,
-    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val name: String
-)
-data class FamilyInvitations(@get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val invitations: List<FamilyInvitation>)
-data class ResponseChange(val response: String, val commentProvided: Boolean, val comment: String?)
-class InvitationProblem(val status: Int, override val message: String) : RuntimeException(message)
+import se.forena.api.identity.FamilyAccessService
+import se.forena.api.activities.internal.ActivityRepository
+import se.forena.api.activities.internal.InvitationRepository
+import se.forena.api.activities.internal.InvitationHistoryRecord
+import se.forena.api.activities.internal.InvitationHistoryRepository
+import se.forena.api.activities.internal.ActivitySignalRecord
+import se.forena.api.activities.internal.ActivitySignalRepository
 
 @Service
-class Invitations(
-    private val sessions: ActiveSessions,
-    private val clock: DatabaseClock,
-    private val family: FamilyAccess,
+class InvitationService(
+    private val sessions: SessionService,
+    private val clock: DatabaseClockService,
+    private val family: FamilyAccessService,
     private val activities: ActivityRepository,
     private val invitations: InvitationRepository,
     private val history: InvitationHistoryRepository,

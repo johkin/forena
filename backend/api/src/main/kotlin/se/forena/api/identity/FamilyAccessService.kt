@@ -6,11 +6,9 @@ import se.forena.api.identity.internal.PersonAccessKey
 import se.forena.api.identity.internal.PersonAccessRepository
 import se.forena.api.identity.internal.PersonRepository
 
-data class FamilyPerson(val id: UUID, val name: String)
-
 /** Family authorization lives here; no permissions come from token metadata. */
 @Service
-class FamilyAccess(private val links: PersonAccessRepository, private val people: PersonRepository) {
+class FamilyAccessService(private val links: PersonAccessRepository, private val people: PersonRepository) {
     fun people(actor: Actor, organization: UUID): List<FamilyPerson> {
         val ids = links.findByKeySubjectAndOrganizationIdAndActiveTrue(actor.subject, organization)
             .map { it.key.personId }

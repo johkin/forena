@@ -39,12 +39,12 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
 import org.mockito.Mockito.clearInvocations
 import org.mockito.Mockito.verifyNoInteractions
-import se.forena.api.participation.internal.InvitationHistoryRepository
+import se.forena.api.activities.internal.InvitationHistoryRepository
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.support.TransactionTemplate
-import se.forena.api.participation.internal.InvitationRepository
+import se.forena.api.activities.internal.InvitationRepository
 import org.testcontainers.postgresql.PostgreSQLContainer
 import tools.jackson.databind.json.JsonMapper
 
