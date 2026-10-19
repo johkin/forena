@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { invitationAvailable } from "@/lib/invitation-availability";
 import { createClient } from "@/lib/supabase/server";
+import { forwardKotlinParticipation, kotlinParticipationSelected } from "@/lib/kotlin-participation";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ activityId: string }> }) {
+  if (kotlinParticipationSelected()) return forwardKotlinParticipation(_request, "list", (await params).activityId);
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return NextResponse.json({ error: "Logga in för att svara." }, { status:401 });

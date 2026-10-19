@@ -26,6 +26,12 @@ Komponentsidan ska vara en aktuell, gemensam referens för hela systemet.
 Dessa regler beskriver kravet; befintliga luckor i galleriet ska fyllas när de
 berörda UI-delarna ändras och innebär inte att dagens galleri redan är komplett.
 
+Den avskilda kallelsesidan använder `AppShell` och `ActivityInvitationResponse`
+utan egna meny-, header- eller footer-kopior. Kontomenyns `session`-variant
+visar familjens kallelser och utloggning utan profil, administration och
+notiser. Samma `AppMenuContent` visas på `/components` i ett inaktiverat
+exempel som inte loggar ut den som granskar komponenterna.
+
 WhatsApp-inställningarna i Min profil och exemplen på `/components` använder
 samma produktionskomponent. Visa ej aktiverat, samtycke, väntande verifiering,
 maskerat aktivt nummer, laddning, sparande, fel och ej konfigurerat. Galleriets

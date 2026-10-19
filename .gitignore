@@ -2,6 +2,8 @@ node_modules
 .next
 out
 coverage
+/work/
+backend/api/scripts/__pycache__/
 .env
 .env.local
 .env.*.local

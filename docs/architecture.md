@@ -21,6 +21,12 @@ interface i `Repositories.kt`. DTO:er ligger i separata filer från tjänstelogi
 modulen `activities` äger aktiviteter/kallelser och `identity` konto/session och
 familjeåtkomst. Modulith verifierar beroendet `activities` → `identity` (ADR-015).
 
+Ett avskilt [browserflöde](migration/browser-participation.md) återanvänder
+inloggning, sidskal och kallelsesvar genom de befintliga Next-rutterna till
+Kotlin. Backend väljs endast i servermiljön och är `legacy` som standard.
+Testläget använder nya seedens ID:n och gör ingen fallback efter ett misslyckat
+Kotlin-anrop. Ordinarie översikt är fortsatt inte omkopplad.
+
 Förena byggs som en multi-tenant-applikation där varje skrivning går genom ett
 validerat applikationskommando. Gränssnitt och AI-assistent använder samma
 kommandon; AI:n får aldrig direkt databasåtkomst.
