@@ -9,6 +9,7 @@ test "${FORENA_JDBC_URL:-}" = 'jdbc:postgresql://aws-1-eu-central-1.pooler.supab
 }
 # Migration is a separate release operation. Project-level Spring overrides,
 # owner/admin credentials and probe settings never reach the API process.
+echo 'forena_api_startup: starting JVM' >&2
 exec env -i \
   PATH=/opt/java/bin:/usr/bin:/bin PORT="${PORT:-80}" \
   FORENA_JDBC_URL="${FORENA_JDBC_URL:?}" \

@@ -95,7 +95,10 @@ Bygget tillåter endast publik Auth-konfiguration och Vercels egna metadata/OIDC
 i den lokala bygg-envfilen. Envfiler laddas aldrig upp som Actions-artifakter.
 
 Hälsokontrollen loggar bara fasta felsteg (`configuration`, `upstream`,
-`response`) och eventuell HTTP-status. Bindingens URL, sökparametrar, tokens,
+`response`), eventuell HTTP-status och en tillåten transportfelkod, exempelvis
+`ENOTFOUND`, `ECONNREFUSED`, TLS-fel eller avvisad redirect. Okända fel blir
+`unknown`; godtyckliga exceptionfält skrivs aldrig ut. Backendens startskript
+skriver en fast markör före JVM-start. Bindingens URL, sökparametrar, tokens,
 felkropp och exceptiontext loggas inte. Ogiltig runtime-användare eller JDBC-
 konfiguration ger också ett fast startfel utan de konfigurerade värdena.
 
@@ -125,3 +128,14 @@ databasen och kopierar inga data till gamla sajten.
 Lokala kontroller och PR/CI redovisas i [status](status.md). Full molndeploy och
 promotion kan verifieras först när engångskonfigurationen ovan finns och workflowen
 är mergad på main. GitHub-miljöns skydd/secrets är inte verifierade av repots kod.
+
+
+## Uppföljning av release 9cd3660
+
+Actions-körning `39290211569` byggde frontend och Java 25-API, laddade upp båda
+containerbilderna och skapade deployment `dpl_5RbG2sWco3cwyDZUEeZ8X7NbohGW`.
+Releasekontrollen fick 503. Runtime-loggen visar `migration_health_failed` med
+`stage: upstream`: fetch kastar innan ett HTTP-svar kommer tillbaka. Ingen
+promotion kördes. Databaslösenord, DNS, backendstart eller TLS är inte fastställd
+orsak. Uppföljningen tillför fasta transportfelkoder för att nästa deployment
+ska kunna skilja dem åt; den är en diagnostikändring, inte en verifierad lösning.

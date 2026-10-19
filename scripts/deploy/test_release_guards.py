@@ -51,6 +51,7 @@ class ReleaseGuards(unittest.TestCase):
         self.assertIn("FORENA_DB_PASSWORD=synthetic-runtime", args)
         self.assertIn("FORENA_MIGRATE=false", args)
         self.assertIn("FORENA_AUTH_ISSUER=" + AUTH + "/auth/v1", args)
+        self.assertEqual(result.stderr, "forena_api_startup: starting JVM\n")
 
     def test_api_rejects_owner_or_wrong_database(self):
         for overrides in [{"FORENA_DB_USERNAME": "forena_api_owner.ckzrtxqjskosqzoitymc"},

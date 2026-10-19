@@ -36,13 +36,13 @@ it("does not reveal upstream exception messages or retry", async () => {
   expect(response.headers.get("cache-control")).toBe("no-store");
   expect(await response.json()).toEqual({ status: "unavailable" });
   expect(fetch).toHaveBeenCalledTimes(1);
-  expect(console.error).toHaveBeenCalledWith("migration_health_failed", { stage: "upstream" });
+  expect(console.error).toHaveBeenCalledWith("migration_health_failed", { stage: "upstream", reason: "unknown" });
 });
 it("does not call Kotlin when the target configuration is disabled", async () => {
   vi.stubEnv("FORENA_PARTICIPATION_BACKEND", "legacy");
   expect((await GET()).status).toBe(503);
   expect(fetch).not.toHaveBeenCalled();
-  expect(console.error).toHaveBeenCalledWith("migration_health_failed", { stage: "configuration" });
+  expect(console.error).toHaveBeenCalledWith("migration_health_failed", { stage: "configuration", reason: "unknown" });
 });
 it("checks health through an internal binding prefix", async () => {
   vi.stubEnv("FORENA_KOTLIN_SERVICE_URL", "http://backend.internal/private/backend/");
@@ -54,4 +54,24 @@ it("logs only the failed HTTP stage and status, without reading an upstream erro
   const result = await GET();
   expect(await result.json()).toEqual({ status: "unavailable" });
   expect(console.error).toHaveBeenCalledExactlyOnceWith("migration_health_failed", { stage: "response", status: 503 });
+});
+
+it.each(["ENOTFOUND", "ECONNREFUSED", "ECONNRESET", "UND_ERR_CONNECT_TIMEOUT", "UNABLE_TO_VERIFY_LEAF_SIGNATURE"])("identifies nested transport code %s without revealing exception text", async code => {
+  const cause = Object.assign(new Error("private binding URL and password"), { code });
+  vi.mocked(fetch).mockRejectedValue(new TypeError("fetch failed: private URL", { cause }));
+  const response = await GET();
+  expect(response.status).toBe(503);
+  expect(await response.json()).toEqual({ status: "unavailable" });
+  expect(console.error).toHaveBeenCalledExactlyOnceWith("migration_health_failed", { stage: "upstream", reason: code });
+});
+
+it.each([
+  [new DOMException("private URL", "TimeoutError"), "timeout"],
+  [new TypeError("fetch failed", { cause: new Error("unexpected redirect") }), "redirect_rejected"],
+  [new TypeError("fetch failed", { cause: new Error("bad port") }), "port_rejected"],
+  [Object.assign(new Error("private URL"), { code: "private-password", name: "private-token" }), "unknown"],
+])("uses a fixed label for special and unknown errors (%s)", async (error, reason) => {
+  vi.mocked(fetch).mockRejectedValue(error);
+  expect((await GET()).status).toBe(503);
+  expect(console.error).toHaveBeenCalledExactlyOnceWith("migration_health_failed", { stage: "upstream", reason });
 });
