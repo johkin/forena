@@ -5,7 +5,8 @@
       "feat/participation-api": false,
       "feat/target-auth-lifecycle": false,
       "feat/target-api-verification": false,
-      "feat/kotlin-browser-flow": false
+      "feat/kotlin-browser-flow": false,
+      "ci/kotlin-vercel-deploy": false
     }
   },
   "regions": [

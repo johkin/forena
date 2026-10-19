@@ -1,0 +1,8 @@
+**
+!target
+!target/forena-api.jar
+!target/deploy-jdk
+!target/deploy-jdk/**
+!target/supabase-ca.crt
+!scripts
+!scripts/container-entrypoint.sh

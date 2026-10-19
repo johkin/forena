@@ -17,3 +17,9 @@ supabase/.temp
 
 # Generated once per production build
 public/app-version.json
+
+# Staged Kotlin frontend container contents
+/deploy/frontend/app/
+/deploy/frontend/public/
+.vercel/
+scripts/deploy/__pycache__/

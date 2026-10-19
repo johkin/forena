@@ -6,6 +6,7 @@ export default function nextConfig(phase: string): NextConfig {
   const version = phase === PHASE_DEVELOPMENT_SERVER ? "" :
     (JSON.parse(readFileSync("public/app-version.json", "utf8")) as { version: string }).version;
   return {
+    ...(process.env.FORENA_CONTAINER_BUILD === "true" ? { output: "standalone" as const } : {}),
     poweredByHeader: false,
     env: { NEXT_PUBLIC_APP_VERSION: version },
     async headers() {

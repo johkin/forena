@@ -3,6 +3,40 @@
 Uppdaterad 2026-10-19. Inventeringsbas: `c379a96719490bc4edbfcb0a4ee7a1947684ddce`.
 Planens uppgifter finns i [uppgiftsindex](tasks/README.md).
 
+## Actions-deploy för parallell Kotlin-sajt: implementation på branch
+
+Branch `ci/kotlin-vercel-deploy`, från main `e0953a3` efter PR #116.
+Användaren har kopplat bort Vercels Git-integration för den nya sajten och
+beställt deploy av frontend/backend genom GitHub Actions.
+[Körinstruktion, engångskonfiguration och gränser](actions-deployment.md).
+
+Ny workflow väntar på grön CI för exakt aktuell main-SHA, även vid manuell
+körning. Next standalone och verksamhets-API paketeras som separata containrar
+och publiceras atomärt genom Vercel Services (beta), med privat API-binding.
+Staging sker med `--skip-domain`; Next → API → JDBC-health och frontendens
+versions-ID måste godkännas före promotion. Gamla deployworkflowen är separat.
+Startskripten begränsar applikationsprocessernas miljö; inga migreringar,
+bootstrap, seed, utskick eller full signalworker införs.
+
+Lokal verifiering: 1 102 Vitest-tester, typecheck, lint och standalone-
+produktionsbygge godkända. Sex exekverade releasegrindtester och Actionlint
+godkända; Vercel CLI 60.1.3 accepterar Services-konfigurationen. API Maven
+verify: 35 tester, 0 fel/överhoppade; paketerat bootstrap-/migrerings-/runtimeprov
+godkänt. Båda containerbilderna byggda lokalt; frontendens login/health,
+versionsmatchning och avsaknad av privilegierade variabler i Node-processen
+verifierade mot en kontrollerad health-stub. API-bildens låsta JVM startar.
+Det lokala stubprovet är inget nytt moln-/databas-/browserprov.
+
+Vercel-projektets Root Directory har satts till reporoten och Production-
+konfiguration för SITE_URL, runtime-användarnamn och JDBC/TLS lagts in utan
+deployment. Runtime-lösenord och GitHub-miljöns secret/skydd behöver konfigureras
+direkt i respektive tjänst; de har inte lästs eller överförts av denna leverans.
+PR/CI redovisas i leveransrapporten. Molndeploy och
+promotion är inte verifierade i denna implementation; GitHub-miljöns Vercel-token,
+Vercels runtimekonfiguration och mergad workflow på main krävs före första release.
+Avsaknad av syntetiskt aktivitets-ID gör fortfarande testsidan 404 och är inte
+ett fel i deployen. Övriga M07-/Auth-/pilotgrindar kvarstår.
+
 ## M07: avskilt browserflöde genom Next och Kotlin godkänt
 
 Branch `feat/kotlin-browser-flow`, från main `548d627` efter mergad PR #114.

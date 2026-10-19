@@ -1,0 +1,22 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["fra1"],
+  "git": { "deploymentEnabled": false },
+  "services": {
+    "frontend": {
+      "root": "deploy/frontend",
+      "runtime": "container",
+      "entrypoint": "Dockerfile.vercel",
+      "bindings": [
+        { "type": "service", "service": "backend", "format": "url", "env": "FORENA_KOTLIN_API_URL" }
+      ]
+    },
+    "backend": {
+      "root": "backend/api",
+      "runtime": "container",
+      "entrypoint": "Dockerfile.vercel"
+    }
+  },
+  "redirects": [{ "source": "/", "destination": "/migration/participation", "permanent": false }],
+  "rewrites": [{ "source": "/(.*)", "destination": { "service": "frontend" } }]
+}
