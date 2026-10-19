@@ -8,6 +8,11 @@ redirects. Browsern skickar samma origins cookies för Vercel Deployment
 Protection; Kotlin använder dem inte för autentisering eller behörighet.
 Ett 401-svar från plattformen raderar inte Supabase-sessionen; det kräver
 Kotlin-API:ts uttryckliga JSON-svar om ogiltig session.
+Fel vid hämtning av JWT-signeringens publika nycklar ger 503/no-store och
+bevarar appsessionen; signatur- och claimfel ger fortsatt 401. Ingen begäran
+släpps igenom när nycklar inte kan verifieras. Auth-diagnostik loggar bara fasta
+felkategorier för TLS, timeout, HTTP/transport, token/claims och saknad Bearer,
+aldrig tokens, claims, URL:er, exceptiontext eller stacktraces.
 Klientens sessionsdata är ingen behörighetskälla;
 Kotlin verifierar JWT, aktuell Auth-session, lokala spärrar och personåtkomst.
 Auth-user_metadata används inte för behörighet. Runtimekonfigurationen är
