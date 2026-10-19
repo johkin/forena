@@ -28,6 +28,10 @@ Slutkontroller godkända: Java 25 Maven verify med 41 tester, 1 142 Vitest-teste
 båda apparnas typkontroll, lint, Next-produktionsbygge, nio releasegrindtester
 och Actionlint. Health-regressionen stoppar vid nekad nyckelhämtning och
 återhämtar sig utan att exponera komponenter, URL:er eller exceptiontext.
+Även paketerad JAR är verifierad med två migreringsstarter, runtime utan
+ägarkonto, lokal JWKS-server, nekad/återställd Auth-health och Bearer-krav.
+Det äldre startprovet använde en adress utan nyckelserver och uppdaterades
+när CI korrekt nekade den nya health-kontrollen. OpenAPI-/typkontraktet passerar.
 
 ## Fortsatt utloggning: verifieringsfel och säker auth-diagnostik
 
