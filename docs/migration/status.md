@@ -3,7 +3,7 @@
 Uppdaterad 2026-10-19. Inventeringsbas: `c379a96719490bc4edbfcb0a4ee7a1947684ddce`.
 Planens uppgifter finns i [uppgiftsindex](tasks/README.md).
 
-## Första verksamhets-API:t: lokal implementation, ren start
+## Första verksamhets-API:t: för granskning, ren start
 
 Leverans på `feat/participation-api`, från main `1b60bb8b5978041f469f024f100432c72dbd44d4`.
 [ADR-010](decisions.md) fastställer användarens beslut att inte importera gamla
@@ -19,7 +19,7 @@ Se [första flödet](first-flow.md) och [körinstruktionerna](../../backend/api/
 
 Lokal verifiering för leveransen:
 
-- Maven `verify`: 18 tester, inga fel eller överhoppade. Riktiga ES256/RS256-
+- API Maven `verify`: 19 tester, inga fel eller överhoppade. Riktiga ES256/RS256-
   signaturer och lokal JWKS-server, HTTP, PostgreSQL 17.6/Testcontainers med
   begränsad runtime och schemaägare, RLS, familje-/klubbgränser, rollback,
   samtidiga skrivare/inställning, historik och Modulith-struktur.
@@ -30,6 +30,11 @@ Lokal verifiering för leveransen:
 - Befintliga Vitest: 131 filer, 1 065 tester godkända. Typkontroll, lint och
   produktionsbygge godkända lokalt. Bygget krävde egna lokala dependencies och
   subprocessrättigheter; tidigare miljöfel är lösta, inga kontroller avstängda.
+- Springdoc 3.1.1 genererar OpenAPI via riktig bearer-skyddad HTTP från
+  REST-controllers och typade DTO:er; required/nullable, enumvärden och typade
+  felkontrakt verifieras. Export och TS-generation jämförs med Git i CI.
+- Teknikprovets controllers har också data classes för status och fel med
+  bevarade JSON-fält. Maven `verify`: 45 tester, inklusive HTTP-kontraktsprov.
 - OpenAPI-generation utan diff och CI-jobbens beroenden verifierade.
 
 PR-förberedelse: API-konfigurationen har bytts från `application.properties`
@@ -37,7 +42,10 @@ till `application.yaml` med samtliga 24 värden bevarade. Ren Maven-verifiering
 och prov av den paketerade appen körs även med YAML. Automatiska Vercel-byggen
 är avstängda för just `feat/participation-api` i webb- och provkonfigurationen
 på grund av lagringsvarningen; GitHub CI behåller samtliga obligatoriska jobb.
-CI-status för den publicerade committen redovisas i PR:n.
+[PR #112](https://github.com/johkin/forena/pull/112) innehåller också springdoc-
+integrationen och typade svar för alla egna REST-controllers. Okända bodyfält,
+fel kommentartyper och numeriska enumvärden nekas; utelämnad kommentar och null
+behåller olika betydelser. CI-status för den publicerade committen redovisas i PR:n.
 
 Inte aktiverade: Vercel-deploy, verklig Supabase-inloggning,
 passkey/OAuth/MCP, browser → Next-adapter eller full signalworker. Gamla

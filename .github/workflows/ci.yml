@@ -144,7 +144,7 @@ jobs:
           cache: npm
           cache-dependency-path: backend/api/contract/package-lock.json
 
-      - name: Verify reproducible API types
+      - name: Verify Spring-generated OpenAPI and TypeScript types
         run: |
           npm ci --prefix backend/api/contract --ignore-scripts
           npm run check --prefix backend/api/contract
@@ -155,6 +155,7 @@ jobs:
         with:
           name: kotlin-api-reports
           path: |
+            backend/api/target/openapi.json
             backend/api/target/surefire-reports/
             backend/api/target/spring-modulith-docs/
 

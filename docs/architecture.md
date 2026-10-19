@@ -9,7 +9,10 @@ Det första separata verksamhets-API:t finns nu i `backend/api`: familjens
 kallelseläsning och svar med JDBC, Liquibase och PostgreSQL-RLS. Det använder
 ett nytt tomt `forena`-schema enligt ADR-010, utan gamla projektets testdata.
 Nuvarande Next.js-app är ännu inte omkopplad. Se [API-underlaget](../backend/api/README.md)
-för säkerhetsgränser, verifiering och återstående aktivering.
+för säkerhetsgränser, verifiering och återstående aktivering. REST-controllers
+använder typade Kotlin data classes för svar. OpenAPI genereras från controller-
+signaturer och DTO-annoteringar med springdoc, och TypeScript-typer härleds från
+exporten i CI; kontraktsspecen underhålls inte separat för hand.
 
 Förena byggs som en multi-tenant-applikation där varje skrivning går genom ett
 validerat applikationskommando. Gränssnitt och AI-assistent använder samma

@@ -37,6 +37,23 @@ class LifecycleTest : DatabaseTest() {
     private fun payload(id: UUID, delay: Int = 0, mode: String = "NORMAL") = """{"id":"$id","delayMs":$delay,"mode":"$mode"}"""
 
     @Test
+    fun `typed status and error responses preserve the existing JSON contract`() {
+        val id = UUID.randomUUID()
+        assertThat(request("/api/probes", payload(id)).statusCode()).isEqualTo(202)
+        val response = request("/api/probes/$id")
+        assertThat(response.statusCode()).isEqualTo(200)
+        val status = json.readTree(response.body())
+        assertThat(status.propertyNames()).containsExactlyInAnyOrder("id", "requestedAt", "mode", "completedAt", "completedBy", "attempts")
+        assertThat(status.get("id").asString()).isEqualTo(id.toString())
+        assertThat(status.get("mode").asString()).isEqualTo("NORMAL")
+        assertThat(java.time.Instant.parse(status.get("requestedAt").asString())).isNotNull()
+        assertThat(status.get("attempts").asLong()).isGreaterThanOrEqualTo(0)
+        val invalid = request("/api/probes", payload(UUID.randomUUID(), -1))
+        assertThat(invalid.statusCode()).isEqualTo(400)
+        assertThat(json.readTree(invalid.body()).propertyNames()).containsExactly("error")
+    }
+
+    @Test
     fun `a delayed listener commits after the full HTTP response without another HTTP request`() {
         val id = UUID.randomUUID()
         val response = request("/api/probes", payload(id, 1500))

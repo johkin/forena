@@ -1,4 +1,11 @@
 spring:
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+      fail-on-ignored-properties: true
+    datatype:
+      enum:
+        fail-on-numbers-for-enums: true
   application:
     name: forena-api
   lifecycle:
@@ -45,3 +52,9 @@ management:
   endpoint:
     health:
       show-details: never
+
+springdoc:
+  packages-to-scan: se.forena.api.participation
+  paths-to-match: /api/**
+  writer-with-order-by-keys: true
+  override-with-generic-response: false

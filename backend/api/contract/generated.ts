@@ -11,7 +11,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Only the account’s self/active guardian links. Future invitations return an empty list. Responses use Cache-Control: no-store. */
+        /** @description Only own people and active guardian links. Future invitations return an empty list. Cache-Control: no-store. */
         get: operations["getMyInvitations"];
         put?: never;
         post?: never;
@@ -29,7 +29,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** @description Omitted comment is preserved; null/blank clears it. Trimmed comments are truncated to 500 Unicode code points. Pending clears comment and response time. Identical state creates no revision or side effects. Concurrent commands serialize in database lock acquisition order; a delayed different answer may replace an earlier answer. No optimistic revision precondition in v0.1. */
+        /** @description Identical state creates no revision. Concurrent commands serialize in database lock order; a delayed different answer can replace an earlier one. Cache-Control: no-store. */
         put: operations["respondToInvitation"];
         post?: never;
         delete?: never;
@@ -42,23 +42,30 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        ResponseChange: {
-            /** @enum {string} */
-            response: "pending" | "accepted" | "declined";
-            comment?: string | null;
+        ApiError: {
+            error: string;
         };
         FamilyInvitation: {
             /** Format: uuid */
             id: string;
+            name: string;
             /** Format: uuid */
             person_id: string;
             /** @enum {string} */
             response: "pending" | "accepted" | "declined";
             response_comment: string | null;
-            name: string;
         };
         FamilyInvitations: {
             invitations: components["schemas"]["FamilyInvitation"][];
+        };
+        InvitationResponseResult: {
+            ok: boolean;
+        };
+        RespondToInvitationRequest: {
+            /** @description Omitted preserves the comment; null or blank clears it. Trimmed and truncated to 500 Unicode code points. Pending always clears it. */
+            comment?: string | null;
+            /** @enum {string} */
+            response: "pending" | "accepted" | "declined";
         };
     };
     responses: never;
@@ -89,26 +96,32 @@ export interface operations {
                     "application/json": components["schemas"]["FamilyInvitations"];
                 };
             };
-            /** @description Invalid input or UUID */
+            /** @description Invalid activity UUID */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
             };
-            /** @description Missing, invalid or locally revoked session */
+            /** @description Missing, invalid or locally inactive web session */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
             };
             /** @description Activity unavailable to family */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
             };
         };
     };
@@ -123,49 +136,54 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ResponseChange"];
+                "application/json": components["schemas"]["RespondToInvitationRequest"];
             };
         };
         responses: {
-            /** @description Committed, or unchanged state */
+            /** @description Committed or unchanged state */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** @constant */
-                        ok: true;
-                    };
+                    "application/json": components["schemas"]["InvitationResponseResult"];
                 };
             };
-            /** @description Invalid input or UUID */
+            /** @description Invalid body or invitation UUID */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
             };
-            /** @description Missing, invalid or locally revoked session */
+            /** @description Missing, invalid or locally inactive web session */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
             };
             /** @description Invitation unavailable to family */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
             };
             /** @description Activity cancelled, ended or invitation not sent */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
             };
         };
     };

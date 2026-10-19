@@ -34,8 +34,22 @@ runtime-roll utan ägar-/BYPASSRLS-rättigheter. Testlösenorden finns bara unde
 nya identitetsschemat, återkörning, FK/constraints, rollback och samtidiga skrivare.
 
 [OpenAPI](contract/openapi.json) och [genererade TypeScript-typer](contract/generated.ts)
-versionshanteras tillsammans. `npm run generate --prefix backend/api/contract`
-uppdaterar typerna med låst generator. Frontend använder dem ännu inte.
+genereras från REST-controllers och typade DTO:er med springdoc 3.1.1.
+`/v3/api-docs` kräver samma verifierade bearer-token som API:t. Swagger UI ingår
+inte. Beskrivningar av felstatusar, behörighet och kommentarsregler finns i
+controller-/DTO-annoteringarna; specen redigeras inte manuellt.
+
+Maven `verify` hämtar specen från den riktiga HTTP-servern i integrationstestet
+med signerad token och skriver `target/openapi.json`. Därefter kör
+`npm run generate --prefix backend/api/contract` enbart stabil nyckelsortering
+av exporten och genererar typer med låst `openapi-typescript`. Både spec och
+typer versionshanteras; `npm run check` kontrollerar båda mot Git. Kör därför
+Maven-verifieringen före generationen. Frontend använder typerna ännu inte.
+
+Alla egna REST-controllers i API:t och teknikprovet returnerar Kotlin data classes,
+även för explicita felsvar. API:ts request är också typad: en separat intern
+närvaroflagga skiljer utelämnad kommentar från explicit null utan att exponeras
+i JSON eller OpenAPI. Okända/ignorerade fält och numeriska enumvärden nekas.
 
 ## Databas och körning
 

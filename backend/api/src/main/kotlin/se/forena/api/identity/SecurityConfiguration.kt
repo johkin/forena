@@ -24,6 +24,10 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.http.client.SimpleClientHttpRequestFactory
 import org.springframework.web.client.RestTemplate
+import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint
+import org.springframework.security.web.AuthenticationEntryPoint
+import se.forena.api.http.ApiError
+import tools.jackson.databind.json.JsonMapper
 
 @Configuration
 @ConditionalOnWebApplication
@@ -56,15 +60,23 @@ class SecurityConfiguration {
     }
 
     @Bean
-    fun security(http: HttpSecurity): SecurityFilterChain = http
+    fun security(http: HttpSecurity, json: JsonMapper): SecurityFilterChain {
+        val unauthorized = AuthenticationEntryPoint { request, response, exception ->
+            BearerTokenAuthenticationEntryPoint().commence(request, response, exception)
+            response.contentType = "application/json"
+            response.setHeader("Cache-Control", "no-store")
+            json.writeValue(response.outputStream, ApiError("Inloggning krävs."))
+        }
+        return http
         .csrf { it.disable() }
         .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
         .authorizeHttpRequests {
             it.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                 .requestMatchers("/actuator/health").permitAll().anyRequest().authenticated()
         }
-        .oauth2ResourceServer { it.jwt {} }
+        .oauth2ResourceServer { it.jwt {}.authenticationEntryPoint(unauthorized) }
         .build()
+    }
 }
 
 /** Only verified Supabase web sessions. Claims never grant family or organizational access. */

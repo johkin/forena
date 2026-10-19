@@ -17,6 +17,7 @@
     <kotlin.version>2.4.20</kotlin.version>
     <kotlin.compiler.daemon>false</kotlin.compiler.daemon>
     <spring-modulith.version>2.1.0</spring-modulith.version>
+    <springdoc.version>3.1.1</springdoc.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -30,6 +31,11 @@
     </dependencies>
   </dependencyManagement>
   <dependencies>
+    <dependency>
+      <groupId>org.springdoc</groupId>
+      <artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
+      <version>${springdoc.version}</version>
+    </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-webmvc</artifactId>

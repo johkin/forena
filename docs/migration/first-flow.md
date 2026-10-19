@@ -32,7 +32,9 @@ förblir leverantörsägda. Ingen radering av gamla projektet ingår.
 
 [API-README](../../backend/api/README.md) beskriver körning, bootstrap, exakt
 Auth-policy och gränser. [OpenAPI](../../backend/api/contract/openapi.json) och
-[genererade TS-typer](../../backend/api/contract/generated.ts) är versionshanterade.
+[genererade TS-typer](../../backend/api/contract/generated.ts) är versionshanterade. Specen genereras med springdoc 3.1.1 från REST-controllers
+med typade request-/svarsklasser. Maven-verifieringen exporterar den via den
+bearer-skyddade `/v3/api-docs`; CI genererar och jämför både spec och TS-typer.
 Ingen trigger eller Modulith-producent skriver samma händelse två gånger.
 Signalversionen är endast beständig invalidering; ingen signalworker är ännu inkopplad.
 

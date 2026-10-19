@@ -24,6 +24,8 @@ import java.time.Instant
 import java.util.Date
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
+import java.nio.file.Files
+import java.nio.file.Path
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.awaitility.Awaitility.await
@@ -141,7 +143,9 @@ class ApiTest {
     }
 
     @Test fun `answer change reset reload and comments preserve time and atomic history`() {
-        assertThat(respond("""{"response":"accepted","comment":"  Ses snart  "}""").statusCode()).isEqualTo(200)
+        val accepted = respond("""{"response":"accepted","comment":"  Ses snart  "}""")
+        assertThat(accepted.statusCode()).isEqualTo(200)
+        assertThat(accepted.body()).isEqualTo("{\"ok\":true}")
         val time = row()["responded_at"]
         assertThat(row()["response_comment"]).isEqualTo("Ses snart")
         assertThat(respond("""{"response":"accepted","comment":"Ny text"}""").statusCode()).isEqualTo(200)
@@ -171,6 +175,8 @@ class ApiTest {
 
     @Test fun `invalid bodies and forged identity do not mutate anything`() {
         for (body in listOf("null", "[]", "{}", "{", """{"response":"yes"}""", """{"response":"accepted","comment":9}""",
+            """{"response":null}""", """{"response":0}""", """{"response":"ACCEPTED"}""",
+            """{"response":"accepted","commentProvided":true}""", """{"response":"accepted","comment":false}""",
             """{"response":"accepted","actor_id":"$outsider"}""")) {
             assertThat(respond(body).statusCode()).describedAs(body).isEqualTo(400)
         }
@@ -344,5 +350,36 @@ class ApiTest {
     @Test fun `unicode comment truncation does not split surrogate pairs`() {
         assertThat(respond("""{"response":"accepted","comment":"${"😀".repeat(501)}"}""").statusCode()).isEqualTo(200)
         assertThat(row()["response_comment"]).isEqualTo("😀".repeat(500))
+    }
+
+    @Test fun `springdoc exports the implemented typed authenticated API for client generation`() {
+        assertThat(request("/v3/api-docs", bearer=null).statusCode()).isEqualTo(401)
+        val result = request("/v3/api-docs")
+        assertThat(result.statusCode()).isEqualTo(200)
+        val document = json.readTree(result.body())
+        assertThat(document.get("paths").propertyNames()).containsExactlyInAnyOrder(
+            "/api/activities/{activityId}/my-invitations", "/api/invitations/{invitationId}/respond")
+        val update = document.get("paths").get("/api/invitations/{invitationId}/respond").get("put")
+        assertThat(update.get("requestBody").get("content").get("application/json").get("schema").get("\$ref").asString())
+            .isEqualTo("#/components/schemas/RespondToInvitationRequest")
+        assertThat(update.get("responses").get("200").get("content").get("application/json").get("schema").get("\$ref").asString())
+            .isEqualTo("#/components/schemas/InvitationResponseResult")
+        val schemas = document.get("components").get("schemas")
+        assertThat(schemas.has("ApiError")).isTrue()
+        assertThat(schemas.get("RespondToInvitationRequest").get("properties").propertyNames())
+            .containsExactlyInAnyOrder("response", "comment")
+        assertThat(document.toString()).doesNotContain("session_id", "Jwt", issuer)
+        assertThat(schemas.get("RespondToInvitationRequest").get("required").toString()).contains("response")
+        assertThat(schemas.get("FamilyInvitation").get("required").toString()).contains("response_comment")
+        assertThat(schemas.get("FamilyInvitation").get("properties").get("response_comment").get("type").toString()).contains("null")
+        assertThat(schemas.get("RespondToInvitationRequest").get("properties").get("response").get("enum").toString())
+            .contains("pending", "accepted", "declined")
+        for (code in listOf("400", "401", "403", "409")) {
+            assertThat(update.get("responses").get(code).get("content").get("application/json").get("schema").get("\$ref").asString())
+                .isEqualTo("#/components/schemas/ApiError")
+        }
+        assertThat(json.readTree(respond("{}", bearer="invalid").body()).get("error").asString()).isEqualTo("Inloggning krävs.")
+        assertThat(json.readTree(respond("{}").body()).get("error").asString()).isEqualTo("Ogiltigt kallelsesvar.")
+        Files.writeString(Path.of("target/openapi.json"), result.body())
     }
 }

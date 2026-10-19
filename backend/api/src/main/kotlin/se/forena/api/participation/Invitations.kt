@@ -6,10 +6,16 @@ import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Service
 import se.forena.api.identity.Actor
 import se.forena.api.identity.ActorTransactions
+import io.swagger.v3.oas.annotations.media.Schema
 
-data class FamilyInvitation(val id: UUID, val person_id: UUID, val response: String,
-                            val response_comment: String?, val name: String)
-data class FamilyInvitations(val invitations: List<FamilyInvitation>)
+data class FamilyInvitation(
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val id: UUID,
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val person_id: UUID,
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val response: InvitationResponse,
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED, types = ["string", "null"]) val response_comment: String?,
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val name: String
+)
+data class FamilyInvitations(@get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val invitations: List<FamilyInvitation>)
 data class ResponseChange(val response: String, val commentProvided: Boolean, val comment: String?)
 class InvitationProblem(val status: Int, override val message: String) : RuntimeException(message)
 
@@ -30,7 +36,7 @@ class Invitations(private val transactions: ActorTransactions, private val jdbc:
             join forena.person_access access on access.person_id=i.person_id and access.organization_id=i.organization_id
             where i.activity_id=? and access.subject=? and access.active order by p.display_name,i.id
         """.trimIndent(), { rs, _ -> FamilyInvitation(rs.getObject("id", UUID::class.java),
-            rs.getObject("person_id", UUID::class.java), rs.getString("response"),
+            rs.getObject("person_id", UUID::class.java), InvitationResponse.fromDatabase(rs.getString("response")),
             rs.getString("response_comment"), rs.getString("display_name")) }, activity, actor.subject))
     }
 

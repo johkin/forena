@@ -6,14 +6,22 @@ import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import se.forena.api.identity.InactiveSession
 import se.forena.api.participation.InvitationProblem
+import org.springframework.http.converter.HttpMessageNotReadableException
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
+
+import se.forena.api.http.ApiError
 
 @RestControllerAdvice
 class ApiErrors {
     @ExceptionHandler(InvitationProblem::class)
-    fun invitation(problem: InvitationProblem): ResponseEntity<Map<String, String>> =
-        ResponseEntity.status(problem.status).cacheControl(CacheControl.noStore()).body(mapOf("error" to problem.message))
+    fun invitation(problem: InvitationProblem): ResponseEntity<ApiError> =
+        ResponseEntity.status(problem.status).cacheControl(CacheControl.noStore()).body(ApiError(problem.message))
 
     @ExceptionHandler(InactiveSession::class)
-    fun session(): ResponseEntity<Map<String, String>> = ResponseEntity.status(401)
-        .cacheControl(CacheControl.noStore()).body(mapOf("error" to "Sessionen är inte aktiv."))
+    fun session(): ResponseEntity<ApiError> = ResponseEntity.status(401)
+        .cacheControl(CacheControl.noStore()).body(ApiError("Sessionen är inte aktiv."))
+
+    @ExceptionHandler(HttpMessageNotReadableException::class, MethodArgumentTypeMismatchException::class)
+    fun invalid(): ResponseEntity<ApiError> = ResponseEntity.badRequest()
+        .cacheControl(CacheControl.noStore()).body(ApiError("Ogiltigt kallelsesvar."))
 }

@@ -2,8 +2,8 @@
   "name": "forena-api-contract",
   "private": true,
   "scripts": {
-    "generate": "openapi-typescript openapi.json -o generated.ts",
-    "check": "npm run generate && git diff --exit-code -- generated.ts"
+    "generate": "node export.mjs && openapi-typescript openapi.json -o generated.ts",
+    "check": "npm run generate && git diff --exit-code -- openapi.json generated.ts"
   },
   "devDependencies": {
     "openapi-typescript": "7.10.1"
