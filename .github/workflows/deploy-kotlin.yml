@@ -99,6 +99,9 @@ jobs:
           cp -a .next/static deploy/frontend/app/.next/static
           cp -a public deploy/frontend/public
 
+      - name: Verify frontend TLS trust through the release entrypoint
+        run: python3 scripts/deploy/smoke-frontend-tls.py
+
       - name: Build service images and stage production without moving domains
         id: stage
         env:

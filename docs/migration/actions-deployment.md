@@ -87,6 +87,10 @@ befintliga adapter med verifierad användartoken. Ingen automatisk legacy-fallba
 Vercel injicerar projektvariabler i tjänsternas startmiljö. Startskripten använder
 `env -i` med uttryckliga tillåtna variabler: Next-processen får inga databas- eller
 admincredentials; JVM får bara det begränsade runtime-kontot och Auth-konfigurationen.
+Next aktiverar Node 24:s system-CA och bevarar runtime-värdet för
+`NODE_EXTRA_CA_CERTS` (systemets CA-bundle om inget värde finns), så en privat
+Services-certifikatkedja kan verifieras även efter `env -i`. Godtyckliga
+`NODE_OPTIONS` och `NODE_TLS_REJECT_UNAUTHORIZED` skickas inte vidare.
 Projektvariabler som `SPRING_APPLICATION_JSON`, `JAVA_TOOL_OPTIONS`, migreringsläge,
 probetoken och integrationssecrets skickas inte vidare till applikationsprocesserna.
 Projektets äldre secrets kan fortsatt finnas i containerns ursprungliga startmiljö;
@@ -139,3 +143,27 @@ Releasekontrollen fick 503. Runtime-loggen visar `migration_health_failed` med
 promotion kördes. Databaslösenord, DNS, backendstart eller TLS är inte fastställd
 orsak. Uppföljningen tillför fasta transportfelkoder för att nästa deployment
 ska kunna skilja dem åt; den är en diagnostikändring, inte en verifierad lösning.
+
+
+## TLS-orsak efter PR #120
+
+Deployment `dpl_HqcUKtWWcxqLwtpA2eG8DC5LL6CT` från `4ad1cd1` ger vid ett nytt
+health-anrop transportfelet `SELF_SIGNED_CERT_IN_CHAIN` i frontend. Detta är
+Node-processens certifikatförtroende vid den interna anslutningen, före ett
+HTTP-svar. Startskriptet tog bort runtime-miljön med `env -i`, inklusive eventuell
+extra CA-konfiguration, medan Node använde sina inbyggda rotcertifikat.
+Korrigeringen aktiverar system-CA och låter runtime-sökvägen för extra CA följa
+med. TLS-kedja och värdnamn verifieras fortfarande. Backendens databasanslutning
+och lösenord är ännu inte bevisat fungerande i molnet; det kräver en ny grön
+health-kontroll efter att TLS-förbindelsen fungerar.
+
+
+Lokalt prov använder byggd Next standalone och det verkliga startskriptet mot
+en tillfällig HTTPS-server med en syntetisk CA: obetrodd kedja ger 503, betrodd
+CA ger 200 med exakt byggversion och fel värdnamn ger 503. Även ärvda försök att
+stänga av TLS-verifieringen filtreras bort. Provet körs i releasejobbet före
+containerbygge/publicering och kan upprepas efter ett standalone-bygge:
+
+```sh
+python3 scripts/deploy/smoke-frontend-tls.py
+```

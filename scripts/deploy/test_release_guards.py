@@ -28,6 +28,7 @@ class ReleaseGuards(unittest.TestCase):
                                SUPABASE_SECRET_KEY="poison-admin", FORENA_TEST_AUTH_SECRET_KEY="poison-test",
                                FORENA_MIGRATION_PASSWORD="poison-owner", FORENA_MIGRATE="true",
                                JAVA_TOOL_OPTIONS="poison-java", SPRING_APPLICATION_JSON="poison-spring",
+                               NODE_OPTIONS="poison-node", NODE_TLS_REJECT_UNAUTHORIZED="0", NODE_EXTRA_CA_CERTS="",
                                FORENA_PARTICIPATION_BACKEND="legacy", VERCEL_TOKEN="poison-deploy")
             environment.update(overrides)
             return subprocess.run(["sh", str(ROOT / script)], env=environment, text=True, capture_output=True)
@@ -41,6 +42,14 @@ class ReleaseGuards(unittest.TestCase):
         self.assertNotIn("poison", result.stdout)
         self.assertNotIn("synthetic-runtime", result.stdout)
         self.assertIn("FORENA_PARTICIPATION_BACKEND=kotlin", args)
+        self.assertIn("NODE_USE_SYSTEM_CA=1", args)
+        self.assertIn("NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt", args)
+        self.assertFalse(any(value.startswith("NODE_TLS_REJECT_UNAUTHORIZED=") for value in args))
+
+    def test_frontend_preserves_runtime_extra_ca_path(self):
+        result = self.run_entrypoint("deploy/frontend/entrypoint.sh", NODE_EXTRA_CA_CERTS="/run/platform/ca.pem")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("NODE_EXTRA_CA_CERTS=/run/platform/ca.pem", json.loads(result.stdout))
 
     def test_api_gets_only_runtime_credentials_and_cannot_enable_migration(self):
         result = self.run_entrypoint("backend/api/scripts/container-entrypoint.sh")

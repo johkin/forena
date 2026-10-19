@@ -2,6 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "git": {
     "deploymentEnabled": {
+      "fix/kotlin-service-transport": false,
       "fix/kotlin-runtime-health": false,
       "chore/java25": false,
       "feat/participation-api": false,
