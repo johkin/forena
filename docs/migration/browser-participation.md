@@ -25,6 +25,9 @@ fragment: HTTPS, eller HTTP på loopback för avskilda testprocesser.
 `SITE_URL` anger browserns kanoniska origin och används för Origin-kontroll
 vid skrivning, även när Next konstruerar en annan intern request-URL.
 `FORENA_KOTLIN_TEST_ACTIVITY_ID` kommer från testseeden och öppnar testsidan.
+I Services-deploy används i stället en serverinjicerad `FORENA_KOTLIN_SERVICE_URL`
+som intern bas-URL med bevarad routingprefix. Den väljs före direkt-origin och
+kan använda intern HTTP; en ogiltig binding får ingen origin- eller legacy-fallback.
 Sidan ger 404 när läget är avstängt eller dess API-/ID-konfiguration är ogiltig.
 
 Adaptern skapar Supabase-klienten per request, verifierar aktuell användare

@@ -1,8 +1,12 @@
 #!/bin/sh
 set -eu
 # This release target is the new isolated project, never the legacy database.
-test "${FORENA_DB_USERNAME:-}" = forena_api_runtime.ckzrtxqjskosqzoitymc
-test "${FORENA_JDBC_URL:-}" = 'jdbc:postgresql://aws-1-eu-central-1.pooler.supabase.com:5432/postgres?sslmode=verify-full&sslrootcert=/app/supabase-ca.crt'
+test "${FORENA_DB_USERNAME:-}" = forena_api_runtime.ckzrtxqjskosqzoitymc || {
+  echo 'forena_api_startup_failed: invalid runtime username' >&2; exit 1;
+}
+test "${FORENA_JDBC_URL:-}" = 'jdbc:postgresql://aws-1-eu-central-1.pooler.supabase.com:5432/postgres?sslmode=verify-full&sslrootcert=/app/supabase-ca.crt' || {
+  echo 'forena_api_startup_failed: invalid JDBC configuration' >&2; exit 1;
+}
 # Migration is a separate release operation. Project-level Spring overrides,
 # owner/admin credentials and probe settings never reach the API process.
 exec env -i \

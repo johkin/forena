@@ -121,7 +121,7 @@ jobs:
             backend/target/surefire-reports/
             backend/target/spring-modulith-docs/
 
-  kotlin-api:
+  backend:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -156,7 +156,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: kotlin-api-reports
+          name: backend-reports
           path: |
             backend/api/target/openapi.json
             backend/api/target/surefire-reports/
@@ -164,7 +164,7 @@ jobs:
 
   # Keep the existing required check; every parallel job must succeed.
   verify:
-    needs: [application, database, kotlin-probe, kotlin-api]
+    needs: [application, database, kotlin-probe, backend]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -174,9 +174,9 @@ jobs:
           APPLICATION_RESULT: ${{ needs.application.result }}
           DATABASE_RESULT: ${{ needs.database.result }}
           KOTLIN_RESULT: ${{ needs.kotlin-probe.result }}
-          API_RESULT: ${{ needs.kotlin-api.result }}
+          BACKEND_RESULT: ${{ needs.backend.result }}
         run: |
           test "$APPLICATION_RESULT" = success
           test "$DATABASE_RESULT" = success
           test "$KOTLIN_RESULT" = success
-          test "$API_RESULT" = success
+          test "$BACKEND_RESULT" = success

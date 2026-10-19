@@ -20,10 +20,32 @@ export function kotlinParticipationSelected() {
     && process.env.FORENA_PARTICIPATION_BACKEND !== "legacy";
 }
 
-export function kotlinParticipationOrigin() {
+function kotlinParticipationBaseUrl() {
   if (process.env.FORENA_PARTICIPATION_BACKEND !== "kotlin"
     || process.env.NEXT_PUBLIC_SUPABASE_URL !== targetAuthUrl) throw new Error("Invalid target configuration");
-  return verifiedOrigin(process.env.FORENA_KOTLIN_API_URL ?? "");
+  const binding = process.env.FORENA_KOTLIN_SERVICE_URL;
+  if (binding !== undefined) {
+    // Vercel owns this server-only binding. It is a base URL, which can use
+    // internal HTTP and a routing prefix; it is not a public HTTPS origin.
+    const base = new URL(binding);
+    if (!["http:", "https:"].includes(base.protocol) || base.username || base.password || base.hash) {
+      throw new Error("Invalid service binding");
+    }
+    if (!base.pathname.endsWith("/")) base.pathname += "/";
+    return base;
+  }
+  return new URL(verifiedOrigin(process.env.FORENA_KOTLIN_API_URL ?? "") + "/");
+}
+
+function endpoint(base: URL, path: string) {
+  if (!path.startsWith("/") || path.startsWith("//")) throw new Error("Invalid API path");
+  const url = new URL(path.slice(1), base);
+  url.search = base.search;
+  return url.href;
+}
+
+export function kotlinParticipationEndpoint(path: string) {
+  return endpoint(kotlinParticipationBaseUrl(), path);
 }
 
 function verifiedOrigin(value: string) {
@@ -36,7 +58,7 @@ function verifiedOrigin(value: string) {
 }
 
 export function kotlinTestActivity() {
-  kotlinParticipationOrigin();
+  kotlinParticipationBaseUrl();
   return uuid.parse(process.env.FORENA_KOTLIN_TEST_ACTIVITY_ID);
 }
 
@@ -52,7 +74,7 @@ function failure(status: number) {
 /** One attempt, no redirect, no fallback, no cookies/admin key forwarded to Kotlin. */
 export async function forwardKotlinParticipation(request: Request, kind: "list" | "respond", id: string) {
   try {
-    const origin = kotlinParticipationOrigin();
+    const base = kotlinParticipationBaseUrl();
     if (!uuid.safeParse(id).success) return failure(400);
     // Next may construct an internal request URL behind a proxy. Compare against
     // the configured public site, never a caller-supplied forwarded-host header.
@@ -73,7 +95,7 @@ export async function forwardKotlinParticipation(request: Request, kind: "list" 
       body = parsed.data;
     }
     const path = kind === "list" ? `/api/activities/${id}/my-invitations` : `/api/invitations/${id}/respond`;
-    const upstream = await fetch(origin + path, {
+    const upstream = await fetch(endpoint(base, path), {
       method: kind === "list" ? "GET" : "PUT", cache: "no-store", redirect: "error",
       signal: AbortSignal.timeout(10_000),
       headers: { Authorization: `Bearer ${data.session.access_token}`, "Content-Type": "application/json" },

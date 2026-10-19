@@ -5,6 +5,37 @@ Planens uppgifter finns i [uppgiftsindex](tasks/README.md).
 
 ## Actions-deploy för parallell Kotlin-sajt: implementation på branch
 
+Uppföljning efter merge av PR #117: main-CI `39262001035` föll i det befintliga
+WhatsApp-pgTAP-testet, medan frontend- och båda Kotlin-jobben passerade.
+Omkörning av enbart misslyckade jobb på samma `b3ff6ef` blev grön och startade
+deployflödena. Orsaken är testernas transaktionsfasta `now()` som kan hamna före
+parkopplingsbevisens `clock_timestamp()` efter en sekundgräns. Lokalt PostgreSQL-
+prov med avsiktlig fördröjning återskapar skillnaden. Rättningen använder aktuella
+händelsetider i de två WhatsApp-testfilerna och tvingar en sekundgräns för att
+fånga regressionen. Databasens produktionsfunktioner, migrationer och CI-grindar
+ändras inte. Teständringen på `7de0b05` har grön PR-CI; senare adapterändringar
+behöver verifieras på sin egen revision.
+
+Första riktiga Kotlin-deployen, `39263714818` på `b3ff6ef`, byggde och laddade
+upp båda containerbilderna och skapade `dpl_9u3qpQh6Cipge9yF2KVFVa3f5cVU`.
+Hälsokontrollen gav därefter generiskt 503 och ingen explicit promotion kördes.
+Runtime-loggarna gav inget felsteg, så exakt 503-orsak är ännu inte fastställd.
+Den kanoniska adressen `forena-kotlin.vercel.app` pekar fortfarande på tidigare
+deployment; Vercels genererade team-alias pekar redan på stagingdeploymenten.
+
+Uppföljningen skiljer intern `FORENA_KOTLIN_SERVICE_URL` från direkt test-origin.
+Intern HTTP och eventuella routingprefix/sökparametrar bevaras enligt bindingens
+bas-URL, utan origin-/legacy-fallback. Hälsokontrollen loggar fasta felsteg och
+HTTP-status utan URL, tokens, exceptiontext eller felkropp. Startskriptets två
+konfigurationsgrindar får också säkra felmeddelanden. Lokalt: 1 112 Vitest-tester,
+typecheck, lint, standalone-bygge och sex releasegrindtester godkända. Paketerad
+frontend/startskript har verifierats mot en riktig intern HTTP-stub med prefix
+och sökparameter: login/health 200, exakt byggversion och inga DB-/adminvariabler
+i webbprocessen. Ny molnverifiering kräver nästa granskade main-release.
+Full lokal Supabase-reset/pgTAP kunde inte köras: standardregistret blockeras
+av nätpolicyn och spegelbildens uppackning gav `no space left on device` i
+Docker-miljön. Lokalt PostgreSQL-tidsprov är godkänt; inga molndatabaser ändrades.
+
 Branch `ci/kotlin-vercel-deploy`, från main `e0953a3` efter PR #116.
 Användaren har kopplat bort Vercels Git-integration för den nya sajten och
 beställt deploy av frontend/backend genom GitHub Actions.
