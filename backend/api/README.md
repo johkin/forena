@@ -36,15 +36,27 @@ native-image är inte verifierad.
 Se [Spring Boots native-guide](https://docs.spring.io/spring-boot/how-to/native-image/developing-your-first-application.html)
 och [JDBC/AOT-konfiguration](https://docs.spring.io/spring-boot/reference/data/sql.html).
 
+CI-jobbet `native-image` kör samma buildpack-kommando efter `backend`-jobbet.
+Det startar den byggda containern mot en tillfällig lokal PostgreSQL och en
+syntetisk JWKS-server, kontrollerar DB/Auth-health, avbrott/återhämtning,
+saknad Bearer och avstängning. Migreringarna körs med JVM-JAR:en två gånger.
+Startprovet kontrollerar också att runtime får sin konfiguration vid start
+och saknar migreringscredentials. Det är inte ett fullständigt inloggat
+verksamhets- eller HTTPS-prov av native-runtime.
+Efter godkänt startprov sparas imagen som Actions-artifakten
+`forena-api-native-<sha>` i tre dagar. Den kan hämtas och laddas med
+`docker load`; `verify` kräver att native-jobbet lyckas.
+
 Det befintliga releaseflödet paketerar fortfarande JAR och JDK i Dockerfile.
 Lokalt prov 2026-10-19: `-Pnative spring-boot:build-image` passerade AOT utan
 Auth-/databascredentials och utan databasanslutning. Uppackningen av standard-
 buildern `paketobuildpacks/builder-noble-java-tiny:latest` fyllde Docker/VFS-
 miljöns disk trots cirka 21 GiB ledigt före försöket. Bygget avbröts och Docker
-återställde diskutrymmet. Native-kompilering, start, TLS och verksamhetsanrop
-är därför **inte verifierade**, och ingen uppstartsjämförelse har gjorts.
-Ett nytt containerprov behöver en miljö med mer diskutrymme eller effektivare
-Docker-lagring. Ett byte av imagebyggare
+återställde diskutrymmet. Det lokala försöket verifierade därför inte native-
+kompilering eller start; dessa kontroller körs nu i Actions-jobbet ovan.
+En uppstartsjämförelse och native-runtime mot riktig Auth/HTTPS återstår.
+Lokala containerprov behöver mer diskutrymme eller effektivare Docker-lagring.
+Ett byte av imagebyggare
 behöver också bevara runtimekonfigurationen, databasens CA och startkontrollerna.
 Teknikprovet i `backend/` behåller sin historiska Java 26-verktygskedja.
 
