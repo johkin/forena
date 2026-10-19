@@ -4,7 +4,8 @@
   "git": {
     "deploymentEnabled": {
       "main": false,
-      "feat/participation-api": false
+      "feat/participation-api": false,
+      "feat/target-auth-lifecycle": false
     }
   },
   "regions": [

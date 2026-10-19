@@ -3,7 +3,12 @@
 Status: delvis implementerad (2026-10-19). Beroenden: M01. Leverans: en avgränsad PR om inte nedan
 anges att arbetet först ska delas. Alla PR-baser är aktuell `main`.
 
-Webbsessionsverifiering och lokala JWKS-prov finns i `backend/api`. Verklig Supabase-inloggning, passkey/MCP och kopplad extern sessionsrevokering är ännu inte verifierade. Se [första flödet](../first-flow.md) för aktuell avgränsning.
+Webbsessionsverifiering, lokala JWKS-prov och onlineadapter för aktuell `/user`-
+status finns i `backend/api`. Adapterns lokala fel-/revokeringsprov är gröna;
+verklig Supabase-inloggning, ES256/JWKS, refresh och driftad sessionsrevokering
+är nu verifierade med Auth-only-provet (18 godkända kontroller). Passkey/MCP och
+fullt Kotlin-/databasprov återstår. Se [målmiljö/Auth](../target-auth-lifecycle.md) och opt-in-provet
+`TargetAuthIT`; hela M03 är fortfarande inte accepterad.
 
 ## Bakgrund och gemensamma beslut
 

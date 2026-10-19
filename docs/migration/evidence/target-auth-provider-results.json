@@ -1,0 +1,157 @@
+{
+  "project_ref": "ckzrtxqjskosqzoitymc",
+  "checked_at": "2026-10-19T10:06:19.375450+00:00",
+  "source_commit": "a72d5de0f42527f45f446f2cd7ea860910c0e5b1",
+  "probe_sha256": "455de4313a9aeadeb13cccf4d5c8fd611bd87be28f5d812bd857bc95b17a3a5e",
+  "scope": "auth-provider-only",
+  "passed": true,
+  "checks": [
+    {
+      "check": "real-jwks-signature-and-claims",
+      "algorithm": "ES256",
+      "passed": true
+    },
+    {
+      "check": "password-login",
+      "http_status": 200,
+      "error_code": null,
+      "passed": true
+    },
+    {
+      "check": "refresh",
+      "http_status": 200,
+      "error_code": null,
+      "passed": true
+    },
+    {
+      "check": "local-logout-original-jwt-denied",
+      "http_status": 403,
+      "error_code": "session_not_found",
+      "passed": true
+    },
+    {
+      "check": "local-logout-refreshed-jwt-denied",
+      "http_status": 403,
+      "error_code": "session_not_found",
+      "passed": true
+    },
+    {
+      "check": "local-logout-refresh-denied",
+      "http_status": 400,
+      "passed": true
+    },
+    {
+      "check": "local-logout-other-session-preserved",
+      "http_status": 200,
+      "error_code": null,
+      "passed": true
+    },
+    {
+      "check": "relogin",
+      "http_status": 200,
+      "error_code": null,
+      "passed": true
+    },
+    {
+      "check": "global-logout-other-jwt-denied",
+      "http_status": 403,
+      "error_code": "session_not_found",
+      "passed": true
+    },
+    {
+      "check": "global-logout-other-refresh-denied",
+      "http_status": 400,
+      "passed": true
+    },
+    {
+      "check": "global-logout-current-jwt-denied",
+      "http_status": 403,
+      "error_code": "session_not_found",
+      "passed": true
+    },
+    {
+      "check": "global-logout-current-refresh-denied",
+      "http_status": 400,
+      "passed": true
+    },
+    {
+      "check": "provider-ban-jwt-denied",
+      "http_status": 403,
+      "error_code": "user_banned",
+      "passed": true
+    },
+    {
+      "check": "provider-ban-refresh-denied",
+      "http_status": 400,
+      "passed": true
+    },
+    {
+      "check": "unban-relogin",
+      "http_status": 200,
+      "error_code": null,
+      "passed": true
+    },
+    {
+      "check": "provider-soft-delete-jwt-denied",
+      "http_status": 403,
+      "error_code": "session_not_found",
+      "passed": true
+    },
+    {
+      "check": "provider-soft-delete-refresh-denied",
+      "http_status": 400,
+      "passed": true
+    },
+    {
+      "check": "synthetic-user-hard-delete-confirmed",
+      "passed": true
+    }
+  ],
+  "not_tested": [
+    "kotlin-api",
+    "cloud-jdbc",
+    "liquibase",
+    "family-isolation",
+    "rejected-write-history",
+    "email-delivery",
+    "browser-pkce",
+    "passkeys",
+    "oauth-mcp",
+    "timebox-inactivity-single-session",
+    "cloud-runtime"
+  ],
+  "database_readback": {
+    "observed_at": "2026-10-19T10:06:42.856752+00:00",
+    "synthetic_auth_probe_accounts": 0,
+    "application_tables": 0,
+    "owner_login": false,
+    "runtime_login": false,
+    "owner_superuser": false,
+    "runtime_superuser": false,
+    "owner_bypassrls": false,
+    "runtime_bypassrls": false,
+    "owner_createdb": false,
+    "runtime_createdb": false,
+    "owner_createrole": false,
+    "runtime_createrole": false,
+    "runtime_owner_membership": false,
+    "client_schema_usage": {
+      "anon": false,
+      "authenticated": false,
+      "service_role": false
+    }
+  },
+  "bootstrap_rerun": false,
+  "remaining_blockers": {
+    "missing_environment_variables": [
+      "FORENA_TEST_JDBC_URL",
+      "FORENA_TEST_OWNER_USERNAME",
+      "FORENA_TEST_OWNER_PASSWORD",
+      "FORENA_TEST_RUNTIME_USERNAME",
+      "FORENA_TEST_RUNTIME_PASSWORD"
+    ],
+    "tcp_grants_configured": false,
+    "TargetAuthIT": "not_run",
+    "cloud_liquibase": "not_run"
+  }
+}

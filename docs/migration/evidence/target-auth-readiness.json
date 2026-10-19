@@ -1,0 +1,85 @@
+{
+  "project_ref": "ckzrtxqjskosqzoitymc",
+  "project_name": "forena-kotlin",
+  "region": "eu-central-1",
+  "base_commit": "b0bfae947513227549d59dd5799bb5516500241b",
+  "branch": "feat/target-auth-lifecycle",
+  "bootstrap": {
+    "observed_at": "2026-10-19T09:33:29.572196Z",
+    "migration": "forena_api_bootstrap",
+    "schema": "forena",
+    "owner": "forena_api_owner",
+    "business_table_count": 0,
+    "auth_user_count": 0,
+    "roles": {
+      "forena_api_owner": {
+        "login": false,
+        "superuser": false,
+        "bypassrls": false,
+        "createdb": false,
+        "createrole": false
+      },
+      "forena_api_runtime": {
+        "login": false,
+        "superuser": false,
+        "bypassrls": false,
+        "createdb": false,
+        "createrole": false
+      }
+    },
+    "runtime_owner_membership": false,
+    "client_schema_usage": {
+      "anon": false,
+      "authenticated": false,
+      "service_role": false
+    },
+    "administrator_set_owner": false,
+    "security_advisor_lints": []
+  },
+  "local_verification": {
+    "maven_clean_verify": {
+      "tests": 35,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "frontend_tests": 1065,
+    "typecheck": "passed",
+    "lint": "passed",
+    "build": "passed",
+    "packaged_jar_smoke": "passed",
+    "contract_generation": "passed"
+  },
+  "not_run": [
+    "TargetAuthIT",
+    "cloud-Liquibase",
+    "cloud-JDBC",
+    "actual-signing-key-and-login",
+    "browser-PKCE",
+    "passkeys",
+    "OAuth-MCP",
+    "magic-link-email-delivery",
+    "cloud-runtime"
+  ],
+  "credentials_provisioned": false,
+  "next_routing_activated": false,
+  "source_sha256": {
+    "backend/api/.env.target.example": "3296ecf7bce1518b345e6e9685ce37eb08ee465c64c9828edc6a212e879051d4",
+    "backend/api/README.md": "3277b6cd3e686932826dab98257ff0ed585e0ccaee683f278cd06393ba31845b",
+    "backend/api/contract/generated.ts": "c38fef6b5242ed56ed408e328a0c5f6461745d281b13ec685e178f4b20634d31",
+    "backend/api/contract/openapi.json": "3d23cf1486bb48a94de39c7eeba5627bb83606eade9bb048526ae23b2d79c906",
+    "backend/api/scripts/bootstrap.sql": "fb51f1da7c5040f42bcd18f53268c2e4ddadaf16c1e155be8674a83dc0dea4c6",
+    "backend/api/scripts/local-smoke.py": "6f584e44a280879bc13acf028cfe8984f18399112079aea743e05afaab18653b",
+    "backend/api/src/main/kotlin/se/forena/api/ApiErrors.kt": "e49319f6b84f312999febe1bcfe1323d0ca0fb20e0010d646eeb39a13168e8d9",
+    "backend/api/src/main/kotlin/se/forena/api/activities/InvitationController.kt": "0aa4179606706340d53516e9132b9d3f5e6c490fe6223af8df18de547bac2d4b",
+    "backend/api/src/main/kotlin/se/forena/api/activities/InvitationService.kt": "8ea34d2d943bc2a1bc25d5e5d0c4a5f26b1718b8a18655563a75b1337836e42c",
+    "backend/api/src/main/kotlin/se/forena/api/identity/IdentityDtos.kt": "f0a9b348b6bc06efcdc6e16e4de1a040e7fe1c3d9af1a851d5c4f63a646b0f60",
+    "backend/api/src/main/kotlin/se/forena/api/identity/ProviderSessionVerifier.kt": "9a51076a4d902ea50b8352f891cb90de6f52d6447e88b4158e29a5c89eb16902",
+    "backend/api/src/main/kotlin/se/forena/api/identity/SessionService.kt": "65804410135d494a01c2d3edaa0a40726be49e2b7a36258e72f6e7de40e63841",
+    "backend/api/src/main/kotlin/se/forena/api/identity/SessionVerificationUnavailable.kt": "bd60e676401428e6005d88a1f6f0fe3680b206d715bb9640ec56114d0f203489",
+    "backend/api/src/main/kotlin/se/forena/api/identity/internal/SupabaseSessionService.kt": "23f556e6df11c86e8585dad03eea510236f8138863a03b23abd5e33ac0e46f84",
+    "backend/api/src/main/resources/application.yaml": "9b129464b6de7cbcfb0f5b6cd60f94c488ce8565b7a383752ec18aac3350be98",
+    "backend/api/src/test/kotlin/se/forena/api/ApiTest.kt": "bc273e7ea49eded266850b29166280c24c26b85f2a5186f4bbf3cc65c102055b",
+    "backend/api/src/test/kotlin/se/forena/api/TargetAuthIT.kt": "018dda8eee08665de4291481e25c4c4dedcf81d53c4a4409dc89ffeb30428cbe"
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "project_ref": "ckzrtxqjskosqzoitymc",
+  "source_commit": "291b95c57577f1879c02673e8e1f988ddca36a11",
+  "source_tree": "local continuation with Auth-only probe",
+  "observed_at": "2026-10-19T09:48:56.344064+00:00",
+  "status": "blocked",
+  "passed": false,
+  "auth_admin_request": {
+    "method": "POST",
+    "path": "/auth/v1/admin/users",
+    "http_status": 401,
+    "error_code": "no_authorization",
+    "configured_credential_type": "publishable",
+    "expected_credential_type": "secret",
+    "diagnostic_read_without_bearer": {
+      "http_status": 401,
+      "error_code": "no_authorization"
+    }
+  },
+  "database_readback": {
+    "synthetic_auth_probe_accounts": 0,
+    "application_tables": 0,
+    "owner_login": false,
+    "runtime_login": false,
+    "owner_superuser": false,
+    "runtime_superuser": false,
+    "owner_bypassrls": false,
+    "runtime_bypassrls": false
+  },
+  "bootstrap_rerun": false,
+  "missing_environment_variables": [
+    "FORENA_TEST_JDBC_URL",
+    "FORENA_TEST_OWNER_USERNAME",
+    "FORENA_TEST_OWNER_PASSWORD",
+    "FORENA_TEST_RUNTIME_USERNAME",
+    "FORENA_TEST_RUNTIME_PASSWORD"
+  ],
+  "tcp_grants_configured": false,
+  "provider_lifecycle": "not_run",
+  "TargetAuthIT": "not_run",
+  "cloud_liquibase": "not_run",
+  "source_sha256": {
+    "backend/api/scripts/target-auth-probe.py": "455de4313a9aeadeb13cccf4d5c8fd611bd87be28f5d812bd857bc95b17a3a5e"
+  },
+  "probe_local_verification": {
+    "type": "controlled in-process provider fixture; not real Supabase Auth",
+    "passed": [
+      "valid ES256 signature and lifecycle flow",
+      "revocation failure produces passed false",
+      "invalid signature clears stale evidence and cleans user",
+      "cleanup failure prevents result artifact",
+      "publishable admin key rejected before network and stale evidence removed"
+    ]
+  }
+}
