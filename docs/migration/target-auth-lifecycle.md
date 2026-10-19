@@ -1,29 +1,40 @@
 # Ren målmiljö och Auth-livscykel
 
-Status 2026-10-19: bootstrap verifierad i `forena-kotlin`; Auth-adapter och
-lokala tester implementerade. Verkligt Auth-adminanrop har körts men nekats
-med **401 `no_authorization`**: `FORENA_TEST_AUTH_SECRET_KEY` innehåller en
-publishable key, inte en adminnyckel. Verklig inloggning och moln-JDBC är **inte körda**.
-Detta fortsätter M02/M03, inte godkänd driftaktivering eller hela M07.
+Status 2026-10-19: bootstrap verifierad i `forena-kotlin`; verkligt Auth-prov
+**godkänt, 18 kontroller** på källcommit `a72d5de`. ES256-signatur mot riktiga
+JWKS, inloggning, refresh, lokal/global logout, spärr/återöppning och soft delete
+är verifierade. Kotlin-/databasprovet `TargetAuthIT` och moln-JDBC/Liquibase är
+**inte körda**. Detta fortsätter M02/M03, inte godkänd driftaktivering eller hela M07.
 
 ## Fortsättning från PR #113
 
-På branch `feat/target-auth-lifecycle`, källcommit `291b95c`, är projektets
-HTTPS-adress nåbar. Både adminanrop med nyckeln enbart i `apikey` och det äldre
-provets dubbla headers gav 401 `no_authorization`. Nyckelvärdet har inte loggats.
-Körmiljöns status rapporterar ingen verifierad credential-readiness. Uppdatera
-`FORENA_TEST_AUTH_SECRET_KEY` i miljökonfigurationen till testprojektets
-`sb_secret_…`; lägg aldrig nyckeln i chatten eller Git.
+På branch `feat/target-auth-lifecycle` kördes Auth-provet 2026-10-19
+12:06 svensk tid. Den tidigare adminnyckelblockeringen är löst i körmiljön;
+adminanropen fungerade utan att credentialvärden loggades.
+[Resultat och slutkontroll](evidence/target-auth-provider-results.json)
+är knutna till källcommit och scriptets SHA-256.
+Det [tidigare blockerade försöket](evidence/target-auth-attempt.json) behålls
+som historiskt underlag.
 
-Oberoende SQL-läsning bekräftar noll syntetiska Auth-provkonton och noll tabeller
-i `forena`. Båda rollerna är fortsatt NOLOGIN utan superuser/BYPASSRLS.
-Bootstrap har inte körts igen. JDBC-URL och båda rollernas credentials saknas;
-exekverarens nätpolicy har inga TCP-grants. Fullt `TargetAuthIT` kräver därför
-fortfarande credential-/nätkonfiguration och separat Liquibase-release.
-Se [det blockerade körförsöket](evidence/target-auth-attempt.json).
+- Signatur/issuer/audience/claims och lösenordsinloggning/refresh godkändes.
+- Lokal logout nekade både ursprunglig och uppdaterad JWT via `/user`
+  med 403 `session_not_found`; refresh nekades med 400. Annan session fungerade.
+- Global logout nekade båda sessionernas JWT och refresh. Ny inloggning fungerade.
+- Spärr gav 403 `user_banned` och nekad refresh; efter återöppning fungerade ny inloggning.
+- Soft delete nekade JWT med 403 `session_not_found` och refresh med 400.
+  Avslutande hard delete följd av 404 bekräftade städning. Inga mejl skickades.
 
-Ett separat [Auth-prov utan databas](../../backend/api/scripts/target-auth-probe.py)
-kan köras först, med Python 3 och `cryptography` tillgängligt:
+Oberoende SQL-läsning efter provet bekräftar noll syntetiska Auth-provkonton och
+noll tabeller i `forena`. Båda rollerna är fortsatt NOLOGIN utan
+superuser/BYPASSRLS/CREATEDB/CREATEROLE. Runtime saknar ägarmedlemskap och
+klientroller saknar schemaåtkomst. Bootstrap har inte körts igen.
+JDBC-URL och båda rollernas credentials saknas; exekverarens nätpolicy har inga
+TCP-grants. Fullt `TargetAuthIT` kräver fortfarande credential-/nätkonfiguration
+och separat Liquibase-release. Auth-provet bevisar `/user`-beteendet vid denna
+körning, inte Kotlin-API:ts familjeavgränsning eller nekade databasändringar.
+
+Det separata [Auth-provet utan databas](../../backend/api/scripts/target-auth-probe.py)
+kördes med Python 3; det kan upprepas med Python 3 och `cryptography` tillgängligt:
 
 ```sh
 FORENA_TEST_TARGET_REF=ckzrtxqjskosqzoitymc python3 backend/api/scripts/target-auth-probe.py
@@ -52,8 +63,8 @@ ett godkänt Auth-prov bevisar familjeåtkomst eller nekade databasändringar.
   BYPASSRLS, CREATEDB eller CREATEROLE. Inga lösenord har satts.
 - Runtime är inte medlem i ägarrollen. `anon`, `authenticated` och `service_role`
   saknar schemaåtkomst. Supabases säkerhetsrådgivare gav inga anmärkningar.
-- Schemat är tomt: Liquibase, konton och verksamhetsdata återstår. Teknikprovets
-  scheman finns kvar separat. Gamla Förena-projektet ändras inte.
+- Schemat är tomt: Liquibase och verksamhetsdata återstår. Auth-provkontot är städat.
+  Teknikprovets scheman finns kvar separat. Gamla Förena-projektet ändras inte.
 
 [Bootstrap](../../backend/api/scripts/bootstrap.sql) kördes genom Supabases
 administrativa bootstrap-migration `forena_api_bootstrap`. Den äger bara
@@ -91,14 +102,17 @@ proaktivt av `/user`; de behöver verifieras separat tillsammans med refresh.
 
 Nuvarande offentliga Auth-källa laddar konto och `session_id` för `/user` och
 nekar saknade sessioner/spärrade konton. **Det bevisar inte vilken revision det
-driftade projektet kör.** Verkligt målmiljöprov blockerar därför pilot:
+driftade projektet kör.** Auth-provet ovan verifierar nu detta beteende i målprojektet.
+Fullt `TargetAuthIT` blockerar fortfarande pilot:
 
 - [Auth-kontroll](https://github.com/supabase/auth/blob/master/internal/api/auth.go)
 - [UserGet](https://github.com/supabase/auth/blob/master/internal/api/user.go)
 - [Felkontrakt](https://github.com/supabase/auth/blob/master/internal/api/apierrors/apierrors.go)
 - [Supabases sessionsdokumentation](https://supabase.com/docs/guides/auth/sessions)
 
-Changelog-indexet kunde inte läsas som Markdown av webbverktyget;
+Vid fortsättningen gav Markdown-indexet HTTP 403 från körmiljön; aktuell
+sessionsdokumentation lästes genom Supabases dokumentationsverktyg. Tidigare:
+changelog-indexet kunde inte läsas som Markdown av webbverktyget;
 [HTML-indexet](https://supabase.com/changelog) kontrollerades i stället. Dess
 aviserade HTTP/TLS-ändring kräver moderna TLS-klienter; TLS-verifiering behålls.
 

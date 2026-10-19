@@ -12,8 +12,9 @@ ADR-014 tar bort inloggningssessionen från affärsdata. Sessions-ID finns forts
 i verifierad token och används för lokal sessionsspärr. Runtime får aldrig schemaägar- eller service-role-credentials.
 Se [API:ts säkerhetsgränser](../backend/api/README.md), särskilt begränsningen
 kring extern Auth-revokering före pilot. ADR-016 tillför onlinekontroll via
-Supabase `/user` utan adminnyckel eller Auth-tabellgrants; lokala prov är gröna,
-men verklig Auth-livscykel i målprojektet är fortfarande en aktiveringsgrind.
+Supabase `/user` utan adminnyckel eller Auth-tabellgrants. Lokala prov och
+[verkligt Auth-only-prov](migration/target-auth-lifecycle.md) är gröna;
+fullt Kotlin-/databasprov i målprojektet är fortfarande en aktiveringsgrind.
 Gamla appens kontroller nedan gäller
 fortsatt dess befintliga databas och kanaler.
 

@@ -3,7 +3,7 @@
 Uppdaterad 2026-10-19. Inventeringsbas: `c379a96719490bc4edbfcb0a4ee7a1947684ddce`.
 Planens uppgifter finns i [uppgiftsindex](tasks/README.md).
 
-## Målmiljö och Auth-livscykel: Auth-försök blockerat av fel nyckeltyp
+## Målmiljö och Auth-livscykel: verkligt Auth-prov godkänt, API-/databasprov återstår
 
 Arbetsbranch `feat/target-auth-lifecycle`, bas main `b0bfae9` (PR #112 mergad).
 [Körning och begränsningar](target-auth-lifecycle.md), [evidens](evidence/target-auth-readiness.json).
@@ -13,7 +13,7 @@ roller utan superuser/BYPASSRLS/DDL-grants till runtime. Klientroller saknar
 schemaåtkomst och runtime är inte medlem i ägarrollen. Bootstrap använder
 tillfällig SET-rätt för administrativ schemaägartilldelning, därefter avstängd.
 Kontrollerat genom oberoende SQL-läsning; säkerhetsrådgivaren gav inga anmärkningar.
-Inga Auth-konton, lösenord eller verksamhetstabeller har skapats i detta arbetssteg.
+Inga beständiga Auth-provkonton eller verksamhetstabeller har lämnats efter Auth-provet.
 Liquibase förblir ensam ägare av verksamhetstabellerna när releasejobbet körs.
 
 ADR-016 inför `ProviderSessionVerifier` och onlinekontroll av samma JWT via
@@ -31,24 +31,28 @@ migrering två gånger och runtime utan ägarcredential godkända. Befintlig app
 1 065 tester, typecheck, lint och produktionsbygge godkända. Kontraktet genererat
 från riktig Spring HTTP och reproducerat bytevis. Exakta källhashar finns i evidensen.
 
-**Verkligt körförsök från PR #113:** målprojektets HTTPS är nåbar, men
-Auth-adminanrop gav 401 `no_authorization`. `FORENA_TEST_AUTH_SECRET_KEY`
-innehåller en publishable key och behöver rättas i miljökonfigurationen.
-Inga testkonton skapades; oberoende SQL bekräftar noll syntetiska provkonton
-och noll verksamhetstabeller. Bootstrap är orörd. Separat Auth-prov utan JDBC
-finns nu som script; det nekar fel nyckeltyp innan nätanrop och skriver separat
-evidens först efter städning. [Försökets evidens](evidence/target-auth-attempt.json).
+**Verkligt Auth-prov från PR #113, godkänt:** på källcommit `a72d5de` kördes
+Auth-only-scriptet med fungerande admincredential: **18 godkända kontroller**.
+Riktig ES256/JWKS-signatur, claims, lösenordsinloggning, refresh, lokal/global
+logout, annan kvarvarande session, ny inloggning, spärr/återöppning och soft delete.
+Tidigare JWT nekades med 403 `session_not_found` eller `user_banned`;
+refresh efter avslut nekades med 400. Hard delete och efterföljande 404 bekräftade
+städning. Inga mejl skickades. Oberoende SQL bekräftade noll syntetiska provkonton,
+noll verksamhetstabeller, fortsatt NOLOGIN och oförändrade rollgränser.
+Bootstrap har inte körts igen. [Aktuell evidens](evidence/target-auth-provider-results.json).
+[Historiskt blockerat försök](evidence/target-auth-attempt.json) behålls.
 
-**Ej körda:** `TargetAuthIT`, verklig inloggning/JWKS/livscykel, moln-JDBC/Liquibase,
-browser och molnruntime. JDBC-/rollcredentials och TCP-grants saknas.
-Incheckat opt-in-prov kräver vald testref och TLS, skapar
-bara egna syntetiska konton/data och städar efteråt. Det är kompilerat, inte
-ett verifierat molnresultat. Positiv `/user`-semantik i offentlig Auth-källa får
-inte ersätta detta prov eller påstå omedelbar revokering i målmiljön.
+**Ej körda:** `TargetAuthIT`, moln-JDBC/Liquibase, browser och molnruntime.
+JDBC-/rollcredentials och TCP-grants saknas fortfarande. Auth-only-resultatet
+verifierar leverantörens `/user`-beteende vid körningen; familjeåtkomst och nekade
+skrivningar/historik i Kotlin-API:t återstår att verifiera i målmiljön.
+Incheckat opt-in-prov kräver vald testref och TLS, skapar bara egna syntetiska
+konton/data och städar efteråt. Lokala resultat ovan är tidigare verifiering,
+inte en omkörning i detta dokumentationssteg.
 
 Vercel-byggen är avstängda för arbetsbranchen i båda befintliga konfigurationerna.
 Inga nya molnbyggen eller omkoppling av Next.js ingår. Nästa beroende steg är
-rätt Auth-adminnyckel, JDBC-/rollcredentials och nätåtkomst, separat Liquibase-release
+JDBC-/rollcredentials och TCP-nätåtkomst, separat Liquibase-release
 och verkligt Auth-/API-prov.
 
 ## Första verksamhets-API:t: för granskning, ren start
