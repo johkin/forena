@@ -33,8 +33,11 @@ Vite kör på `127.0.0.1:3000` och routar `/api/*` till Kotlin på
 
 Auth använder en separat localStorage-nyckel och inga gamla Next-cookies.
 JWT skickas i Authorization-headern endast till de två stödda API-rutterna på
-samma origin. Cookies, externa URL:er och redirects tillåts inte i API-klienten.
-Utloggning och nekad session avmonterar familjens privata data. Äldre service
+samma origin. `credentials: same-origin` låter Vercels skyddscookie följa med
+till den egna sajten; Kotlin autentiserar endast med Bearer. Externa URL:er och
+redirects tillåts inte. Bara Kotlin-API:ts uttryckliga JSON-svar om ogiltig session
+loggar ut användaren; Vercels 401-svar får inte radera en giltig Auth-session.
+Utloggning och nekad appsession avmonterar familjens privata data. Äldre service
 workers/cachar från Next-piloten avregistreras på den nya sajtens origin.
 
 ## Verifiering

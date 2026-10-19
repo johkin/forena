@@ -24,6 +24,11 @@ API-anrop får aldrig HTML-fallback. Det finns ingen privat servicebinding och
 browsern skickar Bearer-token direkt till API:t på samma origin. Backendens
 JWT-, sessions- och familjekontroller ligger kvar.
 
+Browserns API- och config-anrop använder `credentials: same-origin` så att
+Vercels skyddscookie når Deployment Protection. Plattformens HTML-/401-svar
+får inte logga ut användaren ur Supabase. Bara API:ts uttryckliga JSON-svar
+om ogiltig appsession gör det. Behåll Deployment Protection aktiverat.
+
 Actions installerar Temurin 25, bygger frontend och API-JAR samt kopierar samma
 JDK till backendens runtime-image. Verksamhetstester körs i CI för samma SHA;
 releasepaketeringen hoppar endast över deras återkörning. Vercel CLI är låst till

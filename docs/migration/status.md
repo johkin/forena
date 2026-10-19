@@ -3,6 +3,25 @@
 Uppdaterad 2026-10-19. Inventeringsbas: `c379a96719490bc4edbfcb0a4ee7a1947684ddce`.
 Planens uppgifter finns i [uppgiftsindex](tasks/README.md).
 
+## Browserpilot: rättning för Vercel Deployment Protection
+
+Branch `fix/protected-browser-api`, från main `596f8b0` (PR #122 mergad).
+Användaren kan logga in men loggas ut när aktivitetens API hämtas. Databasen
+bekräftar aktivt konto, familjeåtkomst och två kallelser. En färsk riktig
+Supabase-token passerar Java 25-backendens JWT-decoder lokalt. Vercel-projektet
+har SSO-skydd `all_except_custom_domains`; klientens `credentials: omit`
+utelämnade skyddscookien och behandlade alla 401 som ogiltig appsession.
+
+API och publik config använder nu `same-origin`. Kotlin autentiserar fortsatt
+med Bearer. Bara API:ts uttryckliga 401/JSON loggar ut ur Supabase; plattformens
+nekade åtkomst bevarar appsessionen. Browserregressionen kräver en syntetisk
+Vercel-cookie och provar separat plattforms-401 och Kotlin-401.
+Riktig inloggad Vercel-verifiering återstår efter merge: den autentiserade
+fetch-anslutningen nekades av Vercels skydd även med dess skapade delningslänk.
+Lokalt är 1 142 Vitest-tester, båda apparnas typkontroll, lint och
+produktionsbyggen godkända. Browserregressionen med kontrollerade svar passerar
+cookiekontrollen för API/config, båda 401-fallen samt tidigare pilotflöden.
+
 ## Separat browser-frontend: första pilotflödet på branch
 
 Branch `feat/browser-frontend`, bas main `b6ae962`. På användarens instruktion

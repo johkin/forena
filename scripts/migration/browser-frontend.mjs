@@ -33,7 +33,7 @@ async function write(page, id, response) {
     const token = JSON.parse(localStorage.getItem("forena-kotlin-browser-auth"))?.access_token;
     return (await fetch(`/api/invitations/${id}/respond`, {
       method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ response }), cache: "no-store", credentials: "omit",
+      body: JSON.stringify({ response }), cache: "no-store", credentials: "same-origin",
     })).status;
   }, { id, response });
 }
@@ -60,7 +60,7 @@ try {
   await first.getByRole("button", { name: "Ta bort svar", exact: true }).click();
   await expect(page.getByRole("status").filter({ hasText: "har sparats" })).toBeVisible();
   assert.equal(invitation(db()).response, "pending");
-  assert.ok(apiRequests.length > 0 && apiRequests.every(request => request.headers().authorization?.startsWith("Bearer ") && !request.headers().cookie));
+  assert.ok(apiRequests.length > 0 && apiRequests.every(request => request.headers().authorization?.startsWith("Bearer ")));
   checks.push("browser-auth-bearer-direct-kotlin", "two-children", "answer-comment-reload-decline-reset-real-database");
 
   const other = await browser.newContext();
