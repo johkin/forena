@@ -1,5 +1,15 @@
 # Tillgänglighet och kompatibilitet
 
+Aktuell API-konfiguration från 2026-10-19: `backend/api` använder **Java 25**,
+Kotlin kompilerar till JVM 25 och Spring Boots build-image får
+`BP_JVM_VERSION=25`. CI/release använder Temurin 25 utan Oracle-/patchkrav.
+Lokalt verifierat med Temurin 25.0.4.1: Maven clean verify (35 tester),
+paketerad JAR:s migrations-/runtimeprov och oförändrat OpenAPI-/TypeScript-kontrakt
+är godkända. API-bytecode har class major 69 (Java 25). Buildpack-imagebygget
+är fortfarande blockerat av lokal Docker/VFS-diskkapacitet.
+Nedanstående Java 26-resultat gäller det tidigare isolerade teknikprovet;
+se [ADR-001](decisions.md#adr-001-verktygskedja-och-repo--fastställt).
+
 Verifierat 2026-10-18. Uppdragets versioner är oförändrade: **Spring Boot 4.1.0,
 Kotlin 2.4.20 och Java 26**. Provet använde JDK **26.0.2.1** från Oracle för
 både Maven, Kotlin-kompilering och testkörning. Ordinarie miljö har JDK 21 och

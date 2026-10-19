@@ -278,6 +278,15 @@ påstår en besparing. Ingen produktion har ändrats genom detta planeringsbeslu
 
 ## ADR-001: Verktygskedja och repo — fastställt
 
+**Uppdatering 2026-10-19 på användarens instruktion:** verksamhets-API:t i
+`backend/api` använder Java **25**, inklusive Kotlins bytekodsmål och
+`BP_JVM_VERSION` i Spring Boots imagekonfiguration. Oracle-leverantör och exakt
+JDK-patch krävs inte längre för API:t. CI/release använder Temurin 25 och
+release-imagen får samma JDK som paketeringen. Teknikprovets tidigare resultat
+och Java 26-konfiguration behålls separat. Övriga versionsval nedan är oförändrade.
+
+Ursprungligt teknikprovsbeslut:
+
 Spring Boot **4.1.0**, Kotlin **2.4.20**, Java **26**. Bygg och kör med JDK 26.
 Ingen automatisk nedgradering eller uppgradering. Tillgänglighet är skild från
 kompatibilitet; [versionskontrollen](versions.md) måste bli godkänd i M01.

@@ -3,6 +3,7 @@
   "framework": "nextjs",
   "git": {
     "deploymentEnabled": {
+      "chore/java25": false,
       "main": false,
       "feat/participation-api": false,
       "feat/target-auth-lifecycle": false,

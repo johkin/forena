@@ -18,13 +18,14 @@ releasejobbet. Konfigurationen använder Vercel Services (**beta**) med två
 containerbaserade tjänster i Frankfurt: Next standalone och `backend/api`.
 Verksamhets-API:t ersätter teknikprovet i denna deployment. Båda tjänsterna byggs
 och publiceras tillsammans med samma deployment och kan återställas tillsammans.
-Gamla sajtens runtimekonfiguration behålls; de två befintliga Vercel-filerna får
-bara ett deployundantag för arbetsbranchen `ci/kotlin-vercel-deploy`.
+Gamla sajtens runtimekonfiguration behålls. Git-deploy är avstängd för
+arbetsbranchen `chore/java25` i båda befintliga Vercel-filerna.
 
 Actions bygger Next standalone med `FORENA_CONTAINER_BUILD=true` och paketerar
-API-JAR med den befintliga checksumlåsta Oracle JDK:n. Tester körs i föregående
-CI för samma SHA; releasepaketeringen använder `-DskipTests`. Vercel CLI är låst
-till 60.1.3 och de två Actions-referenserna är låsta till commit-SHA.
+API-JAR med Temurin JDK 25 från `actions/setup-java`. Samma JDK kopieras till
+backendens runtime-image; leverantör och exakt patch låses inte i API:ts POM.
+Tester körs i föregående CI för samma SHA; releasepaketeringen använder `-DskipTests`. Vercel CLI är låst
+till 60.1.3 och Actions-referenserna är låsta till commit-SHA.
 `vercel build --prod` bygger/pushar containerbilderna till Vercels registry;
 `vercel deploy --prebuilt --prod --skip-domain` skapar en stagingdeployment med
 produktionskonfiguration utan att flytta domäner.
