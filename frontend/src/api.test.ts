@@ -4,7 +4,7 @@ import { createApiFetch, safeDestination } from "./api";
 const id = "11111111-1111-4111-8111-111111111111";
 const path = `/api/activities/${id}/my-invitations`;
 
-it("reads the latest token per request and never sends ambient cookies or follows redirects", async () => {
+it("reads the latest token and allows same-origin platform cookies without following redirects", async () => {
   const token = vi.fn().mockResolvedValueOnce("first-session").mockResolvedValueOnce("refreshed-session");
   const transport = vi.fn().mockResolvedValue(Response.json({ invitations: [] }));
   const request = createApiFetch(token, vi.fn(), transport);
@@ -12,7 +12,7 @@ it("reads the latest token per request and never sends ambient cookies or follow
   await request(path);
   expect(new Headers(transport.mock.calls[0][1].headers).get("Authorization")).toBe("Bearer first-session");
   expect(new Headers(transport.mock.calls[1][1].headers).get("Authorization")).toBe("Bearer refreshed-session");
-  expect(transport.mock.calls[0][1]).toMatchObject({ credentials: "omit", cache: "no-store", redirect: "error" });
+  expect(transport.mock.calls[0][1]).toMatchObject({ credentials: "same-origin", cache: "no-store", redirect: "error" });
 });
 it.each(["https://other.test/api", "//other.test/api", "/api/not-supported", path + "?token=secret", "/api/activities/invalid/my-invitations"])("rejects unsafe or unsupported destinations before reading a token: %s", async url => {
   const token = vi.fn(); const transport = vi.fn();
@@ -24,10 +24,21 @@ it("requires a session and clears private UI without dispatching an unauthentica
   expect((await createApiFetch(async () => null, unauthorized, transport)(path)).status).toBe(401);
   expect(unauthorized).toHaveBeenCalledOnce(); expect(transport).not.toHaveBeenCalled();
 });
-it("does not retry a write when the server denies a revoked session", async () => {
-  const unauthorized = vi.fn(), transport = vi.fn().mockResolvedValue(new Response(null, { status: 401 }));
+it.each(["Inloggning krävs.", "Sessionen är inte aktiv."])("does not retry a write when the server denies the session: %s", async error => {
+  const unauthorized = vi.fn(), transport = vi.fn().mockResolvedValue(Response.json({ error }, { status: 401 }));
   await createApiFetch(async () => "revoked-session", unauthorized, transport)(`/api/invitations/${id}/respond`, { method: "PUT", body: '{"response":"accepted"}' });
   expect(unauthorized).toHaveBeenCalledOnce(); expect(transport).toHaveBeenCalledOnce();
+});
+it.each([
+  new Response("<html>Vercel Authentication</html>", { status: 401, headers: { "content-type": "text/html" } }),
+  Response.json({ error: "deployment_authentication_required" }, { status: 401 }),
+  new Response("not json", { status: 401, headers: { "content-type": "application/json" } }),
+])("preserves the app session when an intermediary denies access", async response => {
+  const unauthorized = vi.fn();
+  const result = await createApiFetch(async () => "valid-session", unauthorized, vi.fn().mockResolvedValue(response))(path);
+  expect(result.status).toBe(401);
+  expect(unauthorized).not.toHaveBeenCalled();
+  expect(await result.text()).not.toBe("");
 });
 it.each(["//other.test", "https://other.test", "/\\other.test", "/api/unknown"])("does not use an external or unsupported login return path: %s", value => {
   expect(safeDestination(value)).toBe("/");

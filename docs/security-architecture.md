@@ -4,7 +4,11 @@
 
 `frontend/` hanterar bara Supabase Auth och UI. Verksamhetsdata läses/skrivs
 via Kotlin på samma origins `/api/*`, med användarens Bearer-token och utan
-cookies eller redirects. Klientens sessionsdata är ingen behörighetskälla;
+redirects. Browsern skickar samma origins cookies för Vercel Deployment
+Protection; Kotlin använder dem inte för autentisering eller behörighet.
+Ett 401-svar från plattformen raderar inte Supabase-sessionen; det kräver
+Kotlin-API:ts uttryckliga JSON-svar om ogiltig session.
+Klientens sessionsdata är ingen behörighetskälla;
 Kotlin verifierar JWT, aktuell Auth-session, lokala spärrar och personåtkomst.
 Auth-user_metadata används inte för behörighet. Runtimekonfigurationen är
 strikt publik och avgränsad till det nya projektet. Privata vyer avmonteras

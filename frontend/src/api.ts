@@ -4,7 +4,8 @@ const uuid = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 const reads = new RegExp(`^/api/activities/${uuid}/my-invitations$`, "i");
 const writes = new RegExp(`^/api/invitations/${uuid}/respond$`, "i");
 
-/** JWTs go only to the two same-origin Kotlin endpoints, never cookies or redirects. */
+/** JWTs go only to the two same-origin Kotlin endpoints. Platform cookies may
+ * pass Vercel Deployment Protection; Kotlin authenticates with Bearer only. */
 export function createApiFetch(readToken: () => Promise<string | null>, unauthorized: () => void, transport: typeof fetch = fetch): ParticipationFetch {
   return async (path, init = {}) => {
     const method = init.method ?? "GET";
@@ -21,8 +22,13 @@ export function createApiFetch(readToken: () => Promise<string | null>, unauthor
     init.signal?.addEventListener("abort", abort, { once: true });
     const deadline = setTimeout(abort, 10_000);
     try {
-      const response = await transport(path, { ...init, method, headers, credentials: "omit", cache: "no-store", redirect: "error", signal: controller.signal });
-      if (response.status === 401) unauthorized();
+      const response = await transport(path, { ...init, method, headers, credentials: "same-origin", cache: "no-store", redirect: "error", signal: controller.signal });
+      // A platform login page must not revoke a valid Supabase session. Only
+      // Kotlin's explicit application response means the app session is invalid.
+      if (response.status === 401 && response.headers.get("content-type")?.includes("application/json")) {
+        const body = await response.clone().json().catch(() => null);
+        if (body?.error === "Inloggning krävs." || body?.error === "Sessionen är inte aktiv.") unauthorized();
+      }
       return response;
     } finally {
       clearTimeout(deadline);
