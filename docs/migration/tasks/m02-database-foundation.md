@@ -1,7 +1,9 @@
 # M02: Inför Liquibase och PostgreSQL-testgrund
 
-Status: planerad. Beroenden: M01. Leverans: en avgränsad PR om inte nedan
+Status: delvis implementerad (2026-10-19). Beroenden: M01. Leverans: en avgränsad PR om inte nedan
 anges att arbetet först ska delas. Alla PR-baser är aktuell `main`.
+
+Databasgrunden för första API:t är implementerad i `backend/api`, med eget tomt schema och lokala Liquibase/Testcontainers-prov. Driftprovisionering återstår. Se [första flödet](../first-flow.md) för aktuell avgränsning.
 
 ## Bakgrund och gemensamma beslut
 

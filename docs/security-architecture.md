@@ -1,5 +1,14 @@
 # Säkerhetsarkitektur
 
+Det separata Kotlin-API:t för familjens kallelsesvar finns i `backend/api` och
+är ännu inte aktiverat i webben. Det använder ett nytt privat schema enligt
+[ADR-010](migration/decisions.md), explicit familjefilter i tjänstens läsningar
+och PostgreSQL-RLS som oberoende databasgräns. Verifierad bearer-identitet sätts
+transaktionslokalt; runtime får aldrig schemaägar- eller service-role-credentials.
+Se [API:ts säkerhetsgränser](../backend/api/README.md), särskilt begränsningen
+kring extern Auth-revokering före pilot. Gamla appens kontroller nedan gäller
+fortsatt dess befintliga databas och kanaler.
+
 Förena hanterar uppgifter om barn, vårdnadshavare, ledare och andra medlemmar.
 Det kan även finnas personer med skyddade personuppgifter. Säkerhet och
 integritet är därför en del av domänarkitekturen och inte enbart ett lager runt

@@ -3,6 +3,27 @@
 Status anger målbeslut för kommande implementation, inte redan införd teknik.
 Källkodsverifierat nuläge finns i [inventeringen](inventory.md).
 
+## ADR-010: Ren start för verksamhets-API:t, inga gamla testdata
+
+**Beslut 2026-10-19 på användarens uttryckliga instruktion:** gamla Förena-
+projektet innehåller bara testdata och behöver inte datamigreras. Ny backend
+får ett tomt privat `forena`-schema och egen Liquibase-historik. Ingen import,
+UUID-mappning eller överföring av gamla tabeller, triggers, köer eller testkonton
+ingår. Supabase är fortsatt mål för PostgreSQL/Auth enligt ADR-008/009.
+
+Detta ersätter första flödets övergång genom samma gamla verksamhetsdatabas
+i ADR-007 och tidigare M05/M07-plan. Gamla frontend/kanaler ligger kvar tills
+motsvarande funktioner kan aktiveras i den rena miljön. Det nya API:t får aldrig
+skriva till den gamla databasen som reserv. Att gamla data inte importeras ger
+ingen rätt att radera det gamla projektet eller ändra dess Auth-inställningar.
+
+Första implementationen finns i `backend/api`, separat från M21/M22-provet.
+Läsning och svar, familje-RLS, livscykellås och atomär revisionshistorik ingår.
+En beständig signalversion sparas, men full signalreaktion, Auth-livscykel,
+provisionering av verksamhetsdata, Next-adapter och driftaktivering återstår.
+Se [första flödet](first-flow.md). Vercel-lagringsvarningen motiverar att denna
+leverans byggs och provas lokalt utan nya molndeploys.
+
 ## ADR-009: Vercel + Supabase är aktuell inriktning
 
 **Beslut 2026-10-18 (M22F):** fortsätt med Vercel för app/backend och Supabase

@@ -1,0 +1,201 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Förena family invitations API",
+    "version": "0.1.0",
+    "description": "New empty business schema. Bearer web sessions only. No legacy database import, cookie authentication or MCP writes."
+  },
+  "security": [
+    {
+      "bearer": []
+    }
+  ],
+  "paths": {
+    "/api/activities/{activityId}/my-invitations": {
+      "get": {
+        "operationId": "getMyInvitations",
+        "description": "Only the account’s self/active guardian links. Future invitations return an empty list. Responses use Cache-Control: no-store.",
+        "parameters": [
+          {
+            "name": "activityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Family invitations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FamilyInvitations"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or UUID"
+          },
+          "401": {
+            "description": "Missing, invalid or locally revoked session"
+          },
+          "404": {
+            "description": "Activity unavailable to family"
+          }
+        }
+      }
+    },
+    "/api/invitations/{invitationId}/respond": {
+      "put": {
+        "operationId": "respondToInvitation",
+        "description": "Omitted comment is preserved; null/blank clears it. Trimmed comments are truncated to 500 Unicode code points. Pending clears comment and response time. Identical state creates no revision or side effects. Concurrent commands serialize in database lock acquisition order; a delayed different answer may replace an earlier answer. No optimistic revision precondition in v0.1.",
+        "parameters": [
+          {
+            "name": "invitationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResponseChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Committed, or unchanged state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "ok"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or UUID"
+          },
+          "401": {
+            "description": "Missing, invalid or locally revoked session"
+          },
+          "403": {
+            "description": "Invitation unavailable to family"
+          },
+          "409": {
+            "description": "Activity cancelled, ended or invitation not sent"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "ResponseChange": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "response"
+        ],
+        "properties": {
+          "response": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "accepted",
+              "declined"
+            ]
+          },
+          "comment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "FamilyInvitation": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "person_id",
+          "response",
+          "response_comment",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "person_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "response": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "accepted",
+              "declined"
+            ]
+          },
+          "response_comment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "FamilyInvitations": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "invitations"
+        ],
+        "properties": {
+          "invitations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FamilyInvitation"
+            }
+          }
+        }
+      }
+    }
+  }
+}

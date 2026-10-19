@@ -1,9 +1,15 @@
 # Arkitektur
 
-Den stegvisa målarkitekturen för Kotlin/Spring Boot och Google Cloud finns i
+Den stegvisa målarkitekturen för Kotlin/Spring Boot på Vercel och Supabase finns i
 [migreringsplanen](migration/README.md) och dess [beslut](migration/decisions.md).
 Beskrivningen nedan avser nuvarande lösning och befintliga principer; målteknik
 är inte införd bara för att den dokumenterats.
+
+Det första separata verksamhets-API:t finns nu i `backend/api`: familjens
+kallelseläsning och svar med JDBC, Liquibase och PostgreSQL-RLS. Det använder
+ett nytt tomt `forena`-schema enligt ADR-010, utan gamla projektets testdata.
+Nuvarande Next.js-app är ännu inte omkopplad. Se [API-underlaget](../backend/api/README.md)
+för säkerhetsgränser, verifiering och återstående aktivering.
 
 Förena byggs som en multi-tenant-applikation där varje skrivning går genom ett
 validerat applikationskommando. Gränssnitt och AI-assistent använder samma

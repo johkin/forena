@@ -1,0 +1,106 @@
+# Första verksamhets-API:t
+
+Separat Spring Boot/Kotlin-app; teknikprovet i `backend/` är fortsatt isolerat.
+Nytt tomt PostgreSQL-schema `forena`, ingen import av gamla Förena-projektets
+testdata eller SQL-migrationshistorik. Se [ADR-010](../../docs/migration/decisions.md).
+
+Implementerat:
+
+- `GET /api/activities/{activityId}/my-invitations` – egna personer och aktiva målsmanskopplingar.
+- `PUT /api/invitations/{invitationId}/respond` – svara, ändra kommentar eller återställa till `pending`.
+- Svar, revision, revisionshistorik (konto/session/kanal) och beständig signalversion i en transaktion.
+- Signerade webbsessioner, databasägd familjeavgränsning och livscykellås.
+
+Ingen Next-adapter eller molndeploy ingår. Skapande av konton, familjer,
+aktiviteter och kallelser är ännu inget publikt API. Testerna skapar egna
+syntetiska data. Inga utskick eller fullständiga signalberäkningar görs här.
+
+## Bygg och verifiera
+
+Använd den låsta verktygskedjan i [versionsdokumentet](../../docs/migration/versions.md)
+och en lokal Docker-motor. Kör från reporoten:
+
+```sh
+backend/mvnw -f backend/api/pom.xml --batch-mode --no-transfer-progress verify
+python3 backend/api/scripts/local-smoke.py
+npm ci --prefix backend/api/contract --ignore-scripts
+npm run check --prefix backend/api/contract
+```
+
+JUnit startar tillfälliga PostgreSQL 17-containrar och en lokal JWKS-server.
+Migrering körs som riktig, begränsad schemaägare; HTTP använder en annan
+runtime-roll utan ägar-/BYPASSRLS-rättigheter. Testlösenorden finns bara under
+`src/test`. Testerna verifierar också tom installation, uppgradering av det
+nya identitetsschemat, återkörning, FK/constraints, rollback och samtidiga skrivare.
+
+[OpenAPI](contract/openapi.json) och [genererade TypeScript-typer](contract/generated.ts)
+versionshanteras tillsammans. `npm run generate --prefix backend/api/contract`
+uppdaterar typerna med låst generator. Frontend använder dem ännu inte.
+
+## Databas och körning
+
+1. Kör [bootstrap.sql](scripts/bootstrap.sql) som administratör i en **ny databas**.
+   Sätt separata starka lösenord för rollerna genom miljöns hemlighetshantering.
+   Exponera inte `forena` i Supabase Data API. Använd direkt PostgreSQL eller
+   en verifierad JDBC-kompatibel pooladress med TLS i molnmiljön.
+2. Kör releasestegets migrering separat med ägarkontot:
+
+   ```sh
+   FORENA_MIGRATE=true java -jar backend/api/target/forena-api.jar
+   ```
+
+   Processen startar ingen HTTP-server och avslutas efter migreringen. Den behöver
+   `FORENA_JDBC_URL`, `FORENA_DB_PASSWORD`, `FORENA_MIGRATION_USERNAME` och
+   `FORENA_MIGRATION_PASSWORD`. Ägarrollen är `forena_api_owner`; lämna aldrig
+   ägarcredentialen till runtime. `FORENA_DB_PASSWORD` avser runtime-kontot.
+3. Starta runtime med `FORENA_MIGRATE` avstängd/utelämnad:
+
+   ```sh
+   java -jar backend/api/target/forena-api.jar
+   ```
+
+   Obligatoriskt: `FORENA_JDBC_URL`, `FORENA_DB_PASSWORD`, `FORENA_AUTH_ISSUER`
+   och `FORENA_AUTH_JWKS_URI`. `FORENA_DB_USERNAME` är normalt `forena_api_runtime`.
+   Issuer är projektets exakta `/auth/v1`-adress; JWKS är dess
+   `/auth/v1/.well-known/jwks.json`. HTTPS krävs utom för lokala loopbacktester.
+   Port är `PORT` eller 8080. `/actuator/health` är publik utan detaljer.
+
+Runtime har högst fyra databasanslutningar och fem sekunders väntan på poolen.
+Transaktionslokal identitet skapas från verifierad token och rensas av PostgreSQL
+vid commit/rollback. Klientens JSON, headers och `user_metadata` kan inte välja
+databasidentitet eller ge familjerättigheter. Inget `service_role`-konto används.
+
+## Autentisering och samtidighet
+
+Enbart bearer-token för webbsessioner: RS256/ES256, exakt issuer, audience
+`authenticated`, samma roll, UUID-subjekt och `session_id`, `exp`/`iat` och
+`is_anonymous=false`. MCP/OAuth-grants (`client_id`, scope/scopes/grant_id),
+HS256, anonyma token och cookie-fallback nekas. Supabases faktiska inställningar
+ska verifieras i den nya miljön innan aktivering; inga molnkonton ändras här.
+JWKS hämtas med två sekunders anslutnings-/lästimeout och Spring/Nimbus cache;
+okänd nyckel som inte kan verifieras nekas även när nyckelservern är nere.
+En redan cachelagrad giltig nyckel kan fortsatt användas.
+
+`account.enabled` och `revoked_session` kontrolleras för varje transaktion;
+familjekopplingar hämtas från databasen. Lokal revokering kräver ett separat
+administrationsflöde. Utloggning eller radering enbart hos Auth-leverantören
+upptäcks inte omedelbart av lokal JWT-verifiering: en redan utfärdad token kan
+gälla till `exp` om kontot/sessionen inte också spärras lokalt. Detta måste
+hanteras vid Auth-integrationen innan pilot, inte döljas som full M03-acceptans.
+
+Samtidiga svar serialiseras med radlås. Senast utförda olika kommando gäller;
+version 0.1 har ingen `If-Match`/förväntad revision. Upprepning av exakt samma
+svar och kommentar skriver ingen historik eller signalversion. En äldre,
+fördröjd annorlunda begäran kan alltså ersätta ett nyare svar. Gör ingen
+automatisk fallback till gamla backend efter timeout.
+
+Schemaägda triggerfunktioner har fasta sökvägar och saknar publika körgrants.
+De får enbart låsa aktivitetens livscykel respektive skriva historik/signalversion.
+Runtime får endast uppdatera svar och kommentar på RLS-tillåtna kallelser.
+Tjänsten filtrerar dessutom uttryckligen på kontots aktiva familjekopplingar.
+Databaskontexten är serverbetrodd: den som stjäl runtime-kontots SQL-credential
+kan själv sätta identitetsinställningarna. Kontot får därför aldrig lämnas till
+klienter; RLS ersätter inte skydd av backend eller JDBC-credentialen.
+Historiken sparar inte kommentartext eller token. `activity_signal_state` är
+en beständig invalideringsversion, inte en outbox eller ett löfte om levererad
+notifiering. Signalworker/Modulith-reaktion kopplas in i ett senare steg.

@@ -118,9 +118,49 @@ jobs:
             backend/target/surefire-reports/
             backend/target/spring-modulith-docs/
 
-  # Keep the existing required check; it must fail if either parallel job fails or skips.
+  kotlin-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install pinned Oracle JDK 26.0.2.1
+        run: |
+          scripts/probe/install-jdk.sh "$RUNNER_TEMP/forena-jdk"
+          echo "JAVA_HOME=$RUNNER_TEMP/forena-jdk" >> "$GITHUB_ENV"
+          echo "$RUNNER_TEMP/forena-jdk/bin" >> "$GITHUB_PATH"
+
+      - name: Verify business API, JWT, RLS and migrations
+        run: backend/mvnw -f backend/api/pom.xml --batch-mode --no-transfer-progress verify
+
+      - name: Verify packaged migration and runtime modes
+        run: python3 backend/api/scripts/local-smoke.py
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/api/contract/package-lock.json
+
+      - name: Verify reproducible API types
+        run: |
+          npm ci --prefix backend/api/contract --ignore-scripts
+          npm run check --prefix backend/api/contract
+
+      - name: Retain API and architecture reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: kotlin-api-reports
+          path: |
+            backend/api/target/surefire-reports/
+            backend/api/target/spring-modulith-docs/
+
+  # Keep the existing required check; every parallel job must succeed.
   verify:
-    needs: [application, database, kotlin-probe]
+    needs: [application, database, kotlin-probe, kotlin-api]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -130,7 +170,9 @@ jobs:
           APPLICATION_RESULT: ${{ needs.application.result }}
           DATABASE_RESULT: ${{ needs.database.result }}
           KOTLIN_RESULT: ${{ needs.kotlin-probe.result }}
+          API_RESULT: ${{ needs.kotlin-api.result }}
         run: |
           test "$APPLICATION_RESULT" = success
           test "$DATABASE_RESULT" = success
           test "$KOTLIN_RESULT" = success
+          test "$API_RESULT" = success

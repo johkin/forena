@@ -1,7 +1,49 @@
 # Migreringsstatus
 
-Uppdaterad 2026-10-18. Inventeringsbas: `c379a96719490bc4edbfcb0a4ee7a1947684ddce`.
+Uppdaterad 2026-10-19. Inventeringsbas: `c379a96719490bc4edbfcb0a4ee7a1947684ddce`.
 Planens uppgifter finns i [uppgiftsindex](tasks/README.md).
+
+## Första verksamhets-API:t: lokal implementation, ren start
+
+Leverans på `feat/participation-api`, från main `1b60bb8b5978041f469f024f100432c72dbd44d4`.
+[ADR-010](decisions.md) fastställer användarens beslut att inte importera gamla
+projektets testdata. Nytt privat `forena`-schema och egna Liquibase-migrationer;
+`backend/api` är en separat app från M21/M22-provet.
+
+Ändrat beteende: API för familjens kallelser och för att svara, ändra eller
+återställa svaret. Explicit familjefilter plus RLS, serverbyggd transaktions-
+identitet, JWT-verifiering, konto-/sessionsspärr, livscykellås och atomär
+svarshistorik/signalversion. OpenAPI och reproducerbart genererade TS-typer.
+CI får ett separat obligatoriskt API-jobb; befintliga kontroller behålls.
+Se [första flödet](first-flow.md) och [körinstruktionerna](../../backend/api/README.md).
+
+Lokal verifiering för leveransen:
+
+- Maven `verify`: 18 tester, inga fel eller överhoppade. Riktiga ES256/RS256-
+  signaturer och lokal JWKS-server, HTTP, PostgreSQL 17.6/Testcontainers med
+  begränsad runtime och schemaägare, RLS, familje-/klubbgränser, rollback,
+  samtidiga skrivare/inställning, historik och Modulith-struktur.
+- Tom Liquibase-installation och uppgradering från det nya identitetsschemat,
+  validate/återkörning, bevarade syntetiska data och negativa constraints ingår.
+- Paketerad JAR: verklig bootstrap, migreringsläge två gånger utan HTTP,
+  runtime utan ägarcredential, health, bearerkrav och SIGTERM verifierade lokalt.
+- Befintliga Vitest: 131 filer, 1 065 tester godkända. Typkontroll, lint och
+  produktionsbygge godkända lokalt. Bygget krävde egna lokala dependencies och
+  subprocessrättigheter; tidigare miljöfel är lösta, inga kontroller avstängda.
+- OpenAPI-generation utan diff och CI-jobbens beroenden verifierade.
+
+Inte körda/aktiverade: GitHub CI, Vercel-deploy, verklig Supabase-inloggning,
+passkey/OAuth/MCP, browser → Next-adapter eller full signalworker. Gamla
+Supabase-migrationer är oförändrade; inget reset/pgTAP körs mot gamla projektet.
+Det nya schemat verifieras med Liquibase/Testcontainers, inga molndatabaser har
+ändrats. Ingen dataöverföring, gammal projektradering eller nya molnbyggen.
+
+M02/M03/M05/M07 är delvis levererade; helheten får inte markeras färdig.
+Nästa steg är nya syntetiska verksamhetsdata, verifierad Auth-livscykel,
+full signalreaktion och därefter Next-adapter/browserprov i den rena miljön.
+Extern Auth-utloggning/radering kan inte lovas slå igenom omedelbart med endast
+lokal JWT-verifiering: koppla lokal spärr eller besluta tokenlivslängd före pilot.
+Vercel-lagringsvarningen behöver hanteras före driftaktivering.
 
 ## M00: Nuläge, beslut och migreringsplan
 

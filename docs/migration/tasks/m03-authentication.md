@@ -1,7 +1,9 @@
 # M03: Verifiera Supabase-identitet och skilj kanalgrants
 
-Status: planerad. Beroenden: M01. Leverans: en avgränsad PR om inte nedan
+Status: delvis implementerad (2026-10-19). Beroenden: M01. Leverans: en avgränsad PR om inte nedan
 anges att arbetet först ska delas. Alla PR-baser är aktuell `main`.
+
+Webbsessionsverifiering och lokala JWKS-prov finns i `backend/api`. Verklig Supabase-inloggning, passkey/MCP och kopplad extern sessionsrevokering är ännu inte verifierade. Se [första flödet](../first-flow.md) för aktuell avgränsning.
 
 ## Bakgrund och gemensamma beslut
 

@@ -7,6 +7,11 @@ och säkerhetskrav gäller även kommande uppgifter.
 
 ## Aktuell planeringsinriktning
 
+**2026-10-19:** användaren har beslutat om ren start utan gamla testdata.
+[ADR-010](decisions.md) ersätter den tidigare övergången via gamla databasen.
+Första verksamhets-API:t finns i `backend/api`; [leveransen](first-flow.md)
+skiljer implementerad API-del från återstående UI-/Auth-/driftaktivering.
+
 Behåll Supabase som PostgreSQL-värd och Auth-leverantör under backendmigreringen.
 Cloud SQL är ett senare alternativ, inte ett villkor för att flytta backend.
 Verksamhetskoden använder JDBC, Liquibase och portabla PostgreSQL-objekt;

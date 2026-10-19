@@ -1,11 +1,13 @@
-# M05: Implementera familjeläsning och svarstjänst i övergångsdatabasen
+# M05: Implementera familjeläsning och svarstjänst i den rena verksamhetsdatabasen
 
-Status: planerad. Beroenden: M02, M03, M04. Leverans: en avgränsad PR om inte nedan
+Status: delvis implementerad (2026-10-19). Beroenden: M02, M03, M04. Leverans: en avgränsad PR om inte nedan
 anges att arbetet först ska delas. Alla PR-baser är aktuell `main`.
+
+Läs-/svarstjänsten finns i `backend/api`, på nytt tomt schema enligt ADR-010. Lokal familje-RLS, transaktion, historik och livscykellås är verifierbara; full signalreaktion återstår. Se [första flödet](../first-flow.md) för aktuell avgränsning.
 
 ## Bakgrund och gemensamma beslut
 
-Första kompletta flödet beskrivs i first-flow.md. Gemensam Supabase-Postgres behåller nuvarande sidoeffekter och undviker datadubbelskrivning.
+Första kompletta flödet beskrivs i first-flow.md. ADR-010 anger nytt tomt verksamhetsschema utan import av gamla testdata. Befintliga sidoeffekter måste implementeras och verifieras separat, inte antas följa med.
 
 Läs [repoinstruktionerna](../../../AGENTS.md), [planen](../README.md),
 [nuläget](../inventory.md), [besluten](../decisions.md),
@@ -20,15 +22,15 @@ nödvändigtvis innan beroendena är genomförda. Sökvägarna utgår från repo
 
 ## Ingår
 
-Inför organization/activities/participation-API:er i minsta nödvändiga omfattning och gemensam applikationstjänst. Implementera egen/familj-läsning och svar med samma fältsemantik. Bevisa begränsad JDBC-roll och transaktionslokal serverbyggd auth-kontext; RLS och triggers behålls. Inför revisionsuppgift om användare/kanal utan privat innehåll.
+Inför organization/activities/participation-API:er i minsta nödvändiga omfattning och gemensam applikationstjänst. Implementera egen/familj-läsning och svar med samma fältsemantik. Bevisa begränsad JDBC-roll och transaktionslokal serverbyggd auth-kontext; nya RLS-policyer och livscykel-/historiktriggers införs. Inför revisionsuppgift om användare/kanal utan privat innehåll.
 
 ## Acceptanskriterier
 
-Alla positiva och negativa regler i first-flow.md håller mot riktig databas. Omöjligt att kringgå RLS via runtimekonto eller läcka claims mellan poolade anrop. Historik och signalhändelse skapas exakt av befintlig producent vid ändrat svar; oförändrat svar får inga extra svarshändelser.
+Alla positiva och negativa regler i first-flow.md håller mot riktig databas. Omöjligt att kringgå RLS via runtimekonto eller läcka claims mellan poolade anrop. Historik och beständig signalversion skapas atomärt av en producent; oförändrat svar får inga extra poster. Full signalreaktion återstår att koppla in enligt M06.
 
 ## Verifiering
 
-JUnit/regler utan transport, Modulith verifiering och modultest, PostgreSQL-test med verkliga policyer/triggers, parallell inställning/svar och rollback. Kör relevanta pgTAP-prov.
+JUnit/regler utan transport, Modulith verifiering och modultest, PostgreSQL-test med verkliga policyer/triggers, parallell inställning/svar och rollback. Det nya schemat verifieras med Liquibase/Testcontainers; gamla pgTAP-prov används som regelunderlag.
 
 ## Lämnas till senare
 
