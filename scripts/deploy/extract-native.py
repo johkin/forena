@@ -2,6 +2,7 @@
 """Extract the web executable from the exact native container tested by CI."""
 import json
 from pathlib import Path
+import posixpath
 import subprocess
 
 
@@ -19,6 +20,9 @@ def web_command(config):
         if len(command) != 1:
             raise ValueError('Expected a direct native executable')
         command = command[0]
+    # Paketo native-image declares ./<main-class>, relative to WorkingDir.
+    directory = web[0].get('working-directory') or config.get('WorkingDir') or '/workspace'
+    command = posixpath.normpath(posixpath.join(directory, command))
     if not command.startswith(('/workspace/', '/layers/')) or web[0].get('args'):
         raise ValueError('Unexpected native web command')
     return command
