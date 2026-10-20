@@ -50,7 +50,7 @@ class BackendImage(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory, contextlib.chdir(directory):
             Path('metadata.json').write_text(json.dumps(self.metadata))
             Path('published.json').write_text(json.dumps([self.image]))
-            function = Path('.vercel/output/functions/backend.func')
+            function = Path('.vercel/output/services/backend/functions/index.func')
             function.mkdir(parents=True)
             (function / '.vc-config.json').write_text(json.dumps({
                 'runtime': 'container', 'handler': self.image['RepoDigests'][0]}))

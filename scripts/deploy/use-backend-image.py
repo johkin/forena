@@ -52,7 +52,7 @@ def main():
         path.write_text(json.dumps(configure(json.loads(path.read_text()), image), indent=2) + '\n')
         Path('deploy/backend-image/Dockerfile').write_text(dockerfile(image))
     elif mode == 'verify-output':
-        containers = [json.loads(p.read_text()) for p in Path('.vercel/output/functions').rglob('.vc-config.json')]
+        containers = [json.loads(p.read_text()) for p in Path('.vercel/output').rglob('.vc-config.json')]
         containers = [c for c in containers if c.get('runtime') == 'container']
         if len(containers) != 1:
             raise ValueError('Expected exactly one backend container in the deployment output')
