@@ -37,12 +37,10 @@ Se [Spring Boots native-guide](https://docs.spring.io/spring-boot/how-to/native-
 och [JDBC/AOT-konfiguration](https://docs.spring.io/spring-boot/reference/data/sql.html).
 
 CI-jobbet `native-image` kör samma buildpack-kommando efter `backend`-jobbet.
-Det paketerar därefter slutimagen med runtime-bibliotek, CA och startskript.
-Det startar slutimagen mot en tillfällig lokal PostgreSQL och en
+Det startar buildpacks native-image direkt mot en tillfällig lokal PostgreSQL och en
 syntetisk JWKS-server, kontrollerar DB/Auth-health, avbrott/återhämtning,
 saknad Bearer och avstängning. Migreringarna körs med JVM-JAR:en två gånger.
-Startprovet kör applikationen direkt med syntetisk lokal konfiguration;
-produktionsstartskriptets miljöfilter verifieras separat av releasegränstesterna.
+Startprovet använder imagens ordinarie entrypoint med syntetisk lokal konfiguration.
 Provet kontrollerar också att runtime får sin konfiguration vid start
 och saknar migreringscredentials. Det är inte ett fullständigt inloggat
 verksamhets- eller HTTPS-prov av native-runtime.
@@ -58,10 +56,12 @@ interface`: den ärvda, villkorliga metadataregistreringen räckte inte för
 Hibernate Validator 9.1/JBoss Logging 3.6. Nästa prov kom förbi loggern men
 behövde även `Messages_$bundle`. Valideringen behålls aktiverad.
 
-Releaseflödet publicerar slutimagen från exakt godkänd main-CI utan ompaketering.
-Image-ID och sourceCommit verifieras. Vercel Services får en FROM-only-Dockerfile
-med digest-låst OCI-referens; även image-ID:t i Vercels slutliga deployoutput
-måste matcha CI. Deployen är oberoende av applikationens runtime.
+Releaseflödet publicerar buildpacks native-image från exakt godkänd main-CI utan ompaketering.
+Image-ID och sourceCommit verifieras och Vercel får en OCI-referens låst till
+digest. Ingen extraktion, extra Dockerfile eller ändrad entrypoint används.
+`FORENA_DB_CA_CERTIFICATE` innehåller databasens publika PEM-CA vid deployment.
+Appen validerar den och skriver en privat temporär fil för JDBC vid start;
+övriga TLS-parametrar behålls.
 Se [releaseflödet](../../docs/migration/actions-deployment.md).
 Lokalt prov 2026-10-19: `-Pnative spring-boot:build-image` passerade AOT utan
 Auth-/databascredentials och utan databasanslutning. Uppackningen av standard-
@@ -80,12 +80,11 @@ Teknikprovet i `backend/` behåller sin historiska Java 26-verktygskedja.
 JWKS-hämtning och kontrollen mot Auth `/user` använder samma HTTP-klient.
 Dess truststore kombinerar Java-standardens rötter med containerns
 `/etc/ssl/certs/ca-certificates.crt` och ett eventuellt plattforms-CA-paket.
-Entrypointen förmedlar sökvägarna från `SSL_CERT_FILE` och
-`NODE_EXTRA_CA_CERTS` till `FORENA_AUTH_CA_BUNDLE` respektive
-`FORENA_AUTH_EXTRA_CA_BUNDLE`, före miljörensningen. Båda läses om båda finns.
+Klienten läser `SSL_CERT_FILE` och `NODE_EXTRA_CA_CERTS` direkt när
+`FORENA_AUTH_CA_BUNDLE` respektive `FORENA_AUTH_EXTRA_CA_BUNDLE` saknas. Båda läses om båda finns.
 Ett uttryckligt felaktigt CA-paket stoppar starten. Klienten behåller
 värdnamns-/kedjeverifiering, nekar redirects och har två sekunders timeout.
-Inga JVM-flaggor eller admincredentials ärvs för att konfigurera TLS.
+TLS-konfigurationen kräver inga JVM-flaggor eller admincredentials.
 
 Startup loggar endast antal CA-certifikat per källa. `/actuator/health`
 kontrollerar både databasen och hämtning av publika Auth-nycklar med samma

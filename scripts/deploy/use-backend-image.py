@@ -3,8 +3,9 @@
 import json
 from pathlib import Path
 import re
-import subprocess
 import sys
+import os
+import shutil
 
 REPOSITORY = 'vcr.vercel.com/johkin/forena-kotlin/backend'
 
@@ -19,27 +20,46 @@ def verify_image(image, metadata, commit):
         raise ValueError('Release requires linux/amd64')
 
 
-def image_reference(image):
+def configure(image, public_key, certificate):
     references = [ref for ref in image.get('RepoDigests', [])
                   if re.fullmatch(re.escape(REPOSITORY) + r'@sha256:[0-9a-f]{64}', ref)]
     if len(references) != 1:
         raise ValueError('Expected one immutable image reference in the target VCR repository')
-    return references[0]
+    if not re.fullmatch(r'sb_publishable_[A-Za-z0-9_-]+', public_key):
+        raise ValueError('Expected the public Auth key')
+    return {'handler': references[0], 'runtime': 'container', 'architecture': 'x86_64',
+            'regions': ['fra1'], 'environment': {
+                'PORT': '80',
+                'FORENA_MIGRATE': 'false',
+                'FORENA_AUTH_ISSUER': 'https://ckzrtxqjskosqzoitymc.supabase.co/auth/v1',
+                'FORENA_AUTH_JWKS_URI': 'https://ckzrtxqjskosqzoitymc.supabase.co/auth/v1/.well-known/jwks.json',
+                'FORENA_AUTH_PUBLISHABLE_KEY': public_key,
+                'FORENA_DB_CA_CERTIFICATE': certificate}}
 
 
-def dockerfile(image):
-    # Services currently accepts Dockerfile entrypoints only. FROM alone keeps
-    # the base image config/layers; verify-output checks that before deployment.
-    return 'FROM ' + image_reference(image) + '\n'
+def routes():
+    # Same request.path transform emitted by @vercel/container: retain API paths.
+    return [
+        {'src': '/(?:config\\.json|app-version\\.json|api(?:/.*)?)',
+         'headers': {'Cache-Control': 'no-store'}, 'continue': True},
+        {'src': '/(api(?:/.*)?|actuator/health)', 'dest': '/backend',
+         'transforms': [{'type': 'request.path', 'op': 'set', 'args': '/$1'}]},
+        {'handle': 'filesystem'},
+        {'src': '/.*', 'dest': '/index.html'}]
 
 
-def configure(config, image):
-    image_reference(image)
-    backend = config['services']['backend']
-    if backend.get('root') != 'deploy/backend-image' or backend.get('runtime') != 'container':
-        raise ValueError('Backend must use the prebuilt image service root')
-    backend['entrypoint'] = 'Dockerfile'
-    return config
+def write_output(image):
+    # Build Output API describes the deployment; it never reads or rebuilds the image.
+    output = Path('.vercel/output')
+    if output.exists():
+        shutil.rmtree(output)
+    function = output / 'functions/backend.func'
+    function.mkdir(parents=True)
+    descriptor = configure(image, os.environ['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'],
+                           Path('backend/certs/supabase-ca.crt').read_text())
+    (function / '.vc-config.json').write_text(json.dumps(descriptor, indent=2) + '\n')
+    shutil.copytree('frontend/dist', output / 'static')
+    (output / 'config.json').write_text(json.dumps({'version': 3, 'routes': routes()}, indent=2) + '\n')
 
 
 def main():
@@ -48,18 +68,12 @@ def main():
     image = json.loads(Path(inspect_path).read_text())[0]
     verify_image(image, metadata, commit)
     if mode == 'configure':
-        path = Path('vercel.json')
-        path.write_text(json.dumps(configure(json.loads(path.read_text()), image), indent=2) + '\n')
-        Path('deploy/backend-image/Dockerfile').write_text(dockerfile(image))
+        write_output(image)
     elif mode == 'verify-output':
-        containers = [json.loads(p.read_text()) for p in Path('.vercel/output/functions').rglob('.vc-config.json')]
-        containers = [c for c in containers if c.get('runtime') == 'container']
-        if len(containers) != 1:
-            raise ValueError('Expected exactly one backend container in the deployment output')
-        ref = containers[0].get('handler', '')
-        image_reference({'RepoDigests': [ref]})
-        selected = json.loads(subprocess.check_output(['docker', 'image', 'inspect', ref], text=True))[0]
-        verify_image(selected, metadata, commit)
+        descriptor = json.loads(Path('.vercel/output/functions/backend.func/.vc-config.json').read_text())
+        expected = configure(image, os.environ['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'], '')
+        if descriptor.get('runtime') != 'container' or descriptor.get('handler') != expected['handler'] or 'command' in descriptor:
+            raise ValueError('Deployment output must select the tested image with its original entrypoint')
     elif mode != 'verify':
         raise ValueError('Expected verify or configure')
     print('Verified CI image identity for release ' + commit)

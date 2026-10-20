@@ -114,6 +114,7 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
         threading.Thread(target=keys.serve_forever, daemon=True).start()
         issuer = f"http://127.0.0.1:{keys.server_port}/auth/v1"
         env.update(FORENA_MIGRATE="false", PORT=str(http_port),
+                   FORENA_DB_CA_CERTIFICATE=(ROOT / "backend/certs/supabase-ca.crt").read_text(),
                    FORENA_AUTH_PUBLISHABLE_KEY="sb_publishable_smoke_placeholder",
                    FORENA_AUTH_ISSUER=issuer, FORENA_AUTH_JWKS_URI=issuer + "/.well-known/jwks.json")
         with tempfile.TemporaryFile(mode="w+") as log:
@@ -121,7 +122,7 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
             if args.runtime_image:
                 # Host networking only connects the Linux test container to the
                 # disposable PostgreSQL and synthetic JWKS server on loopback.
-                runtime_keys = ("PORT", "FORENA_JDBC_URL", "FORENA_DB_USERNAME", "FORENA_DB_PASSWORD",
+                runtime_keys = ("PORT", "FORENA_DB_CA_CERTIFICATE", "FORENA_JDBC_URL", "FORENA_DB_USERNAME", "FORENA_DB_PASSWORD",
                                 "FORENA_AUTH_PUBLISHABLE_KEY", "FORENA_AUTH_ISSUER", "FORENA_AUTH_JWKS_URI")
                 entrypoint = ["--entrypoint", args.runtime_entrypoint] if args.runtime_entrypoint else []
                 runtime_container = docker("create", "--network=host", *entrypoint,

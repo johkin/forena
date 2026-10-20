@@ -13,13 +13,13 @@ Efter godkänd CI för en push till main checkar Actions ut exakt aktuell main-S
 inte publicera. Releasejobb serialiseras och main kontrolleras igen före promotion.
 
 `deploy/vercel.kotlin.json` kopieras till checkoutens `vercel.json` endast i
-releasejobbet. Vercel Services (beta) publicerar båda delarna atomärt i Frankfurt:
+releasejobbet. Vercel publicerar frontend och backend atomärt i Frankfurt:
 
 - `frontend/`: React/Vite som statiska filer. Ingen frontend-container eller Node-server.
 - `backend/api`: Java 25/Spring Boot i container med begränsad runtime-roll.
 
 Vercel routar `/api/*` och `/actuator/health` direkt till backend, övrigt till
-frontend. SPA-djuplänkar faller tillbaka till `index.html` inom frontendtjänsten;
+frontend. SPA-djuplänkar faller tillbaka till `index.html` för frontend;
 API-anrop får aldrig HTML-fallback. Det finns ingen privat servicebinding och
 browsern skickar Bearer-token direkt till API:t på samma origin. Backendens
 JWT-, sessions- och familjekontroller ligger kvar.
@@ -29,30 +29,31 @@ Vercels skyddscookie når Deployment Protection. Plattformens HTML-/401-svar
 får inte logga ut användaren ur Supabase. Bara API:ts uttryckliga JSON-svar
 om ogiltig appsession gör det. Behåll Deployment Protection aktiverat.
 
-CI bygger och starttestar den färdiga backend-imagen, inklusive startskript,
-systembibliotek och CA-certifikat. Native-kompilering och paketering hör till
-byggjobbet. Det äldre `kotlin-probe`-jobbet är borttaget från CI; verksamhets-API:ts
-backend-tester och imageprov ligger kvar.
+CI bygger native-imagen direkt med Spring Boots buildpacks (`-Pnative
+spring-boot:build-image`) och starttestar den. Ingen extraktion, Dockerfile,
+ändrad entrypoint eller andra imagebyggen följer. Samma OCI-image sparas som
+`forena-backend-image-<sha>` och hämtas av releasejobbet för exakt godkänd main-
+commit. Image-ID verifieras före och efter taggning/push till projektets VCR.
+Saknad/utgången artefakt stoppar releasen; kör då CI igen för aktuell main.
 
-Releasen hämtar `forena-backend-image-<sha>` från godkänd main-CI för exakt
-releasecommit och kontrollerar artefaktens sourceCommit och image-ID mot den
-laddade imagen. Saknad/utgången artefakt stoppar releasen; kör CI igen för samma
-aktuella main. Ingen binär extraheras och ingen backend-image byggs i deployjobbet.
+Releasen skriver Vercels Build Output API: frontendens färdiga statiska filer
+samt en containerfunktion vars `handler` är imagens oföränderliga VCR-digest.
+`vercel build` körs inte. Vercel CLI 60.1.3 stöder denna containerfunktion, men
+accepterar inte en registry-referens som `services.backend.entrypoint`.
+API- och health-rutter behåller sin request-path och matchas före SPA-fallback.
 
-Imagen taggas och pushas till samma projekts Vercel Container Registry. Image-ID:t
-måste fortfarande matcha CI-artefakten efter push. Backendens OCI-referens låses till dess oföränderliga `vcr.vercel.com/johkin/forena-kotlin/backend@sha256:…`.
-Vercel Services kräver fortfarande en Dockerfile som service-entrypoint i CLI
-60.1.3. Releasen genererar därför endast `FROM <digest-referensen>` i
-`deploy/backend-image/Dockerfile`. Docker väljs uttryckligen som container-engine;
-en FROM-only-beskrivning behåller samma image-ID och lager. Efter `vercel build`
-kontrolleras dessutom imagen som faktiskt står i deployoutput mot CI:s image-ID.
-En avvikelse stoppar releasen före `vercel deploy`. Deployflödet behöver inte
-veta om processen kör native, JVM eller något annat.
+Runtime får Auth-konfiguration och det publika databas-CA-certifikatet som
+funktionskonfiguration. Appen validerar certifikatet och skriver det till en
+privat temporär fil för JDBC:s `sslrootcert`; `sslmode=verify-full` behålls.
+Ingen fil läggs i imagen efter bygget. DB-lösenordet kommer fortsatt enbart från
+Vercels runtime-miljö. Tilldela endast det begränsade runtime-kontot till projektet.
+Ägar-/migreringscredentials hör till den separata migrationsmiljön. Migreringsläge
+sätts till false i funktionskonfigurationen. Auth läser plattformens CA-sökvägar
+direkt från `SSL_CERT_FILE`/`NODE_EXTRA_CA_CERTS` när explicit Auth-bundle saknas.
 
-Frontend byggs separat. `vercel build --prod` paketerar statiska filer och den
-befintliga OCI-referensen; `vercel deploy --prebuilt --prod --skip-domain` skapar
-en stagingdeployment. JDBC och riktig Auth/HTTPS-health kontrolleras innan samma
-deployment främjas till den kanoniska domänen.
+`vercel deploy --prebuilt --prod --skip-domain` skapar staging med den redan
+publicerade native-imagen. JDBC och riktig Auth/HTTPS-health kontrolleras före
+promotion av samma deployment till den kanoniska domänen.
 
 Kontroller före `vercel promote`:
 
@@ -98,10 +99,10 @@ skriver en uttrycklig tillåtelselista till `config.json`: Auth-URL, publishable
 key, valfri aktivitet och version. Databas-/Auth-admincredentials får aldrig
 publiceras i frontendfiler eller Actions-artifakter. `config.json` och
 versionsfilen har `no-store`. Runtime-API:t får bara sitt begränsade DB-konto;
-startskriptets miljöfilter nekar migreringsläge och generella Spring-/JVM-överstyrningar.
+inga migreringscredentials ska finnas i runtime-projektet.
 Auth-HTTPS-klienten läser Java- och systemrötter samt plattformens CA-fil via
-`SSL_CERT_FILE` och `NODE_EXTRA_CA_CERTS`. Sökvägarna förs vidare som
-`FORENA_AUTH_CA_BUNDLE` respektive `FORENA_AUTH_EXTRA_CA_BUNDLE`.
+`SSL_CERT_FILE` och `NODE_EXTRA_CA_CERTS`. De kan även anges som `FORENA_AUTH_CA_BUNDLE` respektive
+`FORENA_AUTH_EXTRA_CA_BUNDLE`.
 Certifikat- och värdnamnskontroll behålls;
 ett uttryckligt felaktigt CA-paket stoppar start.
 

@@ -139,17 +139,11 @@ jobs:
         run: >-
           backend/mvnw -f backend/api/pom.xml --batch-mode --no-transfer-progress
           -Pnative -DskipTests
-          -Dspring-boot.build-image.imageName=forena-api-native:ci
+          -Dspring-boot.build-image.imageName=forena-backend:ci
           spring-boot:build-image
 
-      - name: Package the final backend image
-        run: |
-          python3 scripts/deploy/extract-native.py
-          cp backend/certs/supabase-ca.crt backend/api/target/supabase-ca.crt
-          docker build -f backend/api/Dockerfile.vercel -t forena-backend:ci backend/api
-
-      - name: Verify final image against disposable PostgreSQL and Auth keys
-        run: python3 backend/api/scripts/local-smoke.py --runtime-image forena-backend:ci --runtime-entrypoint /app/forena-api
+      - name: Verify the native buildpack image against disposable PostgreSQL and Auth keys
+        run: python3 backend/api/scripts/local-smoke.py --runtime-image forena-backend:ci
 
       - name: Export tested backend image
         run: |
