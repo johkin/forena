@@ -111,13 +111,15 @@ Appens publika budget kan ta högst 10 av burstutrymmet och fylls på med 20 per
 fem minuter. Det lämnar 20 burstplatser och 130 förnyelser per fem minuter vid
 standardkvoten och utan annan trafik i samma leverantörsbucket.
 
-Dimensioneringsantagandet för piloten är 100 aktiva sessioner. Med en timmes
-access-tokenlivslängd och förnyelse 60 sekunder före expiry blir medellasten
+Dimensioneringsantagandet för piloten är 100 aktiva sessioner. Målprojektets
+access-tokenlivslängd uppmättes till 3 600 sekunder den 20 oktober 2026
+([sanerat Auth-prov](evidence/web-auth-readiness.json)). Med förnyelse
+60 sekunder före expiry blir medellasten
 `100 × 300 / 3540 ≈ 8,5` refresh-anrop per fem minuter, under reservens 130.
 Generellt är medellasten `N × 300 / (TTL − 60)`. Detta är ett konservativt
-kapacitetsantagande, inte uppmätt produktionstrafik. Verifiera faktisk TTL,
-projektkvot och samtidig trafik före drift. Samtidiga förnyelser som överskrider
-leverantörens återstående burst kan fortfarande ge 503; sessionen behålls.
+kapacitetsantagande, inte uppmätt produktionstrafik. Verifiera projektkvot,
+samtidig trafik och att TTL fortfarande gäller före drift. Samtidiga förnyelser
+som överskrider leverantörens återstående burst kan fortfarande ge 503; sessionen behålls.
 En distribuerad attack kan fylla appens inloggningsbudget och fördröja nya
 inloggningar, men når inte refresh-reserven genom dessa publika rutter.
 
@@ -178,6 +180,14 @@ säkerhetsmässigt likvärdig återgång.
   bevisar inte dessa externa inställningar.
 
 ## Aktuellt målmiljöprov
+
+Den 20 oktober 2026 skapades ett tillfälligt syntetiskt testkonto i det isolerade
+målprojektet med uttryckligt godkännande. Lösenordsinloggning och tokenförnyelse
+lyckades mot riktig Supabase Auth; refresh gav HTTP 200. Både JWT:s `exp − iat`
+och Auth-svarets `expires_in` var 3 600 sekunder. Testkontot raderades efter
+provet och Auth bekräftade raderingen. Inga lösenord, tokens eller kontouppgifter
+sparades i underlaget. Detta verifierar leverantörens Auth-anrop och TTL;
+det ersätter inte ett driftsatt browser–Kotlin–databas-prov.
 
 Den 20 oktober 2026 anropades målprojektets riktiga
 `POST /auth/v1/passkeys/authentication/options` med publishable key. Svaret var

@@ -1,8 +1,12 @@
 {
   "project_ref": "ckzrtxqjskosqzoitymc",
-  "checked_on": "2026-10-20",
+  "checked_at": "2026-10-20T18:38:04.970322+00:00",
   "passkey_options_status": 404,
   "passkey_error_code": "passkey_disabled",
   "passkey_full_flow_verified": false,
+  "access_token_ttl_seconds": 3600,
+  "provider_expires_in_seconds": 3600,
+  "synthetic_refresh_status": 200,
+  "synthetic_account_cleanup_confirmed": true,
   "project_configuration_changed": false
 }

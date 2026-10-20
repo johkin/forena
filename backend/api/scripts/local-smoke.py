@@ -176,7 +176,10 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
                     urllib.request.urlopen(request, timeout=3)
                     raise AssertionError("Synthetic Auth failure was accepted")
                 except urllib.error.HTTPError as error:
-                    assert error.code == (503 if index < 5 else 429)
+                    expected_status = 503 if index < 5 else 429
+                    if error.code != expected_status:
+                        log.seek(0)
+                        raise AssertionError(f"Auth admission returned {error.code}, expected {expected_status}:\n" + log.read()) from error
                     assert error.headers.get("Cache-Control") == "no-store"
                     if index == 5:
                         assert int(error.headers["Retry-After"]) > 0

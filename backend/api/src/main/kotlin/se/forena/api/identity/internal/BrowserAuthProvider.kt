@@ -25,9 +25,10 @@ class BrowserAuthProvider(
     private val client = RestTemplate(requests)
     fun password(email: String, password: String) = post("/token?grant_type=password", mapOf("email" to email, "password" to password))
     fun refresh(token: String) = post("/token?grant_type=refresh_token", mapOf("refresh_token" to token))
-    fun options() = post("/passkeys/authentication/options", emptyMap<String, String>())
+    // Kotlin's EmptyMap needs reflection metadata when Jackson serializes it in native images.
+    fun options() = post("/passkeys/authentication/options", json.createObjectNode())
     fun verify(challenge: String, credential: JsonNode) = post("/passkeys/authentication/verify", mapOf("challenge_id" to challenge, "credential" to credential))
-    fun logout(token: String) { post("/logout?scope=local", emptyMap<String, String>(), token) }
+    fun logout(token: String) { post("/logout?scope=local", json.createObjectNode(), token) }
 
     private fun post(path: String, body: Any, bearer: String? = null): JsonNode {
         val headers = HttpHeaders().also {
