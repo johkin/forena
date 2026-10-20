@@ -4,8 +4,10 @@
 
 `frontend/` hanterar UI och WebAuthn-dialogen. Kotlin hanterar Auth-anrop och
 serverlagrade sessioner; bara ett slumpmässigt sessions-ID skickas till browsern
-i en HttpOnly/Secure/SameSite=Lax-cookie utan Domain. Hashade sessions-ID:n och
-AES-256-GCM-krypterade access-/refresh-token finns i `forena.browser_session`.
+i en HttpOnly/Secure/SameSite=Lax-cookie utan Domain. Spring Session JDBC äger session och cookie. Provider-tokens lagras
+AES-256-GCM-krypterat i `forena.spring_session_attributes`; livscykeln lagras i
+`forena.spring_session`. En CookieSerializer-adapter krypterar Spring Sessions
+ID i cookien så att ett läst databas-ID inte kan användas direkt som credential.
 Nyckeln tillhör runtime-hemlighetshanteringen, inte databasen eller bygget.
 Cookieanrop går till samma origins `/api/*` utan redirects. Skrivningar kräver
 kanonisk Origin och `X-Forena-Request: 1`; CORS öppnas inte. Verksamhetsanrop

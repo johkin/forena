@@ -1,6 +1,6 @@
 # Webbsessioner i Kotlin (#135)
 
-Den separata React/Vite-appen använder en Kotlin-ägd serversession enligt
+Den separata React/Vite-appen använder Spring Session JDBC i Kotlin enligt
 ADR-018. Gamla Next-appen och dess Auth/MCP-flöden är separata. Det här ändrar
 inte skydd eller publicering av hela sajten: statiska sidor är publika och
 backend har uttryckliga regler för varje API-route.
@@ -11,8 +11,8 @@ backend har uttryckliga regler för varje API-route.
 | --- | --- |
 | `GET /actuator/health` | Publik, inga detaljer; inkluderar Auth-nycklar och sessionslagringens schema |
 | `POST /api/auth/login` | Publik med CSRF-skydd; email/password till Auth från Kotlin |
-| `POST /api/auth/passkey/options` | Publik med CSRF-skydd; Auth-challenge binds till krypterad HttpOnly-cookie i högst fem minuter |
-| `POST /api/auth/passkey/verify` | Publik med CSRF-skydd; kräver matchande challenge-cookie och giltig WebAuthn-assertion |
+| `POST /api/auth/passkey/options` | Publik med CSRF-skydd; Auth-challenge lagras i serversessionen i högst fem minuter |
+| `POST /api/auth/passkey/verify` | Publik med CSRF-skydd; kräver matchande challenge i serversessionen och giltig WebAuthn-assertion |
 | `POST /api/auth/logout` | Publik med CSRF-skydd; idempotent även med utgången cookie |
 | `GET /api/auth/session` | Kräver session; returnerar endast verifierat användar-ID och email |
 | Verksamhets-API och övriga routes | Kräver autentisering och respektive verksamhetsbehörighet |
@@ -26,7 +26,8 @@ cookieautentiserad verksamhetsskrivning nekas. Headern ger inga rättigheter.
 Bearer-anrop behåller tidigare stateless-kontrakt och kontroller; att kombinera
 Bearer och sessionscookie nekas för skyddade API-anrop.
 
-Login/passkey sätter `__Host-forena-session`: 256 slumpbitar, HttpOnly, Secure,
+Login/passkey sätter `__Host-forena-session`: Spring Sessions slumpmässiga ID
+skyddat med AES-GCM, HttpOnly, Secure,
 SameSite=Lax, Path=/, utan Domain eller beständig cookie-expiry. Servern styr
 giltigheten även om browsern återställer sina sessionscookies. Auth- och privata
 svar har `Cache-Control: no-store`. Tokens finns aldrig i frontendens svar,
@@ -36,23 +37,36 @@ Gamla pilotnyckeln och dess hjälpfält rensas vid start; användaren loggar in 
 Login och logout uppdaterar React utan dokumentbyte. Passkey gör options →
 `navigator.credentials.get()` → verify via samma origin. Supabase verifierar
 signatur, challenge, RP-ID, origin och användarstatus. Kotlin binder challenge-ID
-till browserns krypterade cookie och dess expiry; Auth ansvarar för engångsanvändning.
+till serversessionen och dess expiry; Auth ansvarar för engångsanvändning.
 Webbläsaren får aldrig leverantörens sessionssvar. Kontobyten signaleras mellan
 flikar utan användardata; sessionen kontrolleras även när fliken får fokus.
 
 ## Serversession och livscykel
 
-`forena.browser_session` är privat infrastruktur, inte affärshistorik. Tabellen
-har SHA-256-hash av sessions-ID, konto-ID, leverantörens sessions-ID, krypterat
-tokenpar och tidsgränser. Tokens krypteras med AES-256-GCM, ny 96-bitars nonce
-och sessionshash som authenticated additional data. Krypteringsnyckeln finns
-enbart i runtime-hemlighetshanteringen, separat från databasen. Klientroller
-saknar grants. Runtime får endast DML i tabellen, inte schemaägar-/Auth-adminrätt.
+Spring Session JDBC 4.1 äger servletsessionen, persistens, sessions-ID,
+HttpOnly-cookiens livscykel, inaktivitet och städning. Standardtabellerna
+`forena.spring_session` och `forena.spring_session_attributes` skapas av
+Liquibase, aldrig automatiskt av runtime. Säkerhetskontexten sparas inte i sessionen:
+Spring Security fortsätter verifiera JWT för varje skyddat anrop.
 
-Standard är åtta timmars maximal livstid och 30 minuters inaktivitet. Godkända
-sessionsuppslag flyttar inaktivitetstid framåt inom maximaltiden. Vid högst 60
+Spring Sessions UUID lagras i den privata sessionstabellen. En liten
+`CookieSerializer`-adapter skyddar ID:t med befintlig AES-256-GCM-kryptering
+innan Spring skriver det i cookien. Ett läst databas-ID kan därför inte direkt
+användas som browsercredential. Spring hanterar fortsatt cookieflaggor och
+utgång. Leverantörens tokenpar och verifierade sessionsmetadata lagras som ett
+AES-GCM-krypterat strängattribut med sessions-ID som authenticated additional
+data. Nyckeln finns enbart i runtime-hemlighetshanteringen. Bara strängattribut
+serialiseras som UTF-8; ingen Java-objektdeserialisering används.
+Klientroller saknar grants och runtime får endast DML, inte schemaägarrätt.
+
+Standard är åtta timmars maximal livstid och 30 minuters inaktivitet. Spring Session
+sköter inaktivitetstid och `BrowserSessionService` kontrollerar den absoluta
+maximitiden mot sessionens skapandetid vid varje autentiserat cookieanrop. Vid högst 60
 sekunder kvar på access-token förnyas den på servern. `SELECT ... FOR UPDATE`
-inom en JDBC-transaktion serialiserar uppslag/förnyelse över alla instanser.
+på Spring Sessions rad inom en JDBC-transaktion serialiserar tokenförnyelse
+över alla instanser. Providerattributet läses om efter låset och uppdateras
+genom repositoryt i samma transaktion. Servletens äldre kopia får bara spara
+åtkomsttid; `SaveMode.ON_SET_ATTRIBUTE` förhindrar återställning av gamla tokens.
 Förnyad JWT måste fortfarande ha samma konto och leverantörssession. Omstarter
 behåller sessioner när databas, nyckel och konfiguration är desamma.
 
@@ -64,10 +78,11 @@ också vid verksamhetsskrivning efter radlås. Inga behörigheter kommer från
 och rensar cookien. Om Auth är nere avslutas appsessionen ändå; ingen garanti
 ges då om omedelbar återkallning av en redan utfärdad leverantörs-JWT.
 
-Expired-rader städas varje minut när applikationen kör och vid ny inloggning.
+Spring Session städar inaktiva rader varje minut när applikationen kör.
 Vid skalning till noll körs ingen städning förrän nästa instans startar, men
-utgångna sessioner accepteras aldrig. Kontoradering kaskadraderar dess
-appsessioner. Ingen atomär transaktion finns med extern Auth: processkrasch
+utgångna sessioner accepteras aldrig. Efter kontoradering nekas fortsatt åtkomst av kontokontrollen även om en
+Spring Session-rad finns kvar tills den går ut och städas. Ingen atomär
+transaktion finns med extern Auth: processkrasch
 efter provider-refresh men före databascommit kan kräva ny inloggning efter
 leverantörens refresh-reuse-fönster. In-flight-kommandon har samma gräns vid
 revokering efter sista kontrollen som ADR-016 beskriver.
@@ -125,8 +140,8 @@ inloggningar, men når inte refresh-reserven genom dessa publika rutter.
 
 ## Konfiguration och releaseordning
 
-1. Applicera Liquibase till och med `api-007-auth-rate-limit` med separat
-   ägarkonto. Runtime får inga migreringscredentials. Den additiva tabellen
+1. Applicera Liquibase till och med `api-008-spring-session` med separat
+   ägarkonto. Runtime får inga migreringscredentials. De nya privata sessionstabellerna
    ändrar inte affärstabellerna; befintliga Bearer-klienter fungerar fortsatt.
 2. Skapa en base64-kodad nyckel från 32 kryptografiskt slumpade byte i godkänd
    hemlighetshantering. Sätt `FORENA_WEB_SESSION_KEY` endast för backendens runtime.
@@ -146,8 +161,10 @@ inloggningar, men når inte refresh-reserven genom dessa publika rutter.
    kontrollerar formatet om värdet är läsbart. Nyckeln exporteras aldrig till
    bygget. Backend validerar den faktiska nyckeln vid runtime-start;
    runtime-descriptorn aktiverar sessioner
-   med kanonisk Kotlin-site-origin. Health måste verifiera migration 006/007 före
+   med kanonisk Kotlin-site-origin. Health måste verifiera migration 008 och limiter-tabellen före
    promotion. Verifiera sedan faktisk login/cookie/API/logout på sajtens origin.
+   Övergången kräver ny inloggning. Gamla `forena.browser_session` lämnas orörd
+   för reversibel rollout och används inte av den nya koden; avveckling sker separat.
 
 Lokalt kan `FORENA_WEB_SESSION_SECURE=false` användas endast med loopback-origin,
 till exempel `http://localhost:3000`. Då heter cookien `forena-local-session`.
@@ -184,6 +201,12 @@ säkerhetsmässigt likvärdig återgång.
   bevisar inte dessa externa inställningar.
 
 ## Aktuellt målmiljöprov
+
+Spring Session-migration 008 är applicerad i målprojektet. De nya tabellerna
+ägs av migreringsrollen och runtime har DML; klientroller saknar åtkomst.
+Gamla sessionstabellen är kvar och den befintliga publicerade versionens health
+är UP. Detta är schemaverifiering inför kodpublicering, inte ett prov av den nya
+appen i produktion. [Sanerat underlag](evidence/spring-session-schema.json).
 
 Den 20 oktober 2026 skapades ett tillfälligt syntetiskt testkonto i det isolerade
 målprojektet med uttryckligt godkännande. Lösenordsinloggning och tokenförnyelse

@@ -13,8 +13,9 @@ class BrowserSessionHealthIndicator(private val settings: BrowserSessionSettings
     override fun health(): Health {
         if (!settings.enabled) return Health.up().build()
         return try {
-            // Prove migration 006 and runtime privileges without reading anyone's session.
-            jdbc.queryForList("select id_hash,tokens,access_expires_at,expires_at,idle_expires_at from forena.browser_session where false")
+            // Prove migration 008 and runtime privileges without reading session data.
+            jdbc.queryForList("select primary_id,session_id,creation_time,expiry_time from forena.spring_session where false")
+            jdbc.queryForList("select session_primary_id,attribute_name,attribute_bytes from forena.spring_session_attributes where false")
             jdbc.queryForList("select key_hash,available_at from forena.auth_rate_limit where false")
             Health.up().build()
         } catch (_: Exception) { Health.down().build() }

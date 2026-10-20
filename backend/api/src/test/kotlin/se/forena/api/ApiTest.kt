@@ -180,6 +180,7 @@ class ApiTest {
 
     @BeforeEach fun seed() {
         admin.update("delete from forena.auth_rate_limit")
+        admin.update("delete from forena.spring_session")
         passwordCalls.set(0); passkeyCalls.set(0)
         refreshCount.set(0); refreshStatus = 200; passkeyChallenges.clear()
         parent = UUID.randomUUID(); outsider = UUID.randomUUID(); session = UUID.randomUUID()
@@ -239,6 +240,21 @@ class ApiTest {
     }
     private fun sessionCookie(result: HttpResponse<String>) = result.headers().allValues("set-cookie")
         .single { it.startsWith("__Host-forena-session=") }.substringBefore(';')
+    @org.springframework.beans.factory.annotation.Autowired
+    lateinit var springSessions: org.springframework.session.jdbc.JdbcIndexedSessionRepository
+    @Suppress("UNCHECKED_CAST")
+    private fun browserStore() = springSessions as org.springframework.session.SessionRepository<org.springframework.session.Session>
+    private fun storedBrowserSession(): org.springframework.session.Session {
+        val id = jdbc.queryForObject("select session_id from forena.spring_session where principal_name=?", String::class.java, parent.toString())!!
+        return browserStore().findById(id)!!
+    }
+    private fun expireProviderToken() {
+        val session = storedBrowserSession()
+        val state = browserSettings.decrypt(session.getAttribute<String>(se.forena.api.identity.BrowserSessionService.TOKENS)!!, session.id).split('\n').toMutableList()
+        state[2] = "0"
+        session.setAttribute(se.forena.api.identity.BrowserSessionService.TOKENS, browserSettings.encrypt(state.joinToString("\n"), session.id))
+        browserStore().save(session)
+    }
     private fun browserLogin(): HttpResponse<String> {
         loginAccess = token(); refreshAccess = token()
         return browser("/api/auth/login", """{"email":"family@example.invalid","password":"synthetic-password"}""")
@@ -262,7 +278,7 @@ class ApiTest {
             assertThat(child.exitValue()).describedAs("See private target/browser-server-session.log").isZero()
             assertThat(row()["response"]).isEqualTo("accepted")
             assertThat(history()).isEqualTo(1)
-            assertThat(jdbc.queryForObject("select count(*) from forena.browser_session where subject=?", Int::class.java, parent)).isZero()
+            assertThat(jdbc.queryForObject("select count(*) from forena.spring_session where principal_name=?", Int::class.java, parent.toString())).isZero()
         } finally { child.destroyForcibly() }
     }
 
@@ -309,7 +325,7 @@ class ApiTest {
         assertThat(browser("/api/auth/passkey/verify", """{"challenge_id":"${UUID.randomUUID()}","credential":{}}""").statusCode()).isEqualTo(429)
         assertThat(passwordCalls.get()).isEqualTo(1)
         assertThat(passkeyCalls.get()).isZero()
-        admin.update("update forena.browser_session set access_expires_at=now() where subject=?", parent)
+        expireProviderToken()
         assertThat(browser("/api/auth/session", cookie=cookie).statusCode()).isEqualTo(200)
         assertThat(refreshCount.get()).isEqualTo(1)
         assertThat(browser("/api/auth/logout", "{}", cookie).statusCode()).isEqualTo(200)
@@ -321,9 +337,9 @@ class ApiTest {
         val cookie = sessionCookie(login)
         assertThat(login.headers().firstValue("set-cookie").orElseThrow()).contains("HttpOnly", "Secure", "SameSite=Lax", "Path=/").doesNotContain("Domain=")
         assertThat(login.body()).contains(parent.toString()).doesNotContain("access_token", "refresh_token", loginAccess, session.toString())
-        val row = jdbc.queryForMap("select * from forena.browser_session where subject=?", parent)
-        assertThat(row["tokens"].toString()).doesNotContain(loginAccess, "synthetic-refresh")
-        assertThat(row["id_hash"].toString()).doesNotContain(cookie.substringAfter('='))
+        val stored = storedBrowserSession()
+        assertThat(stored.getAttribute<String>(se.forena.api.identity.BrowserSessionService.TOKENS)).doesNotContain(loginAccess, "synthetic-refresh")
+        assertThat(stored.id).isNotEqualTo(cookie.substringAfter('='))
         assertThat(browser("/api/auth/session", cookie=cookie).statusCode()).isEqualTo(200)
         assertThat(browser("/api/activities/$activity/my-invitations", cookie=cookie).statusCode()).isEqualTo(200)
         assertThat(browser("/api/invitations/$invitation/respond", """{"response":"accepted"}""", cookie, method="PUT").statusCode()).isEqualTo(200)
@@ -335,6 +351,14 @@ class ApiTest {
         assertThat(browser("/api/auth/session", cookie=cookie).statusCode()).isEqualTo(401)
         admin.update("insert into forena.revoked_session(id,subject) values(?,?)", session, parent)
         assertThat(browser("/api/auth/session", cookie=sessionCookie(next)).statusCode()).isEqualTo(401)
+    }
+
+    @Test fun `Spring session IDs read from the database cannot be replayed as browser cookies`() {
+        val cookie = sessionCookie(browserLogin())
+        val stored = storedBrowserSession()
+        assertThat(browser("/api/auth/session", cookie="__Host-forena-session=${stored.id}").statusCode()).isEqualTo(401)
+        assertThat(browser("/api/auth/session", cookie=cookie).statusCode()).isEqualTo(200)
+        assertThat(browser("/api/auth/session", cookie="$cookie; $cookie").statusCode()).isEqualTo(401)
     }
 
     @Test fun `cookie writes and login require canonical origin and custom header while bearer clients remain valid`() {
@@ -357,7 +381,7 @@ class ApiTest {
 
     @Test fun `shared session lock refreshes once across concurrent requests and preserves session on provider outage`() {
         val cookie = sessionCookie(browserLogin())
-        admin.update("update forena.browser_session set access_expires_at=now() where subject=?", parent)
+        expireProviderToken()
         refreshStatus = 503
         val unavailable = browser("/api/auth/session", cookie=cookie)
         assertThat(unavailable.statusCode()).isEqualTo(503)
@@ -367,17 +391,17 @@ class ApiTest {
         val calls = (1..6).map { CompletableFuture.supplyAsync { browser("/api/auth/session", cookie=cookie) } }
         calls.forEach { assertThat(it.get().statusCode()).isEqualTo(200) }
         assertThat(refreshCount.get()).isEqualTo(1)
-        assertThat(jdbc.queryForObject("select count(*) from forena.browser_session where subject=?", Int::class.java, parent)).isEqualTo(1)
-        admin.update("update forena.browser_session set access_expires_at=now() where subject=?", parent)
+        assertThat(jdbc.queryForObject("select count(*) from forena.spring_session where principal_name=?", Int::class.java, parent.toString())).isEqualTo(1)
+        expireProviderToken()
         refreshStatus = 400
         assertThat(browser("/api/auth/session", cookie=cookie).statusCode()).isEqualTo(401)
-        assertThat(jdbc.queryForObject("select count(*) from forena.browser_session where subject=?", Int::class.java, parent)).isZero()
+        assertThat(jdbc.queryForObject("select count(*) from forena.spring_session where principal_name=?", Int::class.java, parent.toString())).isZero()
     }
 
     @Test fun `maximum lifetime inactivity invalid cookie and logout deny further access`() {
-        for (column in listOf("expires_at", "idle_expires_at")) {
+        for (column in listOf("creation_time", "last_access_time")) {
             val cookie = sessionCookie(browserLogin())
-            admin.update("update forena.browser_session set $column=now()-interval '1 second' where subject=?", parent)
+            admin.update("update forena.spring_session set $column=0,expiry_time=0 where principal_name=?", parent.toString())
             assertThat(browser("/api/auth/session", cookie=cookie).statusCode()).isEqualTo(401)
         }
         assertThat(browser("/api/auth/session", cookie="__Host-forena-session=invalid").statusCode()).isEqualTo(401)
@@ -390,7 +414,7 @@ class ApiTest {
         assertThat(browser("/api/auth/logout", "{}", cookie).statusCode()).isEqualTo(200)
     }
 
-    @Test fun `passkey options and verification are bound to an encrypted browser challenge cookie and cannot be replayed`() {
+    @Test fun `passkey challenge is bound to the Spring session and cannot be replayed`() {
         loginAccess = token()
         val options = browser("/api/auth/passkey/options", "{}")
         assertThat(options.statusCode()).isEqualTo(200)
@@ -408,12 +432,14 @@ class ApiTest {
 
     @Test fun `logout removes even unreadable session ciphertext and clears the browser cookie`() {
         val cookie = sessionCookie(browserLogin())
-        admin.update("update forena.browser_session set tokens='unreadable-after-key-rotation' where subject=?", parent)
+        val stored = storedBrowserSession()
+        stored.setAttribute(se.forena.api.identity.BrowserSessionService.TOKENS, "unreadable-after-key-rotation")
+        browserStore().save(stored)
         assertThat(browser("/api/auth/session", cookie=cookie).statusCode()).isEqualTo(401)
         val logout = browser("/api/auth/logout", "{}", cookie)
         assertThat(logout.statusCode()).isEqualTo(200)
         assertThat(logout.headers().allValues("set-cookie").joinToString()).contains("Max-Age=0")
-        assertThat(jdbc.queryForObject("select count(*) from forena.browser_session where subject=?", Int::class.java, parent)).isZero()
+        assertThat(jdbc.queryForObject("select count(*) from forena.spring_session where principal_name=?", Int::class.java, parent.toString())).isZero()
     }
 
     @Test fun `provider logout ban deletion and mismatched session deny reads and writes without effects`() {

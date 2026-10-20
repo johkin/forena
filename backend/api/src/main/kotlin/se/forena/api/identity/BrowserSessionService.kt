@@ -1,118 +1,115 @@
 package se.forena.api.identity
 
-import java.security.MessageDigest
-import java.sql.Timestamp
+import jakarta.servlet.http.HttpServletRequest
 import java.time.Instant
 import java.util.UUID
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication
+import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.security.oauth2.jwt.JwtDecoder
+import org.springframework.session.Session
+import org.springframework.session.SessionRepository
+import org.springframework.session.FindByIndexNameSessionRepository
+import org.springframework.session.jdbc.JdbcIndexedSessionRepository
 import org.springframework.stereotype.Service
-import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.transaction.support.TransactionTemplate
 import se.forena.api.identity.internal.BrowserAuthProvider
 import tools.jackson.databind.JsonNode
 
-/** Shared JDBC row locks serialize refresh across all application instances. */
+/** Spring Session owns persistence, cookie and inactivity; this adapter owns provider tokens. */
 @Service
 @ConditionalOnWebApplication
 class BrowserSessionService(
     private val jdbc: JdbcTemplate, private val transaction: TransactionTemplate,
     private val settings: BrowserSessionSettings, private val provider: BrowserAuthProvider,
-    private val decoder: JwtDecoder, private val active: SessionService, private val limiter: BrowserLoginLimiter
+    private val decoder: JwtDecoder, private val active: SessionService,
+    repository: JdbcIndexedSessionRepository
 ) {
-    fun login(email: String, password: String, previous: String?): String {
+    @Suppress("UNCHECKED_CAST")
+    private val store = repository as SessionRepository<Session>
+
+    fun login(email: String, password: String, request: HttpServletRequest): BrowserSessionView {
         settings.requireEnabled()
         if (email.length !in 3..320 || password.length !in 1..1024) throw InactiveSession()
-        return create(provider.password(email, password), previous)
+        return create(provider.password(email, password), request)
     }
     fun passkeyOptions(): JsonNode { settings.requireEnabled(); return provider.options() }
-    fun passkeyVerify(challenge: String, credential: JsonNode, previous: String?) = create(provider.verify(challenge, credential), previous)
+    fun passkeyVerify(challenge: String, credential: JsonNode, request: HttpServletRequest) =
+        create(provider.verify(challenge, credential), request)
 
-    private fun create(tokens: JsonNode, previous: String?): String {
+    private fun create(tokens: JsonNode, request: HttpServletRequest): BrowserSessionView {
         val access = text(tokens, "access_token")
         val refresh = text(tokens, "refresh_token")
         val jwt = decoder.decode(access)
         active.requireActive(actor(jwt))
-        val id = settings.randomId()
-        val hash = hash(id)
-        val now = Instant.now()
-        transaction.executeWithoutResult {
-            purge()
-            if (previous != null) delete(previous)
-            jdbc.update("""insert into forena.browser_session(id_hash,subject,provider_session,tokens,access_expires_at,expires_at,idle_expires_at)
-                values(?,?,?,?,?,?,?)""", hash, UUID.fromString(jwt.subject), UUID.fromString(jwt.getClaimAsString("session_id")),
-                settings.encrypt(access + "\n" + refresh, hash), Timestamp.from(jwt.expiresAt),
-                Timestamp.from(now.plusSeconds(settings.maxSeconds)), Timestamp.from(now.plusSeconds(settings.idleSeconds)))
-        }
-        return id
+        request.getSession(false)?.invalidate()
+        val session = request.getSession(true)
+        session.setAttribute(TOKENS, encrypt(access, refresh, jwt, session.id))
+        session.setAttribute(FindByIndexNameSessionRepository.PRINCIPAL_NAME_INDEX_NAME, jwt.subject)
+        return view(jwt)
     }
 
-    fun resolve(id: String): BrowserSessionToken? {
+    fun resolve(request: HttpServletRequest): BrowserSessionToken? {
         settings.requireEnabled()
-        if (!id.matches(Regex("[A-Za-z0-9_-]{43}"))) return null
-        // Return an expired result rather than throwing inside the transaction: deletion must commit.
-        return transaction.execute {
-            val hash = hash(id)
-            val rows = jdbc.queryForList("select * from forena.browser_session where id_hash=? for update", hash)
-            val row = rows.singleOrNull() ?: return@execute null
-            val now = Instant.now()
-            fun expired(column: String) = !(row[column] as Timestamp).toInstant().isAfter(now)
-            if (expired("expires_at") || expired("idle_expires_at")) {
-                delete(id); return@execute null
+        val browser = request.getSession(false) ?: return null
+        val resolved = try {
+            transaction.execute {
+                // Reload AFTER locking; another instance may have refreshed since servlet loading.
+                // Only the fresh repository object writes token attributes, never the servlet copy.
+                val rows = jdbc.queryForList("select primary_id from forena.spring_session where session_id=? for update", browser.id)
+                if (rows.isEmpty()) return@execute null
+                val session = store.findById(browser.id) ?: return@execute null
+                if (!session.creationTime.plusSeconds(settings.maxSeconds).isAfter(Instant.now())) {
+                    store.deleteById(session.id); return@execute null
+                }
+                val encrypted = session.getAttribute<String>(TOKENS) ?: return@execute null
+                val state = settings.decrypt(encrypted, session.id).split('\n')
+                if (state.size != 5) throw InactiveSession()
+                var access = state[0]
+                val subject = UUID.fromString(state[3])
+                if (state[2].toLong() <= Instant.now().epochSecond + 60) {
+                    try {
+                        val renewed = provider.refresh(state[1])
+                        access = text(renewed, "access_token")
+                        val jwt = decoder.decode(access)
+                        if (jwt.subject != state[3] || jwt.getClaimAsString("session_id") != state[4]) throw InactiveSession()
+                        session.setAttribute(TOKENS, encrypt(access, text(renewed, "refresh_token"), jwt, session.id))
+                        store.save(session)
+                    } catch (_: InactiveSession) { store.deleteById(session.id); return@execute null }
+                }
+                BrowserSessionToken(access, subject)
             }
-            val tokens = settings.decrypt(row["tokens"] as String, hash).split('\n', limit = 2)
-            var access = tokens[0]
-            if (!(row["access_expires_at"] as Timestamp).toInstant().isAfter(now.plusSeconds(60))) {
-                try {
-                    val renewed = provider.refresh(tokens[1])
-                    access = text(renewed, "access_token")
-                    val jwt = decoder.decode(access)
-                    if (UUID.fromString(jwt.subject) != row["subject"] || UUID.fromString(jwt.getClaimAsString("session_id")) != row["provider_session"])
-                        throw InactiveSession()
-                    jdbc.update("update forena.browser_session set tokens=?,access_expires_at=? where id_hash=?",
-                        settings.encrypt(access + "\n" + text(renewed, "refresh_token"), hash), Timestamp.from(jwt.expiresAt), hash)
-                } catch (_: InactiveSession) { delete(id); return@execute null }
-            }
-            jdbc.update("update forena.browser_session set idle_expires_at=least(expires_at,?) where id_hash=?",
-                Timestamp.from(now.plusSeconds(settings.idleSeconds)), hash)
-            BrowserSessionToken(access, row["subject"] as UUID)
+        } catch (_: InactiveSession) {
+            browser.invalidate(); return null
         }
+        if (resolved == null) browser.invalidate()
+        return resolved
     }
 
     fun current(token: String): BrowserSessionView {
         val jwt = decoder.decode(token)
         active.requireActive(actor(jwt))
-        return BrowserSessionView(BrowserUser(jwt.subject ?: throw InactiveSession(), jwt.getClaimAsString("email")))
+        return view(jwt)
     }
 
-    /** Local deletion commits before contacting Auth, even when Auth is unavailable. */
-    fun logout(id: String?) {
-        if (id == null) return
-        val token = transaction.execute {
-            val hash = hash(id)
-            val rows = jdbc.queryForList("select tokens from forena.browser_session where id_hash=? for update", hash)
-            delete(id)
-            rows.singleOrNull()?.let {
-                // Key rotation or corrupt ciphertext must not prevent local logout.
-                try { settings.decrypt(it["tokens"] as String, hash).substringBefore('\n') }
-                catch (_: InactiveSession) { null }
-            }
-        }
+    /** Spring invalidation deletes locally before any provider network call. */
+    fun logout(request: HttpServletRequest) {
+        val session = request.getSession(false) ?: return
+        val token = try {
+            session.getAttribute(TOKENS)?.let { settings.decrypt(it as String, session.id).substringBefore('\n') }
+        } catch (_: InactiveSession) { null }
+        session.invalidate()
         if (token != null) {
             try { provider.logout(token) } catch (_: InactiveSession) {} catch (_: SessionVerificationUnavailable) {}
         }
     }
-    @Scheduled(fixedDelay = 60000)
-    fun purge() {
-        if (settings.enabled) {
-            jdbc.update("delete from forena.browser_session where expires_at<=clock_timestamp() or idle_expires_at<=clock_timestamp()")
-            limiter.purge()
-        }
-    }
-    private fun delete(id: String) { jdbc.update("delete from forena.browser_session where id_hash=?", hash(id)) }
-    private fun hash(id: String) = MessageDigest.getInstance("SHA-256").digest(id.toByteArray()).joinToString("") { "%02x".format(it) }
+
+    private fun encrypt(access: String, refresh: String, jwt: Jwt, id: String) = settings.encrypt(
+        "$access\n$refresh\n${jwt.expiresAt!!.epochSecond}\n${jwt.subject}\n${jwt.getClaimAsString("session_id")}", id)
+    private fun view(jwt: Jwt) = BrowserSessionView(BrowserUser(jwt.subject ?: throw InactiveSession(), jwt.getClaimAsString("email")))
     private fun text(node: JsonNode, name: String): String = node.get(name)?.takeIf { it.isString }?.asString()?.takeIf { it.isNotBlank() && !it.contains('\n') }
         ?: throw SessionVerificationUnavailable()
-    private fun actor(jwt: org.springframework.security.oauth2.jwt.Jwt) = Actor(UUID.fromString(jwt.subject), UUID.fromString(jwt.getClaimAsString("session_id")), jwt.tokenValue)
+    private fun actor(jwt: Jwt) = Actor(UUID.fromString(jwt.subject), UUID.fromString(jwt.getClaimAsString("session_id")), jwt.tokenValue)
+
+    companion object { const val TOKENS = "forena.provider-tokens" }
 }

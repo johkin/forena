@@ -75,7 +75,12 @@ class SecurityConfiguration {
         // Bearer-only integrations retain their existing stateless contract.
         .csrf { it.disable() }
         .addFilterBefore(BrowserSessionFilter(settings, sessions, json), BearerTokenAuthenticationFilter::class.java)
-        .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
+        .sessionManagement {
+            it.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            // JWT authentication happens on every request. Only explicit browser login
+            // creates a fresh Spring session; re-verifying JWT must not rotate its ID.
+            it.sessionFixation { fixation -> fixation.none() }
+        }
         .authorizeHttpRequests {
             it.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                 .requestMatchers("/actuator/health", "/api/auth/login", "/api/auth/logout", "/api/auth/passkey/options", "/api/auth/passkey/verify").permitAll()

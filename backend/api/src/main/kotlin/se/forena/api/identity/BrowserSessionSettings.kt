@@ -23,7 +23,6 @@ class BrowserSessionSettings(
         require(it.size == 32) { "Web sessions require a base64-encoded 32-byte encryption key" }
     }, "AES") else null
     val cookieName get() = if (secure) "__Host-forena-session" else "forena-local-session"
-    val challengeCookieName get() = if (secure) "__Host-forena-passkey" else "forena-local-passkey"
     init {
         if (enabled) {
             val uri = URI(origin)
@@ -37,7 +36,6 @@ class BrowserSessionSettings(
         }
     }
     fun requireEnabled() { if (!enabled) throw SessionVerificationUnavailable() }
-    fun randomId(): String = encode(ByteArray(32).also { SecureRandom().nextBytes(it) })
     /** Keep rate-limit identifiers opaque even to a database-only reader. */
     fun fingerprint(value: String): String {
         requireEnabled()

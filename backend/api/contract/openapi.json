@@ -351,7 +351,7 @@
     },
     "/api/auth/passkey/options": {
       "post": {
-        "description": "Begin WebAuthn authentication. Requires the canonical Origin and X-Forena-Request: 1. Binds the challenge to an encrypted HttpOnly cookie.",
+        "description": "Begin WebAuthn authentication. Requires the canonical Origin and X-Forena-Request: 1. Binds the challenge to the HttpOnly Spring session for at most five minutes.",
         "operationId": "startBrowserPasskey",
         "responses": {
           "200": {

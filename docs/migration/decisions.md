@@ -5,6 +5,14 @@ Källkodsverifierat nuläge finns i [inventeringen](inventory.md).
 
 ## ADR-018: Serversession och HttpOnly-cookie för nya webben
 
+**Uppdatering 2026-10-20:** på användarens instruktion ersätts den egna
+sessionsmekaniken med Spring Session JDBC. Ramverket äger servletsession,
+lagring, timeout, cookieflaggor och städning. En liten Supabase-adapter behåller
+krypterade tokens, absolut maxlivstid och serialiserad refresh. Cookiens
+Spring-ID krypteras med befintlig AES-GCM för att behålla skyddet mot återspel
+av lästa databas-ID:n. Migration 008 är additiv och lämnar gamla tabellen kvar
+för reversibel rollout; användare loggar in på nytt.
+
 Beslut 2026-10-20, ärende [#135](https://github.com/johkin/forena/issues/135):
 Kotlin äger webbinloggning, förnyelse och utloggning. Browsern får enbart ett
 slumpmässigt sessions-ID i en HttpOnly/Secure-cookie. Leverantörens tokens

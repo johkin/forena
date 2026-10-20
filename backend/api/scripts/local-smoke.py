@@ -14,6 +14,7 @@ import threading
 import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
+import uuid
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -22,6 +23,18 @@ JAVA = str(Path(os.environ["JAVA_HOME"]) / "bin/java")
 
 
 class LocalKeys(http.server.BaseHTTPRequestHandler):
+    def do_POST(self):
+        if self.path != "/auth/v1/passkeys/authentication/options" or not getattr(self.server, "passkey_success", False):
+            self.send_error(501)
+            return
+        self.rfile.read(int(self.headers.get("Content-Length", "0")))
+        body = json.dumps({"challenge_id": str(uuid.uuid4()), "expires_at": int(time.time()) + 300,
+                           "options": {"challenge": "synthetic", "rpId": "local-smoke.example.invalid"}}).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_GET(self):
         if self.path != "/auth/v1/.well-known/jwks.json":
             self.send_error(404)
@@ -187,6 +200,24 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
                                             data=b"{}", headers=headers, method="POST")
             with urllib.request.urlopen(logout, timeout=3) as result:
                 assert json.load(result) == {"ok": True}, "Rate limiting must not block logout"
+            # Exercise framework persistence, String serialization and protected cookie in JAR/native.
+            docker("exec", container, "psql", "-U", "postgres", "-c",
+                   "update forena.auth_rate_limit set available_at=clock_timestamp()-interval '1 second'")
+            keys.passkey_success = True
+            options = urllib.request.Request(f"http://127.0.0.1:{http_port}/api/auth/passkey/options",
+                                             data=b"{}", headers=headers, method="POST")
+            with urllib.request.urlopen(options, timeout=3) as result:
+                assert "challenge_id" in json.load(result)
+                cookie = result.headers["Set-Cookie"]
+                assert all(flag in cookie for flag in ("HttpOnly", "Secure", "SameSite=Lax"))
+            assert docker("exec", container, "psql", "-U", "postgres", "-Atc",
+                          "select count(*) from forena.spring_session_attributes") == "1"
+            logout.add_header("Cookie", cookie.split(";", 1)[0])
+            with urllib.request.urlopen(logout, timeout=3) as result:
+                assert json.load(result) == {"ok": True}
+                assert "Max-Age=0" in result.headers["Set-Cookie"]
+            assert docker("exec", container, "psql", "-U", "postgres", "-Atc",
+                          "select count(*) from forena.spring_session") == "0"
             if runtime_container:
                 docker("stop", "--time=10", runtime_container)
                 assert runtime.wait(timeout=10) in (0, 143), "Container shutdown failed"
