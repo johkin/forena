@@ -29,9 +29,19 @@ Vercels skyddscookie når Deployment Protection. Plattformens HTML-/401-svar
 får inte logga ut användaren ur Supabase. Bara API:ts uttryckliga JSON-svar
 om ogiltig appsession gör det. Behåll Deployment Protection aktiverat.
 
-Actions installerar Temurin 25, bygger frontend och API-JAR samt kopierar samma
-JDK till backendens runtime-image. Verksamhetstester körs i CI för samma SHA;
-releasepaketeringen hoppar endast över deras återkörning. Vercel CLI är låst till
+Actions hämtar `forena-api-native-<sha>` från den godkända main-CI-körningen
+för exakt releasecommit. Samma urval används även vid manuell release.
+Imagen laddas med Docker och dess deklarerade webbinär extraheras via buildpack-
+metadata. Releasen stoppar om artefakten saknas/har löpt ut, arkitekturen är fel
+eller webprocessen inte är en ELF-binär. Kör då CI igen för samma aktuella main.
+Ingen JVM-version byggs som reserv.
+
+Frontend byggs separat. Backendens runtime-image innehåller den testade native-
+binären, Ubuntu Noble-kompatibla systembibliotek, CA-certifikat och det befintliga
+startskriptets miljöfilter. `ldd` stoppar paketeringen vid saknade bibliotek.
+Ingen JDK eller JAR följer med. Den ompaketerade containerns riktiga JDBC- och
+Auth/HTTPS-health verifieras i staging före promotion.
+Vercel CLI är låst till
 60.1.3. `vercel build --prod` paketerar statiska filer och backend-image;
 `vercel deploy --prebuilt --prod --skip-domain` skapar en stagingdeployment.
 

@@ -9,9 +9,9 @@ test "${FORENA_JDBC_URL:-}" = 'jdbc:postgresql://aws-1-eu-central-1.pooler.supab
 }
 # Migration is a separate release operation. Project-level Spring overrides,
 # owner/admin credentials and probe settings never reach the API process.
-echo 'forena_api_startup: starting JVM' >&2
+echo 'forena_api_startup: starting native image' >&2
 exec env -i \
-  PATH=/opt/java/bin:/usr/bin:/bin PORT="${PORT:-80}" \
+  PATH=/usr/bin:/bin PORT="${PORT:-80}" \
   FORENA_JDBC_URL="${FORENA_JDBC_URL:?}" \
   FORENA_DB_USERNAME="${FORENA_DB_USERNAME:?}" \
   FORENA_DB_PASSWORD="${FORENA_DB_PASSWORD:?}" \
@@ -21,4 +21,4 @@ exec env -i \
   FORENA_AUTH_CA_BUNDLE="${SSL_CERT_FILE:-}" \
   FORENA_AUTH_EXTRA_CA_BUNDLE="${NODE_EXTRA_CA_CERTS:-}" \
   FORENA_MIGRATE=false \
-  /opt/java/bin/java -jar /app/forena-api.jar
+  /app/forena-api

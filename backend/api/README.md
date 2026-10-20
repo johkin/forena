@@ -7,7 +7,7 @@ testdata eller SQL-migrationshistorik. Se [ADR-010](../../docs/migration/decisio
 ## Java och containerbygge
 
 API:t kompileras och körs med **Java 25**, utan krav på Oracle eller exakt patch.
-CI och release använder Temurin 25. Kotlin använder `java.version` som JVM-mål.
+JVM-testerna i CI använder Temurin 25. Releasen använder CI:s native-artefakt. Kotlin använder `java.version` som JVM-mål.
 Spring Boots `build-image` får `BP_JVM_VERSION=25` via pluginens buildpack-miljö:
 
 ```sh
@@ -55,7 +55,8 @@ interface`: den ärvda, villkorliga metadataregistreringen räckte inte för
 Hibernate Validator 9.1/JBoss Logging 3.6. Nästa prov kom förbi loggern men
 behövde även `Messages_$bundle`. Valideringen behålls aktiverad.
 
-Det befintliga releaseflödet paketerar fortfarande JAR och JDK i Dockerfile.
+Releaseflödet hämtar den testade native-imagen för exakt main-commit och
+paketerar dess webbinär utan JDK/JAR. Se [releaseflödet](../../docs/migration/actions-deployment.md).
 Lokalt prov 2026-10-19: `-Pnative spring-boot:build-image` passerade AOT utan
 Auth-/databascredentials och utan databasanslutning. Uppackningen av standard-
 buildern `paketobuildpacks/builder-noble-java-tiny:latest` fyllde Docker/VFS-
