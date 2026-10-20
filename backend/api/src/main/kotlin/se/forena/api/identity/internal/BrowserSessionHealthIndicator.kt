@@ -15,6 +15,7 @@ class BrowserSessionHealthIndicator(private val settings: BrowserSessionSettings
         return try {
             // Prove migration 006 and runtime privileges without reading anyone's session.
             jdbc.queryForList("select id_hash,tokens,access_expires_at,expires_at,idle_expires_at from forena.browser_session where false")
+            jdbc.queryForList("select key_hash,available_at from forena.auth_rate_limit where false")
             Health.up().build()
         } catch (_: Exception) { Health.down().build() }
     }

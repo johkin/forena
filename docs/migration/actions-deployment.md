@@ -20,14 +20,14 @@ releasejobbet. Vercel publicerar frontend och backend atomärt i Frankfurt:
 
 Vercel routar `/api/*` och `/actuator/health` direkt till backend, övrigt till
 frontend. SPA-djuplänkar faller tillbaka till `index.html` för frontend;
-API-anrop får aldrig HTML-fallback. Det finns ingen privat servicebinding och
-browsern skickar Bearer-token direkt till API:t på samma origin. Backendens
-JWT-, sessions- och familjekontroller ligger kvar.
+API-anrop får aldrig HTML-fallback. Det finns ingen privat servicebinding;
+browsern skickar den HttpOnly-sessionscookien till API:t på samma origin
+(ADR-018). Backendens JWT-, sessions- och familjekontroller ligger kvar.
 
 Browserns API- och config-anrop använder `credentials: same-origin` så att
 Vercels skyddscookie når Deployment Protection. Plattformens HTML-/401-svar
-får inte logga ut användaren ur Supabase. Bara API:ts uttryckliga JSON-svar
-om ogiltig appsession gör det. Behåll Deployment Protection aktiverat.
+avslutar inte appsessionen. Bara API:ts uttryckliga JSON-svar om ogiltig
+appsession gör det. Behåll Deployment Protection aktiverat.
 
 CI bygger native-imagen direkt med Spring Boots buildpacks (`-Pnative
 spring-boot:build-image`) och starttestar den. Ingen extraktion, Dockerfile,
@@ -109,12 +109,12 @@ ett uttryckligt felaktigt CA-paket stoppar start.
 
 ## Verifiering och återgång
 
-Nya projektets sex Liquibase-steg, inklusive `api-006-browser-session`, är
-förutsättning. `prepare-kotlin.mjs` kräver sessionsnyckeln och tar sedan bort den
+Nya projektets sju Liquibase-steg, inklusive `api-006-browser-session` och
+`api-007-auth-rate-limit`, är förutsättning. `prepare-kotlin.mjs` kräver sessionsnyckeln och tar sedan bort den
 ur bygg-envfilen utan att exportera/logga den. Runtime-descriptorn aktiverar
 webbsessioner och sätter kanonisk origin till `https://forena-kotlin.vercel.app`;
 nyckeln hämtas från projektets runtime-miljö precis som DB-lösenordet.
-Sessionslagringens health blir DOWN om migration 006 saknas.
+Sessionslagringens health blir DOWN om migration 006/007 saknas.
 Se [webbsessionernas releaseordning](web-sessions.md). Separata
 migreringskonton och driftoperationer tillhör inte frontend-releasejobbet.
 Efter merge behöver statisk frontend, direkt API-routing, riktiga Auth-sessioner

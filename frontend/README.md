@@ -53,7 +53,7 @@ start. Befintliga användare behöver logga in igen. Äldre service workers och
 cachar från Next-piloten avregistreras på samma origin. `/components` är publik
 och kräver inget sessionsanrop.
 
-För lokal backend behövs migrering 006 samt `FORENA_WEB_SESSION_ENABLED=true`,
+För lokal backend behövs migrering 006/007 samt `FORENA_WEB_SESSION_ENABLED=true`,
 `FORENA_WEB_ORIGIN=http://localhost:3000`, `FORENA_WEB_SESSION_SECURE=false` och
 en separat base64-kodad 32-bytesnyckel i `FORENA_WEB_SESSION_KEY`. Öppna då
 `http://localhost:3000`; använd samma exakta origin i backend. Produktion kräver

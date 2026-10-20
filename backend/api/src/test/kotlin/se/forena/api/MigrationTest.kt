@@ -15,7 +15,7 @@ import org.junit.jupiter.params.provider.ValueSource
 import org.testcontainers.postgresql.PostgreSQLContainer
 
 class MigrationTest {
-    @ParameterizedTest @ValueSource(ints = [0, 1, 2, 3, 4, 5])
+    @ParameterizedTest @ValueSource(ints = [0, 1, 2, 3, 4, 5, 6])
     fun `empty install or previous baseline upgrade validates and is repeatable without data loss`(baseline: Int) {
         PostgreSQLContainer("postgres:17.6-alpine").withInitScript("init.sql").use { pg ->
             pg.start()
@@ -60,13 +60,13 @@ class MigrationTest {
                     migrations.validate()
                     connection.createStatement().use { statement ->
                         statement.executeQuery("select count(*) from forena.databasechangelog").use {
-                            it.next(); assertThat(it.getInt(1)).isEqualTo(6)
+                            it.next(); assertThat(it.getInt(1)).isEqualTo(7)
                         }
                         statement.executeQuery("select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='forena' and c.relkind='r' and c.relname not like 'databasechangelog%' and (c.relrowsecurity or c.relforcerowsecurity)").use {
                             it.next(); assertThat(it.getInt(1)).isZero()
                         }
                         for (role in listOf("anon", "authenticated", "service_role")) {
-                            statement.executeQuery("select has_schema_privilege('$role','forena','USAGE') or has_table_privilege('$role','forena.invitation','SELECT')").use {
+                            statement.executeQuery("select has_schema_privilege('$role','forena','USAGE') or has_table_privilege('$role','forena.invitation','SELECT') or has_table_privilege('$role','forena.auth_rate_limit','SELECT')").use {
                                 it.next(); assertThat(it.getBoolean(1)).isFalse()
                             }
                         }

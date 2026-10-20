@@ -65,6 +65,8 @@ class ApiTest {
         @Volatile var loginAccess = ""
         @Volatile var refreshAccess = ""
         @Volatile var refreshStatus = 200
+        val passwordCalls = java.util.concurrent.atomic.AtomicInteger()
+        val passkeyCalls = java.util.concurrent.atomic.AtomicInteger()
         val refreshCount = java.util.concurrent.atomic.AtomicInteger()
         val passkeyChallenges = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
         val providerJson = JsonMapper.builder().build()
@@ -108,14 +110,19 @@ class ApiTest {
                     refreshCount.incrementAndGet()
                     assertThat(body.get("refresh_token").asString()).isIn("synthetic-refresh", "rotated-refresh")
                     reply(exchange, refreshStatus, if (refreshStatus == 200) """{"access_token":"$refreshAccess","refresh_token":"rotated-refresh"}""" else "{}")
-                } else if (body.get("password")?.asString() != "synthetic-password") reply(exchange, 400, "{}")
-                else reply(exchange, 200, """{"access_token":"$loginAccess","refresh_token":"synthetic-refresh"}""")
+                } else {
+                    passwordCalls.incrementAndGet()
+                    if (body.get("password")?.asString() != "synthetic-password") reply(exchange, 400, "{}")
+                    else reply(exchange, 200, """{"access_token":"$loginAccess","refresh_token":"synthetic-refresh"}""")
+                }
             }
             server.createContext("/auth/v1/passkeys/authentication/options") { exchange ->
+                passkeyCalls.incrementAndGet()
                 val id = UUID.randomUUID().toString(); passkeyChallenges.add(id)
                 reply(exchange, 200, """{"challenge_id":"$id","expires_at":${Instant.now().epochSecond + 300},"options":{"challenge":"c3ludGhldGlj","rpId":"localhost","userVerification":"required"}}""")
             }
             server.createContext("/auth/v1/passkeys/authentication/verify") { exchange ->
+                passkeyCalls.incrementAndGet()
                 val body = providerJson.readTree(exchange.requestBody.readAllBytes())
                 val valid = passkeyChallenges.remove(body.get("challenge_id").asString())
                 reply(exchange, if (valid) 200 else 400, if (valid) """{"access_token":"$loginAccess","refresh_token":"synthetic-refresh"}""" else "{}")
@@ -157,6 +164,8 @@ class ApiTest {
     @MockitoSpyBean lateinit var historyRecords: InvitationHistoryRepository
     @Autowired lateinit var invitationRecords: InvitationRepository
     @Autowired lateinit var json: JsonMapper
+    @Autowired lateinit var loginLimiter: se.forena.api.identity.BrowserLoginLimiter
+    @Autowired lateinit var browserSettings: se.forena.api.identity.BrowserSessionSettings
     private val admin by lazy { JdbcTemplate(DriverManagerDataSource(database.jdbcUrl, database.username, database.password)) }
     private lateinit var parent: UUID
     private lateinit var outsider: UUID
@@ -170,6 +179,8 @@ class ApiTest {
     private lateinit var invitation: UUID
 
     @BeforeEach fun seed() {
+        admin.update("delete from forena.auth_rate_limit")
+        passwordCalls.set(0); passkeyCalls.set(0)
         refreshCount.set(0); refreshStatus = 200; passkeyChallenges.clear()
         parent = UUID.randomUUID(); outsider = UUID.randomUUID(); session = UUID.randomUUID()
         organization = UUID.randomUUID(); activity = UUID.randomUUID()
@@ -253,6 +264,55 @@ class ApiTest {
             assertThat(history()).isEqualTo(1)
             assertThat(jdbc.queryForObject("select count(*) from forena.browser_session where subject=?", Int::class.java, parent)).isZero()
         } finally { child.destroyForcibly() }
+    }
+
+    @Test fun `failed password attempts consume shared client and normalized email limits before calling Auth`() {
+        for (email in listOf("family@example.invalid", "FAMILY@example.invalid", " family@example.invalid ")) {
+            assertThat(browser("/api/auth/login", """{"email":"$email","password":"wrong"}""").statusCode()).isEqualTo(401)
+        }
+        val denied = browser("/api/auth/login", """{"email":"family@example.invalid","password":"wrong"}""")
+        assertThat(denied.statusCode()).isEqualTo(429)
+        assertThat(denied.headers().firstValue("retry-after").orElseThrow().toLong()).isBetween(1L,60L)
+        assertThat(denied.headers().firstValue("cache-control").orElseThrow()).isEqualTo("no-store")
+        assertThat(passwordCalls.get()).isEqualTo(3)
+        for (index in 1..2) assertThat(browser("/api/auth/login", """{"email":"other$index@example.invalid","password":"wrong"}""").statusCode()).isEqualTo(401)
+        assertThat(browser("/api/auth/passkey/options", "{}").statusCode()).isEqualTo(429)
+        assertThat(passkeyCalls.get()).isZero()
+        assertThat(passwordCalls.get()).isEqualTo(5)
+        val rows = jdbc.queryForList("select key_hash from forena.auth_rate_limit").toString()
+        assertThat(rows).doesNotContain("family", "example.invalid", "127.0.0.1")
+    }
+
+    @Test fun `admission budget stays shared across instances under concurrent clients and recovers without waiting`() {
+        val secondInstance = se.forena.api.identity.BrowserLoginLimiter(jdbc, TransactionTemplate(transactionManager), browserSettings, false)
+        val requests = (1..25).map { index -> CompletableFuture.supplyAsync {
+            try {
+                (if (index % 2 == 0) loginLimiter else secondInstance).admit("client-$index", "email-$index@example.invalid")
+                true
+            } catch (_: se.forena.api.identity.BrowserLoginRateLimited) { false }
+        } }
+        assertThat(requests.count { it.get() }).isEqualTo(10)
+        val rowCount = jdbc.queryForObject("select count(*) from forena.auth_rate_limit", Int::class.java)
+        assertThat(rowCount).isEqualTo(21) // one global row, ten client/email pairs
+        assertThatThrownBy { secondInstance.admit("new-client", "new@example.invalid") }
+            .isInstanceOf(se.forena.api.identity.BrowserLoginRateLimited::class.java)
+        assertThat(jdbc.queryForObject("select count(*) from forena.auth_rate_limit", Int::class.java)).isEqualTo(rowCount)
+        admin.update("update forena.auth_rate_limit set available_at=clock_timestamp()-interval '1 second'")
+        secondInstance.admit("new-client", "new@example.invalid")
+    }
+
+    @Test fun `an exhausted public login budget leaves session refresh and logout available`() {
+        val cookie = sessionCookie(browserLogin())
+        repeat(9) { loginLimiter.admit("other-client-$it", "other-$it@example.invalid") }
+        assertThat(browser("/api/auth/login", """{"email":"fresh@example.invalid","password":"wrong"}""").statusCode()).isEqualTo(429)
+        assertThat(browser("/api/auth/passkey/options", "{}").statusCode()).isEqualTo(429)
+        assertThat(browser("/api/auth/passkey/verify", """{"challenge_id":"${UUID.randomUUID()}","credential":{}}""").statusCode()).isEqualTo(429)
+        assertThat(passwordCalls.get()).isEqualTo(1)
+        assertThat(passkeyCalls.get()).isZero()
+        admin.update("update forena.browser_session set access_expires_at=now() where subject=?", parent)
+        assertThat(browser("/api/auth/session", cookie=cookie).statusCode()).isEqualTo(200)
+        assertThat(refreshCount.get()).isEqualTo(1)
+        assertThat(browser("/api/auth/logout", "{}", cookie).statusCode()).isEqualTo(200)
     }
 
     @Test fun `browser login rotates opaque cookie stores encrypted tokens and preserves business authorization`() {
@@ -770,6 +830,10 @@ class ApiTest {
         val result = request("/v3/api-docs")
         assertThat(result.statusCode()).isEqualTo(200)
         val document = json.readTree(result.body())
+        for (path in listOf("/api/auth/login", "/api/auth/passkey/options", "/api/auth/passkey/verify")) {
+            val limited = document.get("paths").get(path).get("post").get("responses").get("429")
+            assertThat(limited.get("headers").has("Retry-After")).isTrue()
+        }
         assertThat(document.get("paths").propertyNames()).containsExactlyInAnyOrder(
             "/api/activities/{activityId}/my-invitations", "/api/invitations/{invitationId}/respond",
             "/api/auth/session", "/api/auth/login", "/api/auth/logout", "/api/auth/passkey/options", "/api/auth/passkey/verify")

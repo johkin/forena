@@ -13,6 +13,7 @@ import time
 import threading
 import urllib.error
 import urllib.request
+import xml.etree.ElementTree as ET
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -88,7 +89,9 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
             log.seek(0)
             assert "Tomcat started" not in log.read(), "Migration mode must not open HTTP"
         changes = docker("exec", container, "psql", "-U", "postgres", "-Atc", "select count(*) from forena.databasechangelog")
-        assert changes == "5"
+        changelog = ET.parse(ROOT / "backend/api/src/main/resources/db/changelog.xml")
+        expected_changes = len(changelog.findall("{http://www.liquibase.org/xml/ns/dbchangelog}changeSet"))
+        assert changes == str(expected_changes), "Packaged migrations must match the release changelog"
         session_columns = docker("exec", container, "psql", "-U", "postgres", "-Atc",
                                  "select count(*) from information_schema.columns where table_schema='forena' "
                                  "and table_name='invitation_history' and column_name='session_id'")
@@ -114,6 +117,8 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
         threading.Thread(target=keys.serve_forever, daemon=True).start()
         issuer = f"http://127.0.0.1:{keys.server_port}/auth/v1"
         env.update(FORENA_MIGRATE="false", PORT=str(http_port),
+                   FORENA_WEB_SESSION_ENABLED="true", FORENA_WEB_ORIGIN="https://local-smoke.example.invalid",
+                   FORENA_WEB_SESSION_KEY=base64.b64encode(bytes(range(32))).decode(),
                    FORENA_DB_CA_CERTIFICATE=(ROOT / "backend/certs/supabase-ca.crt").read_text(),
                    FORENA_AUTH_PUBLISHABLE_KEY="sb_publishable_smoke_placeholder",
                    FORENA_AUTH_ISSUER=issuer, FORENA_AUTH_JWKS_URI=issuer + "/.well-known/jwks.json")
@@ -123,7 +128,8 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
                 # Host networking only connects the Linux test container to the
                 # disposable PostgreSQL and synthetic JWKS server on loopback.
                 runtime_keys = ("PORT", "FORENA_DB_CA_CERTIFICATE", "FORENA_JDBC_URL", "FORENA_DB_USERNAME", "FORENA_DB_PASSWORD",
-                                "FORENA_AUTH_PUBLISHABLE_KEY", "FORENA_AUTH_ISSUER", "FORENA_AUTH_JWKS_URI")
+                                "FORENA_AUTH_PUBLISHABLE_KEY", "FORENA_AUTH_ISSUER", "FORENA_AUTH_JWKS_URI",
+                                "FORENA_WEB_SESSION_ENABLED", "FORENA_WEB_ORIGIN", "FORENA_WEB_SESSION_KEY")
                 entrypoint = ["--entrypoint", args.runtime_entrypoint] if args.runtime_entrypoint else []
                 runtime_container = docker("create", "--network=host", *entrypoint,
                                            *[item for name in runtime_keys for item in ("-e", name)],
@@ -160,6 +166,24 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
                 raise AssertionError("Private API accepted missing bearer")
             except urllib.error.HTTPError as error:
                 assert error.code == 401
+            # The synthetic provider has no POST handler. Five admitted calls fail
+            # closed with 503; the sixth must be rejected locally before Auth.
+            headers = {"Content-Type": "application/json", "Origin": env["FORENA_WEB_ORIGIN"], "X-Forena-Request": "1"}
+            for index in range(6):
+                request = urllib.request.Request(f"http://127.0.0.1:{http_port}/api/auth/passkey/options",
+                                                 data=b"{}", headers=headers, method="POST")
+                try:
+                    urllib.request.urlopen(request, timeout=3)
+                    raise AssertionError("Synthetic Auth failure was accepted")
+                except urllib.error.HTTPError as error:
+                    assert error.code == (503 if index < 5 else 429)
+                    assert error.headers.get("Cache-Control") == "no-store"
+                    if index == 5:
+                        assert int(error.headers["Retry-After"]) > 0
+            logout = urllib.request.Request(f"http://127.0.0.1:{http_port}/api/auth/logout",
+                                            data=b"{}", headers=headers, method="POST")
+            with urllib.request.urlopen(logout, timeout=3) as result:
+                assert json.load(result) == {"ok": True}, "Rate limiting must not block logout"
             if runtime_container:
                 docker("stop", "--time=10", runtime_container)
                 assert runtime.wait(timeout=10) in (0, 143), "Container shutdown failed"
@@ -167,7 +191,7 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
                 runtime.terminate()
                 assert runtime.wait(timeout=10) == 143
             runtime = None
-        print("PASS: fresh bootstrap; migration-only JAR twice; runtime without owner credential; DB/Auth health and recovery; bearer rejection; shutdown")
+        print("PASS: fresh bootstrap; migration-only JAR twice; runtime without owner credential; DB/Auth/session health; shared Auth admission and 429; unrestricted logout; bearer rejection; shutdown")
     finally:
         if runtime_container is not None:
             docker("rm", "-f", runtime_container)

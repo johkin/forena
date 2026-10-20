@@ -261,13 +261,23 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Browser session created */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "*/*": components["schemas"]["BrowserSessionView"];
+                };
+            };
+            /** @description Login admission exhausted; no provider call. Retry later. */
+            429: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
                 };
             };
         };
@@ -303,13 +313,23 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
+            /** @description Browser-bound passkey options */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "*/*": components["schemas"]["PasskeyOptions"];
+                };
+            };
+            /** @description Login admission exhausted; no provider call. Retry later. */
+            429: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
                 };
             };
         };
@@ -327,13 +347,23 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Browser session created */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "*/*": components["schemas"]["BrowserSessionView"];
+                };
+            };
+            /** @description Login admission exhausted; no provider call. Retry later. */
+            429: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
                 };
             };
         };

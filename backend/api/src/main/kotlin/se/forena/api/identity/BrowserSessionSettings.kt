@@ -4,6 +4,7 @@ import java.net.URI
 import java.security.SecureRandom
 import java.util.Base64
 import javax.crypto.Cipher
+import javax.crypto.Mac
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 import org.springframework.beans.factory.annotation.Value
@@ -37,6 +38,14 @@ class BrowserSessionSettings(
     }
     fun requireEnabled() { if (!enabled) throw SessionVerificationUnavailable() }
     fun randomId(): String = encode(ByteArray(32).also { SecureRandom().nextBytes(it) })
+    /** Keep rate-limit identifiers opaque even to a database-only reader. */
+    fun fingerprint(value: String): String {
+        requireEnabled()
+        return encode(Mac.getInstance("HmacSHA256").run {
+            init(SecretKeySpec(secret!!.encoded, "HmacSHA256"))
+            doFinal(("auth-rate-limit\n" + value).toByteArray())
+        })
+    }
     fun encrypt(value: String, context: String): String {
         requireEnabled()
         val nonce = ByteArray(12).also { SecureRandom().nextBytes(it) }

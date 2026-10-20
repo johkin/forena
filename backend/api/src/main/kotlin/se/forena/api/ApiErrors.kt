@@ -12,10 +12,16 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 import se.forena.api.http.ApiError
 import se.forena.api.identity.JwtVerificationUnavailable
+import se.forena.api.identity.BrowserLoginRateLimited
 import org.springframework.security.oauth2.jwt.JwtException
 
 @RestControllerAdvice
 class ApiErrors {
+    @ExceptionHandler(BrowserLoginRateLimited::class)
+    fun loginRateLimited(problem: BrowserLoginRateLimited): ResponseEntity<ApiError> = ResponseEntity.status(429)
+        .cacheControl(CacheControl.noStore()).header("Retry-After", problem.retryAfterSeconds.toString())
+        .body(ApiError("För många inloggningsförsök. Försök igen senare."))
+
     @ExceptionHandler(InvitationProblem::class)
     fun invitation(problem: InvitationProblem): ResponseEntity<ApiError> =
         ResponseEntity.status(problem.status).cacheControl(CacheControl.noStore()).body(ApiError(problem.message))

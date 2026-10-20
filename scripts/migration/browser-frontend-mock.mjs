@@ -11,7 +11,7 @@ const browser=await chromium.launch({...(process.env.FORENA_BROWSER_EXECUTABLE ?
 const context=await browser.newContext({viewport:{width:390,height:844}});
 await context.addCookies([{name:'_vercel_jwt',value:'synthetic-protection-cookie',url:base.origin}]);
 await context.addInitScript(()=>{if(!sessionStorage.getItem('migration-seeded')){localStorage.setItem('forena-kotlin-browser-auth','{"access_token":"obsolete-private-token"}');sessionStorage.setItem('migration-seeded','true');}});
-let current=null, revoked=false, platformDenied=false, requests=0, privateRequests=0, directProviderRequests=0;
+let current=null, revoked=false, platformDenied=false, sessionUnavailable=false, sessionReads=0, requests=0, privateRequests=0, directProviderRequests=0;
 let invitations=[{id,person_id:users[0],name:'Alex Exempel med ett längre familjenamn',response:'pending',response_comment:null}];
 const view=()=>({user:{id:users[current],email:current===0?'family@example.invalid':'other@example.invalid'}});
 await context.route('**/config.json',r=>r.fulfill({json:{supabaseUrl:'https://ckzrtxqjskosqzoitymc.supabase.co',publishableKey:'sb_publishable_synthetic',activityId:id,version:id}}));
@@ -32,6 +32,7 @@ await context.route('**/api/**',async route=>{
   current=0;revoked=false;
   return route.fulfill({headers:{'content-type':'application/json','set-cookie':'forena-local-session=synthetic-passkey-session; HttpOnly; SameSite=Lax; Path=/'},body:JSON.stringify(view())});
  }
+ if(path==='/api/auth/session'){sessionReads++;if(sessionUnavailable)return route.fulfill({status:503,json:{error:'Sessionen kan inte verifieras just nu.'}});}
  if(current===null||revoked)return route.fulfill({status:401,json:{error:'Sessionen är inte aktiv.'}});
  if(path==='/api/auth/session')return route.fulfill({json:view()});
  privateRequests++;
@@ -50,8 +51,11 @@ try{
  await page.getByLabel('Lösenord',{exact:true}).fill('wrong-password');
  await page.getByRole('button',{name:'Logga in',exact:true}).click();await expect(page.getByRole('alert')).toBeVisible();
  await page.getByLabel('Lösenord',{exact:true}).fill('synthetic-password');
+ const beforeLoginReads=sessionReads;sessionUnavailable=true;
  await page.getByRole('button',{name:'Logga in',exact:true}).click();
  const row=page.locator('.personal-invitation-response');await expect(row).toHaveCount(1);
+ // A same-tab self-notification would clear the accepted login and fail its redundant probe.
+ await page.waitForTimeout(200);assert.equal(sessionReads,beforeLoginReads);await expect(row).toHaveCount(1);sessionUnavailable=false;
  assert.equal(await page.evaluate(()=>window.documentInstance),'same-document');
  assert.ok(!await page.evaluate(()=>document.cookie.includes('forena-local-session')));
  await row.getByLabel('Kommentar').fill('Hämtas senare');await row.getByRole('button',{name:'Kommer',exact:true}).click();
@@ -64,7 +68,9 @@ try{
  platformDenied=false;await page.reload();await expect(row).toHaveCount(1);
  revoked=true;await page.reload();await expect(page.getByRole('heading',{name:'Logga in',exact:true})).toBeVisible();await expect(row).toHaveCount(0);
  await page.getByLabel('E-postadress',{exact:true}).fill('other@example.invalid');await page.getByLabel('Lösenord',{exact:true}).fill('synthetic-password');await page.getByRole('button',{name:'Logga in',exact:true}).click();await expect(page.getByRole('heading',{name:'Familjens kallelser'})).toBeVisible();await expect(row).toHaveCount(0);
+ const secondTab=await context.newPage();await secondTab.goto(new URL(`/activities/${id}`,base).href);await expect(secondTab.getByRole('heading',{name:'Familjens kallelser'})).toBeVisible();await page.bringToFront();
  await page.getByRole('button',{name:'Öppna meny',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'Logga ut från Förena'}).click();await expect(page.getByRole('heading',{name:'Logga in',exact:true})).toBeVisible();
+ await expect(secondTab.getByRole('heading',{name:'Logga in',exact:true})).toBeVisible();await secondTab.close();
  // Real browser WebAuthn call with a virtual discoverable credential; mocked provider verifies the wire contract only.
  const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');
  const {authenticatorId}=await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});

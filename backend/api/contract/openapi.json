@@ -298,7 +298,26 @@
                 }
               }
             },
-            "description": "OK"
+            "description": "Browser session created"
+          },
+          "429": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Login admission exhausted; no provider call. Retry later.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "format": "int64",
+                  "type": "integer"
+                },
+                "style": "simple"
+              }
+            }
           }
         },
         "tags": [
@@ -343,7 +362,26 @@
                 }
               }
             },
-            "description": "OK"
+            "description": "Browser-bound passkey options"
+          },
+          "429": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Login admission exhausted; no provider call. Retry later.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "format": "int64",
+                  "type": "integer"
+                },
+                "style": "simple"
+              }
+            }
           }
         },
         "tags": [
@@ -374,7 +412,26 @@
                 }
               }
             },
-            "description": "OK"
+            "description": "Browser session created"
+          },
+          "429": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Login admission exhausted; no provider call. Retry later.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "format": "int64",
+                  "type": "integer"
+                },
+                "style": "simple"
+              }
+            }
           }
         },
         "tags": [

@@ -45,6 +45,7 @@ forena:
     origin: "${FORENA_WEB_ORIGIN:}"
     key: "${FORENA_WEB_SESSION_KEY:}"
     secure: "${FORENA_WEB_SESSION_SECURE:true}"
+    trust-vercel-proxy: "${FORENA_TRUST_VERCEL_PROXY:false}"
     max-seconds: "${FORENA_WEB_SESSION_MAX_SECONDS:28800}"
     idle-seconds: "${FORENA_WEB_SESSION_IDLE_SECONDS:1800}"
   auth:

@@ -36,6 +36,7 @@ def configure(image, public_key, certificate):
                 'FORENA_AUTH_PUBLISHABLE_KEY': public_key,
                 'FORENA_WEB_SESSION_ENABLED': 'true',
                 'FORENA_WEB_ORIGIN': 'https://forena-kotlin.vercel.app',
+                'FORENA_TRUST_VERCEL_PROXY': 'true',
                 'FORENA_DB_CA_CERTIFICATE': certificate}}
 
 

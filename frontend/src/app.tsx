@@ -29,6 +29,7 @@ export function App({ config }: { config: PublicConfig }) {
   const [error, setError] = useState<string>();
   const activeAccount = useRef<string | undefined>(undefined);
   const sessionRevision = useRef(0);
+  const channelRef = useRef<BroadcastChannel | null>(null);
   const accountId = auth.session?.user.id;
   const applySession = useCallback((session: SessionView | null) => {
     sessionRevision.current++;
@@ -53,15 +54,14 @@ export function App({ config }: { config: PublicConfig }) {
     if (window.location.pathname === "/components") return;
     const initial = window.setTimeout(() => { void reloadSession(); }, 0);
     const channel = typeof BroadcastChannel === "undefined" ? null : new BroadcastChannel("forena-session");
+    channelRef.current = channel;
     if (channel) channel.onmessage = () => { applySession(null); void reloadSession(); };
     const focus = () => { void reloadSession(); };
     window.addEventListener("focus", focus);
-    return () => { clearTimeout(initial); invalidateSessionChecks(); channel?.close(); window.removeEventListener("focus", focus); };
+    return () => { clearTimeout(initial); invalidateSessionChecks(); channel?.close(); channelRef.current = null; window.removeEventListener("focus", focus); };
   }, [reloadSession, applySession, invalidateSessionChecks]);
   function notifySessionChanged() {
-    if (typeof BroadcastChannel !== "undefined") {
-      const channel = new BroadcastChannel("forena-session"); channel.postMessage("changed"); channel.close();
-    }
+    channelRef.current?.postMessage("changed");
   }
   const request = useCallback<ParticipationFetch>((path, init) => createApiFetch(async () => {
     if (activeAccount.current !== accountId) throw new DOMException("Session changed", "AbortError");

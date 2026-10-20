@@ -19,7 +19,7 @@ import tools.jackson.databind.JsonNode
 class BrowserSessionService(
     private val jdbc: JdbcTemplate, private val transaction: TransactionTemplate,
     private val settings: BrowserSessionSettings, private val provider: BrowserAuthProvider,
-    private val decoder: JwtDecoder, private val active: SessionService
+    private val decoder: JwtDecoder, private val active: SessionService, private val limiter: BrowserLoginLimiter
 ) {
     fun login(email: String, password: String, previous: String?): String {
         settings.requireEnabled()
@@ -105,7 +105,10 @@ class BrowserSessionService(
     }
     @Scheduled(fixedDelay = 60000)
     fun purge() {
-        if (settings.enabled) jdbc.update("delete from forena.browser_session where expires_at<=clock_timestamp() or idle_expires_at<=clock_timestamp()")
+        if (settings.enabled) {
+            jdbc.update("delete from forena.browser_session where expires_at<=clock_timestamp() or idle_expires_at<=clock_timestamp()")
+            limiter.purge()
+        }
     }
     private fun delete(id: String) { jdbc.update("delete from forena.browser_session where id_hash=?", hash(id)) }
     private fun hash(id: String) = MessageDigest.getInstance("SHA-256").digest(id.toByteArray()).joinToString("") { "%02x".format(it) }

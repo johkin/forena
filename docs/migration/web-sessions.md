@@ -72,9 +72,58 @@ efter provider-refresh men före databascommit kan kräva ny inloggning efter
 leverantörens refresh-reuse-fönster. In-flight-kommandon har samma gräns vid
 revokering efter sista kontrollen som ADR-016 beskriver.
 
+## Begränsning av publika Auth-anrop
+
+Lösenordsinloggning och båda passkey-POST-rutterna har delade, kontinuerligt
+påfyllda buckets i `forena.auth_rate_limit`. Kortlivade databastransaktioner
+låser en gemensam rad över instanser, kontrollerar alla gränser och committar
+ett tillstånd innan något Auth-anrop görs. Även misslyckade providerförsök
+förbrukar tillstånd. Nekade försök returnerar 429 med `Retry-After` och
+`no-store`; inga credentials skickas vidare. Logout och sessionens refresh
+använder inte inloggningsbudgeten. Vid databasfel nekas nya försök med 503.
+
+| Bucket | Kontinuerlig påfyllning | Tillåten omedelbar burst |
+| --- | --- | --- |
+| Klient-IP, gemensam för lösenord/passkey | 10 anrop / 5 minuter | 5 |
+| Normaliserad e-postadress, endast lösenord | 5 anrop / 5 minuter | 3 |
+| Gemensam publik Auth-budget | 20 anrop / 5 minuter | 10 |
+
+Passkey är discoverable och har ingen e-postadress före verifieringen; dess
+options/verify delar därför klient- och globalgränserna. IP/e-post lagras endast
+som HMAC-SHA-256 med sessionsnyckeln och en separat kontext. Nya bucket-rader
+skapas bara för godkända anrop, så nekad trafik med nya identifierare växer inte
+tabellen. Helt återfyllda och inaktiva rader städas efter ytterligare tio minuter.
+
+Som standard används anslutningens peer-IP. Godtyckliga `Forwarded`/
+`X-Forwarded-For` från klienter är inte betrodda. Endast den Vercel-specifika
+releasekonfigurationen sätter `FORENA_TRUST_VERCEL_PROXY=true`: där är
+`X-Forwarded-For` en [header som Vercel skriver över](https://vercel.com/docs/headers/request-headers).
+Den måste innehålla exakt ett IP-literal; listor, dubbletter och värdnamn ger
+konservativ fallback till peer-IP. Flaggan får bara användas när all ingress
+passerar Vercel, aldrig på en direkt exponerad server eller en annan proxy.
+
+[Supabases Auth-dokumentation](https://supabase.com/docs/guides/auth/rate-limits)
+bekräftar IP-baserade token buckets med burst 30 samt att `Sb-Forwarded-For`
+kräver särskilt aktiverad forwarding och en secret API key. Runtime behåller
+publishable key och inför inte denna privilegieutökning. Den dokumenterade
+standardtakten för `/token` är 1 800 anrop/timme, alltså 150 per fem minuter.
+Appens publika budget kan ta högst 10 av burstutrymmet och fylls på med 20 per
+fem minuter. Det lämnar 20 burstplatser och 130 förnyelser per fem minuter vid
+standardkvoten och utan annan trafik i samma leverantörsbucket.
+
+Dimensioneringsantagandet för piloten är 100 aktiva sessioner. Med en timmes
+access-tokenlivslängd och förnyelse 60 sekunder före expiry blir medellasten
+`100 × 300 / 3540 ≈ 8,5` refresh-anrop per fem minuter, under reservens 130.
+Generellt är medellasten `N × 300 / (TTL − 60)`. Detta är ett konservativt
+kapacitetsantagande, inte uppmätt produktionstrafik. Verifiera faktisk TTL,
+projektkvot och samtidig trafik före drift. Samtidiga förnyelser som överskrider
+leverantörens återstående burst kan fortfarande ge 503; sessionen behålls.
+En distribuerad attack kan fylla appens inloggningsbudget och fördröja nya
+inloggningar, men når inte refresh-reserven genom dessa publika rutter.
+
 ## Konfiguration och releaseordning
 
-1. Applicera Liquibase till och med `api-006-browser-session` med separat
+1. Applicera Liquibase till och med `api-007-auth-rate-limit` med separat
    ägarkonto. Runtime får inga migreringscredentials. Den additiva tabellen
    ändrar inte affärstabellerna; befintliga Bearer-klienter fungerar fortsatt.
 2. Skapa en base64-kodad nyckel från 32 kryptografiskt slumpade byte i godkänd
@@ -91,7 +140,7 @@ revokering efter sista kontrollen som ADR-016 beskriver.
    Se [Supabases aktuella passkey-kontrakt](https://supabase.com/docs/guides/auth/passkeys).
 5. Publicera frontend och backend tillsammans. Releaseförberedelsen validerar
    runtime-nyckeln utan att exportera den; runtime-descriptorn aktiverar sessioner
-   med kanonisk Kotlin-site-origin. Health måste verifiera migration 006 före
+   med kanonisk Kotlin-site-origin. Health måste verifiera migration 006/007 före
    promotion. Verifiera sedan faktisk login/cookie/API/logout på sajtens origin.
 
 Lokalt kan `FORENA_WEB_SESSION_SECURE=false` användas endast med loopback-origin,
@@ -127,3 +176,12 @@ säkerhetsmässigt likvärdig återgång.
   Detta är separat från mockprovet. Passkey mot driftsatt Auth/RP-konfiguration
   och Vercels cookie-/proxybeteende måste verifieras i målmiljön; lokala prov
   bevisar inte dessa externa inställningar.
+
+## Aktuellt målmiljöprov
+
+Den 20 oktober 2026 anropades målprojektets riktiga
+`POST /auth/v1/passkeys/authentication/options` med publishable key. Svaret var
+HTTP 404 och `error_code=passkey_disabled`. [Sanerad observation](evidence/web-auth-readiness.json).
+Inga projektinställningar ändrades. Ett fullständigt passkey-prov mot Auth/RP-ID
+är därför fortfarande en öppen grind; ärende #135 ska inte stängas innan den
+passerat. Virtuell WebAuthn med kontrollerad provider ersätter inte denna grind.
