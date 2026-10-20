@@ -12,6 +12,57 @@
         ],
         "type": "object"
       },
+      "BrowserLoginRequest": {
+        "properties": {
+          "email": {
+            "maxLength": 320,
+            "minLength": 3,
+            "type": "string"
+          },
+          "password": {
+            "format": "password",
+            "maxLength": 1024,
+            "minLength": 1,
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "type": "object"
+      },
+      "BrowserSessionView": {
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/BrowserUser"
+          }
+        },
+        "required": [
+          "user"
+        ],
+        "type": "object"
+      },
+      "BrowserUser": {
+        "properties": {
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "id"
+        ],
+        "type": "object"
+      },
       "FamilyInvitation": {
         "properties": {
           "id": {
@@ -71,6 +122,45 @@
         },
         "required": [
           "ok"
+        ],
+        "type": "object"
+      },
+      "PasskeyOptions": {
+        "properties": {
+          "challenge_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "options": {
+            "additionalProperties": true,
+            "type": "object"
+          }
+        },
+        "required": [
+          "challenge_id",
+          "expires_at",
+          "options"
+        ],
+        "type": "object"
+      },
+      "PasskeyVerifyRequest": {
+        "properties": {
+          "challenge_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "credential": {
+            "additionalProperties": true,
+            "type": "object"
+          }
+        },
+        "required": [
+          "challenge_id",
+          "credential"
         ],
         "type": "object"
       },
@@ -182,6 +272,191 @@
         },
         "tags": [
           "invitation-controller"
+        ]
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "description": "Password sign-in. Requires the canonical Origin and X-Forena-Request: 1. Sets an opaque HttpOnly session cookie; never returns provider tokens.",
+        "operationId": "loginBrowserSession",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrowserLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserSessionView"
+                }
+              }
+            },
+            "description": "Browser session created"
+          },
+          "429": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Login admission exhausted; no provider call. Retry later.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "format": "int64",
+                  "type": "integer"
+                },
+                "style": "simple"
+              }
+            }
+          }
+        },
+        "tags": [
+          "browser-session-controller"
+        ]
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "description": "Idempotent local logout. Requires the canonical Origin and X-Forena-Request: 1. Deletes the server session before contacting Auth.",
+        "operationId": "logoutBrowserSession",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "browser-session-controller"
+        ]
+      }
+    },
+    "/api/auth/passkey/options": {
+      "post": {
+        "description": "Begin WebAuthn authentication. Requires the canonical Origin and X-Forena-Request: 1. Binds the challenge to an encrypted HttpOnly cookie.",
+        "operationId": "startBrowserPasskey",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasskeyOptions"
+                }
+              }
+            },
+            "description": "Browser-bound passkey options"
+          },
+          "429": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Login admission exhausted; no provider call. Retry later.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "format": "int64",
+                  "type": "integer"
+                },
+                "style": "simple"
+              }
+            }
+          }
+        },
+        "tags": [
+          "browser-session-controller"
+        ]
+      }
+    },
+    "/api/auth/passkey/verify": {
+      "post": {
+        "description": "Verify the browser-bound WebAuthn challenge via Auth and set an HttpOnly session cookie. Requires the canonical Origin and X-Forena-Request: 1. Never returns provider tokens.",
+        "operationId": "verifyBrowserPasskey",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasskeyVerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserSessionView"
+                }
+              }
+            },
+            "description": "Browser session created"
+          },
+          "429": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Login admission exhausted; no provider call. Retry later.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "format": "int64",
+                  "type": "integer"
+                },
+                "style": "simple"
+              }
+            }
+          }
+        },
+        "tags": [
+          "browser-session-controller"
+        ]
+      }
+    },
+    "/api/auth/session": {
+      "get": {
+        "description": "Verified user information only. Requires the HttpOnly browser session cookie or an existing valid Bearer token. Cache-Control: no-store.",
+        "operationId": "getBrowserSession",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserSessionView"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "browser-session-controller"
         ]
       }
     },

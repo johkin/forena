@@ -62,6 +62,14 @@ class ApiTest {
         @Volatile var providerStatus = 200
         @Volatile var providerBody: String? = null
         @Volatile var providerDelayMillis = 0L
+        @Volatile var loginAccess = ""
+        @Volatile var refreshAccess = ""
+        @Volatile var refreshStatus = 200
+        val passwordCalls = java.util.concurrent.atomic.AtomicInteger()
+        val passkeyCalls = java.util.concurrent.atomic.AtomicInteger()
+        val refreshCount = java.util.concurrent.atomic.AtomicInteger()
+        val passkeyChallenges = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+        val providerJson = JsonMapper.builder().build()
         val jwks = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).also { server ->
             server.createContext("/jwks") { exchange ->
                 val bytes = JWKSet(listOf(key.toPublicJWK(), ecKey.toPublicJWK())).toString().toByteArray()
@@ -88,6 +96,43 @@ class ApiTest {
                     exchange.responseBody.use { it.write(bytes) }
                 }
             }
+            fun reply(exchange: com.sun.net.httpserver.HttpExchange, status: Int, body: String) {
+                val bytes = body.toByteArray()
+                exchange.responseHeaders.add("Content-Type", "application/json")
+                exchange.sendResponseHeaders(status, bytes.size.toLong())
+                exchange.responseBody.use { it.write(bytes) }
+            }
+            server.createContext("/auth/v1/token") { exchange ->
+                assertThat(exchange.requestHeaders.getFirst("apikey")).isEqualTo("sb_publishable_local_test")
+                val body = providerJson.readTree(exchange.requestBody.readAllBytes())
+                val refreshing = exchange.requestURI.rawQuery == "grant_type=refresh_token"
+                if (refreshing) {
+                    refreshCount.incrementAndGet()
+                    assertThat(body.get("refresh_token").asString()).isIn("synthetic-refresh", "rotated-refresh")
+                    reply(exchange, refreshStatus, if (refreshStatus == 200) """{"access_token":"$refreshAccess","refresh_token":"rotated-refresh"}""" else "{}")
+                } else {
+                    passwordCalls.incrementAndGet()
+                    if (body.get("password")?.asString() != "synthetic-password") reply(exchange, 400, "{}")
+                    else reply(exchange, 200, """{"access_token":"$loginAccess","refresh_token":"synthetic-refresh"}""")
+                }
+            }
+            server.createContext("/auth/v1/passkeys/authentication/options") { exchange ->
+                passkeyCalls.incrementAndGet()
+                val id = UUID.randomUUID().toString(); passkeyChallenges.add(id)
+                reply(exchange, 200, """{"challenge_id":"$id","expires_at":${Instant.now().epochSecond + 300},"options":{"challenge":"c3ludGhldGlj","rpId":"localhost","userVerification":"required"}}""")
+            }
+            server.createContext("/auth/v1/passkeys/authentication/verify") { exchange ->
+                passkeyCalls.incrementAndGet()
+                val body = providerJson.readTree(exchange.requestBody.readAllBytes())
+                val valid = passkeyChallenges.remove(body.get("challenge_id").asString())
+                reply(exchange, if (valid) 200 else 400, if (valid) """{"access_token":"$loginAccess","refresh_token":"synthetic-refresh"}""" else "{}")
+            }
+            server.createContext("/auth/v1/logout") { exchange ->
+                assertThat(exchange.requestURI.rawQuery).isEqualTo("scope=local")
+                val jwt = SignedJWT.parse(exchange.requestHeaders.getFirst("Authorization").removePrefix("Bearer ")).jwtClaimsSet
+                providerSessions.remove(UUID.fromString(jwt.getStringClaim("session_id")))
+                exchange.sendResponseHeaders(204, -1); exchange.close()
+            }
             server.createContext("/redirect-target") { exchange ->
                 providerRedirects.incrementAndGet()
                 exchange.sendResponseHeaders(500,-1); exchange.close()
@@ -105,6 +150,9 @@ class ApiTest {
             registry.add("spring.liquibase.enabled") { true }
             registry.add("spring.liquibase.user") { "forena_api_owner" }
             registry.add("spring.liquibase.password") { "local-owner-only" }
+            registry.add("forena.web-session.enabled") { true }
+            registry.add("forena.web-session.origin") { "https://app.example.invalid" }
+            registry.add("forena.web-session.key") { java.util.Base64.getEncoder().encodeToString(ByteArray(32) { 7 }) }
             registry.add("forena.auth.issuer") { issuer }
             registry.add("forena.auth.publishable-key") { "sb_publishable_local_test" }
             registry.add("forena.auth.jwks-uri") { "http://127.0.0.1:${jwks.address.port}/jwks" }
@@ -116,6 +164,8 @@ class ApiTest {
     @MockitoSpyBean lateinit var historyRecords: InvitationHistoryRepository
     @Autowired lateinit var invitationRecords: InvitationRepository
     @Autowired lateinit var json: JsonMapper
+    @Autowired lateinit var loginLimiter: se.forena.api.identity.BrowserLoginLimiter
+    @Autowired lateinit var browserSettings: se.forena.api.identity.BrowserSessionSettings
     private val admin by lazy { JdbcTemplate(DriverManagerDataSource(database.jdbcUrl, database.username, database.password)) }
     private lateinit var parent: UUID
     private lateinit var outsider: UUID
@@ -129,6 +179,9 @@ class ApiTest {
     private lateinit var invitation: UUID
 
     @BeforeEach fun seed() {
+        admin.update("delete from forena.auth_rate_limit")
+        passwordCalls.set(0); passkeyCalls.set(0)
+        refreshCount.set(0); refreshStatus = 200; passkeyChallenges.clear()
         parent = UUID.randomUUID(); outsider = UUID.randomUUID(); session = UUID.randomUUID()
         organization = UUID.randomUUID(); activity = UUID.randomUUID()
         own = UUID.randomUUID(); child1 = UUID.randomUUID(); child2 = UUID.randomUUID(); other = UUID.randomUUID()
@@ -154,7 +207,7 @@ class ApiTest {
     private fun token(subject: UUID = parent, signingKey: RSAKey = key, changes: Map<String, Any?> = emptyMap()): String {
         val claims = mutableMapOf<String, Any?>("iss" to issuer, "sub" to subject.toString(), "aud" to listOf("authenticated"),
             "role" to "authenticated", "session_id" to (if (subject == outsider) outsider else session).toString(), "is_anonymous" to false,
-            "iat" to Date.from(Instant.now().minusSeconds(1)), "exp" to Date.from(Instant.now().plusSeconds(300)))
+            "email" to "family@example.invalid", "iat" to Date.from(Instant.now().minusSeconds(1)), "exp" to Date.from(Instant.now().plusSeconds(300)))
         claims.putAll(changes)
         val builder = JWTClaimsSet.Builder()
         claims.forEach { (k,v) -> if (v != null) builder.claim(k,v) }
@@ -172,6 +225,196 @@ class ApiTest {
     private fun row() = admin.queryForMap("select * from forena.invitation where id=?", invitation)
     private fun history() = admin.queryForObject("select count(*) from forena.invitation_history where invitation_id=?", Long::class.java, invitation)!!
     private fun dirty() = admin.queryForObject("select coalesce((select dirty_revision from forena.activity_signal_state where activity_id=?),0)", Long::class.java, activity)!!
+
+    private fun browser(path: String, body: String? = null, cookie: String? = null,
+                        origin: String? = "https://app.example.invalid", marker: Boolean = true, method: String? = null, expectedAccount: UUID? = parent): HttpResponse<String> {
+        val request = HttpRequest.newBuilder(URI("http://127.0.0.1:${environment.getRequiredProperty("local.server.port")}$path"))
+        cookie?.let { request.header("Cookie", it) }
+        expectedAccount?.let { request.header("X-Forena-Account", it.toString()) }
+        origin?.let { request.header("Origin", it) }
+        if (marker) request.header("X-Forena-Request", "1")
+        if (body == null) request.GET() else request.header("Content-Type", "application/json")
+            .method(method ?: "POST", HttpRequest.BodyPublishers.ofString(body))
+        return HttpClient.newHttpClient().send(request.build(), HttpResponse.BodyHandlers.ofString())
+    }
+    private fun sessionCookie(result: HttpResponse<String>) = result.headers().allValues("set-cookie")
+        .single { it.startsWith("__Host-forena-session=") }.substringBefore(';')
+    private fun browserLogin(): HttpResponse<String> {
+        loginAccess = token(); refreshAccess = token()
+        return browser("/api/auth/login", """{"email":"family@example.invalid","password":"synthetic-password"}""")
+    }
+
+    @Test
+    @org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable(named = "FORENA_LOCAL_BROWSER_TEST", matches = "true")
+    fun `real browser uses Kotlin sessions and PostgreSQL without browser tokens`() {
+        loginAccess = token(); refreshAccess = token()
+        val process = ProcessBuilder("node", "scripts/migration/browser-server-session.mjs")
+            .directory(Path.of("../..").toFile()).redirectErrorStream(true)
+            .redirectOutput(Path.of("target/browser-server-session.log").toFile())
+        val executable = System.getenv("FORENA_BROWSER_EXECUTABLE")
+        process.environment().keys.removeIf { it.startsWith("FORENA_") }
+        process.environment()["FORENA_BROWSER_API_BASE"] = "http://127.0.0.1:${environment.getRequiredProperty("local.server.port")}"
+        process.environment()["FORENA_BROWSER_ACTIVITY_ID"] = activity.toString()
+        if (executable != null) process.environment()["FORENA_BROWSER_EXECUTABLE"] = executable
+        val child = process.start()
+        try {
+            assertThat(child.waitFor(60, java.util.concurrent.TimeUnit.SECONDS)).isTrue()
+            assertThat(child.exitValue()).describedAs("See private target/browser-server-session.log").isZero()
+            assertThat(row()["response"]).isEqualTo("accepted")
+            assertThat(history()).isEqualTo(1)
+            assertThat(jdbc.queryForObject("select count(*) from forena.browser_session where subject=?", Int::class.java, parent)).isZero()
+        } finally { child.destroyForcibly() }
+    }
+
+    @Test fun `failed password attempts consume shared client and normalized email limits before calling Auth`() {
+        for (email in listOf("family@example.invalid", "FAMILY@example.invalid", " family@example.invalid ")) {
+            assertThat(browser("/api/auth/login", """{"email":"$email","password":"wrong"}""").statusCode()).isEqualTo(401)
+        }
+        val denied = browser("/api/auth/login", """{"email":"family@example.invalid","password":"wrong"}""")
+        assertThat(denied.statusCode()).isEqualTo(429)
+        assertThat(denied.headers().firstValue("retry-after").orElseThrow().toLong()).isBetween(1L,60L)
+        assertThat(denied.headers().firstValue("cache-control").orElseThrow()).isEqualTo("no-store")
+        assertThat(passwordCalls.get()).isEqualTo(3)
+        for (index in 1..2) assertThat(browser("/api/auth/login", """{"email":"other$index@example.invalid","password":"wrong"}""").statusCode()).isEqualTo(401)
+        assertThat(browser("/api/auth/passkey/options", "{}").statusCode()).isEqualTo(429)
+        assertThat(passkeyCalls.get()).isZero()
+        assertThat(passwordCalls.get()).isEqualTo(5)
+        val rows = jdbc.queryForList("select key_hash from forena.auth_rate_limit").toString()
+        assertThat(rows).doesNotContain("family", "example.invalid", "127.0.0.1")
+    }
+
+    @Test fun `admission budget stays shared across instances under concurrent clients and recovers without waiting`() {
+        val secondInstance = se.forena.api.identity.BrowserLoginLimiter(jdbc, TransactionTemplate(transactionManager), browserSettings, false)
+        val requests = (1..25).map { index -> CompletableFuture.supplyAsync {
+            try {
+                (if (index % 2 == 0) loginLimiter else secondInstance).admit("client-$index", "email-$index@example.invalid")
+                true
+            } catch (_: se.forena.api.identity.BrowserLoginRateLimited) { false }
+        } }
+        assertThat(requests.count { it.get() }).isEqualTo(10)
+        val rowCount = jdbc.queryForObject("select count(*) from forena.auth_rate_limit", Int::class.java)
+        assertThat(rowCount).isEqualTo(21) // one global row, ten client/email pairs
+        assertThatThrownBy { secondInstance.admit("new-client", "new@example.invalid") }
+            .isInstanceOf(se.forena.api.identity.BrowserLoginRateLimited::class.java)
+        assertThat(jdbc.queryForObject("select count(*) from forena.auth_rate_limit", Int::class.java)).isEqualTo(rowCount)
+        admin.update("update forena.auth_rate_limit set available_at=clock_timestamp()-interval '1 second'")
+        secondInstance.admit("new-client", "new@example.invalid")
+    }
+
+    @Test fun `an exhausted public login budget leaves session refresh and logout available`() {
+        val cookie = sessionCookie(browserLogin())
+        repeat(9) { loginLimiter.admit("other-client-$it", "other-$it@example.invalid") }
+        assertThat(browser("/api/auth/login", """{"email":"fresh@example.invalid","password":"wrong"}""").statusCode()).isEqualTo(429)
+        assertThat(browser("/api/auth/passkey/options", "{}").statusCode()).isEqualTo(429)
+        assertThat(browser("/api/auth/passkey/verify", """{"challenge_id":"${UUID.randomUUID()}","credential":{}}""").statusCode()).isEqualTo(429)
+        assertThat(passwordCalls.get()).isEqualTo(1)
+        assertThat(passkeyCalls.get()).isZero()
+        admin.update("update forena.browser_session set access_expires_at=now() where subject=?", parent)
+        assertThat(browser("/api/auth/session", cookie=cookie).statusCode()).isEqualTo(200)
+        assertThat(refreshCount.get()).isEqualTo(1)
+        assertThat(browser("/api/auth/logout", "{}", cookie).statusCode()).isEqualTo(200)
+    }
+
+    @Test fun `browser login rotates opaque cookie stores encrypted tokens and preserves business authorization`() {
+        val login = browserLogin()
+        assertThat(login.statusCode()).isEqualTo(200)
+        val cookie = sessionCookie(login)
+        assertThat(login.headers().firstValue("set-cookie").orElseThrow()).contains("HttpOnly", "Secure", "SameSite=Lax", "Path=/").doesNotContain("Domain=")
+        assertThat(login.body()).contains(parent.toString()).doesNotContain("access_token", "refresh_token", loginAccess, session.toString())
+        val row = jdbc.queryForMap("select * from forena.browser_session where subject=?", parent)
+        assertThat(row["tokens"].toString()).doesNotContain(loginAccess, "synthetic-refresh")
+        assertThat(row["id_hash"].toString()).doesNotContain(cookie.substringAfter('='))
+        assertThat(browser("/api/auth/session", cookie=cookie).statusCode()).isEqualTo(200)
+        assertThat(browser("/api/activities/$activity/my-invitations", cookie=cookie).statusCode()).isEqualTo(200)
+        assertThat(browser("/api/invitations/$invitation/respond", """{"response":"accepted"}""", cookie, method="PUT").statusCode()).isEqualTo(200)
+        assertThat(history()).isEqualTo(1)
+        // Reauthentication replaces the browser session, even for the same user.
+        val next = browser("/api/auth/login", """{"email":"family@example.invalid","password":"synthetic-password"}""", cookie)
+        assertThat(next.statusCode()).isEqualTo(200)
+        assertThat(sessionCookie(next)).isNotEqualTo(cookie)
+        assertThat(browser("/api/auth/session", cookie=cookie).statusCode()).isEqualTo(401)
+        admin.update("insert into forena.revoked_session(id,subject) values(?,?)", session, parent)
+        assertThat(browser("/api/auth/session", cookie=sessionCookie(next)).statusCode()).isEqualTo(401)
+    }
+
+    @Test fun `cookie writes and login require canonical origin and custom header while bearer clients remain valid`() {
+        val cookie = sessionCookie(browserLogin())
+        for (origin in listOf(null, "https://evil.invalid", "null")) {
+            assertThat(browser("/api/auth/login", "{}", origin=origin).statusCode()).isEqualTo(403)
+            assertThat(browser("/api/auth/logout", "{}", cookie, origin=origin).statusCode()).isEqualTo(403)
+            assertThat(browser("/api/invitations/$invitation/respond", """{"response":"accepted"}""", cookie, origin=origin, method="PUT").statusCode()).isEqualTo(403)
+        }
+        assertThat(browser("/api/auth/passkey/options", "{}", marker=false).statusCode()).isEqualTo(403)
+        assertThat(browser("/api/auth/logout", "{}", cookie, marker=false).statusCode()).isEqualTo(403)
+        assertThat(browser("/api/invitations/$invitation/respond", """{"response":"accepted"}""", cookie, method="PUT", expectedAccount=outsider).statusCode()).isEqualTo(401)
+        assertThat(browser("/api/invitations/$invitation/respond", """{"response":"accepted"}""", cookie, method="PUT", expectedAccount=null).statusCode()).isEqualTo(401)
+        assertThat(history()).isZero()
+        assertThat(request("/api/activities/$activity/my-invitations", cookie=cookie).statusCode()).isEqualTo(400)
+        assertThat(request("/actuator/health", bearer=null).statusCode()).isEqualTo(200)
+        assertThat(browser("/api/auth/session").statusCode()).isEqualTo(401)
+        assertThat(respond("""{"response":"accepted"}""").statusCode()).isEqualTo(200)
+    }
+
+    @Test fun `shared session lock refreshes once across concurrent requests and preserves session on provider outage`() {
+        val cookie = sessionCookie(browserLogin())
+        admin.update("update forena.browser_session set access_expires_at=now() where subject=?", parent)
+        refreshStatus = 503
+        val unavailable = browser("/api/auth/session", cookie=cookie)
+        assertThat(unavailable.statusCode()).isEqualTo(503)
+        assertThat(unavailable.headers().firstValue("cache-control").orElseThrow()).isEqualTo("no-store")
+        assertThat(unavailable.body()).doesNotContain(loginAccess, "synthetic-refresh")
+        refreshCount.set(0); refreshStatus = 200
+        val calls = (1..6).map { CompletableFuture.supplyAsync { browser("/api/auth/session", cookie=cookie) } }
+        calls.forEach { assertThat(it.get().statusCode()).isEqualTo(200) }
+        assertThat(refreshCount.get()).isEqualTo(1)
+        assertThat(jdbc.queryForObject("select count(*) from forena.browser_session where subject=?", Int::class.java, parent)).isEqualTo(1)
+        admin.update("update forena.browser_session set access_expires_at=now() where subject=?", parent)
+        refreshStatus = 400
+        assertThat(browser("/api/auth/session", cookie=cookie).statusCode()).isEqualTo(401)
+        assertThat(jdbc.queryForObject("select count(*) from forena.browser_session where subject=?", Int::class.java, parent)).isZero()
+    }
+
+    @Test fun `maximum lifetime inactivity invalid cookie and logout deny further access`() {
+        for (column in listOf("expires_at", "idle_expires_at")) {
+            val cookie = sessionCookie(browserLogin())
+            admin.update("update forena.browser_session set $column=now()-interval '1 second' where subject=?", parent)
+            assertThat(browser("/api/auth/session", cookie=cookie).statusCode()).isEqualTo(401)
+        }
+        assertThat(browser("/api/auth/session", cookie="__Host-forena-session=invalid").statusCode()).isEqualTo(401)
+        val cookie = sessionCookie(browserLogin())
+        val logout = browser("/api/auth/logout", "{}", cookie)
+        assertThat(logout.statusCode()).isEqualTo(200)
+        assertThat(logout.headers().allValues("set-cookie").joinToString()).contains("Max-Age=0", "HttpOnly", "Secure")
+        assertThat(browser("/api/auth/session", cookie=cookie).statusCode()).isEqualTo(401)
+        assertThat(request("/api/activities/$activity/my-invitations", bearer=loginAccess).statusCode()).isEqualTo(401)
+        assertThat(browser("/api/auth/logout", "{}", cookie).statusCode()).isEqualTo(200)
+    }
+
+    @Test fun `passkey options and verification are bound to an encrypted browser challenge cookie and cannot be replayed`() {
+        loginAccess = token()
+        val options = browser("/api/auth/passkey/options", "{}")
+        assertThat(options.statusCode()).isEqualTo(200)
+        val challenge = json.readTree(options.body()).get("challenge_id").asString()
+        val cookie = options.headers().firstValue("set-cookie").orElseThrow().substringBefore(';')
+        val body = """{"challenge_id":"$challenge","credential":{"id":"synthetic-assertion","type":"public-key"}}"""
+        assertThat(browser("/api/auth/passkey/verify", body).statusCode()).isEqualTo(401)
+        assertThat(browser("/api/auth/passkey/verify", body.replace(challenge, UUID.randomUUID().toString()), cookie).statusCode()).isEqualTo(401)
+        val result = browser("/api/auth/passkey/verify", body, cookie)
+        assertThat(result.statusCode()).isEqualTo(200)
+        assertThat(result.body()).doesNotContain("access_token", "refresh_token")
+        assertThat(browser("/api/auth/session", cookie=sessionCookie(result)).statusCode()).isEqualTo(200)
+        assertThat(browser("/api/auth/passkey/verify", body, cookie).statusCode()).isEqualTo(401)
+    }
+
+    @Test fun `logout removes even unreadable session ciphertext and clears the browser cookie`() {
+        val cookie = sessionCookie(browserLogin())
+        admin.update("update forena.browser_session set tokens='unreadable-after-key-rotation' where subject=?", parent)
+        assertThat(browser("/api/auth/session", cookie=cookie).statusCode()).isEqualTo(401)
+        val logout = browser("/api/auth/logout", "{}", cookie)
+        assertThat(logout.statusCode()).isEqualTo(200)
+        assertThat(logout.headers().allValues("set-cookie").joinToString()).contains("Max-Age=0")
+        assertThat(jdbc.queryForObject("select count(*) from forena.browser_session where subject=?", Int::class.java, parent)).isZero()
+    }
 
     @Test fun `provider logout ban deletion and mismatched session deny reads and writes without effects`() {
         val bearer = token()
@@ -587,8 +830,13 @@ class ApiTest {
         val result = request("/v3/api-docs")
         assertThat(result.statusCode()).isEqualTo(200)
         val document = json.readTree(result.body())
+        for (path in listOf("/api/auth/login", "/api/auth/passkey/options", "/api/auth/passkey/verify")) {
+            val limited = document.get("paths").get(path).get("post").get("responses").get("429")
+            assertThat(limited.get("headers").has("Retry-After")).isTrue()
+        }
         assertThat(document.get("paths").propertyNames()).containsExactlyInAnyOrder(
-            "/api/activities/{activityId}/my-invitations", "/api/invitations/{invitationId}/respond")
+            "/api/activities/{activityId}/my-invitations", "/api/invitations/{invitationId}/respond",
+            "/api/auth/session", "/api/auth/login", "/api/auth/logout", "/api/auth/passkey/options", "/api/auth/passkey/verify")
         val update = document.get("paths").get("/api/invitations/{invitationId}/respond").get("put")
         assertThat(update.get("requestBody").get("content").get("application/json").get("schema").get("\$ref").asString())
             .isEqualTo("#/components/schemas/RespondToInvitationRequest")

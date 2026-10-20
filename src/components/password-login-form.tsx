@@ -1,8 +1,8 @@
 "use client";
 import { useId } from "react";
 
-export function PasswordLoginForm({ onLogin, pending = false, error }: {
-  onLogin: (email: string, password: string) => void; pending?: boolean; error?: string;
+export function PasswordLoginForm({ onLogin, onPasskey, pending = false, error }: {
+  onLogin: (email: string, password: string) => void; onPasskey?: () => void; pending?: boolean; error?: string;
 }) {
   const id = useId();
   return <form className="auth-form" onSubmit={event => {
@@ -17,5 +17,6 @@ export function PasswordLoginForm({ onLogin, pending = false, error }: {
     <input id={`${id}-password`} name="password" type="password" autoComplete="current-password" required disabled={pending} />
     {error ? <p className="auth-error" role="alert">{error}</p> : null}
     <button className="primary" type="submit" disabled={pending}>{pending ? "Loggar in…" : "Logga in"}</button>
+    {onPasskey ? <button className="secondary" type="button" disabled={pending} onClick={onPasskey}>Logga in med passkey</button> : null}
   </form>;
 }

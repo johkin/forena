@@ -2,12 +2,20 @@
 
 ## Separat browserpilot mot Kotlin
 
-`frontend/` hanterar bara Supabase Auth och UI. Verksamhetsdata läses/skrivs
-via Kotlin på samma origins `/api/*`, med användarens Bearer-token och utan
-redirects. Browsern skickar samma origins cookies för Vercel Deployment
-Protection; Kotlin använder dem inte för autentisering eller behörighet.
-Ett 401-svar från plattformen raderar inte Supabase-sessionen; det kräver
-Kotlin-API:ts uttryckliga JSON-svar om ogiltig session.
+`frontend/` hanterar UI och WebAuthn-dialogen. Kotlin hanterar Auth-anrop och
+serverlagrade sessioner; bara ett slumpmässigt sessions-ID skickas till browsern
+i en HttpOnly/Secure/SameSite=Lax-cookie utan Domain. Hashade sessions-ID:n och
+AES-256-GCM-krypterade access-/refresh-token finns i `forena.browser_session`.
+Nyckeln tillhör runtime-hemlighetshanteringen, inte databasen eller bygget.
+Cookieanrop går till samma origins `/api/*` utan redirects. Skrivningar kräver
+kanonisk Origin och `X-Forena-Request: 1`; CORS öppnas inte. Verksamhetsanrop
+binder också UI:ts konto till serversessionens konto med `X-Forena-Account`.
+Det är ett likhetskrav mot verifierad identitet, aldrig en behörighetskälla.
+Publika statiska sidor och health är öppna. Login/logout/passkey är publika
+API-rutter med CSRF-skydd. Skyddade API:er kräver fortsatt session och rättigheter.
+Vercels skyddscookie är separat från appens autentisering.
+Ett 401-svar från plattformen raderar inte appsessionen; gränssnittet reagerar
+på Kotlin-API:ts uttryckliga JSON-svar om ogiltig session.
 Fel vid hämtning av JWT-signeringens publika nycklar ger 503/no-store och
 bevarar appsessionen; signatur- och claimfel ger fortsatt 401. Ingen begäran
 släpps igenom när nycklar inte kan verifieras. Auth-diagnostik loggar bara fasta
@@ -23,9 +31,13 @@ Kotlin verifierar JWT, aktuell Auth-session, lokala spärrar och personåtkomst.
 Auth-user_metadata används inte för behörighet. Runtimekonfigurationen är
 strikt publik och avgränsad till det nya projektet. Privata vyer avmonteras
 vid utloggning, nekad session och kontoändring; ingen verksamhetsdata cachas i
-service worker. En separat localStorage-nyckel används för Auth-sessionen.
-Backendens HTTP-rutter blir publikt adresserbara genom Vercel men kräver JWT,
-med undantag för den informationsbegränsade health-rutten. Den gamla
+service worker. Gamla pilotens localStorage-session rensas vid start; användaren
+loggar in på nytt. Inga tokens sparas i browserlagring. Sessionen varar högst
+åtta timmar och avslutas efter 30 minuters inaktivitet som standard. Delade
+PostgreSQL-radlås serialiserar förnyelse över instanser; utgångna rader städas
+varje minut när runtime kör. [Detaljer och driftskrav](migration/web-sessions.md).
+Separata Bearer-integrationer behåller sin befintliga verifiering och får inte
+kombineras med appens sessionscookie. Den gamla
 Next-appens autentisering och kanaler har fortsatt sin befintliga modell.
 
 

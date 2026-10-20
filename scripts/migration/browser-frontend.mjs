@@ -19,7 +19,7 @@ const browser = await chromium.launch({ headless: true,
 });
 const db = () => JSON.parse(execFileSync("python3", ["backend/api/scripts/browser-seed.py", "snapshot", "--state", statePath], { encoding: "utf8" }));
 const invitation = snapshot => snapshot.invitations.find(row => row.id === state.ids.invitation0);
-const sessionToken = page => page.evaluate(() => JSON.parse(localStorage.getItem("forena-kotlin-browser-auth") ?? "null")?.access_token);
+const sessionCookie = async context => (await context.cookies()).find(cookie => cookie.name === "forena-local-session");
 async function login(page, index = 0) {
   await page.goto(base + activityPath);
   await expect(page.getByRole("heading", { name: "Logga in", exact: true })).toBeVisible();
@@ -30,9 +30,9 @@ async function login(page, index = 0) {
 }
 async function write(page, id, response) {
   return page.evaluate(async ({ id, response }) => {
-    const token = JSON.parse(localStorage.getItem("forena-kotlin-browser-auth"))?.access_token;
+    const session = await fetch("/api/auth/session", { cache: "no-store", credentials: "same-origin" }).then(result => result.json());
     return (await fetch(`/api/invitations/${id}/respond`, {
-      method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      method: "PUT", headers: { "Content-Type": "application/json", "X-Forena-Request": "1", "X-Forena-Account": session.user.id },
       body: JSON.stringify({ response }), cache: "no-store", credentials: "same-origin",
     })).status;
   }, { id, response });
@@ -60,15 +60,18 @@ try {
   await first.getByRole("button", { name: "Ta bort svar", exact: true }).click();
   await expect(page.getByRole("status").filter({ hasText: "har sparats" })).toBeVisible();
   assert.equal(invitation(db()).response, "pending");
-  assert.ok(apiRequests.length > 0 && apiRequests.every(request => request.headers().authorization?.startsWith("Bearer ")));
-  checks.push("browser-auth-bearer-direct-kotlin", "two-children", "answer-comment-reload-decline-reset-real-database");
+  assert.ok(apiRequests.length > 0 && apiRequests.every(request => !request.headers().authorization));
+  assert.equal(await page.evaluate(() => localStorage.getItem("forena-kotlin-browser-auth")), null);
+  assert.ok((await sessionCookie(context))?.httpOnly);
+  assert.equal(await page.evaluate(() => document.cookie.includes("forena-local-session")), false);
+  checks.push("browser-httponly-session-direct-kotlin", "two-children", "answer-comment-reload-decline-reset-real-database");
 
   const other = await browser.newContext();
   const otherPage = await other.newPage();
   await login(otherPage, 1);
   await expect(otherPage.locator(".personal-invitation-response")).toHaveCount(0);
   const unchanged = db();
-  assert.equal(await write(otherPage, state.ids.invitation0, "accepted"), 404);
+  assert.equal(await write(otherPage, state.ids.invitation0, "accepted"), 403);
   assert.deepEqual(db(), unchanged);
   await other.close();
   checks.push("other-family-read-write-isolation");
@@ -80,7 +83,8 @@ try {
   await page.screenshot({ path: `${output}/spa-family-desktop.png`, fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: `${output}/spa-family-mobile.png`, fullPage: true });
-  const staleToken = await sessionToken(page);
+  const staleCookie = await sessionCookie(context);
+  assert.ok(staleCookie);
   await page.getByRole("button", { name: "Öppna meny", exact: true }).click();
   const menu = page.getByRole("dialog", { name: "Huvudmeny" });
   await expect(menu).toBeVisible();
@@ -89,7 +93,7 @@ try {
   await menu.getByRole("button", { name: "Logga ut från Förena" }).click();
   await expect(page.getByRole("heading", { name: "Logga in", exact: true })).toBeVisible();
   await expect(page.locator(".personal-invitation-response")).toHaveCount(0);
-  const replay = await context.request.get(`${base}/api/activities/${state.ids.activity}/my-invitations`, { headers: { Authorization: `Bearer ${staleToken}` } });
+  const replay = await context.request.get(`${base}/api/activities/${state.ids.activity}/my-invitations`, { headers: { Cookie: `${staleCookie.name}=${staleCookie.value}` } });
   assert.equal(replay.status(), 401);
   assert.deepEqual(db(), unchanged);
   checks.push("mobile-desktop-keyboard", "logout-clears-private-ui-and-revokes-session");

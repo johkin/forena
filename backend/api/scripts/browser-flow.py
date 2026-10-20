@@ -6,6 +6,8 @@ the six FORENA_TEST_* credentials and FORENA_TEST_TARGET_REF. Never source secre
 into the API/web child environments: they are explicitly scoped below.
 """
 import argparse
+import base64
+import secrets
 import json
 import os
 from pathlib import Path
@@ -74,6 +76,9 @@ def main():
         run(["python3", "backend/api/scripts/browser-seed.py", "create"], manager, "seed.log", 90)
         ids = json.loads(state.read_text())["ids"]
         api_env = base | public | {"FORENA_JDBC_URL": jdbc_url, "FORENA_DB_USERNAME": manager["FORENA_TEST_RUNTIME_USERNAME"], "FORENA_DB_PASSWORD": manager["FORENA_TEST_RUNTIME_PASSWORD"], "PORT": "8080", "SERVER_ADDRESS": "127.0.0.1", "FORENA_MIGRATE": "false"}
+        if args.browser_frontend:
+            api_env.update(FORENA_WEB_SESSION_ENABLED="true", FORENA_WEB_ORIGIN="http://127.0.0.1:3000",
+                           FORENA_WEB_SESSION_SECURE="false", FORENA_WEB_SESSION_KEY=base64.b64encode(secrets.token_bytes(32)).decode())
         java = str(Path(base["JAVA_HOME"]) / "bin/java") if base.get("JAVA_HOME") else "java"
         logs.append((out / "api.log").open("w"))
         api = subprocess.Popen([java, "-jar", "backend/api/target/forena-api.jar"], cwd=ROOT, env=api_env, stdout=logs[-1], stderr=subprocess.STDOUT)

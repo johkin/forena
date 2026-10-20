@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { AppHeaderFrame } from "../../src/components/app-header-frame";
 import { AppShellFrame } from "../../src/components/app-shell-frame";
@@ -10,6 +9,7 @@ import { ActivityInvitationResponse, type ParticipationFetch } from "../../src/c
 import { BrowserFrontendExamples } from "../../src/components/browser-frontend-examples";
 import { createApiFetch, safeDestination } from "./api";
 import type { PublicConfig } from "./config";
+import { authRequest, parseSession, passkeyLogin, type SessionView } from "./session";
 
 function Frame({ children, email, logout }: { children: ReactNode; email?: string; logout?: ReactNode }) {
   const menu = <SessionMenu accountEmail={email} logout={logout} />;
@@ -23,56 +23,74 @@ export function ConfigurationError() {
   return <Frame><main className="content"><h1>Förena är inte redo ännu</h1><p>Webbplatsen kunde inte startas. Försök igen senare.</p></main></Frame>;
 }
 
-export function App({ config, client }: { config: PublicConfig; client: SupabaseClient }) {
-  const [auth, setAuth] = useState<{ ready: boolean; session: Session | null }>({ ready: false, session: null });
+export function App({ config }: { config: PublicConfig }) {
+  const [auth, setAuth] = useState<{ ready: boolean; session: SessionView | null }>({ ready: false, session: null });
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   const activeAccount = useRef<string | undefined>(undefined);
+  const sessionRevision = useRef(0);
+  const channelRef = useRef<BroadcastChannel | null>(null);
   const accountId = auth.session?.user.id;
-  useEffect(() => {
-    let active = true;
-    let notified = false;
-    const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
-      notified = true;
-      if (active) { activeAccount.current = session?.user.id; setAuth({ ready: true, session }); }
-    });
-    void client.auth.getSession().then(({ data, error }) => {
-      if (active && !notified) {
-        activeAccount.current = error ? undefined : data.session?.user.id;
-        setAuth({ ready: true, session: error ? null : data.session });
+  const applySession = useCallback((session: SessionView | null) => {
+    sessionRevision.current++;
+    activeAccount.current = session?.user.id;
+    setAuth({ ready: true, session });
+  }, []);
+  const reloadSession = useCallback(async () => {
+    const revision = sessionRevision.current;
+    try {
+      const session = parseSession(await authRequest("session"));
+      if (revision === sessionRevision.current) applySession(session);
+    }
+    catch {
+      if (revision === sessionRevision.current) {
+        setError("Sessionen kan inte verifieras just nu. Försök igen.");
+        setAuth(previous => ({ ...previous, ready: true }));
       }
-    }).catch(() => { if (active && !notified) setAuth({ ready: true, session: null }); });
-    return () => { active = false; subscription.unsubscribe(); };
-  }, [client]);
+    }
+  }, [applySession]);
+  const invalidateSessionChecks = useCallback(() => { sessionRevision.current++; }, []);
+  useEffect(() => {
+    if (window.location.pathname === "/components") return;
+    const initial = window.setTimeout(() => { void reloadSession(); }, 0);
+    const channel = typeof BroadcastChannel === "undefined" ? null : new BroadcastChannel("forena-session");
+    channelRef.current = channel;
+    if (channel) channel.onmessage = () => { applySession(null); void reloadSession(); };
+    const focus = () => { void reloadSession(); };
+    window.addEventListener("focus", focus);
+    return () => { clearTimeout(initial); invalidateSessionChecks(); channel?.close(); channelRef.current = null; window.removeEventListener("focus", focus); };
+  }, [reloadSession, applySession, invalidateSessionChecks]);
+  function notifySessionChanged() {
+    channelRef.current?.postMessage("changed");
+  }
   const request = useCallback<ParticipationFetch>((path, init) => createApiFetch(async () => {
     if (activeAccount.current !== accountId) throw new DOMException("Session changed", "AbortError");
-    const { data, error } = await client.auth.getSession();
-    if (activeAccount.current !== accountId || (data.session && data.session.user.id !== accountId)) throw new DOMException("Session changed", "AbortError");
-    return error ? null : data.session?.access_token ?? null;
+    return accountId ?? null;
   }, () => {
     if (activeAccount.current !== accountId) return;
-    activeAccount.current = undefined;
-    setAuth({ ready: true, session: null });
+    applySession(null);
     setError("Logga in igen för att fortsätta.");
-    void client.auth.signOut({ scope: "local" }).catch(() => {});
-  })(path, init), [client, accountId]);
+  })(path, init), [accountId, applySession]);
   const path = window.location.pathname;
   if (path === "/components") return <Frame><main className="content component-gallery"><h1>Komponenter</h1><BrowserFrontendExamples /></main></Frame>;
   if (!auth.ready) return <Frame><main className="content"><p role="status">Laddar Förena…</p></main></Frame>;
 
-  async function login(email: string, password: string) {
+  async function login(email?: string, password?: string) {
     setPending(true); setError(undefined);
     try {
-      const { error } = await client.auth.signInWithPassword({ email, password });
-      if (error) { setError("Inloggningen misslyckades. Kontrollera e-postadress och lösenord."); return; }
-      if (path === "/login") window.location.replace(safeDestination(new URLSearchParams(window.location.search).get("next")));
+      const session = email === undefined ? await passkeyLogin() : parseSession(await authRequest("login", { email, password }));
+      if (!session) { setError("Inloggningen misslyckades. Försök igen."); return; }
+      applySession(session); notifySessionChanged();
+      if (path === "/login") {
+        window.history.replaceState(null, "", safeDestination(new URLSearchParams(window.location.search).get("next")));
+      }
     } catch { setError("Inloggningen kunde inte genomföras. Försök igen."); }
     finally { setPending(false); }
   }
-  if (!auth.session) return <Frame><main className="auth-page"><section className="auth-card">
+  if (!auth.session) return <Frame key="guest"><main className="auth-page"><section className="auth-card">
     <span className="brand-mark">F</span><p className="eyebrow">Förena</p><h1>Logga in</h1>
     <p>Logga in för att se och svara på familjens kallelser.</p>
-    <PasswordLoginForm onLogin={(email, password) => void login(email, password)} pending={pending} error={error} />
+    <PasswordLoginForm onLogin={(email, password) => void login(email, password)} onPasskey={() => void login()} pending={pending} error={error} />
   </section></main></Frame>;
 
   const match = /^\/activities\/([^/]+)$/.exec(path);
@@ -82,13 +100,13 @@ export function App({ config, client }: { config: PublicConfig; client: Supabase
   async function logout() {
     setPending(true); setError(undefined);
     try {
-      const { error } = await client.auth.signOut({ scope: "local" });
-      if (error) { setError("Utloggningen misslyckades. Försök igen."); return; }
-      window.location.replace("/login");
+      await authRequest("logout", {});
+      applySession(null); notifySessionChanged();
+      window.history.replaceState(null, "", "/login");
     } catch { setError("Utloggningen misslyckades. Försök igen."); }
     finally { setPending(false); }
   }
-  return <Frame email={auth.session.user.email} logout={<button type="button" className="logout-button" aria-label="Logga ut från Förena" disabled={pending} onClick={() => void logout()}>{pending ? "Loggar ut…" : "Logga ut"}</button>}>
+  return <Frame key={auth.session.user.id} email={auth.session.user.email ?? undefined} logout={<button type="button" className="logout-button" aria-label="Logga ut från Förena" disabled={pending} onClick={() => void logout()}>{pending ? "Loggar ut…" : "Logga ut"}</button>}>
     <main className="content" key={auth.session.user.id}>
       <p className="eyebrow">Familjen</p><h1>{knownPath ? "Familjens kallelser" : "Sidan finns inte"}</h1>
       {error ? <p role="alert">{error}</p> : null}

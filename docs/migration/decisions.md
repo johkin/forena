@@ -3,6 +3,26 @@
 Status anger målbeslut för kommande implementation, inte redan införd teknik.
 Källkodsverifierat nuläge finns i [inventeringen](inventory.md).
 
+## ADR-018: Serversession och HttpOnly-cookie för nya webben
+
+Beslut 2026-10-20, ärende [#135](https://github.com/johkin/forena/issues/135):
+Kotlin äger webbinloggning, förnyelse och utloggning. Browsern får enbart ett
+slumpmässigt sessions-ID i en HttpOnly/Secure-cookie. Leverantörens tokens
+lagras krypterat på serversidan; ingen localStorage/sessionStorage eller
+JavaScript-läsbar cookie ersätter den gamla tokenlagringen. Detta ersätter
+ADR-017:s browserlagrade Bearer-modell, inte dess statiska frontend/routing.
+
+Sessionslagringen ligger i det privata PostgreSQL-schemat, separat från
+verksamhetsdata. Delade radlås skyddar refresh-tokenrotation över instanser.
+Befintlig JWT-verifiering, aktuell leverantörssession och verksamhetsbehörighet
+behålls. Publika sidor och uttryckliga publika API-rutter förblir öppna; en
+gateway som blockerar hela frontenden införs inte. Cookie-skrivningar kräver
+CSRF-skydd. Passkey använder leverantörens tvåstegs-API utan att token passerar
+browsern och utan full sidomladdning.
+
+[Implementation, livslängd, driftskrav och verifieringsgränser](web-sessions.md).
+Gamla Next-appen/MCP och dess projekt migreras inte av detta beslut.
+
 ## ADR-017: Separat browser-frontend för första Kotlin-flödet
 
 **Beslut 2026-10-19 på användarens instruktion:** bygg en separat React/Vite-app

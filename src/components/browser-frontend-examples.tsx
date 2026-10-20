@@ -17,8 +17,8 @@ export function BrowserFrontendExamples() {
     return Response.json({ invitations: invitations.current });
   }, []);
   return <>
-    <section><h2>Inloggning med lösenord</h2><p>Lokalt exempel. Inga inloggningsuppgifter skickas.</p><PasswordLoginForm error={error} onLogin={() => setError("Exempel på ett inloggningsfel. Försök igen.")} /></section>
-    <section><h2>Inloggning pågår</h2><PasswordLoginForm pending onLogin={() => {}} /></section>
+    <section><h2>Inloggning med lösenord eller passkey</h2><p>Lokalt exempel. Inga inloggningsuppgifter skickas.</p><PasswordLoginForm error={error} onLogin={() => setError("Exempel på ett inloggningsfel. Försök igen.")} onPasskey={() => setError("Exempel på avbruten passkey-inloggning. Försök igen.")} /></section>
+    <section><h2>Inloggning pågår</h2><PasswordLoginForm pending onLogin={() => {}} onPasskey={() => {}} /></section>
     <section><h2>Familjens kallelsesvar</h2><ActivityInvitationResponse activityId="33333333-3333-4333-8333-333333333333" cancelled={false} request={request} /></section>
     <section><h2>Inställd aktivitet</h2><ActivityInvitationResponse activityId="33333333-3333-4333-8333-333333333333" cancelled request={request} /></section>
     <section><h2>Kontomeny</h2><SessionMenu accountEmail="familj@example.invalid" logout={<button type="button" disabled>Logga ut</button>} /></section>

@@ -81,7 +81,7 @@ class TargetAuthIT {
         var checksPassed = false
         DriverManager.getConnection(jdbcUrl,owner,ownerPassword).use { db ->
             db.createStatement().use { statement ->
-                statement.executeQuery("select count(*) from forena.databasechangelog").use { it.next(); check(it.getInt(1) == 5) { "Run the current Liquibase release before this test" } }
+                statement.executeQuery("select count(*) from forena.databasechangelog").use { it.next(); check(it.getInt(1) == 7) { "Run the current Liquibase release before this test" } }
                 statement.executeQuery("select current_user").use { it.next(); check(it.getString(1) == "forena_api_owner") }
             }
             try {

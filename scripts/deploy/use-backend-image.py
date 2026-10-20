@@ -34,6 +34,9 @@ def configure(image, public_key, certificate):
                 'FORENA_AUTH_ISSUER': 'https://ckzrtxqjskosqzoitymc.supabase.co/auth/v1',
                 'FORENA_AUTH_JWKS_URI': 'https://ckzrtxqjskosqzoitymc.supabase.co/auth/v1/.well-known/jwks.json',
                 'FORENA_AUTH_PUBLISHABLE_KEY': public_key,
+                'FORENA_WEB_SESSION_ENABLED': 'true',
+                'FORENA_WEB_ORIGIN': 'https://forena-kotlin.vercel.app',
+                'FORENA_TRUST_VERCEL_PROXY': 'true',
                 'FORENA_DB_CA_CERTIFICATE': certificate}}
 
 
