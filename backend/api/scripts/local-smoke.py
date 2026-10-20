@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Exercise the built JAR's migration-only and runtime modes in a disposable local DB."""
+"""Exercise JAR migrations and a JAR or container runtime in a disposable local DB."""
+import argparse
 import os
 import base64
 import http.server
@@ -48,11 +49,14 @@ def docker(*args, **kwargs):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--runtime-image", help="Linux Docker image to run instead of the JVM web process")
+    args = parser.parse_args()
     if not JAR.is_file():
         raise SystemExit("Build backend/api with Maven verify first")
     container = docker("run", "--rm", "-d", "-p", "127.0.0.1::5432", "-e",
                        "POSTGRES_PASSWORD=local-smoke-only", "postgres:17.6-alpine")
-    runtime = keys = None
+    runtime = keys = runtime_container = None
     try:
         deadline = time.monotonic() + 30
         while True:
@@ -110,10 +114,23 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
                    FORENA_AUTH_PUBLISHABLE_KEY="sb_publishable_smoke_placeholder",
                    FORENA_AUTH_ISSUER=issuer, FORENA_AUTH_JWKS_URI=issuer + "/.well-known/jwks.json")
         with tempfile.TemporaryFile(mode="w+") as log:
-            runtime = subprocess.Popen([JAVA, "-jar", str(JAR)], env=env, stdout=log, stderr=subprocess.STDOUT)
+            command = [JAVA, "-jar", str(JAR)]
+            if args.runtime_image:
+                # Host networking only connects the Linux test container to the
+                # disposable PostgreSQL and synthetic JWKS server on loopback.
+                runtime_keys = ("PORT", "FORENA_JDBC_URL", "FORENA_DB_USERNAME", "FORENA_DB_PASSWORD",
+                                "FORENA_AUTH_PUBLISHABLE_KEY", "FORENA_AUTH_ISSUER", "FORENA_AUTH_JWKS_URI")
+                runtime_container = docker("create", "--network=host",
+                                           *[item for name in runtime_keys for item in ("-e", name)],
+                                           args.runtime_image, env=env)
+                command = ["docker", "start", "--attach", runtime_container]
+            started = time.monotonic()
+            runtime = subprocess.Popen(command, env=env, stdout=log, stderr=subprocess.STDOUT)
             deadline = time.monotonic() + 30
             while True:
-                assert runtime.poll() is None, "Runtime JAR exited unexpectedly"
+                if runtime.poll() is not None or time.monotonic() >= deadline:
+                    log.seek(0)
+                    raise AssertionError("Runtime failed to become healthy:\n" + log.read())
                 try:
                     with urllib.request.urlopen(f"http://127.0.0.1:{http_port}/actuator/health", timeout=2) as health:
                         assert health.status == 200
@@ -122,6 +139,7 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
                     if time.monotonic() >= deadline:
                         raise
                     time.sleep(0.2)
+            print(f"Runtime healthy after {time.monotonic() - started:.3f}s", flush=True)
             keys.available = False
             try:
                 urllib.request.urlopen(f"http://127.0.0.1:{http_port}/actuator/health", timeout=2)
@@ -137,11 +155,17 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
                 raise AssertionError("Private API accepted missing bearer")
             except urllib.error.HTTPError as error:
                 assert error.code == 401
-            runtime.terminate()
-            assert runtime.wait(timeout=10) == 143
+            if runtime_container:
+                docker("stop", "--time=10", runtime_container)
+                assert runtime.wait(timeout=10) in (0, 143), "Container shutdown failed"
+            else:
+                runtime.terminate()
+                assert runtime.wait(timeout=10) == 143
             runtime = None
         print("PASS: fresh bootstrap; migration-only JAR twice; runtime without owner credential; DB/Auth health and recovery; bearer rejection; shutdown")
     finally:
+        if runtime_container is not None:
+            docker("rm", "-f", runtime_container)
         if runtime is not None and runtime.poll() is None:
             runtime.kill()
             runtime.wait(timeout=10)

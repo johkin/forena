@@ -168,9 +168,45 @@ jobs:
             backend/api/target/surefire-reports/
             backend/api/target/spring-modulith-docs/
 
+  native-image:
+    needs: backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Java 25
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Build native container with Spring Boot buildpacks
+        run: >-
+          backend/mvnw -f backend/api/pom.xml --batch-mode --no-transfer-progress
+          -Pnative -DskipTests
+          -Dspring-boot.build-image.imageName=forena-api-native:ci
+          spring-boot:build-image
+
+      - name: Verify native runtime against disposable PostgreSQL and Auth keys
+        run: python3 backend/api/scripts/local-smoke.py --runtime-image forena-api-native:ci
+
+      - name: Export tested native image
+        run: docker save forena-api-native:ci | gzip > "$RUNNER_TEMP/forena-api-native.tar.gz"
+
+      - name: Retain tested native image
+        uses: actions/upload-artifact@v7
+        with:
+          name: forena-api-native-${{ github.sha }}
+          path: ${{ runner.temp }}/forena-api-native.tar.gz
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+
   # Keep the existing required check; every parallel job must succeed.
   verify:
-    needs: [application, database, kotlin-probe, backend]
+    needs: [application, database, kotlin-probe, backend, native-image]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -181,8 +217,10 @@ jobs:
           DATABASE_RESULT: ${{ needs.database.result }}
           KOTLIN_RESULT: ${{ needs.kotlin-probe.result }}
           BACKEND_RESULT: ${{ needs.backend.result }}
+          NATIVE_RESULT: ${{ needs.native-image.result }}
         run: |
           test "$APPLICATION_RESULT" = success
           test "$DATABASE_RESULT" = success
           test "$KOTLIN_RESULT" = success
           test "$BACKEND_RESULT" = success
+          test "$NATIVE_RESULT" = success
