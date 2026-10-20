@@ -29,21 +29,27 @@ Vercels skyddscookie når Deployment Protection. Plattformens HTML-/401-svar
 får inte logga ut användaren ur Supabase. Bara API:ts uttryckliga JSON-svar
 om ogiltig appsession gör det. Behåll Deployment Protection aktiverat.
 
-Actions hämtar `forena-api-native-<sha>` från den godkända main-CI-körningen
-för exakt releasecommit. Samma urval används även vid manuell release.
-Imagen laddas med Docker och dess deklarerade webbinär extraheras via buildpack-
-metadata. Releasen stoppar om artefakten saknas/har löpt ut, arkitekturen är fel
-eller webprocessen inte är en ELF-binär. Kör då CI igen för samma aktuella main.
-Ingen JVM-version byggs som reserv.
+CI bygger och starttestar den färdiga backend-imagen, inklusive startskript,
+systembibliotek och CA-certifikat. Native-kompilering och paketering hör till
+byggjobbet. Det äldre `kotlin-probe`-jobbet är borttaget från CI; verksamhets-API:ts
+backend-tester och imageprov ligger kvar.
 
-Frontend byggs separat. Backendens runtime-image innehåller den testade native-
-binären, Ubuntu Noble-kompatibla systembibliotek, CA-certifikat och det befintliga
-startskriptets miljöfilter. `ldd` stoppar paketeringen vid saknade bibliotek.
-Ingen JDK eller JAR följer med. Den ompaketerade containerns riktiga JDBC- och
-Auth/HTTPS-health verifieras i staging före promotion.
-Vercel CLI är låst till
-60.1.3. `vercel build --prod` paketerar statiska filer och backend-image;
-`vercel deploy --prebuilt --prod --skip-domain` skapar en stagingdeployment.
+Releasen hämtar `forena-backend-image-<sha>` från godkänd main-CI för exakt
+releasecommit och kontrollerar artefaktens sourceCommit och image-ID mot den
+laddade imagen. Saknad/utgången artefakt stoppar releasen; kör CI igen för samma
+aktuella main. Ingen binär extraheras och ingen backend-image byggs i deployjobbet.
+
+Imagen taggas och pushas till samma projekts Vercel Container Registry. Image-ID:t
+måste fortfarande matcha CI-artefakten efter push. Backend-tjänstens `entrypoint`
+sätts till dess oföränderliga `vcr.vercel.com/johkin/forena-kotlin/backend@sha256:…`.
+Dess service-root `deploy/backend-image` innehåller ingen Dockerfile. Vercel CLI
+60.1.3 väljer då prebuilt-imagevägen och använder imagen direkt. Deployflödet
+behöver inte veta om processen kör native, JVM eller något annat.
+
+Frontend byggs separat. `vercel build --prod` paketerar statiska filer och den
+befintliga OCI-referensen; `vercel deploy --prebuilt --prod --skip-domain` skapar
+en stagingdeployment. JDBC och riktig Auth/HTTPS-health kontrolleras innan samma
+deployment främjas till den kanoniska domänen.
 
 Kontroller före `vercel promote`:
 

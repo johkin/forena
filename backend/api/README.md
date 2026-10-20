@@ -37,14 +37,17 @@ Se [Spring Boots native-guide](https://docs.spring.io/spring-boot/how-to/native-
 och [JDBC/AOT-konfiguration](https://docs.spring.io/spring-boot/reference/data/sql.html).
 
 CI-jobbet `native-image` kör samma buildpack-kommando efter `backend`-jobbet.
-Det startar den byggda containern mot en tillfällig lokal PostgreSQL och en
+Det paketerar därefter slutimagen med runtime-bibliotek, CA och startskript.
+Det startar slutimagen mot en tillfällig lokal PostgreSQL och en
 syntetisk JWKS-server, kontrollerar DB/Auth-health, avbrott/återhämtning,
 saknad Bearer och avstängning. Migreringarna körs med JVM-JAR:en två gånger.
-Startprovet kontrollerar också att runtime får sin konfiguration vid start
+Startprovet kör applikationen direkt med syntetisk lokal konfiguration;
+produktionsstartskriptets miljöfilter verifieras separat av releasegränstesterna.
+Provet kontrollerar också att runtime får sin konfiguration vid start
 och saknar migreringscredentials. Det är inte ett fullständigt inloggat
 verksamhets- eller HTTPS-prov av native-runtime.
 Efter godkänt startprov sparas imagen som Actions-artifakten
-`forena-api-native-<sha>` i tre dagar. Den kan hämtas och laddas med
+`forena-backend-image-<sha>` i tre dagar. Den kan hämtas och laddas med
 `docker load`; `verify` kräver att native-jobbet lyckas.
 
 Native-metadata under `src/main/resources/META-INF/native-image` registrerar
@@ -55,8 +58,10 @@ interface`: den ärvda, villkorliga metadataregistreringen räckte inte för
 Hibernate Validator 9.1/JBoss Logging 3.6. Nästa prov kom förbi loggern men
 behövde även `Messages_$bundle`. Valideringen behålls aktiverad.
 
-Releaseflödet hämtar den testade native-imagen för exakt main-commit och
-paketerar dess webbinär utan JDK/JAR. Se [releaseflödet](../../docs/migration/actions-deployment.md).
+Releaseflödet publicerar slutimagen från exakt godkänd main-CI utan ompaketering.
+Image-ID och sourceCommit verifieras och Vercel får en OCI-referens låst till
+digest. Deployen är oberoende av applikationens runtime.
+Se [releaseflödet](../../docs/migration/actions-deployment.md).
 Lokalt prov 2026-10-19: `-Pnative spring-boot:build-image` passerade AOT utan
 Auth-/databascredentials och utan databasanslutning. Uppackningen av standard-
 buildern `paketobuildpacks/builder-noble-java-tiny:latest` fyllde Docker/VFS-
