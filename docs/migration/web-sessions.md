@@ -132,6 +132,7 @@ inloggningar, men når inte refresh-reserven genom dessa publika rutter.
    hemlighetshantering. Sätt `FORENA_WEB_SESSION_KEY` endast för backendens runtime.
    Alla instanser behöver samma nyckel. Ingen automatisk nyckelgenerering vid
    start används. Nyckeln får aldrig hamna i byggargument, publika filer eller loggar.
+   I Vercel ska den vara en Production Secret (tidigare Sensitive).
 3. Sätt `FORENA_WEB_SESSION_ENABLED=true` och `FORENA_WEB_ORIGIN` till exakt
    sajt-origin utan avslutande slash. Produktion kräver HTTPS och Secure-cookie.
    Valfria `FORENA_WEB_SESSION_MAX_SECONDS`/`FORENA_WEB_SESSION_IDLE_SECONDS`
@@ -140,8 +141,11 @@ inloggningar, men når inte refresh-reserven genom dessa publika rutter.
    och ha rätt RP-ID och tillåtna origins. Befintliga registrerade passkeys
    måste tillhöra detta RP-ID. Registrering/hantering av passkeys ingår inte.
    Se [Supabases aktuella passkey-kontrakt](https://supabase.com/docs/guides/auth/passkeys).
-5. Publicera frontend och backend tillsammans. Releaseförberedelsen validerar
-   runtime-nyckeln utan att exportera den; runtime-descriptorn aktiverar sessioner
+5. Publicera frontend och backend tillsammans. Releaseförberedelsen kräver att
+   runtime-nyckeln finns, accepterar Vercels `[SENSITIVE]`-platshållare och
+   kontrollerar formatet om värdet är läsbart. Nyckeln exporteras aldrig till
+   bygget. Backend validerar den faktiska nyckeln vid runtime-start;
+   runtime-descriptorn aktiverar sessioner
    med kanonisk Kotlin-site-origin. Health måste verifiera migration 006/007 före
    promotion. Verifiera sedan faktisk login/cookie/API/logout på sajtens origin.
 
