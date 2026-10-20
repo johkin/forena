@@ -64,7 +64,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Begin WebAuthn authentication. Requires the canonical Origin and X-Forena-Request: 1. Binds the challenge to an encrypted HttpOnly cookie. */
+        /** @description Begin WebAuthn authentication. Requires the canonical Origin and X-Forena-Request: 1. Binds the challenge to the HttpOnly Spring session for at most five minutes. */
         post: operations["startBrowserPasskey"];
         delete?: never;
         options?: never;

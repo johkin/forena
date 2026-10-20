@@ -8,4 +8,5 @@
  <changeSet id="api-005-history-without-session" author="forena"><sqlFile path="history-without-session.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
  <changeSet id="api-006-browser-session" author="forena"><sqlFile path="browser-session.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
  <changeSet id="api-007-auth-rate-limit" author="forena"><sqlFile path="auth-rate-limit.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
+ <changeSet id="api-008-spring-session" author="forena"><sqlFile path="spring-session.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
 </databaseChangeLog>

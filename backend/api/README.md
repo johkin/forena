@@ -226,7 +226,7 @@ frågor i `backend/src` och gamla appens databaslogik ingår inte i denna ändri
    `/auth/v1/.well-known/jwks.json`. HTTPS krävs utom för lokala loopbacktester.
    Port är `PORT` eller 8080. `/actuator/health` är publik utan detaljer.
 
-Webbfrontenden kräver också migreringarna `api-006-browser-session` och `api-007-auth-rate-limit`,
+Webbfrontenden kräver också migreringarna `api-008-spring-session` samt tidigare migreringar,
 `FORENA_WEB_SESSION_ENABLED=true`, kanonisk `FORENA_WEB_ORIGIN` och en
 base64-kodad 32-bytes `FORENA_WEB_SESSION_KEY` i runtime-hemlighetshanteringen.
 Nyckeln delas mellan instanser och ska behållas över omstarter.

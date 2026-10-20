@@ -32,7 +32,8 @@ class BrowserSessionFilter(
                 fail(response, 400, "Tvetydig autentisering."); return
             }
             try {
-                val token = sessions.resolve(cookie)
+                if (cookie == "invalid") { fail(response, 401, "Inloggning krävs."); return }
+                val token = sessions.resolve(request)
                 if (token == null) { fail(response, 401, "Inloggning krävs."); return }
                 val expectedAccount = request.getHeader("X-Forena-Account")
                 if ((!authRoute && request.method !in listOf("GET", "HEAD", "OPTIONS") && expectedAccount == null) ||

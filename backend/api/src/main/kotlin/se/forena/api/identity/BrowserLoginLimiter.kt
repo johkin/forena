@@ -67,7 +67,8 @@ class BrowserLoginLimiter(
     }
 
     /** Deleting fully refilled buckets is equivalent to retaining their full capacity. */
-    fun purge() { jdbc.update("delete from forena.auth_rate_limit where available_at < clock_timestamp()-interval '10 minutes'") }
+    @org.springframework.scheduling.annotation.Scheduled(fixedDelay = 60000)
+    fun purge() { if (!settings.enabled) return; jdbc.update("delete from forena.auth_rate_limit where available_at < clock_timestamp()-interval '10 minutes'") }
 
     private class Bucket(val hash: String, val interval: Long, val burst: Long, val available: Instant) {
         fun next(now: Instant) = maxOf(now, available).plusSeconds(interval)

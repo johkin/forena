@@ -1,0 +1,36 @@
+{
+  "project_ref": "ckzrtxqjskosqzoitymc",
+  "checked_at": "2026-10-20T22:03:40.797Z",
+  "method": "Liquibase 5.0.3 update SQL generated from verified target history, executed transactionally as schema owner through Supabase connector",
+  "tables": [
+    {
+      "name": "spring_session",
+      "owner": "forena_api_owner",
+      "anon_select": false,
+      "runtime_delete": true,
+      "runtime_insert": true,
+      "runtime_select": true,
+      "runtime_update": true,
+      "service_role_select": false,
+      "authenticated_select": false
+    },
+    {
+      "name": "spring_session_attributes",
+      "owner": "forena_api_owner",
+      "anon_select": false,
+      "runtime_delete": true,
+      "runtime_insert": true,
+      "runtime_select": true,
+      "runtime_update": true,
+      "service_role_select": false,
+      "authenticated_select": false
+    }
+  ],
+  "checksum": "9:4ed53e1d7c6e3fa643ac9e98815a7784",
+  "migration_count": 8,
+  "migration_locked": false,
+  "admin_can_set_owner": false,
+  "legacy_table_retained": true,
+  "current_application_health": "UP",
+  "application_switched": false
+}

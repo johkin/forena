@@ -30,7 +30,7 @@ Kotlin-anrop. Ordinarie översikt är fortsatt inte omkopplad.
 Den separata [browser-frontendens pilot](../frontend/README.md) i `frontend/`
 återanvänder gemensamt sidskal, header, meny, sidfot och kallelsesvar men kör
 React/Vite utan Next-server. Kotlin hanterar lösenords-/passkey-inloggning,
-tokenförnyelse och serversessioner. Browsern skickar en ogenomskinlig HttpOnly-
+tokenförnyelse; Spring Session JDBC äger serversessionens lagring, cookie och inaktivitet. Browsern skickar en ogenomskinlig HttpOnly-
 cookie direkt genom Vercels `/api/*` till Kotlin; access- och refresh-token
 lagras krypterat i det privata schemat och når inte frontenden. Backend äger
 behörighets- och sessionskontrollen. Se [webbsessioner](migration/web-sessions.md)
