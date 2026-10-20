@@ -55,6 +55,19 @@ class LocalKeys(http.server.BaseHTTPRequestHandler):
         pass
 
 
+class LocalTraces(http.server.BaseHTTPRequestHandler):
+    def do_POST(self):
+        body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
+        self.server.batches.append((self.path, self.headers.get("Content-Type"), body))
+        self.send_response(200)
+        self.send_header("Content-Type", "application/x-protobuf")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def log_message(self, *_args):
+        pass
+
+
 def docker(*args, **kwargs):
     result = subprocess.run(["docker", *args], text=True, capture_output=True, **kwargs)
     if result.returncode:
@@ -73,7 +86,7 @@ def main():
         raise SystemExit("Build backend/api with Maven verify first")
     container = docker("run", "--rm", "-d", "-p", "127.0.0.1::5432", "-e",
                        "POSTGRES_PASSWORD=local-smoke-only", "postgres:17.6-alpine")
-    runtime = keys = runtime_container = None
+    runtime = keys = traces = runtime_container = None
     try:
         deadline = time.monotonic() + 30
         while True:
@@ -128,12 +141,16 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
         keys = http.server.ThreadingHTTPServer(("127.0.0.1", 0), LocalKeys)
         keys.available = True
         threading.Thread(target=keys.serve_forever, daemon=True).start()
+        traces = http.server.ThreadingHTTPServer(("127.0.0.1", 0), LocalTraces)
+        traces.batches = []
+        threading.Thread(target=traces.serve_forever, daemon=True).start()
         issuer = f"http://127.0.0.1:{keys.server_port}/auth/v1"
         env.update(FORENA_MIGRATE="false", PORT=str(http_port),
                    FORENA_WEB_SESSION_ENABLED="true", FORENA_WEB_ORIGIN="https://local-smoke.example.invalid",
                    FORENA_WEB_SESSION_KEY=base64.b64encode(bytes(range(32))).decode(),
                    FORENA_DB_CA_CERTIFICATE=(ROOT / "backend/certs/supabase-ca.crt").read_text(),
                    FORENA_AUTH_PUBLISHABLE_KEY="sb_publishable_smoke_placeholder",
+                   MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT=f"http://127.0.0.1:{traces.server_port}/v1/traces",
                    FORENA_AUTH_ISSUER=issuer, FORENA_AUTH_JWKS_URI=issuer + "/.well-known/jwks.json")
         with tempfile.TemporaryFile(mode="w+") as log:
             command = [JAVA, "-jar", str(JAR)]
@@ -142,6 +159,7 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
                 # disposable PostgreSQL and synthetic JWKS server on loopback.
                 runtime_keys = ("PORT", "FORENA_DB_CA_CERTIFICATE", "FORENA_JDBC_URL", "FORENA_DB_USERNAME", "FORENA_DB_PASSWORD",
                                 "FORENA_AUTH_PUBLISHABLE_KEY", "FORENA_AUTH_ISSUER", "FORENA_AUTH_JWKS_URI",
+                                "MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT",
                                 "FORENA_WEB_SESSION_ENABLED", "FORENA_WEB_ORIGIN", "FORENA_WEB_SESSION_KEY")
                 entrypoint = ["--entrypoint", args.runtime_entrypoint] if args.runtime_entrypoint else []
                 runtime_container = docker("create", "--network=host", *entrypoint,
@@ -225,7 +243,15 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
                 runtime.terminate()
                 assert runtime.wait(timeout=10) == 143
             runtime = None
-        print("PASS: fresh bootstrap; migration-only JAR twice; runtime without owner credential; DB/Auth/session health; shared Auth admission and 429; unrestricted logout; bearer rejection; shutdown")
+            assert traces.batches, "Runtime must export HTTP request spans"
+            assert all(path == "/v1/traces" and content_type == "application/x-protobuf" and body
+                       for path, content_type, body in traces.batches), "Expected OTLP HTTP/protobuf batches"
+            assert any(b"forena-api" in body for _, _, body in traces.batches), "Trace resource must identify the API"
+            log.seek(0)
+            structured = [json.loads(line) for line in log if line.startswith("{")]
+            assert any(entry.get("ecs", {}).get("version") and entry.get("service", {}).get("name") == "forena-api"
+                       for entry in structured), "Runtime must emit ECS console logs"
+        print("PASS: fresh bootstrap; migration-only JAR twice; runtime without owner credential; DB/Auth/session health; shared Auth admission and 429; unrestricted logout; bearer rejection; OTLP HTTP/protobuf spans; ECS logs; shutdown")
     finally:
         if runtime_container is not None:
             docker("rm", "-f", runtime_container)
@@ -235,6 +261,9 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
         if keys is not None:
             keys.shutdown()
             keys.server_close()
+        if traces is not None:
+            traces.shutdown()
+            traces.server_close()
         docker("rm", "-f", container)
 
 

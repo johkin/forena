@@ -1,0 +1,10 @@
+# JVM development: readable console output and no OTLP network export.
+logging:
+  structured:
+    format:
+      console: ""
+
+management:
+  tracing:
+    export:
+      enabled: false
