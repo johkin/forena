@@ -22,7 +22,7 @@
     "backend": {
       "root": "deploy/backend-image",
       "runtime": "container",
-      "entrypoint": "vcr.vercel.com/johkin/forena-kotlin/backend:ci"
+      "entrypoint": "Dockerfile"
     }
   },
   "rewrites": [

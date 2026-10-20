@@ -1,7 +1,11 @@
 """A release must keep the tested image and use a digest in the correct repository."""
 import importlib.util
+import contextlib
+import json
 from pathlib import Path
+import tempfile
 import unittest
+from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location('backend_image', Path(__file__).with_name('use-backend-image.py'))
 module = importlib.util.module_from_spec(spec)
@@ -16,10 +20,11 @@ class BackendImage(unittest.TestCase):
         self.metadata = {'sourceCommit': self.commit, 'imageId': self.image['Id']}
         self.config = {'services': {'backend': {'root': 'deploy/backend-image', 'runtime': 'container'}}}
 
-    def test_selects_digest_without_changing_image(self):
+    def test_selects_from_only_dockerfile_for_the_tested_digest(self):
         module.verify_image(self.image, self.metadata, self.commit)
         result = module.configure(self.config, self.image)
-        self.assertEqual(result['services']['backend']['entrypoint'], self.image['RepoDigests'][0])
+        self.assertEqual(result['services']['backend']['entrypoint'], 'Dockerfile')
+        self.assertEqual(module.dockerfile(self.image), 'FROM ' + self.image['RepoDigests'][0] + '\n')
 
     def test_rejects_wrong_commit_or_image(self):
         for metadata in [dict(self.metadata, sourceCommit='d' * 40), dict(self.metadata, imageId='sha256:' + 'e' * 64)]:
@@ -40,3 +45,21 @@ class BackendImage(unittest.TestCase):
         self.config['services']['backend']['root'] = 'backend/api'
         with self.assertRaises(ValueError):
             module.configure(self.config, self.image)
+
+    def test_deployment_output_must_still_select_the_tested_image(self):
+        with tempfile.TemporaryDirectory() as directory, contextlib.chdir(directory):
+            Path('metadata.json').write_text(json.dumps(self.metadata))
+            Path('published.json').write_text(json.dumps([self.image]))
+            function = Path('.vercel/output/functions/backend.func')
+            function.mkdir(parents=True)
+            (function / '.vc-config.json').write_text(json.dumps({
+                'runtime': 'container', 'handler': self.image['RepoDigests'][0]}))
+            args = ['use-backend-image.py', 'verify-output', 'metadata.json', 'published.json', self.commit]
+            with patch.object(module.sys, 'argv', args):
+                with patch.object(module.subprocess, 'check_output', return_value=json.dumps([self.image])) as inspect:
+                    module.main()
+                    self.assertEqual(inspect.call_args.args[0][-1], self.image['RepoDigests'][0])
+                changed = dict(self.image, Id='sha256:' + 'f' * 64)
+                with patch.object(module.subprocess, 'check_output', return_value=json.dumps([changed])):
+                    with self.assertRaises(ValueError):
+                        module.main()
