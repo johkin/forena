@@ -43,9 +43,10 @@ jobs:
           set -euo pipefail
           current_main=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
           test "$RELEASE_SHA" = "$current_main"
-          runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$RELEASE_SHA&status=success&per_page=100" \
-            --jq '[.workflow_runs[] | select(.head_branch == "main" and (.event == "push" or .event == "workflow_dispatch"))] | length')
-          test "$runs" -gt 0
+          ci_run_id=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$RELEASE_SHA&status=success&per_page=100" \
+            --jq '[.workflow_runs[] | select(.head_branch == "main" and (.event == "push" or .event == "workflow_dispatch"))][0].id')
+          test "$ci_run_id" != null
+          echo "CI_RUN_ID=$ci_run_id" >> "$GITHUB_ENV"
 
       - name: Check out verified commit
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -64,12 +65,6 @@ jobs:
           npm ci
           npm install --global "vercel@$VERCEL_CLI_VERSION"
 
-      - name: Set up Java 25
-        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
-        with:
-          distribution: temurin
-          java-version: '25'
-
       - name: Select isolated Kotlin deployment configuration
         run: |
           cp deploy/vercel.kotlin.json vercel.json
@@ -85,12 +80,18 @@ jobs:
           vercel pull --yes --environment=production --scope "$VERCEL_ORG_ID"
           node scripts/deploy/prepare-kotlin.mjs
 
-      - name: Build static frontend and business API for the verified source
+      - name: Download the tested native image from successful CI for this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download "$CI_RUN_ID" --repo "$GITHUB_REPOSITORY" \
+            --name "forena-api-native-$RELEASE_SHA" --dir "$RUNNER_TEMP/native-image"
+          docker load --input "$RUNNER_TEMP/native-image/forena-api-native.tar.gz"
+          python3 scripts/deploy/extract-native.py
+
+      - name: Build static frontend for the verified source
         run: |
           npm run frontend:build
-          backend/mvnw -f backend/api/pom.xml --batch-mode --no-transfer-progress -DskipTests package
-          mkdir -p backend/api/target/deploy-jdk
-          cp -a "$JAVA_HOME/." backend/api/target/deploy-jdk/
           cp backend/certs/supabase-ca.crt backend/api/target/supabase-ca.crt
 
       - name: Build service images and stage production without moving domains

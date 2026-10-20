@@ -14,7 +14,7 @@ JDBC = "jdbc:postgresql://aws-1-eu-central-1.pooler.supabase.com:5432/postgres?s
 class ReleaseGuards(unittest.TestCase):
     def run_entrypoint(self, script, **overrides):
         with tempfile.TemporaryDirectory() as directory:
-            # Intercept env itself so the production Java path need not exist.
+            # Intercept env itself so the production executable need not exist.
             recorder = Path(directory) / "env"
             recorder.write_text("#!/usr/bin/python3\nimport json,sys\nprint(json.dumps(sys.argv[1:]))\n")
             recorder.chmod(0o755)
@@ -60,7 +60,9 @@ class ReleaseGuards(unittest.TestCase):
         self.assertIn("FORENA_DB_PASSWORD=synthetic-runtime", args)
         self.assertIn("FORENA_MIGRATE=false", args)
         self.assertIn("FORENA_AUTH_ISSUER=" + AUTH + "/auth/v1", args)
-        self.assertEqual(result.stderr, "forena_api_startup: starting JVM\n")
+        self.assertEqual(result.stderr, "forena_api_startup: starting native image\n")
+        self.assertEqual(args[-1], "/app/forena-api")
+        self.assertNotIn("-jar", args)
 
     def test_api_rejects_owner_or_wrong_database(self):
         for overrides in [{"FORENA_DB_USERNAME": "forena_api_owner.ckzrtxqjskosqzoitymc"},

@@ -1,11 +1,12 @@
 # syntax=docker/dockerfile:1
-# Context: backend/api/. Use the Java 25 JDK installed by the release workflow.
-FROM --platform=linux/amd64 debian:bookworm-slim@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587
+# Context: backend/api/. Native executable extracted from the CI-tested image.
+# Paketo uses Ubuntu Noble; keep a compatible glibc runtime.
+FROM --platform=linux/amd64 ubuntu:24.04
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates libstdc++6 zlib1g && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-# JDK and API JAR are built by Actions for the exact CI-verified source commit.
-COPY --chown=10001:10001 target/deploy-jdk/ /opt/java/
-COPY --chown=10001:10001 target/forena-api.jar /app/forena-api.jar
+# No JDK or JAR is included in the release image.
+COPY --chown=10001:10001 --chmod=0555 target/forena-api /app/forena-api
+RUN ldd /app/forena-api > /tmp/native-libraries && ! grep -q "not found" /tmp/native-libraries && rm /tmp/native-libraries
 COPY --chown=10001:10001 target/supabase-ca.crt /app/supabase-ca.crt
 COPY --chmod=0555 scripts/container-entrypoint.sh /entrypoint.sh
 USER 10001:10001
