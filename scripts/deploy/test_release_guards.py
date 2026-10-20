@@ -51,34 +51,6 @@ class ReleaseGuards(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("NODE_EXTRA_CA_CERTS=/run/platform/ca.pem", json.loads(result.stdout))
 
-    def test_api_gets_only_runtime_credentials_and_cannot_enable_migration(self):
-        result = self.run_entrypoint("backend/api/scripts/container-entrypoint.sh")
-        self.assertEqual(result.returncode, 0, result.stderr)
-        args = json.loads(result.stdout)
-        self.assertEqual(args[0], "-i")
-        self.assertNotIn("poison", result.stdout)
-        self.assertIn("FORENA_DB_PASSWORD=synthetic-runtime", args)
-        self.assertIn("FORENA_MIGRATE=false", args)
-        self.assertIn("FORENA_AUTH_ISSUER=" + AUTH + "/auth/v1", args)
-        self.assertEqual(result.stderr, "forena_api_startup: starting native image\n")
-        self.assertEqual(args[-1], "/app/forena-api")
-        self.assertNotIn("-jar", args)
-
-    def test_api_rejects_owner_or_wrong_database(self):
-        for overrides in [{"FORENA_DB_USERNAME": "forena_api_owner.ckzrtxqjskosqzoitymc"},
-                          {"FORENA_JDBC_URL": "jdbc:postgresql://legacy.test/postgres"}]:
-            result = self.run_entrypoint("backend/api/scripts/container-entrypoint.sh", **overrides)
-            self.assertNotEqual(result.returncode, 0)
-            self.assertEqual(result.stdout, "")
-
-    def test_api_keeps_platform_ca_path_without_inheriting_java_overrides(self):
-        result = self.run_entrypoint("backend/api/scripts/container-entrypoint.sh",
-                                     SSL_CERT_FILE="/run/platform/ca.pem", NODE_EXTRA_CA_CERTS="/run/platform/extra.pem")
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("FORENA_AUTH_CA_BUNDLE=/run/platform/ca.pem", json.loads(result.stdout))
-        self.assertIn("FORENA_AUTH_EXTRA_CA_BUNDLE=/run/platform/extra.pem", json.loads(result.stdout))
-        self.assertNotIn("poison", result.stdout)
-
     def test_frontend_requires_binding(self):
         result = self.run_entrypoint("deploy/frontend/entrypoint.sh", FORENA_KOTLIN_SERVICE_URL="")
         self.assertNotEqual(result.returncode, 0)

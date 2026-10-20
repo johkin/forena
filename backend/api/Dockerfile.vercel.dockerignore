@@ -1,6 +1,0 @@
-**
-!target
-!target/forena-api
-!target/supabase-ca.crt
-!scripts
-!scripts/container-entrypoint.sh

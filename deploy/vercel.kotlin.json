@@ -1,77 +1,9 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": [
     "fra1"
   ],
+  "framework": null,
   "git": {
     "deploymentEnabled": false
-  },
-  "services": {
-    "frontend": {
-      "root": "frontend",
-      "framework": "vite",
-      "buildCommand": "npm run build",
-      "outputDirectory": "dist",
-      "rewrites": [
-        {
-          "source": "/(.*)",
-          "destination": "/index.html"
-        }
-      ]
-    },
-    "backend": {
-      "root": "deploy/backend-image",
-      "runtime": "container",
-      "entrypoint": "Dockerfile"
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/actuator/health",
-      "destination": {
-        "service": "backend"
-      }
-    },
-    {
-      "source": "/api/(.*)",
-      "destination": {
-        "service": "backend"
-      }
-    },
-    {
-      "source": "/(.*)",
-      "destination": {
-        "service": "frontend"
-      }
-    }
-  ],
-  "headers": [
-    {
-      "source": "/config.json",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-store"
-        }
-      ]
-    },
-    {
-      "source": "/app-version.json",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-store"
-        }
-      ]
-    },
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-store"
-        }
-      ]
-    }
-  ]
+  }
 }

@@ -20,8 +20,8 @@ import org.springframework.stereotype.Component
  * The default hostname verifier remains enabled; trust is never learned from peers. */
 @Component
 class AuthHttpRequestFactory(
-    @Value("\${FORENA_AUTH_CA_BUNDLE:}") caBundle: String,
-    @Value("\${FORENA_AUTH_EXTRA_CA_BUNDLE:}") extraBundle: String
+    @Value("\${FORENA_AUTH_CA_BUNDLE:\${SSL_CERT_FILE:}}") caBundle: String,
+    @Value("\${FORENA_AUTH_EXTRA_CA_BUNDLE:\${NODE_EXTRA_CA_CERTS:}}") extraBundle: String
 ) : SimpleClientHttpRequestFactory() {
     private val sockets = sslContext(listOf(caBundle, extraBundle)).socketFactory
 
