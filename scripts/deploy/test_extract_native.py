@@ -19,6 +19,18 @@ class NativeSelection(unittest.TestCase):
                 {'type': 'web', 'command': command, 'args': []}])),
                 command[0] if isinstance(command, list) else command)
 
+    def test_resolves_actual_paketo_relative_command(self):
+        config = self.config([{'type': 'web', 'command': './se.forena.api.ForenaApplicationKt',
+                               'args': [], 'direct': True}])
+        config['WorkingDir'] = '/workspace'
+        self.assertEqual(module.web_command(config), '/workspace/se.forena.api.ForenaApplicationKt')
+
+    def test_rejects_relative_command_escaping_workspace(self):
+        config = self.config([{'type': 'web', 'command': '../bin/java'}])
+        config['WorkingDir'] = '/workspace'
+        with self.assertRaises(ValueError):
+            module.web_command(config)
+
     def test_rejects_jvm_or_ambiguous_process(self):
         for processes in [[], [{'type': 'web', 'command': 'java', 'args': ['-jar', 'app.jar']}],
                           [{'type': 'web', 'command': ['/workspace/app', 'extra']}],
