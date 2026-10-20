@@ -32,6 +32,7 @@ jobs:
       VERCEL_PROJECT_ID: prj_V1a7hd39ABj3w5ARUOATF31XMWX9
       VERCEL_CLI_VERSION: 60.1.3
       VERCEL_TELEMETRY_DISABLED: 1
+      VERCEL_CONTAINER_ENGINE: docker
       RELEASE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
     steps:
@@ -115,6 +116,8 @@ jobs:
         run: |
           set -euo pipefail
           vercel build --prod --yes --scope "$VERCEL_ORG_ID"
+          python3 scripts/deploy/use-backend-image.py verify-output \
+            "$RUNNER_TEMP/backend-image/backend-image.json" "$RUNNER_TEMP/backend-published.json" "$RELEASE_SHA"
           deployment_url=$(vercel deploy --prebuilt --prod --skip-domain --yes --scope "$VERCEL_ORG_ID")
           DEPLOYMENT_URL="$deployment_url" node --input-type=module -e '
             const value = process.env.DEPLOYMENT_URL;

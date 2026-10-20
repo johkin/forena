@@ -59,8 +59,9 @@ Hibernate Validator 9.1/JBoss Logging 3.6. Nästa prov kom förbi loggern men
 behövde även `Messages_$bundle`. Valideringen behålls aktiverad.
 
 Releaseflödet publicerar slutimagen från exakt godkänd main-CI utan ompaketering.
-Image-ID och sourceCommit verifieras och Vercel får en OCI-referens låst till
-digest. Deployen är oberoende av applikationens runtime.
+Image-ID och sourceCommit verifieras. Vercel Services får en FROM-only-Dockerfile
+med digest-låst OCI-referens; även image-ID:t i Vercels slutliga deployoutput
+måste matcha CI. Deployen är oberoende av applikationens runtime.
 Se [releaseflödet](../../docs/migration/actions-deployment.md).
 Lokalt prov 2026-10-19: `-Pnative spring-boot:build-image` passerade AOT utan
 Auth-/databascredentials och utan databasanslutning. Uppackningen av standard-

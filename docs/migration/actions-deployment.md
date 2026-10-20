@@ -40,11 +40,14 @@ laddade imagen. Saknad/utgången artefakt stoppar releasen; kör CI igen för sa
 aktuella main. Ingen binär extraheras och ingen backend-image byggs i deployjobbet.
 
 Imagen taggas och pushas till samma projekts Vercel Container Registry. Image-ID:t
-måste fortfarande matcha CI-artefakten efter push. Backend-tjänstens `entrypoint`
-sätts till dess oföränderliga `vcr.vercel.com/johkin/forena-kotlin/backend@sha256:…`.
-Dess service-root `deploy/backend-image` innehåller ingen Dockerfile. Vercel CLI
-60.1.3 väljer då prebuilt-imagevägen och använder imagen direkt. Deployflödet
-behöver inte veta om processen kör native, JVM eller något annat.
+måste fortfarande matcha CI-artefakten efter push. Backendens OCI-referens låses till dess oföränderliga `vcr.vercel.com/johkin/forena-kotlin/backend@sha256:…`.
+Vercel Services kräver fortfarande en Dockerfile som service-entrypoint i CLI
+60.1.3. Releasen genererar därför endast `FROM <digest-referensen>` i
+`deploy/backend-image/Dockerfile`. Docker väljs uttryckligen som container-engine;
+en FROM-only-beskrivning behåller samma image-ID och lager. Efter `vercel build`
+kontrolleras dessutom imagen som faktiskt står i deployoutput mot CI:s image-ID.
+En avvikelse stoppar releasen före `vercel deploy`. Deployflödet behöver inte
+veta om processen kör native, JVM eller något annat.
 
 Frontend byggs separat. `vercel build --prod` paketerar statiska filer och den
 befintliga OCI-referensen; `vercel deploy --prebuilt --prod --skip-domain` skapar
