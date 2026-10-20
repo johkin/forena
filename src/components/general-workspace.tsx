@@ -6,8 +6,30 @@ import type { GeneralWorkspaceData, PublicActivity } from "@/data/general-worksp
 import type { Team } from "@/domain/club";
 import { AppShell } from "@/components/app-shell";
 
+const formatters = new Map<string, Intl.DateTimeFormat>();
+function getFormatter(timeZone: string, optionsKey: string, options: Intl.DateTimeFormatOptions) {
+  const key = `${timeZone}:${optionsKey}`;
+  let formatter = formatters.get(key);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("sv-SE", { timeZone, ...options });
+    formatters.set(key, formatter);
+  }
+  return formatter;
+}
+
+const enCAFormatters = new Map<string, Intl.DateTimeFormat>();
+function getEnCAFormatter(timeZone: string) {
+  let formatter = enCAFormatters.get(timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" });
+    enCAFormatters.set(timeZone, formatter);
+  }
+  return formatter;
+}
+
 function dateKey(value: string, timeZone: string) {
-  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(value)).map((part) => [part.type, part.value]));
+  const formatter = getEnCAFormatter(timeZone);
+  const parts = Object.fromEntries(formatter.formatToParts(new Date(value)).map((part) => [part.type, part.value]));
   return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
@@ -15,11 +37,12 @@ function SharedCalendar({ activities, timeZone, organizationSlug }: { activities
   const initial = activities[0] ? dateKey(activities[0].startsAt, timeZone) : dateKey(new Date().toISOString(), timeZone);
   const [cursor, setCursor] = useState(() => { const [year, month] = initial.split("-").map(Number); return { year, month }; });
   const byDate = useMemo(() => activitiesByDate(activities, timeZone, cursor.year, cursor.month), [activities, timeZone, cursor.year, cursor.month]);
-  const title = new Intl.DateTimeFormat("sv-SE", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(cursor.year, cursor.month - 1, 1)));
+  const titleFormatter = getFormatter("UTC", "title", { month: "long", year: "numeric" });
+  const title = titleFormatter.format(new Date(Date.UTC(cursor.year, cursor.month - 1, 1)));
   const first = new Date(Date.UTC(cursor.year, cursor.month - 1, 1));
   const offset = (first.getUTCDay() + 6) % 7;
   const days = new Date(Date.UTC(cursor.year, cursor.month, 0)).getUTCDate();
-  const time = new Intl.DateTimeFormat("sv-SE", { timeZone, hour: "2-digit", minute: "2-digit" });
+  const time = getFormatter(timeZone, "time", { hour: "2-digit", minute: "2-digit" });
   function move(delta: number) { const next = new Date(Date.UTC(cursor.year, cursor.month - 1 + delta, 1)); setCursor({ year: next.getUTCFullYear(), month: next.getUTCMonth() + 1 }); }
   return <section className="card team-calendar calendar-page general-calendar" aria-labelledby="shared-calendar-title">
     <div className="calendar-heading"><div><p className="eyebrow">Alla lag</p><h2 id="shared-calendar-title">{title}</h2></div><div><button className="secondary" onClick={() => move(-1)} type="button" aria-label="Föregående månad">←</button><button className="secondary" onClick={() => move(1)} type="button" aria-label="Nästa månad">→</button></div></div>
@@ -34,7 +57,7 @@ export function GeneralWorkspace({ data, focusTeam }: { data: GeneralWorkspaceDa
   const visibleActivities = focusTeam ? data.activities.filter((activity) => activity.teamId === focusTeam.id) : data.activities;
   const visibleTeams = focusTeam ? [focusTeam] : data.teams;
   const nextMatches = visibleActivities.filter((activity) => activity.isMatch).slice(0, 6);
-  const format = new Intl.DateTimeFormat("sv-SE", { timeZone, weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const format = getFormatter(timeZone, "general", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   const heading = focusTeam?.name ?? data.section?.name ?? data.organization.name;
   const currentHref = focusTeam ? `/o/${data.organization.slug}/t/${focusTeam.slug}` : data.section ? `/o/${data.organization.slug}/s/${data.section.slug}` : `/o/${data.organization.slug}`;
   return <AppShell assistantSection={data.section} assistantOptions={{ demo: data.source === "demo" }} homeHref={`/o/${data.organization.slug}`} accountEmail={data.accountEmail} organization={data.organization} team={focusTeam} workspaces={data.workspaces} logoutDestination={currentHref} loginHref={`/login?next=${encodeURIComponent(currentHref)}`} adminHref={data.canAdministerOrganization ? `/o/${data.organization.slug}/admin/roles` : undefined} navigation={<nav className="header-general-links"><a href="#overview">Översikt</a><a href="#calendar">Kalender</a>{!focusTeam ? data.teams.map((team) => <a href={`/o/${data.organization.slug}/t/${team.slug}`} key={team.id}>{team.name}</a>) : null}</nav>}>
@@ -44,4 +67,3 @@ export function GeneralWorkspace({ data, focusTeam }: { data: GeneralWorkspaceDa
         <div id="calendar"><SharedCalendar activities={visibleActivities} timeZone={timeZone} organizationSlug={data.organization.slug} /></div>
       </main></AppShell>;
 }
-
