@@ -11,6 +11,8 @@ import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 
 import se.forena.api.http.ApiError
+import se.forena.api.identity.JwtVerificationUnavailable
+import org.springframework.security.oauth2.jwt.JwtException
 
 @RestControllerAdvice
 class ApiErrors {
@@ -18,11 +20,11 @@ class ApiErrors {
     fun invitation(problem: InvitationProblem): ResponseEntity<ApiError> =
         ResponseEntity.status(problem.status).cacheControl(CacheControl.noStore()).body(ApiError(problem.message))
 
-    @ExceptionHandler(InactiveSession::class)
+    @ExceptionHandler(InactiveSession::class, JwtException::class)
     fun session(): ResponseEntity<ApiError> = ResponseEntity.status(401)
         .cacheControl(CacheControl.noStore()).body(ApiError("Sessionen är inte aktiv."))
 
-    @ExceptionHandler(SessionVerificationUnavailable::class)
+    @ExceptionHandler(SessionVerificationUnavailable::class, JwtVerificationUnavailable::class)
     fun sessionUnavailable(): ResponseEntity<ApiError> = ResponseEntity.status(503)
         .cacheControl(CacheControl.noStore()).body(ApiError("Sessionen kan inte verifieras just nu."))
 

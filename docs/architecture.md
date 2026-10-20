@@ -29,9 +29,12 @@ Kotlin-anrop. Ordinarie översikt är fortsatt inte omkopplad.
 
 Den separata [browser-frontendens pilot](../frontend/README.md) i `frontend/`
 återanvänder gemensamt sidskal, header, meny, sidfot och kallelsesvar men kör
-React/Vite utan Next-server. Supabase Auth hanterar lösenordsinloggningen i
-browsern; verksamhetsanrop går med Bearer-token direkt genom Vercels `/api/*`
-till Kotlin. Backend äger behörighets- och sessionskontrollen. Publik
+React/Vite utan Next-server. Kotlin hanterar lösenords-/passkey-inloggning,
+tokenförnyelse och serversessioner. Browsern skickar en ogenomskinlig HttpOnly-
+cookie direkt genom Vercels `/api/*` till Kotlin; access- och refresh-token
+lagras krypterat i det privata schemat och når inte frontenden. Backend äger
+behörighets- och sessionskontrollen. Se [webbsessioner](migration/web-sessions.md)
+och ADR-018, som ersätter ADR-017:s browserlagrade Bearer-token. Publik
 runtimekonfiguration innehåller endast det nya projektets Auth-URL,
 publishable key, version och valfri startaktivitet. Se ADR-017.
 

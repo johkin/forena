@@ -4,18 +4,20 @@ const uuid = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 const reads = new RegExp(`^/api/activities/${uuid}/my-invitations$`, "i");
 const writes = new RegExp(`^/api/invitations/${uuid}/respond$`, "i");
 
-/** JWTs go only to the two same-origin Kotlin endpoints. Platform cookies may
- * pass Vercel Deployment Protection; Kotlin authenticates with Bearer only. */
-export function createApiFetch(readToken: () => Promise<string | null>, unauthorized: () => void, transport: typeof fetch = fetch): ParticipationFetch {
+/** Only allowlisted, same-origin API calls receive the HttpOnly session cookie. */
+export function createApiFetch(readAccount: () => Promise<string | null>, unauthorized: () => void, transport: typeof fetch = fetch): ParticipationFetch {
   return async (path, init = {}) => {
     const method = init.method ?? "GET";
     if (!((method === "GET" && reads.test(path)) || (method === "PUT" && writes.test(path)))) {
       throw new Error("Unsupported API request");
     }
-    const token = await readToken();
-    if (!token) { unauthorized(); return Response.json({ error: "Inloggning krävs." }, { status: 401 }); }
+    const account = await readAccount();
+    if (!account) { unauthorized(); return Response.json({ error: "Inloggning krävs." }, { status: 401 }); }
     const headers = new Headers(init.headers);
-    headers.set("Authorization", `Bearer ${token}`);
+    headers.delete("Authorization");
+    // Prevent an old view from applying a write under a different account after a cross-tab login.
+    headers.set("X-Forena-Account", account);
+    if (method !== "GET") headers.set("X-Forena-Request", "1");
     const controller = new AbortController();
     const abort = () => controller.abort();
     if (init.signal?.aborted) abort();

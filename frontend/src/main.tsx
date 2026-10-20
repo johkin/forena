@@ -1,10 +1,10 @@
 import { createRoot } from "react-dom/client";
-import { createClient } from "@supabase/supabase-js";
 import "@fontsource-variable/plus-jakarta-sans/index.css";
 import "@fontsource-variable/newsreader/index.css";
 import "../../src/app/globals.css";
 import { loadConfig } from "./config";
 import { App, ConfigurationError } from "./app";
+import { clearLegacyAuth } from "./session";
 
 const root = createRoot(document.getElementById("root")!);
 async function start() {
@@ -16,10 +16,8 @@ async function start() {
   if ("caches" in window) {
     for (const name of await caches.keys()) if (name.startsWith("forena-")) await caches.delete(name);
   }
+  clearLegacyAuth();
   const config = await loadConfig();
-  const auth = createClient(config.supabaseUrl, config.publishableKey, {
-    auth: { storageKey: "forena-kotlin-browser-auth", persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
-  });
-  root.render(<App config={config} client={auth} />);
+  root.render(<App config={config} />);
 }
 void start().catch(() => root.render(<ConfigurationError />));

@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.oauth2.core.OAuth2Error
@@ -22,11 +23,14 @@ import org.springframework.security.web.SecurityFilterChain
 import org.springframework.web.client.RestTemplate
 import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint
 import org.springframework.security.web.AuthenticationEntryPoint
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter
+import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver
 import se.forena.api.http.ApiError
 import tools.jackson.databind.json.JsonMapper
 import org.slf4j.LoggerFactory
 
 @Configuration
+@EnableScheduling
 @ConditionalOnWebApplication
 class SecurityConfiguration {
     @Bean
@@ -51,7 +55,7 @@ class SecurityConfiguration {
     }
 
     @Bean
-    fun security(http: HttpSecurity, json: JsonMapper): SecurityFilterChain {
+    fun security(http: HttpSecurity, json: JsonMapper, settings: BrowserSessionSettings, sessions: BrowserSessionService): SecurityFilterChain {
         val unauthorized = AuthenticationEntryPoint { request, response, exception ->
             val unavailable = exception is JwtVerificationUnavailable
             if (unavailable) response.status = 503
@@ -67,13 +71,21 @@ class SecurityConfiguration {
                 "Sessionen kan inte verifieras just nu." else "Inloggning krävs."))
         }
         return http
+        // Cookie requests use strict canonical Origin plus a required custom header in BrowserSessionFilter.
+        // Bearer-only integrations retain their existing stateless contract.
         .csrf { it.disable() }
+        .addFilterBefore(BrowserSessionFilter(settings, sessions, json), BearerTokenAuthenticationFilter::class.java)
         .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
         .authorizeHttpRequests {
             it.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
-                .requestMatchers("/actuator/health").permitAll().anyRequest().authenticated()
+                .requestMatchers("/actuator/health", "/api/auth/login", "/api/auth/logout", "/api/auth/passkey/options", "/api/auth/passkey/verify").permitAll()
+                .anyRequest().authenticated()
         }
-        .oauth2ResourceServer { it.jwt {}.authenticationEntryPoint(unauthorized) }
+        .oauth2ResourceServer {
+            val bearer = DefaultBearerTokenResolver()
+            it.bearerTokenResolver { request -> request.getAttribute(BrowserSessionFilter.TOKEN_ATTRIBUTE) as String? ?: bearer.resolve(request) }
+                .jwt {}.authenticationEntryPoint(unauthorized)
+        }
         .build()
     }
 }

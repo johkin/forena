@@ -226,6 +226,13 @@ frågor i `backend/src` och gamla appens databaslogik ingår inte i denna ändri
    `/auth/v1/.well-known/jwks.json`. HTTPS krävs utom för lokala loopbacktester.
    Port är `PORT` eller 8080. `/actuator/health` är publik utan detaljer.
 
+Webbfrontenden kräver också migrering `api-006-browser-session`,
+`FORENA_WEB_SESSION_ENABLED=true`, kanonisk `FORENA_WEB_ORIGIN` och en
+base64-kodad 32-bytes `FORENA_WEB_SESSION_KEY` i runtime-hemlighetshanteringen.
+Nyckeln delas mellan instanser och ska behållas över omstarter.
+[Sessions-API, CSRF, kryptering och releaseordning](../../docs/migration/web-sessions.md).
+Befintliga Bearer-klienter fungerar även utan aktiverade webbsessioner.
+
 Runtime har högst fyra databasanslutningar och fem sekunders väntan på poolen.
 Verifierad token ger aktören till Kotlin-kodens åtkomstkontroller och historikens
 konto-ID. Sessions-ID används bara i autentiseringslagret och sparas inte i

@@ -88,6 +88,7 @@ Production-konfiguration i det nya Vercel-projektet:
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Nya projektets publishable key |
 | `SITE_URL` | `https://forena-kotlin.vercel.app` |
 | `FORENA_DB_USERNAME` | `forena_api_runtime.ckzrtxqjskosqzoitymc` |
+| `FORENA_WEB_SESSION_KEY` | Runtime-hemlighet: base64-kodade 32 slumpbyte, gemensam för backendinstanser; aldrig bygg-env |
 | `FORENA_DB_PASSWORD` | Begränsade runtime-kontots secret, inte ägar-/postgreslösenord |
 | `FORENA_JDBC_URL` | `jdbc:postgresql://aws-1-eu-central-1.pooler.supabase.com:5432/postgres?sslmode=verify-full&sslrootcert=/app/supabase-ca.crt` |
 | `FORENA_KOTLIN_TEST_ACTIVITY_ID` | Valfri startaktivitet i nya projektet; alternativt aktivitetens djuplänk |
@@ -108,7 +109,13 @@ ett uttryckligt felaktigt CA-paket stoppar start.
 
 ## Verifiering och återgång
 
-Nya projektets fem befintliga Liquibase-steg är förutsättning. Separata
+Nya projektets sex Liquibase-steg, inklusive `api-006-browser-session`, är
+förutsättning. `prepare-kotlin.mjs` kräver sessionsnyckeln och tar sedan bort den
+ur bygg-envfilen utan att exportera/logga den. Runtime-descriptorn aktiverar
+webbsessioner och sätter kanonisk origin till `https://forena-kotlin.vercel.app`;
+nyckeln hämtas från projektets runtime-miljö precis som DB-lösenordet.
+Sessionslagringens health blir DOWN om migration 006 saknas.
+Se [webbsessionernas releaseordning](web-sessions.md). Separata
 migreringskonton och driftoperationer tillhör inte frontend-releasejobbet.
 Efter merge behöver statisk frontend, direkt API-routing, riktiga Auth-sessioner
 och JDBC verifieras i en ny deployment; lokal verifiering är inte molnbevis.

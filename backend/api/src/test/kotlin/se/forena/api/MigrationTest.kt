@@ -15,7 +15,7 @@ import org.junit.jupiter.params.provider.ValueSource
 import org.testcontainers.postgresql.PostgreSQLContainer
 
 class MigrationTest {
-    @ParameterizedTest @ValueSource(ints = [0, 1, 2, 3, 4])
+    @ParameterizedTest @ValueSource(ints = [0, 1, 2, 3, 4, 5])
     fun `empty install or previous baseline upgrade validates and is repeatable without data loss`(baseline: Int) {
         PostgreSQLContainer("postgres:17.6-alpine").withInitScript("init.sql").use { pg ->
             pg.start()
@@ -48,7 +48,9 @@ class MigrationTest {
                                 it.execute("insert into forena.person(id,organization_id,display_name) values('$person','$organization','Testperson')")
                                 it.execute("insert into forena.activity(id,organization_id,team_id,title,starts_at,ends_at) values('$legacyActivity','$organization','$team','Test',now(),now()+interval '1 hour')")
                                 it.execute("insert into forena.invitation(id,organization_id,activity_id,person_id,response,responded_at,revision) values('$legacyInvitation','$organization','$legacyActivity','$person','accepted',now(),7)")
-                                it.execute("insert into forena.invitation_history(invitation_id,organization_id,actor_subject,session_id,channel,previous_response,response,revision) values('$legacyInvitation','$organization','$subject','${UUID.randomUUID()}','web','pending','accepted',7)")
+                                val sessionColumn = if (baseline < 5) ",session_id" else ""
+                                val sessionValue = if (baseline < 5) ",'${UUID.randomUUID()}'" else ""
+                                it.execute("insert into forena.invitation_history(invitation_id,organization_id,actor_subject$sessionColumn,channel,previous_response,response,revision) values('$legacyInvitation','$organization','$subject'$sessionValue,'web','pending','accepted',7)")
                                 it.execute("insert into forena.activity_signal_state(activity_id,dirty_revision) values('$legacyActivity',9)")
                             }
                         }
@@ -58,7 +60,7 @@ class MigrationTest {
                     migrations.validate()
                     connection.createStatement().use { statement ->
                         statement.executeQuery("select count(*) from forena.databasechangelog").use {
-                            it.next(); assertThat(it.getInt(1)).isEqualTo(5)
+                            it.next(); assertThat(it.getInt(1)).isEqualTo(6)
                         }
                         statement.executeQuery("select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='forena' and c.relkind='r' and c.relname not like 'databasechangelog%' and (c.relrowsecurity or c.relforcerowsecurity)").use {
                             it.next(); assertThat(it.getInt(1)).isZero()

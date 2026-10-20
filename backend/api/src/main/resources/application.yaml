@@ -40,6 +40,13 @@ server:
     include-stacktrace: never
 
 forena:
+  web-session:
+    enabled: "${FORENA_WEB_SESSION_ENABLED:false}"
+    origin: "${FORENA_WEB_ORIGIN:}"
+    key: "${FORENA_WEB_SESSION_KEY:}"
+    secure: "${FORENA_WEB_SESSION_SECURE:true}"
+    max-seconds: "${FORENA_WEB_SESSION_MAX_SECONDS:28800}"
+    idle-seconds: "${FORENA_WEB_SESSION_IDLE_SECONDS:1800}"
   auth:
     issuer: "${FORENA_AUTH_ISSUER:}"
     jwks-uri: "${FORENA_AUTH_JWKS_URI:}"
@@ -55,7 +62,7 @@ management:
       show-details: never
 
 springdoc:
-  packages-to-scan: se.forena.api.activities
+  packages-to-scan: se.forena.api.activities,se.forena.api.identity
   paths-to-match: /api/**
   writer-with-order-by-keys: true
   override-with-generic-response: false

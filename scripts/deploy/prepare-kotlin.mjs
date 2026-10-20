@@ -13,6 +13,10 @@ const key = pulled.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 assert.equal(url, "https://ckzrtxqjskosqzoitymc.supabase.co", "Build must use the new Auth project");
 assert.match(key ?? "", /^sb_publishable_[A-Za-z0-9_-]+$/, "Missing publishable key");
 assert.equal(pulled.SITE_URL, "https://forena-kotlin.vercel.app", "Set the canonical SITE_URL on forena-kotlin");
+// Validate the runtime-only key without exporting it to build args, output or logs.
+const sessionKey = pulled.FORENA_WEB_SESSION_KEY;
+assert.ok(typeof sessionKey === "string" && /^[A-Za-z0-9+/]{43}=$/.test(sessionKey) && Buffer.from(sessionKey, "base64").length === 32,
+  "Configure FORENA_WEB_SESSION_KEY as a base64-encoded 32-byte runtime secret before releasing");
 assert.ok(process.env.GITHUB_ENV, "Run this preparation in GitHub Actions");
 appendFileSync(process.env.GITHUB_ENV, `NEXT_PUBLIC_SUPABASE_URL=${url}\nNEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${key}\n`);
 const activity = pulled.FORENA_KOTLIN_TEST_ACTIVITY_ID;

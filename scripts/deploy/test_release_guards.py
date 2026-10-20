@@ -55,7 +55,8 @@ class ReleaseGuards(unittest.TestCase):
         result = self.run_entrypoint("deploy/frontend/entrypoint.sh", FORENA_KOTLIN_SERVICE_URL="")
         self.assertNotEqual(result.returncode, 0)
 
-    def prepare(self, project_id="prj_V1a7hd39ABj3w5ARUOATF31XMWX9", root=None, auth=AUTH):
+    def prepare(self, project_id="prj_V1a7hd39ABj3w5ARUOATF31XMWX9", root=None, auth=AUTH,
+                session_key="BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc="):
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory)
             (target / ".vercel").mkdir()
@@ -67,7 +68,8 @@ class ReleaseGuards(unittest.TestCase):
                                 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="sb_publishable_synthetic"\n'
                                 'SITE_URL="https://forena-kotlin.vercel.app"\n'
                                 'SUPABASE_SECRET_KEY="synthetic-admin"\n'
-                                'FORENA_DB_PASSWORD="synthetic-runtime"\n')
+                                'FORENA_DB_PASSWORD="synthetic-runtime"\n'
+                                f'FORENA_WEB_SESSION_KEY="{session_key}"\n')
             output = target / "github-env"
             result = subprocess.run(["node", str(ROOT / "scripts/deploy/prepare-kotlin.mjs")],
                                     cwd=target, env=dict(os.environ, GITHUB_ENV=str(output)),
@@ -80,6 +82,15 @@ class ReleaseGuards(unittest.TestCase):
         self.assertIn(AUTH, github_env)
         self.assertNotIn("synthetic-admin", build_env + github_env)
         self.assertNotIn("synthetic-runtime", build_env + github_env)
+        self.assertNotIn("FORENA_WEB_SESSION_KEY", build_env + github_env)
+
+    def test_prepare_rejects_missing_or_malformed_session_key_before_export(self):
+        for key in ["", "synthetic-weak-key", "not-base64"]:
+            result, github_env, _ = self.prepare(session_key=key)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(github_env, "")
+            if key:
+                self.assertNotIn(key, result.stdout + result.stderr)
 
     def test_prepare_rejects_legacy_project_root_and_auth_before_export(self):
         for overrides in [{"project_id": "prj_KoyZzpTGHV3osX77YpL9ON7YMHd1"},

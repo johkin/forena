@@ -21,6 +21,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Password sign-in. Requires the canonical Origin and X-Forena-Request: 1. Sets an opaque HttpOnly session cookie; never returns provider tokens. */
+        post: operations["loginBrowserSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Idempotent local logout. Requires the canonical Origin and X-Forena-Request: 1. Deletes the server session before contacting Auth. */
+        post: operations["logoutBrowserSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/passkey/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Begin WebAuthn authentication. Requires the canonical Origin and X-Forena-Request: 1. Binds the challenge to an encrypted HttpOnly cookie. */
+        post: operations["startBrowserPasskey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/passkey/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Verify the browser-bound WebAuthn challenge via Auth and set an HttpOnly session cookie. Requires the canonical Origin and X-Forena-Request: 1. Never returns provider tokens. */
+        post: operations["verifyBrowserPasskey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Verified user information only. Requires the HttpOnly browser session cookie or an existing valid Bearer token. Cache-Control: no-store. */
+        get: operations["getBrowserSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/invitations/{invitationId}/respond": {
         parameters: {
             query?: never;
@@ -45,6 +130,19 @@ export interface components {
         ApiError: {
             error: string;
         };
+        BrowserLoginRequest: {
+            email: string;
+            /** Format: password */
+            password: string;
+        };
+        BrowserSessionView: {
+            user: components["schemas"]["BrowserUser"];
+        };
+        BrowserUser: {
+            email: string | null;
+            /** Format: uuid */
+            id: string;
+        };
         FamilyInvitation: {
             /** Format: uuid */
             id: string;
@@ -60,6 +158,22 @@ export interface components {
         };
         InvitationResponseResult: {
             ok: boolean;
+        };
+        PasskeyOptions: {
+            /** Format: uuid */
+            challenge_id: string;
+            /** Format: int64 */
+            expires_at: number;
+            options: {
+                [key: string]: unknown;
+            };
+        };
+        PasskeyVerifyRequest: {
+            /** Format: uuid */
+            challenge_id: string;
+            credential: {
+                [key: string]: unknown;
+            };
         };
         RespondToInvitationRequest: {
             /** @description Omitted preserves the comment; null or blank clears it. Trimmed and truncated to 500 Unicode code points. Pending always clears it. */
@@ -130,6 +244,116 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    loginBrowserSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BrowserLoginRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BrowserSessionView"];
+                };
+            };
+        };
+    };
+    logoutBrowserSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+        };
+    };
+    startBrowserPasskey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PasskeyOptions"];
+                };
+            };
+        };
+    };
+    verifyBrowserPasskey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyVerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BrowserSessionView"];
+                };
+            };
+        };
+    };
+    getBrowserSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BrowserSessionView"];
                 };
             };
         };
