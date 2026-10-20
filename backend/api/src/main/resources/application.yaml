@@ -54,6 +54,22 @@ forena:
     publishable-key: "${FORENA_AUTH_PUBLISHABLE_KEY:}"
 
 management:
+  tracing:
+    sampling:
+      probability: 1.0
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: http://localhost:4318/v1/traces
+          transport: http
+  otlp:
+    metrics:
+      export:
+        enabled: false
+  logging:
+    export:
+      enabled: false
   endpoints:
     web:
       exposure:
@@ -61,6 +77,15 @@ management:
   endpoint:
     health:
       show-details: never
+
+logging:
+  structured:
+    format:
+      console: ecs
+    json:
+      rename:
+        traceId: trace.id
+        spanId: span.id
 
 springdoc:
   packages-to-scan: se.forena.api.activities,se.forena.api.identity

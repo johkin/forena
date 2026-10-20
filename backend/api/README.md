@@ -75,6 +75,48 @@ Ett byte av imagebyggare
 behöver också bevara runtimekonfigurationen, databasens CA och startkontrollerna.
 Teknikprovet i `backend/` behåller sin historiska Java 26-verktygskedja.
 
+## Loggning och tracing
+
+API:t använder Spring Boot 4.1:s `spring-boot-starter-opentelemetry`, med
+Micrometer Tracing och OTLP-export över HTTP/protobuf. Standardmottagaren är
+`http://localhost:4318/v1/traces`, samma lokala adress som Vercels JS-bibliotek
+använder när plattformen har tillhandahållit en collector. Konfigurationen
+startar ingen collector. Att den är nåbar från native-containern och att spans
+visas i Vercels dashboard återstår att verifiera i en deployment.
+
+Loggar skrivs som ECS-JSON, ett objekt per rad, till konsolen. Spring Boots
+formatterare tar med exception och aktiv trace-/span-korrelation. Micrometers
+MDC-fält döps om till `trace.id` och `span.id` i JSON-utmatningen. Vercels
+tolkning av ECS-fält till nivåfilter och trace-länkar är inte verifierad.
+Ingen extra loggning av headers, token eller request-/response-body införs.
+OTLP-export av metrics och loggar är avstängd; endast traces exporteras.
+Sampling är 100 procent för collector-provet. Justera med
+`MANAGEMENT_TRACING_SAMPLING_PROBABILITY` inför fortsatt drift.
+Endpoint kan ändras med `MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT`.
+
+För lokal JVM-körning, använd Spring-profilen `local`:
+
+```sh
+java -jar backend/api/target/forena-api.jar --spring.profiles.active=local
+# Alternativt med Maven:
+backend/mvnw -f backend/api/pom.xml spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+Profilen använder vanliga textloggar och stänger av trace-exportören; metrics-
+och loggexport är redan avstängda i grundkonfigurationen. Ingen lokal collector
+behövs. Databas-/Auth-inställningarna nedan gäller även med `local`.
+`SPRING_PROFILES_ACTIVE=local` är motsvarande miljövariabel. Detta är en
+Spring-profil, skild från Mavens `native`-profil. En färdig native-image kan
+inte förväntas byta beans med runtime-profiler: lokalt läge avser JVM-körning.
+Bygg native med standardprofilen så att trace-exportören ingår i AOT-bygget.
+
+`ObservabilityTest` provar verklig HTTP/protobuf-export till en tillfällig lokal
+mottagare, ECS med trace-/span-ID och exception samt textloggar och frånvaro av
+OTLP-exportörer med `local`. Det verifierar klienten, inte Vercels mottagning.
+Det befintliga `local-smoke.py` kräver också HTTP-request-spans till en lokal
+mottagare och ECS-loggar från den paketerade runtime-processen, både JVM och
+native-imagen i CI.
+
 ## HTTPS till Supabase Auth
 
 JWKS-hämtning och kontrollen mot Auth `/user` använder samma HTTP-klient.
