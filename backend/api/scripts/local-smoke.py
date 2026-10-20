@@ -51,7 +51,10 @@ def docker(*args, **kwargs):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--runtime-image", help="Linux Docker image to run instead of the JVM web process")
+    parser.add_argument("--runtime-entrypoint", help="Run the application directly with synthetic local configuration")
     args = parser.parse_args()
+    if args.runtime_entrypoint and not args.runtime_image:
+        parser.error("--runtime-entrypoint requires --runtime-image")
     if not JAR.is_file():
         raise SystemExit("Build backend/api with Maven verify first")
     container = docker("run", "--rm", "-d", "-p", "127.0.0.1::5432", "-e",
@@ -120,7 +123,8 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
                 # disposable PostgreSQL and synthetic JWKS server on loopback.
                 runtime_keys = ("PORT", "FORENA_JDBC_URL", "FORENA_DB_USERNAME", "FORENA_DB_PASSWORD",
                                 "FORENA_AUTH_PUBLISHABLE_KEY", "FORENA_AUTH_ISSUER", "FORENA_AUTH_JWKS_URI")
-                runtime_container = docker("create", "--network=host",
+                entrypoint = ["--entrypoint", args.runtime_entrypoint] if args.runtime_entrypoint else []
+                runtime_container = docker("create", "--network=host", *entrypoint,
                                            *[item for name in runtime_keys for item in ("-e", name)],
                                            args.runtime_image, env=env)
                 command = ["docker", "start", "--attach", runtime_container]

@@ -80,21 +80,34 @@ jobs:
           vercel pull --yes --environment=production --scope "$VERCEL_ORG_ID"
           node scripts/deploy/prepare-kotlin.mjs
 
-      - name: Download the tested native image from successful CI for this commit
+      - name: Download the tested backend image from successful CI for this commit
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh run download "$CI_RUN_ID" --repo "$GITHUB_REPOSITORY" \
-            --name "forena-api-native-$RELEASE_SHA" --dir "$RUNNER_TEMP/native-image"
-          docker load --input "$RUNNER_TEMP/native-image/forena-api-native.tar.gz"
-          python3 scripts/deploy/extract-native.py
+            --name "forena-backend-image-$RELEASE_SHA" --dir "$RUNNER_TEMP/backend-image"
+          docker load --input "$RUNNER_TEMP/backend-image/forena-backend.tar.gz"
+          docker image inspect forena-backend:ci > "$RUNNER_TEMP/backend-loaded.json"
+          python3 scripts/deploy/use-backend-image.py verify \
+            "$RUNNER_TEMP/backend-image/backend-image.json" "$RUNNER_TEMP/backend-loaded.json" "$RELEASE_SHA"
 
       - name: Build static frontend for the verified source
         run: |
           npm run frontend:build
-          cp backend/certs/supabase-ca.crt backend/api/target/supabase-ca.crt
 
-      - name: Build service images and stage production without moving domains
+      - name: Publish the tested backend image without rebuilding
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          vercel vcr login docker --project "$VERCEL_PROJECT_ID" --scope "$VERCEL_ORG_ID"
+          image_ref="vcr.vercel.com/johkin/forena-kotlin/backend:$RELEASE_SHA"
+          docker tag forena-backend:ci "$image_ref"
+          vercel vcr push docker "backend:$RELEASE_SHA" --project "$VERCEL_PROJECT_ID" --scope "$VERCEL_ORG_ID"
+          docker image inspect "$image_ref" > "$RUNNER_TEMP/backend-published.json"
+          python3 scripts/deploy/use-backend-image.py configure \
+            "$RUNNER_TEMP/backend-image/backend-image.json" "$RUNNER_TEMP/backend-published.json" "$RELEASE_SHA"
+
+      - name: Package frontend and stage production using the tested backend image
         id: stage
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -138,4 +151,6 @@ jobs:
 
       - name: Remove pulled environment files
         if: always()
-        run: rm -f .vercel/.env.*.local
+        run: |
+          rm -f .vercel/.env.*.local
+          docker logout vcr.vercel.com

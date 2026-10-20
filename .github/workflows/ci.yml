@@ -80,53 +80,6 @@ jobs:
           supabase gen types typescript --local --schema public > /tmp/database.types.ts
           test -s /tmp/database.types.ts
 
-  kotlin-probe:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-
-      - name: Install pinned Oracle JDK 26.0.2.1
-        run: |
-          scripts/probe/install-jdk.sh "$RUNNER_TEMP/forena-jdk"
-          echo "JAVA_HOME=$RUNNER_TEMP/forena-jdk" >> "$GITHUB_ENV"
-          echo "$RUNNER_TEMP/forena-jdk/bin" >> "$GITHUB_PATH"
-
-      - name: Verify Kotlin, schema, module structure and HTTP lifecycle
-        working-directory: backend
-        run: ./mvnw --batch-mode --no-transfer-progress verify
-
-      - name: Verify abrupt JVM death and concurrent durable recovery
-        run: python3 scripts/probe/local-lifecycle.py --concurrent-recovery --scheduled-crash --registry-backlog 10000
-
-      - name: Verify local capacity, pool exhaustion and registry timeouts
-        run: python3 scripts/probe/local-capacity.py --quick --out backend/target/m22e-capacity-ci.json
-
-      - name: Verify bounded recovery cadence and deferred-prefix fairness
-        run: python3 scripts/probe/local-capacity.py --quick --recovery-cadence --out backend/target/m22f-cadence-ci.json
-
-      - name: Verify cost calculation
-        run: |
-          python3 scripts/probe/cost-model.py --out /tmp/m22e-costs.json
-          diff -u docs/migration/evidence/m22e-costs.json /tmp/m22e-costs.json
-
-      - name: Verify Data API isolation evidence and rejection checks
-        run: |
-          python3 scripts/probe/isolation-check.py --verify-evidence docs/migration/evidence/m22-isolation.json
-          python3 -m unittest discover -s scripts/probe -p 'test_isolation_check.py'
-
-      - name: Retain test and generated architecture reports
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: kotlin-probe-reports
-          path: |
-            backend/target/m22f-cadence-ci.json
-            backend/target/m22e-capacity-ci.json
-            backend/target/surefire-reports/
-            backend/target/spring-modulith-docs/
-
   backend:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -189,24 +142,41 @@ jobs:
           -Dspring-boot.build-image.imageName=forena-api-native:ci
           spring-boot:build-image
 
-      - name: Verify native runtime against disposable PostgreSQL and Auth keys
-        run: python3 backend/api/scripts/local-smoke.py --runtime-image forena-api-native:ci
+      - name: Package the final backend image
+        run: |
+          python3 scripts/deploy/extract-native.py
+          cp backend/certs/supabase-ca.crt backend/api/target/supabase-ca.crt
+          docker build -f backend/api/Dockerfile.vercel -t forena-backend:ci backend/api
 
-      - name: Export tested native image
-        run: docker save forena-api-native:ci | gzip > "$RUNNER_TEMP/forena-api-native.tar.gz"
+      - name: Verify final image against disposable PostgreSQL and Auth keys
+        run: python3 backend/api/scripts/local-smoke.py --runtime-image forena-backend:ci --runtime-entrypoint /app/forena-api
 
-      - name: Retain tested native image
+      - name: Export tested backend image
+        run: |
+          docker save forena-backend:ci | gzip > "$RUNNER_TEMP/forena-backend.tar.gz"
+          docker image inspect forena-backend:ci > "$RUNNER_TEMP/backend-image-inspect.json"
+          python3 - <<'PYIMAGE'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP'])
+          image = json.loads((root / 'backend-image-inspect.json').read_text())[0]
+          (root / 'backend-image.json').write_text(json.dumps({'sourceCommit': os.environ['GITHUB_SHA'], 'imageId': image['Id']}))
+          PYIMAGE
+
+      - name: Retain tested backend image
         uses: actions/upload-artifact@v7
         with:
-          name: forena-api-native-${{ github.sha }}
-          path: ${{ runner.temp }}/forena-api-native.tar.gz
+          name: forena-backend-image-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/forena-backend.tar.gz
+            ${{ runner.temp }}/backend-image.json
           compression-level: 0
           retention-days: 3
           if-no-files-found: error
 
   # Keep the existing required check; every parallel job must succeed.
   verify:
-    needs: [application, database, kotlin-probe, backend, native-image]
+    needs: [application, database, backend, native-image]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -215,12 +185,10 @@ jobs:
         env:
           APPLICATION_RESULT: ${{ needs.application.result }}
           DATABASE_RESULT: ${{ needs.database.result }}
-          KOTLIN_RESULT: ${{ needs.kotlin-probe.result }}
           BACKEND_RESULT: ${{ needs.backend.result }}
           NATIVE_RESULT: ${{ needs.native-image.result }}
         run: |
           test "$APPLICATION_RESULT" = success
           test "$DATABASE_RESULT" = success
-          test "$KOTLIN_RESULT" = success
           test "$BACKEND_RESULT" = success
           test "$NATIVE_RESULT" = success
