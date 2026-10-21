@@ -4,7 +4,7 @@ import org.springframework.dao.DataAccessException
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Component
 
-/** One-shot migration/release verification with runtime credentials; never a health contributor. */
+/** One-shot startup/migration/release verification with runtime credentials; never a health contributor. */
 @Component
 class DatabaseAccessVerifier(private val jdbc: JdbcTemplate) {
     fun verify() {

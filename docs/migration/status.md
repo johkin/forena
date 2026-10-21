@@ -1,5 +1,28 @@
 # Migreringsstatus
 
+## Startmigrering, 2026-10-21
+
+ADR-023 ersätter den tidigare separata startordningen: korta Liquibase-steg
+körs vid backendstart med en separat owner-anslutning, följt av runtime-kontroll
+före HTTP. Health gör fortsatt bara anslutningskontroll. Tunga dataflyttar ska
+köras separat i återupptagbara batcher. Samma native-image ska stödja start med
+eller utan migrering; CI:s paketerade startprov verifierar ett tomt schema.
+
+Vercels descriptor aktiverar migrering. Backendprojektet behöver separata
+owner-credentials i runtime-miljön. Ingen målmiljö eller hemlighet ändras av
+kodändringen.
+
+Lokalt godkänt: **69 backendtester, 0 fel, 1 valfritt browserprov överhoppat**,
+15 releasekontroller och oförändrat OpenAPI/TypeScript-kontrakt. Paketerad JAR
+klarar migration två gånger, separat runtime-verifiering utan owner, nekade
+grants och saknade owner-credentials utan HTTP-start. Både vanlig JVM och JVM
+med native-byggets genererade AOT-graf migrerar ett tomt schema före HTTP och
+klarar DB/Auth/session-startprovet. Native AOT/paketering sker utan DB-anslutning.
+Fullständigt native-image-bygge/startprov återstår i CI; ingen molnmigration,
+release eller ändring av runtime-hemligheter har gjorts. Frontendens tester och
+byggen samt gamla Supabase-schemats reset/pgTAP är inte omkörda för denna
+backendändring. Historiska verifieringsresultat och tidigare beslut följer nedan.
+
 ## Engångsverifiering i stället för rättighetsfrågor i health, 2026-10-21
 
 Uppföljning i PR #151 efter användarens granskning. `DatabaseAccessHealthIndicator`

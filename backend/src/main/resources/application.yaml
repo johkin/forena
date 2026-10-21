@@ -20,7 +20,7 @@ spring:
       connection-timeout: 5000
       connection-init-sql: SET search_path TO forena,pg_catalog
   liquibase:
-    enabled: "${FORENA_MIGRATE:false}"
+    enabled: "${FORENA_MIGRATE:true}"
     change-log: classpath:db/changelog.xml
     default-schema: forena
     user: "${FORENA_MIGRATION_USERNAME:forena_api_owner}"

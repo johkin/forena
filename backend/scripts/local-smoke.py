@@ -64,6 +64,7 @@ def docker(*args, **kwargs):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--aot-runtime", action="store_true", help="Run the JVM web process with the generated native AOT graph")
     parser.add_argument("--runtime-image", help="Linux Docker image to run instead of the JVM web process")
     parser.add_argument("--runtime-entrypoint", help="Run the application directly with synthetic local configuration")
     args = parser.parse_args()
@@ -93,7 +94,7 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
         env = {name: value for name, value in os.environ.items() if not name.startswith("FORENA_TEST_")}
         env.update(FORENA_JDBC_URL=f"jdbc:postgresql://127.0.0.1:{port}/postgres",
                    FORENA_DB_USERNAME="forena_api_runtime", FORENA_DB_PASSWORD="local-runtime-only",
-                   FORENA_MIGRATE="true", FORENA_MIGRATION_USERNAME="forena_api_owner",
+                   FORENA_MIGRATE_ONLY="true", FORENA_MIGRATION_USERNAME="forena_api_owner",
                    FORENA_MIGRATION_PASSWORD="local-owner-only")
         with tempfile.TemporaryFile(mode="w+") as log:
             for _ in range(2):
@@ -120,6 +121,7 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
                      "select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace "
                      "where n.nspname='forena' and (c.relrowsecurity or c.relforcerowsecurity)")
         assert rls == "0", "Business API authorization must not depend on RLS"
+        env.pop("FORENA_MIGRATE_ONLY")
         env.pop("FORENA_MIGRATION_USERNAME")
         env.pop("FORENA_MIGRATION_PASSWORD")
         # Separate release verification uses runtime only, opens no HTTP and never migrates.
@@ -150,18 +152,31 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
         keys.available = True
         threading.Thread(target=keys.serve_forever, daemon=True).start()
         issuer = f"http://127.0.0.1:{keys.server_port}/auth/v1"
-        env.update(FORENA_MIGRATE="false", PORT=str(http_port),
+        # Recreate an empty schema so JVM and native must migrate before serving HTTP.
+        docker("exec", container, "psql", "-U", "postgres", "-v", "ON_ERROR_STOP=1", "-c",
+               "drop schema forena cascade; create schema forena authorization forena_api_owner; revoke all on schema forena from public")
+        env.update(FORENA_MIGRATE="true", FORENA_MIGRATION_USERNAME="forena_api_owner",
+                   FORENA_MIGRATION_PASSWORD="local-owner-only", PORT=str(http_port),
                    FORENA_WEB_SESSION_ENABLED="true", FORENA_WEB_ORIGIN="https://local-smoke.example.invalid",
                    FORENA_WEB_SESSION_KEY=base64.b64encode(bytes(range(32))).decode(),
                    FORENA_DB_CA_CERTIFICATE=(ROOT / "backend/certs/supabase-ca.crt").read_text(),
                    FORENA_AUTH_PUBLISHABLE_KEY="sb_publishable_smoke_placeholder",
                    FORENA_AUTH_ISSUER=issuer, FORENA_AUTH_JWKS_URI=issuer + "/.well-known/jwks.json")
+        # Startup must fail before serving HTTP if the separate owner is unavailable.
         with tempfile.TemporaryFile(mode="w+") as log:
-            command = [JAVA, "-jar", str(JAR)]
+            result = subprocess.run([JAVA, "-jar", str(JAR)], env=env | {"FORENA_MIGRATION_PASSWORD": ""},
+                                    stdout=log, stderr=subprocess.STDOUT, timeout=30)
+            assert result.returncode != 0, "Startup accepted missing owner credentials"
+            log.seek(0)
+            output = log.read()
+            assert "Migration owner password is required" in output
+            assert "Tomcat started" not in output, "HTTP opened despite failed migration setup"
+        with tempfile.TemporaryFile(mode="w+") as log:
+            command = [JAVA, *(["-Dspring.aot.enabled=true"] if args.aot_runtime else []), "-jar", str(JAR)]
             if args.runtime_image:
                 # Host networking only connects the Linux test container to the
                 # disposable PostgreSQL and synthetic JWKS server on loopback.
-                runtime_keys = ("PORT", "FORENA_DB_CA_CERTIFICATE", "FORENA_JDBC_URL", "FORENA_DB_USERNAME", "FORENA_DB_PASSWORD",
+                runtime_keys = ("FORENA_MIGRATE", "FORENA_MIGRATION_USERNAME", "FORENA_MIGRATION_PASSWORD", "PORT", "FORENA_DB_CA_CERTIFICATE", "FORENA_JDBC_URL", "FORENA_DB_USERNAME", "FORENA_DB_PASSWORD",
                                 "FORENA_AUTH_PUBLISHABLE_KEY", "FORENA_AUTH_ISSUER", "FORENA_AUTH_JWKS_URI",
                                 "FORENA_WEB_SESSION_ENABLED", "FORENA_WEB_ORIGIN", "FORENA_WEB_SESSION_KEY")
                 entrypoint = ["--entrypoint", args.runtime_entrypoint] if args.runtime_entrypoint else []
@@ -184,6 +199,7 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
                     if time.monotonic() >= deadline:
                         raise
                     time.sleep(0.2)
+            assert docker("exec", container, "psql", "-U", "postgres", "-Atc", "select count(*) from forena.databasechangelog") == str(expected_changes), "HTTP opened before migrations completed"
             print(f"Runtime healthy after {time.monotonic() - started:.3f}s", flush=True)
             keys.available = False
             try:
@@ -250,7 +266,7 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
             startup = [line for line in log if "Started " in line]
             assert startup and all(" INFO " in line and not line.lstrip().startswith("{") for line in startup), \
                 "Runtime must emit plaintext startup logs"
-        print("PASS: fresh bootstrap; migration-only JAR twice; runtime without owner credential; one-shot runtime-only access verification and rejection without migration or HTTP; DB/Auth health; shared Auth admission and 429; unrestricted logout; bearer rejection; plaintext logs; shutdown")
+        print("PASS: fresh bootstrap; migration-only JAR twice; web startup migrates empty schema with separate owner/runtime credentials; one-shot runtime-only access verification and rejection without migration or HTTP; DB/Auth health; shared Auth admission and 429; unrestricted logout; bearer rejection; plaintext logs; shutdown")
     finally:
         if runtime_container is not None:
             docker("rm", "-f", runtime_container)
