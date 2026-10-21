@@ -64,7 +64,11 @@ feltexter. Läsprojektioner är inte tabellentiteter.
 
 ADR-021 inför en gemensam dataroll för befintliga/framtida datatabeller. Owner
 kör Liquibase separat före runtime; runtime saknar DDL och migrationsmetadata.
-Databas-health verifierar rollmodellen före promotion.
+Den separata migreringsprocessen verifierar rollmodellen en gång efter
+Liquibase, med runtime-kontot. Verifiering kan även köras separat utan migrering.
+Löpande DB-health använder Spring Boots inbyggda anslutningskontroll; inga
+roll- eller sessionsschemafrågor körs av health. Migrations-/releasejobbet ska
+avbrytas om engångsverifieringen misslyckas.
 
 ## Lager
 

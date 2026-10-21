@@ -1,5 +1,42 @@
 # Migreringsstatus
 
+## Engångsverifiering i stället för rättighetsfrågor i health, 2026-10-21
+
+Uppföljning i PR #151 efter användarens granskning. `DatabaseAccessHealthIndicator`
+och `BrowserSessionHealthIndicator` är borttagna. Spring Boots inbyggda
+`DataSourceHealthIndicator` sköter löpande databas-health; befintlig Auth/JWKS-health
+behålls. Health kör inga egna roll- eller sessionsschemafrågor.
+
+`DatabaseAccessVerifier` körs en gång efter Liquibase i den separata JVM-
+migreringsprocessen, med runtime-datasource. Det går också att köra verifiering
+utan migrering med `FORENA_VERIFY_DATABASE_ACCESS=true FORENA_MIGRATE=false` och
+runtime-credentials. Processen öppnar ingen HTTP-server, tvingar Liquibase avstängt
+och avslutas med fel om datagrants, rollisolering eller sessionsschema är fel.
+Vanlig webbruntime anropar inte verifieraren, varken vid start eller health.
+
+Det befintliga Vercel-deployjobbet saknar DB-credentials och kör fortsatt HTTP-
+health/version/login. Engångskontrollen tillhör det separata migrerings-/releasejobbet,
+som ska avbrytas före aktivering vid verifieringsfel. Ingen ny kontroll-endpoint
+eller credential införs. Native-CLI för verifieringsläget är inte verifierat;
+använd den paketerade JVM-JAR:en. Kubernetes-liveness ska inte bero på DB;
+readiness kan uttryckligen inkludera anslutningskontrollen `db`.
+
+Lokalt godkänt: Maven `clean verify` på Java 25 med **69 tester, 0 fel och
+1 valfritt browserprov överhoppat**. Regressionen tar bort INSERT-rättighet,
+visar att engångskontrollen nekar den och att tre health-anrop ändå är UP utan
+verifieraranrop; återställda grants godkänns. Paketerat JAR-prov verifierar
+migrering två gånger, separat kontroll utan owner, nekade rättigheter med
+icke-noll exitkod, ingen HTTP och oförändrad migrationshistorik i verifieringsläge.
+Runtime utan owner, Auth, sessionsanrop och avstängning är fortsatt godkända.
+**15 releasegrindtester** och oförändrat/reproducerbart OpenAPI/TS är godkända.
+Frontendkoden är oförändrad; dess tidigare appkontroller har inte körts om här.
+
+Tidigare CI för `744b2f0`, körning `39606731885`, är färdig och grön inklusive
+native-image. Det resultatet verifierar den tidigare versionen, inte denna
+uppföljning. Ny native-image och verkligt målmiljöprov återstår för nya koden.
+Målmiljön har inte ändrats, i enlighet med användarens val av enbart kod/PR.
+Äldre status nedan om rättighetskontroll i health ersätts av denna uppföljning.
+
 ## Gemensam dataroll och Kotlin-konventioner, 2026-10-21
 
 Branch `fix/activity-overview-migration`, från main `262169e`.

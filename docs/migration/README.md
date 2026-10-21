@@ -15,7 +15,8 @@ och säkerhetskrav gäller även kommande uppgifter.
 
 På `fix/activity-overview-migration` inför migration 010 gemensamma datarättigheter
 och förval för framtida owner-skapade tabeller. Runtime saknar DDL/ägarrätt och
-åtkomst till Liquibase-metadata; health verifierar modellen före promotion.
+åtkomst till Liquibase-metadata; det separata migrerings-/releasekommandot
+verifierar modellen en gång. Löpande DB-health kontrollerar endast anslutningen.
 Owner kör migreringarna separat före runtime-start. Se ADR-021.
 
 ADR-022 och AGENTS.md styr standardundantag och `*Entity`-namn för tabellklasser.

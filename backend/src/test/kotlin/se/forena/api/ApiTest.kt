@@ -161,6 +161,7 @@ class ApiTest {
     @Autowired lateinit var environment: Environment
     @Autowired lateinit var jdbc: JdbcTemplate
     @Autowired lateinit var transactionManager: PlatformTransactionManager
+    @MockitoSpyBean lateinit var releaseAccess: DatabaseAccessVerifier
     @MockitoSpyBean lateinit var historyRecords: InvitationHistoryRepository
     @Autowired lateinit var invitationRecords: InvitationRepository
     @Autowired lateinit var json: JsonMapper
@@ -773,16 +774,20 @@ class ApiTest {
         assertThat(request("/actuator/health", bearer=null).statusCode()).isEqualTo(200)
     }
 
-    @Test fun `health rejects missing runtime data grants and recovers without exposing metadata`() {
-        assertThat(request("/actuator/health", bearer=null).statusCode()).isEqualTo(200)
+    @Test fun `release verification rejects missing grants while health only checks database connectivity`() {
+        releaseAccess.verify()
         admin.execute("revoke insert on forena.team from forena_api_runtime")
         try {
-            val health = request("/actuator/health", bearer=null)
-            assertThat(health.statusCode()).isEqualTo(503)
-            assertThat(json.readTree(health.body()).get("status").asString()).isEqualTo("DOWN")
-            assertThat(health.body()).doesNotContain("components", "databaseAccess", "team", "exception")
+            assertThatThrownBy { releaseAccess.verify() }.isInstanceOf(IllegalStateException::class.java)
+            clearInvocations(releaseAccess)
+            repeat(3) {
+                val health = request("/actuator/health", bearer=null)
+                assertThat(health.statusCode()).isEqualTo(200)
+                assertThat(health.body()).doesNotContain("databaseAccess", "team", "exception")
+            }
+            verifyNoInteractions(releaseAccess)
         } finally { admin.execute("grant insert on forena.team to forena_api_runtime") }
-        assertThat(request("/actuator/health", bearer=null).statusCode()).isEqualTo(200)
+        releaseAccess.verify()
     }
 
     @Test fun `runtime grants stay limited and Kotlin authorization survives rollback and connection reuse`() {

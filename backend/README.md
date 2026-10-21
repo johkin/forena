@@ -322,6 +322,27 @@ datatabeller och förval för framtida owner-skapade tabeller/sekvenser. De äld
 kolumngrants ovan är historiska; runtime kan nu skriva även konto-, personåtkomst-
 och historikdata. Kotlin äger användarbehörighet och verksamhetsregler. Runtime
 har ingen DDL/ägarrätt eller åtkomst till Liquibase-tabeller. Owner kör Liquibase
-separat före start; den vanliga webbruntimen kör inga migrationer. Health
-kontrollerar rollmodellen utan att läsa verksamhetsdata och stoppar promotion
-om rättigheterna saknas. Se ADR-021 och migreringsstatus för målmiljön.
+separat före start; den vanliga webbruntimen kör inga migrationer. Efter Liquibase kontrolleras
+rollmodellen och sessionsschemat en gång, genom datasource med runtime-kontot.
+Både owner- och runtime-credentials behövs i migreringsprocessen, med separata
+konfigurationsfält. Löpande DB-health använder Spring Boots vanliga
+`DataSourceHealthIndicator` för anslutningen. Se ADR-021 och migreringsstatus.
+
+För separat rättighetskontroll i migrations-/releasejobbet, använd den paketerade
+JVM-JAR:en med runtime-anslutningen och utan owner-credentials:
+
+```sh
+FORENA_MIGRATE=false FORENA_VERIFY_DATABASE_ACCESS=true \
+  java -jar backend/target/forena-api.jar
+```
+
+Kommandot öppnar ingen HTTP-server och tvingar Liquibase avstängt. Exitkod 0
+betyder godkänd kontroll; annan exitkod ska avbryta jobbet före aktivering.
+`FORENA_VERIFY_DATABASE_ACCESS` och `FORENA_MIGRATE` får inte båda vara true.
+Verifieringsläget är testat med JVM-JAR, inte som native-CLI. Det vanliga Vercel-
+releasejobbet har inga DB-credentials och kör fortfarande HTTP-health/version/
+login; engångskontrollen tillhör det separata migrerings-/releasejobbet.
+
+För Kubernetes ska liveness vara oberoende av databasen. Readiness kan uttryckligen
+inkludera `db` när trafik kräver databasåtkomst; schema-/rättighetskontroll ska inte
+läggas i återkommande probes.

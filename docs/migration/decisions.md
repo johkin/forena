@@ -36,9 +36,16 @@ backendprocessen har fortfarande `FORENA_MIGRATE=false` och inga owner-credentia
 Detta inför inte automatisk migrering vid varje webbinstansstart. Migreringssteget
 kan ordnas i releaseflödet, men ska avslutas före den begränsade runtimeprocessen.
 
-Health verifierar datarollens gemensamma rättigheter via PostgreSQL-katalogerna,
-utan läsning av verksamhetsrader. Saknade datagrants, ägarrätt eller åtkomst till
-migrationsmetadata stoppar health och därmed promotion. Verifiering i målmiljön
+Uppföljning 2026-10-21 på användarens instruktion: rättighets- och
+sessionsschemakontrollen körs en gång i det separata migrerings-/releasesteget,
+inte vid varje health-anrop eller vanlig webbinstansstart. Efter Liquibase
+verifieras runtime-kontot innan migreringsprocessen avslutas. Ett separat
+`FORENA_VERIFY_DATABASE_ACCESS=true`-läge verifierar utan migrering och utan HTTP;
+fel ger en misslyckad process som ska avbryta migrations-/releasejobbet.
+
+Spring Boots `DataSourceHealthIndicator` sköter löpande DB-health. Den verifierar
+anslutningen, inte tabellernas DML eller sessionsschemat. Inga nya credentials
+eller kontroll-endpoints införs i frontend-deployjobbet. Verifiering i målmiljön
 redovisas separat i status; förberedd SQL innebär inte att migrationen är körd.
 
 ## ADR-020: Personåtkomst och Mina aktiviteter

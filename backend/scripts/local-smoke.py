@@ -122,6 +122,27 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
         assert rls == "0", "Business API authorization must not depend on RLS"
         env.pop("FORENA_MIGRATION_USERNAME")
         env.pop("FORENA_MIGRATION_PASSWORD")
+        # Separate release verification uses runtime only, opens no HTTP and never migrates.
+        verification_env = env | {"FORENA_MIGRATE": "false", "FORENA_VERIFY_DATABASE_ACCESS": "true"}
+        history_sql = "select string_agg(id||':'||md5sum, ',' order by orderexecuted) from forena.databasechangelog"
+        history_before = docker("exec", container, "psql", "-U", "postgres", "-Atc", history_sql)
+        with tempfile.TemporaryFile(mode="w+") as log:
+            result = subprocess.run([JAVA, "-jar", str(JAR)], env=verification_env, stdout=log, stderr=subprocess.STDOUT, timeout=30)
+            assert result.returncode == 0, "Runtime-only release verification failed"
+            log.seek(0)
+            assert "Tomcat started" not in log.read(), "Release verification must not open HTTP"
+        docker("exec", container, "psql", "-U", "postgres", "-c", "revoke insert on forena.team from forena_api_runtime")
+        try:
+            with tempfile.TemporaryFile(mode="w+") as log:
+                result = subprocess.run([JAVA, "-jar", str(JAR)], env=verification_env, stdout=log, stderr=subprocess.STDOUT, timeout=30)
+                assert result.returncode != 0, "Release verification accepted missing grants"
+                log.seek(0)
+                output = log.read()
+                assert "Runtime database access verification failed" in output, "Missing safe verification failure"
+                assert "Tomcat started" not in output, "Failed release verification must not open HTTP"
+        finally:
+            docker("exec", container, "psql", "-U", "postgres", "-c", "grant insert on forena.team to forena_api_runtime")
+        assert docker("exec", container, "psql", "-U", "postgres", "-Atc", history_sql) == history_before, "Verification changed migration history"
         with socket.socket() as available:
             available.bind(("127.0.0.1", 0))
             http_port = available.getsockname()[1]
@@ -229,7 +250,7 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
             startup = [line for line in log if "Started " in line]
             assert startup and all(" INFO " in line and not line.lstrip().startswith("{") for line in startup), \
                 "Runtime must emit plaintext startup logs"
-        print("PASS: fresh bootstrap; migration-only JAR twice; runtime without owner credential; DB/Auth/session health; shared Auth admission and 429; unrestricted logout; bearer rejection; plaintext logs; shutdown")
+        print("PASS: fresh bootstrap; migration-only JAR twice; runtime without owner credential; one-shot runtime-only access verification and rejection without migration or HTTP; DB/Auth health; shared Auth admission and 429; unrestricted logout; bearer rejection; plaintext logs; shutdown")
     finally:
         if runtime_container is not None:
             docker("rm", "-f", runtime_container)

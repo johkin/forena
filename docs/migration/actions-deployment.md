@@ -115,12 +115,18 @@ Nya projektets tio Liquibase-steg, till och med `api-010-runtime-data-access`,
 ur bygg-envfilen utan att exportera/logga den. Runtime-descriptorn aktiverar
 webbsessioner och sätter kanonisk origin till `https://forena-kotlin.vercel.app`;
 nyckeln hämtas från projektets runtime-miljö precis som DB-lösenordet.
-Sessionslagringens health kräver Spring Session-tabellerna från 008 och
-limiter-tabellen från 007. Health kontrollerar nu även den gemensamma datarollen från 010 och stoppar
-promotion om DML saknas på datatabeller, om runtime äger tabeller eller har
-schema-/migrationsrättigheter. Verifiera också ett inloggat anrop till
-`/api/me/activities` före acceptans. Migrationerna körs fortfarande separat
-med owner före runtime, aldrig med owner-credentials i den vanliga webbprocessen.
+Det separata JVM-migreringssteget kontrollerar datarättigheter och sessionsschema
+en gång efter Liquibase, med runtime-anslutningen. Verifieringen kan också köras
+med `FORENA_VERIFY_DATABASE_ACCESS=true FORENA_MIGRATE=false`, utan owner-
+credentials, HTTP-server eller migrering. Felaktiga rättigheter ger icke-noll
+exitkod och migrations-/releasejobbet ska då avbrytas före aktivering.
+
+Löpande HTTP-health använder Spring Boots DB-anslutningskontroll och befintlig
+Auth/JWKS-health; det gör inga roll- eller sessionsschemafrågor. Detta frontend-
+releasejobb har inga DB-credentials och kör därför inte JVM-engångskontrollen.
+Den ska köras i det separata migrations-/releasejobbet innan frontend/backend
+aktiveras. Verifiera även ett inloggat anrop till `/api/me/activities` före acceptans.
+Owner-credentials används fortfarande aldrig av den vanliga webbprocessen.
 Se [webbsessionernas releaseordning](web-sessions.md). Separata
 migreringskonton och driftoperationer tillhör inte frontend-releasejobbet.
 Efter merge behöver statisk frontend, direkt API-routing, riktiga Auth-sessioner
