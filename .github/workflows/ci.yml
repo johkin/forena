@@ -34,6 +34,9 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Verify Kotlin release credential and target boundaries
+        run: python3 -m unittest discover -s scripts/deploy -p 'test_*.py'
+
       - name: Run type checking
         run: npm run typecheck
 
@@ -44,6 +47,12 @@ jobs:
         run: npm run build
         env:
           NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
+
+      - name: Build the separate browser frontend
+        run: npm run frontend:build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://ckzrtxqjskosqzoitymc.supabase.co
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
 
   database:
@@ -71,97 +80,97 @@ jobs:
           supabase gen types typescript --local --schema public > /tmp/database.types.ts
           test -s /tmp/database.types.ts
 
-  kotlin-probe:
+  backend:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
 
-      - name: Install pinned Oracle JDK 26.0.2.1
-        run: |
-          scripts/probe/install-jdk.sh "$RUNNER_TEMP/forena-jdk"
-          echo "JAVA_HOME=$RUNNER_TEMP/forena-jdk" >> "$GITHUB_ENV"
-          echo "$RUNNER_TEMP/forena-jdk/bin" >> "$GITHUB_PATH"
-
-      - name: Verify Kotlin, schema, module structure and HTTP lifecycle
-        working-directory: backend
-        run: ./mvnw --batch-mode --no-transfer-progress verify
-
-      - name: Verify abrupt JVM death and concurrent durable recovery
-        run: python3 scripts/probe/local-lifecycle.py --concurrent-recovery --scheduled-crash --registry-backlog 10000
-
-      - name: Verify local capacity, pool exhaustion and registry timeouts
-        run: python3 scripts/probe/local-capacity.py --quick --out backend/target/m22e-capacity-ci.json
-
-      - name: Verify bounded recovery cadence and deferred-prefix fairness
-        run: python3 scripts/probe/local-capacity.py --quick --recovery-cadence --out backend/target/m22f-cadence-ci.json
-
-      - name: Verify cost calculation
-        run: |
-          python3 scripts/probe/cost-model.py --out /tmp/m22e-costs.json
-          diff -u docs/migration/evidence/m22e-costs.json /tmp/m22e-costs.json
-
-      - name: Verify Data API isolation evidence and rejection checks
-        run: |
-          python3 scripts/probe/isolation-check.py --verify-evidence docs/migration/evidence/m22-isolation.json
-          python3 -m unittest discover -s scripts/probe -p 'test_isolation_check.py'
-
-      - name: Retain test and generated architecture reports
-        if: always()
-        uses: actions/upload-artifact@v7
+      - name: Set up Java 25
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
-          name: kotlin-probe-reports
-          path: |
-            backend/target/m22f-cadence-ci.json
-            backend/target/m22e-capacity-ci.json
-            backend/target/surefire-reports/
-            backend/target/spring-modulith-docs/
-
-  kotlin-api:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-
-      - name: Install pinned Oracle JDK 26.0.2.1
-        run: |
-          scripts/probe/install-jdk.sh "$RUNNER_TEMP/forena-jdk"
-          echo "JAVA_HOME=$RUNNER_TEMP/forena-jdk" >> "$GITHUB_ENV"
-          echo "$RUNNER_TEMP/forena-jdk/bin" >> "$GITHUB_PATH"
+          distribution: temurin
+          java-version: '25'
 
       - name: Verify business API, JWT, Kotlin authorization and migrations
-        run: backend/mvnw -f backend/api/pom.xml --batch-mode --no-transfer-progress verify
+        run: backend/mvnw -f backend/pom.xml --batch-mode --no-transfer-progress verify
 
       - name: Verify packaged migration and runtime modes
-        run: python3 backend/api/scripts/local-smoke.py
+        run: python3 backend/scripts/local-smoke.py
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: backend/api/contract/package-lock.json
+          cache-dependency-path: backend/contract/package-lock.json
 
       - name: Verify Spring-generated OpenAPI and TypeScript types
         run: |
-          npm ci --prefix backend/api/contract --ignore-scripts
-          npm run check --prefix backend/api/contract
+          npm ci --prefix backend/contract --ignore-scripts
+          npm run check --prefix backend/contract
 
       - name: Retain API and architecture reports
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: kotlin-api-reports
+          name: backend-reports
           path: |
-            backend/api/target/openapi.json
-            backend/api/target/surefire-reports/
-            backend/api/target/spring-modulith-docs/
+            backend/target/openapi.json
+            backend/target/surefire-reports/
+            backend/target/spring-modulith-docs/
+
+  native-image:
+    needs: backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Java 25
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Build native container with Spring Boot buildpacks
+        run: >-
+          backend/mvnw -f backend/pom.xml --batch-mode --no-transfer-progress
+          -Pnative -DskipTests
+          -Dspring-boot.build-image.imageName=forena-backend:ci
+          spring-boot:build-image
+
+      - name: Verify the native buildpack image against disposable PostgreSQL and Auth keys
+        run: python3 backend/scripts/local-smoke.py --runtime-image forena-backend:ci
+
+      - name: Export tested backend image
+        run: |
+          docker save forena-backend:ci | gzip > "$RUNNER_TEMP/forena-backend.tar.gz"
+          docker image inspect forena-backend:ci > "$RUNNER_TEMP/backend-image-inspect.json"
+          python3 - <<'PYIMAGE'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP'])
+          image = json.loads((root / 'backend-image-inspect.json').read_text())[0]
+          (root / 'backend-image.json').write_text(json.dumps({'sourceCommit': os.environ['GITHUB_SHA'], 'imageId': image['Id']}))
+          PYIMAGE
+
+      - name: Retain tested backend image
+        uses: actions/upload-artifact@v7
+        with:
+          name: forena-backend-image-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/forena-backend.tar.gz
+            ${{ runner.temp }}/backend-image.json
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
 
   # Keep the existing required check; every parallel job must succeed.
   verify:
-    needs: [application, database, kotlin-probe, kotlin-api]
+    needs: [application, database, backend, native-image]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -170,10 +179,10 @@ jobs:
         env:
           APPLICATION_RESULT: ${{ needs.application.result }}
           DATABASE_RESULT: ${{ needs.database.result }}
-          KOTLIN_RESULT: ${{ needs.kotlin-probe.result }}
-          API_RESULT: ${{ needs.kotlin-api.result }}
+          BACKEND_RESULT: ${{ needs.backend.result }}
+          NATIVE_RESULT: ${{ needs.native-image.result }}
         run: |
           test "$APPLICATION_RESULT" = success
           test "$DATABASE_RESULT" = success
-          test "$KOTLIN_RESULT" = success
-          test "$API_RESULT" = success
+          test "$BACKEND_RESULT" = success
+          test "$NATIVE_RESULT" = success

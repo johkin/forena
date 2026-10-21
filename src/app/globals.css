@@ -458,6 +458,11 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .personal-activity-row { display:grid; grid-template-columns:minmax(0,1fr); align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--line); }
 .personal-activity-row:last-child { border-bottom:0; }
 .personal-activity-main { min-width:0; display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:12px; padding:4px 0; border:0; background:transparent; color:var(--ink); text-align:left; cursor:pointer; }
+a.personal-activity-main { text-decoration:none; }
+a.personal-activity-main:hover strong, a.personal-activity-main:focus-visible strong { text-decoration:underline; }
+.overview-date-badge { display:grid; justify-items:center; align-content:center; width:38px; min-height:44px; border:1px solid var(--line); border-radius:8px; background:var(--paper, #fff); line-height:1.2; }
+.overview-date-badge small { color:var(--ink-soft); font-size:10px; text-transform:uppercase; }
+.overview-date-badge strong { font-size:18px; }
 .personal-activity-copy { min-width:0; display:grid; gap:3px; }
 .personal-activity-copy small { color:var(--ink-soft); font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.6px; }
 .personal-activity-copy strong { font-size:14px; }

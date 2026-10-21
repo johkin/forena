@@ -1,6 +1,58 @@
 # Säkerhetsarkitektur
 
-Det separata Kotlin-API:t för familjens kallelsesvar finns i `backend/api` och
+## Personåtkomst i Kotlin
+
+`PersonAccessService` använder aktiva `person_access`-tilldelningar för det
+verifierade kontot, överensstämmande person och organisation. Egen åtkomst och
+delegation kontrolleras på samma sätt vid läsning och skrivning. Sociala
+relationer och tokenmetadata ger inga rättigheter i sig. Dagens tilldelningar
+har underlagen `self` och `guardian`; ombud/stödperson kräver egna beslut om
+rättigheter och livscykel innan de kan införas. Se ADR-020.
+
+## Separat browserpilot mot Kotlin
+
+`frontend/` hanterar UI och WebAuthn-dialogen. Kotlin hanterar Auth-anrop och
+serverlagrade sessioner; bara ett slumpmässigt sessions-ID skickas till browsern
+i en HttpOnly/Secure/SameSite=Lax-cookie utan Domain. Spring Session JDBC äger session och cookie. Provider-tokens lagras
+AES-256-GCM-krypterat i `forena.spring_session_attributes`; livscykeln lagras i
+`forena.spring_session`. En CookieSerializer-adapter krypterar Spring Sessions
+ID i cookien så att ett läst databas-ID inte kan användas direkt som credential.
+Nyckeln tillhör runtime-hemlighetshanteringen, inte databasen eller bygget.
+Cookieanrop går till samma origins `/api/*` utan redirects. Skrivningar kräver
+kanonisk Origin och `X-Forena-Request: 1`; CORS öppnas inte. Verksamhetsanrop
+binder också UI:ts konto till serversessionens konto med `X-Forena-Account`.
+Det är ett likhetskrav mot verifierad identitet, aldrig en behörighetskälla.
+Publika statiska sidor och health är öppna. Login/logout/passkey är publika
+API-rutter med CSRF-skydd. Skyddade API:er kräver fortsatt session och rättigheter.
+Vercels skyddscookie är separat från appens autentisering.
+Ett 401-svar från plattformen raderar inte appsessionen; gränssnittet reagerar
+på Kotlin-API:ts uttryckliga JSON-svar om ogiltig session.
+Fel vid hämtning av JWT-signeringens publika nycklar ger 503/no-store och
+bevarar appsessionen; signatur- och claimfel ger fortsatt 401. Ingen begäran
+släpps igenom när nycklar inte kan verifieras. Auth-diagnostik loggar bara fasta
+felkategorier för TLS, timeout, HTTP/transport, token/claims och saknad Bearer,
+aldrig tokens, claims, URL:er, exceptiontext eller stacktraces.
+Auth-klientens truststore förenar Java-rötter, containerns system-CA och
+plattformens uttryckliga CA-fil. Samma klient används för JWKS och `/user`;
+värdnamnsverifiering och certifikatkedjekontroll behålls. Saknad/felaktig
+uttrycklig CA-konfiguration stoppar start. Release-health kontrollerar också
+hämtningen av publika Auth-nycklar, utan detaljer i det publika svaret.
+Klientens sessionsdata är ingen behörighetskälla;
+Kotlin verifierar JWT, aktuell Auth-session, lokala spärrar och personåtkomst.
+Auth-user_metadata används inte för behörighet. Runtimekonfigurationen är
+strikt publik och avgränsad till det nya projektet. Privata vyer avmonteras
+vid utloggning, nekad session och kontoändring; ingen verksamhetsdata cachas i
+service worker. Gamla pilotens localStorage-session rensas vid start; användaren
+loggar in på nytt. Inga tokens sparas i browserlagring. Sessionen varar högst
+åtta timmar och avslutas efter 30 minuters inaktivitet som standard. Delade
+PostgreSQL-radlås serialiserar förnyelse över instanser; utgångna rader städas
+varje minut när runtime kör. [Detaljer och driftskrav](migration/web-sessions.md).
+Separata Bearer-integrationer behåller sin befintliga verifiering och får inte
+kombineras med appens sessionscookie. Den gamla
+Next-appens autentisering och kanaler har fortsatt sin befintliga modell.
+
+
+Det separata Kotlin-API:t för familjens kallelsesvar finns i `backend` och
 är ännu inte aktiverat i webben. Det använder ett nytt privat schema enligt
 [ADR-010](migration/decisions.md). Enligt ADR-012 ligger dess behörighet i Kotlin:
 konto/session, aktiva familjekopplingar samt organisationsgränser kontrolleras
@@ -10,11 +62,19 @@ inte exponeras i Data API och klientroller har inga grants. Enligt ADR-013
 procedurer eller verksamhetstriggers används. Historiken får verifierat konto-ID;
 ADR-014 tar bort inloggningssessionen från affärsdata. Sessions-ID finns fortsatt
 i verifierad token och används för lokal sessionsspärr. Runtime får aldrig schemaägar- eller service-role-credentials.
-Se [API:ts säkerhetsgränser](../backend/api/README.md), särskilt begränsningen
+Se [API:ts säkerhetsgränser](../backend/README.md), särskilt begränsningen
 kring extern Auth-revokering före pilot. ADR-016 tillför onlinekontroll via
 Supabase `/user` utan adminnyckel eller Auth-tabellgrants. Lokala prov och
-[verkligt Auth-only-prov](migration/target-auth-lifecycle.md) är gröna;
-fullt Kotlin-/databasprov i målprojektet är fortfarande en aktiveringsgrind.
+[verkligt Auth-only-prov samt hela Kotlin-/databasprovet](migration/target-auth-lifecycle.md)
+är gröna i målprojektet. Browser, övriga Auth-metoder och driftsatt runtime
+är fortsatt separata aktiveringsgrindar.
+Det avskilda [Next-/browserprovet](migration/browser-participation.md) använder
+aktuellt `getUser()` och samma SSR-sessions bearer-token. Kotlin kontrollerar
+identitet och familj igen. Backendval och API-origin kommer enbart från
+servermiljön; browserns headers kan inte välja mål eller identitet. Skrivningens
+Origin jämförs med kanonisk `SITE_URL`. Inga cookies, adminnycklar eller
+databascredentials vidarebefordras. Tekniska fel ger 503/no-store utan retry
+eller legacy-fallback; ordinarie routing är fortsatt oförändrad.
 Gamla appens kontroller nedan gäller
 fortsatt dess befintliga databas och kanaler.
 

@@ -10,6 +10,10 @@ vi.mock("./workspace-switcher",()=>({WorkspaceSwitcher:()=>null}));
 import { AppShell } from "./app-shell";
 import { AppMenuContent } from "./app-header";
 const organization={id:"club",slug:"aik",name:"AIK",assistantName:"Assistent"};
+it("offers only session navigation without legacy profile or admin lookups",()=>{
+ const html=renderToStaticMarkup(AppMenuContent({accountEmail:"family@example.invalid",accountMenu:"session",homeHref:"/migration/participation"}));
+ expect(html).toContain('href="/migration/participation"');expect(html).not.toContain('/profile');expect(html).not.toContain('/connect');expect(html).not.toContain('Min översikt');
+});
 it("hides the assistant button and shared menu links for logged-out visitors",()=>{
  const html=renderToStaticMarkup(AppShell({organization,children:null}));
  expect(html).not.toContain("Assistentknapp");expect(html).not.toContain('/o/aik/memories');expect(html).not.toContain('has-assistant');

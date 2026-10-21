@@ -4,11 +4,13 @@ Status: delvis implementerad (2026-10-19). Beroenden: M01. Leverans: en avgräns
 anges att arbetet först ska delas. Alla PR-baser är aktuell `main`.
 
 Webbsessionsverifiering, lokala JWKS-prov och onlineadapter för aktuell `/user`-
-status finns i `backend/api`. Adapterns lokala fel-/revokeringsprov är gröna;
+status finns i `backend`. Adapterns lokala fel-/revokeringsprov är gröna;
 verklig Supabase-inloggning, ES256/JWKS, refresh och driftad sessionsrevokering
-är nu verifierade med Auth-only-provet (18 godkända kontroller). Passkey/MCP och
-fullt Kotlin-/databasprov återstår. Se [målmiljö/Auth](../target-auth-lifecycle.md) och opt-in-provet
-`TargetAuthIT`; hela M03 är fortfarande inte accepterad.
+är verifierade med Auth-only-provet (18 godkända kontroller). Även hela
+`TargetAuthIT` är godkänt mot riktig Auth, Kotlin-API och databas, inklusive
+familjeavgränsning, nekade anrop efter sessionsavslut och oförändrad historik.
+Browser-PKCE, passkey, mejlleverans och MCP återstår. Se
+[målmiljö/Auth](../target-auth-lifecycle.md); hela M03 är fortfarande inte accepterad.
 
 ## Bakgrund och gemensamma beslut
 

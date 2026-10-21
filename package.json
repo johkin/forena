@@ -12,13 +12,15 @@
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && npm run typecheck --workspace @forena/frontend",
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:status": "supabase status",
     "db:reset": "supabase db reset",
     "db:types": "supabase gen types typescript --local --schema public > src/lib/supabase/database.types.ts",
-    "prebuild": "node scripts/write-app-version.mjs"
+    "prebuild": "node scripts/write-app-version.mjs",
+    "frontend:build": "npm run build --workspace @forena/frontend",
+    "frontend:dev": "npm run dev --workspace @forena/frontend"
   },
   "dependencies": {
     "@fontsource-variable/newsreader": "^5.3.0",
@@ -33,6 +35,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.1",
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
@@ -41,5 +44,8 @@
     "supabase": "^2.117.0",
     "typescript": "^5.9.0",
     "vitest": "^3.2.0"
-  }
+  },
+  "workspaces": [
+    "frontend"
+  ]
 }

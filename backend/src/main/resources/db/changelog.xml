@@ -1,43 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
- <changeSet id="probe-001" author="forena">
-  <sqlFile path="probe.sql" relativeToChangelogFile="true"/>
-  <sqlFile path="modulith-postgresql.sql" relativeToChangelogFile="true"/>
-  <sql>
-   GRANT USAGE ON SCHEMA forena_probe TO forena_probe_runtime;
-   GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA forena_probe TO forena_probe_runtime;
-   GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA forena_probe TO forena_probe_runtime;
-   REVOKE ALL ON forena_probe.databasechangelog, forena_probe.databasechangeloglock FROM forena_probe_runtime;
-  </sql>
- </changeSet>
- <changeSet id="probe-002-faults" author="forena">
-  <sql>
-   CREATE TABLE forena_probe.probe_fault (
-    id uuid PRIMARY KEY REFERENCES forena_probe.probe_run(id),
-    point text NOT NULL CHECK(point IN ('BEFORE_EFFECT','AFTER_EFFECT_COMMIT')),
-    consumed_at timestamptz,
-    consumed_by text,
-    CHECK((consumed_at IS NULL) = (consumed_by IS NULL))
-   );
-   REVOKE ALL ON forena_probe.probe_fault FROM PUBLIC, forena_probe_runtime;
-   GRANT SELECT ON forena_probe.probe_fault TO forena_probe_runtime;
-   GRANT UPDATE(consumed_at,consumed_by) ON forena_probe.probe_fault TO forena_probe_runtime;
-  </sql>
- </changeSet>
- <changeSet id="probe-003-worker-cursor" author="forena">
-  <sql>
-   CREATE TABLE forena_probe.probe_worker_cursor (
-    singleton boolean PRIMARY KEY DEFAULT true CHECK(singleton),
-    publication_date timestamptz,
-    publication_id uuid,
-    revision bigint NOT NULL DEFAULT 0 CHECK(revision &gt;= 0),
-    CHECK((publication_date IS NULL) = (publication_id IS NULL))
-   );
-   INSERT INTO forena_probe.probe_worker_cursor(singleton) VALUES(true);
-   REVOKE ALL ON forena_probe.probe_worker_cursor FROM PUBLIC, forena_probe_runtime;
-   GRANT SELECT ON forena_probe.probe_worker_cursor TO forena_probe_runtime;
-   GRANT UPDATE(publication_date,publication_id,revision) ON forena_probe.probe_worker_cursor TO forena_probe_runtime;
-  </sql>
- </changeSet>
+ <changeSet id="api-001-identity" author="forena"><sqlFile path="identity.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
+ <changeSet id="api-002-participation" author="forena"><sqlFile path="participation.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
+ <changeSet id="api-003-application-authorization" author="forena"><sqlFile path="application-authorization.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
+ <changeSet id="api-004-application-response" author="forena"><sqlFile path="application-response.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
+ <changeSet id="api-005-history-without-session" author="forena"><sqlFile path="history-without-session.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
+ <changeSet id="api-006-browser-session" author="forena"><sqlFile path="browser-session.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
+ <changeSet id="api-007-auth-rate-limit" author="forena"><sqlFile path="auth-rate-limit.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
+ <changeSet id="api-008-spring-session" author="forena"><sqlFile path="spring-session.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
+ <changeSet id="api-009-activity-overview" author="forena"><sqlFile path="activity-overview.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
 </databaseChangeLog>

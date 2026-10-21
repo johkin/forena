@@ -3,9 +3,17 @@
   "framework": "nextjs",
   "git": {
     "deploymentEnabled": {
+      "feat/browser-frontend": false,
+      "fix/kotlin-service-transport": false,
+      "fix/kotlin-runtime-health": false,
+      "chore/java25": false,
       "main": false,
       "feat/participation-api": false,
-      "feat/target-auth-lifecycle": false
+      "feat/target-auth-lifecycle": false,
+      "feat/target-api-verification": false,
+      "feat/kotlin-browser-flow": false,
+      "ci/kotlin-vercel-deploy": false,
+      "fix/ci-database-regression": false
     }
   },
   "regions": [

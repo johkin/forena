@@ -1,0 +1,344 @@
+{
+  "project_ref": "ckzrtxqjskosqzoitymc",
+  "checked_at": "2026-10-19T11:48:54.599Z",
+  "passed": true,
+  "checks": [
+    "password-login-real-ssr-cookies",
+    "two-children-only",
+    "accepted-answer-comment-and-reload",
+    "comment-edit-preserves-response-time-and-signal-version",
+    "decline-reset-and-reload",
+    "legacy-quick-payload-preserves-comment",
+    "identical-answer-is-no-op",
+    "other-family-read-and-write-denied-without-history",
+    "mobile-desktop-no-overflow",
+    "keyboard-menu",
+    "logout-stale-cookies-read-write-denied-without-history",
+    "relogin",
+    "upstream-outage-no-legacy-fallback-or-database-change",
+    "shared-menu-component-reference"
+  ],
+  "cleanup_confirmed": true,
+  "not_tested": [
+    "browser-pkce",
+    "passkeys",
+    "email-delivery",
+    "oauth-mcp",
+    "full-signal-worker",
+    "deployed-runtime",
+    "ordinary-dashboard-id-loading"
+  ],
+  "database_progression": [
+    {
+      "first_child": {
+        "response": "pending",
+        "response_comment": null,
+        "responded_at": null,
+        "revision": 0
+      },
+      "second_child": {
+        "response": "pending",
+        "response_comment": null,
+        "revision": 0
+      },
+      "history_count": 0,
+      "signal_version": 0
+    },
+    {
+      "first_child": {
+        "response": "accepted",
+        "response_comment": "H\u00e4mtas senare",
+        "responded_at": "2026-10-19 11:48:30.741983",
+        "revision": 1
+      },
+      "second_child": {
+        "response": "pending",
+        "response_comment": null,
+        "revision": 0
+      },
+      "history_count": 1,
+      "signal_version": 1
+    },
+    {
+      "first_child": {
+        "response": "accepted",
+        "response_comment": "Ny h\u00e4mtning",
+        "responded_at": "2026-10-19 11:48:30.741983",
+        "revision": 2
+      },
+      "second_child": {
+        "response": "pending",
+        "response_comment": null,
+        "revision": 0
+      },
+      "history_count": 2,
+      "signal_version": 1
+    },
+    {
+      "first_child": {
+        "response": "declined",
+        "response_comment": "Ny h\u00e4mtning",
+        "responded_at": "2026-10-19 11:48:35.365561",
+        "revision": 3
+      },
+      "second_child": {
+        "response": "pending",
+        "response_comment": null,
+        "revision": 0
+      },
+      "history_count": 3,
+      "signal_version": 2
+    },
+    {
+      "first_child": {
+        "response": "pending",
+        "response_comment": null,
+        "responded_at": null,
+        "revision": 4
+      },
+      "second_child": {
+        "response": "pending",
+        "response_comment": null,
+        "revision": 0
+      },
+      "history_count": 4,
+      "signal_version": 3
+    },
+    {
+      "first_child": {
+        "response": "pending",
+        "response_comment": null,
+        "responded_at": null,
+        "revision": 4
+      },
+      "second_child": {
+        "response": "declined",
+        "response_comment": "Beh\u00e5ll",
+        "revision": 2
+      },
+      "history_count": 6,
+      "signal_version": 5
+    },
+    {
+      "first_child": {
+        "response": "pending",
+        "response_comment": null,
+        "responded_at": null,
+        "revision": 4
+      },
+      "second_child": {
+        "response": "declined",
+        "response_comment": "Beh\u00e5ll",
+        "revision": 2
+      },
+      "history_count": 6,
+      "signal_version": 5
+    },
+    {
+      "first_child": {
+        "response": "pending",
+        "response_comment": null,
+        "responded_at": null,
+        "revision": 4
+      },
+      "second_child": {
+        "response": "declined",
+        "response_comment": "Beh\u00e5ll",
+        "revision": 2
+      },
+      "history_count": 6,
+      "signal_version": 5
+    },
+    {
+      "first_child": {
+        "response": "pending",
+        "response_comment": null,
+        "responded_at": null,
+        "revision": 4
+      },
+      "second_child": {
+        "response": "declined",
+        "response_comment": "Beh\u00e5ll",
+        "revision": 2
+      },
+      "history_count": 6,
+      "signal_version": 5
+    },
+    {
+      "first_child": {
+        "response": "pending",
+        "response_comment": null,
+        "responded_at": null,
+        "revision": 4
+      },
+      "second_child": {
+        "response": "declined",
+        "response_comment": "Beh\u00e5ll",
+        "revision": 2
+      },
+      "history_count": 6,
+      "signal_version": 5
+    },
+    {
+      "first_child": {
+        "response": "pending",
+        "response_comment": null,
+        "responded_at": null,
+        "revision": 4
+      },
+      "second_child": {
+        "response": "declined",
+        "response_comment": "Beh\u00e5ll",
+        "revision": 2
+      },
+      "history_count": 6,
+      "signal_version": 5
+    }
+  ],
+  "raw_result_sha256": "dedaad1fe983377d3b3ed1735b8c7c7971b7df222b53ea98ad674c71b2108fcf",
+  "base_main": "548d627264febd2119ae1f657aa6d51cfaa8775c",
+  "source_sha256": {
+    ".gitignore": "89ee6f410c9d7f74438b65ec27e7a636edb1c8e6ea577ee0e7603fc593bad4cd",
+    "package.json": "a75449bcb8f157f1ea119b09eb443438f19c588de77cf49d4417c7912a2c321f",
+    "package-lock.json": "8e3e42dcd4ccd5fbf3196c889850ca9046cda3c3ee009cca793237dbb2a8cb92",
+    "src/lib/kotlin-participation.ts": "958f838d11eff4e5f3d8a19f4006a14791585283d8c278be1ef4fea5ba30792d",
+    "src/lib/kotlin-participation.test.ts": "b683fe534a269b84ad2bece7ca0ac6a6fab5e1c61b1d4e3f6a40bcaa326f8730",
+    "src/app/api/activities/[activityId]/my-invitations/route.ts": "0f56150c348a121f380942aac803beea32c0f7ed6753e93b5ce2f345447892e3",
+    "src/app/api/invitations/[invitationId]/respond/route.ts": "ca57f84d2722a8920d9706eebc083063f49db10ab2cce0d065c6e0007b08963c",
+    "src/app/login/actions.ts": "1d05b280a873478b95b5cdb9c625ec9413f6ae0d375a63fcb582f98b092f33d9",
+    "src/app/login/actions.test.ts": "ca696eb65741c4178dde4dd4c464944a552f6f608c993cd270d9f74b60bc3ace",
+    "src/app/migration/participation/page.tsx": "83d48d72757936a239f3514bf0baa183f6b28bf087a4fe0dc2f59adf39563c39",
+    "src/components/app-header.tsx": "4d8219c6eab3835df710d4967f735326aaecf0f52c4b713ccc9d43abe4617a03",
+    "src/components/app-shell.test.tsx": "95a7aed9cf579399d4df1ee473cd4fe3f9b634b6b9f4a43038ca498261b51563",
+    "src/components/component-gallery.tsx": "e580626700abb572369eb010921d6abd194fe64fa69a969eee3e71258852f04b",
+    "backend/api/scripts/BrowserSeed.java": "cf215c25101416fbaead4040270b786d055b3aad99c953f00b168238348a5730",
+    "backend/api/scripts/browser-seed.py": "46623434b594cfb2af08b6c430ed732ccafe59b7ca95066911c6a76c24a5bd66",
+    "scripts/migration/browser-participation.mjs": "56c2b50a4cf207bbc38e85dd781d08767d63b611a719646aaba448992c452094",
+    "backend/vercel.json": "b03f10c930b4486e517064dea5b8b44d728954a87e4ee4fc585d6de6b7fa8092",
+    "vercel.json": "f515f490c87007144646e66a0bf5d915469ac74eba3824bf9ff63ec100f01b6f",
+    "backend/api/scripts/browser-flow.py": "793fa69459c9e6e19ffc101bf91c22e0290d0c0624154f18139c1ee310b8c99a"
+  },
+  "api_jar_sha256": "a21f0f51fc797e144cb90be82b0339c1011ef6974e8ecc8f0ffe4014fab43349",
+  "scope": "browser-next-kotlin-postgresql",
+  "branch": "feat/kotlin-browser-flow",
+  "execution": {
+    "provider": "Vercel Sandbox",
+    "project": "forena-kotlin",
+    "session_id": "sbx_CUCEUbKFTTBQQFH0QKu8kgECwULy",
+    "region": "fra1",
+    "persistent": false,
+    "status": "stopped",
+    "duration_ms": 1064840,
+    "image": "vercel/sandbox/universal@sha256:c77f7436b9bc0a8b01ef7b09dbcea2de6a18a9fe2aafa89996d2da193da72cf0",
+    "public_ports": []
+  },
+  "independent_sql": {
+    "observed_at": "2026-10-19T11:50:18.331118+00:00",
+    "synthetic_browser_auth_users": 0,
+    "business_rows": {
+      "account": 0,
+      "organization": 0,
+      "team": 0,
+      "person": 0,
+      "person_access": 0,
+      "activity": 0,
+      "invitation": 0,
+      "invitation_history": 0,
+      "activity_signal_state": 0,
+      "revoked_session": 0
+    },
+    "liquibase_steps": 5,
+    "client_schema_usage": {
+      "anon": false,
+      "authenticated": false,
+      "service_role": false
+    }
+  },
+  "local_checks": {
+    "vitest": {
+      "files": 133,
+      "tests": 1096,
+      "failures": 0
+    },
+    "typecheck": "passed",
+    "lint": "passed",
+    "production_build": "passed",
+    "api_package": "passed; package tests skipped",
+    "wrong_project_and_stale_evidence_guard": "passed",
+    "visual_review": [
+      "390px mobile screenshot",
+      "1440px desktop screenshot"
+    ],
+    "source_hashes": "all match final working tree"
+  },
+  "commands": {
+    "full": "FORENA_TEST_TARGET_REF=ckzrtxqjskosqzoitymc python3 backend/api/scripts/browser-flow.py",
+    "final_rerun": "FORENA_TEST_TARGET_REF=ckzrtxqjskosqzoitymc python3 backend/api/scripts/browser-flow.py --skip-build"
+  },
+  "dependencies": {
+    "playwright": "1.64.1",
+    "chromium": "156.0.8078.4",
+    "jdk": "Oracle 26.0.2.1+1-7",
+    "maven": "3.9.11"
+  },
+  "ordinary_routing_activated": false,
+  "api_deployed": false,
+  "bootstrap_rerun": false,
+  "new_roles_created": false,
+  "legacy_project_modified": false,
+  "data_api_configuration_changed": false,
+  "full_signal_worker_tested": false,
+  "liquibase_history_unchanged_since_pr114": true,
+  "liquibase_history": [
+    {
+      "id": "api-001-identity",
+      "author": "forena",
+      "filename": "db/changelog.xml",
+      "dateexecuted": "2026-10-19 11:12:05.52695",
+      "orderexecuted": 1,
+      "exectype": "EXECUTED",
+      "md5sum": "9:c81ec97417e382919fd31bb5334e7d1d",
+      "deployment_id": "2408323746"
+    },
+    {
+      "id": "api-002-participation",
+      "author": "forena",
+      "filename": "db/changelog.xml",
+      "dateexecuted": "2026-10-19 11:12:05.64108",
+      "orderexecuted": 2,
+      "exectype": "EXECUTED",
+      "md5sum": "9:f50a61b38c82111e85265ed2d47d5fb4",
+      "deployment_id": "2408323746"
+    },
+    {
+      "id": "api-003-application-authorization",
+      "author": "forena",
+      "filename": "db/changelog.xml",
+      "dateexecuted": "2026-10-19 11:12:05.687376",
+      "orderexecuted": 3,
+      "exectype": "EXECUTED",
+      "md5sum": "9:99af20194db44cab0ca24a797c16ba77",
+      "deployment_id": "2408323746"
+    },
+    {
+      "id": "api-004-application-response",
+      "author": "forena",
+      "filename": "db/changelog.xml",
+      "dateexecuted": "2026-10-19 11:12:05.718029",
+      "orderexecuted": 4,
+      "exectype": "EXECUTED",
+      "md5sum": "9:d7741385150c716de13fbb9fbc0793ce",
+      "deployment_id": "2408323746"
+    },
+    {
+      "id": "api-005-history-without-session",
+      "author": "forena",
+      "filename": "db/changelog.xml",
+      "dateexecuted": "2026-10-19 11:12:05.742379",
+      "orderexecuted": 5,
+      "exectype": "EXECUTED",
+      "md5sum": "9:a47a42bbb472a462d67e201898c1498a",
+      "deployment_id": "2408323746"
+    }
+  ]
+}

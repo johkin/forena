@@ -1,0 +1,9 @@
+{
+  "regions": [
+    "fra1"
+  ],
+  "framework": null,
+  "git": {
+    "deploymentEnabled": false
+  }
+}

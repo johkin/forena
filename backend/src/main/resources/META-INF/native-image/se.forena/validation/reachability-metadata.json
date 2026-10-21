@@ -1,0 +1,17 @@
+{
+  "reflection": [
+    {
+      "type": "org.hibernate.validator.internal.util.logging.Log_$logger",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": ["org.jboss.logging.Logger"]
+        }
+      ]
+    },
+    {
+      "type": "org.hibernate.validator.internal.util.logging.Messages_$bundle",
+      "fields": [{"name": "INSTANCE"}]
+    }
+  ]
+}

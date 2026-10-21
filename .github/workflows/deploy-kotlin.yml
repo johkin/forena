@@ -1,0 +1,157 @@
+name: Deploy Kotlin site
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: kotlin-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment:
+      name: kotlin-production
+      url: https://forena-kotlin.vercel.app
+    env:
+      VERCEL_ORG_ID: team_hkR9c8WmDdaB7Ohge0pDlA6X
+      VERCEL_PROJECT_ID: prj_V1a7hd39ABj3w5ARUOATF31XMWX9
+      VERCEL_CLI_VERSION: 60.1.3
+      VERCEL_TELEMETRY_DISABLED: 1
+      RELEASE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+    steps:
+      - name: Require current main and successful CI for this exact commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_main=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          test "$RELEASE_SHA" = "$current_main"
+          ci_run_id=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$RELEASE_SHA&status=success&per_page=100" \
+            --jq '[.workflow_runs[] | select(.head_branch == "main" and (.event == "push" or .event == "workflow_dispatch"))][0].id')
+          test "$ci_run_id" != null
+          echo "CI_RUN_ID=$ci_run_id" >> "$GITHUB_ENV"
+
+      - name: Check out verified commit
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ env.RELEASE_SHA }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24.19.0
+          cache: npm
+
+      - name: Install build tools without deploy credentials
+        run: |
+          npm ci
+          npm install --global "vercel@$VERCEL_CLI_VERSION"
+
+      - name: Select isolated Kotlin deployment configuration
+        run: |
+          cp deploy/vercel.kotlin.json vercel.json
+          mkdir -p .vercel
+          node -e 'require("node:fs").writeFileSync(".vercel/project.json", JSON.stringify({orgId:process.env.VERCEL_ORG_ID,projectId:process.env.VERCEL_PROJECT_ID}))'
+
+      - name: Pull Kotlin project settings and public build configuration
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          test -n "$VERCEL_TOKEN" || { echo '::error::Set VERCEL_TOKEN in the kotlin-production GitHub environment'; exit 1; }
+          vercel project inspect "$VERCEL_PROJECT_ID" --scope "$VERCEL_ORG_ID" --non-interactive
+          vercel pull --yes --environment=production --scope "$VERCEL_ORG_ID"
+          node scripts/deploy/prepare-kotlin.mjs
+
+      - name: Download the tested backend image from successful CI for this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download "$CI_RUN_ID" --repo "$GITHUB_REPOSITORY" \
+            --name "forena-backend-image-$RELEASE_SHA" --dir "$RUNNER_TEMP/backend-image"
+          docker load --input "$RUNNER_TEMP/backend-image/forena-backend.tar.gz"
+          docker image inspect forena-backend:ci > "$RUNNER_TEMP/backend-loaded.json"
+          python3 scripts/deploy/use-backend-image.py verify \
+            "$RUNNER_TEMP/backend-image/backend-image.json" "$RUNNER_TEMP/backend-loaded.json" "$RELEASE_SHA"
+
+      - name: Build static frontend for the verified source
+        run: |
+          npm run frontend:build
+
+      - name: Publish the tested backend image without rebuilding
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          vercel vcr login docker --project "$VERCEL_PROJECT_ID" --scope "$VERCEL_ORG_ID"
+          image_ref="vcr.vercel.com/johkin/forena-kotlin/backend:$RELEASE_SHA"
+          docker tag forena-backend:ci "$image_ref"
+          vercel vcr push docker "backend:$RELEASE_SHA" --project "$VERCEL_PROJECT_ID" --scope "$VERCEL_ORG_ID"
+          docker image inspect "$image_ref" > "$RUNNER_TEMP/backend-published.json"
+          python3 scripts/deploy/use-backend-image.py configure \
+            "$RUNNER_TEMP/backend-image/backend-image.json" "$RUNNER_TEMP/backend-published.json" "$RELEASE_SHA"
+
+      - name: Package frontend and stage production using the tested backend image
+        id: stage
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/deploy/use-backend-image.py verify-output \
+            "$RUNNER_TEMP/backend-image/backend-image.json" "$RUNNER_TEMP/backend-published.json" "$RELEASE_SHA"
+          deployment_url=$(vercel deploy --prebuilt --prod --skip-domain --yes --scope "$VERCEL_ORG_ID")
+          DEPLOYMENT_URL="$deployment_url" node --input-type=module -e '
+            const value = process.env.DEPLOYMENT_URL;
+            const url = new URL(value);
+            if (url.protocol !== "https:" || url.origin !== value || !url.hostname.endsWith(".vercel.app")) process.exit(1);
+          '
+          printf 'url=%s\n' "$deployment_url" >> "$GITHUB_OUTPUT"
+
+      - name: Verify staged frontend, API and database
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          DEPLOYMENT_URL: ${{ steps.stage.outputs.url }}
+        run: |
+          vercel curl "$DEPLOYMENT_URL/actuator/health" --scope "$VERCEL_ORG_ID" -- --silent --show-error --fail --max-time 90 > "$RUNNER_TEMP/kotlin-health.json"
+          vercel curl "$DEPLOYMENT_URL/app-version.json" --scope "$VERCEL_ORG_ID" -- --silent --show-error --fail --max-time 60 > "$RUNNER_TEMP/frontend-version.json"
+          HEALTH_FILE="$RUNNER_TEMP/kotlin-health.json" VERSION_FILE="$RUNNER_TEMP/frontend-version.json" node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const health = JSON.parse(readFileSync(process.env.HEALTH_FILE, "utf8"));
+            const remote = JSON.parse(readFileSync(process.env.VERSION_FILE, "utf8"));
+            const build = JSON.parse(readFileSync("frontend/dist/app-version.json", "utf8"));
+            if (health.status !== "UP" || remote.version !== build.version) process.exit(1);
+          '
+          vercel curl "$DEPLOYMENT_URL/login" --scope "$VERCEL_ORG_ID" -- --silent --show-error --fail --max-time 60 --output /dev/null
+
+      - name: Publish the tested deployment if it is still current main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          DEPLOYMENT_URL: ${{ steps.stage.outputs.url }}
+        run: |
+          test "$RELEASE_SHA" = "$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)"
+          vercel promote "$DEPLOYMENT_URL" --yes --scope "$VERCEL_ORG_ID"
+          printf 'Published `%s` to https://forena-kotlin.vercel.app\n\nTested deployment: %s\n' "$RELEASE_SHA" "$DEPLOYMENT_URL" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove pulled environment files
+        if: always()
+        run: |
+          rm -f .vercel/.env.*.local
+          docker logout vcr.vercel.com

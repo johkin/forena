@@ -3,9 +3,11 @@
 Status: delvis implementerad (2026-10-19). Beroenden: M01. Leverans: en avgränsad PR om inte nedan
 anges att arbetet först ska delas. Alla PR-baser är aktuell `main`.
 
-Databasgrunden finns i `backend/api` med lokala Liquibase/Testcontainers-prov.
-Tomt privat schema och separata NOLOGIN-roller är bootstrap-provisionerade i
-`forena-kotlin`. Credentials, moln-JDBC och separat Liquibase-release återstår.
+Databasgrunden finns i `backend` med lokala Liquibase/Testcontainers-prov.
+Privat schema och separata begränsade LOGIN-roller är verifierade i
+`forena-kotlin`. Verklig JDBC med CA/hostname-verifiering och separat paketerad
+Liquibase-release har körts i Vercel Sandbox; fem historikposter är oförändrade
+vid återkörning. Testfixturer är städade. Ingen driftaktivering ingår.
 Se [målmiljö/Auth](../target-auth-lifecycle.md) för observerat nuläge.
 
 ## Bakgrund och gemensamma beslut

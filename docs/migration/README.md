@@ -1,15 +1,31 @@
 # Stegvis migrering till Kotlin på Vercel och Supabase
 
+**2026-10-21:** Kotlin-koden är samlad direkt i `backend/` enligt
+[ADR-019](decisions.md#adr-019-en-kotlin-kodbas-direkt-i-backend).
+M21/M22-probets kod, skript och deployfiler är borttagna. Dokumenterade
+provresultat och evidens bevaras; äldre provkommandon/källsökvägar gäller
+historiska revisioner och beskriver inte körbar kod i dagens repo.
+
 Inventeringsbas: `c379a96719490bc4edbfcb0a4ee7a1947684ddce` på `main`.
 Datum: 2026-10-18. Detta är första dokumentationsleveransen, inte en genomförd
 backend- eller dataflytt. Befintliga instruktioner i [AGENTS.md](../../AGENTS.md)
 och säkerhetskrav gäller även kommande uppgifter.
 
+## Aktuell uppföljning 2026-10-21
+
+På `feat/my-activities` införs **Mina aktiviteter** med generell personåtkomst
+enligt ADR-020 och [M07A](tasks/m07a-activity-overview.md). Backend använder
+`PersonAccessService`; `guardian` är ett underlag för delegerad åtkomst, inte en
+allmän familjebehörighet. Startsidan hittar kallelsekopplade aktiviteter utan
+förvalt test-ID. Runtime behöver separat migration 009. Native-/driftprov och
+full signalworker återstår; äldre M21/M22-kod är borttagen, inte en worker som
+kan aktiveras i verksamheten. Se [aktuell status](status.md).
+
 ## Aktuell planeringsinriktning
 
 **2026-10-19:** användaren har beslutat om ren start utan gamla testdata.
 [ADR-010](decisions.md) ersätter den tidigare övergången via gamla databasen.
-Första verksamhets-API:t finns i `backend/api`; [leveransen](first-flow.md)
+Första verksamhets-API:t finns i `backend`; [leveransen](first-flow.md)
 skiljer implementerad API-del från återstående UI-/Auth-/driftaktivering.
 
 Behåll Supabase som PostgreSQL-värd och Auth-leverantör under backendmigreringen.

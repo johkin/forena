@@ -26,12 +26,34 @@ Komponentsidan ska vara en aktuell, gemensam referens för hela systemet.
 Dessa regler beskriver kravet; befintliga luckor i galleriet ska fyllas när de
 berörda UI-delarna ändras och innebär inte att dagens galleri redan är komplett.
 
+Den nya browserpiloten återanvänder `AppHeaderFrame`, `AppShellFrame`,
+`SessionMenu`, `AppFooter` och `ActivityInvitationResponse`. Next-appens
+sidskal använder samma byggdelar. `PasswordLoginForm` och de nya pilotvarianterna
+visas på `/components` i båda apparna, med lokala syntetiska data och utan
+inloggning eller verksamhetsskrivningar. Menyns fokuslås, Escape och mobila
+scrollås delar samma implementation. Se [frontendinstruktionen](../frontend/README.md).
+
+Den avskilda kallelsesidan använder `AppShell` och `ActivityInvitationResponse`
+utan egna meny-, header- eller footer-kopior. Kontomenyns `session`-variant
+visar familjens kallelser och utloggning utan profil, administration och
+notiser. Samma `AppMenuContent` visas på `/components` i ett inaktiverat
+exempel som inte loggar ut den som granskar komponenterna.
+
 WhatsApp-inställningarna i Min profil och exemplen på `/components` använder
 samma produktionskomponent. Visa ej aktiverat, samtycke, väntande verifiering,
 maskerat aktivt nummer, laddning, sparande, fel och ej konfigurerat. Galleriets
 handlingar använder enbart syntetiska lokala data.
 Efter avbruten koppling eller avstängning ska en ny koppling börja med en
 omarkerad samtyckesruta. Detta gäller även galleriets interaktiva exempel.
+
+## Kotlin-pilotens Mina aktiviteter
+
+Den nya Vite-appens startsida heter **Mina aktiviteter**. Den använder samma
+`MyActivityList` i produktion och `/components`, med laddning, tomt, fel och
+sidindelning. Klubb, lag och svensk tid visas på varje rad; aktivitetslänken
+öppnar kallelsesvaret. Kontomenyn länkar till Mina aktiviteter. Piloten omfattar
+kallelsekopplade aktiviteter; beskrivningen av gamla appens fullständiga
+personliga startsida nedan innebär inte att medlemskap/arbetspass redan flyttats.
 
 ## Personlig startsida
 

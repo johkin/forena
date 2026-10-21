@@ -1,0 +1,11 @@
+# syntax=docker/dockerfile:1
+# Context: deploy/frontend/. Actions stages standalone output before packaging.
+FROM node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df
+WORKDIR /app
+COPY --chown=10001:10001 app/ ./
+COPY --chown=10001:10001 public/ ./public/
+COPY --chmod=0555 entrypoint.sh /entrypoint.sh
+USER 10001:10001
+ENV PORT=80
+EXPOSE 80
+ENTRYPOINT ["sh", "/entrypoint.sh"]

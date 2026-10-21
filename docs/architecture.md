@@ -5,12 +5,13 @@ Den stegvisa målarkitekturen för Kotlin/Spring Boot på Vercel och Supabase fi
 Beskrivningen nedan avser nuvarande lösning och befintliga principer; målteknik
 är inte införd bara för att den dokumenterats.
 
-Det första separata verksamhets-API:t finns nu i `backend/api`: familjens
-kallelseläsning och svar med Spring Data JDBC-repositories, Liquibase och åtkomstkontroller i Kotlin (ADR-012). Det använder
+Repots enda Kotlin/Spring Boot-kodbas finns direkt i `backend` (ADR-019).
+M21/M22-teknikprovet är borttaget. Verksamhets-API:t hanterar
+kallelseläsning och svar genom egen och delegerad personåtkomst med Spring Data JDBC-repositories, Liquibase och åtkomstkontroller i Kotlin (ADR-012). Det använder
 ett nytt tomt `forena`-schema enligt ADR-010, utan gamla projektets testdata.
 Enligt ADR-013 äger en Spring `@Service` med `@Transactional` hela svarslogiken,
 inklusive historik och signalversion; inga verksamhetstriggers eller egna
-procedurer används i det nya API-schemat. Nuvarande Next.js-app är ännu inte omkopplad. Se [API-underlaget](../backend/api/README.md)
+procedurer används i det nya API-schemat. Nuvarande Next.js-app är ännu inte omkopplad. Se [API-underlaget](../backend/README.md)
 för säkerhetsgränser, verifiering och återstående aktivering. REST-controllers
 använder typade Kotlin data classes för svar. OpenAPI genereras från controller-
 signaturer och DTO-annoteringar med springdoc, och TypeScript-typer härleds från
@@ -19,11 +20,42 @@ Kotlin-tjänster namnges med suffixet `Service`, exempelvis `InvitationService`.
 Varje moduls interna databasmodeller samlas i `Entities.kt` och repository-
 interface i `Repositories.kt`. DTO:er ligger i separata filer från tjänstelogiken;
 modulen `activities` äger aktiviteter/kallelser och `identity` konto/session och
-familjeåtkomst. Modulith verifierar beroendet `activities` → `identity` (ADR-015).
+personåtkomst. Modulith verifierar beroendet `activities` → `identity` (ADR-015).
+
+Ett avskilt [browserflöde](migration/browser-participation.md) återanvänder
+inloggning, sidskal och kallelsesvar genom de befintliga Next-rutterna till
+Kotlin. Backend väljs endast i servermiljön och är `legacy` som standard.
+Testläget använder nya seedens ID:n och gör ingen fallback efter ett misslyckat
+Kotlin-anrop. Ordinarie översikt är fortsatt inte omkopplad.
+
+Den separata [browser-frontendens pilot](../frontend/README.md) i `frontend/`
+återanvänder gemensamt sidskal, header, meny, sidfot och kallelsesvar men kör
+React/Vite utan Next-server. Kotlin hanterar lösenords-/passkey-inloggning,
+tokenförnyelse; Spring Session JDBC äger serversessionens lagring, cookie och inaktivitet. Browsern skickar en ogenomskinlig HttpOnly-
+cookie direkt genom Vercels `/api/*` till Kotlin; access- och refresh-token
+lagras krypterat i det privata schemat och når inte frontenden. Backend äger
+behörighets- och sessionskontrollen. Se [webbsessioner](migration/web-sessions.md)
+och ADR-018, som ersätter ADR-017:s browserlagrade Bearer-token. Publik
+runtimekonfiguration innehåller endast det nya projektets Auth-URL,
+publishable key, version och valfri startaktivitet. Se ADR-017.
+
+[Actions-deployen för Kotlin-sajten](migration/actions-deployment.md) bygger
+statisk frontend och Java 25-API i en gemensam Vercel Services-deployment.
+Ingen privat frontend → backend-binding behövs i browserpiloten. Bara de nya
+rutterna ändras i detta projekt; gamla sajtens projekt och Next-deploy är
+separata. Den äldre Next → Kotlin-adaptern ligger kvar som historiskt prov.
 
 Förena byggs som en multi-tenant-applikation där varje skrivning går genom ett
 validerat applikationskommando. Gränssnitt och AI-assistent använder samma
 kommandon; AI:n får aldrig direkt databasåtkomst.
+
+Den nya webbens startsida visar **Mina aktiviteter** via `GET /api/me/activities`.
+`PersonAccessService` härleder egen och delegerad personåtkomst; familj är inte
+ett backendbegrepp. Relationen `guardian` är ett möjligt underlag för en aktiv
+åtkomsttilldelning. Inga nya relationstyper får rättigheter automatiskt.
+Översikten använder en avgränsad Spring Data JDBC-läsprojektion och återanvänder
+`MyActivityList` på startsidan och `/components`. Se ADR-020 för urval,
+sidindelning och skillnader mot gamla översikten.
 
 ## Lager
 

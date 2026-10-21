@@ -3,6 +3,103 @@
 Status anger målbeslut för kommande implementation, inte redan införd teknik.
 Källkodsverifierat nuläge finns i [inventeringen](inventory.md).
 
+## ADR-020: Personåtkomst och Mina aktiviteter
+
+Beslut 2026-10-21 på användarens instruktion: backend använder personåtkomst,
+inte familj som behörighetsbegrepp. `PersonAccessService` härleder vilka personer
+kontot får företräda; egen identitet och delegerad åtkomst använder samma kontroll.
+`MyInvitations`/`AccessibleInvitation` ersätter familjenamn i Kotlin/kontrakttyper;
+befintliga kallelserutters JSON-fält och URL:er behålls.
+
+`person_access` är en uttrycklig åtkomsttilldelning, inte en katalog över sociala
+relationer. I dag stöds endast `self` och `guardian`, med oförändrade rättigheter.
+Andra underlag kan vara ett utsett ombud eller en stödperson. En ny relationstyp
+får inte automatiskt ge åtkomst: definiera läs-/svarsrätt, giltighet, samtycke och
+återkallning före införande. Släktskap och ledarroll ger ingen generell rätt att
+företräda en person. Inga nya relationstyper eller generella fullmakter införs nu.
+
+`GET /api/me/activities` använder verifierad personåtkomst och returnerar varje
+kallelsekopplad aktivitet en gång över samtliga berörda föreningar. Pågående och
+kommande ej inställda aktiviteter med start inom 90 dagar ingår, även nej-svar
+och ännu inte utskickade kallelser. Före utskick visas inga kallelsesvar via det
+befintliga detalj-API:t. Listan har 50 poster/sida, stabil starttid/UUID-sortering
+samt explicit offset; samtidiga ändringar kan flytta sidgränser.
+
+Spring Data JDBC äger fortsatt repositories/CRUD enligt ADR-011. För denna
+avgränsade, sidindelade läsprojektion används en parameteriserad `@Query` för
+activity/invitation/team/organization. Behöriga person-ID:n härleds av identitys
+publika tjänst före frågan, aldrig av klienten. Detta undviker obegränsad
+inläsning av kallelser eller en fråga per aktivitetsrad; inga korsvisa repository-
+anrop eller skriv-SQL införs. Migration 009 ger enbart runtime läsning av lagets
+ID, organisation och namn. Ingen ny klientåtkomst, RLS eller databasfunktion.
+
+Kotlin-schemat saknar ännu lagmedlemskap, arbetspass och föreningstidszon.
+Översikten avgränsas därför till kallelsekopplade aktiviteter och visar uttryckligen
+svensk tid. Full motsvarighet till gamla personliga översikten återstår.
+
+## ADR-019: En Kotlin-kodbas direkt i backend
+
+**Beslut 2026-10-21 på användarens instruktion:** verksamhets-API:t flyttas
+från underkatalogen `api` till `backend/`. Där finns ett Maven-projekt med
+Java 25, produktionskod, tester, kontrakt och hjälpskript. Paketnamn,
+artefaktnamn, HTTP-rutter och verksamhetens Liquibase-historik behålls.
+
+M21/M22-probets kod, SQL, tester, `scripts/probe/` och gamla Vercel-/Docker-
+konfiguration tas bort. Resultat och evidens i migreringsdokumentationen
+bevaras som historik; deras provkommandon och gamla källsökvägar avser den
+revision där proven kördes och kan inte köras mot dagens kodbas.
+Ingen driftsatt tjänst, databas eller schemaläggare ändras av denna kodstädning.
+CI, frontendens kontraktsimporter och verksamhets-API:ts körinstruktioner
+använder nu `backend/`. Release använder fortsatt CI:s verifierade native-image.
+
+## ADR-018: Serversession och HttpOnly-cookie för nya webben
+
+**Uppdatering 2026-10-20:** på användarens instruktion ersätts den egna
+sessionsmekaniken med Spring Session JDBC. Ramverket äger servletsession,
+lagring, timeout, cookieflaggor och städning. En liten Supabase-adapter behåller
+krypterade tokens, absolut maxlivstid och serialiserad refresh. Cookiens
+Spring-ID krypteras med befintlig AES-GCM för att behålla skyddet mot återspel
+av lästa databas-ID:n. Migration 008 är additiv och lämnar gamla tabellen kvar
+för reversibel rollout; användare loggar in på nytt.
+
+Beslut 2026-10-20, ärende [#135](https://github.com/johkin/forena/issues/135):
+Kotlin äger webbinloggning, förnyelse och utloggning. Browsern får enbart ett
+slumpmässigt sessions-ID i en HttpOnly/Secure-cookie. Leverantörens tokens
+lagras krypterat på serversidan; ingen localStorage/sessionStorage eller
+JavaScript-läsbar cookie ersätter den gamla tokenlagringen. Detta ersätter
+ADR-017:s browserlagrade Bearer-modell, inte dess statiska frontend/routing.
+
+Sessionslagringen ligger i det privata PostgreSQL-schemat, separat från
+verksamhetsdata. Delade radlås skyddar refresh-tokenrotation över instanser.
+Befintlig JWT-verifiering, aktuell leverantörssession och verksamhetsbehörighet
+behålls. Publika sidor och uttryckliga publika API-rutter förblir öppna; en
+gateway som blockerar hela frontenden införs inte. Cookie-skrivningar kräver
+CSRF-skydd. Passkey använder leverantörens tvåstegs-API utan att token passerar
+browsern och utan full sidomladdning.
+
+[Implementation, livslängd, driftskrav och verifieringsgränser](web-sessions.md).
+Gamla Next-appen/MCP och dess projekt migreras inte av detta beslut.
+
+## ADR-017: Separat browser-frontend för första Kotlin-flödet
+
+**Beslut 2026-10-19 på användarens instruktion:** bygg en separat React/Vite-app
+under `frontend/`, parallellt med dagens Next-app. Första avgränsningen är
+lösenordsinloggning och kallelsesvar. Återanvänd produktionskomponenter och
+utseende; kopiera inte databaslogik, server actions eller hemligheter till
+browsern. Ordinarie funktionsparitet flyttas flöde för flöde när Kotlin har API.
+
+Vercel routar `/api/*` direkt till Kotlin och övrigt till statiska frontendfiler.
+Frontend behöver ingen Node-server, SSR eller privat servicebinding i detta
+flöde. JWT erhålls från det nya Supabase Auth-projektet och skickas som Bearer
+på samma origin. Kotlin behåller JWT-/leverantörsverifiering, konto-/sessions-
+kontroll och familjebehörighet enligt ADR-012/016. Ingen browserstyrd databas-
+eller legacy-fallback införs. Publicering kräver API/JDBC-health och exakt
+statisk frontendversion; nycklar och projektgränser verifieras som tidigare.
+
+M18B:s fulla flytt och publika renderings-/PWA-grindar är fortfarande öppna.
+Gamla Next-appen och dess separata Vercel-projekt fortsätter köras parallellt.
+[Byggning, körning och gränser](../../frontend/README.md).
+
 ## ADR-016: Aktuell Auth-status genom leverantörsadapter före pilot
 
 Implementationsval 2026-10-19 inom användarens uppdrag för målmiljö/Auth:
@@ -137,7 +234,7 @@ RLS-/identitetsdelen nedan ersätts av ADR-012.
 
 **Beslut 2026-10-19 på användarens instruktion:** verksamhets-API:t använder
 Spring Data JDBC och smala `Repository`-interface. Detta ersätter ADR-003:s val
-av handskriven CRUD med JdbcClient/JdbcTemplate för `backend/api`. Spring Boot
+av handskriven CRUD med JdbcClient/JdbcTemplate för `backend`. Spring Boot
 4.1.0:s BOM låser Spring Data JDBC/Relational till 4.1.0; ingen JPA införs.
 
 Läsningar, existenskontroller och svarsskrivning använder genererade frågor.
@@ -170,7 +267,7 @@ motsvarande funktioner kan aktiveras i den rena miljön. Det nya API:t får aldr
 skriva till den gamla databasen som reserv. Att gamla data inte importeras ger
 ingen rätt att radera det gamla projektet eller ändra dess Auth-inställningar.
 
-Första implementationen finns i `backend/api`, separat från M21/M22-provet.
+Verksamhetsimplementationen finns nu direkt i `backend`; M21/M22-provet är borttaget enligt ADR-019.
 Läsning och svar, familje-RLS, livscykellås och atomär revisionshistorik ingår.
 En beständig signalversion sparas, men full signalreaktion, Auth-livscykel,
 provisionering av verksamhetsdata, Next-adapter och driftaktivering återstår.
@@ -277,6 +374,15 @@ påstår en besparing. Ingen produktion har ändrats genom detta planeringsbeslu
 
 
 ## ADR-001: Verktygskedja och repo — fastställt
+
+**Uppdatering 2026-10-19 på användarens instruktion:** verksamhets-API:t i
+`backend` använder Java **25**, inklusive Kotlins bytekodsmål och
+`BP_JVM_VERSION` i Spring Boots imagekonfiguration. Oracle-leverantör och exakt
+JDK-patch krävs inte längre för API:t. CI/release använder Temurin 25 och
+release-imagen får samma JDK som paketeringen. Teknikprovets tidigare resultat
+och Java 26-konfiguration behålls separat. Övriga versionsval nedan är oförändrade.
+
+Ursprungligt teknikprovsbeslut:
 
 Spring Boot **4.1.0**, Kotlin **2.4.20**, Java **26**. Bygg och kör med JDK 26.
 Ingen automatisk nedgradering eller uppgradering. Tillgänglighet är skild från

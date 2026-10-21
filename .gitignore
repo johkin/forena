@@ -2,6 +2,8 @@ node_modules
 .next
 out
 coverage
+/work/
+backend/scripts/__pycache__/
 .env
 .env.local
 .env.*.local
@@ -15,3 +17,15 @@ supabase/.temp
 
 # Generated once per production build
 public/app-version.json
+
+# Staged Kotlin frontend container contents
+/deploy/frontend/app/
+/deploy/frontend/public/
+.vercel/
+scripts/deploy/__pycache__/
+
+# Separate static browser application
+/frontend/dist/
+/frontend/public/config.json
+/frontend/public/app-version.json
+/frontend/.evidence/

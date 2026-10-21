@@ -1,0 +1,6 @@
+**
+!app
+!app/**
+!public
+!public/**
+!entrypoint.sh

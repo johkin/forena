@@ -1,13 +1,35 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { activitiesByDate } from "@/lib/activity-range";
 import type { Activity } from "@/domain/club";
 
 type Props = { activities: Activity[]; timeZone: string; onSelectActivity: (activity: Activity) => void; heading?: string; eventLabel?: (activity: Activity) => string; showAllEvents?: boolean };
 
+const formatters = new Map<string, Intl.DateTimeFormat>();
+function getFormatter(timeZone: string, optionsKey: string, options: Intl.DateTimeFormatOptions) {
+  const key = `${timeZone}:${optionsKey}`;
+  let formatter = formatters.get(key);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("sv-SE", { timeZone, ...options });
+    formatters.set(key, formatter);
+  }
+  return formatter;
+}
+
+const enCAFormatters = new Map<string, Intl.DateTimeFormat>();
+function getEnCAFormatter(timeZone: string) {
+  let formatter = enCAFormatters.get(timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" });
+    enCAFormatters.set(timeZone, formatter);
+  }
+  return formatter;
+}
+
 function localDateKey(value: string, timeZone: string) {
-  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(value)).map((part) => [part.type, part.value]));
+  const formatter = getEnCAFormatter(timeZone);
+  const parts = Object.fromEntries(formatter.formatToParts(new Date(value)).map((part) => [part.type, part.value]));
   return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
@@ -17,8 +39,9 @@ export function TeamCalendar({ activities, timeZone, onSelectActivity, heading =
     const [year, month] = initial.split("-").map(Number);
     return { year, month };
   });
-  const formatter = useMemo(() => new Intl.DateTimeFormat("sv-SE", { timeZone, hour: "2-digit", minute: "2-digit" }), [timeZone]);
-  const title = new Intl.DateTimeFormat("sv-SE", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(cursor.year, cursor.month - 1, 1)));
+  const formatter = getFormatter(timeZone, "time", { hour: "2-digit", minute: "2-digit" });
+  const titleFormatter = getFormatter("UTC", "title", { month: "long", year: "numeric" });
+  const title = titleFormatter.format(new Date(Date.UTC(cursor.year, cursor.month - 1, 1)));
   const first = new Date(Date.UTC(cursor.year, cursor.month - 1, 1));
   const offset = (first.getUTCDay() + 6) % 7;
   const days = new Date(Date.UTC(cursor.year, cursor.month, 0)).getUTCDate();
@@ -46,4 +69,3 @@ export function TeamCalendar({ activities, timeZone, onSelectActivity, heading =
     </div>
   </section>;
 }
-

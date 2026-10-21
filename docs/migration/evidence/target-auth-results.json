@@ -1,0 +1,26 @@
+{
+  "project_ref": "ckzrtxqjskosqzoitymc",
+  "checked_at": "2026-10-19T11:13:03.233279919Z",
+  "passed": true,
+  "checks": [
+    "real-password-login",
+    "issuer-audience-asymmetric-signature",
+    "family-isolation",
+    "refresh",
+    "local-logout-old-jwt-denied",
+    "other-session-preserved",
+    "global-logout",
+    "relogin",
+    "provider-ban",
+    "provider-soft-delete",
+    "no-rejected-writes",
+    "cleanup"
+  ],
+  "not_tested": [
+    "email-delivery",
+    "browser-pkce",
+    "passkeys",
+    "oauth-mcp",
+    "cloud-runtime"
+  ]
+}

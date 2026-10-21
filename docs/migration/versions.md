@@ -1,5 +1,16 @@
 # Tillgänglighet och kompatibilitet
 
+Aktuell API-konfiguration från 2026-10-19: `backend` använder **Java 25**,
+Kotlin kompilerar till JVM 25 och Spring Boots build-image får
+`BP_JVM_VERSION=25`. CI/release använder Temurin 25 utan Oracle-/patchkrav.
+Lokalt verifierat med Temurin 25.0.4.1: Maven clean verify (35 tester),
+paketerad JAR:s migrations-/runtimeprov och oförändrat OpenAPI-/TypeScript-kontrakt
+är godkända. API-bytecode har class major 69 (Java 25). Buildpack-imagebygget
+är fortfarande blockerat av lokal Docker/VFS-diskkapacitet.
+M21/M22-probets kod och verktygskedja är borttagna enligt ADR-019.
+Nedanstående Java 26-resultat gäller det tidigare isolerade teknikprovet;
+se [ADR-001](decisions.md#adr-001-verktygskedja-och-repo--fastställt).
+
 Verifierat 2026-10-18. Uppdragets versioner är oförändrade: **Spring Boot 4.1.0,
 Kotlin 2.4.20 och Java 26**. Provet använde JDK **26.0.2.1** från Oracle för
 både Maven, Kotlin-kompilering och testkörning. Ordinarie miljö har JDK 21 och
@@ -94,7 +105,7 @@ Miljöns proxy och TLS-kontroll behölls. `supabase.com/changelog.md` och Java.n
 
 ## Springdoc i första verksamhets-API:t
 
-`backend/api` låser `springdoc-openapi-starter-webmvc-api` till **3.1.1** med
+`backend` låser `springdoc-openapi-starter-webmvc-api` till **3.1.1** med
 Spring Boot 4.1.0, Kotlin 2.4.20 och Jackson 3.1.4 från Boot. Den officiella
 [dokumentationen](https://springdoc.org/) anger springdoc 3.x för Boot 4;
 Maven Central publicerar 3.1.1 som stabil version. Kompatibiliteten verifieras

@@ -1,20 +1,311 @@
 # Migreringsstatus
 
+## Mina aktiviteter och personåtkomst, 2026-10-21
+
+Branch `feat/my-activities`, från main `62247c7` (PR #148).
+[ADR-020](decisions.md#adr-020-personåtkomst-och-mina-aktiviteter) och
+[M07A](tasks/m07a-activity-overview.md) beskriver aktuell modell och avgränsning.
+
+Startsidan i Vite visar nu **Mina aktiviteter** utan förvalt aktivitets-ID.
+`GET /api/me/activities` listar kontots kallelsekopplade aktiviteter genom egen
+eller delegerad personåtkomst, över föreningsgränser och utan dubbletter.
+Pågående/kommande ej inställda aktiviteter med start inom 90 dagar ingår,
+inklusive nej-svar och ännu inte utskickade kallelser. 50 aktiviteter/sida,
+starttid/UUID-sortering och `next_offset`; samtidiga ändringar kan flytta sidor.
+Klubb, lag och uttryckligen svensk tid visas; länken öppnar befintligt svarflöde.
+Laddning, tomt, fel/återförsök och samma produktionskomponent finns på `/components`.
+
+Kotlin använder `PersonAccessService`, `AccessiblePerson`, `MyInvitations` och
+`AccessibleInvitation`, utan familj som kodbegrepp. Tilldelningarna `self` och
+`guardian` ger oförändrad personåtkomst; andra relationstyper införs inte nu.
+Befintliga kallelserutters URL:er och JSON-fält är oförändrade; genererade
+scheman har nya namn. En parameteriserad, begränsad läsprojektion i Spring Data
+JDBC undviker att ladda hela kallelsemängden. Migration 009 ger endast runtime
+kolumnläsning av lag-ID, organisation och namn. Tidigare migrationer är orörda.
+
+Verifierat lokalt på denna branch:
+
+- Java 25 Maven `verify`: 66 tester, 0 fel, 1 valfritt browserprov överhoppat.
+  Nytt urval, egen/delegerad åtkomst, andra konton/föreningar, återkallad
+  åtkomst, inaktiv session, sidindelning och nio migrationsbaslinjer ingår.
+- Det valfria browserprovet kördes därefter med
+  `FORENA_LOCAL_BROWSER_TEST=true FORENA_BROWSER_EXECUTABLE=/usr/bin/chromium`
+  och Maven `'-Dtest=ApiTest#real*' test`: 2 tester, 0 fel/överhoppade.
+  Browser → riktig Kotlin → lokal PostgreSQL → svar/omladdning/logout är grönt;
+  endast Auth-leverantören är kontrollerad. En lokal transportbrygga bevarar
+  HTTPS-origin och Secure-cookie; detta är inget driftsatt Vercel-/Supabase-prov.
+- Paketerad JAR via `backend/scripts/local-smoke.py`: bootstrap, migrering två
+  gånger, runtime utan ägarkonto, health, Auth-budget och avstängning godkända.
+- 1 146 Vitest-tester, båda apparnas typkontroll, lint, Next-produktionsbygge
+  och Vite-produktionsbygge godkända. OpenAPI/TS genererade från riktig Spring
+  HTTP-export; upprepad generation ger bytevis identiskt kontrakt.
+- `scripts/migration/browser-frontend-mock.mjs`: startsida/lista/detalj/svar,
+  sidindelning, 503/återförsök, kontobyte, logout, tangentbordsmeny och galleri
+  godkända. Ingen horisontell overflow vid 320/375/390/768/1440 px. Mobil och
+  desktop visuellt granskade med syntetiska data.
+
+Initiala verifieringshinder är rättade: Maven behövde miljöns proxy och CA,
+frontendens förinstallerade beroenden saknade Vite-pluginen och Next-byggets
+underprocess behövde normal exekveringsåtkomst. Befintliga kontrakts-/granttester
+uppdaterades för den nya rutten och lagets kolumnläsning; ovan avser godkända
+omkörningar. Inga kontroller eller skydd har stängts av.
+
+Ej körda: nytt native-bygge och verkligt driftsatt Auth/browserprov. Ingen
+molnmigration, deployment eller ändring av projektinställningar har gjorts.
+Migration 009 och ombyggd native-image krävs före aktivering. Nya Liquibase-
+schemat är verifierat mot lokal PostgreSQL; gamla appens Supabase-reset/pgTAP
+har inte körts för detta separata schema.
+
+Nästa grind är aktuell gemensam native-release och inloggat prov i målmiljön.
+Lagmedlemskap utan kallelse, arbetspass och föreningstidszon saknas ännu i Kotlin.
+M06:s fulla signalworker, M22G:s driftgrindar och återstående M03-metoder
+(passkey gav senast `passkey_disabled`) återstår. M07 och full M18B är inte
+accepterade enbart genom denna avgränsade översikt. Äldre rapporter nedan är
+historiska; deras ”nästa steg” ersätter inte denna uppföljning.
+
+**2026-10-21:** Kotlin-koden är samlad direkt i `backend/` enligt
+[ADR-019](decisions.md#adr-019-en-kotlin-kodbas-direkt-i-backend).
+M21/M22-probets kod, skript och deployfiler är borttagna. Dokumenterade
+provresultat och evidens bevaras; äldre provkommandon/källsökvägar gäller
+historiska revisioner och beskriver inte körbar kod i dagens repo.
+
+Lokal verifiering av katalogstädningen 2026-10-21: Java 25 Maven `verify`
+är godkänd (61 tester, varav ett valfritt browserprov överhoppat). Paketerad
+JAR har klarat `backend/scripts/local-smoke.py`: färsk bootstrap, migrering
+två gånger, runtime utan ägarcredential, DB/Auth-/sessionshealth och avstängning.
+Vitest: 1 145 tester godkända. Typkontroll, lint, Next-produktionsbygge,
+Vite-frontendbygge, kontraktsgeneration/-kontroll och 15 releasegrindtester
+är godkända. OpenAPI, genererade typer, produktionskod och verksamhetens
+migrationsfiler är oförändrade efter flytten. Två tester har justerade relativa
+filsökvägar. Native-image och driftat browser-/Auth-prov har inte körts för
+katalogstädningen; ingen deployment eller ändring i målmiljön har gjorts.
+
 Uppdaterad 2026-10-19. Inventeringsbas: `c379a96719490bc4edbfcb0a4ee7a1947684ddce`.
 Planens uppgifter finns i [uppgiftsindex](tasks/README.md).
 
-## Målmiljö och Auth-livscykel: verkligt Auth-prov godkänt, API-/databasprov återstår
+## Bekräftat TLS-fel vid Auth-nyckelhämtning
 
-Arbetsbranch `feat/target-auth-lifecycle`, bas main `b0bfae9` (PR #112 mergad).
-[Körning och begränsningar](target-auth-lifecycle.md), [evidens](evidence/target-auth-readiness.json).
+Efter PR #124, main `312cb51`, svarar aktivitetens API 503 utan att logga ut.
+Vercel-loggarna för `dpl_AEEyQRwtotNvNfEx8jXd4dousebK` visar den
+2026-10-19 21:38 UTC `api_auth_failed stage=jwt reason=jwks_tls`.
+Det bekräftar TLS-fel på Kotlin → Supabase JWKS, före familjeåtkomst.
 
-`forena-kotlin` har nu ett nytt tomt privat `forena`-schema, separata NOLOGIN-
+Branch `fix/auth-platform-ca` använder samma Auth-HTTP-klient för JWKS och
+`/user`. Truststore förenar Java-, system- och uttryckliga plattforms-CA-rötter;
+entrypointen bevarar CA-sökvägen före miljörensning. Klienten behåller normal
+kedje-/värdnamnsverifiering, nekar redirects och stoppar felaktig CA-konfiguration.
+Release-health hämtar nu också Auths publika nycklar med samma klient, så ett
+kvarstående TLS-fel stoppar promotion i stället för att passera enbart JDBC-health.
+
+Lokala TLS-prov verifierar extra CA, nekad okänd CA och fel värdnamn samt
+saknad/felaktig CA-konfiguration. Molnverifiering och inloggat aktivitetsflöde
+återstår efter merge; exakt certifikatkedja i Vercel har inte kunnat inspekteras.
+Ett verkligt HTTPS-prov mot målprojektets JWKS återskapar `jwks_tls` med
+enbart den paketerade JDK:ns rötter och lyckas med den nya klientens systemrötter
+genom arbetsmiljöns proxy. Inga Auth-konton, sessionsdata eller verksamhetsdata
+behövs för det provet. Det verifierar CA-mekanismen lokalt, inte Vercels kedja.
+Slutkontroller godkända: Java 25 Maven verify med 41 tester, 1 142 Vitest-tester,
+båda apparnas typkontroll, lint, Next-produktionsbygge, nio releasegrindtester
+och Actionlint. Health-regressionen stoppar vid nekad nyckelhämtning och
+återhämtar sig utan att exponera komponenter, URL:er eller exceptiontext.
+Även paketerad JAR är verifierad med två migreringsstarter, runtime utan
+ägarkonto, lokal JWKS-server, nekad/återställd Auth-health och Bearer-krav.
+Det äldre startprovet använde en adress utan nyckelserver och uppdaterades
+när CI korrekt nekade den nya health-kontrollen. OpenAPI-/typkontraktet passerar.
+
+## Fortsatt utloggning: verifieringsfel och säker auth-diagnostik
+
+Branch `fix/jwt-verification-diagnostics` från main `5cc4759`.
+PR #123 är driftsatt som `dpl_EUYYWmGiPs1Ny4anhd7XQJj4gh5z`, men användaren
+rapporterar fortsatt utloggning vid aktivitetshämtning. Cookie-rättningen var
+inte tillräcklig; molnfelets exakta orsak är fortfarande inte fastställd.
+Browserns Response är `{"error":"Inloggning krävs."}`, vilket identifierar
+Kotlin-säkerhetsfiltrets 401 före aktivitetshanteraren, inte Vercels HTML-skydd.
+
+JWT-decodern gjorde tidigare alla verifieringsfel till 401, inklusive ett
+otillgängligt JWKS-endpoint. Nu ger TLS-, timeout-, HTTP- och anslutningsfel
+503/no-store utan att återkalla browserns appsession. Ogiltiga tokens/claims
+ger fortsatt 401 och inga operationer tillåts utan verifierad signatur.
+Loggar skiljer fasta felkategorier och saknad Bearer utan känslig feltext.
+API-regressionen provar ett verkligt HTTP-503 från nyckelservern, oförändrad
+databas, fortsatt cached-key-verifiering och rotation. Separata tester täcker
+TLS/timeout och frånvaro av token/exceptiontext i loggarna.
+Efter merge behövs ett nytt molnanrop för att läsa exakt felkategori; detta
+är inte ett påstående att den faktiska anslutningsorsaken är åtgärdad.
+Lokalt godkänt: Maven verify med 38 tester på Java 25, 1 142 Vitest-tester,
+båda apparnas typkontroll, lint och befintliga Next-appens produktionsbygge.
+
+## Browserpilot: rättning för Vercel Deployment Protection
+
+Branch `fix/protected-browser-api`, från main `596f8b0` (PR #122 mergad).
+Användaren kan logga in men loggas ut när aktivitetens API hämtas. Databasen
+bekräftar aktivt konto, familjeåtkomst och två kallelser. En färsk riktig
+Supabase-token passerar Java 25-backendens JWT-decoder lokalt. Vercel-projektet
+har SSO-skydd `all_except_custom_domains`; klientens `credentials: omit`
+utelämnade skyddscookien och behandlade alla 401 som ogiltig appsession.
+
+API och publik config använder nu `same-origin`. Kotlin autentiserar fortsatt
+med Bearer. Bara API:ts uttryckliga 401/JSON loggar ut ur Supabase; plattformens
+nekade åtkomst bevarar appsessionen. Browserregressionen kräver en syntetisk
+Vercel-cookie och provar separat plattforms-401 och Kotlin-401.
+Riktig inloggad Vercel-verifiering återstår efter merge: den autentiserade
+fetch-anslutningen nekades av Vercels skydd även med dess skapade delningslänk.
+Lokalt är 1 142 Vitest-tester, båda apparnas typkontroll, lint och
+produktionsbyggen godkända. Browserregressionen med kontrollerade svar passerar
+cookiekontrollen för API/config, båda 401-fallen samt tidigare pilotflöden.
+
+## Separat browser-frontend: första pilotflödet på branch
+
+Branch `feat/browser-frontend`, bas main `b6ae962`. På användarens instruktion
+byggs en separat React/Vite-app parallellt med Next. Inloggning med lösenord
+och familjens kallelsesvar går via browser → Vercel → Kotlin. Gemensamma UI-
+komponenter, design och `/components` återanvänds. Backend/JWT/session/åtkomst
+är oförändrade; inga tabeller, migrationer eller verksamhetsgenvägar införs.
+[Omfattning, körning och återstående funktioner](../../frontend/README.md).
+
+Lokal verifiering: frontendens kontrollerade browserprov passerar loginfel,
+inloggning, Bearer-anrop utan cookies, sparande/omladdning, nekad session,
+kontobyte, utloggning, komponentreferens och tangentbordsmeny. Ingen horisontell
+scroll vid 320/375/390/768/1440 px; mobil/desktop visuellt granskade.
+1 138 Vitest-tester, båda apparnas typkontroll, lint och produktionsbyggen samt
+åtta releasegrindtester är godkända. Actionlint och Vercel CLI 60.1.3:s
+konfigurationsvalidering är godkända.
+Kotlin: Maven verify med 35 tester på Java 25 är godkänt. Fullt
+browser → Kotlin → Supabase-prov stoppades av TCP-policyn vid den läsande
+pooler-kontrollen, före Auth-/verksamhetsseed; återställning av det privata
+provets status är verifierad utan kvarvarande skapade konton eller data.
+Ny Vercel-deployment, riktiga Supabase-browserflödet och full M18B-paritet är
+ännu inte verifierade. Tidigare deployförsök med privat binding nedan avser
+Next-piloten, inte bevis för den nya statiska frontendens drift.
+
+## Actions-deploy för parallell Kotlin-sajt: implementation på branch
+
+Uppföljning efter merge av PR #117: main-CI `39262001035` föll i det befintliga
+WhatsApp-pgTAP-testet, medan frontend- och båda Kotlin-jobben passerade.
+Omkörning av enbart misslyckade jobb på samma `b3ff6ef` blev grön och startade
+deployflödena. Orsaken är testernas transaktionsfasta `now()` som kan hamna före
+parkopplingsbevisens `clock_timestamp()` efter en sekundgräns. Lokalt PostgreSQL-
+prov med avsiktlig fördröjning återskapar skillnaden. Rättningen använder aktuella
+händelsetider i de två WhatsApp-testfilerna och tvingar en sekundgräns för att
+fånga regressionen. Databasens produktionsfunktioner, migrationer och CI-grindar
+ändras inte. Teständringen på `7de0b05` har grön PR-CI; senare adapterändringar
+behöver verifieras på sin egen revision.
+
+Första riktiga Kotlin-deployen, `39263714818` på `b3ff6ef`, byggde och laddade
+upp båda containerbilderna och skapade `dpl_9u3qpQh6Cipge9yF2KVFVa3f5cVU`.
+Hälsokontrollen gav därefter generiskt 503 och ingen explicit promotion kördes.
+Runtime-loggarna gav inget felsteg, så exakt 503-orsak är ännu inte fastställd.
+Den kanoniska adressen `forena-kotlin.vercel.app` pekar fortfarande på tidigare
+deployment; Vercels genererade team-alias pekar redan på stagingdeploymenten.
+
+Uppföljningen skiljer intern `FORENA_KOTLIN_SERVICE_URL` från direkt test-origin.
+Intern HTTP och eventuella routingprefix/sökparametrar bevaras enligt bindingens
+bas-URL, utan origin-/legacy-fallback. Hälsokontrollen loggar fasta felsteg och
+HTTP-status utan URL, tokens, exceptiontext eller felkropp. Startskriptets två
+konfigurationsgrindar får också säkra felmeddelanden. Lokalt: 1 112 Vitest-tester,
+typecheck, lint, standalone-bygge och sex releasegrindtester godkända. Paketerad
+frontend/startskript har verifierats mot en riktig intern HTTP-stub med prefix
+och sökparameter: login/health 200, exakt byggversion och inga DB-/adminvariabler
+i webbprocessen. Ny molnverifiering kräver nästa granskade main-release.
+Full lokal Supabase-reset/pgTAP kunde inte köras: standardregistret blockeras
+av nätpolicyn och spegelbildens uppackning gav `no space left on device` i
+Docker-miljön. Lokalt PostgreSQL-tidsprov är godkänt; inga molndatabaser ändrades.
+
+Branch `ci/kotlin-vercel-deploy`, från main `e0953a3` efter PR #116.
+Användaren har kopplat bort Vercels Git-integration för den nya sajten och
+beställt deploy av frontend/backend genom GitHub Actions.
+[Körinstruktion, engångskonfiguration och gränser](actions-deployment.md).
+
+Ny workflow väntar på grön CI för exakt aktuell main-SHA, även vid manuell
+körning. Next standalone och verksamhets-API paketeras som separata containrar
+och publiceras atomärt genom Vercel Services (beta), med privat API-binding.
+Staging sker med `--skip-domain`; Next → API → JDBC-health och frontendens
+versions-ID måste godkännas före promotion. Gamla deployworkflowen är separat.
+Startskripten begränsar applikationsprocessernas miljö; inga migreringar,
+bootstrap, seed, utskick eller full signalworker införs.
+
+Lokal verifiering: 1 102 Vitest-tester, typecheck, lint och standalone-
+produktionsbygge godkända. Sex exekverade releasegrindtester och Actionlint
+godkända; Vercel CLI 60.1.3 accepterar Services-konfigurationen. API Maven
+verify: 35 tester, 0 fel/överhoppade; paketerat bootstrap-/migrerings-/runtimeprov
+godkänt. Båda containerbilderna byggda lokalt; frontendens login/health,
+versionsmatchning och avsaknad av privilegierade variabler i Node-processen
+verifierade mot en kontrollerad health-stub. API-bildens låsta JVM startar.
+Det lokala stubprovet är inget nytt moln-/databas-/browserprov.
+
+Vercel-projektets Root Directory har satts till reporoten och Production-
+konfiguration för SITE_URL, runtime-användarnamn och JDBC/TLS lagts in utan
+deployment. Runtime-lösenord och GitHub-miljöns secret/skydd behöver konfigureras
+direkt i respektive tjänst; de har inte lästs eller överförts av denna leverans.
+PR/CI redovisas i leveransrapporten. Molndeploy och
+promotion är inte verifierade i denna implementation; GitHub-miljöns Vercel-token,
+Vercels runtimekonfiguration och mergad workflow på main krävs före första release.
+Avsaknad av syntetiskt aktivitets-ID gör fortfarande testsidan 404 och är inte
+ett fel i deployen. Övriga M07-/Auth-/pilotgrindar kvarstår.
+
+## M07: avskilt browserflöde genom Next och Kotlin godkänt
+
+Branch `feat/kotlin-browser-flow`, från main `548d627` efter mergad PR #114.
+[Körinstruktion och gränser](browser-participation.md),
+[källbunden browser-/databasevidens](evidence/browser-participation-results.json).
+
+De två befintliga Next-rutterna för familjekallelser/svar har nu en serverstyrd
+Kotlin-adapter som är avstängd som standard. Den avskilda sidan
+`/migration/participation` använder nya seedens ID och återanvänder inloggning,
+sidskal, kontomeny, footer och svarskomponent. Kontraktstyperna importeras från
+den genererade Kotlin-specen. Fel/timeout/redirect ger ingen retry eller
+legacy-fallback. Origin-skyddet använder kanonisk `SITE_URL` och verifieras även
+när Next har en intern request-URL bakom en proxy.
+
+Verifierat 2026-10-19 kl. 13:48 svensk tid i tillfällig Vercel Sandbox i
+Frankfurt: **14 godkända browserkontroller** med riktig lösenordsinloggning,
+SSR-cookies, Next → Kotlin → privat JDBC-databas. Två barn läses; svar,
+kommentar, nej, återställning och omläsning fungerar. Kommentarändring bevarar
+svarstid och signalversion, identisk upprepning skapar inget nytt. Annan familj
+nekas med 404/403 och gamla cookies efter logout med 401 utan ändrad historik.
+Ett verkligt avbrott av API-processen ger 503 utan fallback eller databasändring.
+Mobilbredder 320/390/768 och desktop 1440 har ingen horisontell overflow;
+meny/Escape och komponentsidans kontomenyvariant är verifierade. Mobil- och
+desktopbilder granskade.
+
+Seeden och ettkommando-körningen är versionshanterade. Både full körning med
+byggen och slutlig återkörning med samma artefakter är godkända. Privilegierade
+credentials används endast i testprocessen; Next och Chromium får inga sådana,
+och API:t får bara runtime-credential. Testet städar i `finally`. Slutlig
+oberoende SQL bekräftar **noll syntetiska browserkonton och noll rader i alla
+tio verksamhetstabeller**, fem oförändrade Liquibase-steg och nekade klientgrants.
+Sandboxen är stoppad utan beständig snapshot eller publika portar.
+
+Lokala kontroller: **1 096 Vitest-tester i 133 filer**, typkontroll, lint och
+produktionsbygge godkända. API-JAR byggd med låst verktygskedja; paketstegets
+tester överhoppades, verklig browserkörning utfördes separat. Alla registrerade
+källhashar matchar ändringen. Fel projektref nekas före nätanrop och tar bort
+äldre resultatfil. Arbetsbranchen har automatiska Vercel-deployer avstängda i
+båda konfigurationerna. Ingen API-deploy, bootstrap eller vanlig routingaktivering.
+
+Återstår före hela M07: ordinarie översiktens aktivitets-/ID-läsning från nya
+databasen, full signalworker och aktivering/återgång i driftsatt runtime.
+Browser-PKCE och övriga Auth-metoder är separata grindar. Data API-cachefelet
+från PR #114 ändrades inte; det nya browserflödet behöver inte Data API.
+
+## Målmiljö och Auth-livscykel: Auth-/API-/databasprov godkända
+
+Arbetsbranch `feat/target-api-verification`, bas main `187bfd2` (PR #113 mergad),
+[PR #114](https://github.com/johkin/forena/pull/114).
+Målmiljökörning på källcommit `8cdc088`, oförändrad API-/testkod från main.
+[Körning och begränsningar](target-auth-lifecycle.md),
+[målmiljöevidens](evidence/target-api-verification.json) och
+[TargetAuthIT-resultat](evidence/target-auth-results.json).
+
+`forena-kotlin` har nu ett Liquibase-migrerat privat `forena`-schema, separata LOGIN-
 roller utan superuser/BYPASSRLS/DDL-grants till runtime. Klientroller saknar
 schemaåtkomst och runtime är inte medlem i ägarrollen. Bootstrap använder
 tillfällig SET-rätt för administrativ schemaägartilldelning, därefter avstängd.
 Kontrollerat genom oberoende SQL-läsning; säkerhetsrådgivaren gav inga anmärkningar.
-Inga beständiga Auth-provkonton eller verksamhetstabeller har lämnats efter Auth-provet.
-Liquibase förblir ensam ägare av verksamhetstabellerna när releasejobbet körs.
+Inga syntetiska Auth-provkonton eller verksamhetsrader har lämnats efter provet.
+Liquibase äger verksamhetstabellerna och sin femstegshistorik. Ägarrollens
+oväntade BYPASSRLS/CREATEDB återkallades under preflight före migreringen.
+Bootstrap har inte körts igen.
 
 ADR-016 inför `ProviderSessionVerifier` och onlinekontroll av samma JWT via
 Supabase `/user`, ovanpå lokal signatur- och konto-/sessionskontroll. Skrivningar
@@ -42,25 +333,40 @@ noll verksamhetstabeller, fortsatt NOLOGIN och oförändrade rollgränser.
 Bootstrap har inte körts igen. [Aktuell evidens](evidence/target-auth-provider-results.json).
 [Historiskt blockerat försök](evidence/target-auth-attempt.json) behålls.
 
-**Ej körda:** `TargetAuthIT`, moln-JDBC/Liquibase, browser och molnruntime.
-JDBC-/rollcredentials och TCP-grants saknas fortfarande. Auth-only-resultatet
-verifierar leverantörens `/user`-beteende vid körningen; familjeåtkomst och nekade
-skrivningar/historik i Kotlin-API:t återstår att verifiera i målmiljön.
-Incheckat opt-in-prov kräver vald testref och TLS, skapar bara egna syntetiska
-konton/data och städar efteråt. Lokala resultat ovan är tidigare verifiering,
-inte en omkörning i detta dokumentationssteg.
+**Verkligt Auth-/API-/databasprov godkänt:** hela `TargetAuthIT` kördes
+2026-10-19 kl. 13:13 svensk tid i en tillfällig Vercel Sandbox i Frankfurt:
+**1 test, 0 fel, 0 överhoppade**. Verklig JDBC-inloggning för båda begränsade
+rollerna och TLS 1.3 med betrodd Supabase-CA/hostname är verifierade. Paketerad
+Liquibase kördes separat som ägarrollen: första gången 5 nya steg; andra gången
+0 nya och alla fem fullständiga historikposter exakt oförändrade.
+
+Riktig lösenordsinloggning/signatur/JWKS, accepterat svar, refresh,
+familjeavgränsning, lokal/global logout, kvarvarande annan session,
+ny inloggning, spärr/återöppning och soft delete fungerade. Tidigare JWT gav
+401 på både API-läsning och skrivning efter avslut/spärr; annan familj fick
+404/403. Nekade skrivningar skapade ingen extra historik. Efter testets
+städning bekräftade JDBC och oberoende SQL noll syntetiska Auth-konton och
+noll rader i samtliga tio verksamhetstabeller. Säkerhetsrådgivaren gav inga
+anmärkningar. Sandboxen är stoppad utan beständig snapshot eller publika portar.
+
+En extra Data API-kontroll gav 503/PGRST002 (schema-cachefel), inte en verifierad
+PGRST106-avvisning; detta är redovisat separat i evidensen. Klientroller saknar
+fortsatt schemaåtkomst och ingen Data API-konfiguration ändrades.
+**Ej körda:** browser-PKCE, passkeys, magic-link/mejlleverans, OAuth/MCP, full
+signalworker och driftsatt molnruntime. Lokala resultat tidigare i avsnittet
+är tidigare verifiering; denna fortsättning ändrar dokumentation/evidens och
+lägger arbetsbranchen i befintliga Vercel-undantag för automatiska deployer.
 
 Vercel-byggen är avstängda för arbetsbranchen i båda befintliga konfigurationerna.
-Inga nya molnbyggen eller omkoppling av Next.js ingår. Nästa beroende steg är
-JDBC-/rollcredentials och TCP-nätåtkomst, separat Liquibase-release
-och verkligt Auth-/API-prov.
+Ingen API-deploy eller omkoppling av Next.js ingår. Nästa beroende arbete är
+de återstående browser-/Auth-/runtimegrindarna; hela M03/M07 är inte accepterade.
 
 ## Första verksamhets-API:t: för granskning, ren start
 
 Leverans på `feat/participation-api`, från main `1b60bb8b5978041f469f024f100432c72dbd44d4`.
 [ADR-010](decisions.md) fastställer användarens beslut att inte importera gamla
 projektets testdata. Nytt privat `forena`-schema och egna Liquibase-migrationer;
-`backend/api` är en separat app från M21/M22-provet.
+`backend` är en separat app från M21/M22-provet.
 
 Ändrat beteende: API för familjens kallelser och för att svara, ändra eller
 återställa svaret. Explicit familje-/organisationskontroll i Kotlin utan RLS enligt ADR-012,
@@ -83,7 +389,7 @@ bevaras. Verifierad tokens sessions-ID används fortsatt i autentiseringens
 spärrkontroll och kan hämtas för framtida separat teknisk audit-loggning.
 Ingen audit-logg införs nu. Teknikprovets registry-SQL är separat och inte omskriven.
 CI får ett separat obligatoriskt API-jobb; befintliga kontroller behålls.
-Se [första flödet](first-flow.md) och [körinstruktionerna](../../backend/api/README.md).
+Se [första flödet](first-flow.md) och [körinstruktionerna](../../backend/README.md).
 
 Lokal verifiering för leveransen:
 

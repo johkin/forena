@@ -2,7 +2,12 @@
 
 Detta är uppgiftsbeskrivningar i repot, inte skapade GitHub Issues eller startade
 Codex-sessioner. Läs [planen](../README.md) och [status](../status.md) först.
-M00 är denna inventerings- och planeringsleverans.
+M00 är den ursprungliga inventerings- och planeringsleveransen.
+
+Uppföljning 2026-10-21: [M07A](m07a-activity-overview.md) implementerar
+**Mina aktiviteter** på `feat/my-activities` med personåtkomst enligt ADR-020.
+Aktuellt driftprov, M06:s verksamhetsworker och full M03/M07-acceptans återstår;
+M21/M22-koden togs bort i PR #148 och dess resultat är historiskt underlag.
 
 | ID | Avgränsat resultat | Beroenden |
 | --- | --- | --- |
@@ -10,9 +15,10 @@ M00 är denna inventerings- och planeringsleverans.
 | [M02](m02-database-foundation.md) | Inför Liquibase och PostgreSQL-testgrund | M01 |
 | [M03](m03-authentication.md) | Verifiera Supabase-identitet och skilj kanalgrants | M01 |
 | [M04](m04-authorization-map.md) | Återskapa effektiv databas- och behörighetskatalog | M00 |
-| [M05](m05-participation-service.md) | Implementera familjeläsning och svarstjänst i övergångsdatabasen | M02, M03, M04 |
+| [M05](m05-participation-service.md) | Implementera personavgränsad läsning och svarstjänst i den rena verksamhetsdatabasen | M02, M03, M04 |
 | [M06](m06-durable-events.md) | Bevisa beständig modulreaktion; extern transport först vid behov | M01, M02 |
 | [M07](m07-first-flow.md) | Koppla första kompletta svarflödet till Kotlin | M05, M06 |
+| [M07A](m07a-activity-overview.md) | Mina aktiviteter via egen och delegerad personåtkomst | Befintlig M03/M05-grund; driftprov före acceptans |
 | [M08](m08-cloud-foundation.md) | Vilande GCP-alternativ, endast efter konkret blockerare | M01, M02 |
 | [M09](m09-activities.md) | Flytta skapa och ändra en enskild aktivitet | M07 |
 | [M10](m10-notifications.md) | Flytta en kallelseleverans med kontrollerad e-post | M06, M22G, M09 |
