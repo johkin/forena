@@ -212,11 +212,12 @@ export function GroupEditor({
                           type="button"
                           className="squad-person"
                           onClick={() => toggle(person.id)}
-                          aria-label={`${chosen ? "Ta bort" : "Lägg till"} ${person.name} ${chosen ? "ur" : "i"} gruppen`}
                         >
                           <span className="squad-person-copy">
+                            <span className="sr-only">{chosen ? "Ta bort " : "Lägg till "}</span>
                             <strong>{person.name}</strong>
                             <small>{person.title}</small>
+                            <span className="sr-only">{chosen ? " ur gruppen" : " i gruppen"}</span>
                           </span>
                           <span aria-hidden="true">{chosen ? "−" : "+"}</span>
                         </button>

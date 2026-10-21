@@ -1,0 +1,3 @@
+## 2024-05-18 - Avoid aria-label on complex buttons
+**Learning:** Using aria-label on a button overrides its entire inner text content for screen readers. In `src/components/team-roster.tsx`, an aria-label on the `squad-person` button completely hid the `person.title` from screen readers, while sighted users could see it. Same with `LogoutButton` where pending states were hidden.
+**Action:** Instead of using aria-label on buttons that contain multiple text nodes or dynamic states, use visually hidden (`sr-only`) spans inside the button to provide context that is seamlessly read out alongside the visible text.
