@@ -1,6 +1,6 @@
 # Första verksamhets-API:t: familjens kallelsesvar
 
-Status 2026-10-19: API-delen finns i `backend/api` och har klarat verkligt
+Status 2026-10-19: API-delen finns i `backend` och har klarat verkligt
 Auth-/databasprov efter PR #114. På `feat/kotlin-browser-flow`, från main
 `548d627`, har även en avskild browservy med serverstyrd Next-adapter och
 syntetisk seed införts. Ingen API-deploy eller omkoppling av ordinarie översikt
@@ -38,9 +38,9 @@ förblir leverantörsägda. Ingen radering av gamla projektet ingår.
   tillstånd skapar ingen ny historik. Olika samtidiga svar serialiseras; ingen
   klientrevision krävs i version 0.1, så en sen annorlunda begäran kan ersätta svaret.
 
-[API-README](../../backend/api/README.md) beskriver körning, bootstrap, exakt
-Auth-policy och gränser. [OpenAPI](../../backend/api/contract/openapi.json) och
-[genererade TS-typer](../../backend/api/contract/generated.ts) är versionshanterade. Specen genereras med springdoc 3.1.1 från REST-controllers
+[API-README](../../backend/README.md) beskriver körning, bootstrap, exakt
+Auth-policy och gränser. [OpenAPI](../../backend/contract/openapi.json) och
+[genererade TS-typer](../../backend/contract/generated.ts) är versionshanterade. Specen genereras med springdoc 3.1.1 från REST-controllers
 med typade request-/svarsklasser. Maven-verifieringen exporterar den via den
 bearer-skyddade `/v3/api-docs`; CI genererar och jämför både spec och TS-typer.
 Kotlin-tjänsten är ensam producent av historik/signalversion; inga triggers

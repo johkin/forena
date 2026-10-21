@@ -62,7 +62,7 @@ tillfällig Vercel Sandbox som i verifieringen.
 ```sh
 npm ci
 npx playwright install --with-deps chromium
-FORENA_TEST_TARGET_REF=ckzrtxqjskosqzoitymc python3 backend/api/scripts/browser-flow.py
+FORENA_TEST_TARGET_REF=ckzrtxqjskosqzoitymc python3 backend/scripts/browser-flow.py
 ```
 
 `browser-flow.py` bygger API-JAR med låst Maven Wrapper och Next-appen,
@@ -74,15 +74,15 @@ Next får inga DB-/Auth-admincredentials. Ägare och Auth-admin används av
 testprocessens seed/snapshot/städning. Chromium-processen får inte testets
 privilegierade `FORENA_*`-miljövariabler. Inga portar behöver exponeras publikt.
 
-[Seeden](../../backend/api/scripts/browser-seed.py) använder Python stdlib och
-[JDBC-fixturen](../../backend/api/scripts/BrowserSeed.java), inte Data API.
+[Seeden](../../backend/scripts/browser-seed.py) använder Python stdlib och
+[JDBC-fixturen](../../backend/scripts/BrowserSeed.java), inte Data API.
 Den kontrollerar projektref, pooler, begränsad ägaridentitet, `verify-full`,
 betrodd Supabase-CA och femstegshistorik innan Auth-konton skapas.
 Den skapar bara nya slumpade ID:n: två Auth-konton under `example.invalid`,
 en förening, ett lag, två aktiviteter, två barn i första familjen och ett barn
 i andra familjen, med separata kallelser. Inga mejl eller import av gamla data.
 
-Privat recovery-state i `backend/api/target/browser-seed.json` har filmode
+Privat recovery-state i `backend/target/browser-seed.json` har filmode
 0600 och innehåller den syntetiska inloggningens lösenord. Publicera aldrig
 state, serverloggar, Playwright-traces eller cookie-filer. Testet skriver
 inga traces eller sparad browser-storage. State uppdateras efter varje skapat
@@ -92,12 +92,12 @@ hard delete med efterföljande 404. Lösenordet tas bort ur state efter städnin
 Vid avbruten process:
 
 ```sh
-FORENA_TEST_TARGET_REF=ckzrtxqjskosqzoitymc python3 backend/api/scripts/browser-seed.py cleanup
+FORENA_TEST_TARGET_REF=ckzrtxqjskosqzoitymc python3 backend/scripts/browser-seed.py cleanup
 ```
 
 `create`, `snapshot` och `cleanup` kan även köras separat för en medvetet
 avgränsad manuell testkörning. `--state` måste ligga under ignorerad `work/`
-eller `backend/api/target/`. Återanvänd inte ett oavslutat state för en ny seed.
+eller `backend/target/`. Återanvänd inte ett oavslutat state för en ny seed.
 Bootstrap, nya roller och generella DELETE-operationer ingår aldrig.
 
 ## Verifiering och återstående gränser
@@ -113,7 +113,7 @@ eller databasändring. Mobilbredder 320/390/768 och desktop 1440 kontrolleras
 för horisontell overflow; meny/Escape och komponentsidans variant provas.
 
 Endast efter godkänt prov och bekräftad städning skrivs
-`backend/api/target/browser-flow/results.json`. Den versionshanterade evidensen
+`backend/target/browser-flow/results.json`. Den versionshanterade evidensen
 och aktuell CI redovisas i [status](status.md).
 
 Vanliga översiktens aktivitets-/ID-läsning från nya databasen, full

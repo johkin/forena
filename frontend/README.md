@@ -68,7 +68,7 @@ byggkontraktet men används inte till Auth-anrop i browsern.
 
 ```sh
 FORENA_TEST_TARGET_REF=ckzrtxqjskosqzoitymc \
-  python3 backend/api/scripts/browser-flow.py --browser-frontend
+  python3 backend/scripts/browser-flow.py --browser-frontend
 ```
 
 Det kräver de sex isolerade testcredentials som den befintliga körningen

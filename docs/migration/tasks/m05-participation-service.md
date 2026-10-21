@@ -3,7 +3,7 @@
 Status: delvis implementerad (2026-10-19). Beroenden: M02, M03, M04. Leverans: en avgränsad PR om inte nedan
 anges att arbetet först ska delas. Alla PR-baser är aktuell `main`.
 
-Läs-/svarstjänsten finns i `backend/api`, på nytt tomt schema enligt ADR-010. Lokal familje-RLS, transaktion, historik och livscykellås är verifierbara; full signalreaktion återstår. Se [första flödet](../first-flow.md) för aktuell avgränsning.
+Läs-/svarstjänsten finns i `backend`, på nytt tomt schema enligt ADR-010. Lokal familje-RLS, transaktion, historik och livscykellås är verifierbara; full signalreaktion återstår. Se [första flödet](../first-flow.md) för aktuell avgränsning.
 
 ## Bakgrund och gemensamma beslut
 

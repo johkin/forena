@@ -3,7 +3,7 @@ node_modules
 out
 coverage
 /work/
-backend/api/scripts/__pycache__/
+backend/scripts/__pycache__/
 .env
 .env.local
 .env.*.local

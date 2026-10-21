@@ -43,7 +43,7 @@ kombineras med appens sessionscookie. Den gamla
 Next-appens autentisering och kanaler har fortsatt sin befintliga modell.
 
 
-Det separata Kotlin-API:t för familjens kallelsesvar finns i `backend/api` och
+Det separata Kotlin-API:t för familjens kallelsesvar finns i `backend` och
 är ännu inte aktiverat i webben. Det använder ett nytt privat schema enligt
 [ADR-010](migration/decisions.md). Enligt ADR-012 ligger dess behörighet i Kotlin:
 konto/session, aktiva familjekopplingar samt organisationsgränser kontrolleras
@@ -53,7 +53,7 @@ inte exponeras i Data API och klientroller har inga grants. Enligt ADR-013
 procedurer eller verksamhetstriggers används. Historiken får verifierat konto-ID;
 ADR-014 tar bort inloggningssessionen från affärsdata. Sessions-ID finns fortsatt
 i verifierad token och används för lokal sessionsspärr. Runtime får aldrig schemaägar- eller service-role-credentials.
-Se [API:ts säkerhetsgränser](../backend/api/README.md), särskilt begränsningen
+Se [API:ts säkerhetsgränser](../backend/README.md), särskilt begränsningen
 kring extern Auth-revokering före pilot. ADR-016 tillför onlinekontroll via
 Supabase `/user` utan adminnyckel eller Auth-tabellgrants. Lokala prov och
 [verkligt Auth-only-prov samt hela Kotlin-/databasprovet](migration/target-auth-lifecycle.md)

@@ -180,7 +180,7 @@ säkerhetsmässigt likvärdig återgång.
 
 ## Verifiering
 
-- `backend/mvnw -f backend/api/pom.xml verify`: verklig lokal PostgreSQL,
+- `backend/mvnw -f backend/pom.xml verify`: verklig lokal PostgreSQL,
   migreringsuppgraderingar, kryptering, cookieflaggor, CSRF, kontospärr,
   refresh/konkurrens, expiry, logout och provider-challenge-kontrakt.
 - `npm test`, `npm run typecheck`, `npm run lint`, `npm run build` och
@@ -190,11 +190,11 @@ säkerhetsmässigt likvärdig återgång.
   login utan omladdning, HttpOnly-cookie, lagringsrensning, UI, responsivitet och
   publikt komponentgalleri. Använd vid behov `FORENA_BROWSER_EXECUTABLE`.
 - Med Vite-preview igång kan
-  `FORENA_LOCAL_BROWSER_TEST=true backend/mvnw -f backend/api/pom.xml test`
+  `FORENA_LOCAL_BROWSER_TEST=true backend/mvnw -f backend/pom.xml test`
   köra browser → riktig Kotlin → riktig PostgreSQL genom en lokal transportbrygga
   som bevarar HTTPS-origin och Secure-cookie. Auth-leverantören är kontrollerad
   i testfixturen; detta är inte ett Vercel- eller Supabase-driftprov.
-- `python3 backend/api/scripts/browser-flow.py --browser-frontend`: opt-in mot
+- `python3 backend/scripts/browser-flow.py --browser-frontend`: opt-in mot
   isolerade Supabase-projektet, med separata testcredentials och verklig JDBC.
   Detta är separat från mockprovet. Passkey mot driftsatt Auth/RP-konfiguration
   och Vercels cookie-/proxybeteende måste verifieras i målmiljön; lokala prov

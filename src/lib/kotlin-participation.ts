@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import type { components } from "../../backend/api/contract/generated";
+import type { components } from "../../backend/contract/generated";
 
 const uuid = z.uuid();
 const responseValue = z.enum(["pending", "accepted", "declined"]);

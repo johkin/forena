@@ -16,7 +16,7 @@ inte publicera. Releasejobb serialiseras och main kontrolleras igen före promot
 releasejobbet. Vercel publicerar frontend och backend atomärt i Frankfurt:
 
 - `frontend/`: React/Vite som statiska filer. Ingen frontend-container eller Node-server.
-- `backend/api`: Java 25/Spring Boot i container med begränsad runtime-roll.
+- `backend`: Java 25/Spring Boot i container med begränsad runtime-roll.
 
 Vercel routar `/api/*` och `/actuator/health` direkt till backend, övrigt till
 frontend. SPA-djuplänkar faller tillbaka till `index.html` för frontend;

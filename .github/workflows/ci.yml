@@ -94,22 +94,22 @@ jobs:
           java-version: '25'
 
       - name: Verify business API, JWT, Kotlin authorization and migrations
-        run: backend/mvnw -f backend/api/pom.xml --batch-mode --no-transfer-progress verify
+        run: backend/mvnw -f backend/pom.xml --batch-mode --no-transfer-progress verify
 
       - name: Verify packaged migration and runtime modes
-        run: python3 backend/api/scripts/local-smoke.py
+        run: python3 backend/scripts/local-smoke.py
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: backend/api/contract/package-lock.json
+          cache-dependency-path: backend/contract/package-lock.json
 
       - name: Verify Spring-generated OpenAPI and TypeScript types
         run: |
-          npm ci --prefix backend/api/contract --ignore-scripts
-          npm run check --prefix backend/api/contract
+          npm ci --prefix backend/contract --ignore-scripts
+          npm run check --prefix backend/contract
 
       - name: Retain API and architecture reports
         if: always()
@@ -117,9 +117,9 @@ jobs:
         with:
           name: backend-reports
           path: |
-            backend/api/target/openapi.json
-            backend/api/target/surefire-reports/
-            backend/api/target/spring-modulith-docs/
+            backend/target/openapi.json
+            backend/target/surefire-reports/
+            backend/target/spring-modulith-docs/
 
   native-image:
     needs: backend
@@ -137,13 +137,13 @@ jobs:
 
       - name: Build native container with Spring Boot buildpacks
         run: >-
-          backend/mvnw -f backend/api/pom.xml --batch-mode --no-transfer-progress
+          backend/mvnw -f backend/pom.xml --batch-mode --no-transfer-progress
           -Pnative -DskipTests
           -Dspring-boot.build-image.imageName=forena-backend:ci
           spring-boot:build-image
 
       - name: Verify the native buildpack image against disposable PostgreSQL and Auth keys
-        run: python3 backend/api/scripts/local-smoke.py --runtime-image forena-backend:ci
+        run: python3 backend/scripts/local-smoke.py --runtime-image forena-backend:ci
 
       - name: Export tested backend image
         run: |

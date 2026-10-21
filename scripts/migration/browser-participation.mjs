@@ -6,14 +6,14 @@ import path from "node:path";
 
 // No traces/storage-state files: they would contain Auth cookies or passwords.
 const root = process.cwd();
-const statePath = process.env.FORENA_BROWSER_SEED_STATE ?? path.join(root, "backend/api/target/browser-seed.json");
+const statePath = process.env.FORENA_BROWSER_SEED_STATE ?? path.join(root, "backend/target/browser-seed.json");
 const state = JSON.parse(await readFile(statePath, "utf8"));
 assert.equal(state.project_ref, "ckzrtxqjskosqzoitymc");
 assert.equal(process.env.FORENA_TEST_TARGET_REF, state.project_ref);
 assert.ok(!state.cleaned && state.password);
 const base = new URL(process.env.FORENA_BROWSER_BASE_URL ?? "http://127.0.0.1:3000");
 assert.ok(["127.0.0.1", "localhost"].includes(base.hostname) && base.protocol === "http:");
-const output = path.join(root, "backend/api/target/browser-flow");
+const output = path.join(root, "backend/target/browser-flow");
 await mkdir(output, { recursive: true });
 const evidencePath = path.join(output, "results.json");
 await import("node:fs/promises").then(fs => fs.rm(evidencePath, { force: true }));
@@ -26,7 +26,7 @@ let cleanupConfirmed = false;
 let passed = false;
 
 function db() {
-  const snapshot = JSON.parse(execFileSync("python3", ["backend/api/scripts/browser-seed.py", "snapshot", "--state", statePath], { encoding: "utf8" }));
+  const snapshot = JSON.parse(execFileSync("python3", ["backend/scripts/browser-seed.py", "snapshot", "--state", statePath], { encoding: "utf8" }));
   snapshots.push(snapshot);
   return snapshot;
 }
@@ -169,8 +169,8 @@ try {
   throw error;
 } finally {
   await browser.close();
-  execFileSync("python3", ["backend/api/scripts/browser-seed.py", "cleanup", "--state", statePath], { stdio: "pipe" });
-  const final = JSON.parse(execFileSync("python3", ["backend/api/scripts/browser-seed.py", "snapshot", "--state", statePath], { encoding: "utf8" }));
+  execFileSync("python3", ["backend/scripts/browser-seed.py", "cleanup", "--state", statePath], { stdio: "pipe" });
+  const final = JSON.parse(execFileSync("python3", ["backend/scripts/browser-seed.py", "snapshot", "--state", statePath], { encoding: "utf8" }));
   assert.deepEqual(final, { invitations: [], history: [], signals: [] });
   cleanupConfirmed = true;
 }

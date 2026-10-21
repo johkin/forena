@@ -3,7 +3,7 @@
 Status: delvis implementerad (2026-10-19). Beroenden: M05, M06. Leverans: en avgränsad PR om inte nedan
 anges att arbetet först ska delas. Alla PR-baser är aktuell `main`.
 
-API och versionshanterat OpenAPI/TS-kontrakt finns i `backend/api`. Serverstyrd
+API och versionshanterat OpenAPI/TS-kontrakt finns i `backend`. Serverstyrd
 Next-adapter, avskild browservy och återkörbar syntetisk seed finns nu enligt
 [browserflödet](../browser-participation.md). Ordinarie översiktens nya
 ID-/aktivitetsläsning, full signalworker och driftaktivering återstår.

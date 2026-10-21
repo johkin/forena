@@ -17,7 +17,7 @@ import time
 import urllib.parse
 import urllib.request
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[2]
 REF = "ckzrtxqjskosqzoitymc"
 
 
@@ -26,7 +26,7 @@ def main():
     parser.add_argument("--skip-build", action="store_true", help="Use API JAR and selected frontend build made from this exact source/configuration")
     parser.add_argument("--browser-frontend", action="store_true", help="Exercise the separate static frontend directly against Kotlin")
     args = parser.parse_args()
-    out = ROOT / "backend/api/target/browser-flow"
+    out = ROOT / "backend/target/browser-flow"
     out.mkdir(parents=True, exist_ok=True)
     (out / "results.json").unlink(missing_ok=True)
     if os.environ.get("FORENA_TEST_TARGET_REF") != REF:
@@ -45,7 +45,7 @@ def main():
         raise RuntimeError("Do not override database authentication or TLS verification")
     query.update(sslmode=["verify-full"], sslrootcert=[str(ROOT / "backend/certs/supabase-ca.crt")], connectTimeout=["10"], socketTimeout=["30"])
     jdbc_url = "jdbc:" + urllib.parse.urlunsplit(parsed._replace(query=urllib.parse.urlencode(query, doseq=True)))
-    public = dict(line.split("=", 1) for line in (ROOT / "backend/api/.env.target.example").read_text().splitlines() if line.startswith("FORENA_AUTH_"))
+    public = dict(line.split("=", 1) for line in (ROOT / "backend/.env.target.example").read_text().splitlines() if line.startswith("FORENA_AUTH_"))
     manager = os.environ.copy()
     manager["FORENA_TEST_JDBC_URL"] = jdbc_url
     # Preserve proxy, CA and runtime guard variables; remove privileged app/test values.
@@ -55,7 +55,7 @@ def main():
     for port in [8080, 3000]:
         with socket.socket() as probe:
             probe.bind(("127.0.0.1", port))
-    state = ROOT / "backend/api/target/browser-seed.json"
+    state = ROOT / "backend/target/browser-seed.json"
     if state.exists():
         if not json.loads(state.read_text()).get("cleaned"):
             raise RuntimeError("An unfinished seed exists; run browser-seed.py cleanup first")
@@ -68,12 +68,12 @@ def main():
             raise RuntimeError(f"Stage {name} failed; see the private local log (never publish credentials or traces)")
 
     if not args.skip_build:
-        run([str(ROOT / "backend/mvnw"), "-f", "backend/api/pom.xml", "--batch-mode", "--no-transfer-progress", "-DskipTests", "package"], base, "api-build.log")
+        run([str(ROOT / "backend/mvnw"), "-f", "backend/pom.xml", "--batch-mode", "--no-transfer-progress", "-DskipTests", "package"], base, "api-build.log")
         run(["npm", "run", "frontend:build" if args.browser_frontend else "build"], web_env, "web-build.log")
     api = web = None
     logs = []
     try:
-        run(["python3", "backend/api/scripts/browser-seed.py", "create"], manager, "seed.log", 90)
+        run(["python3", "backend/scripts/browser-seed.py", "create"], manager, "seed.log", 90)
         ids = json.loads(state.read_text())["ids"]
         api_env = base | public | {"FORENA_JDBC_URL": jdbc_url, "FORENA_DB_USERNAME": manager["FORENA_TEST_RUNTIME_USERNAME"], "FORENA_DB_PASSWORD": manager["FORENA_TEST_RUNTIME_PASSWORD"], "PORT": "8080", "SERVER_ADDRESS": "127.0.0.1", "FORENA_MIGRATE": "false"}
         if args.browser_frontend:
@@ -81,7 +81,7 @@ def main():
                            FORENA_WEB_SESSION_SECURE="false", FORENA_WEB_SESSION_KEY=base64.b64encode(secrets.token_bytes(32)).decode())
         java = str(Path(base["JAVA_HOME"]) / "bin/java") if base.get("JAVA_HOME") else "java"
         logs.append((out / "api.log").open("w"))
-        api = subprocess.Popen([java, "-jar", "backend/api/target/forena-api.jar"], cwd=ROOT, env=api_env, stdout=logs[-1], stderr=subprocess.STDOUT)
+        api = subprocess.Popen([java, "-jar", "backend/target/forena-api.jar"], cwd=ROOT, env=api_env, stdout=logs[-1], stderr=subprocess.STDOUT)
         logs.append((out / "web.log").open("w"))
         command = ["node", "node_modules/vite/bin/vite.js", "preview", "frontend", "--host", "127.0.0.1", "--port", "3000"] if args.browser_frontend else ["node", "node_modules/next/dist/bin/next", "start", "-H", "127.0.0.1", "-p", "3000"]
         web = subprocess.Popen(command, cwd=ROOT, env=web_env | {"FORENA_KOTLIN_TEST_ACTIVITY_ID": ids["activity"]}, stdout=logs[-1], stderr=subprocess.STDOUT)
@@ -111,7 +111,7 @@ def main():
         for log in logs:
             log.close()
         if state.exists() and not json.loads(state.read_text()).get("cleaned"):
-            run(["python3", "backend/api/scripts/browser-seed.py", "cleanup"], manager, "recovery-cleanup.log", 90)
+            run(["python3", "backend/scripts/browser-seed.py", "cleanup"], manager, "recovery-cleanup.log", 90)
     result = json.loads((out / "results.json").read_text())
     assert result["passed"] and result["cleanup_confirmed"]
     print(json.dumps({"passed": True, "checks": len(result["checks"]), "cleanup_confirmed": True}))

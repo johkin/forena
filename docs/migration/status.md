@@ -1,5 +1,22 @@
 # Migreringsstatus
 
+**2026-10-21:** Kotlin-koden är samlad direkt i `backend/` enligt
+[ADR-019](decisions.md#adr-019-en-kotlin-kodbas-direkt-i-backend).
+M21/M22-probets kod, skript och deployfiler är borttagna. Dokumenterade
+provresultat och evidens bevaras; äldre provkommandon/källsökvägar gäller
+historiska revisioner och beskriver inte körbar kod i dagens repo.
+
+Lokal verifiering av katalogstädningen 2026-10-21: Java 25 Maven `verify`
+är godkänd (61 tester, varav ett valfritt browserprov överhoppat). Paketerad
+JAR har klarat `backend/scripts/local-smoke.py`: färsk bootstrap, migrering
+två gånger, runtime utan ägarcredential, DB/Auth-/sessionshealth och avstängning.
+Vitest: 1 145 tester godkända. Typkontroll, lint, Next-produktionsbygge,
+Vite-frontendbygge, kontraktsgeneration/-kontroll och 15 releasegrindtester
+är godkända. OpenAPI, genererade typer, produktionskod och verksamhetens
+migrationsfiler är oförändrade efter flytten. Två tester har justerade relativa
+filsökvägar. Native-image och driftat browser-/Auth-prov har inte körts för
+katalogstädningen; ingen deployment eller ändring i målmiljön har gjorts.
+
 Uppdaterad 2026-10-19. Inventeringsbas: `c379a96719490bc4edbfcb0a4ee7a1947684ddce`.
 Planens uppgifter finns i [uppgiftsindex](tasks/README.md).
 
@@ -286,7 +303,7 @@ de återstående browser-/Auth-/runtimegrindarna; hela M03/M07 är inte accepter
 Leverans på `feat/participation-api`, från main `1b60bb8b5978041f469f024f100432c72dbd44d4`.
 [ADR-010](decisions.md) fastställer användarens beslut att inte importera gamla
 projektets testdata. Nytt privat `forena`-schema och egna Liquibase-migrationer;
-`backend/api` är en separat app från M21/M22-provet.
+`backend` är en separat app från M21/M22-provet.
 
 Ändrat beteende: API för familjens kallelser och för att svara, ändra eller
 återställa svaret. Explicit familje-/organisationskontroll i Kotlin utan RLS enligt ADR-012,
@@ -309,7 +326,7 @@ bevaras. Verifierad tokens sessions-ID används fortsatt i autentiseringens
 spärrkontroll och kan hämtas för framtida separat teknisk audit-loggning.
 Ingen audit-logg införs nu. Teknikprovets registry-SQL är separat och inte omskriven.
 CI får ett separat obligatoriskt API-jobb; befintliga kontroller behålls.
-Se [första flödet](first-flow.md) och [körinstruktionerna](../../backend/api/README.md).
+Se [första flödet](first-flow.md) och [körinstruktionerna](../../backend/README.md).
 
 Lokal verifiering för leveransen:
 
