@@ -64,6 +64,19 @@ interface`: den ärvda, villkorliga metadataregistreringen räckte inte för
 Hibernate Validator 9.1/JBoss Logging 3.6. Nästa prov kom förbi loggern men
 behövde även `Messages_$bundle`. Valideringen behålls aktiverad.
 
+Liquibase läser SQL-filernas attribut genom reflection. Native-metadata för
+`AbstractSQLChange` och `SQLFileChange` inkluderar därför deras deklarerade
+metoder, inklusive ärvda SQL-attribut som `setSplitStatements(Boolean)` samt
+sökväg/encoding/relativ sökväg. Den generella Liquibase-metadatafilen täcker
+inte alla dessa anrop. Changelog och SQL-resurser inkluderas fortsatt via `db/**`.
+En JVM-start med AOT-grafen verifierar inte GraalVM:s reflection-begränsningar.
+För ett riktigt lokalt native-prov med GraalVM installerat:
+
+```sh
+backend/mvnw -f backend/pom.xml -Pnative -DskipTests native:compile
+python3 backend/scripts/local-smoke.py --runtime-executable backend/target/forena-api
+```
+
 Releaseflödet publicerar buildpacks native-image från exakt godkänd main-CI utan ompaketering.
 Image-ID och sourceCommit verifieras och Vercel får en OCI-referens låst till
 digest. Ingen extraktion, extra Dockerfile eller ändrad entrypoint används.

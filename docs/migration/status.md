@@ -1,5 +1,29 @@
 # Migreringsstatus
 
+## Native-reflection för Liquibase, 2026-10-21
+
+CI #658 för `ba06301` klarade application/database/backend och själva native-
+bygget, men native-startprovet stoppades av `MissingReflectionRegistrationError`
+för `AbstractSQLChange.setSplitStatements(Boolean)`. JVM och JVM med AOT-graf
+har inte GraalVM:s reflection-begränsningar och fångade därför inte detta.
+
+Metadata kompletteras för deklarerade metoder i `AbstractSQLChange` och
+`SQLFileChange` samt SQL-filklassens konstruktor. Det täcker SQL-filernas attribut
+och checksummeåtkomst, inte bara den första saknade metoden. Testverktyget kan
+nu köra en lokalt byggd native-binär genom `--runtime-executable`; samma
+migrations-/Auth-/sessionsprov används fortfarande för CI:s buildpack-image.
+Migrations-SQL, DB-roller och målmiljö är oförändrade.
+
+Lokalt godkänt med Oracle GraalVM 25.0.4: riktigt `native:compile` utan
+DB-anslutning/credentials och startprov av den resulterande native-binären mot
+tomt PostgreSQL-schema. Samtliga tio steg körs före HTTP-start; DB/Auth-health,
+sessionslagring, rate limit, Bearer-avvisning och avstängning passerar.
+Testverktygets JAR-steg verifierar även idempotent migration, runtime-kontroll
+utan owner och fel utan HTTP vid nekade grants/saknad owner-credential.
+CI:s bygg- och startprov av buildpack-imagen behålls som obligatoriskt krav.
+De tidigare 69 JVM-testernas resultat hör till `ba06301`; de är inte omkörda
+för denna metadata-/testverktygsrättning. Inga Kotlin- eller SQL-filer ändras.
+
 ## Startmigrering, 2026-10-21
 
 ADR-023 ersätter den tidigare separata startordningen: korta Liquibase-steg

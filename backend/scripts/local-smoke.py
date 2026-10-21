@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise JAR migrations and a JAR or container runtime in a disposable local DB."""
+"""Exercise JAR migrations and a JVM, native binary or container runtime in a disposable local DB."""
 import argparse
 import os
 import base64
@@ -64,8 +64,10 @@ def docker(*args, **kwargs):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--aot-runtime", action="store_true", help="Run the JVM web process with the generated native AOT graph")
-    parser.add_argument("--runtime-image", help="Linux Docker image to run instead of the JVM web process")
+    runtime_mode = parser.add_mutually_exclusive_group()
+    runtime_mode.add_argument("--aot-runtime", action="store_true", help="Run the JVM web process with the generated native AOT graph")
+    runtime_mode.add_argument("--runtime-image", help="Linux Docker image to run instead of the JVM web process")
+    runtime_mode.add_argument("--runtime-executable", type=Path, help="Run a locally compiled native binary instead of the JVM web process")
     parser.add_argument("--runtime-entrypoint", help="Run the application directly with synthetic local configuration")
     args = parser.parse_args()
     if args.runtime_entrypoint and not args.runtime_image:
@@ -173,6 +175,8 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
             assert "Tomcat started" not in output, "HTTP opened despite failed migration setup"
         with tempfile.TemporaryFile(mode="w+") as log:
             command = [JAVA, *(["-Dspring.aot.enabled=true"] if args.aot_runtime else []), "-jar", str(JAR)]
+            if args.runtime_executable:
+                command = [str(args.runtime_executable.resolve())]
             if args.runtime_image:
                 # Host networking only connects the Linux test container to the
                 # disposable PostgreSQL and synthetic JWKS server on loopback.
