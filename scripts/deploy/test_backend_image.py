@@ -65,7 +65,7 @@ class BackendImage(unittest.TestCase):
                 descriptor = json.loads((output / 'functions/backend.func/.vc-config.json').read_text())
                 self.assertEqual(descriptor['handler'], self.image['RepoDigests'][0])
                 self.assertNotIn('command', descriptor)
-                self.assertEqual(descriptor['environment']['FORENA_MIGRATE'], 'false')
+                self.assertEqual(descriptor['environment']['FORENA_MIGRATE'], 'true')
                 self.assertEqual(list((output / 'functions/backend.func').iterdir()),
                                  [output / 'functions/backend.func/.vc-config.json'])
                 self.assertEqual((output / 'static/index.html').read_text(), 'frontend')

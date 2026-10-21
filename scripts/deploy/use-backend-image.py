@@ -30,7 +30,7 @@ def configure(image, public_key, certificate):
     return {'handler': references[0], 'runtime': 'container', 'architecture': 'x86_64',
             'regions': ['fra1'], 'environment': {
                 'PORT': '80',
-                'FORENA_MIGRATE': 'false',
+                'FORENA_MIGRATE': 'true',
                 'FORENA_AUTH_ISSUER': 'https://ckzrtxqjskosqzoitymc.supabase.co/auth/v1',
                 'FORENA_AUTH_JWKS_URI': 'https://ckzrtxqjskosqzoitymc.supabase.co/auth/v1/.well-known/jwks.json',
                 'FORENA_AUTH_PUBLISHABLE_KEY': public_key,

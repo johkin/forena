@@ -62,13 +62,12 @@ vanliga fel, ramverkets undantag för Auth/transport och `*Entity` för alla
 klassmappningar av tabeller. HTTP översätts i advice/filter med fasta, säkra
 feltexter. Läsprojektioner är inte tabellentiteter.
 
-ADR-021 inför en gemensam dataroll för befintliga/framtida datatabeller. Owner
-kör Liquibase separat före runtime; runtime saknar DDL och migrationsmetadata.
-Den separata migreringsprocessen verifierar rollmodellen en gång efter
-Liquibase, med runtime-kontot. Verifiering kan även köras separat utan migrering.
-Löpande DB-health använder Spring Boots inbyggda anslutningskontroll; inga
-roll- eller sessionsschemafrågor körs av health. Migrations-/releasejobbet ska
-avbrytas om engångsverifieringen misslyckas.
+ADR-021 inför en gemensam dataroll för befintliga/framtida datatabeller.
+ADR-023 låter Liquibase köra korta migreringar som owner före HTTP-start, med
+separat anslutning från runtime-kontots pool. Runtime saknar DDL och
+migrationsmetadata. Rättigheter och sessionsschema verifieras en gång efter
+Liquibase; fel stoppar start. Löpande DB-health använder Spring Boots
+anslutningskontroll. Tunga dataflyttar körs separat i återupptagbara batcher.
 
 ## Lager
 

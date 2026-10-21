@@ -32,20 +32,26 @@ behöver ansluta till databasen. Bygg utan Auth-/databascredentials och med
 miljövariabler som tidigare. Spring-profiler och villkor som påverkar vilka
 beans som finns avgörs däremot vid AOT-bygget.
 
-Migreringen körs fortsatt separat med JVM-JAR:en. Native-profilen avser
-webbprocessen; växling till migrationsläge med `FORENA_MIGRATE=true` i samma
-native-image är inte verifierad.
+Liquibase kör korta migreringar före HTTP-start som separat owner-anslutning.
+`FORENA_MIGRATE` är true som standard. `SpringLiquibase` finns alltid i AOT-
+grafen och läser `shouldRun` vid processstart. Native-metadata inkluderar
+hela `db/**`, eftersom changelog och SQL ligger direkt i `db/`. Rättigheter och sessionsschema
+verifieras en gång före HTTP; fel stoppar starten. Tunga dataflyttar körs
+separat i återupptagbara batcher enligt ADR-023.
 Se [Spring Boots native-guide](https://docs.spring.io/spring-boot/how-to/native-image/developing-your-first-application.html)
 och [JDBC/AOT-konfiguration](https://docs.spring.io/spring-boot/reference/data/sql.html).
 
 CI-jobbet `native-image` kör samma buildpack-kommando efter `backend`-jobbet.
 Det startar buildpacks native-image direkt mot en tillfällig lokal PostgreSQL och en
 syntetisk JWKS-server, kontrollerar DB/Auth-health, avbrott/återhämtning,
-saknad Bearer och avstängning. Migreringarna körs med JVM-JAR:en två gånger.
+saknad Bearer och avstängning. Migreringarna körs med JVM-JAR:en två gånger och sedan mot ett tomt schema vid webbstart.
 Startprovet använder imagens ordinarie entrypoint med syntetisk lokal konfiguration.
 Provet kontrollerar också att runtime får sin konfiguration vid start
-och saknar migreringscredentials. Det är inte ett fullständigt inloggat
+och använder separata owner-/runtime-anslutningar vid start. Det är inte ett fullständigt inloggat
 verksamhets- eller HTTPS-prov av native-runtime.
+Lokalt kan den genererade AOT-grafen också provas med
+`python3 backend/scripts/local-smoke.py --aot-runtime` efter `-Pnative package`.
+Det ersätter inte ett fullständigt native-image-startprov.
 Efter godkänt startprov sparas imagen som Actions-artifakten
 `forena-backend-image-<sha>` i tre dagar. Den kan hämtas och laddas med
 `docker load`; `verify` kräver att native-jobbet lyckas.
@@ -57,6 +63,19 @@ Första CI-provet byggde imagen men stoppades vid start med `Invalid logger
 interface`: den ärvda, villkorliga metadataregistreringen räckte inte för
 Hibernate Validator 9.1/JBoss Logging 3.6. Nästa prov kom förbi loggern men
 behövde även `Messages_$bundle`. Valideringen behålls aktiverad.
+
+Liquibase läser SQL-filernas attribut genom reflection. Native-metadata för
+`AbstractSQLChange` och `SQLFileChange` inkluderar därför deras deklarerade
+metoder, inklusive ärvda SQL-attribut som `setSplitStatements(Boolean)` samt
+sökväg/encoding/relativ sökväg. Den generella Liquibase-metadatafilen täcker
+inte alla dessa anrop. Changelog och SQL-resurser inkluderas fortsatt via `db/**`.
+En JVM-start med AOT-grafen verifierar inte GraalVM:s reflection-begränsningar.
+För ett riktigt lokalt native-prov med GraalVM installerat:
+
+```sh
+backend/mvnw -f backend/pom.xml -Pnative -DskipTests native:compile
+python3 backend/scripts/local-smoke.py --runtime-executable backend/target/forena-api
+```
 
 Releaseflödet publicerar buildpacks native-image från exakt godkänd main-CI utan ompaketering.
 Image-ID och sourceCommit verifieras och Vercel får en OCI-referens låst till
@@ -217,14 +236,15 @@ SQL för schema, nycklar och constraints finns kvar. Gamla appens databaslogik l
    Kör releasestegets migrering separat med ägarkontot:
 
    ```sh
-   FORENA_MIGRATE=true java -jar backend/target/forena-api.jar
+   FORENA_MIGRATE_ONLY=true java -jar backend/target/forena-api.jar
    ```
 
    Processen startar ingen HTTP-server och avslutas efter migreringen. Den behöver
    `FORENA_JDBC_URL`, `FORENA_DB_PASSWORD`, `FORENA_MIGRATION_USERNAME` och
-   `FORENA_MIGRATION_PASSWORD`. Ägarrollen är `forena_api_owner`; lämna aldrig
-   ägarcredentialen till runtime. `FORENA_DB_PASSWORD` avser runtime-kontot.
-3. Starta runtime med `FORENA_MIGRATE` avstängd/utelämnad:
+   `FORENA_MIGRATION_PASSWORD`. Ägarrollen är `forena_api_owner`; använd den aldrig
+   som verksamhetens DataSource. `FORENA_DB_PASSWORD` avser runtime-kontot.
+3. Starta backend med owner- och runtime-credentials; korta migreringar körs före HTTP.
+   Sätt `FORENA_MIGRATE=false` endast om separat jobb redan migrerat databasen:
 
    ```sh
    java -jar backend/target/forena-api.jar
@@ -305,7 +325,7 @@ notifiering. Signalworker/Modulith-reaktion kopplas in i ett senare steg.
 aktivitet visas en gång med klubb/lag, titel och tider; 50 per sida och
 `next_offset` vid fler resultat. Pågående/kommande ej inställda aktiviteter med
 start inom 90 dagar ingår. Svar och relationstyp utökar inte åtkomsten.
-Migration `api-009-activity-overview` måste köras separat före aktivering; den
+Migration `api-009-activity-overview` måste vara körd före API-trafik; den
 ger runtime endast kolumnläsning på team. Native-image behöver byggas om med
 nya DTO:er. Gamla kallelserutternas JSON/URL:er är oförändrade, men genererade
 scheman heter nu `MyInvitations` och `AccessibleInvitation`. Se ADR-020.
@@ -322,9 +342,9 @@ datatabeller och förval för framtida owner-skapade tabeller/sekvenser. De äld
 kolumngrants ovan är historiska; runtime kan nu skriva även konto-, personåtkomst-
 och historikdata. Kotlin äger användarbehörighet och verksamhetsregler. Runtime
 har ingen DDL/ägarrätt eller åtkomst till Liquibase-tabeller. Owner kör Liquibase
-separat före start; den vanliga webbruntimen kör inga migrationer. Efter Liquibase kontrolleras
+vid backendstart före HTTP enligt ADR-023. Efter Liquibase kontrolleras
 rollmodellen och sessionsschemat en gång, genom datasource med runtime-kontot.
-Både owner- och runtime-credentials behövs i migreringsprocessen, med separata
+Både owner- och runtime-credentials behövs i backendprocessen, med separata
 konfigurationsfält. Löpande DB-health använder Spring Boots vanliga
 `DataSourceHealthIndicator` för anslutningen. Se ADR-021 och migreringsstatus.
 
@@ -338,11 +358,17 @@ FORENA_MIGRATE=false FORENA_VERIFY_DATABASE_ACCESS=true \
 
 Kommandot öppnar ingen HTTP-server och tvingar Liquibase avstängt. Exitkod 0
 betyder godkänd kontroll; annan exitkod ska avbryta jobbet före aktivering.
-`FORENA_VERIFY_DATABASE_ACCESS` och `FORENA_MIGRATE` får inte båda vara true.
+`FORENA_VERIFY_DATABASE_ACCESS` och `FORENA_MIGRATE_ONLY` får inte båda vara true.
 Verifieringsläget är testat med JVM-JAR, inte som native-CLI. Det vanliga Vercel-
 releasejobbet har inga DB-credentials och kör fortfarande HTTP-health/version/
-login; engångskontrollen tillhör det separata migrerings-/releasejobbet.
+login; startmigrering och engångskontroll sker inne i backendprocessen.
 
 För Kubernetes ska liveness vara oberoende av databasen. Readiness kan uttryckligen
 inkludera `db` när trafik kräver databasåtkomst; schema-/rättighetskontroll ska inte
 läggas i återkommande probes.
+
+Owner-login konfigureras som `FORENA_MIGRATION_USERNAME` och
+`FORENA_MIGRATION_PASSWORD` i backendens runtime-miljö. Använd projektsuffixet
+på användarnamnet om Supabase-poolern kräver det. Ge aldrig runtime-rollen
+medlemskap i owner. Liquibase-låset samordnar starter, men lång SQL eller
+låsväntan kan överskrida plattformens startbudget; se ADR-023.

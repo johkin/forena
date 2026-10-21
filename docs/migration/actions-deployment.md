@@ -46,9 +46,10 @@ Runtime får Auth-konfiguration och det publika databas-CA-certifikatet som
 funktionskonfiguration. Appen validerar certifikatet och skriver det till en
 privat temporär fil för JDBC:s `sslrootcert`; `sslmode=verify-full` behålls.
 Ingen fil läggs i imagen efter bygget. DB-lösenordet kommer fortsatt enbart från
-Vercels runtime-miljö. Tilldela endast det begränsade runtime-kontot till projektet.
-Ägar-/migreringscredentials hör till den separata migrationsmiljön. Migreringsläge
-sätts till false i funktionskonfigurationen. Auth läser plattformens CA-sökvägar
+Vercels runtime-miljö. Konfigurera runtime-kontot samt separata
+`FORENA_MIGRATION_USERNAME`/`FORENA_MIGRATION_PASSWORD` som runtime-hemligheter.
+Funktionskonfigurationen sätter `FORENA_MIGRATE=true`; Liquibase kör som owner
+före HTTP-start och verifierar sedan runtime-rättigheterna en gång. Auth läser plattformens CA-sökvägar
 direkt från `SSL_CERT_FILE`/`NODE_EXTRA_CA_CERTS` när explicit Auth-bundle saknas.
 
 `vercel deploy --prebuilt --prod --skip-domain` skapar staging med den redan
@@ -66,7 +67,8 @@ Misslyckad kontroll stoppar promotion. Vercel kan ändå flytta sitt genererade
 team-alias under staging; det observerades i tidigare körningar. Använd exakt
 deployment-URL för prov och den kanoniska adressen för publicerad kod.
 Hälsokontroll och statisk HTML-hämtning ersätter inte ett verkligt inloggat
-browserprov. Inga migreringar, utskick, bootstrap eller seed körs av releasen.
+browserprov. Korta Liquibase-steg körs vid backendstart enligt ADR-023. Utskick, bootstrap,
+seed och tunga datamigreringar ingår inte.
 
 ## Projekt och konfiguration
 
@@ -99,8 +101,8 @@ metadata/OIDC får finnas i den förberedda bygg-envfilen. Frontendens generator
 skriver en uttrycklig tillåtelselista till `config.json`: Auth-URL, publishable
 key, valfri aktivitet och version. Databas-/Auth-admincredentials får aldrig
 publiceras i frontendfiler eller Actions-artifakter. `config.json` och
-versionsfilen har `no-store`. Runtime-API:t får bara sitt begränsade DB-konto;
-inga migreringscredentials ska finnas i runtime-projektet.
+versionsfilen har `no-store`. Verksamhets-API:t använder det begränsade runtime-kontot; separata
+owner-credentials används endast av Liquibase vid processstart.
 Auth-HTTPS-klienten läser Java- och systemrötter samt plattformens CA-fil via
 `SSL_CERT_FILE` och `NODE_EXTRA_CA_CERTS`. De kan även anges som `FORENA_AUTH_CA_BUNDLE` respektive
 `FORENA_AUTH_EXTRA_CA_BUNDLE`.
@@ -111,11 +113,11 @@ ett uttryckligt felaktigt CA-paket stoppar start.
 
 Nya projektets tio Liquibase-steg, till och med `api-010-runtime-data-access`,
 är förutsättning för Mina aktiviteter. Migration 008 införde Spring Session JDBC,
-009 runtime-kolumnläsning på team; kör dem separat med ägarkontot före runtime. `prepare-kotlin.mjs` kräver sessionsnyckeln och tar sedan bort den
+009 runtime-kolumnläsning på team; de körs med ägarkontot före HTTP-start. `prepare-kotlin.mjs` kräver sessionsnyckeln och tar sedan bort den
 ur bygg-envfilen utan att exportera/logga den. Runtime-descriptorn aktiverar
 webbsessioner och sätter kanonisk origin till `https://forena-kotlin.vercel.app`;
 nyckeln hämtas från projektets runtime-miljö precis som DB-lösenordet.
-Det separata JVM-migreringssteget kontrollerar datarättigheter och sessionsschema
+Backendstarten kontrollerar datarättigheter och sessionsschema
 en gång efter Liquibase, med runtime-anslutningen. Verifieringen kan också köras
 med `FORENA_VERIFY_DATABASE_ACCESS=true FORENA_MIGRATE=false`, utan owner-
 credentials, HTTP-server eller migrering. Felaktiga rättigheter ger icke-noll
@@ -124,9 +126,8 @@ exitkod och migrations-/releasejobbet ska då avbrytas före aktivering.
 Löpande HTTP-health använder Spring Boots DB-anslutningskontroll och befintlig
 Auth/JWKS-health; det gör inga roll- eller sessionsschemafrågor. Detta frontend-
 releasejobb har inga DB-credentials och kör därför inte JVM-engångskontrollen.
-Den ska köras i det separata migrations-/releasejobbet innan frontend/backend
-aktiveras. Verifiera även ett inloggat anrop till `/api/me/activities` före acceptans.
-Owner-credentials används fortfarande aldrig av den vanliga webbprocessen.
+Startmigreringen och kontrollen körs inne i backendprocessen innan HTTP öppnas. Verifiera även ett inloggat anrop till `/api/me/activities` före acceptans.
+Owner-credentials används enbart av startmigreringen, aldrig av verksamhetens pool.
 Se [webbsessionernas releaseordning](web-sessions.md). Separata
 migreringskonton och driftoperationer tillhör inte frontend-releasejobbet.
 Efter merge behöver statisk frontend, direkt API-routing, riktiga Auth-sessioner

@@ -10,5 +10,5 @@ GRANT forena_api_owner TO CURRENT_USER WITH SET TRUE, INHERIT FALSE;
 CREATE SCHEMA forena AUTHORIZATION forena_api_owner;
 GRANT forena_api_owner TO CURRENT_USER WITH SET FALSE, INHERIT FALSE;
 REVOKE ALL ON SCHEMA forena FROM PUBLIC;
--- Only the release job receives the owner credential. Runtime must NEVER be a member
--- of that role. Do not expose `forena` in the Data API.
+-- The startup migrator uses a separate owner credential. The runtime SQL role
+-- must NEVER be a member of that role. Do not expose `forena` in the Data API.

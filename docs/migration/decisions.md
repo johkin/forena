@@ -3,6 +3,37 @@
 Status anger målbeslut för kommande implementation, inte redan införd teknik.
 Källkodsverifierat nuläge finns i [inventeringen](inventory.md).
 
+## ADR-023: Korta migreringar vid backendstart
+
+Beslut 2026-10-21 på användarens instruktion, ersätter startordningen i ADR-021:
+Liquibase körs före HTTP-start som separat owner-anslutning. Applikationens
+DataSource och alla verksamhetsfrågor använder fortsatt runtime-kontot, som
+saknar DDL och medlemskap i owner. Processen behöver därför båda kontonas
+credentials. Owner används inte som pool för HTTP-anrop.
+
+`FORENA_MIGRATE` är true som standard, även i Vercels funktionsdescriptor.
+`SpringLiquibase` finns alltid i AOT-beangrafen; dess `shouldRun` avgörs vid
+processstart. Bygget behöver inga DB-credentials eller anslutning. Efter
+Liquibase verifieras runtime-rättigheter och sessionsschema en gång under
+bean-initiering, innan HTTP-servern börjar ta emot trafik. Fel stoppar starten.
+Health behåller Spring Boots vanliga anslutningskontroll.
+
+Liquibase historik gör att redan körda steg inte upprepas och dess databaslås
+samordnar samtidiga instansstarter. Väntan på låset och själva SQL-stegen kan
+ändå överskrida plattformens startbudget. Endast korta, bakåtkompatibla schema-
+och rättighetsändringar hör därför hemma här. Tunga dataflyttar görs separat i
+återupptagbara batcher; inför först ett kompatibelt schema, fyll data och byt
+läsning i en senare release. Startup är inte en bakgrundskö och någon generell
+maximitid för SQL införs inte. 009–010 ändrar bara grants, inte verksamhetsrader.
+
+`FORENA_MIGRATE=false` används när ett separat jobb redan har migrerat databasen.
+JVM-kommandot `FORENA_MIGRATE_ONLY=true java -jar backend/target/forena-api.jar`
+migrerar/verifierar och avslutas utan HTTP. Fristående verifieringsläge kvarstår.
+Vercels runtime-miljö behöver `FORENA_MIGRATION_USERNAME` (owner-login, inklusive
+poolerns projektsuffix vid behov) och `FORENA_MIGRATION_PASSWORD`. Dessa lagras
+som runtime-hemligheter, aldrig i frontend, byggartefakter eller GitHub-jobbets
+publika env-export. Ingen målmiljö ändras av denna kod/PR.
+
 ## ADR-022: Kotlin-standardundantag och Entity-namn
 
 Beslut 2026-10-21 på användarens instruktion: använd standardundantag för

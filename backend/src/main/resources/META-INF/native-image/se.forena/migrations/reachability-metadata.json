@@ -1,0 +1,18 @@
+{
+  "resources": [
+    {
+      "glob": "db/**"
+    }
+  ],
+  "reflection": [
+    {
+      "type": "liquibase.change.AbstractSQLChange",
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "liquibase.change.core.SQLFileChange",
+      "allDeclaredConstructors": true,
+      "allDeclaredMethods": true
+    }
+  ]
+}
