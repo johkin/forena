@@ -4,7 +4,7 @@ Status: delvis implementerad (2026-10-19). Beroenden: M01. Leverans: en avgräns
 anges att arbetet först ska delas. Alla PR-baser är aktuell `main`.
 
 Webbsessionsverifiering, lokala JWKS-prov och onlineadapter för aktuell `/user`-
-status finns i `backend/api`. Adapterns lokala fel-/revokeringsprov är gröna;
+status finns i `backend`. Adapterns lokala fel-/revokeringsprov är gröna;
 verklig Supabase-inloggning, ES256/JWKS, refresh och driftad sessionsrevokering
 är verifierade med Auth-only-provet (18 godkända kontroller). Även hela
 `TargetAuthIT` är godkänt mot riktig Auth, Kotlin-API och databas, inklusive

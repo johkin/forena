@@ -188,6 +188,11 @@ Se [docs/architecture.md](docs/architecture.md) för den första arkitekturen oc
 
 ## Stegvis backendmigrering
 
+Kotlin/Spring Boot finns som en enda kodbas direkt i [`backend/`](backend/README.md).
+Bygg och verifiera från reporoten med `backend/mvnw -f backend/pom.xml verify`
+(Java 25 och lokal Docker). M21/M22-teknikprovet är borttaget; resultaten
+bevaras i migreringsdokumentationen.
+
 Planen för Kotlin, Spring Boot och Google Cloud finns i
 [migreringsunderlaget](docs/migration/README.md), med
 [status](docs/migration/status.md) och [självständiga uppgifter](docs/migration/tasks/README.md).

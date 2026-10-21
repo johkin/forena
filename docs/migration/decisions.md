@@ -3,6 +3,21 @@
 Status anger målbeslut för kommande implementation, inte redan införd teknik.
 Källkodsverifierat nuläge finns i [inventeringen](inventory.md).
 
+## ADR-019: En Kotlin-kodbas direkt i backend
+
+**Beslut 2026-10-21 på användarens instruktion:** verksamhets-API:t flyttas
+från underkatalogen `api` till `backend/`. Där finns ett Maven-projekt med
+Java 25, produktionskod, tester, kontrakt och hjälpskript. Paketnamn,
+artefaktnamn, HTTP-rutter och verksamhetens Liquibase-historik behålls.
+
+M21/M22-probets kod, SQL, tester, `scripts/probe/` och gamla Vercel-/Docker-
+konfiguration tas bort. Resultat och evidens i migreringsdokumentationen
+bevaras som historik; deras provkommandon och gamla källsökvägar avser den
+revision där proven kördes och kan inte köras mot dagens kodbas.
+Ingen driftsatt tjänst, databas eller schemaläggare ändras av denna kodstädning.
+CI, frontendens kontraktsimporter och verksamhets-API:ts körinstruktioner
+använder nu `backend/`. Release använder fortsatt CI:s verifierade native-image.
+
 ## ADR-018: Serversession och HttpOnly-cookie för nya webben
 
 **Uppdatering 2026-10-20:** på användarens instruktion ersätts den egna
@@ -185,7 +200,7 @@ RLS-/identitetsdelen nedan ersätts av ADR-012.
 
 **Beslut 2026-10-19 på användarens instruktion:** verksamhets-API:t använder
 Spring Data JDBC och smala `Repository`-interface. Detta ersätter ADR-003:s val
-av handskriven CRUD med JdbcClient/JdbcTemplate för `backend/api`. Spring Boot
+av handskriven CRUD med JdbcClient/JdbcTemplate för `backend`. Spring Boot
 4.1.0:s BOM låser Spring Data JDBC/Relational till 4.1.0; ingen JPA införs.
 
 Läsningar, existenskontroller och svarsskrivning använder genererade frågor.
@@ -218,7 +233,7 @@ motsvarande funktioner kan aktiveras i den rena miljön. Det nya API:t får aldr
 skriva till den gamla databasen som reserv. Att gamla data inte importeras ger
 ingen rätt att radera det gamla projektet eller ändra dess Auth-inställningar.
 
-Första implementationen finns i `backend/api`, separat från M21/M22-provet.
+Verksamhetsimplementationen finns nu direkt i `backend`; M21/M22-provet är borttaget enligt ADR-019.
 Läsning och svar, familje-RLS, livscykellås och atomär revisionshistorik ingår.
 En beständig signalversion sparas, men full signalreaktion, Auth-livscykel,
 provisionering av verksamhetsdata, Next-adapter och driftaktivering återstår.
@@ -327,7 +342,7 @@ påstår en besparing. Ingen produktion har ändrats genom detta planeringsbeslu
 ## ADR-001: Verktygskedja och repo — fastställt
 
 **Uppdatering 2026-10-19 på användarens instruktion:** verksamhets-API:t i
-`backend/api` använder Java **25**, inklusive Kotlins bytekodsmål och
+`backend` använder Java **25**, inklusive Kotlins bytekodsmål och
 `BP_JVM_VERSION` i Spring Boots imagekonfiguration. Oracle-leverantör och exakt
 JDK-patch krävs inte längre för API:t. CI/release använder Temurin 25 och
 release-imagen får samma JDK som paketeringen. Teknikprovets tidigare resultat

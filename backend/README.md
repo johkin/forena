@@ -1,350 +1,298 @@
-# Isolerat Vercel/Kotlin-prov
+# Kotlin-backend
 
-Detta är M21:s teknikprov, inte Förena-backend för riktiga användare. Använd
-endast projekten `forena-kotlin` och syntetiska körningar. Ingen mejl-, push-,
-Telegram-, AI- eller MCP-integration aktiveras. Frontendens testsida serveras av
-samma JVM; detta bevisar inte ännu separat React-/Next.js-Services-routing.
+Repots enda Spring Boot/Kotlin-app finns direkt i `backend/`.
+Det tidigare M21/M22-teknikprovet och dess skript/deployfiler är borttagna.
+Historiska provresultat finns kvar i `docs/migration/` och Git-historiken.
+Nytt tomt PostgreSQL-schema `forena`, ingen import av gamla Förena-projektets
+testdata eller SQL-migrationshistorik. Se [ADR-010](../docs/migration/decisions.md).
 
-## Verktyg och byggning
+## Java och containerbygge
 
-- Oracle JDK **26.0.2.1+1-7**, Kotlin **2.4.20**, Spring Boot **4.1.0**.
-- Maven Wrapper **3.9.11**, wrapper **3.3.4**, Modulith **2.1.0**.
-- JDK-arkiv och Maven-distribution verifieras med SHA-256; Dockerbasen är låst
-  med digest. Samma JDK används lokalt, i CI, byggcontainer och runtime.
-- JDK 26:s livslängd och Oracles licensvillkor måste bedömas före produktionsval.
-
-Från reporoten:
+API:t kompileras och körs med **Java 25**, utan krav på Oracle eller exakt patch.
+JVM-testerna i CI använder Temurin 25. Releasen använder CI:s native-artefakt. Kotlin använder `java.version` som JVM-mål.
+Spring Boots `build-image` får `BP_JVM_VERSION=25` via pluginens buildpack-miljö:
 
 ```sh
-scripts/probe/install-jdk.sh /tmp/forena-jdk
-export JAVA_HOME=/tmp/forena-jdk
-export PATH="$JAVA_HOME/bin:$PATH"
-cd backend
-./mvnw --batch-mode --no-transfer-progress verify
-cd ..
-python3 scripts/probe/local-lifecycle.py
-python3 scripts/probe/local-lifecycle.py --concurrent-recovery
+backend/mvnw -f backend/pom.xml --batch-mode --no-transfer-progress verify
+backend/mvnw -f backend/pom.xml --batch-mode --no-transfer-progress spring-boot:build-image
 ```
 
-Docker krävs för PostgreSQL-tester och processprovet. I en miljö med skrivskyddad
-hemkatalog kan `MAVEN_USER_HOME` sättas till en skrivbar arbetskatalog.
-Använd miljöns normala proxy/CA-inställningar; stäng inte av TLS-verifiering.
+Ett native-bygge använder samma mål med Maven-profilen `native`:
 
 ```sh
-docker build -f backend/Dockerfile.vercel -t forena-kotlin-probe:spike backend
+backend/mvnw -f backend/pom.xml --batch-mode --no-transfer-progress -Pnative spring-boot:build-image
 ```
 
-Den hanterade Codex-miljön behöver dessutom BuildKit-secret `proxy_ca` enligt
-molnmiljöns instruktioner. Byggcertifikatet kopieras inte till runtime-image.
+Profilen aktiverar GraalVM-pluginen och Spring Boots ärvda AOT-steg. Buildpacks
+hämtar GraalVM och producerar en körbar native-container; ingen separat
+native-Dockerfile eller lokalt installerad GraalVM krävs. Docker krävs.
+`DatabaseConfiguration` anger PostgreSQL-dialekten som en bean så att AOT inte
+behöver ansluta till databasen. Bygg utan Auth-/databascredentials och med
+`FORENA_MIGRATE` utelämnad. Runtime får sina anslutningar och credentials via
+miljövariabler som tidigare. Spring-profiler och villkor som påverkar vilka
+beans som finns avgörs däremot vid AOT-bygget.
 
-## Databasägarskap och isolering
+Migreringen körs fortsatt separat med JVM-JAR:en. Native-profilen avser
+webbprocessen; växling till migrationsläge med `FORENA_MIGRATE=true` i samma
+native-image är inte verifierad.
+Se [Spring Boots native-guide](https://docs.spring.io/spring-boot/how-to/native-image/developing-your-first-application.html)
+och [JDBC/AOT-konfiguration](https://docs.spring.io/spring-boot/reference/data/sql.html).
 
-Endast det privata schemat `forena_probe` används; det ska inte exponeras i
-Supabases Data API. Bootstrap skapar `forena_probe_migrator` som schemaägare
-samt `forena_probe_runtime` med DML-behörighet och utan superuser/BYPASSRLS.
-Bootstrap och lösenord hanteras separat från applikationens Liquibase-changelog.
-Auth, Storage och befintliga Förena-scheman ändras inte.
+CI-jobbet `native-image` kör samma buildpack-kommando efter `backend`-jobbet.
+Det startar buildpacks native-image direkt mot en tillfällig lokal PostgreSQL och en
+syntetisk JWKS-server, kontrollerar DB/Auth-health, avbrott/återhämtning,
+saknad Bearer och avstängning. Migreringarna körs med JVM-JAR:en två gånger.
+Startprovet använder imagens ordinarie entrypoint med syntetisk lokal konfiguration.
+Provet kontrollerar också att runtime får sin konfiguration vid start
+och saknar migreringscredentials. Det är inte ett fullständigt inloggat
+verksamhets- eller HTTPS-prov av native-runtime.
+Efter godkänt startprov sparas imagen som Actions-artifakten
+`forena-backend-image-<sha>` i tre dagar. Den kan hämtas och laddas med
+`docker load`; `verify` kräver att native-jobbet lyckas.
 
-Liquibase körs som ett **separat steg**, med migreringskontot och
-`PROBE_MIGRATE=true`; processen avslutas efter uppdateringen. Kör en gång till
-för att verifiera att inga changesets återappliceras. Normala deployments får
-inte migreringskontots lösenord och `PROBE_MIGRATE` är false som förval.
-Moduliths schema-init är avstängd; v2-tabellen från Modulith 2.1.0:s publicerade
-PostgreSQL-DDL ingår i Liquibase. Runtime får inte läsa Liquibase-metadata.
+Native-metadata under `src/main/resources/META-INF/native-image` registrerar
+Hibernate Validators genererade JBoss-logger/konstruktor och meddelandeklassens
+`INSTANCE`-fält uttryckligen. Det täcker båda genererade JBoss-klasserna i JAR:en.
+Första CI-provet byggde imagen men stoppades vid start med `Invalid logger
+interface`: den ärvda, villkorliga metadataregistreringen räckte inte för
+Hibernate Validator 9.1/JBoss Logging 3.6. Nästa prov kom förbi loggern men
+behövde även `Messages_$bundle`. Valideringen behålls aktiverad.
 
-Konfiguration via miljövariabler, aldrig incheckade credentials:
+Releaseflödet publicerar buildpacks native-image från exakt godkänd main-CI utan ompaketering.
+Image-ID och sourceCommit verifieras och Vercel får en OCI-referens låst till
+digest. Ingen extraktion, extra Dockerfile eller ändrad entrypoint används.
+`FORENA_DB_CA_CERTIFICATE` innehåller databasens publika PEM-CA vid deployment.
+Appen validerar den och skriver en privat temporär fil för JDBC vid start;
+övriga TLS-parametrar behålls.
+Se [releaseflödet](../docs/migration/actions-deployment.md).
+Lokalt prov 2026-10-19: `-Pnative spring-boot:build-image` passerade AOT utan
+Auth-/databascredentials och utan databasanslutning. Uppackningen av standard-
+buildern `paketobuildpacks/builder-noble-java-tiny:latest` fyllde Docker/VFS-
+miljöns disk trots cirka 21 GiB ledigt före försöket. Bygget avbröts och Docker
+återställde diskutrymmet. Det lokala försöket verifierade därför inte native-
+kompilering eller start; dessa kontroller körs nu i Actions-jobbet ovan.
+En uppstartsjämförelse och native-runtime mot riktig Auth/HTTPS återstår.
+Lokala containerprov behöver mer diskutrymme eller effektivare Docker-lagring.
+Ett byte av imagebyggare
+behöver också bevara runtimekonfigurationen, databasens CA och startkontrollerna.
 
-| Variabel | Innehåll |
-| --- | --- |
-| `PROBE_JDBC_URL` | JDBC-URL till testprojektet; session pooler rekommenderas när IPv6 saknas. `sslmode=verify-full` och korrekt certifikatförtroende krävs. |
-| `PROBE_DB_USERNAME` / `PROBE_DB_PASSWORD` | Begränsat runtimekonto; poolern kan kräva `.projektref` efter användarnamnet. |
-| `PROBE_TOKEN` | Separat slumpmässig hemlighet, minst 32 tecken, för alla prov-API:er. Detta är inte Supabase-användarautentisering. |
-| `PROBE_MIGRATE` | Endast true för det separata migreringssteget. |
-| `PROBE_MIGRATION_USERNAME` / `PROBE_MIGRATION_PASSWORD` | Endast i migreringsjobbet. |
-| `PROBE_ALLOW_CRASH` | False som förval. Endast true i det isolerade provet för avsiktlig JVM-terminering. |
-| `PORT` | Vercel-containern använder port 80; lokal app 8080. |
+## Loggning
 
-Databaspoolen har högst fyra anslutningar per instans. Rollens anslutningsgräns
-är 16 i Supabase-provet. Det är ett begränsat experiment, inte lastdimensionering.
+API:t använder Spring Boots vanliga textloggning till konsolen, både lokalt
+och i deployment. OpenTelemetry-startern och OTLP-exporten är borttagna;
+ingen collector behövs. ECS-/JSON-loggning är inte aktiverad.
+Ingen särskild `local`-profil behövs för loggningen.
 
-## TLS-certifikat
+`local-smoke.py` kontrollerar textloggar från den paketerade runtime-processen,
+både JVM och native-imagen i CI, tillsammans med de befintliga startproven.
 
-`certs/supabase-ca.crt` är det offentliga **Supabase Root 2021 CA**, hämtat över
-verifierad HTTPS från Supabases distributionsbucket:
-`https://supabase-downloads.s3-ap-southeast-1.amazonaws.com/prod/ssl/prod-ca-2021.crt`.
-SHA-256-certifikatfingeravtryck: `807025AD50D4ED219D2C9C7D299C004F824EB00CF7F65AFEF607D07B72E6CAFA`.
-Giltigt till 2031-04-26. Det innehåller ingen privat nyckel. Runtime-URL använder
-`sslmode=verify-full&sslrootcert=/app/supabase-ca.crt`; provklienten anger samma
-CA. Rotation och utgång måste hanteras före produktionsbruk. En tidigare körning
-med enbart JVM:s standardrötter nekades korrekt med PKIX-fel; TLS stängdes inte av.
+## HTTPS till Supabase Auth
 
-## Prov-API och säkerhetsgräns
+JWKS-hämtning och kontrollen mot Auth `/user` använder samma HTTP-klient.
+Dess truststore kombinerar Java-standardens rötter med containerns
+`/etc/ssl/certs/ca-certificates.crt` och ett eventuellt plattforms-CA-paket.
+Klienten läser `SSL_CERT_FILE` och `NODE_EXTRA_CA_CERTS` direkt när
+`FORENA_AUTH_CA_BUNDLE` respektive `FORENA_AUTH_EXTRA_CA_BUNDLE` saknas. Båda läses om båda finns.
+Ett uttryckligt felaktigt CA-paket stoppar starten. Klienten behåller
+värdnamns-/kedjeverifiering, nekar redirects och har två sekunders timeout.
+TLS-konfigurationen kräver inga JVM-flaggor eller admincredentials.
 
-`POST /api/probes` tar `id` (UUID/idempotensnyckel), `delayMs` (0–90000) och
-`mode`: NORMAL, BLOCK eller CRASH. Alla API-anrop kräver `Authorization: Bearer`.
-API:t sparar testkommandot och Moduliths leveranspost i samma transaktion och
-returnerar 202. Lyssnaren fördröjs avsiktligt och sparar en unik effekt per ID.
-BLOCK misslyckas tills körningen frisläpps. CRASH avslutar JVM med kod 137 före
-kvittens, och är avstängt om inte `PROBE_ALLOW_CRASH=true`.
+Startup loggar endast antal CA-certifikat per källa. `/actuator/health`
+kontrollerar både databasen och hämtning av publika Auth-nycklar med samma
+TLS-klient som JWT-verifieringen. Ett fel stoppar releasepromotion; publika
+health-svar visar inga URL:er, nycklar eller felorsaker. API-anrop med redan
+cachad och betrodd signeringsnyckel kan fortfarande verifieras under ett
+tillfälligt nyckelserveravbrott.
 
-`POST /api/probes/{id}/recover` frisläpper körningen och begär omleverans från
-Modulith. Anropet väntar högst 100 sekunder på effekten; det räcker inte att
-starta en ny asynkron tråd och returnera. Samma effekt kan inte sparas två gånger.
-`GET /api/probes/{id}` är till för felsökning, inte observationspollning under
-livscykelprovet. Hälsokontroll och den syntetiska testsidan är publika bakom
-Vercels ordinarie Deployment Protection.
+Implementerat:
 
-Den statiska testsidan är ingen produktkomponent. Den ändrar inte Förena-UI
-eller dess komponentsida. Token lagras inte i localStorage eller webbläsarcookies.
+- `GET /api/activities/{activityId}/my-invitations` – egna personer och aktiva målsmanskopplingar.
+- `PUT /api/invitations/{invitationId}/respond` – svara, ändra kommentar eller återställa till `pending`.
+- Svar, revision, revisionshistorik (konto/kanal) och beständig signalversion i en transaktion.
+- Signerade webbsessioner, familjeavgränsning i Kotlin och livscykellås.
 
-## Vad testerna faktiskt bevisar
+En avskild [Next-/browserkoppling](../docs/migration/browser-participation.md)
+finns nu bakom serverkonfiguration som är avstängd som standard. Ordinarie
+översikt är inte omkopplad och ingen API-deploy ingår.
+[Målmiljö/Auth-arbetet](../docs/migration/target-auth-lifecycle.md)
+har verifierat det privata schemat i `forena-kotlin`: separata begränsade
+LOGIN-roller, JDBC med betrodd CA/hostname-verifiering, paketerad Liquibase
+med oförändrad återkörning och hela `TargetAuthIT` är godkända i en tillfällig
+Vercel Sandbox. Fixturer och Auth-konton är städade, Sandboxen stoppad.
+Skapande av konton, familjer,
+aktiviteter och kallelser är ännu inget publikt API. Testerna skapar egna
+syntetiska data. Inga utskick eller fullständiga signalberäkningar görs här.
 
-- Riktig HTTP-response har mottagits innan kvittensmarkören skrivs direkt i DB.
-- Effekten kan observeras efter markören utan fler HTTP-anrop till appen.
-- Rollback tar bort både verksamhetspost och beständig händelse.
-- Samtidiga omförsök med samma idempotensnyckel publicerar en gång.
-- Blockerad lyssnare kan återtas, återspelning ger en sparad effekt.
-- Lokal abrupt processdöd lämnar en oavslutad post; en ny JVM återtar den.
-- Två separata JVM-processer kan begära återtag samtidigt: tre omgångar ska
-  ge en sparad effekt per händelse och inga kvarvarande oavslutade publiceringar.
-  Lyssnaren kan köras flera gånger; externa utskick behöver egen idempotens.
-- Modulgränser verifieras och ett riktigt `@ApplicationModuleTest` körs.
+## Bygg och verifiera
 
-`cloud-lifecycle.py` kör motsvarande molnobservation med 10 och 60 sekunders
-fördröjning samt valfritt kraschprov. Installera `psycopg[binary]==3.3.6` i den separata
-testklienten och ge den testprojektets runtimecredentials via miljön. Sätt
-`PROBE_BASE_URL`, `PROBE_PROJECT_REF`, `PROBE_PGHOST`, `PROBE_PGUSER`,
-`PROBE_DB_PASSWORD`, `PROBE_TOKEN` och `PROBE_SSL_ROOT_CERT` (Supabases CA-fil).
-För skyddad preview används en uttryckligen godkänd temporär `PROBE_ACCESS_URL`
-som sätter åtkomstcookie, eller vid behov befintlig `PROBE_BYPASS`.
-Sätt `PROBE_TEST_CRASH=true` endast när kraschläget är avsiktligt aktiverat.
-
-`cloud-recovery.py` är det separata M22-provet för 60 s återtag under aktiv
-request efter 90 s utan apptrafik. Det använder samma klientberoenden och
-miljövariabler som ovan samt `PROBE_ACCESS_URL`. DB-kontot ska endast ha SELECT
-på probe_run, probe_attempt, probe_effect och event_publication; skriptet
-kontrollerar att det inte kan skriva effekter eller skapa tabeller.
-`PROBE_EXISTING_RUN_ID` kan ange en redan oavslutad syntetisk körning att
-återta först. Klienten verifierar omleverans och unik effekt direkt i DB.
-Detta aktiverar ingen scheduler och bevisar inte automatisk väckning.
-Skriptet accepterar bara `forena-kotlin-*.vercel.app` och testprojektets ref.
-
-**Vercel Sandbox är endast bygg-/testklient.** Dess JVM-resultat är inte bevis
-för Function-containerns livscykel. Ett grönt post-response-prov visar observerat
-beteende, inte ett leverantörslöfte. Vi har inte hittat ett dokumenterat Java-
-motsvarande `waitUntil`. Bakgrundsarbete behöver därför beständig återtagning
-även om några fristående trådar observeras fungera.
-
-De faktiska molnresultaten (inklusive det misslyckade 60-sekundersprovet) finns
-i [M21:s rapport](../docs/migration/vercel-probe-results.md).
-
-## Deployment och avslut
-
-`backend/vercel.json` definierar en container-Service och samma-origin-routing.
-Deploya endast backendkatalogen till projektet `forena-kotlin`, som preview.
-Vercel Services är beta. Ordinarie projekt `forena` och repots root-vercel.json
-ska inte ändras. Konfigurationsändringar gäller bara testprojektet.
-
-Efter provet stoppas den tillfälliga testklienten. Inga återkommande cronjobb
-skapas automatiskt. Dokumentera deployment-ID, källrevision/hash, region,
-versionskontroll, mättider, observerade begränsningar och kostnadsunderlag.
-Återkalla provcredentials och avaktivera kraschläge när provmiljön avvecklas.
-Ta inte bort projekten utan separat instruktion.
-
-## Schemalagd worker (M22A)
-
-Uppföljning: [M22B-rapporten](../docs/migration/m22-isolation-results.md)
-förklarar Data API:s 503 med avsiktlig avstängning och verifierar pg_net-gränsen.
-JDBC kräver inte Data API; behåll det avstängt i Kotlin-testprojektet.
-
-`POST /api/probes/worker` kräver separat `PROBE_WORKER_TOKEN` (minst 32 tecken,
-skild från `PROBE_TOKEN`). Tomt värde stänger workeråtkomsten. Workertokenen
-får inte skapa prov eller köra manuellt återtag. Den vanliga provtokenen får
-inte köra workerendpointen.
-
-Spring-properties styr batch och mjuk tidsbudget: `probe.worker.batch-size=2`,
-`probe.worker.budget=PT120S`, `probe.worker.stale-after=PT120S` och
-`probe.worker.reserve=PT5S`. Testerna använder kortare tider. Arbetaren väljer
-flera batcher om två, upp till `probe.worker.max-publications=64` starter och
-`probe.worker.max-candidates=256` granskade poster per anrop. Den ignorerar
-färska försök/CRASH och väntar på Moduliths kvittens.
-`probe.worker.start-grace=PT5S` begränsar väntan på en enskild stillastående
-lyssnare utöver dess fördröjning och reserv. Totalbudgeten är mjuk. För BLOCK är frisläppningen avsiktlig felinjektion i teknikprovet.
-
-Kör endast i forena-kotlin:
-
-1. Bygg/verifiera backend och deploya en skyddad preview med separat worker-
-   och provtoken. Förbered `scripts/probe/scheduler-setup.sql` i testprojektet.
-2. Ordna tidsbegränsad åtkomst enbart till denna preview. `scheduler-seed.py`
-   använder `PROBE_BASE_URL`, `PROBE_ACCESS_URL`, `PROBE_TOKEN` och
-   `PROBE_WORKER_TOKEN`, kontrollerar token-gränserna och skapar syntetiska
-   BLOCK-händelser med 1/60 s fördröjning. Inga fler appanrop ska därefter göras
-   av testklienten. Stoppa klienten när fixtures/preview-cookie överlämnats.
-3. Valfri `PROBE_PUBLISHABLE_KEY` kontrollerar att Data API avvisar schema net.
-   Ett 503/PGRST002 är ett blockerande verifieringsresultat för den kontrollen,
-   inte ett godkänt isoleringsbevis. Det uppstod i detta teknikprov och redovisas
-   separat; seed kördes därefter utan den valfria kontrollen.
-4. `--headers-out /vercel/private-headers.json` kan skriva previewns Cookie-
-   header till en privat scratchfil med 0600. Läs/överför den via säker kanal
-   till Vault och radera scratchfilen; skriv aldrig dess innehåll till loggar.
-   En share-URL direkt på pg_net:s POST fungerade inte i denna körning.
-5. Provisionera tre temporära Vault-poster: `forena_kotlin_m22_worker_url`
-   (previewns rena /api/probes/worker-URL), `forena_kotlin_m22_worker_token`
-   och `forena_kotlin_m22_worker_headers` (JSON med preview-Cookie). Behåll
-   Deployment Protection. Inga användar-/produktionscredentials behövs.
-6. Kör `scheduler-activate.sql`. Den väntar minst 150 s, tillåter högst fem
-   HTTP-anrop och högst tolv minuter; första timeouten på 1 s är ett avsiktligt
-   provfel. Normal pg_net-timeout är 180 s, större än workerbudgeten inklusive
-   rimlig uppstartsmarginal. Kontrollera svar/effects via SQL, inte API-pollning.
-7. Exportera endast request-ID, tider, status och syntetiska effekter. Läs
-   aldrig pg_net:s headers eller godtyckliga felkroppar för loggning; även en
-   felrespons kan innehålla en åtkomstlänk. Cron succeeded bevisar inte HTTP-
-   eller verksamhetsframgång.
-8. Kör `scheduler-cleanup.sql` och verifiera inga provjobb, Vault-poster,
-   köade requests eller provresponser. Återkalla previewlänken och stoppa
-   eventuell testklient. Städa även separata transport-preflight-ID:n.
-
-**Plattformsgräns:** alla direkta SQL-loginroller kan läsa pg_net:s köheaders
-och använda dess kö. Grantägaren är supabase_admin; postgres kan inte ändra
-dessa PUBLIC-grants. Vault ändrar inte den tillitsgränsen. En påstått read-only
-observatör har alltså inte en sådan garanti för net-schemat när pg_net är
-installerat. Provet använder bara kontrollerade SQL-konton och kortlivad
-previewåtkomst. Net ska aldrig exponeras via Data API.
-
-Moduliths predicate-API läser normalt alla ofullständiga poster före filtrering.
-M22D begränsar nu workerendpointens materialisering via en repository-SPI-
-dekorator; se [registryrapporten](../docs/migration/m22-registry-results.md).
-Manuellt återtag och shutdown-diagnostik är fortsatt obegränsade.
-`probe.worker.read-timeout-seconds=2` styr bara workerns egna SQL-läsningar;
-den totala budgeten är fortfarande mjuk. Se den fullständiga
-[rapporten](../docs/migration/m22-scheduler-results.md) för tidslinje,
-bevis och kvarvarande produktionsgränser.
-
-## Data API och SQL-gränser (M22B)
-
-Resultat och begränsningar finns i [M22B](../docs/migration/m22-isolation-results.md).
-Lokalt, utan molncredentials:
+Använd den låsta verktygskedjan i [versionsdokumentet](../docs/migration/versions.md)
+och en lokal Docker-motor. Kör från reporoten:
 
 ```sh
-python3 scripts/probe/isolation-check.py --verify-evidence docs/migration/evidence/m22-isolation.json
-python3 -m unittest discover -s scripts/probe -p 'test_isolation_check.py'
+backend/mvnw -f backend/pom.xml --batch-mode --no-transfer-progress verify
+python3 backend/scripts/local-smoke.py
+npm ci --prefix backend/contract --ignore-scripts
+npm run check --prefix backend/contract
 ```
 
-För ett nytt verkligt prov, använd bara Supabase-projektet forena-kotlin
-(`ckzrtxqjskosqzoitymc`) och verifiera projekt-ID före varje mutation:
+JUnit startar tillfälliga PostgreSQL 17-containrar och en lokal JWKS-server.
+Migrering körs som riktig, begränsad schemaägare; HTTP använder en annan
+runtime-roll utan ägar-/BYPASSRLS-rättigheter. Testlösenorden finns bara under
+`src/test`. Testerna verifierar också tom installation, uppgradering av det
+nya identitetsschemat, återkörning, FK/constraints, rollback och samtidiga skrivare.
 
-1. Kör `scripts/probe/isolation-audit.sql` och spara ursprungliga roll-/databas-
-   inställningar för authenticator. Setup förutsätter inget db_schemas-override,
-   ingen befintlig fixtur och bara syntetiska data. Behåll återställningen redo.
-2. Kör `isolation-setup.sql` atomärt som provider-/testbootstrap. Det exponerar
-   tillfälligt enbart kontrollschemat; ändra aldrig Data API i ordinarie Förena.
-3. Från en godkänd testklient med nätåtkomst, sätt `PROBE_PUBLISHABLE_KEY` till
-   testprojektets publishable key via säker credentialkanal och kör
-   `python3 scripts/probe/isolation-check.py`. Skriv inte nyckeln i kommandoraden.
-   Alternativt kör samma fallista med provider-pg_net och bevara endast status,
-   tillåtna felkoder och exakt syntetisk kontrollrad, som i M22B-beviset.
-   Registrera pg_net-request-ID:n och läs aldrig råa headers/felkroppar till logg.
-4. Kör `isolation-sql-roles.sql` för markörprovet, och audit för effektiva grants.
-   Markörprovet använder anon/authenticated; runtime/observer kräver endast
-   katalogkontroll. Utöka inte rollmedlemskap för att få SET ROLE att fungera.
-5. Även vid fel: kör reset/notify-delen i `isolation-cleanup.sql` och COMMIT.
-   Bekräfta att kontrollraden inte längre är tillgänglig via HTTP medan schemat
-   finns kvar, därefter DROP-delen i separat operation. Ta bort bara noterade
-   prov-ID:n från net-kön och responserna. Kör audit igen och jämför med basen.
+[OpenAPI](contract/openapi.json) och [genererade TypeScript-typer](contract/generated.ts)
+genereras från REST-controllers och typade DTO:er med springdoc 3.1.1.
+`/v3/api-docs` kräver samma verifierade bearer-token som API:t. Swagger UI ingår
+inte. Beskrivningar av felstatusar, behörighet och kommentarsregler finns i
+controller-/DTO-annoteringarna; specen redigeras inte manuellt.
 
-M22B återställde avsiktligt avstängt Data API; en ny sådan kontroll ger därför
-503/PGRST002 och ska inte godkännas som frisk schemaisolering. Lämna
-`PROBE_PUBLISHABLE_KEY` osatt i scheduler-seed.py när Data API ska vara avstängt.
-Återaktivera inte API:t enbart för kommande JDBC-/Cron-prov.
+Maven `verify` hämtar specen från den riktiga HTTP-servern i integrationstestet
+med signerad token och skriver `target/openapi.json`. Därefter kör
+`npm run generate --prefix backend/contract` enbart stabil nyckelsortering
+av exporten och genererar typer med låst `openapi-typescript`. Både spec och
+typer versionshanteras; `npm run check` kontrollerar båda mot Git. Kör därför
+Maven-verifieringen före generationen. Frontend använder typerna ännu inte.
 
-## Faktisk JVM-krasch och effekt/kvittens (M22C)
+Alla egna REST-controllers returnerar Kotlin data classes,
+även för explicita felsvar. API:ts request är också typad: en separat intern
+närvaroflagga skiljer utelämnad kommentar från explicit null utan att exponeras
+i JSON eller OpenAPI. Okända/ignorerade fält och numeriska enumvärden nekas.
 
-Se [rapporten](../docs/migration/m22-crash-results.md). Lokalt efter Maven verify:
+## Repositories och transaktioner
 
-```sh
-python3 scripts/probe/local-lifecycle.py --concurrent-recovery --scheduled-crash
-```
+API:ts produktionskod använder Spring Data JDBC 4.1.0 (låst av Boot-BOM) och
+smala `Repository`-interface. Genererade frågor sköter konto-/sessionskontroll,
+familjekopplingar, personer, aktiviteter och kallelsesvar. Ingen JdbcTemplate
+eller JdbcClient används i API:ts produktionskod. Se [ADR-011](../docs/migration/decisions.md).
 
-Detta startar engångs-PostgreSQL och riktiga JVM:er, kontrollerar exit 137 före
-effekt respektive efter committad effekt men före registerkvittens och provar
-sedan samtidiga workeranrop i två JVM:er. Lokala HTTP-anrop startar processerna;
-det verkliga molnprovet använder riktig Supabase Cron för väckningen.
+Tjänster använder suffixet `Service`: `InvitationService`, `SessionService`,
+`FamilyAccessService` och `DatabaseClockService`. Inom varje moduls `internal`-
+paket samlas databasmodeller i `Entities.kt` och repository-interface i
+`Repositories.kt`. DTO:er ligger i separata filer från tjänsterna. Modulen
+`activities` äger aktiviteter och kallelser; `identity` äger konto/session och
+familjeåtkomst. Repositories och entities är interna inom respektive modul.
+Se ADR-015 för modulnamnet och namnkonventionerna.
 
-Felinjektion kräver både PROBE_ALLOW_CRASH=true och en SQL-skapad probe_fault
-för ett frisläppt BLOCK-ID. Felpunkterna är BEFORE_EFFECT och AFTER_EFFECT_COMMIT.
-Armera aldrig en verksamhetshändelse. Runtime kan läsa/förbruka markörer men
-får inte skapa/radera dem eller ändra ID/felpunkt. Dess SQL-rättighet på
-konsumtionskolumnerna är ingen säkerhetsgräns mot komprometterad JDBC; betrodda
-SQL-konton och verifierad städning krävs precis som för pg_net i M22B.
+Familjekopplingens sammansatta nyckel mappas med `@Id` och `@Embedded`. Läsning
+hämtar familjen och dess kallelser i batcher, inte en personfråga per kallelse.
+Namn sorteras med databasens kollation och UUID används som sekundär ordning.
+`InvitationService` är en `@Service`: `respond` använder `@Transactional`, `list`
+`@Transactional(readOnly = true)`. Konto/session och familje-/organisationsåtkomst
+kontrolleras i Kotlin enligt ADR-012/013. Främmande aktivitet ger 404, främmande
+kallelse 403. Skrivbehörighet kontrolleras före och efter låsväntan.
 
-För ett nytt molnprov:
+Skrivningen låser först aktivitet, sedan kallelse med `@Lock(PESSIMISTIC_WRITE)`.
+Det skyddar mot samtidiga aktivitetsändringar och serialiserar även skapande/
+ökning av den gemensamma signalraden för olika kallelser på samma aktivitet.
+Efter låsen kontrolleras utskick, sluttid och inställning med aktuell databastid.
 
-1. Kör separat Liquibasejobb i testprojektet före runtime-deploy. Använd ett
-   tidsbegränsat migrationskonto och verify-full TLS, inga migrationcredentials
-   i funktionens runtime. Kontrollera migrationshistorik, bevarade data och
-   slutlig objektägare forena_probe_migrator. Stäng sedan LOGIN/medlemskap.
-2. Deploya provkällorna till en skyddad forena-kotlin-preview med kraschflaggan
-   påslagen endast för provet. Använd separata prov-/workertokens.
-3. Kör scheduler-seed.py utan PROBE_PUBLISHABLE_KEY; Data API ska förbli avstängt.
-   Notera två BLOCK-ID:n och sista fullständiga svarstid. För över kortlivad
-   previewcookie och endast workertoken till provets tre Vault-poster.
-4. Kör scheduler-crash-activate.sql med before_id, after_id och last_response_at
-   som psql-variabler (eller motsvarande säker parametrisering via MCP). Stoppa
-   klienten före tidsgrinden. Högst tio HTTP-anrop under högst 15 minuter.
-5. Följ SQL och Vercels loggar, inte appanrop. Bevisa vid båda felpunkterna
-   faktisk JVM-död, kvittens saknas, 0 respektive 1 committad effekt, senare
-   återtag i annan JVM samt en slutlig effekt och kvittens efter upprepning.
-   Spara inte råa pg_net-felkroppar eller headers.
-6. Exportera sanerade bevis före städning. Kör scheduler-cleanup.sql och ta
-   bort endast provets två probe_fault-rader. Återkalla previewlänken, verifiera
-   stoppade klienter och sätt previewförvalets kraschflagga till false inför
-   kommande deployment. Befintliga deploymenters miljö är oföränderlig; de
-   skyddas genom återkallad provåtkomst och borttagna armeringar.
+Tjänsten normaliserar kommentar och beräknar pending-återställning, svarstid och
+revision. Den sparar svar, historik (verifierat konto/kanal) och eventuell
+signalversion genom repositories i samma transaktion. Identisk upprepning skriver
+ingenting; ändrad kommentar behåller svarstid och påverkar inte signalversionen.
+Varje fel rullar tillbaka allt. `@ReadOnlyProperty` skyddar kallelsens identitet.
+Ingen produktionskod använder TransactionTemplate eller `set_config`.
 
-## Registry-backlog (M22D)
+Efter Liquibase-steg 004 finns inga egna databasfunktioner, lagrade procedurer
+eller verksamhetstriggers i `forena`. Endast en teknisk `@Query` återstår:
+`DatabaseClockRepository` hämtar PostgreSQLs inbyggda `clock_timestamp()`.
+Tidigare migrationer är oförändrade; steg 003 tar bort RLS och steg 004 tar bort
+triggers/funktioner utan att radera svar, historik eller signalversioner.
+Steg 005 tar bort enbart historikens `session_id`; konto-ID och övrig historik
+bevaras. Ingen teknisk audit-logg införs nu.
+SQL för schema, nycklar och constraints finns kvar. Gamla appens databaslogik ligger kvar i den äldre appen.
 
-`./mvnw verify` kör WorkerTest med pg_stat_statements i disponibel PostgreSQL:
-100/10 000 köposter, SQL-resultatrader/anrop, deserialisering och grov minnes-/
-tidsmätning. Ingen extension installeras i Supabase. Processprovet kan köras
-med `--concurrent-recovery --scheduled-crash --registry-backlog 10000` för att
-behålla färska poster under båda riktiga JVM-krascherna och tre två-JVM-rundor.
-CI kör den kombinationen. Se rapporten för mätgränser och kvarvarande arbete.
+## Databas och körning
 
+1. Kör [bootstrap.sql](scripts/bootstrap.sql) som administratör i den rena målmiljön.
+   Scriptet skapar NOLOGIN-roller. Sätt separata starka lösenord genom miljöns
+   hemlighetshantering och aktivera LOGIN inför migrering/runtime.
+   I `forena-kotlin` är bootstrap redan verifierad; kör inte scriptet igen där.
+   Exponera inte `forena` i Supabase Data API. Använd direkt PostgreSQL eller
+   en verifierad JDBC-kompatibel pooladress med TLS i molnmiljön.
+2. Stoppa eventuell äldre API-runtime före steg 004/005; den förutsätter triggers
+   eller historikens tidigare sessionskolumn.
+   Kör releasestegets migrering separat med ägarkontot:
 
-## Lokal kapacitet och kostnad (M22E)
+   ```sh
+   FORENA_MIGRATE=true java -jar backend/target/forena-api.jar
+   ```
 
-Efter bygget kör `python3 scripts/probe/local-capacity.py --out /tmp/m22e.json`
-från reporoten. Det skapar själv disponibel PostgreSQL och två JVM:er; ingen
-extern DB/URL accepteras. Mätningen omfattar växande SQL-planer, aktiv worker-
-dränering, RSS/CPU, låst registryläsning, poolmättnad och överbudgeterad lyssnare.
-`--quick` är CI-varianten. `cost-model.py --out /tmp/m22e-costs.json` reproducerar
-[den daterade budgeten](../docs/migration/m22-costs.md).
-Se [resultat och begränsningar](../docs/migration/m22-load-cost-results.md).
-Supabase Cron kräver inte Vercel Pro; batch-/tillit-/pilotgrindar kvarstår.
+   Processen startar ingen HTTP-server och avslutas efter migreringen. Den behöver
+   `FORENA_JDBC_URL`, `FORENA_DB_PASSWORD`, `FORENA_MIGRATION_USERNAME` och
+   `FORENA_MIGRATION_PASSWORD`. Ägarrollen är `forena_api_owner`; lämna aldrig
+   ägarcredentialen till runtime. `FORENA_DB_PASSWORD` avser runtime-kontot.
+3. Starta runtime med `FORENA_MIGRATE` avstängd/utelämnad:
 
-## Begränsad dränering och turordning (M22F)
+   ```sh
+   java -jar backend/target/forena-api.jar
+   ```
 
-Kör Liquibase `probe-003-worker-cursor` separat **före** uppdaterad runtime.
-Den tillför en privat markörrad; äldre data/leveransstatus ändras inte.
-Markören sparas med revisionskontroll före varje kandidat. Processdöd kan skjuta
-upp ett försök tills nästa varv, men tar inte bort leveransposten. Även färska,
-för långa och felande poster passeras så att senare poster får en chans.
-`cycle-complete` betyder avslutat sökvarv, inte tom kö. Varvet börjar om först
-vid nästa anrop. Modulith äger fortfarande alla claims/statusövergångar;
-markören är läsprogress, ingen andra leveranskö. Samma JVM kör en worker åt gången;
-andra anrop får `worker-busy`. Olika JVM:er samordnar markören med CAS, och
-Modulith/idempotenta effekter skyddar leveranshanteringen.
+   Obligatoriskt: `FORENA_JDBC_URL`, `FORENA_DB_PASSWORD`, `FORENA_AUTH_ISSUER`
+   och `FORENA_AUTH_JWKS_URI` samt `FORENA_AUTH_PUBLISHABLE_KEY` (`sb_publishable_…`).
+   `FORENA_DB_USERNAME` är normalt `forena_api_runtime`, med projektsuffix för poolern.
+   Issuer är projektets exakta `/auth/v1`-adress; JWKS är dess
+   `/auth/v1/.well-known/jwks.json`. HTTPS krävs utom för lokala loopbacktester.
+   Port är `PORT` eller 8080. `/actuator/health` är publik utan detaljer.
 
-`examined` är ett additivt svarsfält; befintliga ID-listor kvarstår.
-`publication-limit`, `scan-limit`, `budget`, `cursor-contended` och `interrupted`
-förklarar övriga avslut. Kör lokalt efter Maven verify:
+Webbfrontenden kräver också migreringarna `api-008-spring-session` samt tidigare migreringar,
+`FORENA_WEB_SESSION_ENABLED=true`, kanonisk `FORENA_WEB_ORIGIN` och en
+base64-kodad 32-bytes `FORENA_WEB_SESSION_KEY` i runtime-hemlighetshanteringen.
+Nyckeln delas mellan instanser och ska behållas över omstarter.
+[Sessions-API, CSRF, kryptering och releaseordning](../docs/migration/web-sessions.md).
+Befintliga Bearer-klienter fungerar även utan aktiverade webbsessioner.
 
-```sh
-python3 scripts/probe/local-capacity.py --recovery-cadence --out /tmp/m22f.json
-```
+Runtime har högst fyra databasanslutningar och fem sekunders väntan på poolen.
+Verifierad token ger aktören till Kotlin-kodens åtkomstkontroller och historikens
+konto-ID. Sessions-ID används bara i autentiseringslagret och sparas inte i
+verksamhetsdata enligt ADR-014. Framtida separat teknisk audit-loggning kan läsa
+`session_id` från den aktuella verifierade tokenen. Ingen identitet sätts på
+databasanslutningen. Klientens JSON, headers och `user_metadata` ger inga familjerättigheter. Inget `service_role`-konto
+används.
 
-Det provar verklig minutkadens, missad första tick, 300 permanent överbudgeterade
-poster före 100 giltiga och 10 000 färska poster, växelvis i två JVM:er.
-`--quick` skalar bara tickintervallet till två sekunder för CI; det bevisar inte
-minutkadens. Se [resultat och begränsningar](../docs/migration/m22-recovery-results.md).
-Vercel + Supabase är riktningen; Google Cloud utvärderas först vid konkret hinder.
+## Autentisering och samtidighet
+
+Enbart bearer-token för webbsessioner: RS256/ES256, exakt issuer, audience
+`authenticated`, samma roll, UUID-subjekt och `session_id`, `exp`/`iat` och
+`is_anonymous=false`. MCP/OAuth-grants (`client_id`, scope/scopes/grant_id),
+HS256, anonyma token och cookie-fallback nekas. Supabases faktiska inställningar
+ska verifieras i den nya miljön innan aktivering; inga Auth-konton ändras här.
+JWKS hämtas med två sekunders anslutnings-/lästimeout och Spring/Nimbus cache;
+okänd nyckel som inte kan verifieras nekas även när nyckelservern är nere.
+En redan cachelagrad giltig nyckel kan fortsatt användas.
+
+`account.enabled` och `revoked_session` kontrolleras för varje transaktion;
+familjekopplingar hämtas från databasen. Lokal revokering kräver ett separat
+administrationsflöde. En provideradapter kontrollerar dessutom aktuell token via
+Supabase Auth `/user`, med publishable key och samma exakta issuer. Skrivningar
+kontrolleras igen efter radlåsen. Kända inaktiva sessioner ger 401; Auth-fel,
+timeout, 429, redirect och okända svar nekar med generiskt 503/no-store utan retry,
+cache eller fallback. Runtime har ingen Auth-adminnyckel eller Auth-tabellåtkomst.
+Bearer-tokenen finns bara under anropet och sparas inte i historik.
+
+Detta är lokalt verifierat med riktig HTTP mot en kontrollerad Auth-fixtur.
+Verkligt driftad Supabase-revision har klarat hela `TargetAuthIT` i målprojektet;
+resultat och återstående pilotgrindar finns i målmiljödokumentet. Revokering efter sista
+kontrollen stoppar inte ett redan pågående kommando. Timebox/inaktivitet och
+övriga Auth-metoder behöver separata prov. Se [full körinstruktion och gränser](../docs/migration/target-auth-lifecycle.md).
+
+Samtidiga svar serialiseras med radlås. Senast utförda olika kommando gäller;
+version 0.1 har ingen `If-Match`/förväntad revision. Upprepning av exakt samma
+svar och kommentar skriver ingen historik eller signalversion. En äldre,
+fördröjd annorlunda begäran kan alltså ersätta ett nyare svar. Gör ingen
+automatisk fallback till gamla backend efter timeout.
+
+Det finns inga verksamhetstriggers. Runtime får uppdatera svar, kommentar,
+svarstid och revision, infoga historik samt läsa/infoga/öka signalversionen.
+Historiken saknar UPDATE/DELETE-grants och kallelsens identitet är skrivskyddad.
+`UPDATE(status)` på aktivitet behövs för PostgreSQLs `SELECT FOR UPDATE`;
+repositoryt exponerar ingen aktivitets-skrivmetod. Rollen saknar DDL/ägarrätt.
+Det finns ingen RLS i `forena`: runtime-kontot kan läsa över familjegränser och
+Kotlin måste alltid kontrollera åtkomsten. Kontot får aldrig lämnas till klienter,
+och schemat får inte exponeras via Supabase Data API. Migrationen återkallar
+åtkomst för PUBLIC samt eventuella anon/authenticated/service_role-roller.
+Gamla appens Supabase-schema och RLS ändras inte.
+Historiken sparar inte kommentartext eller token. `activity_signal_state` är
+en beständig invalideringsversion, inte en outbox eller ett löfte om levererad
+notifiering. Signalworker/Modulith-reaktion kopplas in i ett senare steg.

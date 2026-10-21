@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test
 
 class DatabaseCertificateTest {
     @Test fun `runtime CA replaces the old container path and preserves TLS verification`() {
-        val pem = Files.readString(Path.of("../certs/supabase-ca.crt"))
+        val pem = Files.readString(Path.of("certs/supabase-ca.crt"))
         val url = databaseUrlWithCertificate("jdbc:postgresql://db.test/postgres?sslmode=verify-full&sslrootcert=/app/supabase-ca.crt", pem)!!
         val file = Path.of(url.substringAfter("sslrootcert="))
         try {

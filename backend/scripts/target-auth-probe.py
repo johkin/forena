@@ -23,8 +23,8 @@ from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
 
 REF = "ckzrtxqjskosqzoitymc"
 ISSUER = f"https://{REF}.supabase.co/auth/v1"
-ROOT = Path(__file__).resolve().parents[3]
-EVIDENCE = ROOT / "backend/api/target/target-auth-provider-results.json"
+ROOT = Path(__file__).resolve().parents[2]
+EVIDENCE = ROOT / "backend/target/target-auth-provider-results.json"
 
 
 class ProbeError(RuntimeError):
@@ -45,7 +45,7 @@ def main():
         raise ProbeError("Configure FORENA_TEST_AUTH_SECRET_KEY in the environment")
     if secret.startswith("sb_publishable_"):
         raise ProbeError("FORENA_TEST_AUTH_SECRET_KEY contains a publishable key; configure the test project's sb_secret_ key")
-    public_config = ROOT / "backend/api/.env.target.example"
+    public_config = ROOT / "backend/.env.target.example"
     publishable = next(line.split("=", 1)[1] for line in public_config.read_text().splitlines()
                        if line.startswith("FORENA_AUTH_PUBLISHABLE_KEY="))
     opener = urllib.request.build_opener(NoRedirect())

@@ -14,7 +14,7 @@ import urllib.error
 import urllib.parse
 import uuid
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[2]
 REF = "ckzrtxqjskosqzoitymc"
 ISSUER = f"https://{REF}.supabase.co/auth/v1"
 
@@ -59,7 +59,7 @@ def jdbc(operation, path, state):
     properties = path.with_suffix(".properties")
     properties.write_text("\n".join(f"{k}={uuid.UUID(v)}" for k, v in state["ids"].items()))
     java = str(Path(env["JAVA_HOME"]) / "bin/java") if env.get("JAVA_HOME") else "java"
-    result = subprocess.run([java, "--class-path", str(jars[0]), str(ROOT / "backend/api/scripts/BrowserSeed.java"), operation, str(properties)], env=env, capture_output=True, text=True, timeout=60)
+    result = subprocess.run([java, "--class-path", str(jars[0]), str(ROOT / "backend/scripts/BrowserSeed.java"), operation, str(properties)], env=env, capture_output=True, text=True, timeout=60)
     if result.returncode:
         # Do not print JDBC exception text or process environment.
         raise SeedError("Fixture SQL failed; credentials and JDBC exception text withheld")
@@ -114,11 +114,11 @@ def cleanup(path, state):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("operation", choices=["create", "snapshot", "cleanup"])
-    parser.add_argument("--state", type=Path, default=ROOT / "backend/api/target/browser-seed.json")
+    parser.add_argument("--state", type=Path, default=ROOT / "backend/target/browser-seed.json")
     args = parser.parse_args()
     path = args.state.resolve()
-    if not any(path.is_relative_to(ROOT / parent) for parent in ("work", "backend/api/target")):
-        raise SeedError("Private state must be under ignored work/ or backend/api/target/")
+    if not any(path.is_relative_to(ROOT / parent) for parent in ("work", "backend/target")):
+        raise SeedError("Private state must be under ignored work/ or backend/target/")
     if os.environ.get("FORENA_TEST_TARGET_REF") != REF:
         raise SeedError("Explicitly select the isolated test project")
     if args.operation != "create":

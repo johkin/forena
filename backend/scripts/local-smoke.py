@@ -17,8 +17,8 @@ import xml.etree.ElementTree as ET
 import uuid
 
 
-ROOT = Path(__file__).resolve().parents[3]
-JAR = ROOT / "backend/api/target/forena-api.jar"
+ROOT = Path(__file__).resolve().parents[2]
+JAR = ROOT / "backend/target/forena-api.jar"
 JAVA = str(Path(os.environ["JAVA_HOME"]) / "bin/java")
 
 
@@ -70,7 +70,7 @@ def main():
     if args.runtime_entrypoint and not args.runtime_image:
         parser.error("--runtime-entrypoint requires --runtime-image")
     if not JAR.is_file():
-        raise SystemExit("Build backend/api with Maven verify first")
+        raise SystemExit("Build backend with Maven verify first")
     container = docker("run", "--rm", "-d", "-p", "127.0.0.1::5432", "-e",
                        "POSTGRES_PASSWORD=local-smoke-only", "postgres:17.6-alpine")
     runtime = keys = runtime_container = None
@@ -84,7 +84,7 @@ def main():
                 if time.monotonic() >= deadline:
                     raise
                 time.sleep(0.2)
-        bootstrap = (ROOT / "backend/api/scripts/bootstrap.sql").read_text()
+        bootstrap = (ROOT / "backend/scripts/bootstrap.sql").read_text()
         docker("exec", "-i", container, "psql", "-U", "postgres", "-v", "ON_ERROR_STOP=1", input=bootstrap + """
 ALTER ROLE forena_api_owner LOGIN PASSWORD 'local-owner-only';
 ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
@@ -102,7 +102,7 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
             log.seek(0)
             assert "Tomcat started" not in log.read(), "Migration mode must not open HTTP"
         changes = docker("exec", container, "psql", "-U", "postgres", "-Atc", "select count(*) from forena.databasechangelog")
-        changelog = ET.parse(ROOT / "backend/api/src/main/resources/db/changelog.xml")
+        changelog = ET.parse(ROOT / "backend/src/main/resources/db/changelog.xml")
         expected_changes = len(changelog.findall("{http://www.liquibase.org/xml/ns/dbchangelog}changeSet"))
         assert changes == str(expected_changes), "Packaged migrations must match the release changelog"
         session_columns = docker("exec", container, "psql", "-U", "postgres", "-Atc",

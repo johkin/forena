@@ -31,7 +31,7 @@ knyter körningen till samtliga API-källor, låst verktygskedja och JAR-hash.
   `3.9.11`. Supabases CA från `backend/certs/supabase-ca.crt` användes med
   `sslmode=verify-full`. Separat Java-handshake verifierade betrodd CA,
   hostname och TLS 1.3. Båda rollernas verkliga JDBC-inloggning fungerade.
-- Paketerad `FORENA_MIGRATE=true java -jar backend/api/target/forena-api.jar`
+- Paketerad `FORENA_MIGRATE=true java -jar backend/target/forena-api.jar`
   kördes som ägarrollen, utan HTTP-server och utan Auth-adminnyckel i
   releaseprocessen. Första körningen: **5 nya, 0 tidigare, totalt 5 steg**.
   Andra körningen: **0 nya, 5 tidigare, totalt 5 steg**. Hela historikposterna,
@@ -135,11 +135,11 @@ och separat Liquibase-release; detta är nu utfört i Sandbox enligt ovan.
 Auth-only-provet bevisar `/user`-beteendet vid denna
 körning, inte Kotlin-API:ts familjeavgränsning eller nekade databasändringar.
 
-Det separata [Auth-provet utan databas](../../backend/api/scripts/target-auth-probe.py)
+Det separata [Auth-provet utan databas](../../backend/scripts/target-auth-probe.py)
 kördes med Python 3; det kan upprepas med Python 3 och `cryptography` tillgängligt:
 
 ```sh
-FORENA_TEST_TARGET_REF=ckzrtxqjskosqzoitymc python3 backend/api/scripts/target-auth-probe.py
+FORENA_TEST_TARGET_REF=ckzrtxqjskosqzoitymc python3 backend/scripts/target-auth-probe.py
 ```
 
 Det använder bara testprojektets Auth-API och nya syntetiska konton utan utskick.
@@ -151,7 +151,7 @@ före nätanrop; okända opaka nätsecret-placeholders lämnas åt miljöns prox
 API-nycklar skickas i `apikey`, bearer-header används endast för användar-JWT.
 Redirect följs inte och TLS-verifiering behålls.
 
-Resultatet skrivs till `backend/api/target/target-auth-provider-results.json`
+Resultatet skrivs till `backend/target/target-auth-provider-results.json`
 först efter avslutade prov och bekräftad städning. Filen har scope
 `auth-provider-only`; den kan aldrig ersätta resultatet från `TargetAuthIT`.
 Utebliven fil eller `passed: false` är inte ett godkänt prov. Inte heller
@@ -170,7 +170,7 @@ ett godkänt Auth-prov bevisar familjeåtkomst eller nekade databasändringar.
   inga syntetiska verksamhetsrader eller Auth-provkonton finns kvar.
   Teknikprovets scheman finns kvar separat. Gamla Förena-projektet ändras inte.
 
-[Bootstrap](../../backend/api/scripts/bootstrap.sql) kördes genom Supabases
+[Bootstrap](../../backend/scripts/bootstrap.sql) kördes genom Supabases
 administrativa bootstrap-migration `forena_api_bootstrap`. Den äger bara
 roller/schema, inga verksamhetstabeller. Liquibase äger verksamhetsobjekt och
 sin egen historik. Begränsad CREATEROLE kräver tillfällig SET-rätt för
@@ -223,7 +223,7 @@ aviserade HTTP/TLS-ändring kräver moderna TLS-klienter; TLS-verifiering behål
 ## Färdigställ credentials och migrering
 
 Publika issuer/JWKS/key-värden finns i
-[exempelkonfigurationen](../../backend/api/.env.target.example).
+[exempelkonfigurationen](../../backend/.env.target.example).
 Det nya obligatoriska runtime-värdet är `FORENA_AUTH_PUBLISHABLE_KEY`.
 
 1. Sätt separata starka rollösenord genom administrativ credentialhantering.
@@ -235,7 +235,7 @@ Det nya obligatoriska runtime-värdet är `FORENA_AUTH_PUBLISHABLE_KEY`.
    Connect-panel. Verifiera `sslmode=verify-full`, betrodd CA och poolerns
    rollnamn med projektsuffix. Hostnamn/credentials gissas inte från regionen.
    Körmiljön behöver godkänd TCP-åtkomst till adressen; Auth-HTTPS ger inte JDBC-åtkomst.
-3. Kör paketerad migrering enligt [API-README](../../backend/api/README.md).
+3. Kör paketerad migrering enligt [API-README](../../backend/README.md).
    Kör igen och kontrollera att fem Liquibase-steg är oförändrade. Ingen
    Supabase-migration ska skapa/modifiera verksamhetstabellerna.
 4. Kör Auth-/API-provet nedan. Ingen import av gamla testdata behövs. Provet
@@ -267,7 +267,7 @@ kommandoradsargument:
 Med låst JDK och Maven Wrapper:
 
 ```sh
-backend/mvnw -f backend/api/pom.xml --batch-mode --no-transfer-progress -Dtest=TargetAuthIT test
+backend/mvnw -f backend/pom.xml --batch-mode --no-transfer-progress -Dtest=TargetAuthIT test
 ```
 
 En miljö med HTTP-proxy behöver normal Java-proxy-/CA-konfiguration också för
@@ -280,7 +280,7 @@ lokal utloggning (annan session kvar), global utloggning, ny inloggning, spärr 
 soft delete. Tidigare JWT provas mot läsning och skrivning. Nekade kommandon får
 inte skapa historik. Fixturer och Auth-konton städas i `finally`; endast efter
 godkänd kontroll **och** städning skrivs
-`backend/api/target/target-auth-results.json`, utan tokens/lösenord.
+`backend/target/target-auth-results.json`, utan tokens/lösenord.
 Vid avbruten process kan fixturer kräva avgränsad städning, aldrig generell DELETE.
 
 Mejlleverans/magic-link, browser-PKCE, passkeys, OAuth/MCP, full signalworker och

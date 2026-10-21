@@ -5,12 +5,13 @@ Den stegvisa målarkitekturen för Kotlin/Spring Boot på Vercel och Supabase fi
 Beskrivningen nedan avser nuvarande lösning och befintliga principer; målteknik
 är inte införd bara för att den dokumenterats.
 
-Det första separata verksamhets-API:t finns nu i `backend/api`: familjens
+Repots enda Kotlin/Spring Boot-kodbas finns direkt i `backend` (ADR-019).
+M21/M22-teknikprovet är borttaget. Verksamhets-API:t hanterar familjens
 kallelseläsning och svar med Spring Data JDBC-repositories, Liquibase och åtkomstkontroller i Kotlin (ADR-012). Det använder
 ett nytt tomt `forena`-schema enligt ADR-010, utan gamla projektets testdata.
 Enligt ADR-013 äger en Spring `@Service` med `@Transactional` hela svarslogiken,
 inklusive historik och signalversion; inga verksamhetstriggers eller egna
-procedurer används i det nya API-schemat. Nuvarande Next.js-app är ännu inte omkopplad. Se [API-underlaget](../backend/api/README.md)
+procedurer används i det nya API-schemat. Nuvarande Next.js-app är ännu inte omkopplad. Se [API-underlaget](../backend/README.md)
 för säkerhetsgränser, verifiering och återstående aktivering. REST-controllers
 använder typade Kotlin data classes för svar. OpenAPI genereras från controller-
 signaturer och DTO-annoteringar med springdoc, och TypeScript-typer härleds från

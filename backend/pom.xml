@@ -10,13 +10,14 @@
     <relativePath/>
   </parent>
   <groupId>se.forena</groupId>
-  <artifactId>forena-kotlin-probe</artifactId>
+  <artifactId>forena-api</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <properties>
-    <java.version>26</java.version>
+    <java.version>25</java.version>
     <kotlin.version>2.4.20</kotlin.version>
     <kotlin.compiler.daemon>false</kotlin.compiler.daemon>
     <spring-modulith.version>2.1.0</spring-modulith.version>
+    <springdoc.version>3.1.1</springdoc.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -31,12 +32,21 @@
   </dependencyManagement>
   <dependencies>
     <dependency>
+      <groupId>org.springdoc</groupId>
+      <artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
+      <version>${springdoc.version}</version>
+    </dependency>
+    <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-webmvc</artifactId>
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-jdbc</artifactId>
+      <artifactId>spring-boot-starter-data-jdbc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-session-jdbc</artifactId>
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -52,12 +62,7 @@
     </dependency>
     <dependency>
       <groupId>org.springframework.modulith</groupId>
-      <artifactId>spring-modulith-starter-jdbc</artifactId>
-    </dependency>
-    <!-- Explicit compile-time SPI dependency for the bounded registry reader (same pinned BOM). -->
-    <dependency>
-      <groupId>org.springframework.modulith</groupId>
-      <artifactId>spring-modulith-events-core</artifactId>
+      <artifactId>spring-modulith-starter-core</artifactId>
     </dependency>
     <dependency>
       <groupId>tools.jackson.module</groupId>
@@ -103,7 +108,7 @@
     </dependency>
   </dependencies>
   <build>
-    <finalName>forena-kotlin-probe</finalName>
+    <finalName>forena-api</finalName>
     <sourceDirectory>${project.basedir}/src/main/kotlin</sourceDirectory>
     <testSourceDirectory>${project.basedir}/src/test/kotlin</testSourceDirectory>
     <plugins>
@@ -117,14 +122,8 @@
             <goals><goal>enforce</goal></goals>
             <configuration>
               <rules>
-                <requireJavaVersion><version>[26,27)</version></requireJavaVersion>
+                <requireJavaVersion><version>[25,26)</version></requireJavaVersion>
                 <requireMavenVersion><version>[3.9.11]</version></requireMavenVersion>
-                <requireJavaVendor><includes><include>Oracle Corporation</include></includes></requireJavaVendor>
-                <requireProperty>
-                  <property>java.runtime.version</property>
-                  <regex>26\.0\.2\.1\+1-7</regex>
-                  <regexMessage>Use Oracle JDK 26.0.2.1+1-7 for Maven, compilation and tests.</regexMessage>
-                </requireProperty>
               </rules>
             </configuration>
           </execution>
@@ -135,7 +134,7 @@
         <artifactId>kotlin-maven-plugin</artifactId>
         <version>${kotlin.version}</version>
         <configuration>
-          <jvmTarget>26</jvmTarget>
+          <jvmTarget>${java.version}</jvmTarget>
           <javaParameters>true</javaParameters>
           <compilerPlugins><plugin>spring</plugin></compilerPlugins>
         </configuration>
@@ -154,10 +153,30 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+        <configuration>
+          <image>
+            <env>
+              <BP_JVM_VERSION>${java.version}</BP_JVM_VERSION>
+            </env>
+          </image>
+        </configuration>
         <executions>
           <execution><id>build-info</id><goals><goal>build-info</goal></goals></execution>
         </executions>
       </plugin>
     </plugins>
   </build>
+  <profiles>
+    <profile>
+      <id>native</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.graalvm.buildtools</groupId>
+            <artifactId>native-maven-plugin</artifactId>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

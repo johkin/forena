@@ -4,12 +4,12 @@ import { readFile, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 
 // Only synthetic accounts from browser-seed.py. Never persist tokens or traces.
-const statePath = process.env.FORENA_BROWSER_SEED_STATE ?? "backend/api/target/browser-seed.json";
+const statePath = process.env.FORENA_BROWSER_SEED_STATE ?? "backend/target/browser-seed.json";
 const state = JSON.parse(await readFile(statePath, "utf8"));
 assert.equal(state.project_ref, "ckzrtxqjskosqzoitymc");
 assert.equal(process.env.FORENA_TEST_TARGET_REF, state.project_ref);
 assert.ok(!state.cleaned && state.password);
-const output = "backend/api/target/browser-flow";
+const output = "backend/target/browser-flow";
 const base = "http://127.0.0.1:3000";
 const activityPath = `/activities/${state.ids.activity}`;
 const checks = [];
@@ -17,7 +17,7 @@ const browser = await chromium.launch({ headless: true,
   ...(process.env.FORENA_BROWSER_EXECUTABLE ? { executablePath: process.env.FORENA_BROWSER_EXECUTABLE } : {}),
   env: Object.fromEntries(Object.entries(process.env).filter(([key, value]) => !key.startsWith("FORENA_") && value !== undefined)),
 });
-const db = () => JSON.parse(execFileSync("python3", ["backend/api/scripts/browser-seed.py", "snapshot", "--state", statePath], { encoding: "utf8" }));
+const db = () => JSON.parse(execFileSync("python3", ["backend/scripts/browser-seed.py", "snapshot", "--state", statePath], { encoding: "utf8" }));
 const invitation = snapshot => snapshot.invitations.find(row => row.id === state.ids.invitation0);
 const sessionCookie = async context => (await context.cookies()).find(cookie => cookie.name === "forena-local-session");
 async function login(page, index = 0) {
@@ -105,7 +105,7 @@ try {
   await context.close();
 } finally {
   await browser.close();
-  execFileSync("python3", ["backend/api/scripts/browser-seed.py", "cleanup", "--state", statePath], { stdio: "pipe" });
+  execFileSync("python3", ["backend/scripts/browser-seed.py", "cleanup", "--state", statePath], { stdio: "pipe" });
 }
 assert.equal(JSON.parse(await readFile(statePath, "utf8")).cleaned, true);
 await writeFile(`${output}/results.json`, JSON.stringify({ passed: true, checks, cleanup_confirmed: true, not_tested: ["deployed-runtime", "signup", "password-recovery", "passkeys", "ordinary-dashboard"] }, null, 2) + "\n");

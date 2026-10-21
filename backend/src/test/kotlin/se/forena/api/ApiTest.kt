@@ -265,7 +265,7 @@ class ApiTest {
     fun `real browser uses Kotlin sessions and PostgreSQL without browser tokens`() {
         loginAccess = token(); refreshAccess = token()
         val process = ProcessBuilder("node", "scripts/migration/browser-server-session.mjs")
-            .directory(Path.of("../..").toFile()).redirectErrorStream(true)
+            .directory(Path.of("..").toFile()).redirectErrorStream(true)
             .redirectOutput(Path.of("target/browser-server-session.log").toFile())
         val executable = System.getenv("FORENA_BROWSER_EXECUTABLE")
         process.environment().keys.removeIf { it.startsWith("FORENA_") }
