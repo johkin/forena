@@ -1,6 +1,43 @@
 {
   "components": {
     "schemas": {
+      "AccessibleInvitation": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "person_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "response": {
+            "enum": [
+              "pending",
+              "accepted",
+              "declined"
+            ],
+            "type": "string"
+          },
+          "response_comment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "person_id",
+          "response",
+          "response_comment"
+        ],
+        "type": "object"
+      },
       "ApiError": {
         "properties": {
           "error": {
@@ -63,57 +100,6 @@
         ],
         "type": "object"
       },
-      "FamilyInvitation": {
-        "properties": {
-          "id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "person_id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "response": {
-            "enum": [
-              "pending",
-              "accepted",
-              "declined"
-            ],
-            "type": "string"
-          },
-          "response_comment": {
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "person_id",
-          "response",
-          "response_comment"
-        ],
-        "type": "object"
-      },
-      "FamilyInvitations": {
-        "properties": {
-          "invitations": {
-            "items": {
-              "$ref": "#/components/schemas/FamilyInvitation"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "invitations"
-        ],
-        "type": "object"
-      },
       "InvitationResponseResult": {
         "properties": {
           "ok": {
@@ -122,6 +108,76 @@
         },
         "required": [
           "ok"
+        ],
+        "type": "object"
+      },
+      "MyActivities": {
+        "properties": {
+          "activities": {
+            "items": {
+              "$ref": "#/components/schemas/MyActivity"
+            },
+            "type": "array"
+          },
+          "next_offset": {
+            "format": "int32",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "activities",
+          "next_offset"
+        ],
+        "type": "object"
+      },
+      "MyActivity": {
+        "properties": {
+          "ends_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "organization_name": {
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "team_name": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ends_at",
+          "id",
+          "organization_name",
+          "starts_at",
+          "team_name",
+          "title"
+        ],
+        "type": "object"
+      },
+      "MyInvitations": {
+        "properties": {
+          "invitations": {
+            "items": {
+              "$ref": "#/components/schemas/AccessibleInvitation"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "invitations"
         ],
         "type": "object"
       },
@@ -198,7 +254,7 @@
     }
   },
   "info": {
-    "title": "Förena family invitations API",
+    "title": "Förena activities API",
     "version": "0.1.0"
   },
   "openapi": "3.1.0",
@@ -223,11 +279,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FamilyInvitations"
+                  "$ref": "#/components/schemas/MyInvitations"
                 }
               }
             },
-            "description": "Family invitations"
+            "description": "Accessible invitations"
           },
           "400": {
             "content": {
@@ -257,7 +313,7 @@
                 }
               }
             },
-            "description": "Activity unavailable to family"
+            "description": "Activity unavailable to account"
           },
           "503": {
             "content": {
@@ -524,7 +580,7 @@
                 }
               }
             },
-            "description": "Invitation unavailable to family"
+            "description": "Invitation unavailable to account"
           },
           "409": {
             "content": {
@@ -549,6 +605,69 @@
         },
         "tags": [
           "invitation-controller"
+        ]
+      }
+    },
+    "/api/me/activities": {
+      "get": {
+        "description": "Own and delegated person access. Invitation-backed, ongoing/upcoming scheduled activities starting within 90 days; includes declined and not-yet-sent invitations. Stable starts_at/id order, 50 activities per page, no duplicates. No-store. Offset 0..100000; concurrent changes may shift pages.",
+        "operationId": "getMyActivities",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyActivities"
+                }
+              }
+            },
+            "description": "My activities"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid offset"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Inactive session"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Session verification unavailable"
+          }
+        },
+        "tags": [
+          "activity-overview-controller"
         ]
       }
     }

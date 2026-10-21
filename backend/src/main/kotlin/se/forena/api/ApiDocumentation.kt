@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration
 
 @Configuration
 @OpenAPIDefinition(
-    info = Info(title = "Förena family invitations API", version = "0.1.0"),
+    info = Info(title = "Förena activities API", version = "0.1.0"),
     servers = [Server(url = "/")],
     security = [SecurityRequirement(name = "bearer")]
 )

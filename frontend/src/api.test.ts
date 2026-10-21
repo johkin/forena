@@ -42,3 +42,14 @@ it.each(["//other.test", "https://other.test", "/\\other.test", "/api/unknown"])
   expect(safeDestination(value)).toBe("/");
 });
 it("keeps activity deep links across login", () => expect(safeDestination(`/activities/${id}`)).toBe(`/activities/${id}`));
+
+it("allows only bounded overview read paths", async () => {
+  const transport = vi.fn().mockResolvedValue(Response.json({ activities: [], next_offset: null }));
+  const request = createApiFetch(async () => id, vi.fn(), transport);
+  await request("/api/me/activities");
+  await request("/api/me/activities?offset=50");
+  await expect(request("/api/me/activities?subject=someone")).rejects.toThrow();
+  await expect(request("/api/me/activities?offset=-1")).rejects.toThrow();
+  await expect(request("/api/me/activities", { method: "PUT" })).rejects.toThrow();
+  expect(transport).toHaveBeenCalledTimes(2);
+});

@@ -6,8 +6,8 @@ Beskrivningen nedan avser nuvarande lösning och befintliga principer; måltekni
 är inte införd bara för att den dokumenterats.
 
 Repots enda Kotlin/Spring Boot-kodbas finns direkt i `backend` (ADR-019).
-M21/M22-teknikprovet är borttaget. Verksamhets-API:t hanterar familjens
-kallelseläsning och svar med Spring Data JDBC-repositories, Liquibase och åtkomstkontroller i Kotlin (ADR-012). Det använder
+M21/M22-teknikprovet är borttaget. Verksamhets-API:t hanterar
+kallelseläsning och svar genom egen och delegerad personåtkomst med Spring Data JDBC-repositories, Liquibase och åtkomstkontroller i Kotlin (ADR-012). Det använder
 ett nytt tomt `forena`-schema enligt ADR-010, utan gamla projektets testdata.
 Enligt ADR-013 äger en Spring `@Service` med `@Transactional` hela svarslogiken,
 inklusive historik och signalversion; inga verksamhetstriggers eller egna
@@ -20,7 +20,7 @@ Kotlin-tjänster namnges med suffixet `Service`, exempelvis `InvitationService`.
 Varje moduls interna databasmodeller samlas i `Entities.kt` och repository-
 interface i `Repositories.kt`. DTO:er ligger i separata filer från tjänstelogiken;
 modulen `activities` äger aktiviteter/kallelser och `identity` konto/session och
-familjeåtkomst. Modulith verifierar beroendet `activities` → `identity` (ADR-015).
+personåtkomst. Modulith verifierar beroendet `activities` → `identity` (ADR-015).
 
 Ett avskilt [browserflöde](migration/browser-participation.md) återanvänder
 inloggning, sidskal och kallelsesvar genom de befintliga Next-rutterna till
@@ -48,6 +48,14 @@ separata. Den äldre Next → Kotlin-adaptern ligger kvar som historiskt prov.
 Förena byggs som en multi-tenant-applikation där varje skrivning går genom ett
 validerat applikationskommando. Gränssnitt och AI-assistent använder samma
 kommandon; AI:n får aldrig direkt databasåtkomst.
+
+Den nya webbens startsida visar **Mina aktiviteter** via `GET /api/me/activities`.
+`PersonAccessService` härleder egen och delegerad personåtkomst; familj är inte
+ett backendbegrepp. Relationen `guardian` är ett möjligt underlag för en aktiv
+åtkomsttilldelning. Inga nya relationstyper får rättigheter automatiskt.
+Översikten använder en avgränsad Spring Data JDBC-läsprojektion och återanvänder
+`MyActivityList` på startsidan och `/components`. Se ADR-020 för urval,
+sidindelning och skillnader mot gamla översikten.
 
 ## Lager
 

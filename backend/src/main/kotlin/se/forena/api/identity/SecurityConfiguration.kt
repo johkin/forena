@@ -95,7 +95,7 @@ class SecurityConfiguration {
     }
 }
 
-/** Only verified Supabase web sessions. Claims never grant family or organizational access. */
+/** Only verified Supabase web sessions. Claims never grant person or organizational access. */
 class WebSessionValidator : OAuth2TokenValidator<Jwt> {
     override fun validate(token: Jwt): OAuth2TokenValidatorResult {
         val valid = runCatching {

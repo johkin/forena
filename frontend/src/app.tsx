@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { z } from "zod";
+import { MyActivitiesPage } from "./my-activities";
 import { AppHeaderFrame } from "../../src/components/app-header-frame";
 import { AppShellFrame } from "../../src/components/app-shell-frame";
 import { AppFooter } from "../../src/components/app-footer";
@@ -89,12 +90,12 @@ export function App({ config }: { config: PublicConfig }) {
   }
   if (!auth.session) return <Frame key="guest"><main className="auth-page"><section className="auth-card">
     <span className="brand-mark">F</span><p className="eyebrow">Förena</p><h1>Logga in</h1>
-    <p>Logga in för att se och svara på familjens kallelser.</p>
+    <p>Logga in för att se dina aktiviteter och svara på kallelser.</p>
     <PasswordLoginForm onLogin={(email, password) => void login(email, password)} onPasskey={() => void login()} pending={pending} error={error} />
   </section></main></Frame>;
 
   const match = /^\/activities\/([^/]+)$/.exec(path);
-  const activityId = match?.[1] ?? config.activityId;
+  const activityId = match?.[1] ?? (path === "/migration/participation" ? config.activityId : undefined);
   const validActivity = z.uuid().safeParse(activityId);
   const knownPath = path === "/" || path === "/login" || path === "/migration/participation" || Boolean(match);
   async function logout() {
@@ -108,12 +109,13 @@ export function App({ config }: { config: PublicConfig }) {
   }
   return <Frame key={auth.session.user.id} email={auth.session.user.email ?? undefined} logout={<button type="button" className="logout-button" aria-label="Logga ut från Förena" disabled={pending} onClick={() => void logout()}>{pending ? "Loggar ut…" : "Logga ut"}</button>}>
     <main className="content" key={auth.session.user.id}>
-      <p className="eyebrow">Familjen</p><h1>{knownPath ? "Familjens kallelser" : "Sidan finns inte"}</h1>
+      <p className="eyebrow">Personligt</p><h1>{!knownPath ? "Sidan finns inte" : path === "/" || path === "/login" ? "Mina aktiviteter" : "Kallelser"}</h1>
       {error ? <p role="alert">{error}</p> : null}
-      {!knownPath ? <a href="/">Till startsidan</a> : validActivity.success ? <>
+      {!knownPath ? <a href="/">Till startsidan</a> : path === "/" || path === "/login" ? <MyActivitiesPage request={request} /> : validActivity.success ? <>
+        <p><a href="/">Till mina aktiviteter</a></p>
         <p>Svara för var och en och lägg till en kommentar om det behövs.</p>
         <ActivityInvitationResponse activityId={validActivity.data} cancelled={false} request={request} />
-      </> : <p>Inga kallelser att visa här ännu. Öppna länken till en aktivitet för att se familjens kallelser.</p>}
+      </> : <p>Inga kallelser att visa här ännu. Öppna länken till en aktivitet för att se dina kallelser.</p>}
     </main>
   </Frame>;
 }

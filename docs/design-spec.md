@@ -46,6 +46,15 @@ handlingar använder enbart syntetiska lokala data.
 Efter avbruten koppling eller avstängning ska en ny koppling börja med en
 omarkerad samtyckesruta. Detta gäller även galleriets interaktiva exempel.
 
+## Kotlin-pilotens Mina aktiviteter
+
+Den nya Vite-appens startsida heter **Mina aktiviteter**. Den använder samma
+`MyActivityList` i produktion och `/components`, med laddning, tomt, fel och
+sidindelning. Klubb, lag och svensk tid visas på varje rad; aktivitetslänken
+öppnar kallelsesvaret. Kontomenyn länkar till Mina aktiviteter. Piloten omfattar
+kallelsekopplade aktiviteter; beskrivningen av gamla appens fullständiga
+personliga startsida nedan innebär inte att medlemskap/arbetspass redan flyttats.
+
 ## Personlig startsida
 
 `/` är den inloggade användarens Förena-brandade **Min översikt**, utan vald

@@ -1,5 +1,68 @@
 # Migreringsstatus
 
+## Mina aktiviteter och personåtkomst, 2026-10-21
+
+Branch `feat/my-activities`, från main `62247c7` (PR #148).
+[ADR-020](decisions.md#adr-020-personåtkomst-och-mina-aktiviteter) och
+[M07A](tasks/m07a-activity-overview.md) beskriver aktuell modell och avgränsning.
+
+Startsidan i Vite visar nu **Mina aktiviteter** utan förvalt aktivitets-ID.
+`GET /api/me/activities` listar kontots kallelsekopplade aktiviteter genom egen
+eller delegerad personåtkomst, över föreningsgränser och utan dubbletter.
+Pågående/kommande ej inställda aktiviteter med start inom 90 dagar ingår,
+inklusive nej-svar och ännu inte utskickade kallelser. 50 aktiviteter/sida,
+starttid/UUID-sortering och `next_offset`; samtidiga ändringar kan flytta sidor.
+Klubb, lag och uttryckligen svensk tid visas; länken öppnar befintligt svarflöde.
+Laddning, tomt, fel/återförsök och samma produktionskomponent finns på `/components`.
+
+Kotlin använder `PersonAccessService`, `AccessiblePerson`, `MyInvitations` och
+`AccessibleInvitation`, utan familj som kodbegrepp. Tilldelningarna `self` och
+`guardian` ger oförändrad personåtkomst; andra relationstyper införs inte nu.
+Befintliga kallelserutters URL:er och JSON-fält är oförändrade; genererade
+scheman har nya namn. En parameteriserad, begränsad läsprojektion i Spring Data
+JDBC undviker att ladda hela kallelsemängden. Migration 009 ger endast runtime
+kolumnläsning av lag-ID, organisation och namn. Tidigare migrationer är orörda.
+
+Verifierat lokalt på denna branch:
+
+- Java 25 Maven `verify`: 66 tester, 0 fel, 1 valfritt browserprov överhoppat.
+  Nytt urval, egen/delegerad åtkomst, andra konton/föreningar, återkallad
+  åtkomst, inaktiv session, sidindelning och nio migrationsbaslinjer ingår.
+- Det valfria browserprovet kördes därefter med
+  `FORENA_LOCAL_BROWSER_TEST=true FORENA_BROWSER_EXECUTABLE=/usr/bin/chromium`
+  och Maven `'-Dtest=ApiTest#real*' test`: 2 tester, 0 fel/överhoppade.
+  Browser → riktig Kotlin → lokal PostgreSQL → svar/omladdning/logout är grönt;
+  endast Auth-leverantören är kontrollerad. En lokal transportbrygga bevarar
+  HTTPS-origin och Secure-cookie; detta är inget driftsatt Vercel-/Supabase-prov.
+- Paketerad JAR via `backend/scripts/local-smoke.py`: bootstrap, migrering två
+  gånger, runtime utan ägarkonto, health, Auth-budget och avstängning godkända.
+- 1 146 Vitest-tester, båda apparnas typkontroll, lint, Next-produktionsbygge
+  och Vite-produktionsbygge godkända. OpenAPI/TS genererade från riktig Spring
+  HTTP-export; upprepad generation ger bytevis identiskt kontrakt.
+- `scripts/migration/browser-frontend-mock.mjs`: startsida/lista/detalj/svar,
+  sidindelning, 503/återförsök, kontobyte, logout, tangentbordsmeny och galleri
+  godkända. Ingen horisontell overflow vid 320/375/390/768/1440 px. Mobil och
+  desktop visuellt granskade med syntetiska data.
+
+Initiala verifieringshinder är rättade: Maven behövde miljöns proxy och CA,
+frontendens förinstallerade beroenden saknade Vite-pluginen och Next-byggets
+underprocess behövde normal exekveringsåtkomst. Befintliga kontrakts-/granttester
+uppdaterades för den nya rutten och lagets kolumnläsning; ovan avser godkända
+omkörningar. Inga kontroller eller skydd har stängts av.
+
+Ej körda: nytt native-bygge och verkligt driftsatt Auth/browserprov. Ingen
+molnmigration, deployment eller ändring av projektinställningar har gjorts.
+Migration 009 och ombyggd native-image krävs före aktivering. Nya Liquibase-
+schemat är verifierat mot lokal PostgreSQL; gamla appens Supabase-reset/pgTAP
+har inte körts för detta separata schema.
+
+Nästa grind är aktuell gemensam native-release och inloggat prov i målmiljön.
+Lagmedlemskap utan kallelse, arbetspass och föreningstidszon saknas ännu i Kotlin.
+M06:s fulla signalworker, M22G:s driftgrindar och återstående M03-metoder
+(passkey gav senast `passkey_disabled`) återstår. M07 och full M18B är inte
+accepterade enbart genom denna avgränsade översikt. Äldre rapporter nedan är
+historiska; deras ”nästa steg” ersätter inte denna uppföljning.
+
 **2026-10-21:** Kotlin-koden är samlad direkt i `backend/` enligt
 [ADR-019](decisions.md#adr-019-en-kotlin-kodbas-direkt-i-backend).
 M21/M22-probets kod, skript och deployfiler är borttagna. Dokumenterade
