@@ -9,8 +9,15 @@ export function activityRangeDuration(startDate: string, startTime: string, endD
   return duration;
 }
 
+const dateKeyFormatters = new Map<string, Intl.DateTimeFormat>();
+
 export function activityDateKey(value: string, timeZone: string) {
-  return new Intl.DateTimeFormat("sv-SE", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
+  let formatter = dateKeyFormatters.get(timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("sv-SE", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" });
+    dateKeyFormatters.set(timeZone, formatter);
+  }
+  return formatter.format(new Date(value));
 }
 
 /** Index only the displayed month; midnight ends belong to the preceding day. */
