@@ -53,3 +53,9 @@ data class ActivitySignalRecord(
     override fun getId(): UUID = activityId
     override fun isNew(): Boolean = newRecord
 }
+
+/** Read projection only; authorized person IDs come from identity's public service. */
+data class ActivityOverviewRecord(
+    val id: UUID, val title: String, val startsAt: Instant, val endsAt: Instant,
+    val organizationName: String, val teamName: String
+)

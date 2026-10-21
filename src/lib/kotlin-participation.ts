@@ -10,7 +10,7 @@ const family = z.object({ invitations: z.array(z.object({
   id: uuid, person_id: uuid, response: responseValue, response_comment: z.string().nullable(), name: z.string(),
 }).strict()) }).strict();
 const committed = z.object({ ok: z.literal(true) }).strict();
-type FamilyInvitations = components["schemas"]["FamilyInvitations"];
+type MyInvitations = components["schemas"]["MyInvitations"];
 type ResponseChange = components["schemas"]["RespondToInvitationRequest"];
 const targetAuthUrl = "https://ckzrtxqjskosqzoitymc.supabase.co";
 
@@ -106,7 +106,7 @@ export async function forwardKotlinParticipation(request: Request, kind: "list" 
     if (kind === "list") {
       const parsed = family.safeParse(value);
       if (!parsed.success) return failure(503);
-      const result: FamilyInvitations = parsed.data;
+      const result: MyInvitations = parsed.data;
       return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
     }
     const parsed = committed.safeParse(value);

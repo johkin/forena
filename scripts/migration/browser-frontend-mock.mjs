@@ -11,7 +11,7 @@ const browser=await chromium.launch({...(process.env.FORENA_BROWSER_EXECUTABLE ?
 const context=await browser.newContext({viewport:{width:390,height:844}});
 await context.addCookies([{name:'_vercel_jwt',value:'synthetic-protection-cookie',url:base.origin}]);
 await context.addInitScript(()=>{if(!sessionStorage.getItem('migration-seeded')){localStorage.setItem('forena-kotlin-browser-auth','{"access_token":"obsolete-private-token"}');sessionStorage.setItem('migration-seeded','true');}});
-let current=null, revoked=false, platformDenied=false, sessionUnavailable=false, sessionReads=0, requests=0, privateRequests=0, directProviderRequests=0;
+let current=null, revoked=false, platformDenied=false, sessionUnavailable=false, overviewUnavailable=false, sessionReads=0, requests=0, privateRequests=0, directProviderRequests=0;
 let invitations=[{id,person_id:users[0],name:'Alex Exempel med ett längre familjenamn',response:'pending',response_comment:null}];
 const view=()=>({user:{id:users[current],email:current===0?'family@example.invalid':'other@example.invalid'}});
 await context.route('**/config.json',r=>r.fulfill({json:{supabaseUrl:'https://ckzrtxqjskosqzoitymc.supabase.co',publishableKey:'sb_publishable_synthetic',activityId:id,version:id}}));
@@ -38,12 +38,18 @@ await context.route('**/api/**',async route=>{
  privateRequests++;
  assert.ok(headers.cookie?.includes('forena-local-session='));
  if(platformDenied)return route.fulfill({status:401,contentType:'text/html',body:'<html>Vercel Authentication</html>'});
+ if(path==='/api/me/activities'){
+  if(overviewUnavailable)return route.fulfill({status:503,json:{error:'Tillfälligt fel'}});
+  const offset=new URL(req.url()).searchParams.get('offset');
+  const item={id,title:'Träning med laget',starts_at:'2026-10-22T16:00:00Z',ends_at:'2026-10-22T17:30:00Z',organization_name:'Exempelföreningen med ett långt namn',team_name:'Ungdomslaget'};
+  return route.fulfill({json:{activities:current===0?[{...item,...(offset==='50'?{id:users[1],title:'Nästa aktivitet'}:{})}]:[],next_offset:current===0&&offset!=='50'?50:null}});
+ }
  if(req.method()==='PUT'){const body=req.postDataJSON();invitations=invitations.map(i=>({...i,response:body.response,response_comment:body.comment}));return route.fulfill({json:{ok:true}});}
  return route.fulfill({json:{invitations:current===0?invitations:[]}});
 });
 const page=await context.newPage();const errors=[];page.on('pageerror',()=>errors.push('pageerror'));
 try{
- await page.goto(new URL(`/activities/${id}`,base).href);
+ await page.goto(base.href);
  await expect(page.getByRole('heading',{name:'Logga in',exact:true})).toBeVisible();assert.equal(privateRequests,0);
  assert.equal(await page.evaluate(()=>localStorage.getItem('forena-kotlin-browser-auth')),null);
  await page.evaluate(()=>{window.documentInstance='same-document';});
@@ -53,22 +59,33 @@ try{
  await page.getByLabel('Lösenord',{exact:true}).fill('synthetic-password');
  const beforeLoginReads=sessionReads;sessionUnavailable=true;
  await page.getByRole('button',{name:'Logga in',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Mina aktiviteter',exact:true})).toBeVisible();
+ await expect(page.getByRole('link',{name:/Träning med laget/})).toBeVisible();
+ await page.getByRole('button',{name:'Visa fler aktiviteter'}).click();await expect(page.getByRole('link',{name:/Nästa aktivitet/})).toBeVisible();
+ await expect(page.getByRole('link',{name:/Träning med laget/})).toHaveCount(1);
+ // A same-tab self-notification must not erase the accepted login.
+ await page.waitForTimeout(200);assert.equal(sessionReads,beforeLoginReads);
+ assert.equal(await page.evaluate(()=>window.documentInstance),'same-document');sessionUnavailable=false;
+ await page.getByRole('link',{name:/Träning med laget/}).click();
  const row=page.locator('.personal-invitation-response');await expect(row).toHaveCount(1);
- // A same-tab self-notification would clear the accepted login and fail its redundant probe.
- await page.waitForTimeout(200);assert.equal(sessionReads,beforeLoginReads);await expect(row).toHaveCount(1);sessionUnavailable=false;
- assert.equal(await page.evaluate(()=>window.documentInstance),'same-document');
+ await expect(row).toHaveCount(1);
  assert.ok(!await page.evaluate(()=>document.cookie.includes('forena-local-session')));
  await row.getByLabel('Kommentar').fill('Hämtas senare');await row.getByRole('button',{name:'Kommer',exact:true}).click();
  await expect(page.getByRole('status').filter({hasText:'har sparats'})).toBeVisible();assert.equal(invitations[0].response,'accepted');
  await page.reload();await expect(row.getByLabel('Kommentar')).toHaveValue('Hämtas senare');
+ await page.goto(base.href);await expect(page.getByRole('link',{name:/Träning med laget/})).toBeVisible();
+ overviewUnavailable=true;await page.reload();await expect(page.getByRole('alert')).toBeVisible();
+ overviewUnavailable=false;await page.getByRole('button',{name:'Försök igen',exact:true}).click();await expect(page.getByRole('link',{name:/Träning med laget/})).toBeVisible();
  for(const width of [320,375,390,768,1440]){await page.setViewportSize({width,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
  await page.screenshot({path:'frontend/.evidence/desktop.png',fullPage:true});await page.setViewportSize({width:390,height:844});await page.screenshot({path:'frontend/.evidence/mobile.png',fullPage:true});
  await page.getByRole('button',{name:'Öppna meny',exact:true}).click();await expect(page.getByRole('dialog',{name:'Huvudmeny'})).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);
- platformDenied=true;await page.reload();await expect(page.getByRole('alert')).toBeVisible();await expect(page.getByRole('heading',{name:'Familjens kallelser'})).toBeVisible();
+ await page.goto(new URL(`/activities/${id}`,base).href);
+ platformDenied=true;await page.reload();await expect(page.getByRole('alert')).toBeVisible();await expect(page.getByRole('heading',{name:'Kallelser'})).toBeVisible();
  platformDenied=false;await page.reload();await expect(row).toHaveCount(1);
  revoked=true;await page.reload();await expect(page.getByRole('heading',{name:'Logga in',exact:true})).toBeVisible();await expect(row).toHaveCount(0);
- await page.getByLabel('E-postadress',{exact:true}).fill('other@example.invalid');await page.getByLabel('Lösenord',{exact:true}).fill('synthetic-password');await page.getByRole('button',{name:'Logga in',exact:true}).click();await expect(page.getByRole('heading',{name:'Familjens kallelser'})).toBeVisible();await expect(row).toHaveCount(0);
- const secondTab=await context.newPage();await secondTab.goto(new URL(`/activities/${id}`,base).href);await expect(secondTab.getByRole('heading',{name:'Familjens kallelser'})).toBeVisible();await page.bringToFront();
+ await page.getByLabel('E-postadress',{exact:true}).fill('other@example.invalid');await page.getByLabel('Lösenord',{exact:true}).fill('synthetic-password');await page.getByRole('button',{name:'Logga in',exact:true}).click();await expect(page.getByRole('heading',{name:'Kallelser'})).toBeVisible();await expect(row).toHaveCount(0);
+ await page.goto(base.href);await expect(page.getByText(/Inga aktiviteter att visa ännu/)).toBeVisible();await expect(page.getByRole('link',{name:/Träning med laget/})).toHaveCount(0);
+ const secondTab=await context.newPage();await secondTab.goto(new URL(`/activities/${id}`,base).href);await expect(secondTab.getByRole('heading',{name:'Kallelser'})).toBeVisible();await page.bringToFront();
  await page.getByRole('button',{name:'Öppna meny',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'Logga ut från Förena'}).click();await expect(page.getByRole('heading',{name:'Logga in',exact:true})).toBeVisible();
  await expect(secondTab.getByRole('heading',{name:'Logga in',exact:true})).toBeVisible();await secondTab.close();
  // Real browser WebAuthn call with a virtual discoverable credential; mocked provider verifies the wire contract only.
@@ -76,10 +93,10 @@ try{
  const {authenticatorId}=await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
  await cdp.send('WebAuthn.addCredential',{authenticatorId,credential:{credentialId:Buffer.from('synthetic-credential').toString('base64'),isResidentCredential:true,rpId:base.hostname,privateKey:generateKeyPairSync('ec',{namedCurve:'prime256v1'}).privateKey.export({type:'pkcs8',format:'der'}).toString('base64'),userHandle:Buffer.from(users[0]).toString('base64'),signCount:0}});
  await page.evaluate(()=>{window.documentInstance='passkey-document';});
- await page.getByRole('button',{name:'Logga in med passkey'}).click();await expect(row).toHaveCount(1);
+ await page.getByRole('button',{name:'Logga in med passkey'}).click();await expect(page.getByRole('heading',{name:'Mina aktiviteter',exact:true})).toBeVisible();await expect(page.getByRole('link',{name:/Träning med laget/})).toBeVisible();
  assert.equal(await page.evaluate(()=>window.documentInstance),'passkey-document');
  assert.ok(!await page.evaluate(()=>document.cookie.includes('forena-local-session')));
  assert.equal(await page.evaluate(()=>localStorage.length),0);
  await page.goto(new URL('/components',base).href);await expect(page.getByRole('heading',{name:'Komponenter',exact:true})).toBeVisible();await expect(page.getByText('Alex Exempel',{exact:true})).toBeVisible();assert.deepEqual(errors,[]);assert.equal(directProviderRequests,0);
- assert.ok(requests>0);console.log('PASS: HttpOnly session, CSRF header, legacy cleanup, no browser/provider tokens, password and WebAuthn without reload, save/reload, revocation, account switch, logout, public gallery, responsive layout and keyboard menu');
+ assert.ok(requests>0);console.log('PASS: HttpOnly session, CSRF header, legacy cleanup, no browser/provider tokens, password and WebAuthn without reload, save/reload, revocation, account switch, logout, public gallery, responsive overview, paging, retry, private-data isolation and keyboard menu');
 }finally{await browser.close();}

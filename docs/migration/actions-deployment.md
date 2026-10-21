@@ -109,12 +109,15 @@ ett uttryckligt felaktigt CA-paket stoppar start.
 
 ## Verifiering och återgång
 
-Nya projektets sju Liquibase-steg, inklusive `api-006-browser-session` och
-`api-007-auth-rate-limit`, är förutsättning. `prepare-kotlin.mjs` kräver sessionsnyckeln och tar sedan bort den
+Nya projektets nio Liquibase-steg, till och med `api-009-activity-overview`,
+är förutsättning för Mina aktiviteter. Migration 008 införde Spring Session JDBC,
+009 runtime-kolumnläsning på team; kör dem separat med ägarkontot före runtime. `prepare-kotlin.mjs` kräver sessionsnyckeln och tar sedan bort den
 ur bygg-envfilen utan att exportera/logga den. Runtime-descriptorn aktiverar
 webbsessioner och sätter kanonisk origin till `https://forena-kotlin.vercel.app`;
 nyckeln hämtas från projektets runtime-miljö precis som DB-lösenordet.
-Sessionslagringens health blir DOWN om migration 006/007 saknas.
+Sessionslagringens health kräver Spring Session-tabellerna från 008 och
+limiter-tabellen från 007. Health verifierar inte team-granten från 009;
+verifiera också ett inloggat anrop till `/api/me/activities` före acceptans.
 Se [webbsessionernas releaseordning](web-sessions.md). Separata
 migreringskonton och driftoperationer tillhör inte frontend-releasejobbet.
 Efter merge behöver statisk frontend, direkt API-routing, riktiga Auth-sessioner

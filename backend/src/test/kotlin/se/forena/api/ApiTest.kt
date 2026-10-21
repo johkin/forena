@@ -527,6 +527,86 @@ class ApiTest {
         }
     }
 
+    @Test fun `my activities deduplicates own and delegated invitations without leaking unrelated activities`() {
+        val result = request("/api/me/activities")
+        assertThat(result.statusCode()).isEqualTo(200)
+        assertThat(result.headers().firstValue("cache-control").orElse("")).contains("no-store")
+        val page = json.readTree(result.body())
+        assertThat(page.get("activities").size()).isEqualTo(1)
+        assertThat(page.get("activities").get(0).get("id").asString()).isEqualTo(activity.toString())
+        assertThat(page.get("activities").get(0).get("organization_name").asString()).isEqualTo("Klubb")
+        assertThat(page.get("activities").get(0).get("team_name").asString()).isEqualTo("Lag")
+        assertThat(page.get("next_offset").isNull).isTrue()
+        // Own access may be removed while delegated access remains.
+        admin.update("update forena.person_access set active=false where person_id=?", own)
+        assertThat(json.readTree(request("/api/me/activities").body()).get("activities").size()).isEqualTo(1)
+        admin.update("update forena.person_access set active=false where subject=?", parent)
+        val empty = request("/api/me/activities")
+        assertThat(json.readTree(empty.body()).get("activities").size()).isZero()
+        assertThat(empty.body()).doesNotContain(activity.toString(), "Träning", "Klubb", "Lag")
+    }
+
+    @Test fun `my activities spans authorized organizations and excludes private activities in each`() {
+        val authorized = mutableListOf(activity.toString())
+        val hidden = mutableListOf<String>()
+        for (subject in listOf(parent, outsider)) {
+            val org = UUID.randomUUID(); val team = UUID.randomUUID(); val person = UUID.randomUUID(); val event = UUID.randomUUID()
+            admin.update("insert into forena.organization(id,name) values(?,'Annan klubb')", org)
+            admin.update("insert into forena.team(id,organization_id,name) values(?,?,'Annat lag')", team, org)
+            admin.update("insert into forena.person(id,organization_id,display_name) values(?,?,'Annan person')", person, org)
+            admin.update("insert into forena.person_access(person_id,organization_id,subject,kind) values(?,?,?,'guardian')", person, org, subject)
+            admin.update("insert into forena.activity(id,organization_id,team_id,title,starts_at,ends_at) values(?,?,?,'Annan aktivitet',now()+interval '1 hour',now()+interval '2 hours')", event, org, team)
+            admin.update("insert into forena.invitation(id,organization_id,activity_id,person_id) values(?,?,?,?)", UUID.randomUUID(), org, event, person)
+            (if (subject == parent) authorized else hidden).add(event.toString())
+        }
+        val rows = json.readTree(request("/api/me/activities").body()).get("activities")
+        val ids = (0 until rows.size()).map { rows.get(it).get("id").asString() }
+        assertThat(ids).containsExactlyInAnyOrderElementsOf(authorized)
+        assertThat(ids).doesNotContainAnyElementsOf(hidden)
+    }
+
+    @Test fun `overview hides cancelled ended distant and uninvited activities but includes declined and unsent`() {
+        admin.update("update forena.activity set invitation_send_at=now()+interval '1 day' where id=?", activity)
+        assertThat(json.readTree(request("/api/me/activities").body()).get("activities").size()).isEqualTo(1)
+        admin.update("update forena.activity set invitation_send_at=null where id=?", activity)
+        assertThat(respond("""{"response":"declined"}""").statusCode()).isEqualTo(200)
+        assertThat(json.readTree(request("/api/me/activities").body()).get("activities").size()).isEqualTo(1)
+        for (update in listOf("status='cancelled'", "status='scheduled', starts_at=now()-interval '2 hours', ends_at=now()-interval '1 hour'",
+                "starts_at=now()+interval '100 days', ends_at=now()+interval '101 days'")) {
+            admin.update("update forena.activity set $update where id=?", activity)
+            assertThat(json.readTree(request("/api/me/activities").body()).get("activities").size()).isZero()
+        }
+        admin.update("update forena.activity set starts_at=now(), ends_at=now()+interval '1 hour' where id=?", activity)
+        // Only another person's invitation remains, including in the same organization.
+        admin.update("delete from forena.invitation_history where invitation_id in (select id from forena.invitation where activity_id=?)", activity)
+        admin.update("delete from forena.invitation where activity_id=? and person_id<>?", activity, other)
+        assertThat(json.readTree(request("/api/me/activities").body()).get("activities").size()).isZero()
+    }
+
+    @Test fun `overview uses stable bounded pages and rejects invalid offsets and inactive sessions`() {
+        val team = admin.queryForObject("select team_id from forena.activity where id=?", UUID::class.java, activity)!!
+        val starts = Instant.now().plusSeconds(7200)
+        for (index in 1..51) {
+            val id = UUID.randomUUID()
+            admin.update("insert into forena.activity(id,organization_id,team_id,title,starts_at,ends_at) values(?,?,?,? ,?,?)",
+                id, organization, team, "Aktivitet $index", java.sql.Timestamp.from(starts), java.sql.Timestamp.from(starts.plusSeconds(3600)))
+            admin.update("insert into forena.invitation(id,organization_id,activity_id,person_id) values(?,?,?,?)", UUID.randomUUID(), organization, id, own)
+        }
+        val first = json.readTree(request("/api/me/activities").body())
+        val repeated = json.readTree(request("/api/me/activities").body())
+        assertThat(first).isEqualTo(repeated)
+        assertThat(first.get("activities").size()).isEqualTo(50)
+        assertThat(first.get("next_offset").asInt()).isEqualTo(50)
+        val last = json.readTree(request("/api/me/activities?offset=50").body())
+        assertThat(last.get("activities").size()).isEqualTo(2)
+        assertThat(last.get("next_offset").isNull).isTrue()
+        val ids = (0 until first.get("activities").size()).map { first.get("activities").get(it).get("id").asString() }
+        for (index in 0 until last.get("activities").size()) assertThat(ids).doesNotContain(last.get("activities").get(index).get("id").asString())
+        for (offset in listOf("-1", "100001", "wrong")) assertThat(request("/api/me/activities?offset=$offset").statusCode()).isEqualTo(400)
+        admin.update("update forena.account set enabled=false where subject=?", parent)
+        assertThat(request("/api/me/activities").statusCode()).isEqualTo(401)
+    }
+
     @Test fun `parent reads own and two children but not another family`() {
         val result = request("/api/activities/$activity/my-invitations")
         assertThat(result.statusCode()).isEqualTo(200)
@@ -697,6 +777,8 @@ class ApiTest {
         assertThat(jdbc.queryForObject("select rolsuper or rolbypassrls from pg_roles where rolname=current_user", Boolean::class.java)).isFalse()
         assertThat(jdbc.queryForObject("select pg_has_role(current_user,'forena_api_owner','MEMBER')", Boolean::class.java)).isFalse()
         assertThat(jdbc.queryForObject("select has_schema_privilege(current_user,'forena','CREATE')", Boolean::class.java)).isFalse()
+        assertThat(jdbc.queryForObject("select has_table_privilege(current_user,'forena.team','SELECT')", Boolean::class.java)).isFalse()
+        assertThat(jdbc.queryForObject("select name from forena.team where id=(select team_id from forena.activity where id=?)", String::class.java, activity)).isEqualTo("Lag")
         // RLS is disabled: HTTP isolation must be proven without help from database policies.
         assertThat(jdbc.queryForObject("select count(*) from forena.invitation where activity_id=?", Long::class.java,activity)).isEqualTo(4)
         assertThatThrownBy { TransactionTemplate(transactionManager).executeWithoutResult {
@@ -712,7 +794,7 @@ class ApiTest {
             assertThat(ownList.body()).contains(other.toString()).doesNotContain(child1.toString(),own.toString())
         }
         for (sql in listOf("create table forena.forbidden(id int)", "update forena.invitation set person_id='$other' where id='$invitation'",
-            "delete from forena.invitation", "update forena.invitation_history set channel='web'", "delete from forena.invitation_history", "delete from forena.activity_signal_state", "select * from forena.team")) {
+            "delete from forena.invitation", "update forena.invitation_history set channel='web'", "delete from forena.invitation_history", "delete from forena.activity_signal_state", "update forena.team set name='Forbidden'", "delete from forena.team")) {
             assertThatThrownBy { jdbc.execute(sql) }.describedAs(sql).isInstanceOf(org.springframework.dao.DataAccessException::class.java)
         }
     }
@@ -861,7 +943,7 @@ class ApiTest {
             assertThat(limited.get("headers").has("Retry-After")).isTrue()
         }
         assertThat(document.get("paths").propertyNames()).containsExactlyInAnyOrder(
-            "/api/activities/{activityId}/my-invitations", "/api/invitations/{invitationId}/respond",
+            "/api/me/activities", "/api/activities/{activityId}/my-invitations", "/api/invitations/{invitationId}/respond",
             "/api/auth/session", "/api/auth/login", "/api/auth/logout", "/api/auth/passkey/options", "/api/auth/passkey/verify")
         val update = document.get("paths").get("/api/invitations/{invitationId}/respond").get("put")
         assertThat(update.get("requestBody").get("content").get("application/json").get("schema").get("\$ref").asString())
@@ -874,8 +956,8 @@ class ApiTest {
             .containsExactlyInAnyOrder("response", "comment")
         assertThat(document.toString()).doesNotContain("session_id", "Jwt", issuer)
         assertThat(schemas.get("RespondToInvitationRequest").get("required").toString()).contains("response")
-        assertThat(schemas.get("FamilyInvitation").get("required").toString()).contains("response_comment")
-        assertThat(schemas.get("FamilyInvitation").get("properties").get("response_comment").get("type").toString()).contains("null")
+        assertThat(schemas.get("AccessibleInvitation").get("required").toString()).contains("response_comment")
+        assertThat(schemas.get("AccessibleInvitation").get("properties").get("response_comment").get("type").toString()).contains("null")
         assertThat(schemas.get("RespondToInvitationRequest").get("properties").get("response").get("enum").toString())
             .contains("pending", "accepted", "declined")
         for (code in listOf("400", "401", "403", "409")) {

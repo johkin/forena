@@ -18,8 +18,9 @@ header, meny, sidfot, design-token och kallelsesvar återanvänds från `src/`.
 
 Kör `npm ci` från reporoten. Ange `NEXT_PUBLIC_SUPABASE_URL` och
 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` för det nya isolerade projektet; bara
-publishable key får användas. Valfritt `FORENA_KOTLIN_TEST_ACTIVITY_ID` ger en
-startaktivitet. Utan den öppnas aktiviteter genom `/activities/<uuid>`.
+publishable key får användas. Startsidan visar Mina aktiviteter från Kotlin-API:t utan förvalt ID.
+`FORENA_KOTLIN_TEST_ACTIVITY_ID` gäller endast den avskilda provsidan
+`/migration/participation`. Djuplänkar använder `/activities/<uuid>`.
 
 ```sh
 npm run frontend:build
@@ -53,7 +54,7 @@ start. Befintliga användare behöver logga in igen. Äldre service workers och
 cachar från Next-piloten avregistreras på samma origin. `/components` är publik
 och kräver inget sessionsanrop.
 
-För lokal backend behövs migrering till och med 008 (Spring Session JDBC) samt `FORENA_WEB_SESSION_ENABLED=true`,
+För lokal backend behövs migrering till och med 009 (aktivitetsöversikt; 008 införde Spring Session JDBC) samt `FORENA_WEB_SESSION_ENABLED=true`,
 `FORENA_WEB_ORIGIN=http://localhost:3000`, `FORENA_WEB_SESSION_SECURE=false` och
 en separat base64-kodad 32-bytesnyckel i `FORENA_WEB_SESSION_KEY`. Öppna då
 `http://localhost:3000`; använd samma exakta origin i backend. Produktion kräver
@@ -88,7 +89,11 @@ TCP-policy stoppade den läsande anslutningskontrollen innan några konton eller
 verksamhetsrader skapades. Separata browserprov med kontrollerade Auth/API-svar
 och backendens lokala PostgreSQL-tester redovisas i migreringsstatus.
 
-Ännu inte flyttat: ordinarie översikt/aktivitetslista, signup, återställning av
+Mina aktiviteter listar nu kallelsekopplade aktiviteter via personåtkomst,
+50 per sida, inom 90 dagar. Lagmedlemskap utan kallelse, arbetspass och
+föreningstidszon är ännu inte flyttade.
+
+Ännu inte flyttat: signup, återställning av
 lösenord, passkey-registrering/hantering, PWA/offline, administration, kanaler
 och assistent. Dessa funktioner ligger kvar i den gamla appen och är inte dolda databasgenvägar i den
 nya. Det här är en avgränsad pilot, inte full M18B-funktionsparitet.

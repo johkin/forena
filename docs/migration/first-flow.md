@@ -1,6 +1,15 @@
-# Första verksamhets-API:t: familjens kallelsesvar
+# Första verksamhets-API:t: mina aktiviteter och kallelsesvar
 
-Status 2026-10-19: API-delen finns i `backend` och har klarat verkligt
+Uppföljning 2026-10-21 på `feat/my-activities`: Kotlin använder personåtkomst
+enligt ADR-020, inte familj som kodbegrepp. Vite-startsidan läser
+`GET /api/me/activities` och öppnar kallelsesvaret utan förvalt test-ID.
+`PersonAccessService` ersätter `FamilyAccessService`; JSON-fälten på äldre
+kallelserutter är oförändrade. Separat migration 009 krävs före drift.
+[M07A](tasks/m07a-activity-overview.md) beskriver urval och kvarstående paritet.
+Aktuell webb använder Spring Session JDBC enligt ADR-018; historiken nedan
+om Next-adapter och femstegsdatabas beskriver tidigare verifierade leveranser.
+
+Historisk status 2026-10-19: API-delen finns i `backend` och har klarat verkligt
 Auth-/databasprov efter PR #114. På `feat/kotlin-browser-flow`, från main
 `548d627`, har även en avskild browservy med serverstyrd Next-adapter och
 syntetisk seed införts. Ingen API-deploy eller omkoppling av ordinarie översikt
@@ -78,9 +87,9 @@ femstegsmigrering/återkörning och riktig Auth-livscykel är verifierade i
 browserkedjan har verifierats i Vercel Sandbox enligt
 [browserunderlaget](browser-participation.md). Det ersätter inte grindarna nedan.
 
-1. Inför ordinarie aktivitets-/ID-läsning från den nya databasen och kontrollera
-   hela översiktens familjedata. Den avskilda testsidan använder ett servervalt
-   seed-ID och ersätter inte denna läsning. Gamla och nya test-ID:n blandas inte.
+1. M07A har infört ordinarie aktivitets-/ID-läsning för kallelsekopplade
+   aktiviteter i nya databasen. Verifiera aktuell native-release och inloggad
+   browserkedja i målmiljön. Lagmedlemskap/arbetspass är fortsatt separata flöden.
 2. Koppla full signalberäkning till beständigt ansvar enligt M06. Den nuvarande
    signalversionen är ingen kö och inga notifieringar eller signaler har levererats.
 3. Verifiera återstående Auth-metoder och browser-PKCE separat. Lösenordsflödets

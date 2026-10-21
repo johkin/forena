@@ -1,5 +1,14 @@
 # Säkerhetsarkitektur
 
+## Personåtkomst i Kotlin
+
+`PersonAccessService` använder aktiva `person_access`-tilldelningar för det
+verifierade kontot, överensstämmande person och organisation. Egen åtkomst och
+delegation kontrolleras på samma sätt vid läsning och skrivning. Sociala
+relationer och tokenmetadata ger inga rättigheter i sig. Dagens tilldelningar
+har underlagen `self` och `guardian`; ombud/stödperson kräver egna beslut om
+rättigheter och livscykel innan de kan införas. Se ADR-020.
+
 ## Separat browserpilot mot Kotlin
 
 `frontend/` hanterar UI och WebAuthn-dialogen. Kotlin hanterar Auth-anrop och

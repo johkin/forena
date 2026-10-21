@@ -21,6 +21,7 @@ interface RevokedSessionRepository : Repository<RevokedSessionRecord, UUID> {
 }
 
 interface PersonAccessRepository : Repository<PersonAccessRecord, PersonAccessKey> {
+    fun findByKeySubjectAndActiveTrue(subject: UUID): List<PersonAccessRecord>
     fun findById(id: PersonAccessKey): Optional<PersonAccessRecord>
     fun findByKeySubjectAndOrganizationIdAndActiveTrue(subject: UUID, organizationId: UUID): List<PersonAccessRecord>
 }

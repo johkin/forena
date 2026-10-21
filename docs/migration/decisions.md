@@ -3,6 +3,40 @@
 Status anger målbeslut för kommande implementation, inte redan införd teknik.
 Källkodsverifierat nuläge finns i [inventeringen](inventory.md).
 
+## ADR-020: Personåtkomst och Mina aktiviteter
+
+Beslut 2026-10-21 på användarens instruktion: backend använder personåtkomst,
+inte familj som behörighetsbegrepp. `PersonAccessService` härleder vilka personer
+kontot får företräda; egen identitet och delegerad åtkomst använder samma kontroll.
+`MyInvitations`/`AccessibleInvitation` ersätter familjenamn i Kotlin/kontrakttyper;
+befintliga kallelserutters JSON-fält och URL:er behålls.
+
+`person_access` är en uttrycklig åtkomsttilldelning, inte en katalog över sociala
+relationer. I dag stöds endast `self` och `guardian`, med oförändrade rättigheter.
+Andra underlag kan vara ett utsett ombud eller en stödperson. En ny relationstyp
+får inte automatiskt ge åtkomst: definiera läs-/svarsrätt, giltighet, samtycke och
+återkallning före införande. Släktskap och ledarroll ger ingen generell rätt att
+företräda en person. Inga nya relationstyper eller generella fullmakter införs nu.
+
+`GET /api/me/activities` använder verifierad personåtkomst och returnerar varje
+kallelsekopplad aktivitet en gång över samtliga berörda föreningar. Pågående och
+kommande ej inställda aktiviteter med start inom 90 dagar ingår, även nej-svar
+och ännu inte utskickade kallelser. Före utskick visas inga kallelsesvar via det
+befintliga detalj-API:t. Listan har 50 poster/sida, stabil starttid/UUID-sortering
+samt explicit offset; samtidiga ändringar kan flytta sidgränser.
+
+Spring Data JDBC äger fortsatt repositories/CRUD enligt ADR-011. För denna
+avgränsade, sidindelade läsprojektion används en parameteriserad `@Query` för
+activity/invitation/team/organization. Behöriga person-ID:n härleds av identitys
+publika tjänst före frågan, aldrig av klienten. Detta undviker obegränsad
+inläsning av kallelser eller en fråga per aktivitetsrad; inga korsvisa repository-
+anrop eller skriv-SQL införs. Migration 009 ger enbart runtime läsning av lagets
+ID, organisation och namn. Ingen ny klientåtkomst, RLS eller databasfunktion.
+
+Kotlin-schemat saknar ännu lagmedlemskap, arbetspass och föreningstidszon.
+Översikten avgränsas därför till kallelsekopplade aktiviteter och visar uttryckligen
+svensk tid. Full motsvarighet till gamla personliga översikten återstår.
+
 ## ADR-019: En Kotlin-kodbas direkt i backend
 
 **Beslut 2026-10-21 på användarens instruktion:** verksamhets-API:t flyttas

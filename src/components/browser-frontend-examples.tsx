@@ -2,6 +2,7 @@
 import { useCallback, useRef, useState } from "react";
 import { PasswordLoginForm } from "./password-login-form";
 import { ActivityInvitationResponse, type ParticipationFetch } from "./activity-invitation-response";
+import { MyActivityList } from "./my-activity-list";
 import { SessionMenu } from "./session-menu";
 
 /** Actual pilot components with local fixtures; no login or database mutations. */
@@ -16,10 +17,15 @@ export function BrowserFrontendExamples() {
     }
     return Response.json({ invitations: invitations.current });
   }, []);
+  const activities = [{ id: "33333333-3333-4333-8333-333333333333", title: "Träning med laget", starts_at: "2026-10-22T16:00:00Z", ends_at: "2026-10-22T17:30:00Z", organization_name: "Exempelföreningen med ett långt namn", team_name: "Ungdomslaget" }];
   return <>
+    <section><h2>Mina aktiviteter</h2><MyActivityList activities={activities} loadMore={() => {}} /></section>
+    <section><h2>Aktiviteter laddas</h2><MyActivityList activities={[]} loading /></section>
+    <section><h2>Tom aktivitetsöversikt</h2><MyActivityList activities={[]} /></section>
+    <section><h2>Aktivitetsfel</h2><MyActivityList activities={[]} error="Aktiviteterna kunde inte hämtas." retry={() => {}} /></section>
     <section><h2>Inloggning med lösenord eller passkey</h2><p>Lokalt exempel. Inga inloggningsuppgifter skickas.</p><PasswordLoginForm error={error} onLogin={() => setError("Exempel på ett inloggningsfel. Försök igen.")} onPasskey={() => setError("Exempel på avbruten passkey-inloggning. Försök igen.")} /></section>
     <section><h2>Inloggning pågår</h2><PasswordLoginForm pending onLogin={() => {}} onPasskey={() => {}} /></section>
-    <section><h2>Familjens kallelsesvar</h2><ActivityInvitationResponse activityId="33333333-3333-4333-8333-333333333333" cancelled={false} request={request} /></section>
+    <section><h2>Kallelsesvar</h2><ActivityInvitationResponse activityId="33333333-3333-4333-8333-333333333333" cancelled={false} request={request} /></section>
     <section><h2>Inställd aktivitet</h2><ActivityInvitationResponse activityId="33333333-3333-4333-8333-333333333333" cancelled request={request} /></section>
     <section><h2>Kontomeny</h2><SessionMenu accountEmail="familj@example.invalid" logout={<button type="button" disabled>Logga ut</button>} /></section>
   </>;

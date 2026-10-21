@@ -17,27 +17,31 @@ try {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const privateReplies = [];
   await context.route(origin + '/**', async route => {
-    const path = new URL(route.request().url()).pathname;
+    const url = new URL(route.request().url());
+    const path = url.pathname;
     if (path === '/config.json') return route.fulfill({ json: {
       supabaseUrl: 'https://ckzrtxqjskosqzoitymc.supabase.co', publishableKey: 'sb_publishable_synthetic',
       activityId: activity, version: activity,
     } });
     const backend = path.startsWith('/api/');
     if (backend) assert.equal(route.request().headers().authorization, undefined);
-    const response = await route.fetch({ url: new URL(path, backend ? api : 'http://127.0.0.1:3000').href, maxRedirects: 0 });
+    const response = await route.fetch({ url: new URL(path + url.search, backend ? api : 'http://127.0.0.1:3000').href, maxRedirects: 0 });
     if (backend) privateReplies.push(response.status());
     return route.fulfill({ response });
   });
   const page = await context.newPage();
-  await page.goto(origin + '/activities/' + activity);
+  await page.goto(origin + '/');
   await expect(page.getByRole('heading', { name: 'Logga in', exact: true })).toBeVisible();
   await page.evaluate(() => { window.documentInstance = 'no-reload'; });
   await page.getByLabel('E-postadress', { exact: true }).fill('family@example.invalid');
   await page.getByLabel('Lösenord', { exact: true }).fill('synthetic-password');
   await page.getByRole('button', { name: 'Logga in', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Mina aktiviteter', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Träning/ })).toHaveCount(1);
+  assert.equal(await page.evaluate(() => window.documentInstance), 'no-reload');
+  await page.getByRole('link', { name: /Träning/ }).click();
   const rows = page.locator('.personal-invitation-response');
   await expect(rows).toHaveCount(3);
-  assert.equal(await page.evaluate(() => window.documentInstance), 'no-reload');
   const cookie = (await context.cookies(origin)).find(item => item.name === '__Host-forena-session');
   assert.ok(cookie?.httpOnly && cookie.secure && cookie.sameSite === 'Lax');
   assert.equal(await page.evaluate(() => localStorage.length), 0);

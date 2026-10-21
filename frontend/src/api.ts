@@ -8,7 +8,7 @@ const writes = new RegExp(`^/api/invitations/${uuid}/respond$`, "i");
 export function createApiFetch(readAccount: () => Promise<string | null>, unauthorized: () => void, transport: typeof fetch = fetch): ParticipationFetch {
   return async (path, init = {}) => {
     const method = init.method ?? "GET";
-    if (!((method === "GET" && reads.test(path)) || (method === "PUT" && writes.test(path)))) {
+    if (!((method === "GET" && (reads.test(path) || /^\/api\/me\/activities(?:\?offset=\d{1,6})?$/.test(path))) || (method === "PUT" && writes.test(path)))) {
       throw new Error("Unsupported API request");
     }
     const account = await readAccount();

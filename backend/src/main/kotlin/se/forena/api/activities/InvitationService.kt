@@ -6,7 +6,7 @@ import se.forena.api.identity.Actor
 import se.forena.api.identity.SessionService
 import se.forena.api.identity.DatabaseClockService
 import org.springframework.transaction.annotation.Transactional
-import se.forena.api.identity.FamilyAccessService
+import se.forena.api.identity.PersonAccessService
 import se.forena.api.activities.internal.ActivityRepository
 import se.forena.api.activities.internal.InvitationRepository
 import se.forena.api.activities.internal.InvitationHistoryRecord
@@ -18,31 +18,31 @@ import se.forena.api.activities.internal.ActivitySignalRepository
 class InvitationService(
     private val sessions: SessionService,
     private val clock: DatabaseClockService,
-    private val family: FamilyAccessService,
+    private val access: PersonAccessService,
     private val activities: ActivityRepository,
     private val invitations: InvitationRepository,
     private val history: InvitationHistoryRepository,
     private val signals: ActivitySignalRepository
 ) {
     @Transactional(readOnly = true)
-    fun list(actor: Actor, activity: UUID): FamilyInvitations {
+    fun list(actor: Actor, activity: UUID): MyInvitations {
         sessions.requireActive(actor)
         val current = activities.findById(activity).orElse(null)
             ?: throw InvitationProblem(404, "Aktiviteten kunde inte hittas.")
-        val people = family.people(actor, current.organizationId)
+        val people = access.people(actor, current.organizationId)
         val rows = if (people.isEmpty()) emptyList() else
             invitations.findByActivityIdAndPersonIdIn(activity, people.map { it.id })
         if (rows.isEmpty()) throw InvitationProblem(404, "Aktiviteten kunde inte hittas.")
         return if (current.invitationSendAt?.isAfter(clock.now()) == true) {
-            FamilyInvitations(emptyList())
+            MyInvitations(emptyList())
         } else {
             val byPerson = rows.associateBy { it.personId }
             val result = people.mapNotNull { person -> byPerson[person.id]?.let { invitation ->
-                FamilyInvitation(invitation.id, person.id, InvitationResponse.fromDatabase(invitation.response),
+                AccessibleInvitation(invitation.id, person.id, InvitationResponse.fromDatabase(invitation.response),
                     invitation.responseComment, person.name)
             } }
             // Repository orders names using the database's collation; retain the prior UUID tie-break.
-            FamilyInvitations(result.groupBy { it.name }.values.flatMap { it.sortedBy { row -> row.id.toString() } })
+            MyInvitations(result.groupBy { it.name }.values.flatMap { it.sortedBy { row -> row.id.toString() } })
         }
     }
 
@@ -52,7 +52,7 @@ class InvitationService(
         // No RLS: authorize before locking, then lock the same immutable identity.
         val identity = invitations.findById(invitation).orElse(null)
             ?: throw InvitationProblem(403, "Kallelsen är inte tillgänglig.")
-        if (!family.canActFor(actor, identity.personId, identity.organizationId))
+        if (!access.canActFor(actor, identity.personId, identity.organizationId))
             throw InvitationProblem(403, "Kallelsen är inte tillgänglig.")
         // Consistent lock order: activity, then invitation. The activity lock also serializes
         // creation/increment of the shared signal row when different invitations change.
@@ -63,7 +63,7 @@ class InvitationService(
             ?: throw InvitationProblem(403, "Kallelsen är inte tillgänglig.")
         // A logout, ban or local block committed while waiting must deny this write.
         sessions.requireActive(actor)
-        if (!family.canActFor(actor, current.personId, current.organizationId))
+        if (!access.canActFor(actor, current.personId, current.organizationId))
             throw InvitationProblem(403, "Kallelsen är inte tillgänglig.")
         val now = clock.now()
         if (activity.status == "cancelled" || !activity.endsAt.isAfter(now))

@@ -22,12 +22,12 @@ import se.forena.api.http.ApiError
 class InvitationController(private val invitationService: InvitationService) {
     @GetMapping("/api/activities/{activityId}/my-invitations", produces = ["application/json"])
     @Operation(operationId = "getMyInvitations", description = "Only own people and active guardian links. Future invitations return an empty list. Cache-Control: no-store.")
-    @ApiResponse(responseCode = "200", description = "Family invitations", useReturnTypeSchema = true)
+    @ApiResponse(responseCode = "200", description = "Accessible invitations", useReturnTypeSchema = true)
     @ApiResponse(responseCode = "400", description = "Invalid activity UUID", content = [Content(schema = Schema(implementation = ApiError::class))])
     @ApiResponse(responseCode = "401", description = "Missing, invalid, locally inactive or provider-inactive web session", content = [Content(schema = Schema(implementation = ApiError::class))])
     @ApiResponse(responseCode = "503", description = "Current Auth session cannot be verified; no fallback", content = [Content(schema = Schema(implementation = ApiError::class))])
-    @ApiResponse(responseCode = "404", description = "Activity unavailable to family", content = [Content(schema = Schema(implementation = ApiError::class))])
-    fun list(@Parameter(hidden = true) @AuthenticationPrincipal jwt: Jwt, @PathVariable activityId: UUID): ResponseEntity<FamilyInvitations> =
+    @ApiResponse(responseCode = "404", description = "Activity unavailable to account", content = [Content(schema = Schema(implementation = ApiError::class))])
+    fun list(@Parameter(hidden = true) @AuthenticationPrincipal jwt: Jwt, @PathVariable activityId: UUID): ResponseEntity<MyInvitations> =
         ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(invitationService.list(actor(jwt), activityId))
 
     @PutMapping("/api/invitations/{invitationId}/respond", consumes = ["application/json"], produces = ["application/json"])
@@ -36,7 +36,7 @@ class InvitationController(private val invitationService: InvitationService) {
     @ApiResponse(responseCode = "400", description = "Invalid body or invitation UUID", content = [Content(schema = Schema(implementation = ApiError::class))])
     @ApiResponse(responseCode = "401", description = "Missing, invalid, locally inactive or provider-inactive web session", content = [Content(schema = Schema(implementation = ApiError::class))])
     @ApiResponse(responseCode = "503", description = "Current Auth session cannot be verified; no fallback", content = [Content(schema = Schema(implementation = ApiError::class))])
-    @ApiResponse(responseCode = "403", description = "Invitation unavailable to family", content = [Content(schema = Schema(implementation = ApiError::class))])
+    @ApiResponse(responseCode = "403", description = "Invitation unavailable to account", content = [Content(schema = Schema(implementation = ApiError::class))])
     @ApiResponse(responseCode = "409", description = "Activity cancelled, ended or invitation not sent", content = [Content(schema = Schema(implementation = ApiError::class))])
     fun respond(@Parameter(hidden = true) @AuthenticationPrincipal jwt: Jwt, @PathVariable invitationId: UUID,
                 @RequestBody body: RespondToInvitationRequest): ResponseEntity<InvitationResponseResult> {

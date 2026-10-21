@@ -152,7 +152,7 @@ med signerad token och skriver `target/openapi.json`. Därefter kör
 `npm run generate --prefix backend/contract` enbart stabil nyckelsortering
 av exporten och genererar typer med låst `openapi-typescript`. Både spec och
 typer versionshanteras; `npm run check` kontrollerar båda mot Git. Kör därför
-Maven-verifieringen före generationen. Frontend använder typerna ännu inte.
+Maven-verifieringen före generationen. Båda webbapparnas Kotlin-anrop använder de genererade typerna.
 
 Alla egna REST-controllers returnerar Kotlin data classes,
 även för explicita felsvar. API:ts request är också typad: en separat intern
@@ -163,22 +163,22 @@ i JSON eller OpenAPI. Okända/ignorerade fält och numeriska enumvärden nekas.
 
 API:ts produktionskod använder Spring Data JDBC 4.1.0 (låst av Boot-BOM) och
 smala `Repository`-interface. Genererade frågor sköter konto-/sessionskontroll,
-familjekopplingar, personer, aktiviteter och kallelsesvar. Ingen JdbcTemplate
+personåtkomst, personer, aktiviteter och kallelsesvar. Ingen JdbcTemplate
 eller JdbcClient används i API:ts produktionskod. Se [ADR-011](../docs/migration/decisions.md).
 
 Tjänster använder suffixet `Service`: `InvitationService`, `SessionService`,
-`FamilyAccessService` och `DatabaseClockService`. Inom varje moduls `internal`-
+`PersonAccessService` och `DatabaseClockService`. Inom varje moduls `internal`-
 paket samlas databasmodeller i `Entities.kt` och repository-interface i
 `Repositories.kt`. DTO:er ligger i separata filer från tjänsterna. Modulen
 `activities` äger aktiviteter och kallelser; `identity` äger konto/session och
-familjeåtkomst. Repositories och entities är interna inom respektive modul.
+personåtkomst. Repositories och entities är interna inom respektive modul.
 Se ADR-015 för modulnamnet och namnkonventionerna.
 
-Familjekopplingens sammansatta nyckel mappas med `@Id` och `@Embedded`. Läsning
-hämtar familjen och dess kallelser i batcher, inte en personfråga per kallelse.
+Personåtkomstens sammansatta nyckel mappas med `@Id` och `@Embedded`. Läsning
+hämtar behöriga personer och deras kallelser i batcher, inte en personfråga per kallelse.
 Namn sorteras med databasens kollation och UUID används som sekundär ordning.
 `InvitationService` är en `@Service`: `respond` använder `@Transactional`, `list`
-`@Transactional(readOnly = true)`. Konto/session och familje-/organisationsåtkomst
+`@Transactional(readOnly = true)`. Konto/session och person-/organisationsåtkomst
 kontrolleras i Kotlin enligt ADR-012/013. Främmande aktivitet ger 404, främmande
 kallelse 403. Skrivbehörighet kontrolleras före och efter låsväntan.
 
@@ -195,8 +195,9 @@ Varje fel rullar tillbaka allt. `@ReadOnlyProperty` skyddar kallelsens identitet
 Ingen produktionskod använder TransactionTemplate eller `set_config`.
 
 Efter Liquibase-steg 004 finns inga egna databasfunktioner, lagrade procedurer
-eller verksamhetstriggers i `forena`. Endast en teknisk `@Query` återstår:
-`DatabaseClockRepository` hämtar PostgreSQLs inbyggda `clock_timestamp()`.
+eller verksamhetstriggers i `forena`. `DatabaseClockRepository` hämtar
+PostgreSQLs inbyggda `clock_timestamp()` med teknisk `@Query`. M07A tillför
+också en avgränsad läsprojektion för aktivitetsöversikten enligt ADR-020.
 Tidigare migrationer är oförändrade; steg 003 tar bort RLS och steg 004 tar bort
 triggers/funktioner utan att radera svar, historik eller signalversioner.
 Steg 005 tar bort enbart historikens `session_id`; konto-ID och övrig historik
@@ -296,3 +297,15 @@ Gamla appens Supabase-schema och RLS ändras inte.
 Historiken sparar inte kommentartext eller token. `activity_signal_state` är
 en beständig invalideringsversion, inte en outbox eller ett löfte om levererad
 notifiering. Signalworker/Modulith-reaktion kopplas in i ett senare steg.
+
+## Mina aktiviteter och personåtkomst
+
+`GET /api/me/activities?offset=0` läser kontots kallelsekopplade aktiviteter via
+`PersonAccessService`, även för personer med aktiv delegerad åtkomst. Varje
+aktivitet visas en gång med klubb/lag, titel och tider; 50 per sida och
+`next_offset` vid fler resultat. Pågående/kommande ej inställda aktiviteter med
+start inom 90 dagar ingår. Svar och relationstyp utökar inte åtkomsten.
+Migration `api-009-activity-overview` måste köras separat före aktivering; den
+ger runtime endast kolumnläsning på team. Native-image behöver byggas om med
+nya DTO:er. Gamla kallelserutternas JSON/URL:er är oförändrade, men genererade
+scheman heter nu `MyInvitations` och `AccessibleInvitation`. Se ADR-020.

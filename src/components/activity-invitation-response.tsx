@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import type { components } from "../../backend/contract/generated";
-type Invitation = components["schemas"]["FamilyInvitations"]["invitations"][number];
+type Invitation = components["schemas"]["MyInvitations"]["invitations"][number];
 export type ParticipationFetch = (path: string, init?: RequestInit) => Promise<Response>;
 export function ActivityInvitationResponse({ activityId, cancelled, readOnly = false, request = fetch }: { activityId:string; cancelled:boolean; readOnly?:boolean; request?: ParticipationFetch }) {
   const [items,setItems] = useState<Invitation[]>([]);

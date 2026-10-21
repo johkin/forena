@@ -11,6 +11,16 @@ Datum: 2026-10-18. Detta är första dokumentationsleveransen, inte en genomför
 backend- eller dataflytt. Befintliga instruktioner i [AGENTS.md](../../AGENTS.md)
 och säkerhetskrav gäller även kommande uppgifter.
 
+## Aktuell uppföljning 2026-10-21
+
+På `feat/my-activities` införs **Mina aktiviteter** med generell personåtkomst
+enligt ADR-020 och [M07A](tasks/m07a-activity-overview.md). Backend använder
+`PersonAccessService`; `guardian` är ett underlag för delegerad åtkomst, inte en
+allmän familjebehörighet. Startsidan hittar kallelsekopplade aktiviteter utan
+förvalt test-ID. Runtime behöver separat migration 009. Native-/driftprov och
+full signalworker återstår; äldre M21/M22-kod är borttagen, inte en worker som
+kan aktiveras i verksamheten. Se [aktuell status](status.md).
+
 ## Aktuell planeringsinriktning
 
 **2026-10-19:** användaren har beslutat om ren start utan gamla testdata.

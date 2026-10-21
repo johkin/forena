@@ -1,7 +1,12 @@
 # M07: Koppla första kompletta svarflödet till Kotlin
 
-Status: delvis implementerad (2026-10-19). Beroenden: M05, M06. Leverans: en avgränsad PR om inte nedan
+Status: delvis implementerad (2026-10-21). Beroenden: M05, M06. Leverans: en avgränsad PR om inte nedan
 anges att arbetet först ska delas. Alla PR-baser är aktuell `main`.
+
+M07A på `feat/my-activities` har infört Mina aktiviteter och generell
+personåtkomst enligt ADR-020. Kotlin-ägd Spring Session JDBC används av
+Vite-webben; aktuellt native-/driftprov och full signalworker återstår.
+Äldre Next-adapter nedan är historiskt provunderlag.
 
 API och versionshanterat OpenAPI/TS-kontrakt finns i `backend`. Serverstyrd
 Next-adapter, avskild browservy och återkörbar syntetisk seed finns nu enligt
