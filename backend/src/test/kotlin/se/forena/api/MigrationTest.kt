@@ -15,7 +15,7 @@ import org.junit.jupiter.params.provider.ValueSource
 import org.testcontainers.postgresql.PostgreSQLContainer
 
 class MigrationTest {
-    @ParameterizedTest @ValueSource(ints = [0, 1, 2, 3, 4, 5, 6, 7, 8])
+    @ParameterizedTest @ValueSource(ints = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
     fun `empty install or previous baseline upgrade validates and is repeatable without data loss`(baseline: Int) {
         PostgreSQLContainer("postgres:17.6-alpine").withInitScript("init.sql").use { pg ->
             pg.start()
@@ -63,7 +63,7 @@ class MigrationTest {
                     migrations.validate()
                     connection.createStatement().use { statement ->
                         statement.executeQuery("select count(*) from forena.databasechangelog").use {
-                            it.next(); assertThat(it.getInt(1)).isEqualTo(9)
+                            it.next(); assertThat(it.getInt(1)).isEqualTo(10)
                         }
                         statement.executeQuery("select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='forena' and c.relkind='r' and c.relname not like 'databasechangelog%' and (c.relrowsecurity or c.relforcerowsecurity)").use {
                             it.next(); assertThat(it.getInt(1)).isZero()
@@ -84,6 +84,21 @@ class MigrationTest {
                         }
                         statement.executeQuery("select count(*) from pg_trigger t join pg_class c on c.oid=t.tgrelid join pg_namespace n on n.oid=c.relnamespace where n.nspname='forena' and not t.tgisinternal").use {
                             it.next(); assertThat(it.getInt(1)).isZero()
+                        }
+                    }
+                    // Default grants apply to future owner-created tables and sequences too.
+                    connection.createStatement().use { it.execute("create table forena.future_data(id bigint generated always as identity primary key, value text)") }
+                    connection.commit()
+                    DriverManager.getConnection(pg.jdbcUrl, "forena_api_runtime", "local-runtime-only").use { runtime ->
+                        runtime.createStatement().use { statement ->
+                            statement.execute("insert into forena.future_data(value) values('synthetic')")
+                            statement.execute("update forena.future_data set value='updated'")
+                            statement.executeQuery("select value from forena.future_data").use { assertThat(it.next()).isTrue(); assertThat(it.getString(1)).isEqualTo("updated") }
+                            statement.execute("delete from forena.future_data")
+                        }
+                        for (sql in listOf("create table forena.forbidden(id int)", "alter table forena.future_data add column forbidden text", "drop table forena.future_data",
+                            "truncate forena.future_data", "select * from forena.databasechangelog", "update forena.databasechangeloglock set locked=true", "set role forena_api_owner")) {
+                            assertThatThrownBy { runtime.createStatement().use { it.execute(sql) } }.describedAs(sql).isInstanceOf(java.sql.SQLException::class.java)
                         }
                     }
                     DriverManager.getConnection(pg.jdbcUrl, pg.username, pg.password).use { admin ->

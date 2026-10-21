@@ -1,5 +1,15 @@
 # Säkerhetsarkitektur
 
+## Runtime och migrationsägare
+
+ADR-021 ersätter tabellspecifika runtime-grants med gemensam datarätt i det
+privata `forena`-schemat: SELECT/INSERT/UPDATE/DELETE och sekvensåtkomst, även
+för framtida owner-skapade tabeller. Detta omfattar även konto-/personåtkomst-
+och historikdata. Backendrollen är betrodd; användarbehörighet och historikregler
+kontrolleras i Kotlin. Runtime får inte skapa/ändra struktur, äga tabeller,
+ärva owner eller läsa/ändra Liquibase-metadata. Klientroller får ingen ny åtkomst.
+Owner-credentials används endast i separat migrationssteg, inte i webbruntime.
+
 ## Personåtkomst i Kotlin
 
 `PersonAccessService` använder aktiva `person_access`-tilldelningar för det

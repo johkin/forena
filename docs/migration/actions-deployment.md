@@ -109,15 +109,24 @@ ett uttryckligt felaktigt CA-paket stoppar start.
 
 ## Verifiering och återgång
 
-Nya projektets nio Liquibase-steg, till och med `api-009-activity-overview`,
+Nya projektets tio Liquibase-steg, till och med `api-010-runtime-data-access`,
 är förutsättning för Mina aktiviteter. Migration 008 införde Spring Session JDBC,
 009 runtime-kolumnläsning på team; kör dem separat med ägarkontot före runtime. `prepare-kotlin.mjs` kräver sessionsnyckeln och tar sedan bort den
 ur bygg-envfilen utan att exportera/logga den. Runtime-descriptorn aktiverar
 webbsessioner och sätter kanonisk origin till `https://forena-kotlin.vercel.app`;
 nyckeln hämtas från projektets runtime-miljö precis som DB-lösenordet.
-Sessionslagringens health kräver Spring Session-tabellerna från 008 och
-limiter-tabellen från 007. Health verifierar inte team-granten från 009;
-verifiera också ett inloggat anrop till `/api/me/activities` före acceptans.
+Det separata JVM-migreringssteget kontrollerar datarättigheter och sessionsschema
+en gång efter Liquibase, med runtime-anslutningen. Verifieringen kan också köras
+med `FORENA_VERIFY_DATABASE_ACCESS=true FORENA_MIGRATE=false`, utan owner-
+credentials, HTTP-server eller migrering. Felaktiga rättigheter ger icke-noll
+exitkod och migrations-/releasejobbet ska då avbrytas före aktivering.
+
+Löpande HTTP-health använder Spring Boots DB-anslutningskontroll och befintlig
+Auth/JWKS-health; det gör inga roll- eller sessionsschemafrågor. Detta frontend-
+releasejobb har inga DB-credentials och kör därför inte JVM-engångskontrollen.
+Den ska köras i det separata migrations-/releasejobbet innan frontend/backend
+aktiveras. Verifiera även ett inloggat anrop till `/api/me/activities` före acceptans.
+Owner-credentials används fortfarande aldrig av den vanliga webbprocessen.
 Se [webbsessionernas releaseordning](web-sessions.md). Separata
 migreringskonton och driftoperationer tillhör inte frontend-releasejobbet.
 Efter merge behöver statisk frontend, direkt API-routing, riktiga Auth-sessioner

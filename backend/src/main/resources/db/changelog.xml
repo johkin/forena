@@ -10,4 +10,5 @@
  <changeSet id="api-007-auth-rate-limit" author="forena"><sqlFile path="auth-rate-limit.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
  <changeSet id="api-008-spring-session" author="forena"><sqlFile path="spring-session.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
  <changeSet id="api-009-activity-overview" author="forena"><sqlFile path="activity-overview.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
+ <changeSet id="api-010-runtime-data-access" author="forena"><sqlFile path="runtime-data-access.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
 </databaseChangeLog>

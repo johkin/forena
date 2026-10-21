@@ -1,5 +1,8 @@
 package se.forena.api.identity
 
+import org.springframework.security.authentication.AuthenticationServiceException
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException
+import org.springframework.security.authentication.BadCredentialsException
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -41,10 +44,14 @@ class BrowserSessionFilter(
                     fail(response, 401, "Sessionen är inte aktiv."); return
                 }
                 request.setAttribute(TOKEN_ATTRIBUTE, token.value)
-            } catch (_: InactiveSession) { fail(response, 401, "Sessionen är inte aktiv."); return }
+            } catch (_: BadCredentialsException) { fail(response, 401, "Sessionen är inte aktiv."); return }
             catch (_: JwtException) { fail(response, 401, "Sessionen är inte aktiv."); return }
-            catch (_: JwtVerificationUnavailable) { fail(response, 503, "Sessionen kan inte verifieras just nu."); return }
-            catch (_: SessionVerificationUnavailable) { fail(response, 503, "Sessionen kan inte verifieras just nu."); return }
+            catch (error: OAuth2AuthenticationException) {
+                if (error.error.errorCode == "temporarily_unavailable") fail(response, 503, "Sessionen kan inte verifieras just nu.")
+                else fail(response, 401, "Sessionen är inte aktiv.")
+                return
+            }
+            catch (_: AuthenticationServiceException) { fail(response, 503, "Sessionen kan inte verifieras just nu."); return }
             catch (_: DataAccessException) { fail(response, 503, "Sessionen kan inte verifieras just nu."); return }
         }
         chain.doFilter(request, response)

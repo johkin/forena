@@ -1,11 +1,11 @@
 package se.forena.api
 
+import org.springframework.security.authentication.BadCredentialsException
 import java.util.Base64
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import se.forena.api.identity.BrowserSessionSettings
-import se.forena.api.identity.InactiveSession
 
 class BrowserSessionSettingsTest {
     private val key = Base64.getEncoder().encodeToString(ByteArray(32) { 9 })
@@ -19,10 +19,10 @@ class BrowserSessionSettingsTest {
         assertThat(encrypted).doesNotContain("private")
         assertThat(settings.encrypt(secret, "session-a")).isNotEqualTo(encrypted)
         assertThat(settings.decrypt(encrypted, "session-a")).isEqualTo(secret)
-        assertThatThrownBy { settings.decrypt(encrypted, "session-b") }.isInstanceOf(InactiveSession::class.java)
-        assertThatThrownBy { settings.decrypt("invalid", "session-a") }.isInstanceOf(InactiveSession::class.java)
+        assertThatThrownBy { settings.decrypt(encrypted, "session-b") }.isInstanceOf(BadCredentialsException::class.java)
+        assertThatThrownBy { settings.decrypt("invalid", "session-a") }.isInstanceOf(BadCredentialsException::class.java)
         val changedKey = Base64.getEncoder().encodeToString(ByteArray(32) { 8 })
-        assertThatThrownBy { settings(encryption=changedKey).decrypt(encrypted, "session-a") }.isInstanceOf(InactiveSession::class.java)
+        assertThatThrownBy { settings(encryption=changedKey).decrypt(encrypted, "session-a") }.isInstanceOf(BadCredentialsException::class.java)
     }
 
     @Test fun `runtime rejects weak keys noncanonical origins and insecure remote cookies`() {

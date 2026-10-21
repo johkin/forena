@@ -18,7 +18,7 @@ class ActivityOverviewService(
 ) {
     @Transactional(readOnly = true)
     fun list(actor: Actor, offset: Int): MyActivities {
-        if (offset !in 0..100_000) throw InvitationProblem(400, "Ogiltigt sidnummer.")
+        if (offset !in 0..100_000) throw IllegalArgumentException("Ogiltigt sidnummer.")
         sessions.requireActive(actor)
         val people = access.people(actor)
         if (people.isEmpty()) return MyActivities(emptyList(), null)

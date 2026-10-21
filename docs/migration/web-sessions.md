@@ -9,7 +9,7 @@ backend har uttryckliga regler för varje API-route.
 
 | Route | Åtkomst och funktion |
 | --- | --- |
-| `GET /actuator/health` | Publik, inga detaljer; inkluderar Auth-nycklar och sessionslagringens schema |
+| `GET /actuator/health` | Publik, inga detaljer; DB-anslutning och Auth-nycklar, ingen schema-/rättighetskontroll |
 | `POST /api/auth/login` | Publik med CSRF-skydd; email/password till Auth från Kotlin |
 | `POST /api/auth/passkey/options` | Publik med CSRF-skydd; Auth-challenge lagras i serversessionen i högst fem minuter |
 | `POST /api/auth/passkey/verify` | Publik med CSRF-skydd; kräver matchande challenge i serversessionen och giltig WebAuthn-assertion |
@@ -161,8 +161,8 @@ inloggningar, men når inte refresh-reserven genom dessa publika rutter.
    kontrollerar formatet om värdet är läsbart. Nyckeln exporteras aldrig till
    bygget. Backend validerar den faktiska nyckeln vid runtime-start;
    runtime-descriptorn aktiverar sessioner
-   med kanonisk Kotlin-site-origin. Health måste verifiera migration 008 och limiter-tabellen före
-   promotion. Verifiera sedan faktisk login/cookie/API/logout på sajtens origin.
+   med kanonisk Kotlin-site-origin. Det separata migrerings-/releasekommandot verifierar migration 008:s
+   sessionstabeller och limiter-tabellen en gång före aktivering. Verifiera sedan faktisk login/cookie/API/logout på sajtens origin.
    Övergången kräver ny inloggning. Gamla `forena.browser_session` lämnas orörd
    för reversibel rollout och används inte av den nya koden; avveckling sker separat.
 

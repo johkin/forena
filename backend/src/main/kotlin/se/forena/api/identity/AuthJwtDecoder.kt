@@ -1,10 +1,11 @@
 package se.forena.api.identity
 
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException
+import org.springframework.security.oauth2.core.OAuth2Error
 import java.io.IOException
 import java.net.SocketTimeoutException
 import javax.net.ssl.SSLException
 import org.slf4j.LoggerFactory
-import org.springframework.security.core.AuthenticationException
 import org.springframework.security.oauth2.jwt.BadJwtException
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.security.oauth2.jwt.JwtDecoder
@@ -30,7 +31,7 @@ class AuthJwtDecoder(private val delegate: JwtDecoder) : JwtDecoder {
         }
         // Never log the token, exception message, URL, claims or stack trace.
         log.warn("api_auth_failed stage=jwt reason={}", reason)
-        if (reason.startsWith("jwks_")) throw JwtVerificationUnavailable()
+        if (reason.startsWith("jwks_")) throw OAuth2AuthenticationException(OAuth2Error("temporarily_unavailable"))
         throw BadJwtException("Token could not be verified")
     }
 
@@ -38,5 +39,3 @@ class AuthJwtDecoder(private val delegate: JwtDecoder) : JwtDecoder {
         val log = LoggerFactory.getLogger(AuthJwtDecoder::class.java)
     }
 }
-
-class JwtVerificationUnavailable : AuthenticationException("Signing keys could not be fetched")

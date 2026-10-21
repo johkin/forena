@@ -1,5 +1,8 @@
 package se.forena.api.identity
 
+import org.springframework.security.authentication.AuthenticationServiceException
+import org.springframework.http.HttpStatus
+import org.springframework.web.ErrorResponseException
 import jakarta.servlet.http.HttpServletRequest
 import java.net.InetAddress
 import java.sql.Timestamp
@@ -12,7 +15,6 @@ import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Component
 import org.springframework.transaction.support.TransactionTemplate
 
-class BrowserLoginRateLimited(val retryAfterSeconds: Long) : RuntimeException()
 
 /** Shared, continuously refilled buckets. Failed provider attempts consume permits too. */
 @Component
@@ -61,9 +63,9 @@ class BrowserLoginLimiter(
                     on conflict(key_hash) do update set available_at=excluded.available_at""",
                     bucket.hash, Timestamp.from(bucket.next(now)))
                 0L
-            } ?: throw SessionVerificationUnavailable()
-            if (delay > 0) throw BrowserLoginRateLimited(delay)
-        } catch (_: DataAccessException) { throw SessionVerificationUnavailable() }
+            } ?: throw AuthenticationServiceException("Session verification failed")
+            if (delay > 0) throw ErrorResponseException(HttpStatus.TOO_MANY_REQUESTS).also { it.headers.set("Retry-After", delay.toString()) }
+        } catch (_: DataAccessException) { throw AuthenticationServiceException("Session verification failed") }
     }
 
     /** Deleting fully refilled buckets is equivalent to retaining their full capacity. */

@@ -1,5 +1,7 @@
 package se.forena.api.identity.internal
 
+import org.springframework.security.authentication.AuthenticationServiceException
+import org.springframework.security.authentication.BadCredentialsException
 import java.net.URI
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpEntity
@@ -10,9 +12,7 @@ import org.springframework.web.client.HttpStatusCodeException
 import org.springframework.web.client.RestClientException
 import org.springframework.web.client.RestTemplate
 import se.forena.api.identity.Actor
-import se.forena.api.identity.InactiveSession
 import se.forena.api.identity.ProviderSessionVerifier
-import se.forena.api.identity.SessionVerificationUnavailable
 import tools.jackson.databind.json.JsonMapper
 import se.forena.api.identity.AuthHttpRequestFactory
 
@@ -47,20 +47,20 @@ class SupabaseSessionService(
         }
         val body = try {
             val result = client.exchange(endpoint, HttpMethod.GET, HttpEntity<Void>(headers), String::class.java)
-            if (result.statusCode.value() != 200) throw SessionVerificationUnavailable()
+            if (result.statusCode.value() != 200) throw AuthenticationServiceException("Session verification failed")
             result.body
         } catch (error: HttpStatusCodeException) {
             val code = runCatching { json.readTree(error.responseBodyAsString).get("error_code")?.asString() }.getOrNull()
             if (error.statusCode.value() in listOf(401,403) && code in setOf(
                     "bad_jwt", "session_not_found", "user_not_found", "user_banned", "session_expired"))
-                throw InactiveSession()
-            throw SessionVerificationUnavailable()
+                throw BadCredentialsException("Session verification failed")
+            throw AuthenticationServiceException("Session verification failed")
         } catch (_: RestClientException) {
-            throw SessionVerificationUnavailable()
+            throw AuthenticationServiceException("Session verification failed")
         }
         val user = runCatching { json.readTree(body ?: "") }.getOrNull()
-            ?: throw SessionVerificationUnavailable()
+            ?: throw AuthenticationServiceException("Session verification failed")
         if (user.get("id")?.asString() != actor.subject.toString() || user.get("is_anonymous")?.asBoolean() != false)
-            throw InactiveSession()
+            throw BadCredentialsException("Session verification failed")
     }
 }

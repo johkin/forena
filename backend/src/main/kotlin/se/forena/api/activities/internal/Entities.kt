@@ -9,7 +9,7 @@ import org.springframework.data.domain.Persistable
 import org.springframework.data.relational.core.mapping.Table
 
 @Table(value = "activity", schema = "forena")
-data class ActivityRecord(
+data class ActivityEntity(
     @Id val id: UUID,
     val organizationId: UUID,
     val status: String,
@@ -19,7 +19,7 @@ data class ActivityRecord(
 
 /** Identity is immutable; the Kotlin service owns response metadata. */
 @Table(value = "invitation", schema = "forena")
-data class InvitationRecord(
+data class InvitationEntity(
     @Id val id: UUID,
     @ReadOnlyProperty val organizationId: UUID,
     @ReadOnlyProperty val activityId: UUID,
@@ -31,7 +31,7 @@ data class InvitationRecord(
 )
 
 @Table(value = "invitation_history", schema = "forena")
-data class InvitationHistoryRecord(
+data class InvitationHistoryEntity(
     @Id val id: UUID? = null,
     val invitationId: UUID,
     val organizationId: UUID,
@@ -44,7 +44,7 @@ data class InvitationHistoryRecord(
 )
 
 @Table(value = "activity_signal_state", schema = "forena")
-data class ActivitySignalRecord(
+data class ActivitySignalEntity(
     @Id val activityId: UUID,
     val dirtyRevision: Long,
     val changedAt: Instant,
@@ -55,7 +55,7 @@ data class ActivitySignalRecord(
 }
 
 /** Read projection only; authorized person IDs come from identity's public service. */
-data class ActivityOverviewRecord(
+data class ActivityOverviewRow(
     val id: UUID, val title: String, val startsAt: Instant, val endsAt: Instant,
     val organizationName: String, val teamName: String
 )

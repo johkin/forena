@@ -8,34 +8,34 @@ import org.springframework.data.relational.core.sql.LockMode
 import org.springframework.data.relational.repository.Lock
 import org.springframework.data.repository.Repository
 
-interface ActivityRepository : Repository<ActivityRecord, UUID> {
-    fun findById(id: UUID): Optional<ActivityRecord>
+interface ActivityRepository : Repository<ActivityEntity, UUID> {
+    fun findById(id: UUID): Optional<ActivityEntity>
 
     @Lock(LockMode.PESSIMISTIC_WRITE)
-    fun findLockedByIdAndOrganizationId(id: UUID, organizationId: UUID): ActivityRecord?
+    fun findLockedByIdAndOrganizationId(id: UUID, organizationId: UUID): ActivityEntity?
 }
 
-interface InvitationRepository : Repository<InvitationRecord, UUID> {
-    fun findByActivityIdAndPersonIdIn(activityId: UUID, personIds: Collection<UUID>): List<InvitationRecord>
+interface InvitationRepository : Repository<InvitationEntity, UUID> {
+    fun findByActivityIdAndPersonIdIn(activityId: UUID, personIds: Collection<UUID>): List<InvitationEntity>
 
     @Lock(LockMode.PESSIMISTIC_WRITE)
-    fun findLockedByIdAndOrganizationIdAndActivityIdAndPersonId(id: UUID, organizationId: UUID, activityId: UUID, personId: UUID): InvitationRecord?
+    fun findLockedByIdAndOrganizationIdAndActivityIdAndPersonId(id: UUID, organizationId: UUID, activityId: UUID, personId: UUID): InvitationEntity?
 
-    fun findById(id: UUID): Optional<InvitationRecord>
+    fun findById(id: UUID): Optional<InvitationEntity>
 
-    fun save(invitation: InvitationRecord): InvitationRecord
+    fun save(invitation: InvitationEntity): InvitationEntity
 }
 
-interface InvitationHistoryRepository : Repository<InvitationHistoryRecord, UUID> {
-    fun save(history: InvitationHistoryRecord): InvitationHistoryRecord
+interface InvitationHistoryRepository : Repository<InvitationHistoryEntity, UUID> {
+    fun save(history: InvitationHistoryEntity): InvitationHistoryEntity
 }
 
-interface ActivitySignalRepository : Repository<ActivitySignalRecord, UUID> {
-    fun findById(id: UUID): Optional<ActivitySignalRecord>
-    fun save(signal: ActivitySignalRecord): ActivitySignalRecord
+interface ActivitySignalRepository : Repository<ActivitySignalEntity, UUID> {
+    fun findById(id: UUID): Optional<ActivitySignalEntity>
+    fun save(signal: ActivitySignalEntity): ActivitySignalEntity
 }
 
-interface ActivityOverviewRepository : Repository<ActivityRecord, UUID> {
+interface ActivityOverviewRepository : Repository<ActivityEntity, UUID> {
     @Query("""
         select a.id, a.title, a.starts_at, a.ends_at,
                o.name as organization_name, t.name as team_name
@@ -49,5 +49,5 @@ interface ActivityOverviewRepository : Repository<ActivityRecord, UUID> {
         order by a.starts_at, a.id
         limit 51 offset :offset
     """)
-    fun findUpcoming(people: Collection<UUID>, now: Instant, until: Instant, offset: Int): List<ActivityOverviewRecord>
+    fun findUpcoming(people: Collection<UUID>, now: Instant, until: Instant, offset: Int): List<ActivityOverviewRow>
 }

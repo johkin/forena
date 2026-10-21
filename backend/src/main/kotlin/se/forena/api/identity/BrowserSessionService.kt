@@ -1,5 +1,7 @@
 package se.forena.api.identity
 
+import org.springframework.security.authentication.AuthenticationServiceException
+import org.springframework.security.authentication.BadCredentialsException
 import jakarta.servlet.http.HttpServletRequest
 import java.time.Instant
 import java.util.UUID
@@ -30,7 +32,7 @@ class BrowserSessionService(
 
     fun login(email: String, password: String, request: HttpServletRequest): BrowserSessionView {
         settings.requireEnabled()
-        if (email.length !in 3..320 || password.length !in 1..1024) throw InactiveSession()
+        if (email.length !in 3..320 || password.length !in 1..1024) throw BadCredentialsException("Session verification failed")
         return create(provider.password(email, password), request)
     }
     fun passkeyOptions(): JsonNode { settings.requireEnabled(); return provider.options() }
@@ -64,7 +66,7 @@ class BrowserSessionService(
                 }
                 val encrypted = session.getAttribute<String>(TOKENS) ?: return@execute null
                 val state = settings.decrypt(encrypted, session.id).split('\n')
-                if (state.size != 5) throw InactiveSession()
+                if (state.size != 5) throw BadCredentialsException("Session verification failed")
                 var access = state[0]
                 val subject = UUID.fromString(state[3])
                 if (state[2].toLong() <= Instant.now().epochSecond + 60) {
@@ -72,14 +74,14 @@ class BrowserSessionService(
                         val renewed = provider.refresh(state[1])
                         access = text(renewed, "access_token")
                         val jwt = decoder.decode(access)
-                        if (jwt.subject != state[3] || jwt.getClaimAsString("session_id") != state[4]) throw InactiveSession()
+                        if (jwt.subject != state[3] || jwt.getClaimAsString("session_id") != state[4]) throw BadCredentialsException("Session verification failed")
                         session.setAttribute(TOKENS, encrypt(access, text(renewed, "refresh_token"), jwt, session.id))
                         store.save(session)
-                    } catch (_: InactiveSession) { store.deleteById(session.id); return@execute null }
+                    } catch (_: BadCredentialsException) { store.deleteById(session.id); return@execute null }
                 }
                 BrowserSessionToken(access, subject)
             }
-        } catch (_: InactiveSession) {
+        } catch (_: BadCredentialsException) {
             browser.invalidate(); return null
         }
         if (resolved == null) browser.invalidate()
@@ -97,18 +99,18 @@ class BrowserSessionService(
         val session = request.getSession(false) ?: return
         val token = try {
             session.getAttribute(TOKENS)?.let { settings.decrypt(it as String, session.id).substringBefore('\n') }
-        } catch (_: InactiveSession) { null }
+        } catch (_: BadCredentialsException) { null }
         session.invalidate()
         if (token != null) {
-            try { provider.logout(token) } catch (_: InactiveSession) {} catch (_: SessionVerificationUnavailable) {}
+            try { provider.logout(token) } catch (_: BadCredentialsException) {} catch (_: AuthenticationServiceException) {}
         }
     }
 
     private fun encrypt(access: String, refresh: String, jwt: Jwt, id: String) = settings.encrypt(
         "$access\n$refresh\n${jwt.expiresAt!!.epochSecond}\n${jwt.subject}\n${jwt.getClaimAsString("session_id")}", id)
-    private fun view(jwt: Jwt) = BrowserSessionView(BrowserUser(jwt.subject ?: throw InactiveSession(), jwt.getClaimAsString("email")))
+    private fun view(jwt: Jwt) = BrowserSessionView(BrowserUser(jwt.subject ?: throw BadCredentialsException("Session verification failed"), jwt.getClaimAsString("email")))
     private fun text(node: JsonNode, name: String): String = node.get(name)?.takeIf { it.isString }?.asString()?.takeIf { it.isNotBlank() && !it.contains('\n') }
-        ?: throw SessionVerificationUnavailable()
+        ?: throw AuthenticationServiceException("Session verification failed")
     private fun actor(jwt: Jwt) = Actor(UUID.fromString(jwt.subject), UUID.fromString(jwt.getClaimAsString("session_id")), jwt.tokenValue)
 
     companion object { const val TOKENS = "forena.provider-tokens" }

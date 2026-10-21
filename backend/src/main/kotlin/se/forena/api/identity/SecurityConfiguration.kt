@@ -1,5 +1,7 @@
 package se.forena.api.identity
 
+import org.springframework.security.authentication.AuthenticationServiceException
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException
 import java.net.URI
 import java.time.Instant
 import jakarta.servlet.DispatcherType
@@ -57,7 +59,8 @@ class SecurityConfiguration {
     @Bean
     fun security(http: HttpSecurity, json: JsonMapper, settings: BrowserSessionSettings, sessions: BrowserSessionService): SecurityFilterChain {
         val unauthorized = AuthenticationEntryPoint { request, response, exception ->
-            val unavailable = exception is JwtVerificationUnavailable
+            val unavailable = exception is AuthenticationServiceException ||
+                (exception is OAuth2AuthenticationException && exception.error.errorCode == "temporarily_unavailable")
             if (unavailable) response.status = 503
             else {
                 if (request.getHeader("Authorization").isNullOrBlank())
