@@ -26,7 +26,6 @@ export function LogoutButton({ destination = "/" }: { destination?: string }) {
 
   return (
     <button
-      aria-label="Logga ut från Förena"
       className="logout-button"
       disabled={pending}
       onClick={logout}
