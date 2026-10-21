@@ -305,13 +305,13 @@ class ApiTest {
             try {
                 (if (index % 2 == 0) loginLimiter else secondInstance).admit("client-$index", "email-$index@example.invalid")
                 true
-            } catch (_: se.forena.api.identity.BrowserLoginRateLimited) { false }
+            } catch (_: org.springframework.web.ErrorResponseException) { false }
         } }
         assertThat(requests.count { it.get() }).isEqualTo(10)
         val rowCount = jdbc.queryForObject("select count(*) from forena.auth_rate_limit", Int::class.java)
         assertThat(rowCount).isEqualTo(21) // one global row, ten client/email pairs
         assertThatThrownBy { secondInstance.admit("new-client", "new@example.invalid") }
-            .isInstanceOf(se.forena.api.identity.BrowserLoginRateLimited::class.java)
+            .isInstanceOf(org.springframework.web.ErrorResponseException::class.java)
         assertThat(jdbc.queryForObject("select count(*) from forena.auth_rate_limit", Int::class.java)).isEqualTo(rowCount)
         admin.update("update forena.auth_rate_limit set available_at=clock_timestamp()-interval '1 second'")
         secondInstance.admit("new-client", "new@example.invalid")
@@ -773,11 +773,23 @@ class ApiTest {
         assertThat(request("/actuator/health", bearer=null).statusCode()).isEqualTo(200)
     }
 
+    @Test fun `health rejects missing runtime data grants and recovers without exposing metadata`() {
+        assertThat(request("/actuator/health", bearer=null).statusCode()).isEqualTo(200)
+        admin.execute("revoke insert on forena.team from forena_api_runtime")
+        try {
+            val health = request("/actuator/health", bearer=null)
+            assertThat(health.statusCode()).isEqualTo(503)
+            assertThat(json.readTree(health.body()).get("status").asString()).isEqualTo("DOWN")
+            assertThat(health.body()).doesNotContain("components", "databaseAccess", "team", "exception")
+        } finally { admin.execute("grant insert on forena.team to forena_api_runtime") }
+        assertThat(request("/actuator/health", bearer=null).statusCode()).isEqualTo(200)
+    }
+
     @Test fun `runtime grants stay limited and Kotlin authorization survives rollback and connection reuse`() {
         assertThat(jdbc.queryForObject("select rolsuper or rolbypassrls from pg_roles where rolname=current_user", Boolean::class.java)).isFalse()
         assertThat(jdbc.queryForObject("select pg_has_role(current_user,'forena_api_owner','MEMBER')", Boolean::class.java)).isFalse()
         assertThat(jdbc.queryForObject("select has_schema_privilege(current_user,'forena','CREATE')", Boolean::class.java)).isFalse()
-        assertThat(jdbc.queryForObject("select has_table_privilege(current_user,'forena.team','SELECT')", Boolean::class.java)).isFalse()
+        assertThat(jdbc.queryForObject("select has_table_privilege(current_user,'forena.team','SELECT')", Boolean::class.java)).isTrue()
         assertThat(jdbc.queryForObject("select name from forena.team where id=(select team_id from forena.activity where id=?)", String::class.java, activity)).isEqualTo("Lag")
         // RLS is disabled: HTTP isolation must be proven without help from database policies.
         assertThat(jdbc.queryForObject("select count(*) from forena.invitation where activity_id=?", Long::class.java,activity)).isEqualTo(4)
@@ -793,8 +805,9 @@ class ApiTest {
             assertThat(ownList.statusCode()).isEqualTo(200)
             assertThat(ownList.body()).contains(other.toString()).doesNotContain(child1.toString(),own.toString())
         }
-        for (sql in listOf("create table forena.forbidden(id int)", "update forena.invitation set person_id='$other' where id='$invitation'",
-            "delete from forena.invitation", "update forena.invitation_history set channel='web'", "delete from forena.invitation_history", "delete from forena.activity_signal_state", "update forena.team set name='Forbidden'", "delete from forena.team")) {
+        for (sql in listOf("create table forena.forbidden(id int)", "alter table forena.team add column forbidden text",
+            "drop table forena.team", "truncate forena.team", "select * from forena.databasechangelog",
+            "update forena.databasechangeloglock set locked=true", "set role forena_api_owner")) {
             assertThatThrownBy { jdbc.execute(sql) }.describedAs(sql).isInstanceOf(org.springframework.dao.DataAccessException::class.java)
         }
     }

@@ -1,5 +1,7 @@
 package se.forena.api.identity
 
+import org.springframework.security.authentication.AuthenticationServiceException
+import org.springframework.security.authentication.BadCredentialsException
 import java.net.URI
 import java.security.SecureRandom
 import java.util.Base64
@@ -35,7 +37,7 @@ class BrowserSessionSettings(
             require(maxSeconds in 60..86400 && idleSeconds in 30..maxSeconds)
         }
     }
-    fun requireEnabled() { if (!enabled) throw SessionVerificationUnavailable() }
+    fun requireEnabled() { if (!enabled) throw AuthenticationServiceException("Session verification failed") }
     /** Keep rate-limit identifiers opaque even to a database-only reader. */
     fun fingerprint(value: String): String {
         requireEnabled()
@@ -60,7 +62,7 @@ class BrowserSessionSettings(
             cipher.init(Cipher.DECRYPT_MODE, secret, GCMParameterSpec(128, bytes.copyOfRange(0, 12)))
             cipher.updateAAD(context.toByteArray())
             String(cipher.doFinal(bytes.copyOfRange(12, bytes.size)))
-        } catch (_: Exception) { throw InactiveSession() }
+        } catch (_: Exception) { throw BadCredentialsException("Session verification failed") }
     }
     private fun encode(bytes: ByteArray) = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
 }

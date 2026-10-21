@@ -1,5 +1,6 @@
 package se.forena.api.identity
 
+import org.springframework.security.authentication.BadCredentialsException
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.session.web.http.CookieSerializer
 
@@ -9,7 +10,7 @@ class ProtectedSessionCookieSerializer(
 ) : CookieSerializer {
     override fun readCookieValues(request: HttpServletRequest): List<String> =
         delegate.readCookieValues(request).mapNotNull { value ->
-            try { settings.decrypt(value, CONTEXT) } catch (_: InactiveSession) { null }
+            try { settings.decrypt(value, CONTEXT) } catch (_: BadCredentialsException) { null }
         }
 
     override fun writeCookieValue(value: CookieSerializer.CookieValue) {

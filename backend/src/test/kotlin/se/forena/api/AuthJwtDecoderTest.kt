@@ -1,5 +1,6 @@
 package se.forena.api
 
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException
 import java.net.SocketTimeoutException
 import javax.net.ssl.SSLHandshakeException
 import org.assertj.core.api.Assertions.assertThat
@@ -13,7 +14,6 @@ import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.security.oauth2.jwt.JwtException
 import org.springframework.web.client.ResourceAccessException
 import se.forena.api.identity.AuthJwtDecoder
-import se.forena.api.identity.JwtVerificationUnavailable
 
 @ExtendWith(OutputCaptureExtension::class)
 class AuthJwtDecoderTest {
@@ -22,7 +22,7 @@ class AuthJwtDecoderTest {
         val decoder = AuthJwtDecoder(JwtDecoder {
             throw JwtException(secret, ResourceAccessException(secret, SSLHandshakeException(secret)))
         })
-        assertThatThrownBy { decoder.decode(secret) }.isInstanceOf(JwtVerificationUnavailable::class.java)
+        assertThatThrownBy { decoder.decode(secret) }.isInstanceOf(OAuth2AuthenticationException::class.java)
         assertThat(output.out).contains("api_auth_failed stage=jwt reason=jwks_tls").doesNotContain(secret)
     }
 
@@ -30,7 +30,7 @@ class AuthJwtDecoderTest {
         val decoder = AuthJwtDecoder(JwtDecoder {
             throw JwtException("private diagnostic", ResourceAccessException("private URL", SocketTimeoutException()))
         })
-        assertThatThrownBy { decoder.decode("private-token") }.isInstanceOf(JwtVerificationUnavailable::class.java)
+        assertThatThrownBy { decoder.decode("private-token") }.isInstanceOf(OAuth2AuthenticationException::class.java)
         assertThat(output.out).contains("reason=jwks_timeout").doesNotContain("private")
     }
 

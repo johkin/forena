@@ -309,3 +309,19 @@ Migration `api-009-activity-overview` måste köras separat före aktivering; de
 ger runtime endast kolumnläsning på team. Native-image behöver byggas om med
 nya DTO:er. Gamla kallelserutternas JSON/URL:er är oförändrade, men genererade
 scheman heter nu `MyInvitations` och `AccessibleInvitation`. Se ADR-020.
+
+## Gemensamma Kotlin- och databasregler
+
+Tabellmappningar heter nu `*Entity` (exempelvis `PersonEntity`), medan
+läsprojektionen heter `ActivityOverviewRow`. Använd standardundantag för
+argument/tillstånd/saknade data och befintliga Spring-undantag för Auth/transport;
+HTTP översätts separat med säkra feltexter. Se AGENTS.md och ADR-022.
+
+Migration `api-010-runtime-data-access` ger runtime gemensam DML på privata
+datatabeller och förval för framtida owner-skapade tabeller/sekvenser. De äldre
+kolumngrants ovan är historiska; runtime kan nu skriva även konto-, personåtkomst-
+och historikdata. Kotlin äger användarbehörighet och verksamhetsregler. Runtime
+har ingen DDL/ägarrätt eller åtkomst till Liquibase-tabeller. Owner kör Liquibase
+separat före start; den vanliga webbruntimen kör inga migrationer. Health
+kontrollerar rollmodellen utan att läsa verksamhetsdata och stoppar promotion
+om rättigheterna saknas. Se ADR-021 och migreringsstatus för målmiljön.

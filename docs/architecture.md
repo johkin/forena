@@ -57,6 +57,15 @@ ett backendbegrepp. Relationen `guardian` är ett möjligt underlag för en akti
 `MyActivityList` på startsidan och `/components`. Se ADR-020 för urval,
 sidindelning och skillnader mot gamla översikten.
 
+Kotlin-reglerna i AGENTS.md och ADR-022 gäller gemensamt: standardundantag för
+vanliga fel, ramverkets undantag för Auth/transport och `*Entity` för alla
+klassmappningar av tabeller. HTTP översätts i advice/filter med fasta, säkra
+feltexter. Läsprojektioner är inte tabellentiteter.
+
+ADR-021 inför en gemensam dataroll för befintliga/framtida datatabeller. Owner
+kör Liquibase separat före runtime; runtime saknar DDL och migrationsmetadata.
+Databas-health verifierar rollmodellen före promotion.
+
 ## Lager
 
 1. **Domän** – förening, lag, person, aktivitet, kallelse och medlemskap.

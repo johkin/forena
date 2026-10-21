@@ -30,6 +30,25 @@ produktionskomponenter som används i appen. Nya och ändrade element, relevanta
 varianter och tillstånd ska uppdateras där i samma PR. Kontrollera återanvändningen
 i berörda vyer och följ [reglerna för komponentsidan](docs/design-spec.md#komponentsidan-är-den-gemensamma-ui-referensen).
 
+## Kotlin-kod
+
+- Använd Kotlin/JVM:s standardundantag för vanliga fel: `IllegalArgumentException`
+  för ogiltiga argument, `IllegalStateException` för otillåtet tillstånd och
+  `NoSuchElementException` när efterfrågade data saknas. Skapa inte egna
+  `RuntimeException`-varianter som `IdentityProblem` eller `InvitationProblem`.
+- Använd ramverkets befintliga undantag för autentisering, nekad åtkomst och
+  transport, exempelvis Spring Securitys undantag och `ResponseStatusException`.
+  Behåll skillnaden mellan 401, 403, 404, 409, 429 och tillfälligt 503; ett
+  tekniskt verifieringsfel får inte behandlas som en avslutad session.
+- Översätt undantag till HTTP i controller advice/filter, inte genom egna
+  domänundantag med statusfält. Exponera inte godtyckliga exceptionmeddelanden.
+- Klasser som mappar databastabeller ska heta `*Entity`, exempelvis `PersonEntity`.
+  Använd inte `*Record`, `*Model` eller osuffigerade namn för tabellmappningar.
+  Sammansatta nycklar får heta `*Key`; läsprojektioner och API-DTO:er är inte
+  entiteter och namnges efter sina resultat, exempelvis `ActivityOverviewRow`.
+- Samla entiteter i respektive moduls `internal/Entities.kt`, repository-interface
+  i `internal/Repositories.kt` och DTO:er separat från tjänstelogik.
+
 ## Brancher och pull requests
 
 Skapa nya utvecklingsbrancher från aktuell `main` och rikta alla nya PR:er mot

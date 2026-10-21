@@ -11,6 +11,18 @@ Datum: 2026-10-18. Detta är första dokumentationsleveransen, inte en genomför
 backend- eller dataflytt. Befintliga instruktioner i [AGENTS.md](../../AGENTS.md)
 och säkerhetskrav gäller även kommande uppgifter.
 
+## Dataroll och Kotlin-regler, 2026-10-21
+
+På `fix/activity-overview-migration` inför migration 010 gemensamma datarättigheter
+och förval för framtida owner-skapade tabeller. Runtime saknar DDL/ägarrätt och
+åtkomst till Liquibase-metadata; health verifierar modellen före promotion.
+Owner kör migreringarna separat före runtime-start. Se ADR-021.
+
+ADR-022 och AGENTS.md styr standardundantag och `*Entity`-namn för tabellklasser.
+Aktuell målmiljökontroll visade bara steg 001–008 och saknad team-läsrätt, vilket
+förklarar felet i Mina aktiviteter. Användaren har valt endast kod/PR: ingen
+målmiljömigration körs här. [Status](status.md) skiljer lokal verifiering från drift.
+
 ## Aktuell uppföljning 2026-10-21
 
 På `feat/my-activities` införs **Mina aktiviteter** med generell personåtkomst

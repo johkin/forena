@@ -1,5 +1,56 @@
 # Migreringsstatus
 
+## Gemensam dataroll och Kotlin-konventioner, 2026-10-21
+
+Branch `fix/activity-overview-migration`, från main `262169e`.
+Användarens driftlogg visade `permission denied for table team` i Mina aktiviteter.
+Läsande katalogkontroll i `forena-kotlin` bekräftade exakt åtta Liquibase-steg,
+olåst historik och saknad runtime-läsning av teamets ID, organisation och namn.
+Alltså saknades migration 009 i målmiljön trots att nya API-koden kördes.
+
+Användaren valde därefter gemensamma datagrants och enbart kod/PR.
+**Målmiljön är oförändrad.** Förberedd SQL har endast körts i en tillfällig lokal
+PostgreSQL; inga steg 009–010, rolländringar eller verksamhetsskrivningar har
+körts i målprojektet. Översiktsfelet kvarstår där tills owner kör migreringarna.
+
+[ADR-021](decisions.md#adr-021-gemensam-dataroll-separat-migrationsägare):
+nytt, additivt steg 010 ger runtime SELECT/INSERT/UPDATE/DELETE på datatabeller
+och sekvensåtkomst i privata `forena`. Owner-specifika default privileges gäller
+även framtida tabeller. Runtime saknar DDL, TRUNCATE, ägarrätt och Liquibase-
+metadata; klientroller får inga nya grants. Runtime är en betrodd backendroll
+som kan skriva även konto-/personåtkomst-/historikdata; användarregler finns i
+Kotlin. Tidigare snäva kolumngrants är historiska och ersätts av denna modell.
+
+Owner kör fortsatt Liquibase separat före runtime-start. Detta inför inte
+migration vid varje webbinstansstart eller owner-credentials i runtime.
+Ny databas-health kontrollerar rollmodellen via katalogerna utan verksamhetsdata;
+saknade DML-grants, ägarrätt eller migrationsrättigheter ger DOWN och stoppar
+promotion. Den nya koden ska därför inte främjas före separat migration 010.
+
+[ADR-022](decisions.md#adr-022-kotlin-standardundantag-och-entity-namn) och
+AGENTS.md inför generella Kotlin-regler: standardundantag vid argument-,
+tillstånds- och uppslagsfel, samt ramverkets egna typer för Auth/transport.
+Egna problem-/RuntimeException-klasser är borttagna. HTTP översätts i advice/
+filter med fasta feltexter; 401/403/404/409/429/503 och Retry-After behålls.
+Alla tabellmappningar heter `*Entity`; den fristående läsprojektionen heter
+`ActivityOverviewRow`. SQL-tabeller, kolumner och OpenAPI/TS är oförändrade.
+
+Lokalt godkänt: Java 25 Maven verify med **68 tester, 0 fel, 1 valfritt
+browserprov överhoppat**. Det omfattar tio migrationsbaslinjer, framtida
+owner-skapad tabell/identitetssekvens med automatisk DML, nekad DDL/metadata,
+health-fel/återhämtning samt fulla Auth-/verksamhetsregressioner. Därefter kördes
+**4 tester, 0 fel/överhoppade** med opt-in-browser och utökad arkitekturkontroll:
+Entity-suffix, inga egna RuntimeException-typer och riktig lokal browser →
+Kotlin → PostgreSQL → svar/omladdning/logout med kontrollerad Auth-leverantör.
+Paketerad JAR klarade bootstrap, migrering två gånger och runtime/health utan
+ägarkonto. **1 146 Vitest-tester**, båda apparnas typkontroll, lint, Next- och
+Vite-produktionsbygge samt reproducerbart OpenAPI/TS-kontrakt är godkända.
+
+Nytt native-bygge och verkligt driftsatt browserprov är inte körda lokalt.
+Gamla appens Supabase reset/pgTAP är inte körda för detta separata Liquibase-
+schema. Nästa driftmoment är ett separat godkänt owner-migreringssteg genom
+010, därefter native-release och inloggat prov. Ingen molnmigration ingår i PR:n.
+
 ## Mina aktiviteter och personåtkomst, 2026-10-21
 
 Branch `feat/my-activities`, från main `62247c7` (PR #148).

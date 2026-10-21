@@ -1,5 +1,7 @@
 package se.forena.api.identity.internal
 
+import org.springframework.security.authentication.AuthenticationServiceException
+import org.springframework.security.authentication.BadCredentialsException
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
@@ -10,8 +12,6 @@ import org.springframework.web.client.HttpStatusCodeException
 import org.springframework.web.client.RestClientException
 import org.springframework.web.client.RestTemplate
 import se.forena.api.identity.AuthHttpRequestFactory
-import se.forena.api.identity.InactiveSession
-import se.forena.api.identity.SessionVerificationUnavailable
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
 
@@ -40,12 +40,12 @@ class BrowserAuthProvider(
         try {
             val response = client.exchange(issuer + path, HttpMethod.POST, HttpEntity(json.writeValueAsString(body), headers), String::class.java)
             if (response.statusCode.value() == 204) return json.createObjectNode()
-            if (response.statusCode.value() != 200) throw SessionVerificationUnavailable()
-            return json.readTree(response.body ?: throw SessionVerificationUnavailable())
+            if (response.statusCode.value() != 200) throw AuthenticationServiceException("Session verification failed")
+            return json.readTree(response.body ?: throw AuthenticationServiceException("Session verification failed"))
         } catch (error: HttpStatusCodeException) {
-            if (error.statusCode.value() in listOf(400, 401, 403, 422)) throw InactiveSession()
-            throw SessionVerificationUnavailable()
-        } catch (_: RestClientException) { throw SessionVerificationUnavailable() }
-        catch (_: tools.jackson.core.JacksonException) { throw SessionVerificationUnavailable() }
+            if (error.statusCode.value() in listOf(400, 401, 403, 422)) throw BadCredentialsException("Session verification failed")
+            throw AuthenticationServiceException("Session verification failed")
+        } catch (_: RestClientException) { throw AuthenticationServiceException("Session verification failed") }
+        catch (_: tools.jackson.core.JacksonException) { throw AuthenticationServiceException("Session verification failed") }
     }
 }

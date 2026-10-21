@@ -1,5 +1,7 @@
 package se.forena.api.identity
 
+import org.springframework.security.authentication.AuthenticationServiceException
+import org.springframework.security.authentication.BadCredentialsException
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.session.web.http.HttpSessionIdResolver
@@ -52,11 +54,11 @@ class BrowserSessionController(private val sessions: BrowserSessionService, priv
     fun options(request: HttpServletRequest): PasskeyOptions {
         limiter.admit(limiter.client(request))
         val result = sessions.passkeyOptions()
-        val id = result.get("challenge_id")?.asString() ?: throw SessionVerificationUnavailable()
+        val id = result.get("challenge_id")?.asString() ?: throw AuthenticationServiceException("Session verification failed")
         validateChallengeId(id)
-        val expires = minOf(result.get("expires_at")?.asLong() ?: throw SessionVerificationUnavailable(), java.time.Instant.now().epochSecond + 300)
+        val expires = minOf(result.get("expires_at")?.asLong() ?: throw AuthenticationServiceException("Session verification failed"), java.time.Instant.now().epochSecond + 300)
         request.getSession(true).setAttribute("forena.passkey-challenge", "$id\n$expires")
-        return PasskeyOptions(id, result.get("options") ?: throw SessionVerificationUnavailable(), expires)
+        return PasskeyOptions(id, result.get("options") ?: throw AuthenticationServiceException("Session verification failed"), expires)
     }
 
     @PostMapping("/api/auth/passkey/verify")
@@ -66,13 +68,13 @@ class BrowserSessionController(private val sessions: BrowserSessionService, priv
     fun verify(@RequestBody body: PasskeyVerifyRequest, request: HttpServletRequest): BrowserSessionView {
         settings.requireEnabled()
         limiter.admit(limiter.client(request))
-        val challenge = request.getSession(false)?.getAttribute("forena.passkey-challenge") as? String ?: throw InactiveSession()
+        val challenge = request.getSession(false)?.getAttribute("forena.passkey-challenge") as? String ?: throw BadCredentialsException("Session verification failed")
         val parts = challenge.split('\n')
         if (parts.size != 2 || parts[0] != body.challenge_id || (parts[1].toLongOrNull() ?: 0) <= java.time.Instant.now().epochSecond ||
-            !body.credential.isObject || body.credential.toString().length > 16384) throw InactiveSession()
+            !body.credential.isObject || body.credential.toString().length > 16384) throw BadCredentialsException("Session verification failed")
         request.getSession(false)?.removeAttribute("forena.passkey-challenge")
         return sessions.passkeyVerify(body.challenge_id, body.credential, request)
     }
 
-    private fun validateChallengeId(value: String) { if (runCatching { java.util.UUID.fromString(value).toString() == value }.getOrDefault(false).not()) throw SessionVerificationUnavailable() }
+    private fun validateChallengeId(value: String) { if (runCatching { java.util.UUID.fromString(value).toString() == value }.getOrDefault(false).not()) throw AuthenticationServiceException("Session verification failed") }
 }

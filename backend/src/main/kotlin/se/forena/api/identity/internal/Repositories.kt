@@ -6,26 +6,26 @@ import java.util.UUID
 import org.springframework.data.jdbc.repository.query.Query
 import org.springframework.data.repository.Repository
 
-interface AccountRepository : Repository<AccountRecord, UUID> {
+interface AccountRepository : Repository<AccountEntity, UUID> {
     fun existsBySubjectAndEnabledTrue(subject: UUID): Boolean
 }
 
 /** Current wall clock, including time spent waiting for row locks. */
-interface DatabaseClockRepository : Repository<AccountRecord, UUID> {
+interface DatabaseClockRepository : Repository<AccountEntity, UUID> {
     @Query("select clock_timestamp()")
     fun databaseTime(): Instant
 }
 
-interface RevokedSessionRepository : Repository<RevokedSessionRecord, UUID> {
+interface RevokedSessionRepository : Repository<RevokedSessionEntity, UUID> {
     fun existsByIdAndSubject(id: UUID, subject: UUID): Boolean
 }
 
-interface PersonAccessRepository : Repository<PersonAccessRecord, PersonAccessKey> {
-    fun findByKeySubjectAndActiveTrue(subject: UUID): List<PersonAccessRecord>
-    fun findById(id: PersonAccessKey): Optional<PersonAccessRecord>
-    fun findByKeySubjectAndOrganizationIdAndActiveTrue(subject: UUID, organizationId: UUID): List<PersonAccessRecord>
+interface PersonAccessRepository : Repository<PersonAccessEntity, PersonAccessKey> {
+    fun findByKeySubjectAndActiveTrue(subject: UUID): List<PersonAccessEntity>
+    fun findById(id: PersonAccessKey): Optional<PersonAccessEntity>
+    fun findByKeySubjectAndOrganizationIdAndActiveTrue(subject: UUID, organizationId: UUID): List<PersonAccessEntity>
 }
 
-interface PersonRepository : Repository<PersonRecord, UUID> {
-    fun findByIdInOrderByDisplayNameAsc(ids: Collection<UUID>): List<PersonRecord>
+interface PersonRepository : Repository<PersonEntity, UUID> {
+    fun findByIdInOrderByDisplayNameAsc(ids: Collection<UUID>): List<PersonEntity>
 }

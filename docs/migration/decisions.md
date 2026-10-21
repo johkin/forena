@@ -3,6 +3,44 @@
 Status anger målbeslut för kommande implementation, inte redan införd teknik.
 Källkodsverifierat nuläge finns i [inventeringen](inventory.md).
 
+## ADR-022: Kotlin-standardundantag och Entity-namn
+
+Beslut 2026-10-21 på användarens instruktion: använd standardundantag för
+ogiltiga argument, otillåtna tillstånd och saknade data. Egna varianter av
+`RuntimeException` med namn som `InvitationProblem`/`IdentityProblem` införs inte.
+Autentisering/transport använder befintliga Spring-undantag; HTTP-status och
+säkra felmeddelanden sätts i advice/filter. 503 för tillfälliga Auth-fel ska
+fortsätta bevara sessionen; 429 behåller `Retry-After`.
+
+Tabellmappade klasser heter `*Entity`, exempelvis `PersonEntity`. Sammansatta
+nycklar heter `*Key`; en läsprojektion som inte motsvarar en tabell kan heta
+`ActivityOverviewRow`. Detta ersätter tidigare `*Record`-namn utan att ändra
+SQL-tabeller, kolumner eller API-kontrakt. Se reglerna i AGENTS.md.
+
+## ADR-021: Gemensam dataroll, separat migrationsägare
+
+Beslut 2026-10-21 på användarens instruktion: runtime får gemensam
+SELECT/INSERT/UPDATE/DELETE på datatabeller i privata `forena`, utan manuell
+rättighetslista per verksamhetstabell. Ägarrollens default privileges ger samma
+rättigheter till framtida tabeller samt sekvensåtkomst. Detta ersätter de smala
+kolumngrants som äldre ADR beskriver. Runtime kan även ändra konto-, personåtkomst-
+och historikdata via SQL; backendrollen är betrodd och användarreglerna ligger
+fortsatt i Kotlin. Integritetsconstraints och applikationens transaktioner består.
+
+Migration 010 inför modellen efter oförändrade steg 001–009. Runtime får inte
+äga tabeller, ärva owner, skapa schemaobjekt, köra DDL eller TRUNCATE. Liquibase-
+tabellerna undantas från datarättigheterna. Inga nya klient-/Data API-grants ges.
+
+Owner kör Liquibase i ett separat migreringsläge före runtime-start. Den vanliga
+backendprocessen har fortfarande `FORENA_MIGRATE=false` och inga owner-credentials.
+Detta inför inte automatisk migrering vid varje webbinstansstart. Migreringssteget
+kan ordnas i releaseflödet, men ska avslutas före den begränsade runtimeprocessen.
+
+Health verifierar datarollens gemensamma rättigheter via PostgreSQL-katalogerna,
+utan läsning av verksamhetsrader. Saknade datagrants, ägarrätt eller åtkomst till
+migrationsmetadata stoppar health och därmed promotion. Verifiering i målmiljön
+redovisas separat i status; förberedd SQL innebär inte att migrationen är körd.
+
 ## ADR-020: Personåtkomst och Mina aktiviteter
 
 Beslut 2026-10-21 på användarens instruktion: backend använder personåtkomst,
