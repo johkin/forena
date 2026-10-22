@@ -1,9 +1,22 @@
 const STOCKHOLM_TIME_ZONE = "Europe/Stockholm";
 
+// ⚡ Bolt: Cache Intl.DateTimeFormat instances.
+// Creating these is expensive (~1-2ms each), so caching them prevents main-thread blocking
+// during frequent renders (e.g., in team-overview and team-status-card).
+const formatters = new Map<string, Intl.DateTimeFormat>();
+export function getFormatter(timeZone: string, optionsKey: string, options: Intl.DateTimeFormatOptions) {
+  const key = `${timeZone}:${optionsKey}`;
+  let formatter = formatters.get(key);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("sv-SE", { timeZone, ...options });
+    formatters.set(key, formatter);
+  }
+  return formatter;
+}
+
 export function formatDateTimeInZone(value: string | Date | null, timeZone: string) {
   if (!value) return null;
-  return new Intl.DateTimeFormat("sv-SE", {
-    timeZone,
+  const formatter = getFormatter(timeZone, "default-datetime", {
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -11,7 +24,8 @@ export function formatDateTimeInZone(value: string | Date | null, timeZone: stri
     hour: "2-digit",
     minute: "2-digit",
     hourCycle: "h23",
-  }).format(typeof value === "string" ? new Date(value) : value);
+  });
+  return formatter.format(typeof value === "string" ? new Date(value) : value);
 }
 
 export function formatStockholmDateTime(value: string | Date | null) {
@@ -19,8 +33,7 @@ export function formatStockholmDateTime(value: string | Date | null) {
 }
 
 function partsInStockholm(value: Date) {
-  const parts = new Intl.DateTimeFormat("sv-SE", {
-    timeZone: STOCKHOLM_TIME_ZONE,
+  const formatter = getFormatter(STOCKHOLM_TIME_ZONE, "stockholm-parts", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -28,7 +41,8 @@ function partsInStockholm(value: Date) {
     minute: "2-digit",
     second: "2-digit",
     hourCycle: "h23",
-  }).formatToParts(value);
+  });
+  const parts = formatter.formatToParts(value);
   return Object.fromEntries(parts.map((part) => [part.type, part.value]));
 }
 
