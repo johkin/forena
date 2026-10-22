@@ -13,7 +13,8 @@ class BackendImage(unittest.TestCase):
         self.commit = 'a' * 40
         self.image = {'Id': 'sha256:' + 'b' * 64, 'Os': 'linux', 'Architecture': 'amd64',
                       'RepoDigests': [module.REPOSITORY + '@sha256:' + 'c' * 64]}
-        self.metadata = {'sourceCommit': self.commit, 'imageId': self.image['Id']}
+        self.metadata = {'sourceCommit': self.commit, 'verifiedCommit': self.commit,
+                         'buildInputs': module.fingerprint('backend'), 'imageId': self.image['Id']}
         self.public_key = 'sb_publishable_synthetic'
 
     def test_selects_digest_without_changing_image(self):
@@ -22,9 +23,31 @@ class BackendImage(unittest.TestCase):
         self.assertEqual(result['handler'], self.image['RepoDigests'][0])
 
     def test_rejects_wrong_commit_or_image(self):
-        for metadata in [dict(self.metadata, sourceCommit='d' * 40), dict(self.metadata, imageId='sha256:' + 'e' * 64)]:
+        for metadata in [dict(self.metadata, verifiedCommit='d' * 40), dict(self.metadata, imageId='sha256:' + 'e' * 64)]:
             with self.assertRaises(ValueError):
                 module.verify_image(self.image, metadata, self.commit)
+
+    def test_accepts_reuse_only_with_current_verification_and_identical_inputs(self):
+        reused = dict(self.metadata, sourceCommit='d' * 40)
+        module.verify_image(self.image, reused, self.commit)
+        for invalid in [dict(reused, buildInputs='e' * 64),
+                        dict(reused, verifiedCommit='d' * 40),
+                        dict(reused, sourceCommit=''),
+                        {'sourceCommit': self.commit, 'imageId': self.image['Id']}]:
+            with self.assertRaises(ValueError):
+                module.verify_image(self.image, invalid, self.commit)
+
+    def test_record_preserves_original_build_commit_after_retesting(self):
+        original = module.record_image(self.image, self.commit)
+        current = 'd' * 40
+        reused = module.record_image(self.image, current, original)
+        self.assertEqual(reused['sourceCommit'], self.commit)
+        self.assertEqual(reused['verifiedCommit'], current)
+        module.verify_image(self.image, reused, current)
+        with self.assertRaises(ValueError):
+            module.record_image(dict(self.image, Id='sha256:' + 'e' * 64), current, original)
+        with self.assertRaises(ValueError):
+            module.record_image(self.image, current, dict(original, buildInputs='f' * 64))
 
     def test_rejects_wrong_platform(self):
         with self.assertRaises(ValueError):

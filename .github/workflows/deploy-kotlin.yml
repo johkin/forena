@@ -91,7 +91,19 @@ jobs:
           python3 scripts/deploy/use-backend-image.py verify \
             "$RUNNER_TEMP/backend-image/backend-image.json" "$RUNNER_TEMP/backend-loaded.json" "$RELEASE_SHA"
 
+      - name: Calculate production browser build inputs
+        id: frontend-inputs
+        run: python3 scripts/deploy/build_inputs.py frontend >> "$GITHUB_OUTPUT"
+
+      - name: Restore unchanged production browser build
+        id: frontend-cache
+        uses: actions/cache@v4
+        with:
+          path: frontend/dist
+          key: frontend-${{ runner.os }}-${{ steps.frontend-inputs.outputs.fingerprint }}
+
       - name: Build static frontend for the verified source
+        if: steps.frontend-cache.outputs.cache-hit != 'true'
         run: |
           npm run frontend:build
 

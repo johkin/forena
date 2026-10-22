@@ -7,17 +7,33 @@ import sys
 import os
 import shutil
 
+from build_inputs import fingerprint
+
 REPOSITORY = 'vcr.vercel.com/johkin/forena-kotlin/backend'
 
 
 def verify_image(image, metadata, commit):
-    if not re.fullmatch(r'[0-9a-f]{40}', commit) or metadata.get('sourceCommit') != commit:
-        raise ValueError('Image was not built for this release commit')
+    if not re.fullmatch(r'[0-9a-f]{40}', commit) or metadata.get('verifiedCommit') != commit:
+        raise ValueError('Image was not verified for this release commit')
+    if not re.fullmatch(r'[0-9a-f]{40}', metadata.get('sourceCommit', '')):
+        raise ValueError('Missing original build commit')
+    if metadata.get('buildInputs') != fingerprint('backend'):
+        raise ValueError('Image build inputs differ from this release')
     image_id = metadata.get('imageId', '')
     if not re.fullmatch(r'sha256:[0-9a-f]{64}', image_id) or image.get('Id') != image_id:
         raise ValueError('Image differs from the CI-tested artifact')
     if image.get('Os') != 'linux' or image.get('Architecture') != 'amd64':
         raise ValueError('Release requires linux/amd64')
+
+
+def record_image(image, commit, previous=None):
+    if previous is not None:
+        verify_image(image, previous, previous.get('verifiedCommit', ''))
+    metadata = {'sourceCommit': previous['sourceCommit'] if previous else commit,
+                'verifiedCommit': commit, 'buildInputs': fingerprint('backend'),
+                'imageId': image['Id']}
+    verify_image(image, metadata, commit)
+    return metadata
 
 
 def configure(image, public_key, certificate):
@@ -67,8 +83,15 @@ def write_output(image):
 
 def main():
     mode, metadata_path, inspect_path, commit = sys.argv[1:]
-    metadata = json.loads(Path(metadata_path).read_text())
     image = json.loads(Path(inspect_path).read_text())[0]
+    path = Path(metadata_path)
+    metadata = json.loads(path.read_text()) if path.exists() else None
+    if mode == 'record':
+        path.write_text(json.dumps(record_image(image, commit, metadata), indent=2) + '\n')
+        return
+    if mode == 'verify-cache':
+        verify_image(image, metadata, metadata.get('verifiedCommit', ''))
+        return
     verify_image(image, metadata, commit)
     if mode == 'configure':
         write_output(image)
@@ -78,7 +101,7 @@ def main():
         if descriptor.get('runtime') != 'container' or descriptor.get('handler') != expected['handler'] or 'command' in descriptor:
             raise ValueError('Deployment output must select the tested image with its original entrypoint')
     elif mode != 'verify':
-        raise ValueError('Expected verify or configure')
+        raise ValueError('Expected verify, configure, verify-output, verify-cache or record')
     print('Verified CI image identity for release ' + commit)
 
 

@@ -41,7 +41,10 @@ separat i återupptagbara batcher enligt ADR-023.
 Se [Spring Boots native-guide](https://docs.spring.io/spring-boot/how-to/native-image/developing-your-first-application.html)
 och [JDBC/AOT-konfiguration](https://docs.spring.io/spring-boot/reference/data/sql.html).
 
-CI-jobbet `native-image` kör samma buildpack-kommando efter `backend`-jobbet.
+CI-jobbet `native-image` kör samma buildpack-kommando efter `backend`-jobbet
+vid ändrat byggunderlag eller cachemiss. En oförändrad image återanvänds inom
+samma UTC-vecka, men startprovet körs alltid. Se
+[byggcachens regler](../docs/migration/actions-deployment.md#återanvändning-av-oförändrade-byggen).
 Det startar buildpacks native-image direkt mot en tillfällig lokal PostgreSQL och en
 syntetisk JWKS-server, kontrollerar DB/Auth-health, avbrott/återhämtning,
 saknad Bearer och avstängning. Migreringarna körs med JVM-JAR:en två gånger och sedan mot ett tomt schema vid webbstart.
@@ -78,7 +81,8 @@ python3 backend/scripts/local-smoke.py --runtime-executable backend/target/foren
 ```
 
 Releaseflödet publicerar buildpacks native-image från exakt godkänd main-CI utan ompaketering.
-Image-ID och sourceCommit verifieras och Vercel får en OCI-referens låst till
+Image-ID, byggunderlag och aktuell `verifiedCommit` verifieras; `sourceCommit`
+bevarar ursprungligt bygge. Vercel får en OCI-referens låst till
 digest. Ingen extraktion, extra Dockerfile eller ändrad entrypoint används.
 `FORENA_DB_CA_CERTIFICATE` innehåller databasens publika PEM-CA vid deployment.
 Appen validerar den och skriver en privat temporär fil för JDBC vid start;

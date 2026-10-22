@@ -25,7 +25,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24.19.0
           cache: npm
 
       - name: Install dependencies
@@ -43,13 +43,36 @@ jobs:
       - name: Run linting
         run: npm run lint
 
+      - name: Restore incremental Next compiler cache
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: next-${{ runner.os }}-24.19.0-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            next-${{ runner.os }}-24.19.0-${{ hashFiles('package-lock.json') }}-
+
       - name: Build application
         run: npm run build
         env:
           NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
 
+      - name: Calculate browser build inputs
+        id: frontend-inputs
+        run: python3 scripts/deploy/build_inputs.py frontend >> "$GITHUB_OUTPUT"
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://ckzrtxqjskosqzoitymc.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
+
+      - name: Restore unchanged browser build
+        id: frontend-cache
+        uses: actions/cache@v4
+        with:
+          path: frontend/dist
+          key: frontend-${{ runner.os }}-${{ steps.frontend-inputs.outputs.fingerprint }}
+
       - name: Build the separate browser frontend
+        if: steps.frontend-cache.outputs.cache-hit != 'true'
         run: npm run frontend:build
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://ckzrtxqjskosqzoitymc.supabase.co
@@ -92,6 +115,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
 
       - name: Verify business API, JWT, Kotlin authorization and migrations
         run: backend/mvnw -f backend/pom.xml --batch-mode --no-transfer-progress verify
@@ -134,8 +159,32 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      - name: Calculate backend build inputs
+        id: backend-inputs
+        run: python3 scripts/deploy/build_inputs.py backend >> "$GITHUB_OUTPUT"
+
+      - name: Restore unchanged native image
+        id: native-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ runner.temp }}/forena-backend.tar.gz
+            ${{ runner.temp }}/backend-image.json
+          key: native-linux-amd64-v1-${{ steps.backend-inputs.outputs.epoch }}-${{ steps.backend-inputs.outputs.fingerprint }}
+
+      - name: Load and verify cached image
+        if: steps.native-cache.outputs.cache-hit == 'true'
+        run: |
+          docker load --input "$RUNNER_TEMP/forena-backend.tar.gz"
+          docker image inspect forena-backend:ci > "$RUNNER_TEMP/backend-image-inspect.json"
+          python3 scripts/deploy/use-backend-image.py verify-cache \
+            "$RUNNER_TEMP/backend-image.json" "$RUNNER_TEMP/backend-image-inspect.json" "$GITHUB_SHA"
 
       - name: Build native container with Spring Boot buildpacks
+        if: steps.native-cache.outputs.cache-hit != 'true'
         run: >-
           backend/mvnw -f backend/pom.xml --batch-mode --no-transfer-progress
           -Pnative -DskipTests
@@ -149,13 +198,17 @@ jobs:
         run: |
           docker save forena-backend:ci | gzip > "$RUNNER_TEMP/forena-backend.tar.gz"
           docker image inspect forena-backend:ci > "$RUNNER_TEMP/backend-image-inspect.json"
-          python3 - <<'PYIMAGE'
-          import json, os
-          from pathlib import Path
-          root = Path(os.environ['RUNNER_TEMP'])
-          image = json.loads((root / 'backend-image-inspect.json').read_text())[0]
-          (root / 'backend-image.json').write_text(json.dumps({'sourceCommit': os.environ['GITHUB_SHA'], 'imageId': image['Id']}))
-          PYIMAGE
+          python3 scripts/deploy/use-backend-image.py record \
+            "$RUNNER_TEMP/backend-image.json" "$RUNNER_TEMP/backend-image-inspect.json" "$GITHUB_SHA"
+
+      - name: Cache successfully tested native image
+        if: steps.native-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ runner.temp }}/forena-backend.tar.gz
+            ${{ runner.temp }}/backend-image.json
+          key: ${{ steps.native-cache.outputs.cache-primary-key }}
 
       - name: Retain tested backend image
         uses: actions/upload-artifact@v7
