@@ -19,7 +19,7 @@ import se.forena.api.identity.Actor
 @RestController
 class ActivityOverviewController(private val overview: ActivityOverviewService) {
     @GetMapping("/api/me/activities", produces = ["application/json"])
-    @Operation(operationId = "getMyActivities", description = "Own and delegated person access. Invitation-backed, ongoing/upcoming scheduled activities starting within 90 days; includes declined and not-yet-sent invitations. Stable starts_at/id order, 50 activities per page, no duplicates. No-store. Offset 0..100000; concurrent changes may shift pages.")
+    @Operation(operationId = "getMyActivities", description = "Own and delegated person access. Invitation-backed, ongoing/upcoming scheduled activities starting within 90 days; includes declined and not-yet-sent invitations. Each activity includes only sent invitations for authorized people, with current responses; future invitations remain hidden. Stable starts_at/id order, 50 activities per page, no duplicates. No-store. Offset 0..100000; concurrent changes may shift pages.")
     @ApiResponse(responseCode = "200", description = "My activities", useReturnTypeSchema = true)
     @ApiResponse(responseCode = "400", description = "Invalid offset", content = [Content(schema = Schema(implementation = ApiError::class))])
     @ApiResponse(responseCode = "401", description = "Inactive session", content = [Content(schema = Schema(implementation = ApiError::class))])

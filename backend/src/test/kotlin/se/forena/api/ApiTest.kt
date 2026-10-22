@@ -538,6 +538,11 @@ class ApiTest {
         assertThat(page.get("activities").get(0).get("organization_name").asString()).isEqualTo("Klubb")
         assertThat(page.get("activities").get(0).get("team_name").asString()).isEqualTo("Lag")
         assertThat(page.get("next_offset").isNull).isTrue()
+        val visible = page.get("activities").get(0).get("invitations")
+        assertThat(visible.size()).isEqualTo(3)
+        assertThat((0 until visible.size()).map { visible.get(it).get("person_id").asString() }).containsExactlyInAnyOrder(
+            own.toString(), child1.toString(), child2.toString())
+        assertThat((0 until visible.size()).map { visible.get(it).get("response").asString() }).containsOnly("pending")
         // Own access may be removed while delegated access remains.
         admin.update("update forena.person_access set active=false where person_id=?", own)
         assertThat(json.readTree(request("/api/me/activities").body()).get("activities").size()).isEqualTo(1)
@@ -545,6 +550,20 @@ class ApiTest {
         val empty = request("/api/me/activities")
         assertThat(json.readTree(empty.body()).get("activities").size()).isZero()
         assertThat(empty.body()).doesNotContain(activity.toString(), "Träning", "Klubb", "Lag")
+    }
+
+    @Test fun `overview reflects direct answers preserves comments and hides revoked people`() {
+        assertThat(respond("""{"response":"accepted","comment":"Hämtas senare"}""").statusCode()).isEqualTo(200)
+        // A quick answer omits comment rather than clearing the existing text.
+        assertThat(respond("""{"response":"declined"}""").statusCode()).isEqualTo(200)
+        val visible = json.readTree(request("/api/me/activities").body()).get("activities").get(0).get("invitations")
+        val answered = visible.single { it.get("id").asString() == invitation.toString() }
+        assertThat(answered.get("response").asString()).isEqualTo("declined")
+        assertThat(answered.get("response_comment").asString()).isEqualTo("Hämtas senare")
+        admin.update("update forena.person_access set active=false where person_id=? and subject=?", child1, parent)
+        val revoked = json.readTree(request("/api/me/activities").body()).get("activities").get(0).get("invitations")
+        assertThat(revoked.size()).isEqualTo(2)
+        assertThat((0 until revoked.size()).map { revoked.get(it).get("person_id").asString() }).doesNotContain(child1.toString())
     }
 
     @Test fun `my activities spans authorized organizations and excludes private activities in each`() {
@@ -569,6 +588,8 @@ class ApiTest {
     @Test fun `overview hides cancelled ended distant and uninvited activities but includes declined and unsent`() {
         admin.update("update forena.activity set invitation_send_at=now()+interval '1 day' where id=?", activity)
         assertThat(json.readTree(request("/api/me/activities").body()).get("activities").size()).isEqualTo(1)
+        val unsent = json.readTree(request("/api/me/activities").body()).get("activities").get(0)
+        assertThat(unsent.get("invitations").size()).isZero()
         admin.update("update forena.activity set invitation_send_at=null where id=?", activity)
         assertThat(respond("""{"response":"declined"}""").statusCode()).isEqualTo(200)
         assertThat(json.readTree(request("/api/me/activities").body()).get("activities").size()).isEqualTo(1)

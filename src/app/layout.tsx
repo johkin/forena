@@ -6,6 +6,7 @@ import "@fontsource-variable/plus-jakarta-sans/index.css";
 import "@fontsource-variable/newsreader/index.css";
 import "./globals.css";
 import "./workflows.css";
+import "../components/personal-overview.css";
 import "./duty-editor.css";
 import "./club-admin.css";
 import "./date-time.css";

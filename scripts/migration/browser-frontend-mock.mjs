@@ -11,7 +11,7 @@ const browser=await chromium.launch({...(process.env.FORENA_BROWSER_EXECUTABLE ?
 const context=await browser.newContext({viewport:{width:390,height:844}});
 await context.addCookies([{name:'_vercel_jwt',value:'synthetic-protection-cookie',url:base.origin}]);
 await context.addInitScript(()=>{if(!sessionStorage.getItem('migration-seeded')){localStorage.setItem('forena-kotlin-browser-auth','{"access_token":"obsolete-private-token"}');sessionStorage.setItem('migration-seeded','true');}});
-let current=null, revoked=false, platformDenied=false, sessionUnavailable=false, overviewUnavailable=false, sessionReads=0, requests=0, privateRequests=0, directProviderRequests=0;
+let current=null, revoked=false, platformDenied=false, sessionUnavailable=false, overviewUnavailable=false, sessionReads=0, requests=0, privateRequests=0, directProviderRequests=0, detailReads=0, answerUnavailable=false;
 let invitations=[{id,person_id:users[0],name:'Alex Exempel med ett längre familjenamn',response:'pending',response_comment:null}];
 const view=()=>({user:{id:users[current],email:current===0?'family@example.invalid':'other@example.invalid'}});
 await context.route('**/config.json',r=>r.fulfill({json:{supabaseUrl:'https://ckzrtxqjskosqzoitymc.supabase.co',publishableKey:'sb_publishable_synthetic',activityId:id,version:id}}));
@@ -41,10 +41,11 @@ await context.route('**/api/**',async route=>{
  if(path==='/api/me/activities'){
   if(overviewUnavailable)return route.fulfill({status:503,json:{error:'Tillfälligt fel'}});
   const offset=new URL(req.url()).searchParams.get('offset');
-  const item={id,title:'Träning med laget',starts_at:'2026-10-22T16:00:00Z',ends_at:'2026-10-22T17:30:00Z',organization_name:'Exempelföreningen med ett långt namn',team_name:'Ungdomslaget'};
+  const item={id,title:'Träning med laget',starts_at:'2026-10-22T16:00:00Z',ends_at:'2026-10-22T17:30:00Z',organization_name:'Exempelföreningen med ett långt namn',team_name:'Ungdomslaget',invitations:offset==='50'?[]:invitations};
   return route.fulfill({json:{activities:current===0?[{...item,...(offset==='50'?{id:users[1],title:'Nästa aktivitet'}:{})}]:[],next_offset:current===0&&offset!=='50'?50:null}});
  }
- if(req.method()==='PUT'){const body=req.postDataJSON();invitations=invitations.map(i=>({...i,response:body.response,response_comment:body.comment}));return route.fulfill({json:{ok:true}});}
+ if(req.method()==='PUT'){if(answerUnavailable)return route.fulfill({status:503,json:{error:'Tillfälligt skrivfel'}});const body=req.postDataJSON();invitations=invitations.map(i=>({...i,response:body.response,...(Object.hasOwn(body,'comment')?{response_comment:body.comment}:{})}));return route.fulfill({json:{ok:true}});}
+ if(path.endsWith('/my-invitations'))detailReads++;
  return route.fulfill({json:{invitations:current===0?invitations:[]}});
 });
 const page=await context.newPage();const errors=[];page.on('pageerror',()=>errors.push('pageerror'));
@@ -63,6 +64,16 @@ try{
  await expect(page.getByRole('link',{name:/Träning med laget/})).toBeVisible();
  await page.getByRole('button',{name:'Visa fler aktiviteter'}).click();await expect(page.getByRole('link',{name:/Nästa aktivitet/})).toBeVisible();
  await expect(page.getByRole('link',{name:/Träning med laget/})).toHaveCount(1);
+ // Invitations arrive in the overview response: no per-activity waterfall or navigation.
+ assert.equal(detailReads,0);
+ await expect(page.getByText('Ingen kallelse ännu.',{exact:true})).toBeVisible();
+ const overviewAnswer=page.getByRole('group',{name:'Kallelsesvar för Alex Exempel med ett längre familjenamn'});
+ answerUnavailable=true;await overviewAnswer.getByRole('button',{name:/Kommer:/}).click();
+ await expect(page.getByRole('alert')).toHaveText('Svaret kunde inte sparas. Försök igen.');
+ await expect(overviewAnswer.getByRole('button',{name:/Kommer:/})).toHaveAttribute('aria-pressed','false');
+ answerUnavailable=false;await overviewAnswer.getByRole('button',{name:/Kommer:/}).click();
+ await expect(overviewAnswer.getByRole('button',{name:/Kommer:/})).toHaveAttribute('aria-pressed','true');
+ assert.equal(invitations[0].response,'accepted');assert.equal(page.url(),base.href);
  // A same-tab self-notification must not erase the accepted login.
  await page.waitForTimeout(200);assert.equal(sessionReads,beforeLoginReads);
  assert.equal(await page.evaluate(()=>window.documentInstance),'same-document');sessionUnavailable=false;
@@ -92,6 +103,10 @@ try{
  await expect(page.getByRole('status').filter({hasText:'har sparats'})).toBeVisible();assert.equal(invitations[0].response,'accepted');
  await page.reload();await expect(row.getByLabel('Kommentar')).toHaveValue('Hämtas senare');
  await page.goto(base.href);await expect(page.getByRole('link',{name:/Träning med laget/})).toBeVisible();
+ await overviewAnswer.getByRole('button',{name:/Kan ej:/}).click();
+ await expect(overviewAnswer.getByRole('button',{name:/Kan ej:/})).toHaveAttribute('aria-pressed','true');
+ assert.equal(invitations[0].response_comment,'Hämtas senare');
+ await page.reload();await expect(overviewAnswer.getByRole('button',{name:/Kan ej:/})).toHaveAttribute('aria-pressed','true');
  overviewUnavailable=true;await page.reload();await expect(page.getByRole('alert')).toBeVisible();
  overviewUnavailable=false;await page.getByRole('button',{name:'Försök igen',exact:true}).click();await expect(page.getByRole('link',{name:/Träning med laget/})).toBeVisible();
  for(const width of [320,375,390,768,1440]){await page.setViewportSize({width,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
@@ -136,5 +151,5 @@ try{
  await expect(page).toHaveURL(new URL(`/activities/${id}`,base).href);await expect(row).toHaveCount(1);
  assert.equal(await page.evaluate(()=>window.documentInstance),'redirect-document');
  assert.deepEqual(errors,[]);
- assert.ok(requests>0);console.log('PASS: client navigation and persistent header without session refetch; back/forward, menu links and gallery-to-private session initialization; HttpOnly session, CSRF header, legacy cleanup, no browser/provider tokens, password and WebAuthn without reload, save/reload, revocation, account switch, logout, public gallery, responsive overview, paging, retry, private-data isolation and keyboard menu');
+ assert.ok(requests>0);console.log('PASS: overview invitations without per-activity reads; direct answers without navigation, isolated save failure, persisted answers and preserved comments; client navigation and persistent header without session refetch; back/forward, menu links and gallery-to-private session initialization; HttpOnly session, CSRF header, legacy cleanup, no browser/provider tokens, password and WebAuthn without reload, save/reload, revocation, account switch, logout, public gallery, responsive overview, paging, retry, private-data isolation and keyboard menu');
 }finally{await browser.close();}

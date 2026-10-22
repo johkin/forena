@@ -98,7 +98,11 @@ företräda en person. Inga nya relationstyper eller generella fullmakter inför
 kallelsekopplad aktivitet en gång över samtliga berörda föreningar. Pågående och
 kommande ej inställda aktiviteter med start inom 90 dagar ingår, även nej-svar
 och ännu inte utskickade kallelser. Före utskick visas inga kallelsesvar via det
-befintliga detalj-API:t. Listan har 50 poster/sida, stabil starttid/UUID-sortering
+befintliga detalj-API:t eller översiktssvaret. Uppföljning 2026-10-22: varje
+aktivitetsrad får skickade `AccessibleInvitation` i en sidavgränsad batch, med
+samma personkontroll och utan en fråga per aktivitet. Direktknappar återanvänder
+Next-översiktens svarskomponent och bevarar kommentar vid utelämnat fält.
+Listan har 50 poster/sida, stabil starttid/UUID-sortering
 samt explicit offset; samtidiga ändringar kan flytta sidgränser.
 
 Spring Data JDBC äger fortsatt repositories/CRUD enligt ADR-011. För denna

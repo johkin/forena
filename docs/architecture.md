@@ -57,7 +57,12 @@ Den nya webbens startsida visar **Mina aktiviteter** via `GET /api/me/activities
 ett backendbegrepp. Relationen `guardian` är ett möjligt underlag för en aktiv
 åtkomsttilldelning. Inga nya relationstyper får rättigheter automatiskt.
 Översikten använder en avgränsad Spring Data JDBC-läsprojektion och återanvänder
-`MyActivityList` på startsidan och `/components`. Se ADR-020 för urval,
+`MyActivityList` på startsidan och `/components`. API-svaret innehåller också
+skickade kallelser för behöriga personer i en sidavgränsad batch.
+`OverviewInvitationResponse` återanvänds från Next för direkta svar; Vite skickar
+sin konto-/CSRF-kontrollerade request-adapter. Framtida kallelser lämnas inte ut.
+Se [funktionell likvärdighet](migration/feature-parity.md) för återstående
+Next-funktioner och ADR-020 för urval,
 sidindelning och skillnader mot gamla översikten.
 
 Kotlin-reglerna i AGENTS.md och ADR-022 gäller gemensamt: standardundantag för

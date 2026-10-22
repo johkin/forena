@@ -328,9 +328,14 @@ notifiering. Signalworker/Modulith-reaktion kopplas in i ett senare steg.
 `PersonAccessService`, även för personer med aktiv delegerad åtkomst. Varje
 aktivitet visas en gång med klubb/lag, titel och tider; 50 per sida och
 `next_offset` vid fler resultat. Pågående/kommande ej inställda aktiviteter med
-start inom 90 dagar ingår. Svar och relationstyp utökar inte åtkomsten.
-Migration `api-009-activity-overview` måste vara körd före API-trafik; den
-ger runtime endast kolumnläsning på team. Native-image behöver byggas om med
+start inom 90 dagar ingår. `invitations` på varje rad innehåller bara skickade
+kallelser för behöriga personer, med namn, aktuellt svar och kommentar.
+Kallelserna läses i en gemensam batch för sidans högst 50 aktiviteter, utan
+N+1-frågor. Framtida kallelser ger en tom lista. Svar och relationstyp utökar
+inte åtkomsten. Översiktens snabbsvar använder samma svarstjänst som detaljerna;
+utelämnad kommentar bevaras. Lagmedlemskap utan kallelse återstår i M07B.
+Migration 009 införde lagläsning; 010 ger den nuvarande gemensamma datarollen.
+Båda körs som owner vid start före API-trafik. Native-image behöver byggas om med
 nya DTO:er. Gamla kallelserutternas JSON/URL:er är oförändrade, men genererade
 scheman heter nu `MyInvitations` och `AccessibleInvitation`. Se ADR-020.
 

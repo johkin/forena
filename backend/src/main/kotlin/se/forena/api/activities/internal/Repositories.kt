@@ -18,6 +18,15 @@ interface ActivityRepository : Repository<ActivityEntity, UUID> {
 interface InvitationRepository : Repository<InvitationEntity, UUID> {
     fun findByActivityIdAndPersonIdIn(activityId: UUID, personIds: Collection<UUID>): List<InvitationEntity>
 
+    /** One bounded batch for the current overview page; never expose future invitations. */
+    @Query("""
+        select i.* from forena.invitation i
+        join forena.activity a on a.id = i.activity_id and a.organization_id = i.organization_id
+        where i.activity_id in (:activities) and i.person_id in (:people)
+          and (a.invitation_send_at is null or a.invitation_send_at <= :now)
+    """)
+    fun findSentForActivities(activities: Collection<UUID>, people: Collection<UUID>, now: Instant): List<InvitationEntity>
+
     @Lock(LockMode.PESSIMISTIC_WRITE)
     fun findLockedByIdAndOrganizationIdAndActivityIdAndPersonId(id: UUID, organizationId: UUID, activityId: UUID, personId: UUID): InvitationEntity?
 

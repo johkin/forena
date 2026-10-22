@@ -47,6 +47,14 @@ som standard, så samma komponenter fungerar i Next-appen. Vite använder
 inte vid varje aktivitetshopp. `/components` är fortsatt publik och hämtar
 sessionen först när man navigerar vidare till en privat vy.
 
+Startsidan visar skickade kallelser per behörig person direkt i aktivitetslistan.
+`OverviewInvitationResponse` delar svarsknappar med Next; snabbsvar skickar inte
+kommentarsfältet och bevarar därför tidigare kommentar. Klick på aktivitetsrubriken
+öppnar detaljsidan där kommentaren kan redigeras. Översikten hämtar kallelser i
+samma API-svar, utan en request per aktivitet. Framtida kallelser förblir dolda.
+Aktiviteter via lagmedlemskap utan kallelse och övrig Next-funktionalitet återstår;
+se [likvärdighetsplanen](../docs/migration/feature-parity.md).
+
 Auth använder Kotlin-ägda serversessioner enligt
 [ADR-018 och driftsinstruktionen](../docs/migration/web-sessions.md). Frontenden
 har ingen Supabase Auth-klient och skickar inga Bearer-token. Bara ett
