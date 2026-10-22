@@ -29,11 +29,13 @@ Vercels skyddscookie når Deployment Protection. Plattformens HTML-/401-svar
 avslutar inte appsessionen. Bara API:ts uttryckliga JSON-svar om ogiltig
 appsession gör det. Behåll Deployment Protection aktiverat.
 
-CI bygger native-imagen direkt med Spring Boots buildpacks (`-Pnative
-spring-boot:build-image`) och starttestar den. Ingen extraktion, Dockerfile,
+CI bygger vid cachemiss native-imagen direkt med Spring Boots buildpacks
+(`-Pnative spring-boot:build-image`) och starttestar alltid den valda imagen.
+Ingen extraktion, Dockerfile,
 ändrad entrypoint eller andra imagebyggen följer. Samma OCI-image sparas som
 `forena-backend-image-<sha>` och hämtas av releasejobbet för exakt godkänd main-
-commit. Image-ID verifieras före och efter taggning/push till projektets VCR.
+commit. Image-ID, backendens byggunderlag och verifieringscommit kontrolleras
+före och efter taggning/push till projektets VCR.
 Saknad/utgången artefakt stoppar releasen; kör då CI igen för aktuell main.
 
 Releasen skriver Vercels Build Output API: frontendens färdiga statiska filer
@@ -69,6 +71,41 @@ deployment-URL för prov och den kanoniska adressen för publicerad kod.
 Hälsokontroll och statisk HTML-hämtning ersätter inte ett verkligt inloggat
 browserprov. Korta Liquibase-steg körs vid backendstart enligt ADR-023. Utskick, bootstrap,
 seed och tunga datamigreringar ingår inte.
+
+### Återanvändning av oförändrade byggen
+
+CI och Kotlin-deployen återanvänder färdiga delar med innehållsbaserade nycklar:
+
+- Backendens native-image byggs om när filer i `backend/` (utom README och
+  dokumentationskatalogen), CI:s byggrecept eller image-/nyckelverifieringen ändras. Frontendändringar
+  påverkar inte denna nyckel. En ny UTC-vecka ger också ett nytt native-bygge
+  vid nästa CI-körning, så att rörliga buildpack-/basimages uppdateras.
+- Vite-resultatet återanvänds när frontend, gemensamma `src/`-filer, publika
+  filer, låsta npm-beroenden och byggkonfiguration är oförändrade. Nyckeln
+  omfattar också Node-version, Auth-URL, publishable key och valfri
+  testaktivitet. CI:s testkonfiguration kan därför inte återanvändas som
+  produktionskonfiguration. Runtime-hemligheter ingår aldrig i nyckeln.
+- Next använder sin inkrementella kompilatorcache och Maven återanvänder
+  hämtade beroenden. Dessa är kompilator-/beroendecacher, inte ersättningar
+  för tester eller färdiga releaseartefakter.
+
+`build_inputs.py` beräknar SHA-256 över spårade filer, sökvägar och filmoder.
+Dokumentation och genererade filer påverkar inte nycklarna. Beroenden genom
+`@/` täcks konservativt av hela `src/`; vissa serverändringar kan därför
+fortfarande ge ett frontendbygge. Alla befintliga tester, typkontroller,
+lintkontroller och databasprov körs fortsatt. Även en återanvänd native-image
+måste klara aktuellt start-/migrationsprov innan CI publicerar releaseartefakten.
+
+Image-metadata skiljer på `sourceCommit` (ursprungligt bygge) och
+`verifiedCommit` (aktuell CI-commit), och lagrar `buildInputs` samt `imageId`.
+Deployen räknar om backendens byggnyckel från releasecheckouten och kräver
+aktuell verifieringscommit. Cache återställer bara exakt matchande färdiga
+byggen; GitHubs branchisolering hindrar PR-cacher från att ersätta main-cacher.
+Saknad eller bortstädad cache ger ett vanligt bygge. Felaktig image-metadata
+stoppar körningen. För att tvinga ombyggnad: radera berörd cache i Actions och
+kör CI igen för aktuell main (och deployen för frontendens produktionscache).
+En oförändrad frontend behåller sitt bygg-ID; backendreleasen får ändå en egen
+verifierad commit och en ny gemensam deployment.
 
 ## Projekt och konfiguration
 
