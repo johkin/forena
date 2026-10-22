@@ -29,7 +29,7 @@ class BrowserSessionFilter(
             }
         }
         // Login/logout must also work with an expired or revoked previous cookie.
-        val publicAuth = request.requestURI in setOf("/api/auth/login", "/api/auth/logout", "/api/auth/passkey/options", "/api/auth/passkey/verify")
+        val publicAuth = request.requestURI in setOf("/api/auth/login", "/api/auth/logout", "/api/auth/passkey/options", "/api/auth/passkey/verify", "/api/auth/magic-link", "/api/auth/magic-link/verify")
         if (cookie != null && !publicAuth && settings.enabled) {
             if (!request.getHeader("Authorization").isNullOrBlank()) {
                 fail(response, 400, "Tvetydig autentisering."); return

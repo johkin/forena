@@ -62,7 +62,7 @@ class BackendImage(unittest.TestCase):
     def test_api_route_keeps_path_and_precedes_spa_fallback(self):
         import re
         route = module.routes()[1]
-        for path in ['/api/activities', '/api', '/actuator/health']:
+        for path in ['/api/activities', '/api', '/actuator/health', '/oauth2/authorize', '/oauth2/token', '/.well-known/oauth-authorization-server', '/.well-known/oauth-protected-resource/api/mcp']:
             match = re.fullmatch(route['src'], path)
             self.assertIsNotNone(match)
             self.assertEqual('/' + match.group(1), path)

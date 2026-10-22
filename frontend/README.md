@@ -1,5 +1,9 @@
 # Separat browser-frontend
 
+För lokal kontohantering utan Supabase Auth, bygg med `FORENA_AUTH_MODE=native`.
+Signup, e-postverifiering, återställning och OAuth-samtycke använder samma
+Spring-backend. Se [native Auth-försöket](../docs/migration/native-auth.md).
+
 React/TypeScript och Vite, parallellt med den befintliga Next-appen. Första
 flödet är lösenordsinloggning samt att läsa, svara, ändra kommentar och återställa
 familjens kallelser. Backend äger fortfarande alla behörigheter och skrivningar.
@@ -73,7 +77,7 @@ har ingen Supabase Auth-klient och skickar inga Bearer-token. Bara ett
 ogenomskinligt sessions-ID finns i en HttpOnly-cookie. `GET /api/auth/session`
 ger verifierad användarinfo. Login, passkey och logout uppdaterar gränssnittet
 utan full sidomladdning. Supabase måste ha passkey aktiverat med rätt RP-ID/origin;
-registrering av nya passkeys ingår inte här.
+registrering av nya passkeys finns under kontomenyns Inloggningsinställningar (`/account/security`). Magic link finns på inloggningssidan och använder serverlagrad PKCE samt `/auth/callback`; länken öppnas i samma browserprofil. Se [konfiguration och säkerhetsgränser](../docs/migration/web-sessions.md#magic-link-och-registrering-av-passkey).
 
 Alla API-anrop använder `credentials: same-origin`, `no-store` och nekade
 redirects. Skrivningar skickar `X-Forena-Request: 1`; browsern sätter Origin.
@@ -130,6 +134,6 @@ Mina aktiviteter listar nu kallelsekopplade aktiviteter via personåtkomst,
 föreningstidszon är ännu inte flyttade.
 
 Ännu inte flyttat: signup, återställning av
-lösenord, passkey-registrering/hantering, PWA/offline, administration, kanaler
+lösenord, listning/namnbyte/borttagning av passkeys, PWA/offline, administration, kanaler
 och assistent. Dessa funktioner ligger kvar i den gamla appen och är inte dolda databasgenvägar i den
 nya. Det här är en avgränsad pilot, inte full M18B-funktionsparitet.

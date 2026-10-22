@@ -1,5 +1,7 @@
 package se.forena.api.identity.internal
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+
 import com.nimbusds.jose.jwk.JWKSet
 import javax.net.ssl.SSLException
 import org.slf4j.LoggerFactory
@@ -14,6 +16,7 @@ import se.forena.api.identity.AuthHttpRequestFactory
 /** Release readiness must prove the same HTTPS path needed for JWT verification. */
 @Component
 @ConditionalOnWebApplication
+@ConditionalOnProperty(name = ["forena.auth.mode"], havingValue = "supabase", matchIfMissing = true)
 class AuthKeysHealthIndicator(
     @Value("\${forena.auth.jwks-uri}") private val endpoint: String,
     requests: AuthHttpRequestFactory

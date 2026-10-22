@@ -23,3 +23,6 @@ data class PersonAccessEntity(
 
 @Table(value = "person", schema = "forena")
 data class PersonEntity(@Id val id: UUID, val organizationId: UUID, val displayName: String)
+
+@Table(value = "native_user", schema = "forena")
+data class NativeUserEntity(@Id val subject: UUID, val email: String, val passwordHash: String, val verified: Boolean, val authVersion: Long)

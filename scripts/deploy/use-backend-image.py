@@ -61,13 +61,15 @@ def routes():
     return [
         {'src': '/(?:config\\.json|app-version\\.json|api(?:/.*)?)',
          'headers': {'Cache-Control': 'no-store'}, 'continue': True},
-        {'src': '/(api(?:/.*)?|actuator/health)', 'dest': '/backend',
+        {'src': '/(api(?:/.*)?|oauth2(?:/.*)?|\\.well-known/oauth-authorization-server|\\.well-known/oauth-protected-resource(?:/.*)?|actuator/health)', 'dest': '/backend',
          'transforms': [{'type': 'request.path', 'op': 'set', 'args': '/$1'}]},
         {'handle': 'filesystem'},
         {'src': '/.*', 'dest': '/index.html'}]
 
 
 def write_output(image):
+    if os.environ.get('FORENA_AUTH_MODE', 'supabase') != 'supabase':
+        raise ValueError('Native auth is a JVM trial; verify the native-image/AOT release pipeline before publishing it')
     # Build Output API describes the deployment; it never reads or rebuilds the image.
     output = Path('.vercel/output')
     if output.exists():

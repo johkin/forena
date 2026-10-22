@@ -4,11 +4,11 @@ const sessionView = z.object({ user: z.object({ id: z.uuid(), email: z.string().
 export type SessionView = z.infer<typeof sessionView>;
 
 /** Only non-secret user information crosses this boundary. The session cookie is HttpOnly. */
-export async function authRequest(path: "session" | "login" | "logout" | "passkey/options" | "passkey/verify", body?: unknown, transport: typeof fetch = fetch) {
+export async function authRequest(path: "session" | "login" | "logout" | "passkey/options" | "passkey/verify" | "magic-link" | "magic-link/verify" | "passkey/registration/options" | "passkey/registration/verify" | "register" | "email/verify" | "password/reset-request" | "password/reset" | "continue", body?: unknown, transport: typeof fetch = fetch, accountId?: string) {
   const response = await transport(`/api/auth/${path}`, {
     method: body === undefined ? "GET" : "POST",
     credentials: "same-origin", cache: "no-store", redirect: "error",
-    headers: body === undefined ? {} : { "Content-Type": "application/json", "X-Forena-Request": "1" },
+    headers: body === undefined ? {} : { "Content-Type": "application/json", "X-Forena-Request": "1", ...(accountId ? { "X-Forena-Account": accountId } : {}) },
     body: body === undefined ? undefined : JSON.stringify(body),
     signal: AbortSignal.timeout(10_000),
   });
@@ -60,4 +60,36 @@ export async function passkeyLogin(): Promise<SessionView | null> {
 export function clearLegacyAuth(storage: Pick<Storage, "removeItem"> = localStorage) {
   // Old sessions are deliberately not imported; users sign in again.
   for (const key of ["forena-kotlin-browser-auth", "forena-kotlin-browser-auth-code-verifier", "forena-kotlin-browser-auth-user"]) storage.removeItem(key);
+}
+
+/** Registration uses the authenticated server session; provider tokens never reach JavaScript. */
+export async function registerPasskey(accountId: string): Promise<void> {
+  if (!window.PublicKeyCredential || !navigator.credentials) throw new Error("Webbläsaren stöder inte passkey.");
+  const descriptor = z.object({ id: z.string(), type: z.literal("public-key"),
+    transports: z.array(z.enum(["ble", "hybrid", "internal", "nfc", "usb"])).optional() });
+  const result = z.object({ challenge_id: z.uuid(), expires_at: z.number(), options: z.object({
+    challenge: z.string(), rp: z.object({ id: z.string(), name: z.string() }),
+    user: z.object({ id: z.string(), name: z.string(), displayName: z.string() }),
+    pubKeyCredParams: z.array(z.object({ type: z.literal("public-key"), alg: z.number() })),
+    timeout: z.number().optional(), excludeCredentials: z.array(descriptor).optional(),
+    authenticatorSelection: z.object({ authenticatorAttachment: z.enum(["platform", "cross-platform"]).optional(),
+      residentKey: z.enum(["required", "preferred", "discouraged"]).optional(), requireResidentKey: z.boolean().optional(),
+      userVerification: z.enum(["required", "preferred", "discouraged"]).optional() }).optional(),
+    attestation: z.enum(["none", "indirect", "direct", "enterprise"]).optional(),
+  }) }).parse(await authRequest("passkey/registration/options", {}, fetch, accountId));
+  const hostname = window.location.hostname;
+  if (hostname !== result.options.rp.id && !hostname.endsWith(`.${result.options.rp.id}`)) throw new Error("Passkey är inte konfigurerad för webbplatsen.");
+  const credential = await navigator.credentials.create({ publicKey: {
+    ...result.options, challenge: decode(result.options.challenge), user: { ...result.options.user, id: decode(result.options.user.id) },
+    excludeCredentials: result.options.excludeCredentials?.map(item => ({ ...item, id: decode(item.id) })),
+  } }) as PublicKeyCredential | null;
+  if (!credential) throw new DOMException("Registreringen avbröts.", "NotAllowedError");
+  const attestation = credential.response as AuthenticatorAttestationResponse;
+  const verified = await authRequest("passkey/registration/verify", { challenge_id: result.challenge_id, credential: {
+    id: credential.id, rawId: encode(credential.rawId), type: credential.type,
+    authenticatorAttachment: credential.authenticatorAttachment, clientExtensionResults: credential.getClientExtensionResults(),
+    response: { clientDataJSON: encode(attestation.clientDataJSON), attestationObject: encode(attestation.attestationObject),
+      transports: attestation.getTransports?.() ?? [] },
+  } }, fetch, accountId);
+  z.object({ ok: z.literal(true) }).parse(verified);
 }

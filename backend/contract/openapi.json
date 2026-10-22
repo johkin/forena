@@ -76,6 +76,17 @@
         ],
         "type": "object"
       },
+      "BrowserAuthAcknowledgement": {
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "type": "object"
+      },
       "BrowserLoginRequest": {
         "properties": {
           "email": {
@@ -135,6 +146,34 @@
         },
         "required": [
           "ok"
+        ],
+        "type": "object"
+      },
+      "MagicLinkRequest": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "maxLength": 320,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      },
+      "MagicLinkVerifyRequest": {
+        "properties": {
+          "code": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "code"
         ],
         "type": "object"
       },
@@ -628,6 +667,106 @@
         ]
       }
     },
+    "/api/auth/magic-link": {
+      "post": {
+        "description": "Request a PKCE magic link for an existing account. Requires canonical Origin and X-Forena-Request: 1. Generic acknowledgement; no provider tokens. Limited by client, email and shared Auth budget.",
+        "operationId": "requestBrowserMagicLink",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MagicLinkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserAuthAcknowledgement"
+                }
+              }
+            },
+            "description": "Request completed"
+          },
+          "429": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Auth admission exhausted; no provider call. Retry later.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "format": "int64",
+                  "type": "integer"
+                },
+                "style": "simple"
+              }
+            }
+          }
+        },
+        "tags": [
+          "browser-credential-controller"
+        ]
+      }
+    },
+    "/api/auth/magic-link/verify": {
+      "post": {
+        "description": "Exchange a one-time code with the encrypted PKCE verifier in the initiating HttpOnly session. Requires canonical Origin and X-Forena-Request: 1. Rotates session; returns verified user information only.",
+        "operationId": "verifyBrowserMagicLink",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MagicLinkVerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserSessionView"
+                }
+              }
+            },
+            "description": "Request completed"
+          },
+          "429": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Auth admission exhausted; no provider call. Retry later.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "format": "int64",
+                  "type": "integer"
+                },
+                "style": "simple"
+              }
+            }
+          }
+        },
+        "tags": [
+          "browser-credential-controller"
+        ]
+      }
+    },
     "/api/auth/passkey/options": {
       "post": {
         "description": "Begin WebAuthn authentication. Requires the canonical Origin and X-Forena-Request: 1. Binds the challenge to the HttpOnly Spring session for at most five minutes.",
@@ -665,6 +804,96 @@
         },
         "tags": [
           "browser-session-controller"
+        ]
+      }
+    },
+    "/api/auth/passkey/registration/options": {
+      "post": {
+        "description": "Authenticated WebAuthn enrollment. Requires canonical Origin, X-Forena-Request: 1 and a browser session. Challenge bound to session and verified account for at most five minutes.",
+        "operationId": "startBrowserPasskeyRegistration",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasskeyOptions"
+                }
+              }
+            },
+            "description": "Request completed"
+          },
+          "429": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Auth admission exhausted; no provider call. Retry later.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "format": "int64",
+                  "type": "integer"
+                },
+                "style": "simple"
+              }
+            }
+          }
+        },
+        "tags": [
+          "browser-credential-controller"
+        ]
+      }
+    },
+    "/api/auth/passkey/registration/verify": {
+      "post": {
+        "description": "Verify account/session-bound enrollment via Auth. Requires canonical Origin, X-Forena-Request: 1 and a browser session. Never returns provider tokens.",
+        "operationId": "verifyBrowserPasskeyRegistration",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasskeyVerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserAuthAcknowledgement"
+                }
+              }
+            },
+            "description": "Request completed"
+          },
+          "429": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Auth admission exhausted; no provider call. Retry later.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "format": "int64",
+                  "type": "integer"
+                },
+                "style": "simple"
+              }
+            }
+          }
+        },
+        "tags": [
+          "browser-credential-controller"
         ]
       }
     },

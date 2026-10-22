@@ -1,5 +1,7 @@
 package se.forena.api.identity.internal
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+
 import org.springframework.security.authentication.AuthenticationServiceException
 import org.springframework.security.authentication.BadCredentialsException
 import java.net.URI
@@ -18,6 +20,7 @@ import se.forena.api.identity.AuthHttpRequestFactory
 
 /** Online provider check, without admin credentials, cache, retries or Auth-table access. */
 @Service
+@ConditionalOnProperty(name = ["forena.auth.mode"], havingValue = "supabase", matchIfMissing = true)
 class SupabaseSessionService(
     @Value("\${forena.auth.issuer}") issuer: String,
     @Value("\${forena.auth.publishable-key}") private val publishableKey: String,

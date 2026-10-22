@@ -1,5 +1,60 @@
 # Migreringsstatus
 
+## Egen kontohantering och Authorization Server i Spring, 2026-10-22
+
+Lokalt JVM-försök enligt användarens instruktion och ADR-024, bakom
+`FORENA_AUTH_MODE=native`. Supabase-läget är kvar utan automatisk fallback.
+
+- Lokala konton med BCrypt, browserbunden e-postverifiering och magic link,
+  versionerade engångslänkar och lösenordsåterställning. Tidigare webb- och
+  OAuth-åtkomst upphör vid lösenordsåterställning eller kontospärr.
+- Passkeys registreras och verifieras med Spring Security/WebAuthn4J. Egna
+  passkeys kan listas och tas bort. Webbens enda session är Spring Session JDBC;
+  ingen Supabase-token eller tokenförnyelse finns i native-läget.
+- Spring Authorization Server i samma backend, beständig klient-/grant-/consent-
+  lagring, PKCE, CSRF-skyddat samtycke, opaka resursbundna token, roterande refresh
+  och revokering. MCP-piloten har `list_my_activities` med befintlig personåtkomst.
+- Migration 012 inför privata auth-/frameworktabeller och krypterad mejl-outbox.
+  Samma owner-/runtime-gräns gäller. Nya UUID:n ger inga verksamhetsrättigheter.
+- Godkänt: `npm test` (1 158 tester), typkontroll, lint, Next- och native-konfigurerat
+  Vite-bygge; full Maven `verify` på aktuell `main` (87 tester, noll fel, ett överhoppat äldre
+  browser-opt-in-prov) med aktivt native-browserprov. Verklig Chromium → Spring →
+  PostgreSQL verifierar signup, e-postverifiering, lösenord, WebAuthn-registrering
+  och inloggning, magic link, reset, OAuth/PKCE/samtycke, refresh-rotation,
+  MCP och revokering. Slutlig
+  paketering och native OpenAPI-export är godkända. SMTP använder testtransport.
+- Separata reproducerbara OpenAPI-/TypeScript-kontrakt finns för båda körlägena.
+  Vite och Vercel-routingen känner igen OAuth-/metadata-endpoints.
+- Ingen kontoflytt, driftaktivering eller produktionsmejl. Extern SMTP,
+  worker vid skalning till noll, kontomigrering, bredare användaradministration
+  och GraalVM/AOT behöver separata driftprov. Publiceringsverktyget blockerar
+  native-läget tills native-image-pipelinen är verifierad.
+
+[Körguide, omfattning och återstående gränser](native-auth.md).
+
+## Passkey-registrering och magic link i React/Kotlin, 2026-10-22
+
+Implementerat på `feature/native-auth`, inte driftsatt:
+
+- Befintlig passkey-inloggning kompletteras med registrering på
+  `/account/security`, via den gemensamma kontomenyn. Auth verifierar
+  attestation; separat challenge binds till verifierat konto och Spring-session.
+- Magic link begärs för befintliga konton med generiskt svar och delad
+  inloggningsbudget. PKCE-verifieraren lagras krypterad på servern i tio minuter.
+  `/auth/callback` rensar URL:en och kräver bekräftelse före POST-kodutbyte.
+  Samma browserprofil krävs. Leverantörstokens lämnar aldrig servern.
+- Anonyma sessionskontroller bevarar pågående PKCE-/WebAuthn-ceremonier.
+  Komponentgalleriet visar formulär, callback, registrering, fel och lyckade resultat.
+- Lokalt godkänt: `npm test` (1 157 tester), typkontroll, lint, Next-/Vite-byggen,
+  browserprovet med virtuell WebAuthn-registrering och magic link-callback samt
+  Maven `verify` (79 tester, noll fel, ett överhoppat opt-in-browserprov).
+  Backendproven använder lokal PostgreSQL och kontrollerad Auth-provider.
+  OpenAPI och TypeScript genereras från den riktiga springdoc-exporten.
+- Återstår före drift: målprojektets passkey/RP-ID/origins, SMTP/mejlmall,
+  exakt callback-allowlist och verkliga passkey-/mejlleveransprov. Inga
+  projektinställningar, produktionskonton eller publicerade versioner ändrades.
+  Se [flöden och konfiguration](web-sessions.md#magic-link-och-registrering-av-passkey).
+
 ## Min översikt med medlemskap, kalender och roller, 2026-10-22
 
 Implementerat på `feat/personal-dashboard` från main `3e5ae96`:

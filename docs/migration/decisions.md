@@ -3,6 +3,22 @@
 Status anger målbeslut för kommande implementation, inte redan införd teknik.
 Källkodsverifierat nuläge finns i [inventeringen](inventory.md).
 
+## ADR-024: Försök med egen autentisering i Spring Boot
+
+Beslut 2026-10-22 på användarens instruktion: implementera och prova lokal
+kontohantering, lösenord, passkeys, mejllänkar och OAuth i samma backend.
+Detta ersätter ADR-004:s förbud mot egen identitetstjänst för försöket.
+Spring Securitys implementationsstöd används; inga egna kryptografiska protokoll.
+
+Körläget `native` är uttryckligt och har ingen fallback till Supabase Auth.
+Webben använder en enda Spring Session, MCP separat OAuth-bearer med scope och
+resursbindning. Nya lokala UUID:n ger inga verksamhetsrättigheter. Befintliga
+identiteter får inte kopplas via e-post utan separat migreringsbeslut.
+Liquibase äger alla nya privata auth-tabeller med samma runtime-/ownergräns.
+
+Supabase-läget finns kvar för jämförelse; ingen drift eller kontoimport ingår.
+Se [försökets omfattning, konfiguration och återstående driftgrindar](native-auth.md).
+
 ## ADR-023: Korta migreringar vid backendstart
 
 Beslut 2026-10-21 på användarens instruktion, ersätter startordningen i ADR-021:

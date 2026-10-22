@@ -7,6 +7,10 @@ import { PersonalHome } from "./personal-home";
 import type { OverviewItem } from "./personal-overview-types";
 import type { Activity } from "../domain/club";
 import { MyActivityList, type MyActivity } from "./my-activity-list";
+import { MagicLinkForm, MagicLinkConfirmation } from "./magic-link-form";
+import { PasskeyRegistration } from "./passkey-registration";
+import { NativeAccountForm, EmailVerification, OAuthConsent } from "./native-account-form";
+import { PasskeyList } from "./passkey-list";
 import { SessionMenu } from "./session-menu";
 
 /** Actual pilot components with local fixtures; no login or database mutations. */
@@ -35,9 +39,38 @@ export function BrowserFrontendExamples({ linkComponent }: { linkComponent?: Nav
     <section><h2>Aktivitetsfel</h2><MyActivityList linkComponent={linkComponent} activities={[]} error="Aktiviteterna kunde inte hämtas." retry={() => {}} /></section>
     <section><h2>Inloggning med lösenord eller passkey</h2><p>Lokalt exempel. Inga inloggningsuppgifter skickas.</p><PasswordLoginForm error={error} onLogin={() => setError("Exempel på ett inloggningsfel. Försök igen.")} onPasskey={() => setError("Exempel på avbruten passkey-inloggning. Försök igen.")} /></section>
     <section><h2>Inloggning pågår</h2><PasswordLoginForm pending onLogin={() => {}} onPasskey={() => {}} /></section>
+    <section><h2>Inloggningslänk</h2><MagicLinkExample /></section>
+    <section><h2>Länk begärs</h2><MagicLinkForm pending onRequest={() => {}} /></section>
+    <section><h2>Länk begärd</h2><MagicLinkForm sent onRequest={() => {}} /></section>
+    <section><h2>Länk kunde inte begäras</h2><MagicLinkForm error="Vänta en stund och försök igen." onRequest={() => {}} /></section>
+    <section><h2>Bekräfta inloggningslänk</h2><MagicLinkConfirmation onConfirm={() => {}} /></section>
+    <section><h2>Länkinloggning pågår</h2><MagicLinkConfirmation pending onConfirm={() => {}} /></section>
+    <section><h2>Ogiltig inloggningslänk</h2><MagicLinkConfirmation error="Länken har gått ut. Begär en ny länk." onConfirm={() => {}} /></section>
+    <section><h2>Skapa passkey</h2><PasskeyExample /></section>
+    <section><h2>Passkey skapas</h2><PasskeyRegistration pending onRegister={() => {}} /></section>
+    <section><h2>Passkey skapad</h2><PasskeyRegistration registered onRegister={() => {}} /></section>
+    <section><h2>Passkey saknar stöd</h2><PasskeyRegistration supported={false} onRegister={() => {}} /></section>
+    <section><h2>Passkey-fel</h2><PasskeyRegistration error="Passkey kunde inte skapas. Försök igen senare." onRegister={() => {}} /></section>
+    <section><h2>Skapa lokalt konto</h2><NativeAccountForm action="register" onSubmit={() => {}} /></section>
+    <section><h2>Återställ lösenord</h2><NativeAccountForm action="forgot" onSubmit={() => {}} /></section>
+    <section><h2>Nytt lösenord</h2><NativeAccountForm action="reset" onSubmit={() => {}} /></section>
+    <section><h2>Kontobegäran pågår</h2><NativeAccountForm action="register" pending onSubmit={() => {}} /></section>
+    <section><h2>Kontobegäran klar</h2><NativeAccountForm action="register" message="Kontrollera din inkorg." onSubmit={() => {}} /></section>
+    <section><h2>Kontobegäran misslyckades</h2><NativeAccountForm action="register" error="Försök igen senare." onSubmit={() => {}} /></section>
+    <section><h2>Verifiera e-post</h2><EmailVerification onVerify={() => {}} /></section>
+    <section><h2>E-post verifieras</h2><EmailVerification pending onVerify={() => {}} /></section>
+    <section><h2>E-post verifierad</h2><EmailVerification verified onVerify={() => {}} /></section>
+    <section><h2>Ogiltig verifieringslänk</h2><EmailVerification error="Länken är ogiltig eller har gått ut." onVerify={() => {}} /></section>
+    <section><h2>OAuth-godkännande</h2><OAuthConsent example data={{clientId:"example",clientName:"Exempelklient",state:"example",scope:"mcp:read",resource:"https://example.invalid/api/mcp",csrfParameter:"_csrf",csrfToken:"example"}} /></section>
+    <section><h2>OAuth laddas</h2><OAuthConsent pending /></section>
+    <section><h2>OAuth-fel</h2><OAuthConsent error="Åtkomstförfrågan har gått ut." /></section>
+    <section><h2>Passkeys</h2><PasskeyList items={[{id:"example",label:"Exempel på säkerhetsnyckel"}]} onRemove={() => {}} /></section>
+    <section><h2>Inga passkeys</h2><PasskeyList onRemove={() => {}} /></section>
+    <section><h2>Passkeys laddas</h2><PasskeyList pending onRemove={() => {}} /></section>
+    <section><h2>Passkey-listfel</h2><PasskeyList error="Passkeys kunde inte hämtas." onRemove={() => {}} /></section>
     <section><h2>Kallelsesvar</h2><ActivityInvitationResponse activityId="33333333-3333-4333-8333-333333333333" cancelled={false} request={request} /></section>
     <section><h2>Inställd aktivitet</h2><ActivityInvitationResponse activityId="33333333-3333-4333-8333-333333333333" cancelled request={request} /></section>
-    <section><h2>Kontomeny</h2><SessionMenu linkComponent={linkComponent} accountEmail="familj@example.invalid" logout={<button type="button" disabled>Logga ut</button>} /></section>
+    <section><h2>Kontomeny</h2><SessionMenu homeLabel="Min översikt" securityHref="/account/security" linkComponent={linkComponent} accountEmail="familj@example.invalid" logout={<button type="button" disabled>Logga ut</button>} /></section>
   </>;
 }
 
@@ -55,4 +88,13 @@ function PersonalHomeExample({linkComponent}:{linkComponent?:NavigationLink}) {
       onOpenActivity={item=>setSelected(item.activity.title)} onAnswered={(id,response)=>setItems(previous=>previous.map(item=>item.invitation?.id===id?{...item,invitation:{...item.invitation,response}}:item))} />
     {selected ? <p role="status">Öppnad exempelaktivitet: {selected}</p> : null}
   </section>;
+}
+
+function MagicLinkExample() {
+  const [sent, setSent] = useState(false);
+  return <MagicLinkForm sent={sent} onRequest={() => setSent(true)} />;
+}
+function PasskeyExample() {
+  const [registered, setRegistered] = useState(false);
+  return <PasskeyRegistration registered={registered} onRegister={() => setRegistered(true)} />;
 }

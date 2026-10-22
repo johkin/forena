@@ -1,5 +1,10 @@
 # Arkitektur
 
+Ett separat [försök med egen autentisering i Spring](migration/native-auth.md)
+finns bakom `FORENA_AUTH_MODE=native` (ADR-024). Där äger backend konton,
+mejllänkar, passkeys och OAuth och använder en enda lokal webbsession.
+Beskrivningarna av Supabase Auth nedan avser fortsatt det äldre körläget.
+
 Den stegvisa målarkitekturen för Kotlin/Spring Boot på Vercel och Supabase finns i
 [migreringsplanen](migration/README.md) och dess [beslut](migration/decisions.md).
 Beskrivningen nedan avser nuvarande lösning och befintliga principer; målteknik
@@ -30,7 +35,7 @@ Kotlin-anrop. Ordinarie översikt är fortsatt inte omkopplad.
 
 Den separata [browser-frontendens pilot](../frontend/README.md) i `frontend/`
 återanvänder gemensamt sidskal, header, meny, sidfot och kallelsesvar men kör
-React/Vite utan Next-server. Kotlin hanterar lösenords-/passkey-inloggning,
+React/Vite utan Next-server. Kotlin hanterar lösenords-/passkey-inloggning, magic link med serverlagrad PKCE, registrering av passkeys och
 tokenförnyelse; Spring Session JDBC äger serversessionens lagring, cookie och inaktivitet. Browsern skickar en ogenomskinlig HttpOnly-
 cookie direkt genom Vercels `/api/*` till Kotlin; access- och refresh-token
 lagras krypterat i det privata schemat och når inte frontenden. Backend äger

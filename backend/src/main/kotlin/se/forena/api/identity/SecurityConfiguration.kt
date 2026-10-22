@@ -1,5 +1,7 @@
 package se.forena.api.identity
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+
 import org.springframework.security.authentication.AuthenticationServiceException
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException
 import java.net.URI
@@ -34,6 +36,7 @@ import org.slf4j.LoggerFactory
 @Configuration
 @EnableScheduling
 @ConditionalOnWebApplication
+@ConditionalOnProperty(name = ["forena.auth.mode"], havingValue = "supabase", matchIfMissing = true)
 class SecurityConfiguration {
     @Bean
     fun decoder(@Value("\${forena.auth.issuer}") issuer: String,
@@ -86,7 +89,7 @@ class SecurityConfiguration {
         }
         .authorizeHttpRequests {
             it.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
-                .requestMatchers("/actuator/health", "/api/auth/login", "/api/auth/logout", "/api/auth/passkey/options", "/api/auth/passkey/verify").permitAll()
+                .requestMatchers("/actuator/health", "/api/auth/login", "/api/auth/logout", "/api/auth/passkey/options", "/api/auth/passkey/verify", "/api/auth/magic-link", "/api/auth/magic-link/verify").permitAll()
                 .anyRequest().authenticated()
         }
         .oauth2ResourceServer {

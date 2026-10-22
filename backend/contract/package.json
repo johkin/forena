@@ -3,7 +3,8 @@
   "private": true,
   "scripts": {
     "generate": "node export.mjs && openapi-typescript openapi.json -o generated.ts",
-    "check": "npm run generate && git diff --exit-code -- openapi.json generated.ts"
+    "check": "npm run generate && npm run generate:native && git diff --exit-code -- openapi.json generated.ts native-openapi.json native-generated.ts",
+    "generate:native": "node export.mjs --native && openapi-typescript native-openapi.json -o native-generated.ts"
   },
   "devDependencies": {
     "openapi-typescript": "7.10.1"

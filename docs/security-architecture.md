@@ -1,5 +1,10 @@
 # Säkerhetsarkitektur
 
+Ett separat [försök med egen autentisering i Spring](migration/native-auth.md)
+finns bakom `FORENA_AUTH_MODE=native` (ADR-024). Där äger backend konton,
+mejllänkar, passkeys och OAuth och använder en enda lokal webbsession.
+Beskrivningarna av Supabase Auth nedan avser fortsatt det äldre körläget.
+
 ## Runtime och migrationsägare
 
 ADR-021 ersätter tabellspecifika runtime-grants med gemensam datarätt i det
@@ -52,6 +57,10 @@ binder också UI:ts konto till serversessionens konto med `X-Forena-Account`.
 Det är ett likhetskrav mot verifierad identitet, aldrig en behörighetskälla.
 Publika statiska sidor och health är öppna. Login/logout/passkey är publika
 API-rutter med CSRF-skydd. Skyddade API:er kräver fortsatt session och rättigheter.
+Passkey-registrering kräver aktiv inloggning och binder challenge till konto och
+serversession. Magic link för befintliga konton använder PKCE med krypterad
+serverlagrad verifierare och generisk bekräftelse. Kodutbyte kräver samma
+browserprofil och POST med CSRF-skydd; ett nytt sessions-ID skapas efter login.
 Vercels skyddscookie är separat från appens autentisering.
 Ett 401-svar från plattformen raderar inte appsessionen; gränssnittet reagerar
 på Kotlin-API:ts uttryckliga JSON-svar om ogiltig session.

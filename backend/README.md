@@ -1,5 +1,9 @@
 # Kotlin-backend
 
+Det finns även ett explicit `FORENA_AUTH_MODE=native` för egen kontohantering,
+Spring WebAuthn och Authorization Server. Det kräver ingen Supabase Auth-issuer
+eller publishable key. [Körinstruktioner och säkerhetsgränser](../docs/migration/native-auth.md).
+
 Repots enda Spring Boot/Kotlin-app finns direkt i `backend/`.
 Det tidigare M21/M22-teknikprovet och dess skript/deployfiler är borttagna.
 Historiska provresultat finns kvar i `docs/migration/` och Git-historiken.
