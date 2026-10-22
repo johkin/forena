@@ -28,8 +28,9 @@ Bearer och sessionscookie nekas för skyddade API-anrop.
 
 Login/passkey sätter `__Host-forena-session`: Spring Sessions slumpmässiga ID
 skyddat med AES-GCM, HttpOnly, Secure,
-SameSite=Lax, Path=/, utan Domain eller beständig cookie-expiry. Servern styr
-giltigheten även om browsern återställer sina sessionscookies. Auth- och privata
+SameSite=Lax, Path=/, utan Domain och med beständig cookie-expiry
+(`Max-Age=86400` som standard). Inloggningen överlever en stängd webbläsare.
+Servern styr fortfarande giltigheten oberoende av cookiens expiry. Auth- och privata
 svar har `Cache-Control: no-store`. Tokens finns aldrig i frontendens svar,
 state, localStorage, sessionStorage, IndexedDB eller JavaScript-läsbara cookies.
 Gamla pilotnyckeln och dess hjälpfält rensas vid start; användaren loggar in igen.
@@ -59,7 +60,12 @@ data. Nyckeln finns enbart i runtime-hemlighetshanteringen. Bara strängattribut
 serialiseras som UTF-8; ingen Java-objektdeserialisering används.
 Klientroller saknar grants och runtime får endast DML, inte schemaägarrätt.
 
-Standard är åtta timmars maximal livstid och 30 minuters inaktivitet. Spring Session
+Standard är 24 timmars maximal livstid från inloggningen och 24 timmars
+inaktivitet. Cookien har samma maximala livslängd. Gränserna kan konfigureras
+med `FORENA_WEB_SESSION_MAX_SECONDS` och `FORENA_WEB_SESSION_IDLE_SECONDS`;
+inaktivitetsgränsen får inte överstiga maxlivstiden. Efter ändrade tidsgränser
+behövs ny inloggning för att få den nya cookiens livslängd och serversessionens
+inaktivitetsgräns. Spring Session
 sköter inaktivitetstid och `BrowserSessionService` kontrollerar den absoluta
 maximitiden mot sessionens skapandetid vid varje autentiserat cookieanrop. Vid högst 60
 sekunder kvar på access-token förnyas den på servern. `SELECT ... FOR UPDATE`

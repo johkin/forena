@@ -72,8 +72,9 @@ strikt publik och avgränsad till det nya projektet. Privata vyer avmonteras
 vid utloggning, nekad session och kontoändring; ingen verksamhetsdata cachas i
 service worker. Gamla pilotens localStorage-session rensas vid start; användaren
 loggar in på nytt. Inga tokens sparas i browserlagring. Sessionen varar högst
-åtta timmar och avslutas efter 30 minuters inaktivitet som standard. Delade
-PostgreSQL-radlås serialiserar förnyelse över instanser; utgångna rader städas
+24 timmar från inloggningen med högst 24 timmars inaktivitet som standard.
+Sessionscookien är beständig i samma 24 timmar så att webbläsaren kan stängas.
+Delade PostgreSQL-radlås serialiserar förnyelse över instanser; utgångna rader städas
 varje minut när runtime kör. [Detaljer och driftskrav](migration/web-sessions.md).
 Separata Bearer-integrationer behåller sin befintliga verifiering och får inte
 kombineras med appens sessionscookie. Den gamla

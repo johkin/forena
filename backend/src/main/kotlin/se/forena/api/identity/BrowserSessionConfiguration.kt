@@ -33,6 +33,7 @@ class BrowserSessionConfiguration {
         setUseHttpOnlyCookie(true)
         setSameSite("Lax")
         setUseBase64Encoding(false)
+        setCookieMaxAge(settings.maxSeconds.toInt())
     }, settings)
 
     @Bean

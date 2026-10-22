@@ -457,6 +457,28 @@ class ApiTest {
         assertThat(browser("/api/auth/logout", "{}", cookie).statusCode()).isEqualTo(200)
     }
 
+    @Test fun `persistent browser login survives twenty three idle hours and refresh but expires after a day`() {
+        val login = browserLogin()
+        assertThat(login.statusCode()).isEqualTo(200)
+        assertThat(login.headers().allValues("set-cookie").joinToString())
+            .contains("Max-Age=86400", "HttpOnly", "Secure", "SameSite=Lax")
+        val cookie = sessionCookie(login)
+        assertThat(storedBrowserSession().maxInactiveInterval).isEqualTo(java.time.Duration.ofDays(1))
+        val now = System.currentTimeMillis()
+        val hour = 3_600_000L
+        admin.update("update forena.spring_session set creation_time=?,last_access_time=?,expiry_time=? where principal_name=?",
+            now - 23 * hour, now - 23 * hour, now + hour, parent.toString())
+        expireProviderToken()
+        assertThat(browser("/api/auth/session", cookie=cookie).statusCode()).isEqualTo(200)
+        assertThat(refreshCount.get()).isEqualTo(1)
+        // Recent activity and token refresh must not bypass the absolute limit.
+        admin.update("update forena.spring_session set creation_time=?,last_access_time=?,expiry_time=? where principal_name=?",
+            now - 25 * hour, now, now + 24 * hour, parent.toString())
+        val expired = browser("/api/auth/session", cookie=cookie)
+        assertThat(expired.statusCode()).isEqualTo(401)
+        assertThat(expired.headers().allValues("set-cookie").joinToString()).contains("Max-Age=0")
+    }
+
     @Test fun `passkey challenge is bound to the Spring session and cannot be replayed`() {
         loginAccess = token()
         val options = browser("/api/auth/passkey/options", "{}")
