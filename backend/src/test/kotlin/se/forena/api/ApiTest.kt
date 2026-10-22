@@ -570,6 +570,31 @@ class ApiTest {
         }
     }
 
+    @Test fun `personal overview serializes invitation-only teams and empty access lists`() {
+        val response = request("/api/me/overview")
+        assertThat(response.statusCode()).isEqualTo(200)
+        val overview = json.readTree(response.body())
+        assertThat(overview.get("activities").size()).isEqualTo(1)
+        assertThat(overview.get("activities").get(0).get("team").get("roles").isArray).isTrue()
+        assertThat(overview.get("activities").get(0).get("team").get("roles").size()).isZero()
+        assertThat(overview.get("teams").size()).isZero()
+        assertThat(json.readTree(request("/api/activities/$activity").body()).get("team").get("roles").size()).isZero()
+        admin.update("update forena.activity set invitation_send_at=now()+interval '1 hour' where id=?", activity)
+        val unsent = request("/api/activities/$activity/my-invitations")
+        assertThat(unsent.statusCode()).isEqualTo(200)
+        assertThat(json.readTree(unsent.body()).get("invitations").size()).isZero()
+        admin.update("update forena.person_access set active=false where subject=?", parent)
+        val empty = request("/api/me/overview")
+        assertThat(empty.statusCode()).isEqualTo(200)
+        val emptyOverview = json.readTree(empty.body())
+        for (field in listOf("activities", "organizations", "teams")) {
+            assertThat(emptyOverview.get(field).isArray).isTrue()
+            assertThat(emptyOverview.get(field).size()).isZero()
+        }
+        assertThat(json.readTree(request("/api/me/activities").body()).get("activities").size()).isZero()
+        assertThat(request("/api/activities/$activity/my-invitations").statusCode()).isEqualTo(404)
+    }
+
     @Test fun `personal overview includes dated member rows without invitations using organization local date`() {
         admin.update("delete from forena.invitation where activity_id=?", activity)
         admin.update("update forena.organization set time_zone='America/Los_Angeles' where id=?", organization)
