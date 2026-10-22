@@ -16,3 +16,18 @@ it("counts activities across the complete dataset, with two people in both pendi
  expect(html).toContain("Ingen kallelse ännu");
  expect(html).toContain("Agenda");expect(html).toContain("Kalender");
 });
+
+it("uses the same unambiguous short names in both sections, counting each person once",()=>{
+ const activity:Activity={id:"a",organizationId:"o",teamId:"t",title:"Träning",startsAt:"2030-01-01T10:00:00Z",endsAt:"2030-01-01T12:00:00Z",location:"Örvallen"};
+ const items:OverviewItem[]=["Johan Kindgren","Johan Karlsson","Johan Svensson","Tilda Kindgren"].map((displayName,index)=>({activity,team:{name:"Lag"},member:{id:`p${index}`,displayName},invitation:index===0?{id:"i",response:"pending"}:undefined}));
+ // Another activity's person must also participate in disambiguation, even
+ // when their activity has no pending invitation and is absent from that section.
+ items[1]={...items[1],activity:{...activity,id:"b"}};
+ items.push({...items[3],activity:{...activity,id:"b"}});
+ const html=renderToStaticMarkup(<PersonalHome items={items} activities={[activity,{...activity,id:"b"}]} organizations={[]} teams={[]} referenceTime="2029-12-01T00:00:00Z" onOpenActivity={()=>{}} />);
+ expect(html.match(/>Johan Kindgren<\/strong>/g)).toHaveLength(2);
+ expect(html).toContain('title="Johan Svensson"><span aria-hidden="true">Johan S</span><span class="sr-only">Johan Svensson</span></strong>');
+ expect(html).toContain('title="Tilda Kindgren"><span aria-hidden="true">Tilda</span><span class="sr-only">Tilda Kindgren</span></strong>');
+ expect(html).toContain('aria-label="Kommer: Johan Kindgren"');
+ expect(html).not.toContain('>Tilda K</strong>');
+});

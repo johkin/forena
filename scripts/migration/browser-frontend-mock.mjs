@@ -136,7 +136,15 @@ try{
  await page.reload();await expect(overviewAnswer.getByRole('button',{name:/Kan ej:/})).toHaveAttribute('aria-pressed','true');
  overviewUnavailable=true;await page.reload();await expect(page.getByRole('alert')).toBeVisible();
  overviewUnavailable=false;await page.getByRole('button',{name:'Försök igen',exact:true}).click();await expect(upcoming.getByRole('button',{name:/Träning med laget/})).toBeVisible();
- for(const width of [320,375,390,768,1440]){await page.setViewportSize({width,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
+ for(const width of [320,375,390,768,1440]){
+  await page.setViewportSize({width,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  const person=upcoming.locator('.personal-activity-person').first();
+  const name=await person.locator('.overview-person-copy strong').boundingBox();
+  await expect(person.locator('.overview-person-copy strong [aria-hidden]')).toHaveText('Alex');
+  await expect(person.locator('.overview-person-copy strong .sr-only')).toHaveText(invitations[0].name);
+  const buttons=await person.locator('.overview-response-actions button').all();
+  for(const button of buttons){const box=await button.boundingBox();assert.ok(box.width>=44 && box.height>=44);assert.ok(box.x>=name.x+name.width-1);assert.ok(box.y<=name.y+name.height && box.y+box.height>=name.y);}
+ }
  await page.screenshot({path:'frontend/.evidence/desktop.png',fullPage:true});await page.setViewportSize({width:390,height:844});await page.screenshot({path:'frontend/.evidence/mobile.png',fullPage:true});
  await page.getByRole('button',{name:'Öppna meny',exact:true}).click();await expect(page.getByRole('dialog',{name:'Huvudmeny'})).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);
  await upcoming.getByRole('button',{name:'Kommer: Tilda Exempel',exact:true}).click();
@@ -161,7 +169,18 @@ try{
  assert.equal(await page.evaluate(()=>window.documentInstance),'passkey-document');
  assert.ok(!await page.evaluate(()=>document.cookie.includes('forena-local-session')));
  assert.equal(await page.evaluate(()=>localStorage.length),0);
- await page.goto(new URL('/components',base).href);await expect(page.getByRole('heading',{name:'Komponenter',exact:true})).toBeVisible();await expect(page.getByText('Alex Exempel',{exact:true})).toBeVisible();assert.deepEqual(errors,[]);assert.equal(directProviderRequests,0);
+ await page.goto(new URL('/components',base).href);await expect(page.getByRole('heading',{name:'Komponenter',exact:true})).toBeVisible();assert.deepEqual(errors,[]);assert.equal(directProviderRequests,0);
+ const homeExample=page.getByRole('region',{name:'Min översikt – interaktivt exempel'});
+ await expect(homeExample.locator('.overview-person-copy strong [aria-hidden]').filter({hasText:/^Johan E$/})).toHaveCount(3);
+ await expect(homeExample.locator('.overview-person-copy strong [aria-hidden]').filter({hasText:/^Tilda$/})).toHaveCount(3);
+ await expect(homeExample.locator('.overview-person-copy strong').filter({hasText:/^Alex Exempel$/})).toHaveCount(3);
+ for(const width of [320,390,768]){await page.setViewportSize({width,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
+ await page.setViewportSize({width:390,height:844});
+ await homeExample.screenshot({path:'frontend/.evidence/compact-invitations.png'});
+ await page.addStyleTag({content:'html { font-size:200% !important; } .overview-person-copy strong, .overview-person-copy > span, .overview-response-actions button { font-size:1rem !important; }'});
+ for(const width of [320,390,768]){await page.setViewportSize({width,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
+ await page.setViewportSize({width:390,height:844});
+ await page.reload();
  const galleryReads=sessionReads;
  await page.reload();await expect(page.getByRole('heading',{name:'Komponenter',exact:true})).toBeVisible();
  assert.equal(sessionReads,galleryReads);

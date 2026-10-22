@@ -54,6 +54,15 @@ Förena · Personligt och ingressen från målbilden, Behöver svar med räknare
 Agenda/Kalender, Kommande aktiviteter med räknare och Mina lag och föreningar.
 Varje aktivitet grupperar namngivna personrader. Utan skickad kallelse visas
 Ingen kallelse ännu; annars visas svar och direkta Kommer/Kan ej-knappar.
+Personraderna är komprimerade med namn, status och svarsknappar på samma rad.
+Förnamn används när det är unikt bland översiktens personer, annars läggs
+efternamnets initial till och vid fortsatt namnkrock visas hela namnet.
+Varje person räknas en gång över alla aktiviteter; samma kortnamn används i
+både Behöver svar och Kommande aktiviteter. Hjälpmedel och knapparnas etiketter
+behåller fullständiga namn. På mobil utelämnas den dekorativa avataren;
+knapparnas sidopadding minskas men tryckytan är minst 44 × 44 px och radien
+12 px. Långa namn får radbrytas. Vid mycket smalt utrymme eller förstorad text
+får knapparna flytta ned för att undvika överlappning och horisontell scroll.
 
 Ett bekräftat svar uppdaterar samma persons tillstånd i båda sektionerna.
 Aktiviteten ligger kvar i Behöver svar tills inga relevanta kallelser återstår;

@@ -3,6 +3,7 @@
 import { OverviewInvitationResponse } from "./overview-invitation-response";
 import type { OverviewItem, OverviewAnswered, OverviewRespond } from "./personal-overview-types";
 import type { ParticipationFetch } from "./activity-invitation-response";
+import { attendanceNames } from "../lib/attendance-names";
 
 type Props<T extends OverviewItem> = {
   activities: T[];
@@ -17,7 +18,14 @@ type Props<T extends OverviewItem> = {
   pendingInvitations?: ReadonlySet<string>;
   demo?: boolean;
   referenceTime?: string;
+  personNames?: ReadonlyMap<string, string>;
 };
+
+/** Count people once, even when their invitations occur in several activities. */
+export function overviewNames(items: readonly OverviewItem[]) {
+  const people = new Map(items.map(item => [item.member.id, { personId: item.member.id, displayName: item.member.displayName }]));
+  return attendanceNames([...people.values()]);
+}
 
 function when(value: string, timeZone: string) {
   return new Intl.DateTimeFormat("sv-SE", {
@@ -30,7 +38,8 @@ function when(value: string, timeZone: string) {
   }).format(new Date(value));
 }
 
-export function PersonalOverview<T extends OverviewItem>({ activities, timeZone, onOpenActivity, title = "För mig", id = "personal-overview-title", emptyMessage = "Inga personliga aktiviteter kräver din uppmärksamhet just nu.", onAnswered, demo = false, referenceTime, request, onRespond, pendingInvitations }: Props<T>) {
+export function PersonalOverview<T extends OverviewItem>({ activities, timeZone, onOpenActivity, title = "För mig", id = "personal-overview-title", emptyMessage = "Inga personliga aktiviteter kräver din uppmärksamhet just nu.", onAnswered, demo = false, referenceTime, request, onRespond, pendingInvitations, personNames }: Props<T>) {
+  const names = personNames ?? overviewNames(activities);
 
   const grouped = new Map<string, T[]>();
   for (const item of activities) {
@@ -61,7 +70,7 @@ export function PersonalOverview<T extends OverviewItem>({ activities, timeZone,
             </span>
             <b aria-hidden="true">→</b>
           </button>
-          <div className="personal-activity-people">{people.map(person => <OverviewInvitationResponse key={person.member.id} item={person} readOnly={person.activity.status === "cancelled" || Date.parse(person.activity.endsAt) <= Date.parse(referenceTime ?? new Date().toISOString())} demo={demo} onAnswered={onAnswered} request={request} onRespond={onRespond} busy={person.invitation ? pendingInvitations?.has(person.invitation.id) : false} />)}</div>
+          <div className="personal-activity-people">{people.map(person => <OverviewInvitationResponse key={person.member.id} item={person} displayName={names.get(person.member.id)} readOnly={person.activity.status === "cancelled" || Date.parse(person.activity.endsAt) <= Date.parse(referenceTime ?? new Date().toISOString())} demo={demo} onAnswered={onAnswered} request={request} onRespond={onRespond} busy={person.invitation ? pendingInvitations?.has(person.invitation.id) : false} />)}</div>
         </div>;
       })}
     </div> : <p className="overview-empty">{emptyMessage}</p>}
