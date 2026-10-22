@@ -55,6 +55,7 @@ try {
   await expect(rows).toHaveCount(3);
   const cookie = (await context.cookies(origin)).find(item => item.name === '__Host-forena-session');
   assert.ok(cookie?.httpOnly && cookie.secure && cookie.sameSite === 'Lax');
+  assert.ok(cookie.expires > Date.now()/1000 + 23*60*60, 'Login cookie must persist across browser restarts for one day');
   assert.equal(await page.evaluate(() => localStorage.length), 0);
   assert.equal(await page.evaluate(() => document.cookie.includes('forena-session')), false);
   await rows.filter({ hasText: 'Person 1' }).getByRole('button', { name: 'Kommer', exact: true }).click();

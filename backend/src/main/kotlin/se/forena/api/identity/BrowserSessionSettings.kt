@@ -17,8 +17,8 @@ class BrowserSessionSettings(
     @Value("\${forena.web-session.enabled:false}") val enabled: Boolean,
     @Value("\${forena.web-session.origin:}") val origin: String,
     @Value("\${forena.web-session.key:}") key: String,
-    @Value("\${forena.web-session.max-seconds:28800}") val maxSeconds: Long,
-    @Value("\${forena.web-session.idle-seconds:1800}") val idleSeconds: Long,
+    @Value("\${forena.web-session.max-seconds:86400}") val maxSeconds: Long,
+    @Value("\${forena.web-session.idle-seconds:86400}") val idleSeconds: Long,
     @Value("\${forena.web-session.secure:true}") val secure: Boolean
 ) {
     private val secret = if (enabled) SecretKeySpec(Base64.getDecoder().decode(key).also {

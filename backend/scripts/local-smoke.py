@@ -320,6 +320,7 @@ insert into forena.invitation(id,organization_id,activity_id,person_id) values('
                 assert "challenge_id" in json.load(result)
                 cookie = result.headers["Set-Cookie"]
                 assert all(flag in cookie for flag in ("HttpOnly", "Secure", "SameSite=Lax"))
+                assert "Max-Age=86400" in cookie, "The session cookie must persist for one day"
             assert docker("exec", container, "psql", "-U", "postgres", "-Atc",
                           "select count(*) from forena.spring_session_attributes") == "1"
             logout.add_header("Cookie", cookie.split(";", 1)[0])
