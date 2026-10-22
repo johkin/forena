@@ -53,7 +53,15 @@ Den nya Vite-appens startsida heter **Mina aktiviteter**. Den använder samma
 sidindelning. Klubb, lag och svensk tid visas på varje rad; aktivitetslänken
 öppnar kallelsesvaret utan full sidomladdning. Header, meny och sidfot ligger
 kvar vid intern navigering. Bakåt/framåt följer URL:en; fokus flyttas till
-innehållet vid vybyte. Kontomenyn länkar till Mina aktiviteter. Piloten omfattar
+innehållet vid vybyte.
+
+Skickade kallelser visas direkt under aktiviteten med namn, aktuellt svar och
+separata knappar för Kommer/Kan ej. Samma `OverviewInvitationResponse` används
+som i Next-översikten, inklusive gemensam `personal-overview.css`. Snabbsvar
+bevarar kommentaren och visar väntande/fel per person; aktivitetsrubriken öppnar
+detaljer där kommentaren kan redigeras. En aktivitet utan utskickad kallelse
+saknar svarsknappar. Varianterna finns på `/components` med lokala exempeldata.
+Kontomenyn länkar till Mina aktiviteter. Piloten omfattar
 kallelsekopplade aktiviteter; beskrivningen av gamla appens fullständiga
 personliga startsida nedan innebär inte att medlemskap/arbetspass redan flyttats.
 

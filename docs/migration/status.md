@@ -1,5 +1,41 @@
 # Migreringsstatus
 
+## Direkta kallelsesvar och full funktionsparitet, 2026-10-22
+
+Leverans på `feat/activity-overview-invitations`, från main `06215d1`.
+`GET /api/me/activities` innehåller nu skickade kallelser för behöriga personer
+på varje aktivitetsrad. En extra, sidavgränsad repository-fråga hämtar dem i
+batch; inga per-aktivitet-anrop och inga framtida kallelser lämnas ut. Samma
+`OverviewInvitationResponse` som Next använder visar namn, svar och direkta
+Kommer/Kan ej-knappar i listan. Vite använder sin konto-/CSRF-kontrollerade
+request-adapter. Kommentar utelämnas vid snabbsvar och bevaras av svarstjänsten.
+Fel/väntande gäller personens rad; aktivitetsrubriken öppnar kommentarvyn utan
+full omladdning. Komponenter och styling delas med `/components` och Next.
+
+Användarens slutmål är samma funktionalitet som Next-appen. Den nya
+[funktionsmatrisen](feature-parity.md) skiljer befintliga delar från återstående
+flöden. Nästa startsidesteg är [M07B](tasks/m07b-personal-activity-scope.md):
+aktiviteter via datumgiltigt lagmedlemskap/egen lagåtkomst utan kallelse, med
+separat svarsrätt och läsbara detaljer. Full Behöver svar, kalender, arbetspass,
+lag/föreningar och övriga funktioner förblir öppna i matrisen.
+
+Lokalt godkänt: 1 147 Vitest-tester, båda apparnas typkontroll, lint, Next- och
+Vite-produktionsbyggen samt 25 Python-releasekontroller. Maven verify körde
+70 tester: 69 godkända, ett separat opt-in-browserprov överhoppat. De nya
+PostgreSQL/HTTP-fallen täcker behöriga personer, återkallning, dolda framtida
+kallelser, svar efter omläsning och bevarad kommentar. Spring-genererad OpenAPI
+är exporterad till TypeScript. Paketerat JVM-startprov mot tom lokal PostgreSQL
+passerar, inklusive startmigrering och owner/runtime-separation.
+Chromium med syntetisk Auth/API passerar direktsvar utan navigering, sparfel,
+bevarad kommentar efter omladdning, befintliga sessions-/navigeringsprov samt
+320/375/390/768/1440 px utan horisontell scroll. Mobil/desktop är bildgranskade.
+
+Next-bygget kördes utanför sandboxen för fungerande TypeScript-underprocess.
+Inget nytt native-bygge eller verkligt driftprov kördes lokalt; obligatoriska
+CI-grindar behålls. Gamla Supabase-schemats reset/pgTAP är inte omkörda, eftersom
+schema/migrationer är oförändrade. Ingen molndeploy eller dataskrivning ingår.
+PR och aktuell CI-status redovisas i leveransrapporten.
+
 ## Klientnavigering i browser-frontenden, 2026-10-22
 
 Aktivitetslänkar var vanliga ankare och laddade om dokument/config/session samt

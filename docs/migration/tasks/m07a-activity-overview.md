@@ -68,3 +68,12 @@ beslut om rättigheter. Lagmedlemskap utan kallelse, arbetspass och
 föreningstidszon saknas ännu i Kotlin-modellen. Separat migration 009 ger
 runtime kolumnläsning på team före aktivering. Drift-/native-acceptans och
 full M07/M18B återstår; se status för faktiskt körda kontroller.
+
+## Uppföljning 2026-10-22
+
+Översiktssvaret innehåller nu också skickade kallelser för behöriga personer.
+Startsidan återanvänder Nexts `OverviewInvitationResponse` för direkt klickbara
+svar, med oförändrad kommentarssemantik och Kotlin-kontrollerad åtkomst.
+[M07B](m07b-personal-activity-scope.md) tar nästa lucka: aktiviteter utan kallelse
+via lagmedlemskap/egen lagåtkomst. Full funktionell likvärdighet är slutmålet;
+se [matrisen](../feature-parity.md). M07A betyder inte färdig personlig översikt.

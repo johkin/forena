@@ -10,7 +10,7 @@ function elements(node:unknown):ReactElement<Record<string,unknown>>[]{
  const el=node as ReactElement<Record<string,unknown>>;return [el,...elements(el.props.children)];
 }
 const item={member:{id:"person-one",displayName:"Spelare Ett"},activity:{id:"activity-one"},invitation:{id:"invitation-one",response:"pending",responseComment:"Bevara kommentaren"}} as FamilyActivity;
-function render(props:Partial<Parameters<typeof OverviewInvitationResponse>[0]>={}){hooks.index=0;return elements(OverviewInvitationResponse({item,readOnly:false,...props}));}
+function render(props:Partial<Extract<Parameters<typeof OverviewInvitationResponse>[0], { item:FamilyActivity }>>={}){hooks.index=0;return elements(OverviewInvitationResponse({item,readOnly:false,...props}));}
 beforeEach(()=>{vi.unstubAllGlobals();hooks.values=[undefined,false,undefined];hooks.lock.current=false;});
 it("answers only this person's invitation, omits comment, and marks the confirmed response",async()=>{
  const fetch=vi.fn().mockResolvedValue({ok:true});vi.stubGlobal("fetch",fetch);const onAnswered=vi.fn();
@@ -38,4 +38,14 @@ it.each([{readOnly:true},{demo:true}])("does not write in read-only or demo mode
 });
 it("shows a duty-only person without response buttons or invented invitation",()=>{
  expect(render({item:{...item,invitation:undefined,hasDutyAssignment:true}}).filter(e=>e.type==="button")).toHaveLength(0);
+});
+
+it("uses the authenticated Kotlin request for a direct invitation without sending comments",async()=>{
+ const request=vi.fn().mockResolvedValue({ok:true});
+ hooks.index=0;
+ const invitation={id:"invitation-two",person_id:"person-two",name:"Ombudets person",response:"pending" as const,response_comment:null};
+ const tree=elements(OverviewInvitationResponse({invitation,readOnly:false,request}));
+ (tree.find(e=>e.props["data-response"]==="accepted")!.props.onClick as ()=>void)();
+ await vi.waitFor(()=>expect(request).toHaveBeenCalledOnce());
+ expect(request).toHaveBeenCalledWith("/api/invitations/invitation-two/respond",expect.objectContaining({method:"PUT",body:JSON.stringify({response:"accepted"})}));
 });

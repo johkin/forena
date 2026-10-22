@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import "@fontsource-variable/plus-jakarta-sans/index.css";
 import "@fontsource-variable/newsreader/index.css";
 import "../../src/app/globals.css";
+import "../../src/components/personal-overview.css";
 import { loadConfig } from "./config";
 import { App, ConfigurationError } from "./app";
 import { clearLegacyAuth } from "./session";

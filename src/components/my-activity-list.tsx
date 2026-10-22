@@ -1,5 +1,7 @@
 "use client";
 
+import { OverviewInvitationResponse } from "./overview-invitation-response";
+import type { ParticipationFetch } from "./activity-invitation-response";
 import type { NavigationLink } from "./navigation-link";
 import type { components } from "../../backend/contract/generated";
 
@@ -11,11 +13,11 @@ const dateFormat = new Intl.DateTimeFormat("sv-SE", {
 const dayFormat = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Stockholm", day: "numeric" });
 const monthFormat = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Stockholm", month: "short" });
 
-export function MyActivityList({ activities, loading = false, error, retry, loadMore, linkComponent: Link = "a" }: {
-  activities: MyActivity[]; loading?: boolean; error?: string; retry?: () => void; loadMore?: () => void; linkComponent?: NavigationLink;
+export function MyActivityList({ activities, loading = false, error, retry, loadMore, request, linkComponent: Link = "a" }: {
+  activities: MyActivity[]; loading?: boolean; error?: string; retry?: () => void; loadMore?: () => void; linkComponent?: NavigationLink; request?: ParticipationFetch;
 }) {
   const when = (value: string) => dateFormat.format(new Date(value));
-  return <section aria-label="Aktivitetsöversikt" aria-busy={loading}>
+  return <section className="personal-overview" aria-label="Aktivitetsöversikt" aria-busy={loading}>
     <p>Pågående och kommande aktiviteter de närmaste 90 dagarna. Tider visas i svensk tid.</p>
     {activities.length > 0 ? <div className="personal-activity-list">{activities.map(activity =>
       <article className="personal-activity-row" key={activity.id}>
@@ -27,6 +29,10 @@ export function MyActivityList({ activities, loading = false, error, retry, load
             <span><time dateTime={activity.starts_at}>{when(activity.starts_at)}</time> – <time dateTime={activity.ends_at}>{when(activity.ends_at)}</time></span>
           </span><b aria-hidden="true">→</b>
         </Link>
+        {activity.invitations.length ? <div className="personal-activity-people" aria-label={`Kallelser till ${activity.title}`}>
+          {activity.invitations.map(invitation => <OverviewInvitationResponse key={invitation.id}
+            invitation={invitation} readOnly={Date.parse(activity.ends_at) <= Date.now()} request={request} />)}
+        </div> : <p className="overview-empty">Ingen kallelse ännu.</p>}
       </article>
     )}</div> : !loading && !error ? <p>Inga aktiviteter att visa ännu. Här visas dina aktiviteter och aktiviteter för personer du har behörighet att företräda.</p> : null}
     {loading ? <p role="status">Laddar aktiviteter…</p> : null}

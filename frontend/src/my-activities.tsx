@@ -30,7 +30,7 @@ export function MyActivitiesPage({ request }: { request: ParticipationFetch }) {
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [request, offset, attempt]);
-  return <MyActivityList linkComponent={AppLink} activities={items} loading={loading} error={error}
+  return <MyActivityList request={request} linkComponent={AppLink} activities={items} loading={loading} error={error}
     retry={() => { setLoading(true); setAttempt(value => value + 1); }}
     loadMore={nextOffset === null ? undefined : () => { setLoading(true); setOffset(nextOffset); }} />;
 }

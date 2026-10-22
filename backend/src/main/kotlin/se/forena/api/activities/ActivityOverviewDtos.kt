@@ -10,7 +10,8 @@ data class MyActivity(
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val starts_at: Instant,
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val ends_at: Instant,
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val organization_name: String,
-    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val team_name: String
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val team_name: String,
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val invitations: List<AccessibleInvitation>
 )
 
 data class MyActivities(

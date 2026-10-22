@@ -34,6 +34,14 @@ förvalt test-ID. Runtime behöver separat migration 009. Native-/driftprov och
 full signalworker återstår; äldre M21/M22-kod är borttagen, inte en worker som
 kan aktiveras i verksamheten. Se [aktuell status](status.md).
 
+## Full funktionalitet efter migrering, 2026-10-22
+
+Målet är samma funktionalitet som Next-appen, enligt användarens instruktion.
+[Funktionell likvärdighet](feature-parity.md) samlar kvarvarande områden och
+ordningen: rätta direkta kallelsesvar på befintlig startsida, därefter aktiviteter
+via lagmedlemskap utan kallelse och fullständig personlig översikt. En pilot
+stänger inte ett helt område och ingen befintlig funktion tas bort utan beslut.
+
 ## Aktuell planeringsinriktning
 
 **2026-10-19:** användaren har beslutat om ren start utan gamla testdata.
