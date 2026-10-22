@@ -38,6 +38,33 @@
         ],
         "type": "object"
       },
+      "ActivityPerson": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "invitation": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AccessibleInvitation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "invitation",
+          "name"
+        ],
+        "type": "object"
+      },
       "ApiError": {
         "properties": {
           "error": {
@@ -227,6 +254,163 @@
         ],
         "type": "object"
       },
+      "PersonalActivity": {
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "ends_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "gathering_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "organization": {
+            "$ref": "#/components/schemas/PersonalOrganization"
+          },
+          "people": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityPerson"
+            },
+            "type": "array"
+          },
+          "response_due_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "starts_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "team": {
+            "$ref": "#/components/schemas/PersonalTeam"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "description",
+          "ends_at",
+          "gathering_at",
+          "id",
+          "location",
+          "organization",
+          "people",
+          "response_due_at",
+          "starts_at",
+          "status",
+          "team",
+          "title"
+        ],
+        "type": "object"
+      },
+      "PersonalOrganization": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "time_zone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "role",
+          "time_zone"
+        ],
+        "type": "object"
+      },
+      "PersonalOverview": {
+        "properties": {
+          "activities": {
+            "items": {
+              "$ref": "#/components/schemas/PersonalActivity"
+            },
+            "type": "array"
+          },
+          "organizations": {
+            "items": {
+              "$ref": "#/components/schemas/PersonalOrganization"
+            },
+            "type": "array"
+          },
+          "reference_time": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "teams": {
+            "items": {
+              "$ref": "#/components/schemas/PersonalTeam"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "activities",
+          "organizations",
+          "reference_time",
+          "teams"
+        ],
+        "type": "object"
+      },
+      "PersonalTeam": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "organization_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "organization_id",
+          "roles"
+        ],
+        "type": "object"
+      },
       "RespondToInvitationRequest": {
         "additionalProperties": false,
         "properties": {
@@ -266,6 +450,38 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/activities/{activityId}": {
+      "get": {
+        "description": "Activity details authorized through personal invitations, dated membership or own team access. Reading never grants response rights for another person. Unknown/unauthorized IDs return 404. No-store.",
+        "operationId": "getPersonalActivity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "activityId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalActivity"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "personal-overview-controller"
+        ]
+      }
+    },
     "/api/activities/{activityId}/my-invitations": {
       "get": {
         "description": "Only own people and active guardian links. Future invitations return an empty list. Cache-Control: no-store.",
@@ -675,6 +891,27 @@
         },
         "tags": [
           "activity-overview-controller"
+        ]
+      }
+    },
+    "/api/me/overview": {
+      "get": {
+        "description": "Complete authorized upcoming overview, including dated team memberships and own team access. Person rows exist independently of invitations. Only sent personal invitations are exposed. No 90-day cutoff or first-page counts. More than 20000 activities fails with 503 rather than returning an incomplete overview. No-store.",
+        "operationId": "getPersonalOverview",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalOverview"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "personal-overview-controller"
         ]
       }
     }

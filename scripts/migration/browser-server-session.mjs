@@ -36,10 +36,21 @@ try {
   await page.getByLabel('E-postadress', { exact: true }).fill('family@example.invalid');
   await page.getByLabel('Lösenord', { exact: true }).fill('synthetic-password');
   await page.getByRole('button', { name: 'Logga in', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Mina aktiviteter', exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: /Träning/ })).toHaveCount(1);
+  await expect(page.getByRole('heading', { name: 'Min översikt', exact: true })).toBeVisible();
+  const upcoming=page.locator('section[aria-labelledby="upcoming-activities-title"]');
+  const pending=page.locator('section[aria-labelledby="pending-activities-title"]');
+  await expect(upcoming.locator('.badge')).toHaveText('2');await expect(pending.locator('.badge')).toHaveText('1');
+  await expect(upcoming.getByText('Ingen kallelse ännu',{exact:true})).toHaveCount(3);
+  await expect(page.getByText('Ägare',{exact:true})).toBeVisible();
+  await upcoming.getByRole('button',{name:'Kommer: Person 1',exact:true}).click();
+  await expect(pending.getByRole('button',{name:'Kommer: Person 1',exact:true})).toHaveAttribute('aria-pressed','true');
+  await expect(upcoming.getByRole('button',{name:'Kommer: Person 1',exact:true})).toHaveAttribute('aria-pressed','true');
+  await upcoming.getByRole('button',{name:/Aktivitet utan kallelse/}).click();
+  await expect(page.getByRole('heading',{name:'Aktivitet utan kallelse',exact:true})).toBeVisible();
+  await expect(page.getByText('Plats: Örvallen',{exact:true})).toBeVisible();
+  await page.getByRole('link',{name:'Till min översikt',exact:true}).click();
   assert.equal(await page.evaluate(() => window.documentInstance), 'no-reload');
-  await page.getByRole('link', { name: /Träning/ }).click();
+  await upcoming.getByRole('button', { name: /Träning/ }).click();
   const rows = page.locator('.personal-invitation-response');
   await expect(rows).toHaveCount(3);
   const cookie = (await context.cookies(origin)).find(item => item.name === '__Host-forena-session');
@@ -58,5 +69,5 @@ try {
   await expect(rows).toHaveCount(0);
   assert.equal((await context.cookies(origin)).filter(item => item.name === '__Host-forena-session').length, 0);
   assert.ok(privateReplies.includes(200) && privateReplies.includes(401) && privateReplies.includes(403));
-  console.log('PASS: browser -> actual Kotlin -> actual PostgreSQL -> browser; password, Secure/HttpOnly cookie, private read/write/reload, CSRF rejection and logout');
+  console.log('PASS: browser -> actual Kotlin -> actual PostgreSQL -> browser; password, memberships without invitations, participant rows, roles, synchronized quick answers and counters, details, Secure/HttpOnly cookie, private read/write/reload, CSRF rejection and logout');
 } finally { await browser.close(); }

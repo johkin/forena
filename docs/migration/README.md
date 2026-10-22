@@ -42,6 +42,17 @@ ordningen: rätta direkta kallelsesvar på befintlig startsida, därefter aktivi
 via lagmedlemskap utan kallelse och fullständig personlig översikt. En pilot
 stänger inte ett helt område och ingen befintlig funktion tas bort utan beslut.
 
+## Implementering av Min översikt, 2026-10-22
+
+På `feat/personal-dashboard` implementeras startsidan med delat innehåll för
+Next och Vite, nytt personligt översikts-API och metadata för läsbara detaljer.
+Migration 011 inför medlemskap, egen lagåtkomst och föreningsroller. Underlaget
+omfattar aktiviteter utan kallelse och personrader utan svarsknappar, inte bara
+det äldre pilot-API:t. Räknare, kalender och Behöver svar använder samma kompletta
+snapshot. Rollgenvägar och personligt filtrerade förenings-/lagvyer ingår.
+[Status](status.md) skiljer lokala tester från återstående driftacceptans.
+Arbetspass, notifieringsleverans och AI/MCP har fortsatt egna uppgifter.
+
 ## Aktuell planeringsinriktning
 
 **2026-10-19:** användaren har beslutat om ren start utan gamla testdata.

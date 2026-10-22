@@ -1,6 +1,6 @@
 # M07B: Personliga aktiviteter även utan kallelse
 
-Status: nästa planerade startsidesteg efter direkta kallelsesvar.
+Status: implementerad på `feat/personal-dashboard`; lokal och driftsatt verifiering redovisas i status.
 Beroenden: M07A:s befintliga API/sessioner och identifierade läs-/åtkomstregler.
 Egen branch från aktuell main; ingen import av gamla testdata.
 
@@ -50,8 +50,25 @@ Redovisa verkligt driftprov separat med exakt release/deployment.
 
 ## Därefter
 
-Enligt [startsidemålet](../personal-homepage-target.md) återstår sedan
-Min översikt med fullständig Behöver svar över hela urvalet, kalender, arbetspass och lag-/
-föreningsgenvägar följer enligt funktionsmatrisen. M11:s bokningsbehörighet får
+Behöver svar, kalender och rollgenvägar enligt
+[startsidemålet](../personal-homepage-target.md) ingår nu i leveransen nedan. Arbetspass,
+extern notifiering, AI/MCP och fullständig administration följer enligt
+funktionsmatrisen. M11:s bokningsbehörighet får
 inte ersättas med en allmän lag-/personrelation. Aktivitetsskapande, serier och
 import är separata uppgifter; denna läsleverans stänger inte M09 eller M13.
+
+## Levererad implementation
+
+Migration 011 och `PersonalOverviewService` inför datumgiltiga medlemskap,
+egen lagåtkomst, föreningsroller och lokala tider. `GET /api/me/overview` ger
+hela det behöriga kommande urvalet och separata personrader med valfri skickad
+kallelse. `GET /api/activities/{id}` ger detaljer även utan kallelse. Ett nej-svar
+döljer inte aktivitet; delegerad åtkomst ärver inte personens fristående lagåtkomst.
+
+`PersonalHome`, `PersonalOverview` och `TeamCalendar` delas med Next. Denna
+leverans innehåller också Behöver svar, Agenda/Kalender, personligt filtrerade
+förenings-/lagvyer och rollgenvägar. Samma kallelse har gemensamt skrivlås och
+bekräftat tillstånd i båda sektionerna. Mer än 20 000 aktiviteter ger 503 i
+stället för ofullständiga räknare; äldre API behålls för kompatibilitet.
+Arbetspass, extern push och AI/MCP samt fullständig administration återstår
+utanför denna personliga läsleverans. Inga nya molndata skapas automatiskt.

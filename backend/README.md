@@ -322,6 +322,43 @@ Historiken sparar inte kommentartext eller token. `activity_signal_state` är
 en beständig invalideringsversion, inte en outbox eller ett löfte om levererad
 notifiering. Signalworker/Modulith-reaktion kopplas in i ett senare steg.
 
+## Personlig översikt
+
+Migration 011 inför `team_membership`, `team_access_assignment`,
+`organization_member`, föreningstidszon och aktivitetens plats/beskrivning,
+samling och svarstid. Den lägger inte till nya relationstyper i personåtkomsten.
+Den gemensamma datarollens default grants gäller nya tabeller; inga runtime-
+DDL-rättigheter eller klientgrants införs.
+
+`GET /api/me/overview` ger en komplett read-only snapshot av kontots pågående/
+kommande aktiviteter. Datumgiltigt medlemskap vid aktivitetens lokala datum och
+egen lagåtkomst kan ge aktivitet utan kallelse. Delegerad personåtkomst ärver
+inte personens separata lagåtkomst. Kallelser utökar fortfarande bara läsningen
+för behöriga personer. Personer returneras separat från eventuell skickad
+kallelse. Framtida kallelser döljs; nej-svar döljer inte aktiviteten.
+
+Förenings-/lagroller är från databasen och aktiva vid dagens datum i föreningen.
+Översikten har inte pilotens 90 dagar/50 poster. En gräns på 20 000 aktiviteter
+stoppar större underlag med 503; räknare får inte presentera trunkerade data.
+`GET /api/activities/{id}` kontrollerar samma läsrätt och ger 404 för främmande
+eller okänd aktivitet. Läsrätt ger aldrig svarsrätt för andra personers kallelser.
+Båda rutterna har no-store. Det äldre list-API:t nedan behålls separat.
+
+Det riktiga browserprovet kan även köras mot en lokalt kompilerad native-binär.
+Starta Vite preview på port 3000 efter `npm run frontend:build`, bygg med GraalVM
+enligt ovan och kör från reporoten med en vanlig Java 25-JDK för JUnit:
+
+```sh
+FORENA_LOCAL_BROWSER_TEST=true \
+FORENA_BROWSER_NATIVE_EXECUTABLE="$PWD/backend/target/forena-api" \
+backend/mvnw -f backend/pom.xml -Dtest=ApiTest test
+```
+
+Testet använder endast lokal PostgreSQL, syntetiska Auth-nycklar och lokal
+provider-fixture. Native-processen får separata lokala owner/runtime-konton.
+`FORENA_BROWSER_EXECUTABLE` kan välja installerad Chromium. Utelämnad native-
+sökväg kör samma browserprov mot JVM. Loggar finns under ignorerade `target/`.
+
 ## Mina aktiviteter och personåtkomst
 
 `GET /api/me/activities?offset=0` läser kontots kallelsekopplade aktiviteter via

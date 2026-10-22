@@ -47,13 +47,25 @@ som standard, så samma komponenter fungerar i Next-appen. Vite använder
 inte vid varje aktivitetshopp. `/components` är fortsatt publik och hämtar
 sessionen först när man navigerar vidare till en privat vy.
 
-Startsidan visar skickade kallelser per behörig person direkt i aktivitetslistan.
-`OverviewInvitationResponse` delar svarsknappar med Next; snabbsvar skickar inte
-kommentarsfältet och bevarar därför tidigare kommentar. Klick på aktivitetsrubriken
-öppnar detaljsidan där kommentaren kan redigeras. Översikten hämtar kallelser i
-samma API-svar, utan en request per aktivitet. Framtida kallelser förblir dolda.
-Aktiviteter via lagmedlemskap utan kallelse och övrig Next-funktionalitet återstår;
-se [likvärdighetsplanen](../docs/migration/feature-parity.md).
+Startsidan är **Min översikt** med Behöver svar, Agenda/Kalender, Kommande
+aktiviteter samt Mina lag och föreningar. Den använder `GET /api/me/overview`
+och delar `PersonalHome`, `PersonalOverview` och `TeamCalendar` med Next.
+Personrader finns även utan kallelse. Bekräftade direktsvar synkroniseras mellan
+sektionerna; skrivlås gäller samma kallelse i båda vyerna och snabbsvar bevarar
+kommentar. Räknare och kalender använder hela snapshoten, även fler än 50
+aktiviteter och starter mer än 90 dagar framåt. Ett överstort underlag ger ett
+uttryckligt fel i stället för ofullständig översikt.
+
+`/activities/:id` hämtar behöriga detaljer även utan kallelse. Förenings- och
+laggenvägar öppnar `/organizations/:id` och `/teams/:id`, med personligt filtrerat
+innehåll och verkliga roller. Det är läsvyer, inte migrerad administration.
+`/notifications` visar aktuella kallelser som behöver svar. Extern pushleverans,
+arbetspass och AI/MCP-anslutning är fortfarande separata migreringsområden;
+AI-länken är fortsatt dold i Vite. Se [funktionsmatrisen](../docs/migration/feature-parity.md).
+
+Översikten förnyas vid fokus, synlighet, relevant service-worker-signal och var
+60:e sekund i synlig flik. En äldre läsning får inte skriva över ett senare
+bekräftat svar. Ingen privat snapshot sparas i localStorage eller beständig cache.
 
 Auth använder Kotlin-ägda serversessioner enligt
 [ADR-018 och driftsinstruktionen](../docs/migration/web-sessions.md). Frontenden

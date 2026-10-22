@@ -53,3 +53,13 @@ it("allows only bounded overview read paths", async () => {
   await expect(request("/api/me/activities", { method: "PUT" })).rejects.toThrow();
   expect(transport).toHaveBeenCalledTimes(2);
 });
+
+it("allowlists the complete overview and exact activity reads while rejecting scope overrides",async()=>{
+ const transport=vi.fn().mockResolvedValue(Response.json({}));const request=createApiFetch(async()=>id,vi.fn(),transport);
+ await request("/api/me/overview");await request(`/api/activities/${id}`);
+ await expect(request("/api/me/overview?subject=other")).rejects.toThrow();
+ await expect(request(`/api/activities/${id}?person=other`)).rejects.toThrow();
+ expect(transport).toHaveBeenCalledTimes(2);
+ expect(safeDestination(`/teams/${id}`)).toBe(`/teams/${id}`);
+ expect(safeDestination(`/organizations/${id}`)).toBe(`/organizations/${id}`);
+});

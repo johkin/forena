@@ -264,23 +264,65 @@ class ApiTest {
     @Test
     @org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable(named = "FORENA_LOCAL_BROWSER_TEST", matches = "true")
     fun `real browser uses Kotlin sessions and PostgreSQL without browser tokens`() {
+        val team = admin.queryForObject("select team_id from forena.activity where id=?", UUID::class.java, activity)!!
+        for (person in listOf(own, child1, child2)) admin.update("insert into forena.team_membership(organization_id,team_id,person_id,role,starts_on) values(?,?,?,'participant',current_date-1)", organization, team, person)
+        admin.update("insert into forena.organization_member(organization_id,subject,role) values(?,?,'owner')", organization, parent)
+        admin.update("insert into forena.activity(id,organization_id,team_id,title,starts_at,ends_at,location) values(?,?,?,'Aktivitet utan kallelse',now()+interval '2 hours',now()+interval '3 hours','Örvallen')", UUID.randomUUID(), organization, team)
         loginAccess = token(); refreshAccess = token()
-        val process = ProcessBuilder("node", "scripts/migration/browser-server-session.mjs")
-            .directory(Path.of("..").toFile()).redirectErrorStream(true)
-            .redirectOutput(Path.of("target/browser-server-session.log").toFile())
-        val executable = System.getenv("FORENA_BROWSER_EXECUTABLE")
-        process.environment().keys.removeIf { it.startsWith("FORENA_") }
-        process.environment()["FORENA_BROWSER_API_BASE"] = "http://127.0.0.1:${environment.getRequiredProperty("local.server.port")}"
-        process.environment()["FORENA_BROWSER_ACTIVITY_ID"] = activity.toString()
-        if (executable != null) process.environment()["FORENA_BROWSER_EXECUTABLE"] = executable
-        val child = process.start()
+        withBrowserApi { apiBase ->
+            val process = ProcessBuilder("node", "scripts/migration/browser-server-session.mjs")
+                .directory(Path.of("..").toFile()).redirectErrorStream(true)
+                .redirectOutput(Path.of("target/browser-server-session.log").toFile())
+            val executable = System.getenv("FORENA_BROWSER_EXECUTABLE")
+            process.environment().keys.removeIf { it.startsWith("FORENA_") }
+            process.environment()["FORENA_BROWSER_API_BASE"] = apiBase
+            process.environment()["FORENA_BROWSER_ACTIVITY_ID"] = activity.toString()
+            if (executable != null) process.environment()["FORENA_BROWSER_EXECUTABLE"] = executable
+            val child = process.start()
+            try {
+                assertThat(child.waitFor(60, java.util.concurrent.TimeUnit.SECONDS)).isTrue()
+                assertThat(child.exitValue()).describedAs("See private target/browser-server-session.log").isZero()
+                assertThat(row()["response"]).isEqualTo("accepted")
+                assertThat(history()).isEqualTo(1)
+                assertThat(jdbc.queryForObject("select count(*) from forena.spring_session where principal_name=?", Int::class.java, parent.toString())).isZero()
+            } finally { child.destroyForcibly() }
+        }
+    }
+
+    /** Optional native runtime exercises the same real browser, Auth fixture and PostgreSQL. */
+    private fun withBrowserApi(block: (String) -> Unit) {
+        val executable = System.getenv("FORENA_BROWSER_NATIVE_EXECUTABLE")
+        if (executable == null) {
+            block("http://127.0.0.1:${environment.getRequiredProperty("local.server.port")}")
+            return
+        }
+        require(Path.of(executable).isAbsolute && Files.isExecutable(Path.of(executable)))
+        val port = java.net.ServerSocket(0).use { it.localPort }
+        val builder = ProcessBuilder(executable).directory(Path.of("..").toFile())
+            .redirectErrorStream(true).redirectOutput(Path.of("target/native-browser-runtime.log").toFile())
+        builder.environment().keys.removeIf { it.startsWith("FORENA_") }
+        builder.environment().putAll(mapOf(
+            "PORT" to port.toString(), "FORENA_JDBC_URL" to database.jdbcUrl,
+            "FORENA_DB_USERNAME" to "forena_api_runtime", "FORENA_DB_PASSWORD" to "local-runtime-only",
+            "FORENA_MIGRATE" to "true", "FORENA_MIGRATION_USERNAME" to "forena_api_owner",
+            "FORENA_MIGRATION_PASSWORD" to "local-owner-only", "FORENA_WEB_SESSION_ENABLED" to "true",
+            "FORENA_WEB_ORIGIN" to "https://app.example.invalid",
+            "FORENA_WEB_SESSION_KEY" to java.util.Base64.getEncoder().encodeToString(ByteArray(32) { 7 }),
+            "FORENA_AUTH_ISSUER" to issuer, "FORENA_AUTH_JWKS_URI" to "http://127.0.0.1:${jwks.address.port}/jwks",
+            "FORENA_AUTH_PUBLISHABLE_KEY" to "sb_publishable_local_test"))
+        val runtime = builder.start()
+        val base = "http://127.0.0.1:$port"
         try {
-            assertThat(child.waitFor(60, java.util.concurrent.TimeUnit.SECONDS)).isTrue()
-            assertThat(child.exitValue()).describedAs("See private target/browser-server-session.log").isZero()
-            assertThat(row()["response"]).isEqualTo("accepted")
-            assertThat(history()).isEqualTo(1)
-            assertThat(jdbc.queryForObject("select count(*) from forena.spring_session where principal_name=?", Int::class.java, parent.toString())).isZero()
-        } finally { child.destroyForcibly() }
+            await().atMost(java.time.Duration.ofSeconds(30)).until {
+                if (!runtime.isAlive) error("Native browser runtime exited; see private target/native-browser-runtime.log")
+                try { HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI("$base/actuator/health")).GET().build(), HttpResponse.BodyHandlers.discarding()).statusCode() == 200 }
+                catch (_: java.io.IOException) { false }
+            }
+            block(base)
+        } finally {
+            runtime.destroy()
+            if (!runtime.waitFor(10, java.util.concurrent.TimeUnit.SECONDS)) runtime.destroyForcibly()
+        }
     }
 
     @Test fun `failed password attempts consume shared client and normalized email limits before calling Auth`() {
@@ -526,6 +568,81 @@ class ApiTest {
             assertThat(row()["revision"]).isEqualTo(0L)
             assertThat(history()).isZero(); assertThat(dirty()).isZero()
         }
+    }
+
+    @Test fun `personal overview includes dated member rows without invitations using organization local date`() {
+        admin.update("delete from forena.invitation where activity_id=?", activity)
+        admin.update("update forena.organization set time_zone='America/Los_Angeles' where id=?", organization)
+        admin.update("update forena.activity set starts_at='2030-01-01T00:30:00Z', ends_at='2030-01-01T02:00:00Z', location='Örvallen' where id=?", activity)
+        val team = admin.queryForObject("select team_id from forena.activity where id=?", UUID::class.java, activity)!!
+        for (person in listOf(own, child1)) admin.update("insert into forena.team_membership(organization_id,team_id,person_id,role,starts_on,ends_on) values(?,?,?,'participant','2029-12-31','2029-12-31')", organization, team, person)
+        // UTC January 1 is still December 31 at the club; inclusive membership dates must match it.
+        val result = request("/api/me/overview")
+        assertThat(result.statusCode()).isEqualTo(200)
+        assertThat(result.headers().firstValue("cache-control").orElse("")).contains("no-store")
+        val rows = json.readTree(result.body()).get("activities")
+        assertThat(rows.size()).isEqualTo(1)
+        assertThat(rows.get(0).get("location").asString()).isEqualTo("Örvallen")
+        assertThat(rows.get(0).get("people").size()).isEqualTo(2)
+        assertThat(rows.get(0).get("people").get(0).get("invitation").isNull).isTrue()
+        assertThat(request("/api/activities/$activity").statusCode()).isEqualTo(200)
+        admin.update("update forena.team_membership set ends_on='2029-12-30', starts_on='2029-12-30' where team_id=?", team)
+        assertThat(json.readTree(request("/api/me/overview").body()).get("activities").size()).isZero()
+        assertThat(request("/api/activities/$activity").statusCode()).isEqualTo(404)
+    }
+
+    @Test fun `own team access reads metadata but never another persons invitation or delegated team access`() {
+        val otherInvitation = admin.queryForObject("select id from forena.invitation where activity_id=? and person_id=?", UUID::class.java, activity, other)!!
+        admin.update("delete from forena.invitation where activity_id=? and person_id<>?", activity, other)
+        val team = admin.queryForObject("select team_id from forena.activity where id=?", UUID::class.java, activity)!!
+        admin.update("insert into forena.team_access_assignment(organization_id,team_id,person_id,starts_on) values(?,?,?,current_date-1)", organization, team, child1)
+        assertThat(request("/api/activities/$activity").statusCode()).isEqualTo(404)
+        admin.update("insert into forena.team_access_assignment(organization_id,team_id,person_id,starts_on) values(?,?,?,current_date-1)", organization, team, own)
+        val row = json.readTree(request("/api/activities/$activity").body())
+        assertThat(row.get("people").size()).isEqualTo(1)
+        assertThat(row.get("people").get(0).get("id").asString()).isEqualTo(own.toString())
+        assertThat(row.get("people").get(0).get("invitation").isNull).isTrue()
+        assertThat(request("/api/invitations/$otherInvitation/respond", """{"response":"accepted"}""").statusCode()).isEqualTo(403)
+        admin.update("update forena.team_access_assignment set active=false where person_id=?", own)
+        assertThat(request("/api/activities/$activity").statusCode()).isEqualTo(404)
+    }
+
+    @Test fun `personal overview is complete beyond fifty rows and ninety days and hides future invitations`() {
+        val team = admin.queryForObject("select team_id from forena.activity where id=?", UUID::class.java, activity)!!
+        repeat(55) { index ->
+            val event = UUID.randomUUID()
+            admin.update("insert into forena.activity(id,organization_id,team_id,title,starts_at,ends_at,invitation_send_at) values(?,?,?,'Senare aktivitet',now()+interval '200 days'+?*interval '1 hour',now()+interval '200 days'+?*interval '1 hour'+interval '1 hour',now()+interval '100 days')", event, organization, team, index, index)
+            admin.update("insert into forena.invitation(id,organization_id,activity_id,person_id) values(?,?,?,?)", UUID.randomUUID(), organization, event, own)
+        }
+        val overview = json.readTree(request("/api/me/overview").body())
+        assertThat(overview.get("activities").size()).isEqualTo(56)
+        assertThat(overview.get("activities").get(55).get("people").size()).isEqualTo(1)
+        assertThat(overview.get("activities").get(55).get("people").get(0).get("invitation").isNull).isTrue()
+        admin.update("update forena.person_access set active=false where subject=?", parent)
+        assertThat(json.readTree(request("/api/me/overview").body()).get("activities").size()).isZero()
+    }
+
+    @Test fun `personal workspaces show current roles without widening personal invitation access`() {
+        val team = admin.queryForObject("select team_id from forena.activity where id=?", UUID::class.java, activity)!!
+        for (person in listOf(own, child1)) admin.update("insert into forena.team_membership(organization_id,team_id,person_id,role,starts_on) values(?,?,?,'leader',current_date-1)", organization, team, person)
+        admin.update("insert into forena.organization_member(organization_id,subject,role) values(?,?,'owner')", organization, parent)
+        val adminOnlyOrganization = UUID.randomUUID()
+        admin.update("insert into forena.organization(id,name) values(?,'AIK')", adminOnlyOrganization)
+        admin.update("insert into forena.organization_member(organization_id,subject,role) values(?,?,'admin')", adminOnlyOrganization, parent)
+        val overview = json.readTree(request("/api/me/overview").body())
+        assertThat(overview.get("organizations").size()).isEqualTo(2)
+        assertThat(overview.get("organizations").single { it.get("id").asString() == organization.toString() }.get("role").asString()).isEqualTo("owner")
+        assertThat(overview.get("organizations").single { it.get("id").asString() == adminOnlyOrganization.toString() }.get("role").asString()).isEqualTo("admin")
+        assertThat(overview.get("teams").size()).isEqualTo(1)
+        assertThat(overview.get("teams").get(0).get("roles").toString()).contains("leader", "guardian")
+        assertThat(overview.get("activities").get(0).get("people").size()).isEqualTo(3)
+        admin.update("update forena.organization_member set active=false where subject=?", parent)
+        admin.update("update forena.team_membership set active=false where team_id=?", team)
+        val revoked = json.readTree(request("/api/me/overview").body())
+        assertThat(revoked.get("teams").size()).isZero()
+        assertThat(revoked.get("organizations").get(0).get("role").isNull).isTrue()
+        admin.update("update forena.account set enabled=false where subject=?", parent)
+        assertThat(request("/api/me/overview").statusCode()).isEqualTo(401)
     }
 
     @Test fun `my activities deduplicates own and delegated invitations without leaking unrelated activities`() {
@@ -917,6 +1034,8 @@ class ApiTest {
         admin.update("insert into forena.activity(id,organization_id,team_id,title,starts_at,ends_at) values(?,?,?,'Privat aktivitet',now()+interval '1 hour',now()+interval '2 hours')",foreignActivity,foreignOrg,foreignTeam)
         admin.update("insert into forena.invitation(id,organization_id,activity_id,person_id) values(?,?,?,?)",foreignInvitation,foreignOrg,foreignActivity,foreignPerson)
         assertThat(request("/api/activities/$foreignActivity/my-invitations").statusCode()).isEqualTo(404)
+        assertThat(request("/api/activities/$foreignActivity").statusCode()).isEqualTo(404)
+        assertThat(request("/api/me/overview").body()).doesNotContain(foreignActivity.toString(), foreignPerson.toString(), "Privat aktivitet")
         assertThat(request("/api/invitations/$foreignInvitation/respond", """{"response":"accepted"}""").statusCode()).isEqualTo(403)
         assertThatThrownBy { admin.update("insert into forena.invitation(id,organization_id,activity_id,person_id) values(?,?,?,?)",UUID.randomUUID(),organization,activity,foreignPerson) }
             .isInstanceOf(org.springframework.dao.DataIntegrityViolationException::class.java)
@@ -982,6 +1101,7 @@ class ApiTest {
             assertThat(limited.get("headers").has("Retry-After")).isTrue()
         }
         assertThat(document.get("paths").propertyNames()).containsExactlyInAnyOrder(
+            "/api/me/overview", "/api/activities/{activityId}",
             "/api/me/activities", "/api/activities/{activityId}/my-invitations", "/api/invitations/{invitationId}/respond",
             "/api/auth/session", "/api/auth/login", "/api/auth/logout", "/api/auth/passkey/options", "/api/auth/passkey/verify")
         val update = document.get("paths").get("/api/invitations/{invitationId}/respond").get("put")

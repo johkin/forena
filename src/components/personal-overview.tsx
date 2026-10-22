@@ -1,16 +1,20 @@
 "use client";
 
 import { OverviewInvitationResponse } from "./overview-invitation-response";
-import type { FamilyActivity } from "@/domain/club";
+import type { OverviewItem, OverviewAnswered, OverviewRespond } from "./personal-overview-types";
+import type { ParticipationFetch } from "./activity-invitation-response";
 
-type Props = {
-  activities: FamilyActivity[];
+type Props<T extends OverviewItem> = {
+  activities: T[];
   timeZone: string;
-  onOpenActivity: (item: FamilyActivity) => void;
+  onOpenActivity: (item: T) => void;
   title?: string;
   id?: string;
   emptyMessage?: string;
-  onAnswered?: () => void;
+  onAnswered?: OverviewAnswered;
+  request?: ParticipationFetch;
+  onRespond?: OverviewRespond;
+  pendingInvitations?: ReadonlySet<string>;
   demo?: boolean;
   referenceTime?: string;
 };
@@ -26,9 +30,9 @@ function when(value: string, timeZone: string) {
   }).format(new Date(value));
 }
 
-export function PersonalOverview({ activities, timeZone, onOpenActivity, title = "För mig", id = "personal-overview-title", emptyMessage = "Inga personliga aktiviteter kräver din uppmärksamhet just nu.", onAnswered, demo = false, referenceTime }: Props) {
+export function PersonalOverview<T extends OverviewItem>({ activities, timeZone, onOpenActivity, title = "För mig", id = "personal-overview-title", emptyMessage = "Inga personliga aktiviteter kräver din uppmärksamhet just nu.", onAnswered, demo = false, referenceTime, request, onRespond, pendingInvitations }: Props<T>) {
 
-  const grouped = new Map<string, FamilyActivity[]>();
+  const grouped = new Map<string, T[]>();
   for (const item of activities) {
     const group = grouped.get(item.activity.id) ?? [];
     if (!group.some(person => person.member.id === item.member.id)) group.push(item);
@@ -57,7 +61,7 @@ export function PersonalOverview({ activities, timeZone, onOpenActivity, title =
             </span>
             <b aria-hidden="true">→</b>
           </button>
-          <div className="personal-activity-people">{people.map(person => <OverviewInvitationResponse key={person.member.id} item={person} readOnly={person.activity.status === "cancelled" || Date.parse(person.activity.endsAt) <= Date.parse(referenceTime ?? new Date().toISOString())} demo={demo} onAnswered={onAnswered} />)}</div>
+          <div className="personal-activity-people">{people.map(person => <OverviewInvitationResponse key={person.member.id} item={person} readOnly={person.activity.status === "cancelled" || Date.parse(person.activity.endsAt) <= Date.parse(referenceTime ?? new Date().toISOString())} demo={demo} onAnswered={onAnswered} request={request} onRespond={onRespond} busy={person.invitation ? pendingInvitations?.has(person.invitation.id) : false} />)}</div>
         </div>;
       })}
     </div> : <p className="overview-empty">{emptyMessage}</p>}
