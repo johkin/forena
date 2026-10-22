@@ -32,6 +32,21 @@ Vite kör på `127.0.0.1:3000` och routar `/api/*` till Kotlin på
 `config.json` genereras separat med en uttrycklig tillåtelselista och har
 `no-store`; nycklar för admin, databas eller migreringar får aldrig finnas där.
 
+## Intern navigering
+
+React Router håller URL och aktuell vy synkroniserade utan att ladda om hela
+HTML-dokumentet. Aktivitetslänkar, tillbaka-länkar, meny och logotyp använder
+samma routeradapter; header, meny och sidfot behålls mellan privata vyer.
+Bakåt/framåt och direkta djuplänkar stöds. Externa länkar och öppning i ny flik
+behåller webbläsarens vanliga beteende. Vid vybyte flyttas fokus till innehållet
+och sidan rullas till toppen.
+
+Delade komponenter tar en valfri `linkComponent` och använder vanliga ankare
+som standard, så samma komponenter fungerar i Next-appen. Vite använder
+`AppLink`, även i galleriet. Sessionen hämtas vid start/fokus/kontoändring,
+inte vid varje aktivitetshopp. `/components` är fortsatt publik och hämtar
+sessionen först när man navigerar vidare till en privat vy.
+
 Auth använder Kotlin-ägda serversessioner enligt
 [ADR-018 och driftsinstruktionen](../docs/migration/web-sessions.md). Frontenden
 har ingen Supabase Auth-klient och skickar inga Bearer-token. Bara ett
@@ -78,7 +93,8 @@ Maven-cache kan `FORENA_TEST_JDBC_JAR` välja den installerade JDBC-JAR:en;
 `FORENA_BROWSER_EXECUTABLE` kan välja en installerad Chromium. Privata konton,
 lösenord, tokens, traces och storage-state-filer får inte publiceras.
 
-Ett browserprov med kontrollerade Auth/API-svar körs mot den statiska previewn
+CI:s application-jobb kör browserprovet efter Vite-bygget med Playwrights Chromium.
+Lokalt körs samma browserprov med kontrollerade Auth/API-svar mot den statiska previewn
 med `node scripts/migration/browser-frontend-mock.mjs` mot `http://localhost:3000`.
 Det kör också WebAuthn med en virtuell discoverable credential utan omladdning.
 Det verifierar frontendbeteende och tokenhantering, inte Kotlin/Supabase. Bilder skrivs bara lokalt

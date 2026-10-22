@@ -1,5 +1,26 @@
 # Migreringsstatus
 
+## Klientnavigering i browser-frontenden, 2026-10-22
+
+Aktivitetslänkar var vanliga ankare och laddade om dokument/config/session samt
+hela sidskalet. Vite-appen använder nu React Router 7.18.4 för intern navigering.
+Delade komponenter får en valfri routeradapter, med ankare som standard för
+Next-appen. Aktivitetslista, meny, logotyp, tillbaka-länkar och login/logout
+använder samma navigering. Headern och dokumentet bevaras mellan privata vyer;
+bakåt/framåt och inloggningens returadress följer URL:en. Fokus och scroll återgår
+till sidans innehåll. `/components` är publik utan sessionsanrop; kontobyten i
+andra flikar fortsätter att upphäva klientens session även där.
+
+Lokalt godkänt: 1 146 Vitest-tester, båda apparnas typkontroll, lint samt Next-
+och Vite-produktionsbyggen. Chromium-provet verifierar oförändrat dokument och
+samma header, inga extra sessionsanrop vid aktivitetshopp, historik, tangentbord,
+meny och övergång från publikt galleri till privat vy. Dessutom passerar tidigare
+Auth-/sessions-/svarsprov, login-returadress samt mobil/desktop och fem bredder.
+Browserprovet läggs även till CI:s application-jobb och använder syntetiska
+Auth/API-svar, utan databas eller verklig Auth. Backend/native-bygge och gamla
+Supabase-schemats reset/pgTAP är inte omkörda lokalt för denna frontendändring.
+Ingen deployment eller databasändring ingår.
+
 ## Native-reflection för Liquibase, 2026-10-21
 
 CI #658 för `ba06301` klarade application/database/backend och själva native-
