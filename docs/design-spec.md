@@ -67,6 +67,11 @@ personliga startsida nedan innebär inte att medlemskap/arbetspass redan flyttat
 
 ## Personlig startsida
 
+Användarens tre mobilbilder från 2026-10-22 är målbild även för Kotlin-webben.
+[Startsidemålet](migration/personal-homepage-target.md) anger sektionernas
+ordning, personrader utan kallelse, räknare, roller och konkreta acceptansfall.
+Den avgränsade Kotlin-piloten ovan är inte den färdiga startsidan.
+
 `/` är den inloggade användarens Förena-brandade **Min översikt**, utan vald
 klubb. Visa först **Behöver svar**, därefter hela familjens kommande aktiviteter
 och sist **Mina lag och föreningar** med användarens roller. Agenda är grundläge
