@@ -51,7 +51,9 @@ omarkerad samtyckesruta. Detta gäller även galleriets interaktiva exempel.
 Den nya Vite-appens startsida heter **Mina aktiviteter**. Den använder samma
 `MyActivityList` i produktion och `/components`, med laddning, tomt, fel och
 sidindelning. Klubb, lag och svensk tid visas på varje rad; aktivitetslänken
-öppnar kallelsesvaret. Kontomenyn länkar till Mina aktiviteter. Piloten omfattar
+öppnar kallelsesvaret utan full sidomladdning. Header, meny och sidfot ligger
+kvar vid intern navigering. Bakåt/framåt följer URL:en; fokus flyttas till
+innehållet vid vybyte. Kontomenyn länkar till Mina aktiviteter. Piloten omfattar
 kallelsekopplade aktiviteter; beskrivningen av gamla appens fullständiga
 personliga startsida nedan innebär inte att medlemskap/arbetspass redan flyttats.
 

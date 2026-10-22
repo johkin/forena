@@ -41,6 +41,9 @@ publishable key, version och valfri startaktivitet. Se ADR-017.
 
 [Actions-deployen för Kotlin-sajten](migration/actions-deployment.md) bygger
 statisk frontend och Java 25-API i en gemensam Vercel Services-deployment.
+Intern navigering i Vite-appen använder React Router och en routeradapter i
+de gemensamma länkkomponenterna. Dokumentet och sidskalet behålls mellan
+aktivitetsvyer; sessionen startas inte om vid varje intern länk.
 Ingen privat frontend → backend-binding behövs i browserpiloten. Bara de nya
 rutterna ändras i detta projekt; gamla sajtens projekt och Next-deploy är
 separata. Den äldre Next → Kotlin-adaptern ligger kvar som historiskt prov.

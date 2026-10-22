@@ -1,3 +1,4 @@
+import { AppLink } from "./app-link";
 import { useEffect, useState } from "react";
 import type { components } from "../../backend/contract/generated";
 import { MyActivityList, type MyActivity } from "../../src/components/my-activity-list";
@@ -29,7 +30,7 @@ export function MyActivitiesPage({ request }: { request: ParticipationFetch }) {
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [request, offset, attempt]);
-  return <MyActivityList activities={items} loading={loading} error={error}
+  return <MyActivityList linkComponent={AppLink} activities={items} loading={loading} error={error}
     retry={() => { setLoading(true); setAttempt(value => value + 1); }}
     loadMore={nextOffset === null ? undefined : () => { setLoading(true); setOffset(nextOffset); }} />;
 }

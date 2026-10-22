@@ -1,3 +1,4 @@
+import { BrowserRouter } from "react-router";
 import { createRoot } from "react-dom/client";
 import "@fontsource-variable/plus-jakarta-sans/index.css";
 import "@fontsource-variable/newsreader/index.css";
@@ -18,6 +19,6 @@ async function start() {
   }
   clearLegacyAuth();
   const config = await loadConfig();
-  root.render(<App config={config} />);
+  root.render(<BrowserRouter><App config={config} /></BrowserRouter>);
 }
-void start().catch(() => root.render(<ConfigurationError />));
+void start().catch(() => root.render(<BrowserRouter><ConfigurationError /></BrowserRouter>));

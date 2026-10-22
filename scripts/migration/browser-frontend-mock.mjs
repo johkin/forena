@@ -66,9 +66,27 @@ try{
  // A same-tab self-notification must not erase the accepted login.
  await page.waitForTimeout(200);assert.equal(sessionReads,beforeLoginReads);
  assert.equal(await page.evaluate(()=>window.documentInstance),'same-document');sessionUnavailable=false;
- await page.getByRole('link',{name:/Träning med laget/}).click();
+ const navigationReads=sessionReads;
+ await page.evaluate(()=>{window.preservedHeader=document.querySelector('header');});
+ await page.getByRole('link',{name:/Träning med laget/}).focus();await page.keyboard.press('Enter');
+ await expect(page).toHaveURL(new URL(`/activities/${id}`,base).href);
  const row=page.locator('.personal-invitation-response');await expect(row).toHaveCount(1);
  await expect(row).toHaveCount(1);
+ assert.equal(await page.evaluate(()=>window.documentInstance),'same-document');
+ assert.ok(await page.evaluate(()=>window.preservedHeader===document.querySelector('header')));
+ assert.equal(sessionReads,navigationReads);await expect(page.locator('main')).toBeFocused();
+ await page.goBack();await expect(page.getByRole('heading',{name:'Mina aktiviteter',exact:true})).toBeVisible();
+ await page.goForward();await expect(row).toHaveCount(1);
+ await page.getByRole('link',{name:'Till mina aktiviteter',exact:true}).click();
+ await expect(page.getByRole('link',{name:/Träning med laget/})).toBeVisible();
+ // Header/menu links use the same router adapter as the activity list.
+ await page.getByRole('button',{name:'Öppna meny',exact:true}).click();
+ await page.getByRole('dialog').getByRole('link',{name:'Mina aktiviteter',exact:true}).click();
+ await expect(page.getByRole('dialog')).toHaveCount(0);
+ await page.getByRole('link',{name:/Träning med laget/}).click();await expect(row).toHaveCount(1);
+ assert.equal(await page.evaluate(()=>window.documentInstance),'same-document');
+ assert.ok(await page.evaluate(()=>window.preservedHeader===document.querySelector('header')));
+ assert.equal(sessionReads,navigationReads);
  assert.ok(!await page.evaluate(()=>document.cookie.includes('forena-local-session')));
  await row.getByLabel('Kommentar').fill('Hämtas senare');await row.getByRole('button',{name:'Kommer',exact:true}).click();
  await expect(page.getByRole('status').filter({hasText:'har sparats'})).toBeVisible();assert.equal(invitations[0].response,'accepted');
@@ -98,5 +116,25 @@ try{
  assert.ok(!await page.evaluate(()=>document.cookie.includes('forena-local-session')));
  assert.equal(await page.evaluate(()=>localStorage.length),0);
  await page.goto(new URL('/components',base).href);await expect(page.getByRole('heading',{name:'Komponenter',exact:true})).toBeVisible();await expect(page.getByText('Alex Exempel',{exact:true})).toBeVisible();assert.deepEqual(errors,[]);assert.equal(directProviderRequests,0);
- assert.ok(requests>0);console.log('PASS: HttpOnly session, CSRF header, legacy cleanup, no browser/provider tokens, password and WebAuthn without reload, save/reload, revocation, account switch, logout, public gallery, responsive overview, paging, retry, private-data isolation and keyboard menu');
+ const galleryReads=sessionReads;
+ await page.reload();await expect(page.getByRole('heading',{name:'Komponenter',exact:true})).toBeVisible();
+ assert.equal(sessionReads,galleryReads);
+ await page.evaluate(()=>{window.documentInstance='gallery-document';});
+ await page.getByRole('link',{name:'Förena startsida',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Mina aktiviteter',exact:true})).toBeVisible();
+ await expect.poll(()=>sessionReads).toBeGreaterThan(galleryReads);
+ assert.equal(await page.evaluate(()=>window.documentInstance),'gallery-document');
+ // Explicit login redirect also follows the router without starting a new document.
+ await page.getByRole('button',{name:'Öppna meny',exact:true}).click();
+ await page.getByRole('dialog').getByRole('button',{name:'Logga ut från Förena'}).click();
+ await expect(page.getByRole('heading',{name:'Logga in',exact:true})).toBeVisible();
+ await page.goto(new URL(`/login?next=/activities/${id}`,base).href);
+ await page.getByLabel('E-postadress',{exact:true}).fill('family@example.invalid');
+ await page.getByLabel('Lösenord',{exact:true}).fill('synthetic-password');
+ await page.evaluate(()=>{window.documentInstance='redirect-document';});
+ await page.getByRole('button',{name:'Logga in',exact:true}).click();
+ await expect(page).toHaveURL(new URL(`/activities/${id}`,base).href);await expect(row).toHaveCount(1);
+ assert.equal(await page.evaluate(()=>window.documentInstance),'redirect-document');
+ assert.deepEqual(errors,[]);
+ assert.ok(requests>0);console.log('PASS: client navigation and persistent header without session refetch; back/forward, menu links and gallery-to-private session initialization; HttpOnly session, CSRF header, legacy cleanup, no browser/provider tokens, password and WebAuthn without reload, save/reload, revocation, account switch, logout, public gallery, responsive overview, paging, retry, private-data isolation and keyboard menu');
 }finally{await browser.close();}

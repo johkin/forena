@@ -55,6 +55,23 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: https://ckzrtxqjskosqzoitymc.supabase.co
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
 
+      - name: Install Chromium for browser navigation checks
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify browser navigation and session isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run preview --workspace @forena/frontend -- --host 127.0.0.1 > "$RUNNER_TEMP/frontend-preview.log" 2>&1 &
+          preview_pid=$!
+          trap 'kill "$preview_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..50}; do
+            if curl --silent --fail http://127.0.0.1:3000/ >/dev/null; then break; fi
+            sleep 0.2
+          done
+          curl --silent --fail http://127.0.0.1:3000/ >/dev/null
+          FORENA_BROWSER_BASE_URL=http://localhost:3000 node scripts/migration/browser-frontend-mock.mjs
+
   database:
     runs-on: ubuntu-latest
     timeout-minutes: 20

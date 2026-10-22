@@ -1,5 +1,6 @@
 "use client";
 
+import type { NavigationLink } from "./navigation-link";
 import type { components } from "../../backend/contract/generated";
 
 export type MyActivity = components["schemas"]["MyActivity"];
@@ -10,22 +11,22 @@ const dateFormat = new Intl.DateTimeFormat("sv-SE", {
 const dayFormat = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Stockholm", day: "numeric" });
 const monthFormat = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Stockholm", month: "short" });
 
-export function MyActivityList({ activities, loading = false, error, retry, loadMore }: {
-  activities: MyActivity[]; loading?: boolean; error?: string; retry?: () => void; loadMore?: () => void;
+export function MyActivityList({ activities, loading = false, error, retry, loadMore, linkComponent: Link = "a" }: {
+  activities: MyActivity[]; loading?: boolean; error?: string; retry?: () => void; loadMore?: () => void; linkComponent?: NavigationLink;
 }) {
   const when = (value: string) => dateFormat.format(new Date(value));
   return <section aria-label="Aktivitetsöversikt" aria-busy={loading}>
     <p>Pågående och kommande aktiviteter de närmaste 90 dagarna. Tider visas i svensk tid.</p>
     {activities.length > 0 ? <div className="personal-activity-list">{activities.map(activity =>
       <article className="personal-activity-row" key={activity.id}>
-        <a className="personal-activity-main" href={`/activities/${activity.id}`}>
+        <Link className="personal-activity-main" href={`/activities/${activity.id}`}>
           <span className="overview-date-badge" aria-hidden="true"><small>{monthFormat.format(new Date(activity.starts_at))}</small><strong>{dayFormat.format(new Date(activity.starts_at))}</strong></span>
           <span className="personal-activity-copy">
             <small>{activity.organization_name} · {activity.team_name}</small>
             <strong>{activity.title}</strong>
             <span><time dateTime={activity.starts_at}>{when(activity.starts_at)}</time> – <time dateTime={activity.ends_at}>{when(activity.ends_at)}</time></span>
           </span><b aria-hidden="true">→</b>
-        </a>
+        </Link>
       </article>
     )}</div> : !loading && !error ? <p>Inga aktiviteter att visa ännu. Här visas dina aktiviteter och aktiviteter för personer du har behörighet att företräda.</p> : null}
     {loading ? <p role="status">Laddar aktiviteter…</p> : null}

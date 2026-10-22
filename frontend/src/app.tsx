@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useLocation, useNavigate } from "react-router";
+import { AppLink } from "./app-link";
 import { z } from "zod";
 import { MyActivitiesPage } from "./my-activities";
 import { AppHeaderFrame } from "../../src/components/app-header-frame";
@@ -13,18 +15,25 @@ import type { PublicConfig } from "./config";
 import { authRequest, parseSession, passkeyLogin, type SessionView } from "./session";
 
 function Frame({ children, email, logout }: { children: ReactNode; email?: string; logout?: ReactNode }) {
-  const menu = <SessionMenu accountEmail={email} logout={logout} />;
+  const menu = <SessionMenu linkComponent={AppLink} accountEmail={email} logout={logout} />;
   return <><div className="app-page"><AppShellFrame sidebar={menu}
-    header={<AppHeaderFrame sidebarNavigation actions={!email ? <a className="secondary" href="/login">Logga in</a> : null}>{menu}</AppHeaderFrame>}>
+    header={<AppHeaderFrame linkComponent={AppLink} sidebarNavigation actions={!email ? <AppLink className="secondary" href="/login">Logga in</AppLink> : null}>{menu}</AppHeaderFrame>}>
     {children}
   </AppShellFrame></div><AppFooter showConnect={false} /></>;
 }
 
 export function ConfigurationError() {
-  return <Frame><main className="content"><h1>Förena är inte redo ännu</h1><p>Webbplatsen kunde inte startas. Försök igen senare.</p></main></Frame>;
+  return <Frame><main tabIndex={-1} className="content"><h1>Förena är inte redo ännu</h1><p>Webbplatsen kunde inte startas. Försök igen senare.</p></main></Frame>;
 }
 
 export function App({ config }: { config: PublicConfig }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const publicGallery = location.pathname === "/components";
+  useEffect(() => {
+    document.querySelector<HTMLElement>("main")?.focus({ preventScroll: true });
+    window.scrollTo(0, 0);
+  }, [location.key]);
   const [auth, setAuth] = useState<{ ready: boolean; session: SessionView | null }>({ ready: false, session: null });
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
@@ -52,15 +61,14 @@ export function App({ config }: { config: PublicConfig }) {
   }, [applySession]);
   const invalidateSessionChecks = useCallback(() => { sessionRevision.current++; }, []);
   useEffect(() => {
-    if (window.location.pathname === "/components") return;
-    const initial = window.setTimeout(() => { void reloadSession(); }, 0);
+    const initial = publicGallery ? undefined : window.setTimeout(() => { void reloadSession(); }, 0);
     const channel = typeof BroadcastChannel === "undefined" ? null : new BroadcastChannel("forena-session");
     channelRef.current = channel;
-    if (channel) channel.onmessage = () => { applySession(null); void reloadSession(); };
-    const focus = () => { void reloadSession(); };
+    if (channel) channel.onmessage = () => { applySession(null); if (!publicGallery) void reloadSession(); };
+    const focus = () => { if (!publicGallery) void reloadSession(); };
     window.addEventListener("focus", focus);
     return () => { clearTimeout(initial); invalidateSessionChecks(); channel?.close(); channelRef.current = null; window.removeEventListener("focus", focus); };
-  }, [reloadSession, applySession, invalidateSessionChecks]);
+  }, [reloadSession, applySession, invalidateSessionChecks, publicGallery]);
   function notifySessionChanged() {
     channelRef.current?.postMessage("changed");
   }
@@ -72,9 +80,9 @@ export function App({ config }: { config: PublicConfig }) {
     applySession(null);
     setError("Logga in igen för att fortsätta.");
   })(path, init), [accountId, applySession]);
-  const path = window.location.pathname;
-  if (path === "/components") return <Frame><main className="content component-gallery"><h1>Komponenter</h1><BrowserFrontendExamples /></main></Frame>;
-  if (!auth.ready) return <Frame><main className="content"><p role="status">Laddar Förena…</p></main></Frame>;
+  const path = location.pathname;
+  if (path === "/components") return <Frame><main tabIndex={-1} className="content component-gallery"><h1>Komponenter</h1><BrowserFrontendExamples linkComponent={AppLink} /></main></Frame>;
+  if (!auth.ready) return <Frame><main tabIndex={-1} className="content"><p role="status">Laddar Förena…</p></main></Frame>;
 
   async function login(email?: string, password?: string) {
     setPending(true); setError(undefined);
@@ -83,12 +91,12 @@ export function App({ config }: { config: PublicConfig }) {
       if (!session) { setError("Inloggningen misslyckades. Försök igen."); return; }
       applySession(session); notifySessionChanged();
       if (path === "/login") {
-        window.history.replaceState(null, "", safeDestination(new URLSearchParams(window.location.search).get("next")));
+        navigate(safeDestination(new URLSearchParams(location.search).get("next")), { replace: true });
       }
     } catch { setError("Inloggningen kunde inte genomföras. Försök igen."); }
     finally { setPending(false); }
   }
-  if (!auth.session) return <Frame key="guest"><main className="auth-page"><section className="auth-card">
+  if (!auth.session) return <Frame key="guest"><main tabIndex={-1} className="auth-page"><section className="auth-card">
     <span className="brand-mark">F</span><p className="eyebrow">Förena</p><h1>Logga in</h1>
     <p>Logga in för att se dina aktiviteter och svara på kallelser.</p>
     <PasswordLoginForm onLogin={(email, password) => void login(email, password)} onPasskey={() => void login()} pending={pending} error={error} />
@@ -103,16 +111,16 @@ export function App({ config }: { config: PublicConfig }) {
     try {
       await authRequest("logout", {});
       applySession(null); notifySessionChanged();
-      window.history.replaceState(null, "", "/login");
+      navigate("/login", { replace: true });
     } catch { setError("Utloggningen misslyckades. Försök igen."); }
     finally { setPending(false); }
   }
   return <Frame key={auth.session.user.id} email={auth.session.user.email ?? undefined} logout={<button type="button" className="logout-button" aria-label="Logga ut från Förena" disabled={pending} onClick={() => void logout()}>{pending ? "Loggar ut…" : "Logga ut"}</button>}>
-    <main className="content" key={auth.session.user.id}>
+    <main tabIndex={-1} className="content" key={auth.session.user.id}>
       <p className="eyebrow">Personligt</p><h1>{!knownPath ? "Sidan finns inte" : path === "/" || path === "/login" ? "Mina aktiviteter" : "Kallelser"}</h1>
       {error ? <p role="alert">{error}</p> : null}
-      {!knownPath ? <a href="/">Till startsidan</a> : path === "/" || path === "/login" ? <MyActivitiesPage request={request} /> : validActivity.success ? <>
-        <p><a href="/">Till mina aktiviteter</a></p>
+      {!knownPath ? <AppLink href="/">Till startsidan</AppLink> : path === "/" || path === "/login" ? <MyActivitiesPage request={request} /> : validActivity.success ? <>
+        <p><AppLink href="/">Till mina aktiviteter</AppLink></p>
         <p>Svara för var och en och lägg till en kommentar om det behövs.</p>
         <ActivityInvitationResponse activityId={validActivity.data} cancelled={false} request={request} />
       </> : <p>Inga kallelser att visa här ännu. Öppna länken till en aktivitet för att se dina kallelser.</p>}

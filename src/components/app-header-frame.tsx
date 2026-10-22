@@ -1,10 +1,11 @@
 "use client";
+import type { NavigationLink } from "./navigation-link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useModalScrollLock } from "../lib/use-modal-scroll-lock";
 
 /** Shared responsive header, drawer and focus behavior, independent of routing/auth. */
-export function AppHeaderFrame({ homeHref = "/", sidebarNavigation = false, actions, children }: {
-  homeHref?: string; sidebarNavigation?: boolean; actions?: ReactNode; children: ReactNode;
+export function AppHeaderFrame({ homeHref = "/", sidebarNavigation = false, actions, children, linkComponent: Link = "a" }: {
+  homeHref?: string; sidebarNavigation?: boolean; actions?: ReactNode; children: ReactNode; linkComponent?: NavigationLink;
 }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -41,7 +42,7 @@ export function AppHeaderFrame({ homeHref = "/", sidebarNavigation = false, acti
   }, [open]);
 
   return <header className="topbar">
-    <a className="brand" href={homeHref} aria-label="Förena startsida"><span className="brand-mark">F</span><span>Förena</span></a>
+    <Link className="brand" href={homeHref} aria-label="Förena startsida"><span className="brand-mark">F</span><span>Förena</span></Link>
     <div className="topbar-actions">
       {actions}
       <button ref={triggerRef} className={`header-menu-trigger ${sidebarNavigation ? "sidebar-menu-trigger" : ""}`} type="button" aria-label={open ? "Stäng meny" : "Öppna meny"} aria-expanded={open} aria-controls="header-menu" onClick={() => setOpen((value) => !value)}>
