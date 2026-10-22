@@ -47,11 +47,14 @@ samma UTC-vecka, men startprovet körs alltid. Se
 [byggcachens regler](../docs/migration/actions-deployment.md#återanvändning-av-oförändrade-byggen).
 Det startar buildpacks native-image direkt mot en tillfällig lokal PostgreSQL och en
 syntetisk JWKS-server, kontrollerar DB/Auth-health, avbrott/återhämtning,
-saknad Bearer och avstängning. Migreringarna körs med JVM-JAR:en två gånger och sedan mot ett tomt schema vid webbstart.
+saknad Bearer och avstängning. Det gör även autentiserade verksamhetsanrop med
+en lokalt signerad token: tom översikt, aktivitet via enbart kallelse med tomma
+lagroller, aktivitetsdetaljer och tomma listor efter återkallad personåtkomst.
+Migreringarna körs med JVM-JAR:en två gånger och sedan mot ett tomt schema vid webbstart.
 Startprovet använder imagens ordinarie entrypoint med syntetisk lokal konfiguration.
 Provet kontrollerar också att runtime får sin konfiguration vid start
-och använder separata owner-/runtime-anslutningar vid start. Det är inte ett fullständigt inloggat
-verksamhets- eller HTTPS-prov av native-runtime.
+och använder separata owner-/runtime-anslutningar vid start. Browserinloggning
+och HTTPS provas separat; verksamhetsanropen här använder Bearer över lokal HTTP.
 Lokalt kan den genererade AOT-grafen också provas med
 `python3 backend/scripts/local-smoke.py --aot-runtime` efter `-Pnative package`.
 Det ersätter inte ett fullständigt native-image-startprov.
@@ -66,6 +69,12 @@ Första CI-provet byggde imagen men stoppades vid start med `Invalid logger
 interface`: den ärvda, villkorliga metadataregistreringen räckte inte för
 Hibernate Validator 9.1/JBoss Logging 3.6. Nästa prov kom förbi loggern men
 behövde även `Messages_$bundle`. Valideringen behålls aktiverad.
+
+API-DTO:ernas listfält använder Jacksons statiska typning för serialisering.
+JSON byggs från deklarerad `List<T>` i stället för att reflektera över konkreta
+Kotlin-implementationer som `EmptyList`. Tomma listor är fortfarande `[]` och
+vanliga Kotlin-listor kan användas i tjänsterna. Native-startprovet täcker också
+tomma nästlade lagroller, som den tidigare medlemskapsfixturen inte exponerade.
 
 Liquibase läser SQL-filernas attribut genom reflection. Native-metadata för
 `AbstractSQLChange` och `SQLFileChange` inkluderar därför deras deklarerade

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonValue
 import java.util.UUID
 import io.swagger.v3.oas.annotations.media.Schema
+import tools.jackson.databind.annotation.JsonSerialize
 import tools.jackson.databind.annotation.JsonDeserialize
 
 enum class InvitationResponse(@get:JsonValue val value: String) {
@@ -44,5 +45,8 @@ data class AccessibleInvitation(
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED, types = ["string", "null"]) val response_comment: String?,
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val name: String
 )
-data class MyInvitations(@get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val invitations: List<AccessibleInvitation>)
+data class MyInvitations(
+    @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC)
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val invitations: List<AccessibleInvitation>
+)
 data class ResponseChange(val response: String, val commentProvided: Boolean, val comment: String?)

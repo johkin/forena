@@ -22,6 +22,27 @@ JAR = ROOT / "backend/target/forena-api.jar"
 JAVA = str(Path(os.environ["JAVA_HOME"]) / "bin/java")
 
 
+def encoded(value):
+    return base64.urlsafe_b64encode(value).decode().rstrip("=")
+
+
+def fixture_token(issuer, subject, session, private_key):
+    header = encoded(json.dumps({"alg": "ES256", "kid": "local-smoke", "typ": "JWT"}).encode())
+    claims = encoded(json.dumps({"iss": issuer, "sub": subject, "aud": "authenticated",
+                                 "role": "authenticated", "session_id": session, "is_anonymous": False,
+                                 "iat": int(time.time()), "exp": int(time.time()) + 300}).encode())
+    message = f"{header}.{claims}"
+    signature = subprocess.run(["openssl", "dgst", "-sha256", "-sign", str(private_key)],
+                               input=message.encode(), capture_output=True, check=True).stdout
+    # OpenSSL emits ASN.1 DER integers; JWT ES256 uses two fixed-width integers.
+    assert signature[0] == 0x30 and signature[2] == 0x02
+    r_end = 4 + signature[3]
+    assert signature[r_end] == 0x02
+    r = int.from_bytes(signature[4:r_end], "big").to_bytes(32, "big")
+    s = int.from_bytes(signature[r_end + 2:], "big").to_bytes(32, "big")
+    return f"{message}.{encoded(r + s)}"
+
+
 class LocalKeys(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         if self.path != "/auth/v1/passkeys/authentication/options" or not getattr(self.server, "passkey_success", False):
@@ -36,16 +57,17 @@ class LocalKeys(http.server.BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
+        if self.path == "/auth/v1/user":
+            body = json.dumps({"id": self.server.subject, "is_anonymous": False}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(body)
+            return
         if self.path != "/auth/v1/.well-known/jwks.json":
             self.send_error(404)
             return
-        # Public P-256 generator point, synthetic fixture only. No private key
-        # or real Auth connection is needed by this packaged startup test.
-        encode = lambda value: base64.urlsafe_b64encode(bytes.fromhex(value)).decode().rstrip("=")
-        body = json.dumps({"keys": [{"kty": "EC", "crv": "P-256", "use": "sig", "alg": "ES256",
-                                    "kid": "local-smoke",
-                                    "x": encode("6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296"),
-                                    "y": encode("4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5")}]}).encode()
+        body = json.dumps({"keys": [self.server.jwk]}).encode()
         self.send_response(200 if self.server.available else 503)
         self.send_header("Content-Type", "application/json")
         self.end_headers()
@@ -154,6 +176,16 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
         keys.available = True
         threading.Thread(target=keys.serve_forever, daemon=True).start()
         issuer = f"http://127.0.0.1:{keys.server_port}/auth/v1"
+        keys.subject = str(uuid.uuid4())
+        with tempfile.TemporaryDirectory() as signing:
+            private_key = Path(signing) / "key.pem"
+            subprocess.run(["openssl", "ecparam", "-name", "prime256v1", "-genkey", "-noout", "-out", str(private_key)], check=True)
+            public = subprocess.run(["openssl", "pkey", "-in", str(private_key), "-pubout", "-outform", "DER"],
+                                    capture_output=True, check=True).stdout[-65:]
+            assert public[0] == 4
+            keys.jwk = {"kty": "EC", "crv": "P-256", "use": "sig", "alg": "ES256", "kid": "local-smoke",
+                        "x": encoded(public[1:33]), "y": encoded(public[33:])}
+            bearer = fixture_token(issuer, keys.subject, str(uuid.uuid4()), private_key)
         # Recreate an empty schema so JVM and native must migrate before serving HTTP.
         docker("exec", container, "psql", "-U", "postgres", "-v", "ON_ERROR_STOP=1", "-c",
                "drop schema forena cascade; create schema forena authorization forena_api_owner; revoke all on schema forena from public")
@@ -215,6 +247,43 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
                 keys.available = True
             with urllib.request.urlopen(f"http://127.0.0.1:{http_port}/actuator/health", timeout=2) as health:
                 assert health.status == 200
+            def read_private(path):
+                request = urllib.request.Request(f"http://127.0.0.1:{http_port}{path}", headers={"Authorization": f"Bearer {bearer}"})
+                try:
+                    with urllib.request.urlopen(request, timeout=5) as response:
+                        assert response.status == 200 and response.headers["Cache-Control"] == "no-store"
+                        return json.load(response)
+                except urllib.error.HTTPError as error:
+                    log.seek(0)
+                    raise AssertionError(f"GET {path} returned {error.code}:\n" + log.read()) from error
+
+            def seed(sql):
+                docker("exec", container, "psql", "-U", "postgres", "-v", "ON_ERROR_STOP=1", "-c", sql)
+
+            seed(f"insert into forena.account(subject) values('{keys.subject}')")
+            empty = read_private("/api/me/overview")
+            assert all(empty[name] == [] for name in ("activities", "organizations", "teams"))
+            organization, team, person, activity = [str(uuid.uuid4()) for _ in range(4)]
+            seed(f"""
+insert into forena.organization(id,name) values('{organization}','Local club');
+insert into forena.person(id,organization_id,display_name) values('{person}','{organization}','Local person');
+insert into forena.person_access(person_id,organization_id,subject,kind) values('{person}','{organization}','{keys.subject}','self');
+insert into forena.team(id,organization_id,name) values('{team}','{organization}','Local team');
+insert into forena.activity(id,organization_id,team_id,title,starts_at,ends_at) values('{activity}','{organization}','{team}','Local activity',now()+interval '1 hour',now()+interval '2 hours');
+insert into forena.invitation(id,organization_id,activity_id,person_id) values('{uuid.uuid4()}','{organization}','{activity}','{person}');
+""")
+            overview = read_private("/api/me/overview")
+            assert len(overview["activities"]) == 1 and overview["teams"] == []
+            assert overview["activities"][0]["team"]["roles"] == []
+            assert len(overview["activities"][0]["people"]) == 1
+            assert overview["activities"][0]["people"][0]["invitation"]["response"] == "pending"
+            assert overview["activities"][0]["people"][0]["invitation"]["response_comment"] is None
+            assert read_private(f"/api/activities/{activity}")["team"]["roles"] == []
+            seed(f"update forena.activity set invitation_send_at=now()+interval '1 hour' where id='{activity}'")
+            assert read_private(f"/api/activities/{activity}/my-invitations")["invitations"] == []
+            seed(f"update forena.person_access set active=false where subject='{keys.subject}'")
+            assert read_private("/api/me/activities")["activities"] == []
+            print("PASS: authenticated empty overview, invitation-only activity with empty team roles, details and revoked-access empty lists", flush=True)
             try:
                 urllib.request.urlopen(f"http://127.0.0.1:{http_port}/api/activities/00000000-0000-0000-0000-000000000001/my-invitations", timeout=2)
                 raise AssertionError("Private API accepted missing bearer")

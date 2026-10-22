@@ -3,6 +3,7 @@ package se.forena.api.activities
 import java.time.Instant
 import java.util.UUID
 import io.swagger.v3.oas.annotations.media.Schema
+import tools.jackson.databind.annotation.JsonSerialize
 
 data class PersonalOrganization(
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val id: UUID,
@@ -14,6 +15,7 @@ data class PersonalTeam(
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val id: UUID,
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val organization_id: UUID,
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val name: String,
+    @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC)
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val roles: List<String>
 )
 data class ActivityPerson(
@@ -33,11 +35,15 @@ data class PersonalActivity(
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val status: String,
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val organization: PersonalOrganization,
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val team: PersonalTeam,
+    @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC)
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val people: List<ActivityPerson>
 )
 data class PersonalOverview(
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val reference_time: Instant,
+    @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC)
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val activities: List<PersonalActivity>,
+    @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC)
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val organizations: List<PersonalOrganization>,
+    @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC)
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val teams: List<PersonalTeam>
 )
