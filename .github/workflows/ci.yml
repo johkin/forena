@@ -153,6 +153,14 @@ jobs:
           npm ci --prefix backend/contract --ignore-scripts
           npm run check --prefix backend/contract
 
+      - name: Retain verified migration JAR
+        uses: actions/upload-artifact@v7
+        with:
+          name: forena-migration-jar-${{ github.sha }}
+          path: backend/target/forena-api.jar
+          retention-days: 3
+          if-no-files-found: error
+
       - name: Retain API and architecture reports
         if: always()
         uses: actions/upload-artifact@v7
@@ -178,6 +186,12 @@ jobs:
           java-version: '25'
           cache: maven
           cache-dependency-path: backend/pom.xml
+
+      - name: Download verified migration JAR
+        uses: actions/download-artifact@v8
+        with:
+          name: forena-migration-jar-${{ github.sha }}
+          path: backend/target
 
       - name: Calculate backend build inputs
         id: backend-inputs

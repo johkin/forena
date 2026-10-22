@@ -15,7 +15,7 @@ type Props = {
 };
 
 export function TeamStatusCard({ teamName, activity, summary, upcomingActivities, openTasks, timeZone, referenceTime, onOpenActivity }: Props) {
-  const startFormatter = getFormatter(timeZone, "team-status-start", { weekday: "long", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const startFormatter = getFormatter(timeZone, { weekday: "long", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   const start = startFormatter.format(new Date(activity.gatheringAt ?? activity.startsAt));
   const weekLimit = new Date(referenceTime).getTime() + 7 * 24 * 60 * 60 * 1000;
   const nextSevenDays = upcomingActivities.filter((item) => new Date(item.startsAt).getTime() <= weekLimit).length;

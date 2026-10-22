@@ -95,6 +95,10 @@ Dokumentation och genererade filer påverkar inte nycklarna. Beroenden genom
 fortfarande ge ett frontendbygge. Alla befintliga tester, typkontroller,
 lintkontroller och databasprov körs fortsatt. Även en återanvänd native-image
 måste klara aktuellt start-/migrationsprov innan CI publicerar releaseartefakten.
+Backend-jobbet publicerar den verifierade migrations-JAR:en som en separat
+artefakt för aktuell commit. Native-jobbet hämtar alltid denna före startprovet,
+även vid cacheträff; det behöver då inte bygga om Java-koden bara för att köra
+JAR-baserade migrationssteg tillsammans med den återanvända native-imagen.
 
 Image-metadata skiljer på `sourceCommit` (ursprungligt bygge) och
 `verifiedCommit` (aktuell CI-commit), och lagrar `buildInputs` samt `imageId`.

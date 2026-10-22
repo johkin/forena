@@ -1,22 +1,32 @@
 const STOCKHOLM_TIME_ZONE = "Europe/Stockholm";
 
-// ⚡ Bolt: Cache Intl.DateTimeFormat instances.
-// Creating these is expensive (~1-2ms each), so caching them prevents main-thread blocking
-// during frequent renders (e.g., in team-overview and team-status-card).
+// Both maps are bounded because time zones may originate in request bodies.
+const CACHE_LIMIT = 128;
 const formatters = new Map<string, Intl.DateTimeFormat>();
-export function getFormatter(timeZone: string, optionsKey: string, options: Intl.DateTimeFormatOptions) {
-  const key = `${timeZone}:${optionsKey}`;
-  let formatter = formatters.get(key);
-  if (!formatter) {
-    formatter = new Intl.DateTimeFormat("sv-SE", { timeZone, ...options });
-    formatters.set(key, formatter);
+const timeZones = new Map<string, string>();
+
+function cached<T>(cache: Map<string, T>, key: string, create: () => T): T {
+  const value = cache.get(key) ?? create();
+  cache.delete(key);
+  cache.set(key, value);
+  if (cache.size > CACHE_LIMIT) {
+    cache.delete(cache.keys().next().value!);
   }
-  return formatter;
+  return value;
+}
+
+export function getFormatter(timeZone: string, options: Intl.DateTimeFormatOptions) {
+  const zone = options.timeZone ?? timeZone;
+  const canonicalZone = cached(timeZones, zone.toLowerCase(), () =>
+    new Intl.DateTimeFormat("sv-SE", { timeZone: zone }).resolvedOptions().timeZone);
+  const effectiveOptions = { ...options, timeZone: canonicalZone };
+  const key = JSON.stringify(Object.entries(effectiveOptions).sort(([a], [b]) => a.localeCompare(b)));
+  return cached(formatters, key, () => new Intl.DateTimeFormat("sv-SE", effectiveOptions));
 }
 
 export function formatDateTimeInZone(value: string | Date | null, timeZone: string) {
   if (!value) return null;
-  const formatter = getFormatter(timeZone, "default-datetime", {
+  const formatter = getFormatter(timeZone, {
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -33,7 +43,7 @@ export function formatStockholmDateTime(value: string | Date | null) {
 }
 
 function partsInStockholm(value: Date) {
-  const formatter = getFormatter(STOCKHOLM_TIME_ZONE, "stockholm-parts", {
+  const formatter = getFormatter(STOCKHOLM_TIME_ZONE, {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",

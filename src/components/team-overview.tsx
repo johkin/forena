@@ -34,9 +34,9 @@ type TeamItem = {
 export function TeamOverview({ teamName, activity, summary, upcomingActivities, tasks, signals = [], timeZone, referenceTime, reminderPending, canManageInvitations, canManageAttendance, onOpenActivity, onOpenAttendance, onSendReminder, missingAttendanceActivities = [] }: Props) {
   const visibleSignals = canManageInvitations ? signals : [];
 
-  const startFormatter = getFormatter(timeZone, "team-overview-start", { weekday: "long", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-  const missingFormatter = getFormatter(timeZone, "team-overview-missing", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-  const taskFormatter = getFormatter(timeZone, "team-overview-task", { day: "numeric", month: "long" });
+  const startFormatter = getFormatter(timeZone, { weekday: "long", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const missingFormatter = getFormatter(timeZone, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const taskFormatter = getFormatter(timeZone, { day: "numeric", month: "long" });
 
   const start = activity ? startFormatter.format(new Date(activity.gatheringAt ?? activity.startsAt)) : undefined;
   const weekLimit = new Date(referenceTime).getTime() + 7 * 24 * 60 * 60 * 1000;
