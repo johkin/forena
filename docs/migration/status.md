@@ -1,5 +1,51 @@
 # Migreringsstatus
 
+## Min översikt med medlemskap, kalender och roller, 2026-10-22
+
+Implementerat på `feat/personal-dashboard` från main `3e5ae96`:
+
+- Migration 011 inför datumgiltigt lagmedlemskap, egen lagåtkomst och
+  föreningsroller samt plats, beskrivning, samling, svarstid och föreningstidszon.
+  Nya tabeller använder owner-rollens gemensamma runtime-default grants.
+- `GET /api/me/overview` ger hela det behöriga pågående/kommande underlaget i en
+  read-only repeatable-read-snapshot. Personrader finns även utan kallelse.
+  Endast skickade kallelser lämnas ut. Lagläsning ger inte svarsrätt för andra;
+  delegation ärver inte personens fristående lagåtkomst. Lokalt datum styr
+  medlemskapets giltighet. Fler än 20 000 aktiviteter ger 503, inte delräknare.
+- `GET /api/activities/{id}` ger behöriga detaljer även utan kallelse; okänd/
+  främmande aktivitet ger 404. Det äldre list-API:t finns kvar för kompatibilitet.
+- Next och Vite delar `PersonalHome`, `PersonalOverview`, `TeamCalendar` och
+  svarskomponent/styling. Min översikt har Behöver svar, Agenda/Kalender,
+  Kommande aktiviteter och rollgenvägar. Svar och räknare uppdateras i båda
+  sektionerna från samma bekräftade tillstånd. En kallelse har gemensamt
+  skrivlås även när den visas två gånger. Kommentar bevaras vid snabbsvar.
+- Förenings-/laglänkar öppnar personligt filtrerade läsvyer, inte full migrerad
+  administration. Klockan öppnar aktuella kallelser. Extern pushleverans,
+  arbetspass och AI/MCP återstår; AI-länken är fortsatt dold i Vite.
+
+Lokalt godkänt: 1 151 frontendtester, typkontroll, lint och Next-/Vite-byggen.
+Maven verify med opt-in-browserprov körde 75 tester utan fel eller överhoppning,
+inklusive tom installation och uppgradering från baslinjer 1–10, default grants,
+nekad DDL/klientåtkomst, datum/tidszon, roller utan lagrelation, eget/delegerat
+urval och främmande aktivitet. 25 Python-releasekontroller passerar. Kontraktet
+är genererat från Spring och exporterat till TypeScript.
+
+Riktig lokal GraalVM 25.0.4 `native:compile` passerar. Den nya native-binären
+klarar både start/migrering av ett tomt PostgreSQL-schema och samma riktiga
+browser → native Kotlin → PostgreSQL → browser-kedja. Det senare körde alla
+50 ApiTest-fall utan fel/överhoppning, med provider-mock men verklig databas,
+sessionscookie, läsning, skrivning, omläsning, CSRF-avvisning och logout.
+Chromium-regressionen med kontrollerad Auth/API passerar samtidiga svarsvyer,
+sista svaret, kommentarer, kalender, arbetsytor, kontobyte och mobil/desktop
+på fem bredder utan horisontell scroll. Bilderna är granskade mot målbilden.
+
+Next-bygget kräver fungerande underprocesser utanför sandboxen här. Inget lokalt
+buildpack-/OCI-bygge kördes; CI behåller sitt obligatoriska native-image- och
+startprov. Gamla Supabase-schemats reset/pgTAP är inte omkörda; det privata
+Liquibase-schemat har verifierats med riktig lokal PostgreSQL. Ingen moln-
+migration, dataimport eller deployment har körts. CI och målmiljöacceptans för
+den publicerade ändringen redovisas separat.
+
 ## Fastställd målbild för startsidan, 2026-10-22
 
 Användarens mobilbilder preciserar [Min översikt](personal-homepage-target.md):

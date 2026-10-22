@@ -10,7 +10,7 @@ function elements(node:unknown):ReactElement<Record<string,unknown>>[]{
  const el=node as ReactElement<Record<string,unknown>>;return [el,...elements(el.props.children)];
 }
 const item={member:{id:"person-one",displayName:"Spelare Ett"},activity:{id:"activity-one"},invitation:{id:"invitation-one",response:"pending",responseComment:"Bevara kommentaren"}} as FamilyActivity;
-function render(props:Partial<Extract<Parameters<typeof OverviewInvitationResponse>[0], { item:FamilyActivity }>>={}){hooks.index=0;return elements(OverviewInvitationResponse({item,readOnly:false,...props}));}
+function render(props:Partial<{ item:FamilyActivity; readOnly:boolean; demo:boolean; onAnswered:()=>void }>={}){hooks.index=0;return elements(OverviewInvitationResponse({item,readOnly:false,...props}));}
 beforeEach(()=>{vi.unstubAllGlobals();hooks.values=[undefined,false,undefined];hooks.lock.current=false;});
 it("answers only this person's invitation, omits comment, and marks the confirmed response",async()=>{
  const fetch=vi.fn().mockResolvedValue({ok:true});vi.stubGlobal("fetch",fetch);const onAnswered=vi.fn();
@@ -27,6 +27,7 @@ it("keeps the previous answer and reports an error when saving fails",async()=>{
  await vi.waitFor(()=>expect(hooks.values[2]).toBeTruthy());
  expect(render().find(e=>e.props.role==="alert")).toBeDefined();expect(onAnswered).not.toHaveBeenCalled();
  expect(render().filter(e=>e.props["aria-pressed"]===true)).toHaveLength(0);
+ expect(render({item:{...item,invitation:{...item.invitation!,response:"accepted"}}}).find(e=>e.props.role==="alert")).toBeUndefined();
 });
 it("prevents a second write while one is in flight",async()=>{
  let resolve!:(value:unknown)=>void;const fetch=vi.fn(()=>new Promise(r=>{resolve=r;}));vi.stubGlobal("fetch",fetch);

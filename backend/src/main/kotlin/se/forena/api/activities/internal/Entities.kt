@@ -59,3 +59,34 @@ data class ActivityOverviewRow(
     val id: UUID, val title: String, val startsAt: Instant, val endsAt: Instant,
     val organizationName: String, val teamName: String
 )
+
+@Table(value = "organization", schema = "forena")
+data class OrganizationEntity(@Id val id: UUID, val name: String, val timeZone: String)
+
+@Table(value = "team", schema = "forena")
+data class TeamEntity(@Id val id: UUID, val organizationId: UUID, val name: String)
+
+@Table(value = "team_membership", schema = "forena")
+data class TeamMembershipEntity(
+    @Id val id: UUID, val organizationId: UUID, val teamId: UUID, val personId: UUID,
+    val role: String, val startsOn: java.time.LocalDate, val endsOn: java.time.LocalDate?, val active: Boolean
+)
+
+@Table(value = "team_access_assignment", schema = "forena")
+data class TeamAccessAssignmentEntity(
+    @Id val id: UUID, val organizationId: UUID, val teamId: UUID, val personId: UUID,
+    val startsOn: java.time.LocalDate, val endsOn: java.time.LocalDate?, val active: Boolean
+)
+
+@Table(value = "organization_member", schema = "forena")
+data class OrganizationMemberEntity(
+    @Id val id: UUID, val organizationId: UUID, val subject: UUID, val role: String, val active: Boolean
+)
+
+/** Authorized activity metadata; person rows are assembled from independently scoped relations. */
+data class PersonalActivityRow(
+    val id: UUID, val organizationId: UUID, val teamId: UUID, val title: String,
+    val startsAt: Instant, val endsAt: Instant, val invitationSendAt: Instant?,
+    val gatheringAt: Instant?, val responseDueAt: Instant?, val location: String,
+    val description: String, val status: String
+)

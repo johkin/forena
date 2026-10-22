@@ -21,6 +21,22 @@ relationer och tokenmetadata ger inga rättigheter i sig. Dagens tilldelningar
 har underlagen `self` och `guardian`; ombud/stödperson kräver egna beslut om
 rättigheter och livscykel innan de kan införas. Se ADR-020.
 
+## Medlemskap, lagåtkomst och personliga läsvyer
+
+Migration 011 vidgar aktivitetens läsurval med datumgiltiga lagmedlemskap och
+kontots egna lagåtkomsttilldelningar. Delegerad personåtkomst innebär inte att
+kontot ärver en annan persons fristående lagåtkomst. Aktivitetens lokala datum
+avgör medlemskapets giltighet; organisationerna binds med sammansatta FK:er.
+Kontots organisation-/lagroller visas i genvägar men utökar inte rätt att svara
+för andra personer. Samma `InvitationService` kontrollerar varje skrivning.
+
+`/api/me/overview` läser metadata, relationer och kallelser i en behörig,
+read-only repeatable-read-snapshot. Endast behöriga personer lämnas ut, även
+när kallelsen saknas; framtida kallelser döljs. Främmande aktivitets-ID ger 404.
+Snapshoten är no-store och sparas inte beständigt i browsern. Föregående kontos
+underlag avmonteras vid kontobyte. En gammal GET får inte återställa ett äldre
+svar efter bekräftad PUT. Två representationer av samma kallelse delar skrivlås.
+
 ## Separat browserpilot mot Kotlin
 
 `frontend/` hanterar UI och WebAuthn-dialogen. Kotlin hanterar Auth-anrop och

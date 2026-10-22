@@ -16,12 +16,14 @@ separata personrader även utan kallelse. Detaljerade acceptansfall finns i mål
 1. Rätta befintlig startsida: aktivitetslista med varje behörig persons skickade
    kallelse, aktuellt svar och direkt klickbara svar. Bevara kommentarer,
    sessionskontroller, fel per person och navigering utan dokumentomladdning.
-2. [M07B](tasks/m07b-personal-activity-scope.md): utöka aktivitetsurvalet med datumgiltiga lagmedlemskap och egen lagåtkomst.
+2. [M07B](tasks/m07b-personal-activity-scope.md) implementeras med datumgiltiga lagmedlemskap och egen lagåtkomst.
    Visa publicerade aktiviteter även utan kallelse; en läsrätt ger inte svarsrätt
    för andra personer. Migrera nödvändiga medlemskaps-/publiceringsmodeller först.
-3. Slutför startsidans aktivitetssammanhang: riktiga detaljer, plats, samling,
-   föreningstidszon, Behöver svar över hela urvalet, kalender och lag/föreningar.
-   Bokade arbetsuppgifter läggs till tillsammans med M11:s behörighetsmodell.
+3. Startsidan delar nu `PersonalHome` med Next: detaljer, plats, samling,
+   föreningstidszon, Behöver svar över hela urvalet, kalender och rollgenvägar.
+   Driftacceptans återstår för denna release. Bokade arbetsuppgifter läggs till
+   tillsammans med M11:s behörighetsmodell; extern notifiering och AI/MCP kräver
+   sina verkliga integrationer.
 4. Fortsätt med funktionerna i matrisen. Dela stora områden i egna små uppgifter;
    aktivitetsskapande, serier och import är separata leveranser. M06/M22G:s
    leverans- och driftgrindar behövs fortfarande för notifieringar och pilot.
@@ -33,8 +35,8 @@ att motsvarande område i Next fortfarande innehåller funktioner som ska flytta
 
 | Område | Referens i Next | Kotlin-webb och återstående funktioner | Plan |
 | --- | --- | --- | --- |
-| Personlig aktivitetslista och kallelsesvar | `src/data/personal-dashboard.ts`, `PersonalOverview`, `OverviewInvitationResponse` | Delvis: kallelsekopplad lista och svar. Denna uppföljning lägger skickade kallelser och direktsvar på startsidan. Aktiviteter utan kallelse via medlemskap/lagåtkomst återstår. | M07A och nästa leverans ovan |
-| Komplett personlig översikt | `PersonalDashboard`, `src/data/personal-dashboard.ts` | Återstår: fullständigt urval, Behöver svar, kalender, lokala tider, aktivitetens detaljer samt Mina lag och föreningar. | Uppföljning M07A/M18B |
+| Personlig aktivitetslista och kallelsesvar | `src/data/personal-dashboard.ts`, `PersonalOverview`, `OverviewInvitationResponse` | Implementerat i denna leverans: datumgiltiga medlemskap/egen lagåtkomst, namngivna personrader utan kallelse, dolda framtida kallelser och synkroniserade direktsvar. Inloggat driftprov återstår. | M07A och nästa leverans ovan |
+| Komplett personlig översikt | `PersonalDashboard`, `src/data/personal-dashboard.ts` | Implementerat i denna leverans: komplett personligt läsurval, Behöver svar, kalender, lokala tider, detaljer och Mina lag och föreningar. Arbetspass, extern notifiering/AI-anslutning och fullständiga administrativa arbetsytor är fortsatt egna områden. | Uppföljning M07A/M18B |
 | Konto och personkopplingar | `src/app/login`, `profile`, `setup`, `passkey/setup`, `connect` | Delvis: lösenords-/passkey-login, logout och serversessioner. Profil, kontouppsättning, registrering av passkeys och övriga kontoflöden ska inventeras och flyttas. | M03 samt egna följduppgifter |
 | Medlemskap och ansökningar | `src/lib/membership`, `src/app/o/[organizationSlug]/join`, ansöknings-/inbjudningsrutter | Återstår: ansökan, verifiering, inbjudan, granskning, medlemskap och person-/lagkopplingars datumgiltighet. | M04 samt egna följduppgifter |
 | Förenings-, sektions- och lagvyer | `src/data/team-dashboard.ts`, `src/data/general-workspace.ts`, `src/app/o` | Återstår: arbetsytor, medlemslistor, undergrupper och roller, med separata läs-/skrivgränser. | M04/M18B samt egna följduppgifter |

@@ -1,14 +1,14 @@
 import type { ParticipationFetch } from "../../src/components/activity-invitation-response";
 
 const uuid = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
-const reads = new RegExp(`^/api/activities/${uuid}/my-invitations$`, "i");
+const reads = new RegExp(`^/api/activities/${uuid}(?:/my-invitations)?$`, "i");
 const writes = new RegExp(`^/api/invitations/${uuid}/respond$`, "i");
 
 /** Only allowlisted, same-origin API calls receive the HttpOnly session cookie. */
 export function createApiFetch(readAccount: () => Promise<string | null>, unauthorized: () => void, transport: typeof fetch = fetch): ParticipationFetch {
   return async (path, init = {}) => {
     const method = init.method ?? "GET";
-    if (!((method === "GET" && (reads.test(path) || /^\/api\/me\/activities(?:\?offset=\d{1,6})?$/.test(path))) || (method === "PUT" && writes.test(path)))) {
+    if (!((method === "GET" && (reads.test(path) || path === "/api/me/overview" || /^\/api\/me\/activities(?:\?offset=\d{1,6})?$/.test(path))) || (method === "PUT" && writes.test(path)))) {
       throw new Error("Unsupported API request");
     }
     const account = await readAccount();
@@ -40,5 +40,5 @@ export function createApiFetch(readAccount: () => Promise<string | null>, unauth
 }
 
 export function safeDestination(value: string | null) {
-  return value === "/" || value === "/components" || (value !== null && new RegExp(`^/activities/${uuid}$`, "i").test(value)) ? value! : "/";
+  return value === "/" || value === "/components" || value === "/notifications" || (value !== null && new RegExp(`^/(?:activities|organizations|teams)/${uuid}$`, "i").test(value)) ? value! : "/";
 }

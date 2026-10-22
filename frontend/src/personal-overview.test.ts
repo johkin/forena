@@ -1,0 +1,21 @@
+import { expect,it } from "vitest";
+import { confirmedAnswer, overviewItems, type Overview } from "./personal-overview";
+const data:Overview={reference_time:"2029-12-01T00:00:00Z",organizations:[],teams:[],activities:[{
+ id:"a",title:"Träning",starts_at:"2030-01-01T10:00:00Z",ends_at:"2030-01-01T12:00:00Z",gathering_at:null,response_due_at:null,location:"Örvallen",description:"",status:"scheduled",
+ organization:{id:"o",name:"Klubb",time_zone:"Europe/Stockholm",role:null},team:{id:"t",name:"F2016",organization_id:"o",roles:[]},
+ people:[{id:"p1",name:"Johan",invitation:{id:"i1",person_id:"p1",name:"Johan",response:"pending",response_comment:null}},
+ {id:"p2",name:"Tilda",invitation:{id:"i2",person_id:"p2",name:"Tilda",response:"declined",response_comment:"Hämtas senare"}},
+ {id:"p3",name:"Robin",invitation:null}]
+}]};
+it("keeps named person rows independent of invitations and preserves club-local metadata",()=>{
+ const rows=overviewItems(data.activities);
+ expect(rows).toHaveLength(3);expect(rows[2].member.displayName).toBe("Robin");expect(rows[2].invitation).toBeUndefined();
+ expect(rows[0].organization?.timeZone).toBe("Europe/Stockholm");expect(rows[0].activity.location).toBe("Örvallen");
+});
+it("updates only the server-confirmed person's answer, retaining comments and unrelated people",()=>{
+ const updated=confirmedAnswer(data,"i2","accepted");
+ expect(updated.activities[0].people[1].invitation?.response).toBe("accepted");
+ expect(updated.activities[0].people[1].invitation?.response_comment).toBe("Hämtas senare");
+ expect(updated.activities[0].people[0].invitation?.response).toBe("pending");
+ expect(data.activities[0].people[1].invitation?.response).toBe("declined");
+});

@@ -2,22 +2,23 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { useLocation, useNavigate } from "react-router";
 import { AppLink } from "./app-link";
 import { z } from "zod";
+import { ActivityDetails } from "./activity-details";
 import { MyActivitiesPage } from "./my-activities";
 import { AppHeaderFrame } from "../../src/components/app-header-frame";
 import { AppShellFrame } from "../../src/components/app-shell-frame";
 import { AppFooter } from "../../src/components/app-footer";
 import { SessionMenu } from "../../src/components/session-menu";
 import { PasswordLoginForm } from "../../src/components/password-login-form";
-import { ActivityInvitationResponse, type ParticipationFetch } from "../../src/components/activity-invitation-response";
+import { type ParticipationFetch } from "../../src/components/activity-invitation-response";
 import { BrowserFrontendExamples } from "../../src/components/browser-frontend-examples";
 import { createApiFetch, safeDestination } from "./api";
 import type { PublicConfig } from "./config";
 import { authRequest, parseSession, passkeyLogin, type SessionView } from "./session";
 
 function Frame({ children, email, logout }: { children: ReactNode; email?: string; logout?: ReactNode }) {
-  const menu = <SessionMenu linkComponent={AppLink} accountEmail={email} logout={logout} />;
+  const menu = <SessionMenu homeLabel="Min översikt" linkComponent={AppLink} accountEmail={email} logout={logout} />;
   return <><div className="app-page"><AppShellFrame sidebar={menu}
-    header={<AppHeaderFrame linkComponent={AppLink} sidebarNavigation actions={!email ? <AppLink className="secondary" href="/login">Logga in</AppLink> : null}>{menu}</AppHeaderFrame>}>
+    header={<AppHeaderFrame linkComponent={AppLink} sidebarNavigation actions={!email ? <AppLink className="secondary" href="/login">Logga in</AppLink> : <AppLink className="notification-trigger" href="/notifications" aria-label="Visa kallelser som behöver svar"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg></AppLink>}>{menu}</AppHeaderFrame>}>
     {children}
   </AppShellFrame></div><AppFooter showConnect={false} /></>;
 }
@@ -102,10 +103,14 @@ export function App({ config }: { config: PublicConfig }) {
     <PasswordLoginForm onLogin={(email, password) => void login(email, password)} onPasskey={() => void login()} pending={pending} error={error} />
   </section></main></Frame>;
 
+  const workspaceMatch = /^\/(organizations|teams)\/([^/]+)$/.exec(path);
+  const workspaceId=z.uuid().safeParse(workspaceMatch?.[2]);
+  const workspace=workspaceMatch && workspaceId.success ? {kind:workspaceMatch[1]==="teams" ? "team" as const : "organization" as const,id:workspaceId.data} : undefined;
+  const homePath=path==="/" || path==="/login" || Boolean(workspace) || path==="/notifications";
   const match = /^\/activities\/([^/]+)$/.exec(path);
   const activityId = match?.[1] ?? (path === "/migration/participation" ? config.activityId : undefined);
   const validActivity = z.uuid().safeParse(activityId);
-  const knownPath = path === "/" || path === "/login" || path === "/migration/participation" || Boolean(match);
+  const knownPath = homePath || path === "/migration/participation" || Boolean(match);
   async function logout() {
     setPending(true); setError(undefined);
     try {
@@ -116,13 +121,11 @@ export function App({ config }: { config: PublicConfig }) {
     finally { setPending(false); }
   }
   return <Frame key={auth.session.user.id} email={auth.session.user.email ?? undefined} logout={<button type="button" className="logout-button" aria-label="Logga ut från Förena" disabled={pending} onClick={() => void logout()}>{pending ? "Loggar ut…" : "Logga ut"}</button>}>
-    <main tabIndex={-1} className="content" key={auth.session.user.id}>
-      <p className="eyebrow">Personligt</p><h1>{!knownPath ? "Sidan finns inte" : path === "/" || path === "/login" ? "Mina aktiviteter" : "Kallelser"}</h1>
+    <main tabIndex={-1} className={`content ${homePath ? "personal-dashboard" : ""}`} key={auth.session.user.id}>
+      {!homePath ? <><p className="eyebrow">Personligt</p><h1>{!knownPath ? "Sidan finns inte" : "Kallelser"}</h1></> : null}
       {error ? <p role="alert">{error}</p> : null}
-      {!knownPath ? <AppLink href="/">Till startsidan</AppLink> : path === "/" || path === "/login" ? <MyActivitiesPage request={request} /> : validActivity.success ? <>
-        <p><AppLink href="/">Till mina aktiviteter</AppLink></p>
-        <p>Svara för var och en och lägg till en kommentar om det behövs.</p>
-        <ActivityInvitationResponse activityId={validActivity.data} cancelled={false} request={request} />
+      {!knownPath ? <AppLink href="/">Till startsidan</AppLink> : homePath ? <MyActivitiesPage request={request} workspace={workspace} notifications={path==="/notifications"} /> : validActivity.success ? <>
+        <ActivityDetails key={validActivity.data} activityId={validActivity.data} request={request} />
       </> : <p>Inga kallelser att visa här ännu. Öppna länken till en aktivitet för att se dina kallelser.</p>}
     </main>
   </Frame>;

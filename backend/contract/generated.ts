@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/activities/{activityId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Activity details authorized through personal invitations, dated membership or own team access. Reading never grants response rights for another person. Unknown/unauthorized IDs return 404. No-store. */
+        get: operations["getPersonalActivity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/activities/{activityId}/my-invitations": {
         parameters: {
             query?: never;
@@ -140,6 +157,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/me/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Complete authorized upcoming overview, including dated team memberships and own team access. Person rows exist independently of invitations. Only sent personal invitations are exposed. No 90-day cutoff or first-page counts. More than 20000 activities fails with 503 rather than returning an incomplete overview. No-store. */
+        get: operations["getPersonalOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -153,6 +187,12 @@ export interface components {
             /** @enum {string} */
             response: "pending" | "accepted" | "declined";
             response_comment: string | null;
+        };
+        ActivityPerson: {
+            /** Format: uuid */
+            id: string;
+            invitation: components["schemas"]["AccessibleInvitation"] | null;
+            name: string;
         };
         ApiError: {
             error: string;
@@ -209,6 +249,47 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        PersonalActivity: {
+            description: string;
+            /** Format: date-time */
+            ends_at: string;
+            /** Format: date-time */
+            gathering_at: string | null;
+            /** Format: uuid */
+            id: string;
+            location: string;
+            organization: components["schemas"]["PersonalOrganization"];
+            people: components["schemas"]["ActivityPerson"][];
+            /** Format: date-time */
+            response_due_at: string | null;
+            /** Format: date-time */
+            starts_at: string;
+            status: string;
+            team: components["schemas"]["PersonalTeam"];
+            title: string;
+        };
+        PersonalOrganization: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            role: string | null;
+            time_zone: string;
+        };
+        PersonalOverview: {
+            activities: components["schemas"]["PersonalActivity"][];
+            organizations: components["schemas"]["PersonalOrganization"][];
+            /** Format: date-time */
+            reference_time: string;
+            teams: components["schemas"]["PersonalTeam"][];
+        };
+        PersonalTeam: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: uuid */
+            organization_id: string;
+            roles: string[];
+        };
         RespondToInvitationRequest: {
             /** @description Omitted preserves the comment; null or blank clears it. Trimmed and truncated to 500 Unicode code points. Pending always clears it. */
             comment?: string | null;
@@ -224,6 +305,28 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getPersonalActivity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                activityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonalActivity"];
+                };
+            };
+        };
+    };
     getMyInvitations: {
         parameters: {
             query?: never;
@@ -538,6 +641,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getPersonalOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonalOverview"];
                 };
             };
         };

@@ -52,18 +52,33 @@ Förena byggs som en multi-tenant-applikation där varje skrivning går genom et
 validerat applikationskommando. Gränssnitt och AI-assistent använder samma
 kommandon; AI:n får aldrig direkt databasåtkomst.
 
-Den nya webbens startsida visar **Mina aktiviteter** via `GET /api/me/activities`.
+Den nya webbens startsida visar **Min översikt** via `GET /api/me/overview`.
+`PersonalHome`, `PersonalOverview` och `TeamCalendar` delas med Next-appen.
+Sidan har Behöver svar, Agenda/Kalender, Kommande aktiviteter och Mina lag och
+föreningar. Varje berörd person har en rad, även utan kallelse. Ett gemensamt
+bekräftat svarstillstånd uppdaterar båda sektionerna; ett gemensamt skrivlås
+hindrar samtidiga svar för samma kallelse från de två representationerna.
+
 `PersonAccessService` härleder egen och delegerad personåtkomst; familj är inte
-ett backendbegrepp. Relationen `guardian` är ett möjligt underlag för en aktiv
-åtkomsttilldelning. Inga nya relationstyper får rättigheter automatiskt.
-Översikten använder en avgränsad Spring Data JDBC-läsprojektion och återanvänder
-`MyActivityList` på startsidan och `/components`. API-svaret innehåller också
-skickade kallelser för behöriga personer i en sidavgränsad batch.
-`OverviewInvitationResponse` återanvänds från Next för direkta svar; Vite skickar
-sin konto-/CSRF-kontrollerade request-adapter. Framtida kallelser lämnas inte ut.
-Se [funktionell likvärdighet](migration/feature-parity.md) för återstående
-Next-funktioner och ADR-020 för urval,
-sidindelning och skillnader mot gamla översikten.
+ett backendbegrepp. `team_membership` ger datumgiltig aktivitetsläsning för
+behöriga personer. `team_access_assignment` används bara för kontots egna
+personer, inte som en ärvd fullmakt genom delegation. `organization_member`
+ger föreningsroller i genvägarna. Inget av detta utökar personens svarsrätt.
+Datum jämförs med aktivitetens start i föreningens `time_zone`.
+
+En read-only repeatable-read-transaktion ger aktiviteter, personrader,
+kallelser och genvägar från samma behöriga snapshot. Det finns ingen
+90-dagarsgräns eller 50-postersräknare i den nya översikten. Fler än 20 000
+aktiviteter ger 503 i stället för missvisande deldata. Metadata och relationer
+läses i gemensamma repository-frågor, utan per-aktivitet-anrop. Bara skickade
+personliga kallelser lämnas ut. `GET /api/activities/{id}` separerar rätt att
+läsa detaljer från rätt att svara och fungerar även utan en kallelse.
+
+Förenings-/laglänkar öppnar en avgränsad personlig läsvy i Kotlin-webben;
+fullständig förenings-/lagadministration är fortfarande ett annat område i
+funktionsmatrisen. Headerns klocka öppnar aktuella kallelser, inte en ny push-
+leverans. AI/MCP-anslutning, extern notifiering och arbetspass återstår i sina
+migreringsuppgifter. Det gamla `/api/me/activities` finns kvar för kompatibilitet.
 
 Kotlin-reglerna i AGENTS.md och ADR-022 gäller gemensamt: standardundantag för
 vanliga fel, ramverkets undantag för Auth/transport och `*Entity` för alla
