@@ -3,6 +3,7 @@
 import type { Activity, InvitationSummary, TeamTask } from "@/domain/club";
 import type { TeamSignal } from "@/lib/capability-signals";
 import { CapabilitySignalList } from "./capability-signal-list";
+import { getFormatter } from "@/lib/date-time";
 
 type Props = {
   teamName: string;
@@ -32,7 +33,12 @@ type TeamItem = {
 
 export function TeamOverview({ teamName, activity, summary, upcomingActivities, tasks, signals = [], timeZone, referenceTime, reminderPending, canManageInvitations, canManageAttendance, onOpenActivity, onOpenAttendance, onSendReminder, missingAttendanceActivities = [] }: Props) {
   const visibleSignals = canManageInvitations ? signals : [];
-  const start = activity ? new Intl.DateTimeFormat("sv-SE", { timeZone, weekday: "long", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(activity.gatheringAt ?? activity.startsAt)) : undefined;
+
+  const startFormatter = getFormatter(timeZone, { weekday: "long", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const missingFormatter = getFormatter(timeZone, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const taskFormatter = getFormatter(timeZone, { day: "numeric", month: "long" });
+
+  const start = activity ? startFormatter.format(new Date(activity.gatheringAt ?? activity.startsAt)) : undefined;
   const weekLimit = new Date(referenceTime).getTime() + 7 * 24 * 60 * 60 * 1000;
   const nextSevenDays = upcomingActivities.filter((item) => new Date(item.startsAt).getTime() <= weekLimit).length;
   const items: TeamItem[] = [];
@@ -41,7 +47,7 @@ export function TeamOverview({ teamName, activity, summary, upcomingActivities, 
       id: `attendance:${missing.id}`,
       kind: "attendance",
       title: `Rapportera närvaro: ${missing.title}`,
-      meta: `Aktiviteten startade ${new Intl.DateTimeFormat("sv-SE", { timeZone, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(missing.startsAt))}`,
+      meta: `Aktiviteten startade ${missingFormatter.format(new Date(missing.startsAt))}`,
       onClick: () => onOpenAttendance(missing),
     });
   }
@@ -52,7 +58,7 @@ export function TeamOverview({ teamName, activity, summary, upcomingActivities, 
       kind: "invitation",
       title: `${summary.pending} har inte svarat på kallelsen`,
       meta: summary.accepted > 0
-        ? `${summary.accepted} kommer hittills${activity.responseDueAt ? ` · svar senast ${new Intl.DateTimeFormat("sv-SE", { timeZone, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(activity.responseDueAt))}` : ""}`
+        ? `${summary.accepted} kommer hittills${activity.responseDueAt ? ` · svar senast ${missingFormatter.format(new Date(activity.responseDueAt))}` : ""}`
         : "Inga ja-svar ännu",
       onClick: () => onOpenActivity(activity),
     });
@@ -63,7 +69,7 @@ export function TeamOverview({ teamName, activity, summary, upcomingActivities, 
       id: `task:${task.id}`,
       kind: "task",
       title: task.title,
-      meta: `${task.createdByLabel} · senast ${new Intl.DateTimeFormat("sv-SE", { timeZone, day: "numeric", month: "long" }).format(new Date(task.dueAt))}`,
+      meta: `${task.createdByLabel} · senast ${taskFormatter.format(new Date(task.dueAt))}`,
     });
   }
 

@@ -1,9 +1,32 @@
 const STOCKHOLM_TIME_ZONE = "Europe/Stockholm";
 
+// Both maps are bounded because time zones may originate in request bodies.
+const CACHE_LIMIT = 128;
+const formatters = new Map<string, Intl.DateTimeFormat>();
+const timeZones = new Map<string, string>();
+
+function cached<T>(cache: Map<string, T>, key: string, create: () => T): T {
+  const value = cache.get(key) ?? create();
+  cache.delete(key);
+  cache.set(key, value);
+  if (cache.size > CACHE_LIMIT) {
+    cache.delete(cache.keys().next().value!);
+  }
+  return value;
+}
+
+export function getFormatter(timeZone: string, options: Intl.DateTimeFormatOptions) {
+  const zone = options.timeZone ?? timeZone;
+  const canonicalZone = cached(timeZones, zone.toLowerCase(), () =>
+    new Intl.DateTimeFormat("sv-SE", { timeZone: zone }).resolvedOptions().timeZone);
+  const effectiveOptions = { ...options, timeZone: canonicalZone };
+  const key = JSON.stringify(Object.entries(effectiveOptions).sort(([a], [b]) => a.localeCompare(b)));
+  return cached(formatters, key, () => new Intl.DateTimeFormat("sv-SE", effectiveOptions));
+}
+
 export function formatDateTimeInZone(value: string | Date | null, timeZone: string) {
   if (!value) return null;
-  return new Intl.DateTimeFormat("sv-SE", {
-    timeZone,
+  const formatter = getFormatter(timeZone, {
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -11,7 +34,8 @@ export function formatDateTimeInZone(value: string | Date | null, timeZone: stri
     hour: "2-digit",
     minute: "2-digit",
     hourCycle: "h23",
-  }).format(typeof value === "string" ? new Date(value) : value);
+  });
+  return formatter.format(typeof value === "string" ? new Date(value) : value);
 }
 
 export function formatStockholmDateTime(value: string | Date | null) {
@@ -19,8 +43,7 @@ export function formatStockholmDateTime(value: string | Date | null) {
 }
 
 function partsInStockholm(value: Date) {
-  const parts = new Intl.DateTimeFormat("sv-SE", {
-    timeZone: STOCKHOLM_TIME_ZONE,
+  const formatter = getFormatter(STOCKHOLM_TIME_ZONE, {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -28,7 +51,8 @@ function partsInStockholm(value: Date) {
     minute: "2-digit",
     second: "2-digit",
     hourCycle: "h23",
-  }).formatToParts(value);
+  });
+  const parts = formatter.formatToParts(value);
   return Object.fromEntries(parts.map((part) => [part.type, part.value]));
 }
 
