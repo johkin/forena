@@ -6,6 +6,11 @@ funktionalitet som den befintliga Next-appen. En fungerande pilot för ett flöd
 befintlig kod/tester är referens; nya upptäckta funktioner läggs till här.
 Backendens personåtkomst förblir generell enligt ADR-020.
 
+Användarens mobilbilder fastställer [startsidemålet](personal-homepage-target.md):
+Min översikt, Behöver svar, Agenda/Kalender, Kommande aktiviteter samt Mina lag
+och föreningar. Samma aktivitet kan visas i båda aktivitetssektionerna, med
+separata personrader även utan kallelse. Detaljerade acceptansfall finns i målbilden.
+
 ## Nästa leveranser
 
 1. Rätta befintlig startsida: aktivitetslista med varje behörig persons skickade

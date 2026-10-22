@@ -1,5 +1,24 @@
 # Migreringsstatus
 
+## Fastställd målbild för startsidan, 2026-10-22
+
+Användarens mobilbilder preciserar [Min översikt](personal-homepage-target.md):
+Behöver svar med aktivitetsräknare, Agenda/Kalender, Kommande aktiviteter och
+Mina lag och föreningar, med verkliga roller, notiser och gemensam sidfot.
+Varje berörd person har en rad även utan kallelse. Samma aktivitet kan ligga i
+båda aktivitetssektionerna; antal gäller aktiviteter och sparade svar ska
+återspeglas i båda. M07B kräver därför deltagar-/personinformation även när
+kallelsen saknas. Fullständigt urval och räknare över fler än 50 poster återstår.
+
+PR #155 är mergad. Omkörningen av CI `39737680460` för `a590395` är grön,
+inklusive native-image och startprovet. Den första körningen föll när Maven
+Central inte kunde lämna ut `native-maven-plugin:1.1.1`; versionen kunde sedan
+hämtas och en omkörning utan kodändring passerade. Detta CI-resultat verifierar
+PR-koden, inte ett inloggat driftprov av hela startsidemålet.
+
+Denna uppföljning ändrar enbart krav och dokumentation. Berörda länkar och diff
+kontrolleras; apptester/byggen körs inte om för denna dokumentationsändring.
+
 ## Direkta kallelsesvar och full funktionsparitet, 2026-10-22
 
 Leverans på `feat/activity-overview-invitations`, från main `06215d1`.

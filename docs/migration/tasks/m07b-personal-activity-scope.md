@@ -10,7 +10,7 @@ Next-översikten visar relevanta publicerade aktiviteter även innan en kallelse
 har skapats/skickats. Kotlin hittar i dag endast aktiviteter som har en kallelse
 för en person kontot får företräda. Detta är en kvarvarande funktionslucka,
 inte det slutliga urvalet. Läs `src/data/personal-dashboard.ts`, dess tester,
-ADR-020,
+ADR-020, [startsidemålet](../personal-homepage-target.md),
 [likvärdighetsplanen](../feature-parity.md) samt arkitektur-/designreglerna.
 
 ## Ingår
@@ -34,6 +34,9 @@ ADR-020,
   Främmande direktlänk ger fortsatt ingen utökad rätt.
 - Återanvänd produktionskomponenterna på startsidan och `/components`. Visa
   aktivitet utan kallelse, ej utskickad kallelse och skickade personliga svar.
+  Returnera berörda personer separat från deras eventuella kallelser så att
+  exempelvis två personer får två namngivna rader med Ingen kallelse ännu.
+  En tom `invitations`-lista ensam räcker inte för referensens personrader.
 
 ## Acceptans
 
@@ -47,7 +50,8 @@ Redovisa verkligt driftprov separat med exakt release/deployment.
 
 ## Därefter
 
-Fullständig Behöver svar över hela urvalet, kalender, arbetspass och lag-/
+Enligt [startsidemålet](../personal-homepage-target.md) återstår sedan
+Min översikt med fullständig Behöver svar över hela urvalet, kalender, arbetspass och lag-/
 föreningsgenvägar följer enligt funktionsmatrisen. M11:s bokningsbehörighet får
 inte ersättas med en allmän lag-/personrelation. Aktivitetsskapande, serier och
 import är separata uppgifter; denna läsleverans stänger inte M09 eller M13.
