@@ -1,19 +1,58 @@
 # Migreringsstatus
 
+## Spring-autentisering som enda lösning, 2026-10-23
+
+Den nya React/Kotlin-appen använder enbart Spring-autentisering. Se
+[auth-arkitektur och körguide](authentication.md). Ingen driftaktivering,
+kontomigrering eller ändring av Liquibase-historiken ingår.
+Tidigare prov nedan gäller sina angivna commits och verifierar inte den nya koden.
+Lokalt verifierat inför denna PR:
+
+- JVM/Java 25: Maven verify samt sista testkörningen, 72 tester godkända,
+  inga fel eller överhoppade tester. Riktig browser/WebAuthn/OAuth ingår.
+- AOT: genererad Spring-graf på JVM passerar paketerat startprov och samma
+  riktiga browserflöde. Det är separat från native-kompilering.
+- GraalVM 25.0.4: faktisk native-binär byggd och körd mot tillfällig PostgreSQL.
+  Full registrering/verifiering/lösenord, virtuell WebAuthn-registrering och
+  inloggning, magic link/reset, OAuth/PKCE/consent, refresh-rotation, MCP och
+  revokering passerar. Även migration före HTTP, owner/runtime, grants,
+  skyddad cookie, browserbindning, kontospärr, 429 och logout passerar.
+- Local-profil: automatisk PostgreSQL-start från tom testvolym, Liquibase och
+  loggsändare utan .env eller externa nycklar. Verklig localhost:3000 → Vite →
+  Spring registrering, loggad verifieringslänk och lösenordslogin passerar;
+  fel Origin avvisas.
+- Npm: 1 143 tester, typecheck, lint, Next-bygge och Vite-bygge godkända.
+  Kontrollerat browserprov för navigation/kontoisolering passerar också.
+- Ett genererat OpenAPI/TS-kontrakt och deployverktygens 25 gränstester passerar.
+
+Den första native-körningen hittade saknad reflektionsmetadata för WebAuthn
+(inklusive millisekundformatet för timeout) och senare JDBC-grantens samlingstyp.
+Det är korrigerat med avgränsad, reproducerbar metadata; inga verifierings- eller
+Jackson-typgränser har stängts av. Det fullständiga native-browserprovet passerar
+med korrigeringen.
+
+CI ska dessutom bygga och prova den faktiska buildpack-/OCI-imagen för PR:ns
+aktuella commit; aktuell körstatus och commit redovisas i PR:n. Lokal binär är
+inte samma artefakt som CI-containern. Riktiga mejlutskick, fysisk passkey-hårdvara,
+produktionsflöden och kontomigrering ingår inte. Historisk SQL/migrationskatalog
+bevaras; aktiv kanaltransport och appinställningar för den pensionerade kanalen
+är borttagna.
+
+
 ## Spring Securitys färdiga autentiseringsflöden, 2026-10-23
 
 På `feature/native-auth` enligt ADR-025: Spring-komponenter och standardflöden
-ska användas i första hand. Native-lägets egna login-, logout-, magic-link- och
+ska användas i första hand. Spring-flödets egna login-, logout-, magic-link- och
 WebAuthn-ceremonier i controllers är ersatta med Springs filter och providers.
-`NativePasskeyService` är borttagen. Spring sköter även credential-ägarkontroll
+`PasskeyService` är borttagen. Spring sköter även credential-ägarkontroll
 vid borttagning, sessionsbyte och webbens säkerhetsheaders.
 
 React/Vite-klienten följer nu Springs formulär-/WebAuthn-format; ingen extra
-JSON-översättare eller `challenge_id` används i native-läget. MVC-controllers
+JSON-översättare eller `challenge_id` används i Spring-flödet. MVC-controllers
 behålls för kontolivscykel och läsning. Smala Spring repository-/tokenservice-
 adaptrar behåller säker stränglagring, tokenversioner och webbläsarbindning.
 Next-appen och äldre Supabase-flöden är inte ändrade. Backend och den nya
-frontenden måste uppdateras tillsammans när native-kontraktet ändras.
+frontenden måste uppdateras tillsammans när auth-kontraktet ändras.
 
 Godkänt: full Maven `verify`, 96 tester, noll fel och ett överhoppat äldre
 browser-opt-in-prov; native-browserprovet kördes. Verklig Chromium → Spring →
@@ -43,19 +82,19 @@ Modulith verifierar mejlmodulens gräns. Båda genererade API-kontrakten är
 oförändrade och kontraktskontrollen är godkänd. Inga riktiga mejl eller någon
 publicering ingår. Tidigare browserbevis nedan har inte körts om för detta
 backendbyte; verklig leverans från verifierad avsändardomän återstår före drift.
-Se [konfiguration och driftgränser](native-auth.md).
+Se [konfiguration och driftgränser](authentication.md).
 
 ## Egen kontohantering och Authorization Server i Spring, 2026-10-22
 
 Lokalt JVM-försök enligt användarens instruktion och ADR-024, bakom
-`FORENA_AUTH_MODE=native`. Supabase-läget är kvar utan automatisk fallback.
+Spring-autentisering. Supabase-läget är kvar utan automatisk fallback.
 
 - Lokala konton med BCrypt, browserbunden e-postverifiering och magic link,
   versionerade engångslänkar och lösenordsåterställning. Tidigare webb- och
   OAuth-åtkomst upphör vid lösenordsåterställning eller kontospärr.
 - Passkeys registreras och verifieras med Spring Security/WebAuthn4J. Egna
   passkeys kan listas och tas bort. Webbens enda session är Spring Session JDBC;
-  ingen Supabase-token eller tokenförnyelse finns i native-läget.
+  ingen Supabase-token eller tokenförnyelse finns i Spring-flödet.
 - Spring Authorization Server i samma backend, beständig klient-/grant-/consent-
   lagring, PKCE, CSRF-skyddat samtycke, opaka resursbundna token, roterande refresh
   och revokering. MCP-piloten har `list_my_activities` med befintlig personåtkomst.
@@ -73,9 +112,9 @@ Lokalt JVM-försök enligt användarens instruktion och ADR-024, bakom
 - Ingen kontoflytt, driftaktivering eller produktionsmejl. Extern SMTP,
   worker vid skalning till noll, kontomigrering, bredare användaradministration
   och GraalVM/AOT behöver separata driftprov. Publiceringsverktyget blockerar
-  native-läget tills native-image-pipelinen är verifierad.
+  Spring-flödet tills native-image-pipelinen är verifierad.
 
-[Körguide, omfattning och återstående gränser](native-auth.md).
+[Körguide, omfattning och återstående gränser](authentication.md).
 
 ## Passkey-registrering och magic link i React/Kotlin, 2026-10-22
 
@@ -536,17 +575,6 @@ Ny Vercel-deployment, riktiga Supabase-browserflödet och full M18B-paritet är
 Next-piloten, inte bevis för den nya statiska frontendens drift.
 
 ## Actions-deploy för parallell Kotlin-sajt: implementation på branch
-
-Uppföljning efter merge av PR #117: main-CI `39262001035` föll i det befintliga
-WhatsApp-pgTAP-testet, medan frontend- och båda Kotlin-jobben passerade.
-Omkörning av enbart misslyckade jobb på samma `b3ff6ef` blev grön och startade
-deployflödena. Orsaken är testernas transaktionsfasta `now()` som kan hamna före
-parkopplingsbevisens `clock_timestamp()` efter en sekundgräns. Lokalt PostgreSQL-
-prov med avsiktlig fördröjning återskapar skillnaden. Rättningen använder aktuella
-händelsetider i de två WhatsApp-testfilerna och tvingar en sekundgräns för att
-fånga regressionen. Databasens produktionsfunktioner, migrationer och CI-grindar
-ändras inte. Teständringen på `7de0b05` har grön PR-CI; senare adapterändringar
-behöver verifieras på sin egen revision.
 
 Första riktiga Kotlin-deployen, `39263714818` på `b3ff6ef`, byggde och laddade
 upp båda containerbilderna och skapade `dpl_9u3qpQh6Cipge9yF2KVFVa3f5cVU`.

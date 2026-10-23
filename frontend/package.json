@@ -8,10 +8,10 @@
     "prebuild": "node scripts/public-config.mjs",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
-    "preview": "vite preview --host localhost"
+    "preview": "vite preview --host localhost",
+    "predev": "node scripts/public-config.mjs"
   },
   "dependencies": {
-    "@supabase/supabase-js": "2.116.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-router": "7.18.4",

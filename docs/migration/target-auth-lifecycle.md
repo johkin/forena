@@ -1,5 +1,8 @@
 # Ren målmiljö och Auth-livscykel
 
+Historiskt underlag för den tidigare Supabase-adaptern. Den nya appen använder
+[Spring-autentisering](authentication.md); proverna nedan gäller enbart angivna äldre commits.
+
 Status 2026-10-19: bootstrap verifierad i `forena-kotlin`; verkligt Auth-prov
 **godkänt, 18 kontroller** på källcommit `a72d5de`. ES256-signatur mot riktiga
 JWKS, inloggning, refresh, lokal/global logout, spärr/återöppning och soft delete
@@ -135,7 +138,7 @@ och separat Liquibase-release; detta är nu utfört i Sandbox enligt ovan.
 Auth-only-provet bevisar `/user`-beteendet vid denna
 körning, inte Kotlin-API:ts familjeavgränsning eller nekade databasändringar.
 
-Det separata [Auth-provet utan databas](../../backend/scripts/target-auth-probe.py)
+Det separata historiska Auth-provet utan databas (`target-auth-probe.py`, pensionerat i nuvarande kod)
 kördes med Python 3; det kan upprepas med Python 3 och `cryptography` tillgängligt:
 
 ```sh

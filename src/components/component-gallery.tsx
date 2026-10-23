@@ -4,7 +4,6 @@ import { BrowserFrontendExamples } from "./browser-frontend-examples";
 import { TelegramGroupExamples } from "@/components/telegram-group-settings";
 import { AppMenuContent } from "@/components/app-header";
 import { TelegramSettingsExamples } from "@/components/telegram-settings";
-import { WhatsAppSettingsExamples } from "./whatsapp-settings";
 import { SectionTeamAdministrationExamples } from "./section-team-administration-examples";
 import { useState } from "react";
 import { PersonSelectionList } from "./person-selection-list";
@@ -79,7 +78,6 @@ export function ComponentGallery() {
       <button className="secondary" disabled>Inaktiverad</button>
     </div><p role="status">{notice}</p></section>
     <SectionTeamAdministrationExamples/>
-    <WhatsAppSettingsExamples/>
     <TelegramSettingsExamples/>
     <TelegramGroupExamples/>
     <section><h2>Formulärfält</h2><div className="component-fields">

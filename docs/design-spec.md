@@ -39,13 +39,6 @@ visar familjens kallelser och utloggning utan profil, administration och
 notiser. Samma `AppMenuContent` visas på `/components` i ett inaktiverat
 exempel som inte loggar ut den som granskar komponenterna.
 
-WhatsApp-inställningarna i Min profil och exemplen på `/components` använder
-samma produktionskomponent. Visa ej aktiverat, samtycke, väntande verifiering,
-maskerat aktivt nummer, laddning, sparande, fel och ej konfigurerat. Galleriets
-handlingar använder enbart syntetiska lokala data.
-Efter avbruten koppling eller avstängning ska en ny koppling börja med en
-omarkerad samtyckesruta. Detta gäller även galleriets interaktiva exempel.
-
 ## Kotlin-webbens Min översikt
 
 Vite och Next delar `PersonalHome`, `PersonalOverview`, `TeamCalendar`,

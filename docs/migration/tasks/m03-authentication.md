@@ -1,52 +1,46 @@
-# M03: Verifiera Supabase-identitet och skilj kanalgrants
+# M03: Verifiera Spring-konton, webbsessioner och separata MCP-grants
 
-Status: delvis implementerad (2026-10-19). Beroenden: M01. Leverans: en avgränsad PR om inte nedan
-anges att arbetet först ska delas. Alla PR-baser är aktuell `main`.
+Status 2026-10-23: egen autentisering infördes i PR #161. ADR-026 gör den till
+den nya React/Kotlin-appens enda auth-lösning. Supabase är inte längre issuer
+för denna app, men får fortsatt leverera PostgreSQL. Next-appen behåller sin auth.
 
-Webbsessionsverifiering, lokala JWKS-prov och onlineadapter för aktuell `/user`-
-status finns i `backend`. Adapterns lokala fel-/revokeringsprov är gröna;
-verklig Supabase-inloggning, ES256/JWKS, refresh och driftad sessionsrevokering
-är verifierade med Auth-only-provet (18 godkända kontroller). Även hela
-`TargetAuthIT` är godkänt mot riktig Auth, Kotlin-API och databas, inklusive
-familjeavgränsning, nekade anrop efter sessionsavslut och oförändrad historik.
-Browser-PKCE, passkey, mejlleverans och MCP återstår. Se
-[målmiljö/Auth](../target-auth-lifecycle.md); hela M03 är fortfarande inte accepterad.
-
-## Bakgrund och gemensamma beslut
-
-Supabase förblir issuer. Lokal passkey-konfiguration är kommenterad och OAuth avstängt; driftens inställningar är inte verifierade. ADR-004 styr.
-
-Läs [repoinstruktionerna](../../../AGENTS.md), [planen](../README.md),
-[nuläget](../inventory.md), [besluten](../decisions.md),
-[versionerna](../versions.md) och [status](../status.md).
-Detta underlag räcker för att starta en separat Codex-session; verifiera sedan
-aktuell kod och eventuella tillkommande AGENTS.md.
-
-## Relevanta filer
-
-src/lib/mcp/auth.ts, src/lib/mcp/oauth.ts, src/lib/mcp/consent.ts, src/lib/supabase/, src/components/passkey-enrollment.tsx, src/app/auth/callback/route.ts, backend/. Nya backend-/infra-sökvägar beskriver avsedd plats och finns inte
-nödvändigtvis innan beroendena är genomförda. Sökvägarna utgår från reporoten.
+Läs [AGENTS.md](../../../AGENTS.md), [autentisering](../authentication.md),
+[Spring-komponenter](../spring-security.md), [säkerhetsarkitektur](../../security-architecture.md)
+och [status](../status.md). De äldre [målmiljöproven](../target-auth-lifecycle.md)
+gäller den borttagna adaptern och verifierar inte den nya runtime-koden.
 
 ## Ingår
 
-Inför Spring Security resource server och verifierad UserContext med konto, kanal och relevanta grants. Kartlägg verklig issuer/audience/algoritm/JWKS och claims med syntetisk testanvändare. Definiera policy för revokering/blockering, scopes, legacy HS och otillåten användning av MCP-token som webbsession. Dokumentera RP-ID/origins och MCP discovery utan att ändra serverägarskap.
+Spring Securitys lösenords-, WebAuthn-, engångstoken- och logout-filter används
+med lokala konton, verifierad e-post och versionsbundna sessioner. Registrering
+och lösenordsåterställning följer kontoreglerna. Spring Authorization Server
+hanterar JDBC-lagrade klienter, consent, PKCE, opaka access-token och revokering.
+MCP och browser-API har separata credentials och inga fallback-vägar.
 
-## Acceptanskriterier
+EmailSender, Resend REST och krypterad outbox bevaras. Local-profilen startar
+PostgreSQL automatiskt, kör Liquibase med separat owner och använder loggsändare.
+React/Vite behöver inga auth-/mejlcredentials eller val av auth-läge.
 
-Giltig webbsession fungerar; fel signatur/algoritm/issuer/audience/exp/nbf och otillåtet klient-ID/scope/grant nekas. JWKS-cache, rotation och nätfel testas. MCP använder aldrig cookie-fallback. Ingen user_metadata ger rättigheter.
+## Acceptans och verifiering
 
-## Verifiering
+Prova registrering → browserbunden e-postverifiering → lösenord, passkeys och
+magic link, samt reset och logout. Prova replay, fel browser, inaktivt konto,
+versionsbyte, stulna råa databas-session-ID:n, absolut livstid, strikt Origin,
+kontobindning och gemensamma DB-baserade rate limits. Logout ska fungera även
+vid förbrukad loginbudget. Tekniska verifieringsfel ska stänga åtkomst säkert.
 
-JUnit med kontrollerad JWKS-server plus end-to-end med avsedd Supabase-testmiljö. Prova passkey, magic link, lösenord och MCP consent/token med syntetiska konton; redovisa blockerad leverantörskonfiguration separat.
+OAuth kräver exakt redirect/resource, PKCE och consent. Refresh och återkallning
+ska fungera; MCP-token får aldrig användas som webbsession och MCP får inte
+falla tillbaka till cookie. Konto-, person- och föreningsbehörighet kontrolleras
+av backend, aldrig av användarredigerbar metadata eller klientens meny.
 
-## Lämnas till senare
+Verifiera riktig browser → Spring → PostgreSQL med virtuell WebAuthn.
+Redovisa JVM, AOT och faktisk GraalVM-binär/container separat. CI:s native-prov
+ska också använda verklig WebAuthn och OAuth, utan externa auth-/mejlanrop.
+Aktuella resultat knyts till PR/commit. Behåll säkerhetsspärrar och Liquibase-historik.
 
-Ingen egen OAuth/WebAuthn-server och inga verksamhetsbehörigheter från tokenrollen ensam. Inga produktionsdomänbyten.
+## Avgränsning
 
-## Avslut och överlämning
-
-Systemet ska lämnas byggbart och testbart. Kör relevanta befintliga kontroller
-enligt AGENTS.md; behåll CI-skydd. Uppdatera [status](../status.md) med PR/commit,
-ändrat beteende, körda/godkända/misslyckade/ej körda kontroller, begränsningar och
-nästa beroende uppgift. Om omfånget växer, skapa en separat uppgiftsfil och
-lämna en kort överlämning med beslut, filer, tester och återstående arbete.
+Ingen produktionsaktivering, kontomigrering, destruktiv databasstädning eller
+omkoppling av Next-appen ingår. Full MCP-verktygsparitet, administrationsflöden,
+e-postbyte och säkerhetsnotiser har egna följduppgifter.

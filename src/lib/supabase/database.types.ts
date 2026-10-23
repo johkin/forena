@@ -212,7 +212,7 @@ export interface Database {
           activity_id: string;
           invitation_id: string | null;
           event_type: "invitation_scheduled" | "invitation_queued" | "invitation_sent" | "invitation_delivery_failed" | "reminder_scheduled" | "reminder_sent" | "invitation_response_changed" | "activity_updated" | "activity_cancelled";
-          channel: "push" | "email" | "whatsapp" | "telegram" | "sms" | "in_app" | null;
+          channel: "push" | "email" | "telegram" | "sms" | "in_app" | null;
           recipient_count: number | null;
           metadata: Json;
           created_by: string | null;
@@ -222,7 +222,7 @@ export interface Database {
           activity_id: string;
           invitation_id?: string | null;
           event_type: "invitation_scheduled" | "invitation_queued" | "invitation_sent" | "invitation_delivery_failed" | "reminder_scheduled" | "reminder_sent" | "invitation_response_changed" | "activity_updated" | "activity_cancelled";
-          channel?: "push" | "email" | "whatsapp" | "telegram" | "sms" | "in_app" | null;
+          channel?: "push" | "email" | "telegram" | "sms" | "in_app" | null;
           recipient_count?: number | null;
           metadata?: Json;
           created_by?: string | null;
@@ -280,8 +280,8 @@ export interface Database {
         OrganizationScoped & { id?: string; user_id: string; type: string; payload?: Json; message?: Json; scheduled_at?: string; sent_at?: string | null; status?: "pending" | "processing" | "sent" | "failed" | "cancelled"; attempts?: number; last_error?: string | null; created_at?: string }
       >;
       notification_deliveries: Table<
-        Timestamped & OrganizationScoped & { id: string; outbox_id: string; user_id: string; channel: "email" | "push" | "whatsapp" | "telegram"; status: "pending" | "sent" | "failed" | "skipped"; provider: string | null; provider_message_id: string | null; attempts: number; last_error: string | null; attempted_at: string | null; sent_at: string | null },
-        OrganizationScoped & { id?: string; outbox_id: string; user_id: string; channel: "email" | "push" | "whatsapp" | "telegram"; status?: "pending" | "sent" | "failed" | "skipped"; provider?: string | null; provider_message_id?: string | null; attempts?: number; last_error?: string | null; attempted_at?: string | null; sent_at?: string | null; created_at?: string }
+        Timestamped & OrganizationScoped & { id: string; outbox_id: string; user_id: string; channel: "email" | "push" | "telegram"; status: "pending" | "sent" | "failed" | "skipped"; provider: string | null; provider_message_id: string | null; attempts: number; last_error: string | null; attempted_at: string | null; sent_at: string | null },
+        OrganizationScoped & { id?: string; outbox_id: string; user_id: string; channel: "email" | "push" | "telegram"; status?: "pending" | "sent" | "failed" | "skipped"; provider?: string | null; provider_message_id?: string | null; attempts?: number; last_error?: string | null; attempted_at?: string | null; sent_at?: string | null; created_at?: string }
       >;
       audit_log: Table<
         Timestamped & OrganizationScoped & { id: number; actor_user_id: string | null; action: string; entity_type: string; entity_id: string; details: Json },
@@ -311,12 +311,6 @@ export interface Database {
       telegram_settings: { Args: { operation?: string; pairing_hash?: string }; Returns: Json };
       receive_telegram: { Args: { message_id: string; sender: string; event_at: string; operation: string; pairing_hash?: string }; Returns: boolean };
       telegram_recipient: { Args: { target_user_id: string }; Returns: string | null };
-      whatsapp_invitation_messages: { Args: { target_outbox_id: string }; Returns: Json };
-      record_whatsapp_invitation: { Args: { target_message_id: string; provider_id: string }; Returns: undefined };
-      respond_whatsapp: { Args: { message_id: string; sender: string; event_at: string; reply_id: string; answer: string }; Returns: string | null };
-      whatsapp_settings: { Args: { operation?: string; pairing_hash?: string }; Returns: Json };
-      receive_whatsapp: { Args: { message_id: string; sender: string; event_at: string; operation: string; pairing_hash?: string }; Returns: boolean };
-      whatsapp_recipient: { Args: { target_user_id: string }; Returns: string | null };
       create_club_workspace: { Args: { input: Json; managed?: boolean }; Returns: Json };
       system_club_admins: { Args: { target: string; operation?: string; payload?: Json }; Returns: Json };
       club_admin_invite_context: { Args: { invitation_token_hash: string }; Returns: Json };

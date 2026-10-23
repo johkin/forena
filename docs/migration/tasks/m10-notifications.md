@@ -32,8 +32,6 @@ PostgreSQL + transportkontrakt, Resend-testläge/avsedd testdomän, Cloud Run sc
 
 ## Lämnas till senare
 
-Web Push, Telegram, WhatsApp, samtliga påminnelser och direkta administrationsmejl kräver egna adapteruppgifter; inga parallella levande sändare.
-
 ## Avslut och överlämning
 
 Systemet ska lämnas byggbart och testbart. Kör relevanta befintliga kontroller

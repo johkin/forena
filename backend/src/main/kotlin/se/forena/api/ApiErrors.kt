@@ -6,12 +6,11 @@ import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.authentication.AuthenticationServiceException
 import org.springframework.security.authentication.BadCredentialsException
-import org.springframework.security.oauth2.jwt.JwtException
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException
+import org.springframework.web.ErrorResponseException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
-import org.springframework.web.ErrorResponseException
 import se.forena.api.http.ApiError
 
 /** HTTP translation belongs here; exception messages may contain private implementation details. */
@@ -34,7 +33,7 @@ class ApiErrors {
     fun conflict(): ResponseEntity<ApiError> = ResponseEntity.status(409)
         .cacheControl(CacheControl.noStore()).body(ApiError("Åtgärden kan inte genomföras i aktuellt tillstånd."))
 
-    @ExceptionHandler(BadCredentialsException::class, JwtException::class)
+    @ExceptionHandler(BadCredentialsException::class)
     fun session(): ResponseEntity<ApiError> = ResponseEntity.status(401)
         .cacheControl(CacheControl.noStore()).body(ApiError("Sessionen är inte aktiv."))
 

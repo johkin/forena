@@ -1,7 +1,7 @@
 # MCP-server
 
-Ett separat [Spring/MCP-försök med egen Authorization Server](migration/native-auth.md)
-finns i Kotlin-backenden bakom `FORENA_AUTH_MODE=native`. Verktygen och
+[Spring Authorization Server](migration/authentication.md) äger OAuth/MCP i
+den nya Kotlin-appen. Den erbjuder det avgränsade läsverktyget `list_my_activities`. Verktygen och
 Supabase-flödena nedan avser fortfarande den äldre Next-servern.
 
 Förena exponerar en MCP-server på `/api/mcp` i samma Next.js-applikation.

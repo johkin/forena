@@ -2,7 +2,7 @@
 
 Granskning och implementation 2026-10-23 på `feature/native-auth`, efter
 användarens instruktion att alltid föredra Springs färdiga komponenter.
-Gäller Kotlin-backendens native-läge. Next-appen ändras inte.
+Gäller Kotlin-backendens Spring-flöde. Next-appen ändras inte.
 
 Underlaget är projektets Spring Security 7.1.0-källkod från Maven-artefakterna
 samt Springs officiella dokumentation. Webbdokumentationen visar 7.1.2;
@@ -19,15 +19,15 @@ Ingen versionsuppgradering ingår.
 | Passkey-borttagning | `WebAuthnRegistrationFilter`, `CredentialRecordOwnerAuthorizationManager` | Befintlig API-adress; framgång returnerar nu 204 utan kropp |
 | Magic-link | `oneTimeTokenLogin`, `GenerateOneTimeTokenFilter`, `OneTimeTokenAuthenticationFilter`, `OneTimeTokenAuthenticationProvider`, `JdbcOneTimeTokenService` | Tokenservice-adapter för syfte, generation, webbläsarbindning och atomisk mejlkö |
 | Logout | `LogoutFilter`, `SecurityContextLogoutHandler`, CSRF-/logout-handlers | JSON-svar och borttagning av vår sessionscookie via `HttpSessionIdResolver` |
-| Sessionsbyte efter login | Springs filter-/sessionfixeringsstöd | `NativeSessionRepository` sparar endast identitet och generation som strängar |
+| Sessionsbyte efter login | Springs filter-/sessionfixeringsstöd | `SessionRepository` sparar endast identitet och generation som strängar |
 | HTTP-säkerhetsheaders | `HeaderWriterFilter`, standard cache-skydd, `ReferrerPolicyHeaderWriter` | Policy `no-referrer`; särskilda OAuth/MCP-svar har även explicit no-store |
 
-`NativeAuthController` har inga login-, logout-, magic-link- eller
-WebAuthn-ceremonier. `NativePasskeyService` är borttagen. `NativeAccountService`
+`AuthController` har inga login-, logout-, magic-link- eller
+WebAuthn-ceremonier. `PasskeyService` är borttagen. `AccountService`
 matchar inte längre lösenord eller skapar en autentiserad SecurityContext.
 Spring utför autentisering, tokeninlösen och etablering av autentiserad session.
 
-WebAuthn-filtren konfigureras direkt i `NativeAuthenticationConfiguration`.
+WebAuthn-filtren konfigureras direkt i `AuthenticationConfiguration`.
 7.1.0:s `webAuthn`-DSL exponerar inte hela options-repository-konfigurationen
 som vår sessionslagring kräver. Att sätta upp Springs färdiga filter med deras
 publika setters bevarar ramverksflödet utan att återinföra en egen ceremoni.
@@ -48,12 +48,12 @@ Den nya React/Vite-klienten följer Springs format direkt: URL-kodade formulär
 för password (`email`/`password`) och OTT (`username` respektive `token`), råa
 WebAuthn-options och assertioner samt `{ publicKey: { credential, label } }`
 vid registrering. Inget extra `challenge_id` eller JSON-översättare behövs i
-native-läget. API-adresserna konfigureras på Springs filter och hålls under
+Spring-flödet. API-adresserna konfigureras på Springs filter och hålls under
 `/api/auth` för befintlig hostingrouting. Lyckad registrering returnerar
 Springs `{ success: true }`; logout och login använder små JSON-success-handlers.
-Supabase-körlägets äldre kontrakt ligger kvar separat.
+Den nya appen har ett enda auth-kontrakt.
 
-DTO-typer för filter-endpoints ligger i `NativeAuthenticationEndpoints`, delas
+DTO-typer för filter-endpoints ligger i `AuthenticationEndpoints`, delas
 med filterkonfigurationen och används vid generering av OpenAPI. Controllers
 används fortsatt som underlag för MVC-endpoints. TypeScript genereras från den
 riktiga serverexporten även för dessa filter-endpoints.

@@ -1,5 +1,10 @@
 # Första verksamhets-API:t: mina aktiviteter och kallelsesvar
 
+Aktuell autentisering i React/Kotlin är [Spring-konton och Spring Session](authentication.md)
+enligt ADR-026. Underlaget nedan innehåller historiska JWT-/Next-adapterprov;
+de är inte ett alternativt auth-läge i den nya appen.
+
+
 Uppföljning 2026-10-21 på `feat/my-activities`: Kotlin använder personåtkomst
 enligt ADR-020, inte familj som kodbegrepp. Vite-startsidan läser
 `GET /api/me/activities` och öppnar kallelsesvaret utan förvalt test-ID.
@@ -98,7 +103,3 @@ browserkedjan har verifierats i Vercel Sandbox enligt
    Bearer-verifiering i backend och avsaknad av skrivfallback behålls.
 4. Öva aktivering/återgång och dränering i avsedd miljö. Aktivera först när
    Vercel-lagringsfrågan är hanterad. Inga nya molnbyggen startas i denna leverans.
-
-Gamla Telegram-/WhatsApp-/MCP-flöden är inte anslutna till den nya verksamhets-
-databasen. Återgång av UI-routing får inte låtsas att gamla och nya testdata
-är samma dataset. Datakopiering eller dubbelskrivning behövs inte för ren start.

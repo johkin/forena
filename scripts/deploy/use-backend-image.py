@@ -36,20 +36,15 @@ def record_image(image, commit, previous=None):
     return metadata
 
 
-def configure(image, public_key, certificate):
+def configure(image, certificate):
     references = [ref for ref in image.get('RepoDigests', [])
                   if re.fullmatch(re.escape(REPOSITORY) + r'@sha256:[0-9a-f]{64}', ref)]
     if len(references) != 1:
         raise ValueError('Expected one immutable image reference in the target VCR repository')
-    if not re.fullmatch(r'sb_publishable_[A-Za-z0-9_-]+', public_key):
-        raise ValueError('Expected the public Auth key')
     return {'handler': references[0], 'runtime': 'container', 'architecture': 'x86_64',
             'regions': ['fra1'], 'environment': {
                 'PORT': '80',
                 'FORENA_MIGRATE': 'true',
-                'FORENA_AUTH_ISSUER': 'https://ckzrtxqjskosqzoitymc.supabase.co/auth/v1',
-                'FORENA_AUTH_JWKS_URI': 'https://ckzrtxqjskosqzoitymc.supabase.co/auth/v1/.well-known/jwks.json',
-                'FORENA_AUTH_PUBLISHABLE_KEY': public_key,
                 'FORENA_WEB_SESSION_ENABLED': 'true',
                 'FORENA_WEB_ORIGIN': 'https://forena-kotlin.vercel.app',
                 'FORENA_TRUST_VERCEL_PROXY': 'true',
@@ -68,16 +63,13 @@ def routes():
 
 
 def write_output(image):
-    if os.environ.get('FORENA_AUTH_MODE', 'supabase') != 'supabase':
-        raise ValueError('Native auth is a JVM trial; verify the native-image/AOT release pipeline before publishing it')
     # Build Output API describes the deployment; it never reads or rebuilds the image.
     output = Path('.vercel/output')
     if output.exists():
         shutil.rmtree(output)
     function = output / 'functions/backend.func'
     function.mkdir(parents=True)
-    descriptor = configure(image, os.environ['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'],
-                           Path('backend/certs/supabase-ca.crt').read_text())
+    descriptor = configure(image, Path('backend/certs/supabase-ca.crt').read_text())
     (function / '.vc-config.json').write_text(json.dumps(descriptor, indent=2) + '\n')
     shutil.copytree('frontend/dist', output / 'static')
     (output / 'config.json').write_text(json.dumps({'version': 3, 'routes': routes()}, indent=2) + '\n')
@@ -99,7 +91,7 @@ def main():
         write_output(image)
     elif mode == 'verify-output':
         descriptor = json.loads(Path('.vercel/output/functions/backend.func/.vc-config.json').read_text())
-        expected = configure(image, os.environ['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'], '')
+        expected = configure(image, '')
         if descriptor.get('runtime') != 'container' or descriptor.get('handler') != expected['handler'] or 'command' in descriptor:
             raise ValueError('Deployment output must select the tested image with its original entrypoint')
     elif mode != 'verify':

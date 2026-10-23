@@ -37,21 +37,17 @@ insert into public.person_guardians(organization_id,person_id,guardian_user_id) 
 insert into messaging.telegram_connections(user_id,telegram_id,consent_at) values
  ('b0000000-0000-0000-0000-000000000001','111',now()),
  ('b0000000-0000-0000-0000-000000000003','333',now());
-insert into messaging.whatsapp_connections(user_id,wa_id,consent_at) values
- ('b0000000-0000-0000-0000-000000000001','46700000001',now());
 select set_config('request.jwt.claim.sub','b0000000-0000-0000-0000-000000000002',true);
 
 select is(public.queue_activity_invitation('b6000000-0000-0000-0000-000000000001',array['b5000000-0000-0000-0000-000000000001']::uuid[]),1,'Selected child queues only their guardian');
 select is((select payload->'personIds' from public.notification_outbox where organization_id='b1000000-0000-0000-0000-000000000001'),'["b5000000-0000-0000-0000-000000000001"]'::jsonb,'Selected-person scope survives enqueue');
 select is((select count(*)::integer from messaging.telegram_invitations),1,'Shared guardian gets one Telegram invitation, not both siblings');
-select is((select count(*)::integer from messaging.whatsapp_invitations),1,'WhatsApp reserve channel uses the same person scope');
 select is(public.queue_activity_invitation('b6000000-0000-0000-0000-000000000001',array['b5000000-0000-0000-0000-000000000001']::uuid[]),0,'Repeated selection preserves enqueue deduplication');
 
 -- An exhausted earlier batch may be requeued for a different selected sibling.
 update public.notification_outbox set status='failed',attempts=5 where organization_id='b1000000-0000-0000-0000-000000000001';
 select is(public.queue_activity_invitation('b6000000-0000-0000-0000-000000000001',array['b5000000-0000-0000-0000-000000000002']::uuid[]),2,'Only the second child is selected for the retry batch');
 select ok(not exists(select 1 from messaging.telegram_invitations m join public.notification_outbox n on n.id=m.outbox_id join public.invitations i on i.id=m.invitation_id where n.status='pending' and i.person_id<>'b5000000-0000-0000-0000-000000000002'),'New Telegram batch never repeats the previously invited sibling');
-select ok(not exists(select 1 from messaging.whatsapp_invitations m join public.notification_outbox n on n.id=m.outbox_id join public.invitations i on i.id=m.invitation_id where n.status='pending' and i.person_id<>'b5000000-0000-0000-0000-000000000002'),'Fallback never repeats the previously invited sibling');
 
 -- The all-person overload keeps each recipient's own people, not the whole list.
 delete from public.notification_outbox where organization_id='b1000000-0000-0000-0000-000000000001';
@@ -85,6 +81,5 @@ insert into public.notification_outbox(id,organization_id,user_id,type,payload,s
  ('b7000000-0000-0000-0000-000000000012','b1000000-0000-0000-0000-000000000001','b0000000-0000-0000-0000-000000000001','activity_invitation','{"activityId":"b6000000-0000-0000-0000-000000000001","personIds":[]}',now()),
  ('b7000000-0000-0000-0000-000000000013','b1000000-0000-0000-0000-000000000001','b0000000-0000-0000-0000-000000000001','activity_invitation','{"activityId":"b6000000-0000-0000-0000-000000000001","personIds":["b5000000-0000-0000-0000-000000000099"]}',now());
 select is((select count(*)::integer from messaging.telegram_invitations where outbox_id in ('b7000000-0000-0000-0000-000000000010','b7000000-0000-0000-0000-000000000011','b7000000-0000-0000-0000-000000000012','b7000000-0000-0000-0000-000000000013')),0,'Foreign, missing, empty and unknown person scopes never create private Telegram snapshots');
-select is((select count(*)::integer from messaging.whatsapp_invitations where outbox_id in ('b7000000-0000-0000-0000-000000000010','b7000000-0000-0000-0000-000000000012','b7000000-0000-0000-0000-000000000013')),0,'WhatsApp also rejects explicit invalid or unrelated person scopes');
 select * from finish();
 rollback;

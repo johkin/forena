@@ -13,6 +13,7 @@ import time
 import threading
 import urllib.error
 import urllib.request
+import urllib.parse
 import xml.etree.ElementTree as ET
 import uuid
 
@@ -20,61 +21,6 @@ import uuid
 ROOT = Path(__file__).resolve().parents[2]
 JAR = ROOT / "backend/target/forena-api.jar"
 JAVA = str(Path(os.environ["JAVA_HOME"]) / "bin/java")
-
-
-def encoded(value):
-    return base64.urlsafe_b64encode(value).decode().rstrip("=")
-
-
-def fixture_token(issuer, subject, session, private_key):
-    header = encoded(json.dumps({"alg": "ES256", "kid": "local-smoke", "typ": "JWT"}).encode())
-    claims = encoded(json.dumps({"iss": issuer, "sub": subject, "aud": "authenticated",
-                                 "role": "authenticated", "session_id": session, "is_anonymous": False,
-                                 "iat": int(time.time()), "exp": int(time.time()) + 300}).encode())
-    message = f"{header}.{claims}"
-    signature = subprocess.run(["openssl", "dgst", "-sha256", "-sign", str(private_key)],
-                               input=message.encode(), capture_output=True, check=True).stdout
-    # OpenSSL emits ASN.1 DER integers; JWT ES256 uses two fixed-width integers.
-    assert signature[0] == 0x30 and signature[2] == 0x02
-    r_end = 4 + signature[3]
-    assert signature[r_end] == 0x02
-    r = int.from_bytes(signature[4:r_end], "big").to_bytes(32, "big")
-    s = int.from_bytes(signature[r_end + 2:], "big").to_bytes(32, "big")
-    return f"{message}.{encoded(r + s)}"
-
-
-class LocalKeys(http.server.BaseHTTPRequestHandler):
-    def do_POST(self):
-        if self.path != "/auth/v1/passkeys/authentication/options" or not getattr(self.server, "passkey_success", False):
-            self.send_error(501)
-            return
-        self.rfile.read(int(self.headers.get("Content-Length", "0")))
-        body = json.dumps({"challenge_id": str(uuid.uuid4()), "expires_at": int(time.time()) + 300,
-                           "options": {"challenge": "synthetic", "rpId": "local-smoke.example.invalid"}}).encode()
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.end_headers()
-        self.wfile.write(body)
-
-    def do_GET(self):
-        if self.path == "/auth/v1/user":
-            body = json.dumps({"id": self.server.subject, "is_anonymous": False}).encode()
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(body)
-            return
-        if self.path != "/auth/v1/.well-known/jwks.json":
-            self.send_error(404)
-            return
-        body = json.dumps({"keys": [self.server.jwk]}).encode()
-        self.send_response(200 if self.server.available else 503)
-        self.send_header("Content-Type", "application/json")
-        self.end_headers()
-        self.wfile.write(body)
-
-    def log_message(self, *_args):
-        pass
 
 
 def docker(*args, **kwargs):
@@ -90,15 +36,19 @@ def main():
     runtime_mode.add_argument("--aot-runtime", action="store_true", help="Run the JVM web process with the generated native AOT graph")
     runtime_mode.add_argument("--runtime-image", help="Linux Docker image to run instead of the JVM web process")
     runtime_mode.add_argument("--runtime-executable", type=Path, help="Run a locally compiled native binary instead of the JVM web process")
+    parser.add_argument("--trace-native-metadata", type=Path, help="Collect GraalVM tracing-agent metadata from the JVM runtime")
+    parser.add_argument("--browser", action="store_true", help="Run real browser WebAuthn and OAuth against the selected runtime")
     parser.add_argument("--runtime-entrypoint", help="Run the application directly with synthetic local configuration")
     args = parser.parse_args()
+    if args.trace_native_metadata and (args.runtime_image or args.runtime_executable):
+        parser.error("Tracing metadata requires the JVM runtime")
     if args.runtime_entrypoint and not args.runtime_image:
         parser.error("--runtime-entrypoint requires --runtime-image")
     if not JAR.is_file():
         raise SystemExit("Build backend with Maven verify first")
     container = docker("run", "--rm", "-d", "-p", "127.0.0.1::5432", "-e",
                        "POSTGRES_PASSWORD=local-smoke-only", "postgres:17.6-alpine")
-    runtime = keys = runtime_container = None
+    runtime = runtime_container = None
     try:
         deadline = time.monotonic() + 30
         while True:
@@ -172,30 +122,18 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
         with socket.socket() as available:
             available.bind(("127.0.0.1", 0))
             http_port = available.getsockname()[1]
-        keys = http.server.ThreadingHTTPServer(("127.0.0.1", 0), LocalKeys)
-        keys.available = True
-        threading.Thread(target=keys.serve_forever, daemon=True).start()
-        issuer = f"http://127.0.0.1:{keys.server_port}/auth/v1"
-        keys.subject = str(uuid.uuid4())
-        with tempfile.TemporaryDirectory() as signing:
-            private_key = Path(signing) / "key.pem"
-            subprocess.run(["openssl", "ecparam", "-name", "prime256v1", "-genkey", "-noout", "-out", str(private_key)], check=True)
-            public = subprocess.run(["openssl", "pkey", "-in", str(private_key), "-pubout", "-outform", "DER"],
-                                    capture_output=True, check=True).stdout[-65:]
-            assert public[0] == 4
-            keys.jwk = {"kty": "EC", "crv": "P-256", "use": "sig", "alg": "ES256", "kid": "local-smoke",
-                        "x": encoded(public[1:33]), "y": encoded(public[33:])}
-            bearer = fixture_token(issuer, keys.subject, str(uuid.uuid4()), private_key)
         # Recreate an empty schema so JVM and native must migrate before serving HTTP.
         docker("exec", container, "psql", "-U", "postgres", "-v", "ON_ERROR_STOP=1", "-c",
                "drop schema forena cascade; create schema forena authorization forena_api_owner; revoke all on schema forena from public")
         env.update(FORENA_MIGRATE="true", FORENA_MIGRATION_USERNAME="forena_api_owner",
                    FORENA_MIGRATION_PASSWORD="local-owner-only", PORT=str(http_port),
-                   FORENA_WEB_SESSION_ENABLED="true", FORENA_WEB_ORIGIN="https://local-smoke.example.invalid",
+                   FORENA_WEB_SESSION_ENABLED="true", FORENA_WEB_ORIGIN="https://app.example.invalid",
                    FORENA_WEB_SESSION_KEY=base64.b64encode(bytes(range(32))).decode(),
                    FORENA_DB_CA_CERTIFICATE=(ROOT / "backend/certs/supabase-ca.crt").read_text(),
-                   FORENA_AUTH_PUBLISHABLE_KEY="sb_publishable_smoke_placeholder",
-                   FORENA_AUTH_ISSUER=issuer, FORENA_AUTH_JWKS_URI=issuer + "/.well-known/jwks.json")
+                   FORENA_OAUTH_CLIENT_ID="mcp-test", FORENA_OAUTH_CLIENT_REDIRECT="https://client.example.invalid/callback",
+                   FORENA_OAUTH_CLIENT_SECRET="synthetic-oauth-client-secret-for-auth-test",
+                   RESEND_API_KEY="synthetic-unused-key", RESEND_FROM_EMAIL="auth@example.invalid",
+                   SPRING_APPLICATION_JSON=json.dumps({"forena.authentication.mail-delay-ms": 3600000}))
         # Startup must fail before serving HTTP if the separate owner is unavailable.
         with tempfile.TemporaryFile(mode="w+") as log:
             result = subprocess.run([JAVA, "-jar", str(JAR)], env=env | {"FORENA_MIGRATION_PASSWORD": ""},
@@ -205,15 +143,17 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
             output = log.read()
             assert "Migration owner password is required" in output
             assert "Tomcat started" not in output, "HTTP opened despite failed migration setup"
-        with tempfile.TemporaryFile(mode="w+") as log:
-            command = [JAVA, *(["-Dspring.aot.enabled=true"] if args.aot_runtime else []), "-jar", str(JAR)]
+        with (ROOT / "backend/target/runtime-smoke.log").open("w+") as log:
+            trace = ["-agentlib:native-image-agent=config-output-dir=" + str(args.trace_native_metadata.resolve())] if args.trace_native_metadata else []
+            command = [JAVA, *trace, *(["-Dspring.aot.enabled=true"] if args.aot_runtime else []), "-jar", str(JAR)]
             if args.runtime_executable:
                 command = [str(args.runtime_executable.resolve())]
             if args.runtime_image:
                 # Host networking only connects the Linux test container to the
-                # disposable PostgreSQL and synthetic JWKS server on loopback.
+                # disposable PostgreSQL on loopback.
                 runtime_keys = ("FORENA_MIGRATE", "FORENA_MIGRATION_USERNAME", "FORENA_MIGRATION_PASSWORD", "PORT", "FORENA_DB_CA_CERTIFICATE", "FORENA_JDBC_URL", "FORENA_DB_USERNAME", "FORENA_DB_PASSWORD",
-                                "FORENA_AUTH_PUBLISHABLE_KEY", "FORENA_AUTH_ISSUER", "FORENA_AUTH_JWKS_URI",
+                                "RESEND_API_KEY", "RESEND_FROM_EMAIL", "SPRING_APPLICATION_JSON",
+                                "FORENA_OAUTH_CLIENT_ID", "FORENA_OAUTH_CLIENT_REDIRECT", "FORENA_OAUTH_CLIENT_SECRET",
                                 "FORENA_WEB_SESSION_ENABLED", "FORENA_WEB_ORIGIN", "FORENA_WEB_SESSION_KEY")
                 entrypoint = ["--entrypoint", args.runtime_entrypoint] if args.runtime_entrypoint else []
                 runtime_container = docker("create", "--network=host", *entrypoint,
@@ -222,7 +162,7 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
                 command = ["docker", "start", "--attach", runtime_container]
             started = time.monotonic()
             runtime = subprocess.Popen(command, env=env, stdout=log, stderr=subprocess.STDOUT)
-            deadline = time.monotonic() + 30
+            deadline = time.monotonic() + (90 if args.trace_native_metadata else 30)
             while True:
                 if runtime.poll() is not None or time.monotonic() >= deadline:
                     log.seek(0)
@@ -237,98 +177,180 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
                     time.sleep(0.2)
             assert docker("exec", container, "psql", "-U", "postgres", "-Atc", "select count(*) from forena.databasechangelog") == str(expected_changes), "HTTP opened before migrations completed"
             print(f"Runtime healthy after {time.monotonic() - started:.3f}s", flush=True)
-            keys.available = False
-            try:
-                urllib.request.urlopen(f"http://127.0.0.1:{http_port}/actuator/health", timeout=2)
-                raise AssertionError("Health accepted an unavailable key provider")
-            except urllib.error.HTTPError as error:
-                assert error.code == 503
-            finally:
-                keys.available = True
-            with urllib.request.urlopen(f"http://127.0.0.1:{http_port}/actuator/health", timeout=2) as health:
-                assert health.status == 200
-            def read_private(path):
-                request = urllib.request.Request(f"http://127.0.0.1:{http_port}{path}", headers={"Authorization": f"Bearer {bearer}"})
-                try:
-                    with urllib.request.urlopen(request, timeout=5) as response:
-                        assert response.status == 200 and response.headers["Cache-Control"] == "no-store"
-                        return json.load(response)
-                except urllib.error.HTTPError as error:
-                    log.seek(0)
-                    raise AssertionError(f"GET {path} returned {error.code}:\n" + log.read()) from error
-
             def seed(sql):
-                docker("exec", container, "psql", "-U", "postgres", "-v", "ON_ERROR_STOP=1", "-c", sql)
+                return docker("exec", container, "psql", "-U", "postgres", "-At", "-v", "ON_ERROR_STOP=1", "-c", sql)
 
-            seed(f"insert into forena.account(subject) values('{keys.subject}')")
-            empty = read_private("/api/me/overview")
+            def clear_limits():
+                seed("delete from forena.auth_rate_limit")
+
+            # Every mode uses the same Spring lifecycle; no external auth or email calls.
+            origin = env["FORENA_WEB_ORIGIN"]
+            cookie = None
+            subject = None
+            def call(path, body=None, *, form=False, status=200, bound=True, account=True):
+                nonlocal cookie
+                headers = {"Origin": origin, "X-Forena-Request": "1"} if bound else {}
+                if cookie:
+                    headers["Cookie"] = cookie
+                if subject and account:
+                    headers["X-Forena-Account"] = subject
+                data = None
+                if body is not None:
+                    headers["Content-Type"] = "application/x-www-form-urlencoded" if form else "application/json"
+                    data = (urllib.parse.urlencode(body) if form else json.dumps(body)).encode()
+                request = urllib.request.Request(f"http://127.0.0.1:{http_port}{path}", data=data, headers=headers)
+                try:
+                    response = urllib.request.urlopen(request, timeout=10)
+                except urllib.error.HTTPError as error:
+                    response = error
+                with response:
+                    assert response.status == status, f"{path}: {response.status}, expected {status}"
+                    assert response.headers.get("Cache-Control") and "no-store" in response.headers["Cache-Control"]
+                    value = response.headers.get("Set-Cookie")
+                    if value:
+                        assert all(flag in value for flag in ("HttpOnly", "Secure", "SameSite=Lax"))
+                        cookie = value.split(";", 1)[0]
+                    if status == 429:
+                        assert int(response.headers["Retry-After"]) > 0
+                    return json.load(response)
+
+            credentials = {"email": "smoke@example.invalid", "password": "synthetic-smoke-password"}
+            call("/api/auth/register", credentials, bound=False, status=403)
+            call("/api/auth/register", credentials)
+            registration_cookie = cookie
+            subject = seed("select subject from forena.native_user where email='smoke@example.invalid'")
+            code = seed("select token_value from forena.one_time_tokens where username like 'verify:%'")
+            assert seed("select count(*) from forena.auth_mail_outbox where encrypted_link like '%" + code + "%'") == "0"
+            assert seed("select count(*) from forena.auth_mail_outbox where encrypted_link <> ''") == "1"
+            call("/api/auth/login", credentials, form=True, status=401)
+            cookie = None
+            call("/api/auth/email/verify", {"code": code}, status=401)
+            cookie = registration_cookie
+            call("/api/auth/email/verify", {"code": code})
+            call("/api/auth/email/verify", {"code": code}, status=401)
+            clear_limits()
+            call("/api/auth/login", credentials, form=True)
+            assert cookie != registration_cookie
+            active_cookie = cookie
+            assert call("/api/auth/session")["user"]["id"] == subject
+            empty = call("/api/me/overview")
             assert all(empty[name] == [] for name in ("activities", "organizations", "teams"))
-            organization, team, person, activity = [str(uuid.uuid4()) for _ in range(4)]
+            organization, team, person, activity, invitation = [str(uuid.uuid4()) for _ in range(5)]
             seed(f"""
 insert into forena.organization(id,name) values('{organization}','Local club');
 insert into forena.person(id,organization_id,display_name) values('{person}','{organization}','Local person');
-insert into forena.person_access(person_id,organization_id,subject,kind) values('{person}','{organization}','{keys.subject}','self');
+insert into forena.person_access(person_id,organization_id,subject,kind) values('{person}','{organization}','{subject}','self');
 insert into forena.team(id,organization_id,name) values('{team}','{organization}','Local team');
 insert into forena.activity(id,organization_id,team_id,title,starts_at,ends_at) values('{activity}','{organization}','{team}','Local activity',now()+interval '1 hour',now()+interval '2 hours');
-insert into forena.invitation(id,organization_id,activity_id,person_id) values('{uuid.uuid4()}','{organization}','{activity}','{person}');
+insert into forena.invitation(id,organization_id,activity_id,person_id) values('{invitation}','{organization}','{activity}','{person}');
 """)
-            overview = read_private("/api/me/overview")
+            overview = call("/api/me/overview")
             assert len(overview["activities"]) == 1 and overview["teams"] == []
             assert overview["activities"][0]["team"]["roles"] == []
-            assert len(overview["activities"][0]["people"]) == 1
-            assert overview["activities"][0]["people"][0]["invitation"]["response"] == "pending"
-            assert overview["activities"][0]["people"][0]["invitation"]["response_comment"] is None
-            assert read_private(f"/api/activities/{activity}")["team"]["roles"] == []
-            seed(f"update forena.activity set invitation_send_at=now()+interval '1 hour' where id='{activity}'")
-            assert read_private(f"/api/activities/{activity}/my-invitations")["invitations"] == []
-            seed(f"update forena.person_access set active=false where subject='{keys.subject}'")
-            assert read_private("/api/me/activities")["activities"] == []
-            print("PASS: authenticated empty overview, invitation-only activity with empty team roles, details and revoked-access empty lists", flush=True)
-            try:
-                urllib.request.urlopen(f"http://127.0.0.1:{http_port}/api/activities/00000000-0000-0000-0000-000000000001/my-invitations", timeout=2)
-                raise AssertionError("Private API accepted missing bearer")
-            except urllib.error.HTTPError as error:
-                assert error.code == 401
-            # The synthetic provider has no POST handler. Five admitted calls fail
-            # closed with 503; the sixth must be rejected locally before Auth.
-            headers = {"Content-Type": "application/json", "Origin": env["FORENA_WEB_ORIGIN"], "X-Forena-Request": "1"}
+            assert call(f"/api/activities/{activity}")["team"]["roles"] == []
+            seed(f"update forena.person_access set active=false where subject='{subject}'")
+            assert call("/api/me/activities")["activities"] == []
+            # Actual WebAuthn options exercise Spring's JSON mixins and string-only session storage.
+            clear_limits()
+            options = call("/api/auth/passkey/registration/options", {})
+            assert "rp" in options, f"Native WebAuthn creation option fields: {sorted(options)}"
+            assert options["rp"]["id"] == "app.example.invalid"
+            assert options["authenticatorSelection"]["userVerification"] == "required"
+            assert call("/api/auth/passkeys") == []
+            call("/api/auth/logout", {}, form=True)
+            cookie = active_cookie
+            call("/api/auth/session", status=401)
+            cookie = None
+            clear_limits()
             for index in range(6):
-                request = urllib.request.Request(f"http://127.0.0.1:{http_port}/api/auth/passkey/options",
-                                                 data=b"{}", headers=headers, method="POST")
-                try:
-                    urllib.request.urlopen(request, timeout=3)
-                    raise AssertionError("Synthetic Auth failure was accepted")
-                except urllib.error.HTTPError as error:
-                    expected_status = 503 if index < 5 else 429
-                    if error.code != expected_status:
-                        log.seek(0)
-                        raise AssertionError(f"Auth admission returned {error.code}, expected {expected_status}:\n" + log.read()) from error
-                    assert error.headers.get("Cache-Control") == "no-store"
-                    if index == 5:
-                        assert int(error.headers["Retry-After"]) > 0
-            logout = urllib.request.Request(f"http://127.0.0.1:{http_port}/api/auth/logout",
-                                            data=b"{}", headers=headers, method="POST")
-            with urllib.request.urlopen(logout, timeout=3) as result:
-                assert json.load(result) == {"ok": True}, "Rate limiting must not block logout"
-            # Exercise framework persistence, String serialization and protected cookie in JAR/native.
-            docker("exec", container, "psql", "-U", "postgres", "-c",
-                   "update forena.auth_rate_limit set available_at=clock_timestamp()-interval '1 second'")
-            keys.passkey_success = True
-            options = urllib.request.Request(f"http://127.0.0.1:{http_port}/api/auth/passkey/options",
-                                             data=b"{}", headers=headers, method="POST")
-            with urllib.request.urlopen(options, timeout=3) as result:
-                assert "challenge_id" in json.load(result)
-                cookie = result.headers["Set-Cookie"]
-                assert all(flag in cookie for flag in ("HttpOnly", "Secure", "SameSite=Lax"))
-                assert "Max-Age=86400" in cookie, "The session cookie must persist for one day"
-            assert docker("exec", container, "psql", "-U", "postgres", "-Atc",
-                          "select count(*) from forena.spring_session_attributes") == "1"
-            logout.add_header("Cookie", cookie.split(";", 1)[0])
-            with urllib.request.urlopen(logout, timeout=3) as result:
-                assert json.load(result) == {"ok": True}
-                assert "Max-Age=0" in result.headers["Set-Cookie"]
-            assert docker("exec", container, "psql", "-U", "postgres", "-Atc",
-                          "select count(*) from forena.spring_session") == "0"
+                options = call("/api/auth/passkey/options", {}, status=200 if index < 5 else 429)
+                if index < 5:
+                    assert options["userVerification"] == "required" and "challenge" in options
+            call("/api/auth/logout", {}, form=True)
+            clear_limits()
+            call("/api/auth/magic-link", {"username": credentials["email"]}, form=True)
+            magic_cookie = cookie
+            code = seed("select token_value from forena.one_time_tokens where username like 'login:%'")
+            cookie = None
+            call("/api/auth/magic-link/verify", {"token": code}, form=True, status=401)
+            cookie = magic_cookie
+            clear_limits()
+            call("/api/auth/magic-link/verify", {"token": code}, form=True)
+            call("/api/auth/session")
+            clear_limits()
+            call("/api/auth/password/reset-request", {"email": credentials["email"]})
+            code = seed("select token_value from forena.one_time_tokens where username like 'reset:%'")
+            call("/api/auth/password/reset", {"code": code, "password": "replacement-smoke-password"})
+            call("/api/auth/session", status=401)
+            clear_limits()
+            call("/api/auth/login", credentials, form=True, status=401)
+            credentials["password"] = "replacement-smoke-password"
+            call("/api/auth/login", credentials, form=True)
+            seed(f"update forena.account set enabled=false where subject='{subject}'")
+            call("/api/auth/session", status=401)
+            assert call("/.well-known/oauth-protected-resource/api/mcp")["resource"] == origin + "/api/mcp"
+            print("PASS: real Spring signup, browser-bound email verification and magic link, password login/reset, protected cookies, logout, account ban, WebAuthn options, shared 429 limits, OAuth metadata and authorized business reads", flush=True)
+            if args.browser:
+                browser_email = "browser-smoke@example.invalid"
+                class Mailbox(http.server.BaseHTTPRequestHandler):
+                    def do_POST(self):
+                        if self.path != "/reset-limits":
+                            self.send_error(404)
+                            return
+                        clear_limits()
+                        self.send_response(200)
+                        self.end_headers()
+
+                    def do_GET(self):
+                        kind = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get("kind", [""])[0]
+                        if kind not in ("verify", "login", "reset"):
+                            self.send_error(400)
+                            return
+                        code = seed(f"select token_value from forena.one_time_tokens where username like '{kind}:%' "
+                                    f"and split_part(username,':',2)=(select subject::text from forena.native_user where email='{browser_email}') order by expires_at desc limit 1")
+                        self.send_response(200)
+                        self.send_header("Content-Type", "application/json")
+                        self.end_headers()
+                        self.wfile.write(json.dumps({"code": code}).encode())
+
+                    def log_message(self, *_args):
+                        pass
+
+                mailbox = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Mailbox)
+                thread = threading.Thread(target=mailbox.serve_forever, daemon=True)
+                thread.start()
+                with socket.socket() as available:
+                    available.bind(("127.0.0.1", 0))
+                    frontend_port = available.getsockname()[1]
+                browser_env = {name: value for name, value in os.environ.items() if not name.startswith("FORENA_")}
+                browser_env.update(FORENA_AUTH_API=f"http://127.0.0.1:{http_port}",
+                                   FORENA_AUTH_MAILBOX=f"http://127.0.0.1:{mailbox.server_port}",
+                                   FORENA_AUTH_FRONTEND=f"http://127.0.0.1:{frontend_port}",
+                                   FORENA_AUTH_TEST_EMAIL=browser_email)
+                if os.environ.get("FORENA_BROWSER_EXECUTABLE"):
+                    browser_env["FORENA_BROWSER_EXECUTABLE"] = os.environ["FORENA_BROWSER_EXECUTABLE"]
+                with tempfile.TemporaryFile(mode="w+") as frontend_log:
+                    preview = subprocess.Popen(["npm", "run", "preview", "--workspace", "@forena/frontend", "--",
+                                                "--host", "127.0.0.1", "--port", str(frontend_port)], cwd=ROOT,
+                                               env=browser_env, stdout=frontend_log, stderr=subprocess.STDOUT,
+                                               start_new_session=True)
+                    try:
+                        deadline = time.monotonic() + 20
+                        while True:
+                            try:
+                                urllib.request.urlopen(f"http://127.0.0.1:{frontend_port}/", timeout=2).close()
+                                break
+                            except urllib.error.URLError:
+                                assert preview.poll() is None and time.monotonic() < deadline, "Frontend preview did not start"
+                                time.sleep(0.2)
+                        clear_limits()
+                        subprocess.run(["node", "scripts/migration/auth-browser.mjs"], cwd=ROOT, env=browser_env,
+                                       check=True, timeout=180)
+                    finally:
+                        os.killpg(preview.pid, 15)
+                        preview.wait(timeout=10)
+                        mailbox.shutdown()
+                        mailbox.server_close()
             if runtime_container:
                 docker("stop", "--time=10", runtime_container)
                 assert runtime.wait(timeout=10) in (0, 143), "Container shutdown failed"
@@ -340,16 +362,13 @@ insert into forena.invitation(id,organization_id,activity_id,person_id) values('
             startup = [line for line in log if "Started " in line]
             assert startup and all(" INFO " in line and not line.lstrip().startswith("{") for line in startup), \
                 "Runtime must emit plaintext startup logs"
-        print("PASS: fresh bootstrap; migration-only JAR twice; web startup migrates empty schema with separate owner/runtime credentials; one-shot runtime-only access verification and rejection without migration or HTTP; DB/Auth health; shared Auth admission and 429; unrestricted logout; bearer rejection; plaintext logs; shutdown")
+        print("PASS: fresh bootstrap; migration-only JAR twice; web startup migrates empty schema with separate owner/runtime credentials; one-shot runtime-only access verification and rejection without migration or HTTP; DB health; Spring authentication lifecycle; shared admission and 429; unrestricted logout; plaintext logs; shutdown")
     finally:
         if runtime_container is not None:
             docker("rm", "-f", runtime_container)
         if runtime is not None and runtime.poll() is None:
             runtime.kill()
             runtime.wait(timeout=10)
-        if keys is not None:
-            keys.shutdown()
-            keys.server_close()
         docker("rm", "-f", container)
 
 

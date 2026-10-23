@@ -15,7 +15,6 @@ class EmailProfileTest {
     private val context = ApplicationContextRunner()
         .withUserConfiguration(LocalEmailConfiguration::class.java, ResendConfiguration::class.java)
         .withBean(JsonMapper::class.java, { JsonMapper.builder().build() })
-        .withPropertyValues("forena.auth.mode=native")
 
     @Test fun `local logs mail even when Resend credentials are configured`(output: CapturedOutput) {
         context.withPropertyValues("spring.profiles.active=local", "forena.email.resend-api-key=unused",

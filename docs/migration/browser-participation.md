@@ -1,5 +1,12 @@
 # Första browserflödet genom Next och Kotlin
 
+Historiskt Next → Kotlin-prov för den borttagna Supabase-adaptern. Hjälpskripten
+i `backend/scripts` är pensionerade; kommandon och resultat nedan gäller sina
+angivna äldre revisionsversioner. Den ordinarie Next-appen är oförändrad och
+fortsätter använda sin separata auth. För aktuella React/Kotlin-prov, se
+[Spring-autentisering](authentication.md).
+
+
 Avgränsat M07-steg efter PR #114, från main `548d627`. Sidan
 `/migration/participation` återanvänder lösenordsinloggning, `AppShell`,
 kontomeny, footer och `ActivityInvitationResponse`. En syntetisk målsman ser
@@ -74,8 +81,8 @@ Next får inga DB-/Auth-admincredentials. Ägare och Auth-admin används av
 testprocessens seed/snapshot/städning. Chromium-processen får inte testets
 privilegierade `FORENA_*`-miljövariabler. Inga portar behöver exponeras publikt.
 
-[Seeden](../../backend/scripts/browser-seed.py) använder Python stdlib och
-[JDBC-fixturen](../../backend/scripts/BrowserSeed.java), inte Data API.
+Den historiska seeden använder Python stdlib och
+den historiska JDBC-fixturen, inte Data API.
 Den kontrollerar projektref, pooler, begränsad ägaridentitet, `verify-full`,
 betrodd Supabase-CA och femstegshistorik innan Auth-konton skapas.
 Den skapar bara nya slumpade ID:n: två Auth-konton under `example.invalid`,

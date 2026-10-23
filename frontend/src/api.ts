@@ -25,7 +25,7 @@ export function createApiFetch(readAccount: () => Promise<string | null>, unauth
     const deadline = setTimeout(abort, 10_000);
     try {
       const response = await transport(path, { ...init, method, headers, credentials: "same-origin", cache: "no-store", redirect: "error", signal: controller.signal });
-      // A platform login page must not revoke a valid Supabase session. Only
+      // A platform login page must not revoke a valid app session. Only
       // Kotlin's explicit application response means the app session is invalid.
       if (response.status === 401 && response.headers.get("content-type")?.includes("application/json")) {
         const body = await response.clone().json().catch(() => null);

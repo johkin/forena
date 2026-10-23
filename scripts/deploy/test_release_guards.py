@@ -69,7 +69,8 @@ class ReleaseGuards(unittest.TestCase):
                                 'SITE_URL="https://forena-kotlin.vercel.app"\n'
                                 'SUPABASE_SECRET_KEY="synthetic-admin"\n'
                                 'FORENA_DB_PASSWORD="synthetic-runtime"\n'
-                                f'FORENA_WEB_SESSION_KEY="{session_key}"\n')
+                                f'FORENA_WEB_SESSION_KEY="{session_key}"\n'
+                                'RESEND_API_KEY="[SENSITIVE]"\nRESEND_FROM_EMAIL="auth@example.invalid"\n')
             output = target / "github-env"
             result = subprocess.run(["node", str(ROOT / "scripts/deploy/prepare-kotlin.mjs")],
                                     cwd=target, env=dict(os.environ, GITHUB_ENV=str(output)),
@@ -79,7 +80,7 @@ class ReleaseGuards(unittest.TestCase):
     def test_build_env_excludes_runtime_and_admin_credentials(self):
         result, github_env, build_env = self.prepare()
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn(AUTH, github_env)
+        self.assertNotIn(AUTH, github_env)
         self.assertNotIn("synthetic-admin", build_env + github_env)
         self.assertNotIn("synthetic-runtime", build_env + github_env)
         self.assertNotIn("FORENA_WEB_SESSION_KEY", build_env + github_env)
@@ -94,7 +95,7 @@ class ReleaseGuards(unittest.TestCase):
 
     def test_prepare_rejects_legacy_project_root_and_auth_before_export(self):
         for overrides in [{"project_id": "prj_KoyZzpTGHV3osX77YpL9ON7YMHd1"},
-                          {"root": "backend"}, {"auth": "https://legacy.supabase.co"}]:
+                          {"root": "backend"}]:
             result, github_env, _ = self.prepare(**overrides)
             self.assertNotEqual(result.returncode, 0)
             self.assertEqual(github_env, "")

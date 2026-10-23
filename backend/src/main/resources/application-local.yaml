@@ -19,8 +19,6 @@ server:
   port: 8080
 
 forena:
-  auth:
-    mode: native
   web-session:
     enabled: true
     origin: http://localhost:3000
@@ -28,7 +26,7 @@ forena:
     trust-vercel-proxy: false
     # Public, stable 32-byte development key; never use outside the local profile.
     key: BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=
-  native-auth:
+  authentication:
     rp-id: localhost
     mail-delay-ms: 1000
     client-id: ""

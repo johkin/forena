@@ -1,13 +1,18 @@
 # Säkerhetsarkitektur
 
-Ett separat [försök med egen autentisering i Spring](migration/native-auth.md)
-finns bakom `FORENA_AUTH_MODE=native` (ADR-024). Där äger backend konton,
-mejllänkar, passkeys och OAuth och använder en enda lokal webbsession.
-Auth-mejl skickas genom mejlmodulens Resend REST-adapter med fast HTTPS-endpoint,
-utan redirects, med begränsade anslutnings-/lästider och backendlagrad API-nyckel.
-Outboxens stabila idempotensnyckel återanvänds vid återförsök. Leverantörens
-svarskropp eller transportundantag får inte hamna i loggar eller API-fel.
-Beskrivningarna av Supabase Auth nedan avser fortsatt det äldre körläget.
+Den nya React/Kotlin-appen använder [Spring-autentisering](migration/authentication.md)
+som enda ordinarie auth-lösning. Backend äger konton, passkeys, mejllänkar,
+OAuth och Spring Session JDBC. Supabase som PostgreSQL-leverantör är separat.
+Den äldre Next-appen behåller sin befintliga Supabase Auth; beskrivningarna
+av den äldre lösningen nedan innebär ingen omkoppling.
+
+
+Auth-mejl använder mejlmodulens Resend REST-adapter med fast HTTPS-endpoint,
+nekade redirects, begränsade tidsgränser och backendlagrad API-nyckel. Den
+krypterade outboxens stabila idempotensnyckel återanvänds vid återförsök.
+Leverantörssvar, credentials och transportundantag får inte exponeras i loggar
+eller API-fel.
+
 
 Spring-profilen `local` är ett uttryckligt utvecklingsundantag: en loggsändare
 ersätter Resend och skriver hela mejlet inklusive engångslänk till loggen.
@@ -15,7 +20,7 @@ Profilen använder publika fixture-credentials/sessionsnyckel och loopback-porta
 den får endast användas med lokala testdata. Utanför `local` registreras inte
 loggsändaren och Docker Compose är avstängt. Se [lokala körinstruktioner](../backend/README.md#lokal-utveckling).
 
-Native-lägets inloggning och logout använder nu Springs färdiga filter och
+Spring-flödets inloggning och logout använder nu Springs färdiga filter och
 providers enligt ADR-025. React/Vite följer Springs formulär-/WebAuthn-format.
 Kontoregler och smala repository-/tokenservice-adaptrar bevarar kontospärr,
 generation, browserbindning och säker sessionslagring. Se
@@ -320,17 +325,6 @@ kunddata för modellträning måste granskas innan riktiga medlemsuppgifter skic
 till en extern AI-provider.
 
 ## Notiser, e-post och dokument
-
-WhatsApp kräver personligt samtycke och nummerverifiering via ett inkommande
-engångsmeddelande till Förena. Kontaktdata och knappkopplingar hålls i privat
-schema med RLS utan klientgrants. Webhook-signatur verifieras före serviceåtkomst.
-Okända avsändare och ogiltiga kopplingsbevis avvisas före advisory-lås och
-kvittensskrivning. Kontospecifika lås ersätter global serialisering; upptagna
-ingressoperationer ger ett återförsökssvar. Se [WhatsApp](whatsapp.md).
-Signerad avsändaridentitet, aktuell kontokoppling och aktuell person-/målsmansrelation
-kontrolleras vid varje knapptryck; en vidarebefordrad knapp ger ingen åtkomst.
-Kallelsemallen innehåller uppgifter om ett barn per meddelande. Övriga notifieringar
-är generella. Se [WhatsApp](whatsapp.md) för samtycke, rensning och livscykelskydd.
 
 Pushnotiser och e-post kan exponera information utanför Förena, exempelvis på en
 låsskärm. För känsliga sammanhang ska notisen därför kunna vara generell:

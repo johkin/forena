@@ -17,7 +17,7 @@ class BrowserConfig(unittest.TestCase):
             "projectId": "prj_V1a7hd39ABj3w5ARUOATF31XMWX9", "orgId": "team_hkR9c8WmDdaB7Ohge0pDlA6X"}))
         values = {"NEXT_PUBLIC_SUPABASE_URL": "https://ckzrtxqjskosqzoitymc.supabase.co",
                   "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_synthetic",
-                  "SITE_URL": "https://forena-kotlin.vercel.app", "FORENA_DB_PASSWORD": "poison-database-secret"}
+                  "SITE_URL": "https://forena-kotlin.vercel.app", "FORENA_DB_PASSWORD": "poison-database-secret", "RESEND_API_KEY": "[SENSITIVE]", "RESEND_FROM_EMAIL": "auth@example.invalid"}
         if session_key is not None:
             values["FORENA_WEB_SESSION_KEY"] = session_key
         (root / ".vercel/.env.production.local").write_text("\n".join(f"{k}={json.dumps(v)}" for k, v in values.items()))
@@ -35,7 +35,7 @@ class BrowserConfig(unittest.TestCase):
                     self.assertNotIn(key, output)
                     self.assertNotIn("FORENA_WEB_SESSION_KEY", output)
                     self.assertNotIn("poison-database-secret", output)
-                self.assertIn("NEXT_PUBLIC_SUPABASE_URL", exported)
+                self.assertNotIn("NEXT_PUBLIC_SUPABASE", exported)
 
     def test_release_rejects_missing_or_malformed_readable_key(self):
         for key in [None, "", "[SENSITIVE]-wrong", "malformed-private-value"]:
@@ -56,7 +56,7 @@ class BrowserConfig(unittest.TestCase):
                                              FORENA_KOTLIN_TEST_ACTIVITY_ID=""), capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             config = json.loads((Path(directory) / "public/config.json").read_text())
-            self.assertEqual(set(config), {"supabaseUrl", "publishableKey", "version"})
+            self.assertEqual(set(config), {"version"})
             self.assertNotIn("poison", json.dumps(config))
             version = json.loads((Path(directory) / "public/app-version.json").read_text())
             self.assertEqual(config["version"], version["version"])

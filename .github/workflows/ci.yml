@@ -60,9 +60,6 @@ jobs:
       - name: Calculate browser build inputs
         id: frontend-inputs
         run: python3 scripts/deploy/build_inputs.py frontend >> "$GITHUB_OUTPUT"
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: https://ckzrtxqjskosqzoitymc.supabase.co
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
 
       - name: Restore unchanged browser build
         id: frontend-cache
@@ -74,9 +71,6 @@ jobs:
       - name: Build the separate browser frontend
         if: steps.frontend-cache.outputs.cache-hit != 'true'
         run: npm run frontend:build
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: https://ckzrtxqjskosqzoitymc.supabase.co
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
 
       - name: Install Chromium for browser navigation checks
         run: npx playwright install --with-deps chromium
@@ -135,7 +129,7 @@ jobs:
           cache: maven
           cache-dependency-path: backend/pom.xml
 
-      - name: Verify business API, JWT, Kotlin authorization and migrations
+      - name: Verify Spring authentication, Kotlin authorization and migrations
         run: backend/mvnw -f backend/pom.xml --batch-mode --no-transfer-progress verify
 
       - name: Verify packaged migration and runtime modes
@@ -152,6 +146,16 @@ jobs:
         run: |
           npm ci --prefix backend/contract --ignore-scripts
           npm run check --prefix backend/contract
+
+      - name: Verify real browser account lifecycle, WebAuthn and OAuth
+        run: |
+          npm ci
+          npm run frontend:build
+          npx playwright install --with-deps chromium
+          npm run preview --workspace @forena/frontend -- --port 3002 > "$RUNNER_TEMP/auth-preview.log" 2>&1 &
+          preview_pid=$!
+          trap 'kill "$preview_pid" 2>/dev/null || true' EXIT
+          FORENA_AUTH_BROWSER_TEST=true backend/mvnw -f backend/pom.xml --batch-mode --no-transfer-progress -Dtest=AuthTest test
 
       - name: Retain verified migration JAR
         uses: actions/upload-artifact@v7
@@ -222,8 +226,20 @@ jobs:
           -Dspring-boot.build-image.imageName=forena-backend:ci
           spring-boot:build-image
 
-      - name: Verify the native buildpack image against disposable PostgreSQL and Auth keys
-        run: python3 backend/scripts/local-smoke.py --runtime-image forena-backend:ci
+      - name: Set up browser verification for the native runtime
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.19.0
+          cache: npm
+
+      - name: Build browser client and install Chromium
+        run: |
+          npm ci
+          npm run frontend:build
+          npx playwright install --with-deps chromium
+
+      - name: Verify native Spring authentication against disposable PostgreSQL
+        run: python3 backend/scripts/local-smoke.py --runtime-image forena-backend:ci --browser
 
       - name: Export tested backend image
         run: |

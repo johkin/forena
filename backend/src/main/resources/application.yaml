@@ -44,24 +44,19 @@ server:
 
 forena:
   web-session:
-    enabled: "${FORENA_WEB_SESSION_ENABLED:false}"
+    enabled: "${FORENA_WEB_SESSION_ENABLED:true}"
     origin: "${FORENA_WEB_ORIGIN:}"
     key: "${FORENA_WEB_SESSION_KEY:}"
     secure: "${FORENA_WEB_SESSION_SECURE:true}"
     trust-vercel-proxy: "${FORENA_TRUST_VERCEL_PROXY:false}"
     max-seconds: "${FORENA_WEB_SESSION_MAX_SECONDS:86400}"
     idle-seconds: "${FORENA_WEB_SESSION_IDLE_SECONDS:86400}"
-  auth:
-    mode: "${FORENA_AUTH_MODE:supabase}"
-    issuer: "${FORENA_AUTH_ISSUER:}"
-    jwks-uri: "${FORENA_AUTH_JWKS_URI:}"
-    publishable-key: "${FORENA_AUTH_PUBLISHABLE_KEY:}"
 
   email:
     resend-api-key: "${RESEND_API_KEY:}"
     from: "${RESEND_FROM_EMAIL:}"
 
-  native-auth:
+  authentication:
     rp-id: "${FORENA_PASSKEY_RP_ID:}"
     client-id: "${FORENA_OAUTH_CLIENT_ID:}"
     client-redirect: "${FORENA_OAUTH_CLIENT_REDIRECT:}"

@@ -164,7 +164,6 @@ export function NotificationSettings() {
       <button className="notification-settings-close" type="button" aria-label="Stäng" onClick={() => setOpen(false)}>×</button>
       <p className="eyebrow">Profil</p>
       <h2>Notisinställningar</h2>
-      <p><a href="/profile#whatsapp">Hantera WhatsApp-notifieringar</a></p>
       <p>{descriptions[state]}</p>
       {iosBrowser ? <p className="notification-settings-help">Öppna Förena i Safari, tryck på Dela och välj <strong>Lägg till på hemskärmen</strong>. Öppna sedan Förena via ikonen på hemskärmen och tryck på <strong>Aktivera pushnotiser</strong> här.</p> : null}
       {androidBrowser ? <p className="notification-settings-help">Du kan aktivera push här i webbläsaren. Vill du använda Förena som app väljer du <strong>Installera app</strong> eller <strong>Lägg till på startskärmen</strong> i webbläsarens meny och öppnar sedan Förena via ikonen.</p> : null}
