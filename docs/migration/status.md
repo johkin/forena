@@ -31,6 +31,20 @@ multiarkitekturdigesten från den tidigare godkända körningen #692 och anger
 `linux/amd64` uttryckligen. Manifest, Maven-parameterstöd, workflow-YAML och
 25 release-tester har kontrollerats lokalt. Ny CI krävs för det ändrade receptet.
 
+En tillkommande säkerhetskommentar utökar samma skydd till alla övriga
+administrativa skrivningar: behörighet kontrolleras före adminlåset och igen
+efter väntan, och en Spring MVC-interceptor begränsar mutationer före
+bodytolkning och servicetransaktion. Bootstrap, övrig administration och
+inloggning har separata budgetar. Regressionstester provar samtliga tolv övriga
+skrivvägar med låset upptaget, återkallad roll under väntan och 429 utan att
+läsning eller bootstrap blockeras av mutationsbudgeten. Full Maven `verify`
+har passerat med 97 tester utan fel eller överhoppningar, inklusive samtliga
+browserprov. Kontraktskontrollen är fortsatt grön. AOT-paketering med omkörda
+429-regressioner och `local-smoke.py --aot-runtime` har också passerat: nya
+interceptorn fungerar i den genererade Spring-grafen och hela admin-/aktivitets-
+och auth-flödet passerar mot lokal PostgreSQL. Detta är ett JVM/AOT-prov, inte
+ett lokalt native-binärprov.
+
 ## M09: enstaka aktivitet och hela admin-kedjan, 2026-10-23
 
 Implementation: `9294ce2cb7c9211858d880b44de6ff0c92ba0ec4` på

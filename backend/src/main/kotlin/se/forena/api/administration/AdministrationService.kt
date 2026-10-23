@@ -89,7 +89,7 @@ class AdministrationService(
 
     @Transactional
     fun platformAdministrator(actor: Actor, change: AdministratorChange): AdministrationOk {
-        lock(actor); requirePlatform(actor)
+        authorizeAndLock(actor) { requirePlatform(actor) }
         val target = directory.verifiedAccount(change.email)
         if (change.active) platforms.add(target)
         else {
@@ -111,7 +111,7 @@ class AdministrationService(
 
     @Transactional
     fun createClub(actor: Actor, command: CreateClub): AdministrationResult {
-        lock(actor); requirePlatform(actor)
+        authorizeAndLock(actor) { requirePlatform(actor) }
         validName(command.organizationName); validSlug(command.organizationSlug)
         validSection(SectionChange(command.sectionName, command.sectionSlug, command.disciplineKey))
         val zone = zone(command.timeZone)
@@ -130,7 +130,7 @@ class AdministrationService(
 
     @Transactional
     fun updateClub(actor: Actor, id: UUID, change: ClubChange): AdministrationOk {
-        lock(actor); requireClub(actor, id)
+        authorizeAndLock(actor) { requireClub(actor, id) }
         val club = clubs.findById(id) ?: throw NoSuchElementException()
         validName(change.name); validSlug(change.slug)
         clubs.save(club.copy(name = change.name.trim(), slug = change.slug, timeZone = zone(change.timeZone).id))
@@ -140,7 +140,7 @@ class AdministrationService(
 
     @Transactional
     fun clubAdministrator(actor: Actor, id: UUID, change: AdministratorChange): AdministrationOk {
-        lock(actor); requirePlatform(actor)
+        authorizeAndLock(actor) { requirePlatform(actor) }
         clubs.findById(id) ?: throw NoSuchElementException()
         val target = directory.verifiedAccount(change.email)
         val existing = clubAdmins.findByOrganizationIdAndSubject(id, target)
@@ -155,7 +155,8 @@ class AdministrationService(
 
     @Transactional
     fun saveSection(actor: Actor, clubId: UUID, id: UUID?, change: SectionChange): AdministrationResult {
-        lock(actor); requireClub(actor, clubId); validSection(change)
+        authorizeAndLock(actor) { requireClub(actor, clubId) }
+        validSection(change)
         clubs.findById(clubId) ?: throw NoSuchElementException()
         val existing = id?.let { sections.findById(it) ?: throw NoSuchElementException() }
         require(existing == null || existing.organizationId == clubId)
@@ -167,9 +168,11 @@ class AdministrationService(
 
     @Transactional
     fun deleteSection(actor: Actor, id: UUID): AdministrationOk {
-        lock(actor)
-        val section = sections.findById(id) ?: throw NoSuchElementException()
-        requireClub(actor, section.organizationId)
+        val section = authorizeAndLock(actor) {
+            val candidate = sections.findById(id) ?: throw NoSuchElementException()
+            requireClub(actor, candidate.organizationId)
+            candidate
+        }
         check(sections.findByOrganizationId(section.organizationId).size > 1 && teams.findBySectionId(id).isEmpty())
         sections.delete(section)
         audit(actor, "section.delete", id)
@@ -178,9 +181,11 @@ class AdministrationService(
 
     @Transactional
     fun sectionAdministrator(actor: Actor, id: UUID, change: AdministratorChange): AdministrationOk {
-        lock(actor)
-        val section = sections.findById(id) ?: throw NoSuchElementException()
-        requireClub(actor, section.organizationId)
+        val section = authorizeAndLock(actor) {
+            val candidate = sections.findById(id) ?: throw NoSuchElementException()
+            requireClub(actor, candidate.organizationId)
+            candidate
+        }
         val target = directory.verifiedAccount(change.email)
         val existing = sectionAdmins.findBySectionIdAndSubject(id, target)
         if (existing == null && !change.active) return AdministrationOk()
@@ -192,9 +197,11 @@ class AdministrationService(
 
     @Transactional
     fun saveTeam(actor: Actor, sectionId: UUID, id: UUID?, change: TeamChange): AdministrationResult {
-        lock(actor)
-        val section = sections.findById(sectionId) ?: throw NoSuchElementException()
-        if (id == null) requireSection(actor, section) else requireTeam(actor, teams.findById(id) ?: throw NoSuchElementException())
+        val section = authorizeAndLock(actor) {
+            val candidate = sections.findById(sectionId) ?: throw NoSuchElementException()
+            if (id == null) requireSection(actor, candidate) else requireTeam(actor, teams.findById(id) ?: throw NoSuchElementException())
+            candidate
+        }
         validName(change.name); require(change.season.length <= 40)
         val existing = id?.let { teams.findById(it) ?: throw NoSuchElementException() }
         require(existing == null || existing.sectionId == sectionId)
@@ -207,9 +214,11 @@ class AdministrationService(
 
     @Transactional
     fun deleteTeam(actor: Actor, id: UUID): AdministrationOk {
-        lock(actor)
-        val team = teams.findById(id) ?: throw NoSuchElementException()
-        requireTeam(actor, team)
+        val team = authorizeAndLock(actor) {
+            val candidate = teams.findById(id) ?: throw NoSuchElementException()
+            requireTeam(actor, candidate)
+            candidate
+        }
         check(administration.teamEmpty(id))
         teams.delete(team); audit(actor, "team.delete", id)
         return AdministrationOk()
@@ -217,12 +226,11 @@ class AdministrationService(
 
     @Transactional
     fun teamAdministrator(actor: Actor, id: UUID, change: AdministratorChange): AdministrationOk {
-        lock(actor)
-        val team = teams.findById(id) ?: throw NoSuchElementException()
-        // A platform role alone never grants control of business access.
-        val section = team.sectionId?.let { sections.findById(it) }
-        val businessAdmin = clubRole(actor, team.organizationId) || (section != null && sectionRole(actor, requireNotNull(section.id))) || teamRole(actor, team)
-        if (!businessAdmin) denied()
+        val team = authorizeAndLock(actor) {
+            val candidate = teams.findById(id) ?: throw NoSuchElementException()
+            requireBusinessTeam(actor, candidate)
+            candidate
+        }
         val target = directory.verifiedAccount(change.email)
         val club = clubs.findById(team.organizationId) ?: throw NoSuchElementException()
         val starts = change.startsOn ?: today(club)
@@ -236,6 +244,21 @@ class AdministrationService(
         teamAdmins.save(TeamAdministratorEntity(existing?.id, team.organizationId, id, target, person, accessId, starts, change.endsOn, change.active))
         audit(actor, if (change.active) "team.admin.grant" else "team.admin.revoke", id, target)
         return AdministrationOk()
+    }
+
+    /** Reject unrelated callers before serialization; reload authority after any lock wait. */
+    private fun <T> authorizeAndLock(actor: Actor, authorize: () -> T): T {
+        sessions.requireActive(actor)
+        authorize()
+        lock(actor)
+        return authorize()
+    }
+
+    private fun requireBusinessTeam(actor: Actor, team: AdministrationTeamEntity) {
+        // A platform role alone never grants control of business access.
+        val section = team.sectionId?.let { sections.findById(it) }
+        if (!clubRole(actor, team.organizationId) &&
+            !(section != null && sectionRole(actor, requireNotNull(section.id))) && !teamRole(actor, team)) denied()
     }
 
     private fun requireBootstrapIdentity(actor: Actor) {

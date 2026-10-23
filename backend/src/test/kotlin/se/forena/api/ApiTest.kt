@@ -934,7 +934,7 @@ class ApiTest {
         assertThat(limited.statusCode()).isEqualTo(429)
         assertThat(limited.headers().firstValue("Retry-After")).isPresent()
         assertThat(limited.headers().firstValue("Cache-Control").orElse("")).contains("no-store")
-        assertThat(limited.body()).contains("aktiveringsförsök")
+        assertThat(limited.body()).contains("administrationsförsök")
         assertThatCode { repeat(3) { loginLimiter.admit("test-bootstrap-independent") } }.doesNotThrowAnyException()
     }
 
@@ -978,6 +978,74 @@ class ApiTest {
         assertThat(managed.body()).contains(team.toString()).doesNotContain(organization.toString())
         assertThat(managementRecords.team(team)?.id).isEqualTo(team)
         assertThat(managementRecords.team(UUID.randomUUID())).isNull()
+    }
+
+    @Test fun `all unauthorized administration writes reject before waiting for the global lock`() {
+        bootstrapAdministrator()
+        val club = createAdminClub()
+        val section = admin.queryForObject("select id from forena.section where organization_id=?", UUID::class.java, club)!!
+        val created = request("/api/admin/sections/$section/teams", """{"name":"Skyddat lag"}""", method="POST")
+        val team = UUID.fromString(json.readTree(created.body()).get("id").asString())
+        val outsiderCookie = loginCookie(outsider)
+        val role = """{"email":"$outsider@example.invalid"}"""
+        val sectionChange = """{"name":"Sektion","slug":"sektion","disciplineKey":"football"}"""
+        val writes = listOf(
+            Triple("POST", "/api/admin/platform-administrators", role),
+            Triple("POST", "/api/admin/clubs", """{"organizationName":"Klubb","organizationSlug":"obehorig","timeZone":"Europe/Stockholm","sectionName":"Fotboll","sectionSlug":"fotboll","disciplineKey":"football"}"""),
+            Triple("PUT", "/api/admin/clubs/$club", """{"name":"Klubb","slug":"obehorig","timeZone":"Europe/Stockholm"}"""),
+            Triple("POST", "/api/admin/clubs/$club/administrators", role),
+            Triple("POST", "/api/admin/clubs/$club/sections", sectionChange),
+            Triple("PUT", "/api/admin/clubs/$club/sections/$section", sectionChange),
+            Triple("DELETE", "/api/admin/sections/$section", null),
+            Triple("POST", "/api/admin/sections/$section/administrators", role),
+            Triple("POST", "/api/admin/sections/$section/teams", """{"name":"Lag"}"""),
+            Triple("PUT", "/api/admin/sections/$section/teams/$team", """{"name":"Lag"}"""),
+            Triple("DELETE", "/api/admin/teams/$team", null),
+            Triple("POST", "/api/admin/teams/$team/administrators", role)
+        )
+        DriverManager.getConnection(database.jdbcUrl, database.username, database.password).use { connection ->
+            connection.autoCommit = false
+            connection.createStatement().use { it.executeQuery("select * from forena.administration_state for update").close() }
+            try {
+                for ((method, path, body) in writes) {
+                    val result = CompletableFuture.supplyAsync { request(path, body, cookie=outsiderCookie, method=method) }
+                    assertThat(result.get(3, SECONDS).statusCode()).describedAs("$method $path").isEqualTo(403)
+                }
+            } finally { connection.rollback() }
+        }
+    }
+
+    @Test fun `administration mutation admission returns 429 without affecting bootstrap or reads`() {
+        val outsiderCookie = loginCookie(outsider)
+        val hash = browserSettings.fingerprint("admin-mutation-account:$outsider")
+        admin.update("insert into forena.auth_rate_limit(key_hash,available_at) values(?,clock_timestamp()+interval '60 seconds')", hash)
+        val limited = request("/api/admin/platform-administrators", """{"email":"$parent@example.invalid"}""", cookie=outsiderCookie, method="POST")
+        assertThat(limited.statusCode()).isEqualTo(429)
+        assertThat(limited.headers().firstValue("Retry-After")).isPresent()
+        assertThat(limited.headers().firstValue("Cache-Control").orElse("")).contains("no-store")
+        assertThat(request("/api/admin/overview", cookie=outsiderCookie).statusCode()).isEqualTo(200)
+        assertThat(request("/api/admin/bootstrap", "{}", cookie=outsiderCookie, method="POST").statusCode()).isEqualTo(403)
+    }
+
+    @Test fun `administration rechecks a revoked role after waiting for the global lock`() {
+        bootstrapAdministrator()
+        val club = createAdminClub()
+        val section = admin.queryForObject("select id from forena.section where organization_id=?", UUID::class.java, club)!!
+        request("/api/admin/sections/$section/administrators", """{"email":"$outsider@example.invalid"}""", method="POST")
+        val outsiderCookie = loginCookie(outsider)
+        DriverManager.getConnection(database.jdbcUrl, database.username, database.password).use { connection ->
+            connection.autoCommit = false
+            connection.createStatement().use { it.executeQuery("select * from forena.administration_state for update").close() }
+            val result = CompletableFuture.supplyAsync { request("/api/admin/sections/$section/teams", """{"name":"Nekat efter väntan"}""", cookie=outsiderCookie, method="POST") }
+            try {
+                await().atMost(Duration.ofSeconds(10)).until {
+                    admin.queryForObject("select count(*) from pg_stat_activity where usename='forena_api_runtime' and wait_event_type='Lock'", Long::class.java)!! > 0
+                }
+                admin.update("update forena.section_administrator set active=false where subject=?", outsider)
+            } finally { connection.rollback() }
+            assertThat(result.get(10, SECONDS).statusCode()).isEqualTo(403)
+            assertThat(admin.queryForObject("select count(*) from forena.team where section_id=?", Long::class.java, section)).isZero()
+        }
     }
 
     @Test fun `bootstrap is serialized and only the configured verified account can activate it`() {

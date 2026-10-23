@@ -57,6 +57,9 @@ oregistrerade konton är fortsatt ett separat paritetsområde.
   inga personer, personkopplingar eller behörighetsrader skapas.
 - Rollens läsbehörighet har en egen tilldelningsrad; återkallning påverkar inte
   andra, oberoende läsrättigheter. Återkallad egen personkoppling nekar lagadmin.
+- Alla adminändringar kontrollerar aktiv session och behörighet före det globala
+  låset och igen efter låsväntan. Övriga adminändringar har egna beständiga
+  globala, klient- och kontobudgetar, separat från bootstrap och inloggning.
 - Backend kontrollerar aktiv session och aktuella rättigheter igen efter låsväntan.
   Webben binder anrop till aktuellt konto och behåller Origin-/CSRF-skydden.
 - Sista systemadmin och sista klubbadmin kan inte återkallas. Sista sektionen,
