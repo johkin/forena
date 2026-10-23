@@ -30,6 +30,31 @@ produktionskomponenter som används i appen. Nya och ändrade element, relevanta
 varianter och tillstånd ska uppdateras där i samma PR. Kontrollera återanvändningen
 i berörda vyer och följ [reglerna för komponentsidan](docs/design-spec.md#komponentsidan-är-den-gemensamma-ui-referensen).
 
+## Kodkvalitet och läsbarhet
+
+All kod som skrivs eller ändras ska vara elegant, läsbar och idiomatisk för
+språket och ramverket. Med elegant menas enkel, tydlig och lätt att underhålla.
+
+- Prioritera begriplighet framför kortast möjliga kod. Undvik smarta knep,
+  svårtolkade enradingar och onödigt kompakta uttryck.
+- Använd beskrivande namn, sammanhållna funktioner med tydligt ansvar och ett
+  lättföljt kontrollflöde. Begränsa nästling och gör sidoeffekter tydliga.
+- Följ språkets etablerade idiom och projektets gemensamma konventioner.
+  Föredra standardbiblioteket och befintliga lösningar framför egna specialfall.
+- Inför abstraktioner när de förenklar förståelsen eller samlar gemensamt
+  beteende. Undvik spekulativ generalisering och onödiga lager.
+- Använd tydliga typer och föredra immutabilitet. Hantera frånvarande värden
+  och fel uttryckligen i stället för att dölja dem med osäkra antaganden.
+- Låt namn och struktur förklara vad koden gör. Använd kommentarer för varför,
+  viktiga begränsningar och beslut som inte framgår av koden.
+- Följ projektets formatterings- och lintregler och granska den ändrade koden
+  med avseende på läsbarhet innan uppgiften avslutas.
+
+För TypeScript: bevara typsäkerheten, använd `unknown` för okända indata och
+smalna av typer genom validering. Undvik `any`, non-null assertions och
+typkonverteringar som kringgår typkontrollen. Använd discriminated unions när
+de gör alternativa tillstånd tydligare.
+
 ## Spring som förstahandsval
 
 - Använd i första hand Springs färdiga komponenter och standardflöden. Kontrollera
@@ -45,6 +70,9 @@ i berörda vyer och följ [reglerna för komponentsidan](docs/design-spec.md#kom
 
 ## Kotlin-kod
 
+- Följ Kotlin Coding Conventions. Föredra `val`, använd null safety och undvik
+  `!!`. Använd scope functions, extension functions och samlingsoperationer när
+  de gör avsikten tydligare; dela upp kedjor som blir svåra att följa.
 - Prioritera läsbar och konsekvent kod. Deklarera loggare en gång per klass som
   `private val logger = LoggerFactory.getLogger(Klassnamn::class.java)` och använd
   `logger.info(...)`/`logger.warn(...)` vid anropen. Använd imports i stället för
