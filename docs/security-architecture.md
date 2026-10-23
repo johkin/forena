@@ -1,5 +1,38 @@
 # Säkerhetsarkitektur
 
+Ett separat [försök med egen autentisering i Spring](migration/native-auth.md)
+finns bakom `FORENA_AUTH_MODE=native` (ADR-024). Där äger backend konton,
+mejllänkar, passkeys och OAuth och använder en enda lokal webbsession.
+Auth-mejl skickas genom mejlmodulens Resend REST-adapter med fast HTTPS-endpoint,
+utan redirects, med begränsade anslutnings-/lästider och backendlagrad API-nyckel.
+Outboxens stabila idempotensnyckel återanvänds vid återförsök. Leverantörens
+svarskropp eller transportundantag får inte hamna i loggar eller API-fel.
+Beskrivningarna av Supabase Auth nedan avser fortsatt det äldre körläget.
+
+Spring-profilen `local` är ett uttryckligt utvecklingsundantag: en loggsändare
+ersätter Resend och skriver hela mejlet inklusive engångslänk till loggen.
+Profilen använder publika fixture-credentials/sessionsnyckel och loopback-portar;
+den får endast användas med lokala testdata. Utanför `local` registreras inte
+loggsändaren och Docker Compose är avstängt. Se [lokala körinstruktioner](../backend/README.md#lokal-utveckling).
+
+Native-lägets inloggning och logout använder nu Springs färdiga filter och
+providers enligt ADR-025. React/Vite följer Springs formulär-/WebAuthn-format.
+Kontoregler och smala repository-/tokenservice-adaptrar bevarar kontospärr,
+generation, browserbindning och säker sessionslagring. Se
+[genomgång och verifiering](migration/spring-security.md).
+
+OAuth-authorization begränsas före sessionsskapande, även för anrop utan cookie.
+Den befintliga PostgreSQL-baserade klient-/globalbudgeten gäller över instanser
+och omstarter. Authorization har en separat klientbudget för att ett normalt
+login-/consent-/tokenflöde ska rymmas, men samma globala tak. Avvisade anrop
+skapar inga sessioner; databasfel stoppar anropet med 503. React validerar
+OAuth-fortsättning separat från vanliga sidbyten och tillåter bara den fasta
+samma-origin-sökvägen `/oauth2/authorize?`.
+
+I Supabase-lägets magic-link-adapter konsumeras PKCE-verifieraren atomiskt under
+databasens sessionslås, innan leverantören anropas. Även samtidiga bekräftelser
+över flera instanser får bara göra ett kodutbyte.
+
 ## Runtime och migrationsägare
 
 ADR-021 ersätter tabellspecifika runtime-grants med gemensam datarätt i det
@@ -52,6 +85,10 @@ binder också UI:ts konto till serversessionens konto med `X-Forena-Account`.
 Det är ett likhetskrav mot verifierad identitet, aldrig en behörighetskälla.
 Publika statiska sidor och health är öppna. Login/logout/passkey är publika
 API-rutter med CSRF-skydd. Skyddade API:er kräver fortsatt session och rättigheter.
+Passkey-registrering kräver aktiv inloggning och binder challenge till konto och
+serversession. Magic link för befintliga konton använder PKCE med krypterad
+serverlagrad verifierare och generisk bekräftelse. Kodutbyte kräver samma
+browserprofil och POST med CSRF-skydd; ett nytt sessions-ID skapas efter login.
 Vercels skyddscookie är separat från appens autentisering.
 Ett 401-svar från plattformen raderar inte appsessionen; gränssnittet reagerar
 på Kotlin-API:ts uttryckliga JSON-svar om ogiltig session.

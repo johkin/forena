@@ -72,6 +72,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/magic-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Request a PKCE magic link for an existing account. Requires canonical Origin and X-Forena-Request: 1. Generic acknowledgement; no provider tokens. Limited by client, email and shared Auth budget. */
+        post: operations["requestBrowserMagicLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/magic-link/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Exchange a one-time code with the encrypted PKCE verifier in the initiating HttpOnly session. Requires canonical Origin and X-Forena-Request: 1. Rotates session; returns verified user information only. */
+        post: operations["verifyBrowserMagicLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/passkey/options": {
         parameters: {
             query?: never;
@@ -83,6 +117,40 @@ export interface paths {
         put?: never;
         /** @description Begin WebAuthn authentication. Requires the canonical Origin and X-Forena-Request: 1. Binds the challenge to the HttpOnly Spring session for at most five minutes. */
         post: operations["startBrowserPasskey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/passkey/registration/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Authenticated WebAuthn enrollment. Requires canonical Origin, X-Forena-Request: 1 and a browser session. Challenge bound to session and verified account for at most five minutes. */
+        post: operations["startBrowserPasskeyRegistration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/passkey/registration/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Verify account/session-bound enrollment via Auth. Requires canonical Origin, X-Forena-Request: 1 and a browser session. Never returns provider tokens. */
+        post: operations["verifyBrowserPasskeyRegistration"];
         delete?: never;
         options?: never;
         head?: never;
@@ -197,6 +265,9 @@ export interface components {
         ApiError: {
             error: string;
         };
+        BrowserAuthAcknowledgement: {
+            ok: boolean;
+        };
         BrowserLoginRequest: {
             email: string;
             /** Format: password */
@@ -212,6 +283,13 @@ export interface components {
         };
         InvitationResponseResult: {
             ok: boolean;
+        };
+        MagicLinkRequest: {
+            /** Format: email */
+            email: string;
+        };
+        MagicLinkVerifyRequest: {
+            code: string;
         };
         MyActivities: {
             activities: components["schemas"]["MyActivity"][];
@@ -441,6 +519,74 @@ export interface operations {
             };
         };
     };
+    requestBrowserMagicLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MagicLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description Request completed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BrowserAuthAcknowledgement"];
+                };
+            };
+            /** @description Auth admission exhausted; no provider call. Retry later. */
+            429: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    verifyBrowserMagicLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MagicLinkVerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Request completed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BrowserSessionView"];
+                };
+            };
+            /** @description Auth admission exhausted; no provider call. Retry later. */
+            429: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     startBrowserPasskey: {
         parameters: {
             query?: never;
@@ -460,6 +606,70 @@ export interface operations {
                 };
             };
             /** @description Login admission exhausted; no provider call. Retry later. */
+            429: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    startBrowserPasskeyRegistration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Request completed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PasskeyOptions"];
+                };
+            };
+            /** @description Auth admission exhausted; no provider call. Retry later. */
+            429: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    verifyBrowserPasskeyRegistration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyVerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Request completed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BrowserAuthAcknowledgement"];
+                };
+            };
+            /** @description Auth admission exhausted; no provider call. Retry later. */
             429: {
                 headers: {
                     "Retry-After"?: number;

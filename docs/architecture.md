@@ -1,9 +1,20 @@
 # Arkitektur
 
+Ett separat [försök med egen autentisering i Spring](migration/native-auth.md)
+finns bakom `FORENA_AUTH_MODE=native` (ADR-024). Där äger backend konton,
+mejllänkar, passkeys och OAuth och använder en enda lokal webbsession.
+Beskrivningarna av Supabase Auth nedan avser fortsatt det äldre körläget.
+
 Den stegvisa målarkitekturen för Kotlin/Spring Boot på Vercel och Supabase finns i
 [migreringsplanen](migration/README.md) och dess [beslut](migration/decisions.md).
 Beskrivningen nedan avser nuvarande lösning och befintliga principer; målteknik
 är inte införd bara för att den dokumenterats.
+
+Spring-komponenter och standardflöden är förstahandsvalet i Kotlin (ADR-025).
+Anpassningar görs via ramverkets gränssnitt; controllers återskapar inte
+Spring Securitys autentiseringsflöden. Native-piloten använder färdiga filter
+för lösenord, passkeys, magic link och logout. Se [genomgången](migration/spring-security.md)
+för kvarvarande kontoregler och sessions-/transportadaptrar.
 
 Repots enda Kotlin/Spring Boot-kodbas finns direkt i `backend` (ADR-019).
 M21/M22-teknikprovet är borttaget. Verksamhets-API:t hanterar
@@ -13,14 +24,26 @@ Enligt ADR-013 äger en Spring `@Service` med `@Transactional` hela svarslogiken
 inklusive historik och signalversion; inga verksamhetstriggers eller egna
 procedurer används i det nya API-schemat. Nuvarande Next.js-app är ännu inte omkopplad. Se [API-underlaget](../backend/README.md)
 för säkerhetsgränser, verifiering och återstående aktivering. REST-controllers
-använder typade Kotlin data classes för svar. OpenAPI genereras från controller-
-signaturer och DTO-annoteringar med springdoc, och TypeScript-typer härleds från
+använder typade Kotlin data classes för svar. OpenAPI genereras med springdoc från controller-signaturer, DTO-annoteringar
+och filter-endpointernas gemensamma typade metadata; TypeScript-typer härleds från
 exporten i CI; kontraktsspecen underhålls inte separat för hand.
 Kotlin-tjänster namnges med suffixet `Service`, exempelvis `InvitationService`.
 Varje moduls interna databasmodeller samlas i `Entities.kt` och repository-
 interface i `Repositories.kt`. DTO:er ligger i separata filer från tjänstelogiken;
 modulen `activities` äger aktiviteter/kallelser och `identity` konto/session och
 personåtkomst. Modulith verifierar beroendet `activities` → `identity` (ADR-015).
+
+Kotlin-modulen `email` har ett leverantörsoberoende `EmailSender`-gränssnitt.
+Resends REST-adapter och hemlighetskonfiguration är samlade i `email.internal`.
+`identity` äger auth-mallar och krypterad mejlkö och beror bara på mejlmodulens
+publika typer; mejlmodulen har inga beroenden till identitet eller verksamhet.
+Den äldre Next-appens mejlintegration är separat och ändras inte av detta.
+
+Spring-profilen `local` startar PostgreSQL via Spring Boots Docker Compose-stöd,
+med samma schema-bootstrap, separata owner-/runtime-roller och Liquibase som
+övrig Kotlin-runtime. Native-auth och en loggande `EmailSender` gör det möjligt
+att utveckla utan Supabase Auth eller Resend. Data ligger kvar i en lokal volym.
+Se [körinstruktioner](../backend/README.md#lokal-utveckling).
 
 Ett avskilt [browserflöde](migration/browser-participation.md) återanvänder
 inloggning, sidskal och kallelsesvar genom de befintliga Next-rutterna till
@@ -30,7 +53,7 @@ Kotlin-anrop. Ordinarie översikt är fortsatt inte omkopplad.
 
 Den separata [browser-frontendens pilot](../frontend/README.md) i `frontend/`
 återanvänder gemensamt sidskal, header, meny, sidfot och kallelsesvar men kör
-React/Vite utan Next-server. Kotlin hanterar lösenords-/passkey-inloggning,
+React/Vite utan Next-server. Kotlin hanterar lösenords-/passkey-inloggning, magic link med serverlagrad PKCE, registrering av passkeys och
 tokenförnyelse; Spring Session JDBC äger serversessionens lagring, cookie och inaktivitet. Browsern skickar en ogenomskinlig HttpOnly-
 cookie direkt genom Vercels `/api/*` till Kotlin; access- och refresh-token
 lagras krypterat i det privata schemat och når inte frontenden. Backend äger

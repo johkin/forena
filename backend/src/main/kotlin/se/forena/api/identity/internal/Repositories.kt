@@ -29,3 +29,26 @@ interface PersonAccessRepository : Repository<PersonAccessEntity, PersonAccessKe
 interface PersonRepository : Repository<PersonEntity, UUID> {
     fun findByIdInOrderByDisplayNameAsc(ids: Collection<UUID>): List<PersonEntity>
 }
+
+interface NativeUserRepository : Repository<NativeUserEntity, UUID> {
+    fun findById(subject: UUID): NativeUserEntity?
+    fun findByEmail(email: String): NativeUserEntity?
+    @org.springframework.data.jdbc.repository.query.Modifying
+    @Query("insert into forena.account(subject) values(:subject)")
+    fun createAccount(subject: UUID): Int
+    @org.springframework.data.jdbc.repository.query.Modifying
+    @Query("insert into forena.native_user(subject,email,password_hash) values(:subject,:email,:passwordHash)")
+    fun createUser(subject: UUID, email: String, passwordHash: String): Int
+    @org.springframework.data.jdbc.repository.query.Modifying
+    @Query("update forena.native_user set verified=true where subject=:subject and auth_version=:authVersion and verified=false")
+    fun verifyEmail(subject: UUID, authVersion: Long): Int
+    @org.springframework.data.jdbc.repository.query.Modifying
+    @Query("update forena.native_user set password_hash=:passwordHash,auth_version=auth_version+1 where subject=:subject and auth_version=:authVersion and verified=true")
+    fun resetPassword(subject: UUID, passwordHash: String, authVersion: Long): Int
+    @org.springframework.data.jdbc.repository.query.Modifying
+    @Query("update forena.native_user set password_hash=:passwordHash,auth_version=auth_version+1 where subject=:subject and verified=false")
+    fun replacePendingPassword(subject: UUID, passwordHash: String): Int
+    @org.springframework.data.jdbc.repository.query.Modifying
+    @Query("update forena.account set enabled=:enabled where subject=:subject")
+    fun setEnabled(subject: UUID, enabled: Boolean): Int
+}

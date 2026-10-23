@@ -1,5 +1,7 @@
 package se.forena.api.identity
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+
 import org.springframework.security.authentication.AuthenticationServiceException
 import org.springframework.security.authentication.BadCredentialsException
 import jakarta.servlet.http.HttpServletRequest
@@ -21,6 +23,7 @@ import tools.jackson.databind.JsonNode
 /** Spring Session owns persistence, cookie and inactivity; this adapter owns provider tokens. */
 @Service
 @ConditionalOnWebApplication
+@ConditionalOnProperty(name = ["forena.auth.mode"], havingValue = "supabase", matchIfMissing = true)
 class BrowserSessionService(
     private val jdbc: JdbcTemplate, private val transaction: TransactionTemplate,
     private val settings: BrowserSessionSettings, private val provider: BrowserAuthProvider,
@@ -38,6 +41,26 @@ class BrowserSessionService(
     fun passkeyOptions(): JsonNode { settings.requireEnabled(); return provider.options() }
     fun passkeyVerify(challenge: String, credential: JsonNode, request: HttpServletRequest) =
         create(provider.verify(challenge, credential), request)
+    fun magicLinkVerify(code: String, request: HttpServletRequest): BrowserSessionView {
+        val browser = request.getSession(false) ?: throw BadCredentialsException("Session verification failed")
+        // Consume the fresh persisted verifier under the same cross-instance session lock
+        // used for refresh. Commit before contacting the provider, even if that call fails.
+        val verifier = transaction.execute {
+            val rows = jdbc.queryForList("select primary_id from forena.spring_session where session_id=? for update", browser.id)
+            if (rows.isEmpty()) throw BadCredentialsException("Session verification failed")
+            val stored = store.findById(browser.id) ?: throw BadCredentialsException("Session verification failed")
+            val encrypted = stored.getAttribute<String>(BrowserCredentialController.MAGIC_LINK)
+                ?: throw BadCredentialsException("Session verification failed")
+            val parts = settings.decrypt(encrypted, stored.id).split('\n')
+            if (parts.size != 2 || (parts[1].toLongOrNull() ?: 0) <= Instant.now().epochSecond)
+                throw BadCredentialsException("Session verification failed")
+            stored.removeAttribute(BrowserCredentialController.MAGIC_LINK)
+            store.save(stored)
+            parts[0]
+        } ?: throw AuthenticationServiceException("Session verification failed")
+        browser.removeAttribute(BrowserCredentialController.MAGIC_LINK)
+        return create(provider.exchangeCode(code, verifier), request)
+    }
 
     private fun create(tokens: JsonNode, request: HttpServletRequest): BrowserSessionView {
         val access = text(tokens, "access_token")
@@ -54,6 +77,9 @@ class BrowserSessionService(
     fun resolve(request: HttpServletRequest): BrowserSessionToken? {
         settings.requireEnabled()
         val browser = request.getSession(false) ?: return null
+        // An anonymous ceremony session holds a passkey challenge or PKCE verifier.
+        // A session check in another tab must not destroy a pending sign-in.
+        if (browser.getAttribute(TOKENS) == null) return null
         val resolved = try {
             transaction.execute {
                 // Reload AFTER locking; another instance may have refreshed since servlet loading.

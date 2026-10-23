@@ -17,9 +17,9 @@ class ArchitectureTest {
             .should().beAssignableTo(RuntimeException::class.java).check(code)
     }
 
-    @Test fun `identity and activities form valid modules`() {
+    @Test fun `identity and activities form valid modules including email`() {
         val modules = ApplicationModules.of(ForenaApplication::class.java)
-        assertThat(modules.stream().map { it.identifier.toString() }.toList()).contains("identity", "activities")
+        assertThat(modules.stream().map { it.identifier.toString() }.toList()).contains("identity", "activities", "email")
         modules.verify()
         Documenter(modules).writeDocumentation()
     }

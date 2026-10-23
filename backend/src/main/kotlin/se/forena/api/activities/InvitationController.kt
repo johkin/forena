@@ -3,8 +3,9 @@ package se.forena.api.activities
 import java.util.UUID
 import org.springframework.http.CacheControl
 import org.springframework.http.ResponseEntity
-import org.springframework.security.core.annotation.AuthenticationPrincipal
-import org.springframework.security.oauth2.jwt.Jwt
+import org.springframework.security.core.Authentication
+import jakarta.servlet.http.HttpServletRequest
+import se.forena.api.identity.CurrentActorService
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -19,7 +20,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse
 import se.forena.api.http.ApiError
 
 @RestController
-class InvitationController(private val invitationService: InvitationService) {
+class InvitationController(private val invitationService: InvitationService, private val actors: CurrentActorService) {
     @GetMapping("/api/activities/{activityId}/my-invitations", produces = ["application/json"])
     @Operation(operationId = "getMyInvitations", description = "Only own people and active guardian links. Future invitations return an empty list. Cache-Control: no-store.")
     @ApiResponse(responseCode = "200", description = "Accessible invitations", useReturnTypeSchema = true)
@@ -27,8 +28,8 @@ class InvitationController(private val invitationService: InvitationService) {
     @ApiResponse(responseCode = "401", description = "Missing, invalid, locally inactive or provider-inactive web session", content = [Content(schema = Schema(implementation = ApiError::class))])
     @ApiResponse(responseCode = "503", description = "Current Auth session cannot be verified; no fallback", content = [Content(schema = Schema(implementation = ApiError::class))])
     @ApiResponse(responseCode = "404", description = "Activity unavailable to account", content = [Content(schema = Schema(implementation = ApiError::class))])
-    fun list(@Parameter(hidden = true) @AuthenticationPrincipal jwt: Jwt, @PathVariable activityId: UUID): ResponseEntity<MyInvitations> =
-        ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(invitationService.list(actor(jwt), activityId))
+    fun list(@Parameter(hidden = true) authentication: Authentication, @Parameter(hidden = true) request: HttpServletRequest, @PathVariable activityId: UUID): ResponseEntity<MyInvitations> =
+        ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(invitationService.list(actors.from(authentication, request), activityId))
 
     @PutMapping("/api/invitations/{invitationId}/respond", consumes = ["application/json"], produces = ["application/json"])
     @Operation(operationId = "respondToInvitation", description = "Identical state creates no revision. Concurrent commands serialize in database lock order; a delayed different answer can replace an earlier one. Cache-Control: no-store.")
@@ -38,11 +39,10 @@ class InvitationController(private val invitationService: InvitationService) {
     @ApiResponse(responseCode = "503", description = "Current Auth session cannot be verified; no fallback", content = [Content(schema = Schema(implementation = ApiError::class))])
     @ApiResponse(responseCode = "403", description = "Invitation unavailable to account", content = [Content(schema = Schema(implementation = ApiError::class))])
     @ApiResponse(responseCode = "409", description = "Activity cancelled, ended or invitation not sent", content = [Content(schema = Schema(implementation = ApiError::class))])
-    fun respond(@Parameter(hidden = true) @AuthenticationPrincipal jwt: Jwt, @PathVariable invitationId: UUID,
+    fun respond(@Parameter(hidden = true) authentication: Authentication, @Parameter(hidden = true) request: HttpServletRequest, @PathVariable invitationId: UUID,
                 @RequestBody body: RespondToInvitationRequest): ResponseEntity<InvitationResponseResult> {
-        invitationService.respond(actor(jwt), invitationId, ResponseChange(body.response.value, body.commentProvided, body.comment))
+        invitationService.respond(actors.from(authentication, request), invitationId, ResponseChange(body.response.value, body.commentProvided, body.comment))
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(InvitationResponseResult())
     }
 
-    private fun actor(jwt: Jwt) = Actor(UUID.fromString(jwt.subject), UUID.fromString(jwt.getClaimAsString("session_id")), jwt.tokenValue)
 }

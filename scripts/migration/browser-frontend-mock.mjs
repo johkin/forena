@@ -11,6 +11,7 @@ const browser=await chromium.launch({...(process.env.FORENA_BROWSER_EXECUTABLE ?
 const context=await browser.newContext({viewport:{width:390,height:844}});
 await context.addCookies([{name:'_vercel_jwt',value:'synthetic-protection-cookie',url:base.origin}]);
 await context.addInitScript(()=>{if(!sessionStorage.getItem('migration-seeded')){localStorage.setItem('forena-kotlin-browser-auth','{"access_token":"obsolete-private-token"}');sessionStorage.setItem('migration-seeded','true');}});
+let magicRequested=false, registrationVerified=false;
 let current=null, revoked=false, platformDenied=false, sessionUnavailable=false, overviewUnavailable=false, sessionReads=0, requests=0, privateRequests=0, directProviderRequests=0, detailReads=0, answerUnavailable=false, holdAnswer=false, releaseAnswer;
 let invitations=[{id,person_id:users[0],name:'Alex Exempel med ett längre familjenamn',response:'pending',response_comment:null},
  {id:'44444444-4444-4444-8444-444444444444',person_id:users[1],name:'Tilda Exempel',response:'pending',response_comment:null}];
@@ -31,6 +32,14 @@ await context.route('**/api/**',async route=>{
   current=body.email==='other@example.invalid'?1:0;revoked=false;
   return route.fulfill({headers:{'content-type':'application/json','set-cookie':'forena-local-session=synthetic-opaque-session; HttpOnly; SameSite=Lax; Path=/'},body:JSON.stringify(view())});
  }
+ if(path==='/api/auth/magic-link'){
+  assert.equal(req.postDataJSON().email,'family@example.invalid');magicRequested=true;
+  return route.fulfill({json:{ok:true}});
+ }
+ if(path==='/api/auth/magic-link/verify'){
+  assert.ok(magicRequested);assert.equal(req.postDataJSON().code,'synthetic-code');magicRequested=false;current=0;revoked=false;
+  return route.fulfill({headers:{'content-type':'application/json','set-cookie':'forena-local-session=synthetic-magic-session; HttpOnly; SameSite=Lax; Path=/'},body:JSON.stringify(view())});
+ }
  if(path==='/api/auth/logout'){current=null;return route.fulfill({headers:{'content-type':'application/json','set-cookie':'forena-local-session=; HttpOnly; Max-Age=0; Path=/'},body:'{"ok":true}'});}
  if(path==='/api/auth/passkey/options')return route.fulfill({json:{challenge_id:id,expires_at:Math.floor(Date.now()/1000)+300,options:{challenge:'c3ludGhldGlj',rpId:base.hostname,userVerification:'required'}}});
  if(path==='/api/auth/passkey/verify'){
@@ -41,6 +50,17 @@ await context.route('**/api/**',async route=>{
  if(path==='/api/auth/session'){sessionReads++;if(sessionUnavailable)return route.fulfill({status:503,json:{error:'Sessionen kan inte verifieras just nu.'}});}
  if(current===null||revoked)return route.fulfill({status:401,json:{error:'Sessionen är inte aktiv.'}});
  if(path==='/api/auth/session')return route.fulfill({json:view()});
+ if(path==='/api/auth/passkey/registration/options'){
+  assert.equal(headers['x-forena-account'],users[current]);
+  return route.fulfill({json:{challenge_id:id,expires_at:Math.floor(Date.now()/1000)+300,options:{
+   challenge:'c3ludGhldGlj',rp:{id:base.hostname,name:'Förena'},user:{id:Buffer.from(users[current]).toString('base64url'),name:'family@example.invalid',displayName:'Family'},
+   pubKeyCredParams:[{type:'public-key',alg:-7}],authenticatorSelection:{residentKey:'required',userVerification:'required'},attestation:'none'}}});
+ }
+ if(path==='/api/auth/passkey/registration/verify'){
+  assert.equal(headers['x-forena-account'],users[current]);
+  const body=req.postDataJSON();assert.equal(body.challenge_id,id);assert.ok(body.credential.response.attestationObject);assert.ok(body.credential.response.clientDataJSON);
+  registrationVerified=true;return route.fulfill({json:{ok:true}});
+ }
  privateRequests++;
  assert.ok(headers.cookie?.includes('forena-local-session='));
  if(platformDenied)return route.fulfill({status:401,contentType:'text/html',body:'<html>Vercel Authentication</html>'});
@@ -200,6 +220,32 @@ try{
  await page.getByRole('button',{name:'Logga in',exact:true}).click();
  await expect(page).toHaveURL(new URL(`/activities/${id}`,base).href);await expect(row).toHaveCount(1);
  assert.equal(await page.evaluate(()=>window.documentInstance),'redirect-document');
+ // The settings page uses a real browser creation ceremony with the virtual authenticator.
+ await page.goto(new URL('/account/security',base).href);
+ await expect(page.getByRole('heading',{name:'Inloggning',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Skapa passkey',exact:true}).click();
+ await expect(page.getByRole('status')).toHaveText('Din passkey har skapats. Du kan använda den nästa gång du loggar in.');
+ assert.ok(registrationVerified);
+ await page.screenshot({path:'frontend/.evidence/passkey-registered.png',fullPage:true});
+ for(const width of [320,1280]){await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
+ await page.setViewportSize({width:390,height:844});
+ await page.getByRole('button',{name:'Öppna meny',exact:true}).click();
+ await page.getByRole('dialog').getByRole('button',{name:'Logga ut från Förena'}).click();
+ await expect(page.getByRole('heading',{name:'Logga in',exact:true})).toBeVisible();
+ await page.getByLabel('E-postadress för inloggningslänk',{exact:true}).fill('family@example.invalid');
+ await page.getByRole('button',{name:'Skicka inloggningslänk',exact:true}).click();
+ await expect(page.getByRole('status')).toContainText('Om adressen har ett konto');
+ await page.screenshot({path:'frontend/.evidence/magic-link-requested.png',fullPage:true});
+ await page.goto(new URL('/auth/callback?code=synthetic-code',base).href);
+ await expect(page.getByRole('button',{name:'Fortsätt och logga in',exact:true})).toBeVisible();
+ await expect(page).toHaveURL(new URL('/auth/callback',base).href);
+ await page.screenshot({path:'frontend/.evidence/magic-link-callback.png',fullPage:true});
+ assert.equal(current,null); // Loading the callback alone does not consume the code.
+ await page.getByRole('button',{name:'Fortsätt och logga in',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Min översikt',exact:true})).toBeVisible();
+ assert.equal(magicRequested,false);
+ assert.ok(!await page.evaluate(()=>document.cookie.includes('forena-local-session')));
+ assert.equal(await page.evaluate(()=>localStorage.length),0);
  assert.deepEqual(errors,[]);
- assert.ok(requests>0);console.log('PASS: overview invitations without per-activity reads; direct answers without navigation, isolated save failure, persisted answers and preserved comments; client navigation and persistent header without session refetch; back/forward, menu links and gallery-to-private session initialization; HttpOnly session, CSRF header, legacy cleanup, no browser/provider tokens, password and WebAuthn without reload, save/reload, revocation, account switch, logout, public gallery, complete overview counters, independent participant rows without invitations, synchronized sections and write locks, calendar, workspace links, responsive overview, retry, private-data isolation and keyboard menu');
+ assert.ok(requests>0);console.log('PASS: overview invitations without per-activity reads; direct answers without navigation, isolated save failure, persisted answers and preserved comments; client navigation and persistent header without session refetch; back/forward, menu links and gallery-to-private session initialization; HttpOnly session, CSRF header, legacy cleanup, no browser/provider tokens, password and WebAuthn without reload, virtual WebAuthn registration, magic-link request and explicit clean-URL callback, save/reload, revocation, account switch, logout, public gallery, complete overview counters, independent participant rows without invitations, synchronized sections and write locks, calendar, workspace links, responsive overview, retry, private-data isolation and keyboard menu');
 }finally{await browser.close();}

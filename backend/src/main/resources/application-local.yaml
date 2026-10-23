@@ -1,0 +1,36 @@
+# Development fixtures only. Start from backend/ with --spring.profiles.active=local.
+spring:
+  docker:
+    compose:
+      enabled: true
+      file: "${FORENA_LOCAL_COMPOSE_FILE:compose.yaml}"
+      lifecycle-management: start-and-stop
+  datasource:
+    url: "jdbc:postgresql://localhost:${FORENA_LOCAL_DB_PORT:5433}/forena"
+    username: forena_api_runtime
+    password: local-runtime-only
+  liquibase:
+    enabled: true
+    user: forena_api_owner
+    password: local-owner-only
+
+server:
+  address: 127.0.0.1
+  port: 8080
+
+forena:
+  auth:
+    mode: native
+  web-session:
+    enabled: true
+    origin: http://localhost:3000
+    secure: false
+    trust-vercel-proxy: false
+    # Public, stable 32-byte development key; never use outside the local profile.
+    key: BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=
+  native-auth:
+    rp-id: localhost
+    mail-delay-ms: 1000
+    client-id: ""
+    client-redirect: ""
+    client-secret: ""

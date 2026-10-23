@@ -1,5 +1,8 @@
 # Webbsessioner i Kotlin (#135)
 
+Den här sidan beskriver Supabase-körläget. För försöket där Spring äger konton,
+passkeys, mejllänkar och OAuth, se [egen autentisering](native-auth.md).
+
 Den separata React/Vite-appen använder Spring Session JDBC i Kotlin enligt
 ADR-018. Gamla Next-appen och dess Auth/MCP-flöden är separata. Det här ändrar
 inte skydd eller publicering av hela sajten: statiska sidor är publika och
@@ -13,6 +16,10 @@ backend har uttryckliga regler för varje API-route.
 | `POST /api/auth/login` | Publik med CSRF-skydd; email/password till Auth från Kotlin |
 | `POST /api/auth/passkey/options` | Publik med CSRF-skydd; Auth-challenge lagras i serversessionen i högst fem minuter |
 | `POST /api/auth/passkey/verify` | Publik med CSRF-skydd; kräver matchande challenge i serversessionen och giltig WebAuthn-assertion |
+| `POST /api/auth/magic-link` | Publik med CSRF-skydd; begär länk för befintligt konto, PKCE-verifierare krypteras i serversessionen i tio minuter |
+| `POST /api/auth/magic-link/verify` | Publik med CSRF-skydd; byter engångskod med samma sessions PKCE-verifierare och skapar ny session |
+| `POST /api/auth/passkey/registration/options` | Kräver aktiv inloggning och CSRF-skydd; separat challenge bunden till konto/session i högst fem minuter |
+| `POST /api/auth/passkey/registration/verify` | Kräver aktiv inloggning och CSRF-skydd; verifierar registrering via Auth, returnerar bara bekräftelse |
 | `POST /api/auth/logout` | Publik med CSRF-skydd; idempotent även med utgången cookie |
 | `GET /api/auth/session` | Kräver session; returnerar endast verifierat användar-ID och email |
 | Verksamhets-API och övriga routes | Kräver autentisering och respektive verksamhetsbehörighet |
@@ -41,6 +48,40 @@ signatur, challenge, RP-ID, origin och användarstatus. Kotlin binder challenge-
 till serversessionen och dess expiry; Auth ansvarar för engångsanvändning.
 Webbläsaren får aldrig leverantörens sessionssvar. Kontobyten signaleras mellan
 flikar utan användardata; sessionen kontrolleras även när fliken får fokus.
+
+## Magic link och registrering av passkey
+
+Inloggningssidan erbjuder lösenord, passkey och en engångslänk via mejl.
+Magic link använder Supabase Auth `/otp` med `create_user=false`, en slumpad
+32-bytes PKCE-verifierare och SHA-256 (`s256`). Svarstexten avslöjar inte om
+adressen finns. Samma klient-, e-post- och totalbudget som lösenordsinloggning
+begränsar begäran; formuläret väntar 60 sekunder före nytt försök.
+Verifieraren lagras AES-GCM-krypterad, bunden till Spring-sessionens ID, med
+tio minuters giltighet. Ny begäran ersätter föregående verifierare.
+
+Tillåt exakt `${FORENA_WEB_ORIGIN}/auth/callback` i målprojektets Auth-redirectlista.
+Konfigurera Supabases SMTP, verifierad avsändardomän och mejlmallen för Magic Link
+med `{{ .ConfirmationURL }}`. Ämnet ska tydligt ange inloggning till Förena;
+ange giltighetstid och att oönskade länkar kan ignoreras. Använd ingen länkspårning
+eller URL-omskrivning. Auths egen giltighet kan vara kortare än appens tio minuter.
+
+Callback-sidan tar emot en engångskod, rensar URL:en och kräver ett uttryckligt
+klick innan kodutbytet görs med POST. Sidans referrer-policy är `no-referrer`.
+Länken måste öppnas i samma browserprofil som begärde den; en annan profil
+saknar PKCE-verifieraren. Ogiltiga/utgångna länkar leder till instruktion att
+begära en ny länk. Sessions-ID byts efter lyckad verifiering. GET av `/session`
+får inte radera en anonym session med pågående PKCE-/WebAuthn-ceremoni.
+
+Passkey-registrering använder `navigator.credentials.create()` med Auths
+RP-/användar-/authenticator-inställningar. Kotlin verifierar aktiv session,
+binder en separat registreringschallenge till konto och browser-session och
+skickar attestation till Auth med användarens serverlagrade token. Auth äger
+nyckellagring och kryptografisk verifiering. Inga nya databastabeller behövs.
+Publika inloggnings- och skyddade registreringschallenges kan inte blandas.
+
+Lokala prov verifierar appens kontrakt med kontrollerad provider. Riktig
+mejlleverans, callback-allowlist och WebAuthn mot målprojektets RP-konfiguration
+måste verifieras före drift; tidigare `passkey_disabled` är inte löst av kodändringen.
 
 ## Serversession och livscykel
 
@@ -95,8 +136,8 @@ revokering efter sista kontrollen som ADR-016 beskriver.
 
 ## Begränsning av publika Auth-anrop
 
-Lösenordsinloggning och båda passkey-POST-rutterna har delade, kontinuerligt
-påfyllda buckets i `forena.auth_rate_limit`. Kortlivade databastransaktioner
+Lösenordsinloggning, magic link (begäran/kodutbyte) och passkey
+(inloggning/registrering) har delade, kontinuerligt påfyllda buckets i `forena.auth_rate_limit`. Kortlivade databastransaktioner
 låser en gemensam rad över instanser, kontrollerar alla gränser och committar
 ett tillstånd innan något Auth-anrop görs. Även misslyckade providerförsök
 förbrukar tillstånd. Nekade försök returnerar 429 med `Retry-After` och
@@ -106,11 +147,13 @@ använder inte inloggningsbudgeten. Vid databasfel nekas nya försök med 503.
 | Bucket | Kontinuerlig påfyllning | Tillåten omedelbar burst |
 | --- | --- | --- |
 | Klient-IP, gemensam för lösenord/passkey | 10 anrop / 5 minuter | 5 |
-| Normaliserad e-postadress, endast lösenord | 5 anrop / 5 minuter | 3 |
+| Normaliserad e-postadress, lösenord/magic link-begäran | 5 anrop / 5 minuter | 3 |
 | Gemensam publik Auth-budget | 20 anrop / 5 minuter | 10 |
 
 Passkey är discoverable och har ingen e-postadress före verifieringen; dess
-options/verify delar därför klient- och globalgränserna. IP/e-post lagras endast
+options/verify delar därför klient- och globalgränserna. Registrering och
+magic link-kodutbyte delar samma gränser; begäran av magic link begränsas
+dessutom per normaliserad e-postadress. IP/e-post lagras endast
 som HMAC-SHA-256 med sessionsnyckeln och en separat kontext. Nya bucket-rader
 skapas bara för godkända anrop, så nekad trafik med nya identifierare växer inte
 tabellen. Helt återfyllda och inaktiva rader städas efter ytterligare tio minuter.
@@ -160,7 +203,7 @@ inloggningar, men når inte refresh-reserven genom dessa publika rutter.
    styr tidsgränser (högst ett dygn). Behåll API:ts separata Auth-issuer/JWKS/key.
 4. För passkey måste målprojektets experimentella passkey-stöd vara aktiverat
    och ha rätt RP-ID och tillåtna origins. Befintliga registrerade passkeys
-   måste tillhöra detta RP-ID. Registrering/hantering av passkeys ingår inte.
+   måste tillhöra detta RP-ID. Registrering finns på `/account/security`, nåbar från kontomenyn. Listning, namnbyte och borttagning återstår.
    Se [Supabases aktuella passkey-kontrakt](https://supabase.com/docs/guides/auth/passkeys).
 5. Publicera frontend och backend tillsammans. Releaseförberedelsen kräver att
    runtime-nyckeln finns, accepterar Vercels `[SENSITIVE]`-platshållare och

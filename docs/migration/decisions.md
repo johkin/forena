@@ -3,6 +3,42 @@
 Status anger målbeslut för kommande implementation, inte redan införd teknik.
 Källkodsverifierat nuläge finns i [inventeringen](inventory.md).
 
+## ADR-025: Springs standardkomponenter som förstahandsval
+
+Beslut 2026-10-23 på användarens instruktion: använd så mycket som möjligt av
+Springs färdiga komponenter, inklusive hela autentiseringsflöden i Spring Security.
+Kontrollera stödet i projektets version innan egen motsvarighet byggs. Anpassa
+via konfiguration och ramverkets gränssnitt; egna controllers ska inte duplicera
+inloggning, logout eller WebAuthn-ceremonier. Transportkontrakt, säkert
+lagringsformat och Förena-regler får kräva små dokumenterade adaptrar.
+
+Native-piloten använder nu Springs password-, WebAuthn-, OTT- och logout-filter.
+OAuth använder redan Spring Authorization Server och Resource Server.
+Se [genomgång, utförda byten och kvarvarande adaptrar](spring-security.md).
+Äldre Supabase-körläge är separat. Next-appen och dess inloggning ändras inte.
+
+## ADR-024: Försök med egen autentisering i Spring Boot
+
+Beslut 2026-10-22 på användarens instruktion: implementera och prova lokal
+kontohantering, lösenord, passkeys, mejllänkar och OAuth i samma backend.
+Detta ersätter ADR-004:s förbud mot egen identitetstjänst för försöket.
+Spring Securitys implementationsstöd används; inga egna kryptografiska protokoll.
+
+Körläget `native` är uttryckligt och har ingen fallback till Supabase Auth.
+Webben använder en enda Spring Session, MCP separat OAuth-bearer med scope och
+resursbindning. Nya lokala UUID:n ger inga verksamhetsrättigheter. Befintliga
+identiteter får inte kopplas via e-post utan separat migreringsbeslut.
+Liquibase äger alla nya privata auth-tabeller med samma runtime-/ownergräns.
+
+Supabase-läget finns kvar för jämförelse; ingen drift eller kontoimport ingår.
+Se [försökets omfattning, konfiguration och återstående driftgrindar](native-auth.md).
+
+Uppdatering 2026-10-23: auth-mejl skickas genom Resends REST-API i en separat
+`email`-modul. Auth beror på modulens leverantörsoberoende gränssnitt och äger
+fortsatt mallar och krypterad outbox. SMTP-beroende och SMTP-konfiguration tas bort.
+Ändringen gäller endast Kotlin-backenden; äldre Next-/Edge-integrationer är separata.
+
+
 ## ADR-023: Korta migreringar vid backendstart
 
 Beslut 2026-10-21 på användarens instruktion, ersätter startordningen i ADR-021:

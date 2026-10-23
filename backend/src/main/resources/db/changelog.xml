@@ -12,4 +12,5 @@
  <changeSet id="api-009-activity-overview" author="forena"><sqlFile path="activity-overview.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
  <changeSet id="api-010-runtime-data-access" author="forena"><sqlFile path="runtime-data-access.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
  <changeSet id="api-011-personal-overview" author="forena"><sqlFile path="personal-overview.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
+ <changeSet id="api-012-native-auth" author="forena"><sqlFile path="native-auth.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
 </databaseChangeLog>

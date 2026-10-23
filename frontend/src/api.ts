@@ -42,3 +42,8 @@ export function createApiFetch(readAccount: () => Promise<string | null>, unauth
 export function safeDestination(value: string | null) {
   return value === "/" || value === "/components" || value === "/notifications" || (value !== null && new RegExp(`^/(?:activities|organizations|teams)/${uuid}$`, "i").test(value)) ? value! : "/";
 }
+
+/** OAuth resumes through the server, preserving the query without allowing arbitrary redirects. */
+export function oauthDestination(value: string | null): string | undefined {
+  return value !== null && /^\/oauth2\/authorize\?[^\s\\#]+$/.test(value) ? value : undefined;
+}

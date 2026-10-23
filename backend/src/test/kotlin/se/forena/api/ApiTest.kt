@@ -69,6 +69,11 @@ class ApiTest {
         val passkeyCalls = java.util.concurrent.atomic.AtomicInteger()
         val refreshCount = java.util.concurrent.atomic.AtomicInteger()
         val passkeyChallenges = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+        val magicChallenge = java.util.concurrent.atomic.AtomicReference("")
+        val pkceExchanges = java.util.concurrent.atomic.AtomicInteger()
+        @Volatile var pkceEntered = java.util.concurrent.CountDownLatch(0)
+        @Volatile var pkceRelease = java.util.concurrent.CountDownLatch(0)
+        val registrationChallenges = java.util.concurrent.ConcurrentHashMap<String, String>()
         val providerJson = JsonMapper.builder().build()
         val jwks = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).also { server ->
             server.createContext("/jwks") { exchange ->
@@ -106,7 +111,17 @@ class ApiTest {
                 assertThat(exchange.requestHeaders.getFirst("apikey")).isEqualTo("sb_publishable_local_test")
                 val body = providerJson.readTree(exchange.requestBody.readAllBytes())
                 val refreshing = exchange.requestURI.rawQuery == "grant_type=refresh_token"
-                if (refreshing) {
+                if (exchange.requestURI.rawQuery == "grant_type=pkce") {
+                    val verifier = body.get("code_verifier").asString()
+                    val challenge = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(java.security.MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray()))
+                    pkceExchanges.incrementAndGet()
+                    pkceEntered.countDown()
+                    check(pkceRelease.await(10, java.util.concurrent.TimeUnit.SECONDS))
+                    val expected = magicChallenge.get()
+                    val valid = body.get("auth_code").asString() == "synthetic-code" && expected.isNotEmpty() &&
+                        challenge == expected && magicChallenge.compareAndSet(expected, "")
+                    reply(exchange, if (valid) 200 else 400, if (valid) """{"access_token":"$loginAccess","refresh_token":"synthetic-refresh"}""" else "{}")
+                } else if (refreshing) {
                     refreshCount.incrementAndGet()
                     assertThat(body.get("refresh_token").asString()).isIn("synthetic-refresh", "rotated-refresh")
                     reply(exchange, refreshStatus, if (refreshStatus == 200) """{"access_token":"$refreshAccess","refresh_token":"rotated-refresh"}""" else "{}")
@@ -115,6 +130,26 @@ class ApiTest {
                     if (body.get("password")?.asString() != "synthetic-password") reply(exchange, 400, "{}")
                     else reply(exchange, 200, """{"access_token":"$loginAccess","refresh_token":"synthetic-refresh"}""")
                 }
+            }
+            server.createContext("/auth/v1/otp") { exchange ->
+                val body = providerJson.readTree(exchange.requestBody.readAllBytes())
+                assertThat(body.get("create_user").asBoolean()).isFalse()
+                assertThat(body.get("code_challenge_method").asString()).isEqualTo("s256")
+                assertThat(exchange.requestURI.rawQuery).isEqualTo("redirect_to=https%3A%2F%2Fapp.example.invalid%2Fauth%2Fcallback")
+                magicChallenge.set(body.get("code_challenge").asString())
+                reply(exchange, 200, "{}")
+            }
+            server.createContext("/auth/v1/passkeys/registration/options") { exchange ->
+                val bearer = exchange.requestHeaders.getFirst("Authorization")
+                assertThat(bearer).isEqualTo("Bearer $loginAccess")
+                val id = UUID.randomUUID().toString()
+                registrationChallenges[id] = bearer
+                reply(exchange, 200, """{"challenge_id":"$id","expires_at":${Instant.now().epochSecond + 300},"options":{"challenge":"c3ludGhldGlj","rp":{"id":"localhost","name":"Förena"}}}""")
+            }
+            server.createContext("/auth/v1/passkeys/registration/verify") { exchange ->
+                val body = providerJson.readTree(exchange.requestBody.readAllBytes())
+                val valid = registrationChallenges.remove(body.get("challenge_id").asString()) == exchange.requestHeaders.getFirst("Authorization")
+                reply(exchange, if (valid) 200 else 400, if (valid) """{"id":"${UUID.randomUUID()}","created_at":"2030-01-01T00:00:00Z"}""" else "{}")
             }
             server.createContext("/auth/v1/passkeys/authentication/options") { exchange ->
                 passkeyCalls.incrementAndGet()
@@ -183,7 +218,8 @@ class ApiTest {
         admin.update("delete from forena.auth_rate_limit")
         admin.update("delete from forena.spring_session")
         passwordCalls.set(0); passkeyCalls.set(0)
-        refreshCount.set(0); refreshStatus = 200; passkeyChallenges.clear()
+        refreshCount.set(0); refreshStatus = 200; passkeyChallenges.clear(); registrationChallenges.clear(); magicChallenge.set(""); pkceExchanges.set(0)
+        pkceEntered = java.util.concurrent.CountDownLatch(0); pkceRelease = java.util.concurrent.CountDownLatch(0)
         parent = UUID.randomUUID(); outsider = UUID.randomUUID(); session = UUID.randomUUID()
         organization = UUID.randomUUID(); activity = UUID.randomUUID()
         own = UUID.randomUUID(); child1 = UUID.randomUUID(); child2 = UUID.randomUUID(); other = UUID.randomUUID()
@@ -493,6 +529,81 @@ class ApiTest {
         assertThat(result.body()).doesNotContain("access_token", "refresh_token")
         assertThat(browser("/api/auth/session", cookie=sessionCookie(result)).statusCode()).isEqualTo(200)
         assertThat(browser("/api/auth/passkey/verify", body, cookie).statusCode()).isEqualTo(401)
+    }
+
+    @Test fun `magic link PKCE is browser bound survives session checks and never returns tokens`() {
+        loginAccess = token()
+        assertThat(browser("/api/auth/magic-link", """{"email":"family@example.invalid"}""", marker=false).statusCode()).isEqualTo(403)
+        val sent = browser("/api/auth/magic-link", """{"email":"family@example.invalid"}""")
+        assertThat(sent.statusCode()).isEqualTo(200)
+        assertThat(sent.body()).isEqualTo("""{"ok":true}""")
+        val cookie = sessionCookie(sent)
+        val body = """{"code":"synthetic-code"}"""
+        assertThat(browser("/api/auth/magic-link/verify", body).statusCode()).isEqualTo(401)
+        assertThat(browser("/api/auth/session", cookie=cookie).statusCode()).isEqualTo(401)
+        val result = browser("/api/auth/magic-link/verify", body, cookie)
+        assertThat(result.statusCode()).isEqualTo(200)
+        assertThat(result.body()).doesNotContain("access_token", "refresh_token", "code_verifier")
+        assertThat(sessionCookie(result)).isNotEqualTo(cookie)
+        assertThat(browser("/api/auth/session", cookie=sessionCookie(result)).statusCode()).isEqualTo(200)
+        assertThat(browser("/api/auth/magic-link/verify", body, cookie).statusCode()).isEqualTo(401)
+    }
+
+    @Test fun `concurrent magic link confirmations exchange the provider code exactly once`() {
+        loginAccess = token()
+        pkceEntered = java.util.concurrent.CountDownLatch(1)
+        pkceRelease = java.util.concurrent.CountDownLatch(1)
+        val sent = browser("/api/auth/magic-link", """{"email":"family@example.invalid"}""")
+        val cookie = sessionCookie(sent)
+        val barrier = java.util.concurrent.CyclicBarrier(2)
+        val requests = (1..2).map { CompletableFuture.supplyAsync {
+            barrier.await(10, java.util.concurrent.TimeUnit.SECONDS)
+            browser("/api/auth/magic-link/verify", """{"code":"synthetic-code"}""", cookie)
+        } }
+        try {
+            assertThat(pkceEntered.await(5, java.util.concurrent.TimeUnit.SECONDS)).isTrue()
+            // Keep the first exchange in flight: the competing request must fail
+            // locally, without relying on the provider to reject a reused code.
+            val rejected = CompletableFuture.anyOf(*requests.toTypedArray()).get(5, java.util.concurrent.TimeUnit.SECONDS) as HttpResponse<*>
+            assertThat(rejected.statusCode()).isEqualTo(401)
+            assertThat(pkceExchanges.get()).isEqualTo(1)
+        } finally { pkceRelease.countDown() }
+        val responses = requests.map { it.get(10, java.util.concurrent.TimeUnit.SECONDS) }
+        assertThat(responses.map { it.statusCode() }).containsExactlyInAnyOrder(200, 401)
+        assertThat(pkceExchanges.get()).isEqualTo(1)
+        val success = responses.single { it.statusCode() == 200 }
+        assertThat(browser("/api/auth/session", cookie=sessionCookie(success)).statusCode()).isEqualTo(200)
+    }
+
+    @Test fun `expired magic link is rejected before code exchange`() {
+        loginAccess = token()
+        val sent = browser("/api/auth/magic-link", """{"email":"family@example.invalid"}""")
+        val cookie = sessionCookie(sent)
+        val id = jdbc.queryForObject("select session_id from forena.spring_session where principal_name is null", String::class.java)!!
+        val stored = browserStore().findById(id)!!
+        val key = se.forena.api.identity.BrowserCredentialController.MAGIC_LINK
+        val state = browserSettings.decrypt(stored.getAttribute<String>(key)!!, stored.id).substringBefore('\n')
+        stored.setAttribute(key, browserSettings.encrypt("$state\n0", stored.id))
+        browserStore().save(stored)
+        assertThat(browser("/api/auth/magic-link/verify", """{"code":"synthetic-code"}""", cookie).statusCode()).isEqualTo(401)
+        assertThat(magicChallenge.get()).isNotEmpty()
+        assertThat(pkceExchanges.get()).isZero()
+    }
+
+    @Test fun `passkey enrollment requires authentication and binds the challenge to the session`() {
+        assertThat(browser("/api/auth/passkey/registration/options", "{}").statusCode()).isEqualTo(401)
+        val cookie = sessionCookie(browserLogin())
+        assertThat(browser("/api/auth/passkey/registration/options", "{}", cookie, marker=false).statusCode()).isEqualTo(403)
+        val options = browser("/api/auth/passkey/registration/options", "{}", cookie)
+        assertThat(options.statusCode()).isEqualTo(200)
+        val challenge = json.readTree(options.body()).get("challenge_id").asString()
+        val body = """{"challenge_id":"$challenge","credential":{"id":"synthetic-attestation","type":"public-key"}}"""
+        assertThat(browser("/api/auth/passkey/registration/verify", body).statusCode()).isEqualTo(401)
+        assertThat(browser("/api/auth/passkey/registration/verify", body, cookie, expectedAccount=outsider).statusCode()).isEqualTo(401)
+        val result = browser("/api/auth/passkey/registration/verify", body, cookie)
+        assertThat(result.statusCode()).isEqualTo(200)
+        assertThat(result.body()).isEqualTo("""{"ok":true}""")
+        assertThat(browser("/api/auth/passkey/registration/verify", body, cookie).statusCode()).isEqualTo(401)
     }
 
     @Test fun `logout removes even unreadable session ciphertext and clears the browser cookie`() {
@@ -1143,14 +1254,15 @@ class ApiTest {
         val result = request("/v3/api-docs")
         assertThat(result.statusCode()).isEqualTo(200)
         val document = json.readTree(result.body())
-        for (path in listOf("/api/auth/login", "/api/auth/passkey/options", "/api/auth/passkey/verify")) {
+        for (path in listOf("/api/auth/login", "/api/auth/passkey/options", "/api/auth/passkey/verify", "/api/auth/magic-link", "/api/auth/magic-link/verify", "/api/auth/passkey/registration/options", "/api/auth/passkey/registration/verify")) {
             val limited = document.get("paths").get(path).get("post").get("responses").get("429")
             assertThat(limited.get("headers").has("Retry-After")).isTrue()
         }
         assertThat(document.get("paths").propertyNames()).containsExactlyInAnyOrder(
             "/api/me/overview", "/api/activities/{activityId}",
             "/api/me/activities", "/api/activities/{activityId}/my-invitations", "/api/invitations/{invitationId}/respond",
-            "/api/auth/session", "/api/auth/login", "/api/auth/logout", "/api/auth/passkey/options", "/api/auth/passkey/verify")
+            "/api/auth/session", "/api/auth/login", "/api/auth/logout", "/api/auth/passkey/options", "/api/auth/passkey/verify",
+            "/api/auth/magic-link", "/api/auth/magic-link/verify", "/api/auth/passkey/registration/options", "/api/auth/passkey/registration/verify")
         val update = document.get("paths").get("/api/invitations/{invitationId}/respond").get("put")
         assertThat(update.get("requestBody").get("content").get("application/json").get("schema").get("\$ref").asString())
             .isEqualTo("#/components/schemas/RespondToInvitationRequest")

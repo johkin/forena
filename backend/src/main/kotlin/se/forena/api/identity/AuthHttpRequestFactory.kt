@@ -23,6 +23,8 @@ class AuthHttpRequestFactory(
     @Value("\${FORENA_AUTH_CA_BUNDLE:\${SSL_CERT_FILE:}}") caBundle: String,
     @Value("\${FORENA_AUTH_EXTRA_CA_BUNDLE:\${NODE_EXTRA_CA_CERTS:}}") extraBundle: String
 ) : SimpleClientHttpRequestFactory() {
+    private val logger = LoggerFactory.getLogger(AuthHttpRequestFactory::class.java)
+
     private val sockets = sslContext(listOf(caBundle, extraBundle)).socketFactory
 
     init {
@@ -63,7 +65,7 @@ class AuthHttpRequestFactory(
         }
         require(count > 0) { "Auth HTTPS requires trusted CA certificates" }
         val managers = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm()).also { it.init(store) }
-        LoggerFactory.getLogger(AuthHttpRequestFactory::class.java).info(
+        logger.info(
             "auth_tls_trust_loaded java_ca_count={} system_ca_count={} extra_ca_count={}", javaRoots.size, systemCount, extraCount)
         return SSLContext.getInstance("TLS").also { it.init(null, managers.trustManagers, null) }
     }

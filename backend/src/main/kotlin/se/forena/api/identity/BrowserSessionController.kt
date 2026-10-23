@@ -1,5 +1,7 @@
 package se.forena.api.identity
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+
 import org.springframework.security.authentication.AuthenticationServiceException
 import org.springframework.security.authentication.BadCredentialsException
 import jakarta.servlet.http.HttpServletRequest
@@ -23,6 +25,7 @@ import se.forena.api.http.ApiError
 
 @RestController
 @ConditionalOnWebApplication
+@ConditionalOnProperty(name = ["forena.auth.mode"], havingValue = "supabase", matchIfMissing = true)
 class BrowserSessionController(private val sessions: BrowserSessionService, private val settings: BrowserSessionSettings,
                                private val limiter: BrowserLoginLimiter, private val sessionIds: HttpSessionIdResolver) {
     @GetMapping("/api/auth/session")

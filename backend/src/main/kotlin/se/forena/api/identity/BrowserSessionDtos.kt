@@ -25,3 +25,7 @@ class BrowserUser(
 )
 class BrowserSessionView(@get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val user: BrowserUser)
 class BrowserSessionToken(@get:JsonIgnore val value: String, val subject: UUID)
+
+class MagicLinkRequest(@get:Schema(requiredMode = Schema.RequiredMode.REQUIRED, minLength = 3, maxLength = 320, format = "email") val email: String)
+class MagicLinkVerifyRequest(@get:Schema(requiredMode = Schema.RequiredMode.REQUIRED, minLength = 1, maxLength = 2048, accessMode = Schema.AccessMode.WRITE_ONLY) val code: String)
+data class BrowserAuthAcknowledgement(@get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val ok: Boolean)

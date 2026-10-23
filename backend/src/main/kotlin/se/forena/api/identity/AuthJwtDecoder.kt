@@ -16,6 +16,8 @@ import org.springframework.web.client.RestClientResponseException
 
 /** Fail closed without treating an unavailable key provider as a revoked session. */
 class AuthJwtDecoder(private val delegate: JwtDecoder) : JwtDecoder {
+    private val logger = LoggerFactory.getLogger(AuthJwtDecoder::class.java)
+
     override fun decode(token: String): Jwt = try {
         delegate.decode(token)
     } catch (error: JwtException) {
@@ -30,12 +32,8 @@ class AuthJwtDecoder(private val delegate: JwtDecoder) : JwtDecoder {
             else -> "jwt_rejected"
         }
         // Never log the token, exception message, URL, claims or stack trace.
-        log.warn("api_auth_failed stage=jwt reason={}", reason)
+        logger.warn("api_auth_failed stage=jwt reason={}", reason)
         if (reason.startsWith("jwks_")) throw OAuth2AuthenticationException(OAuth2Error("temporarily_unavailable"))
         throw BadJwtException("Token could not be verified")
-    }
-
-    private companion object {
-        val log = LoggerFactory.getLogger(AuthJwtDecoder::class.java)
     }
 }
