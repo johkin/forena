@@ -36,9 +36,13 @@ class AdministrationService(
         sessions.requireActive(actor)
         val platform = platforms.existsById(actor.subject)
         val ownClubs = clubAdmins.findBySubjectAndActiveTrue(actor.subject).filter { it.role in listOf("owner", "admin") }.map { it.organizationId }.toSet()
-        val ownSections = sectionAdmins.findBySubjectAndActiveTrue(actor.subject).map { it.sectionId }.toSet()
+        val sectionRoles = sectionAdmins.findBySubjectAndActiveTrue(actor.subject)
+        val ownSections = sectionRoles.map { it.sectionId }.toSet()
         val ownTeams = teamAdmins.findBySubjectAndActiveTrue(actor.subject)
-        val result = clubs.findAllByOrderByNameAsc().mapNotNull { club ->
+        val clubIds = ownClubs + sectionRoles.map { it.organizationId } + ownTeams.map { it.organizationId }
+        val visibleClubs = if (platform) clubs.findAllByOrderByNameAsc()
+            else if (clubIds.isEmpty()) emptyList() else clubs.findByIdInOrderByNameAsc(clubIds)
+        val result = visibleClubs.mapNotNull { club ->
             val clubId = requireNotNull(club.id)
             val allSections = sections.findByOrganizationId(clubId)
             val allTeams = teams.findByOrganizationId(clubId)
@@ -71,9 +75,12 @@ class AdministrationService(
 
     @Transactional
     fun bootstrap(actor: Actor): AdministrationOk {
+        sessions.requireActive(actor)
+        check(!administration.initialized() && platforms.findAll().isEmpty())
+        requireBootstrapIdentity(actor)
         val state = lock(actor)
         check(!state.initialized && platforms.findAll().isEmpty())
-        if (initialEmail.isBlank() || !directory.verifiedEmail(actor.subject).equals(initialEmail.trim(), ignoreCase = true)) denied()
+        requireBootstrapIdentity(actor)
         platforms.add(actor.subject)
         administration.initialize()
         audit(actor, "platform.bootstrap", actor.subject)
@@ -176,6 +183,7 @@ class AdministrationService(
         requireClub(actor, section.organizationId)
         val target = directory.verifiedAccount(change.email)
         val existing = sectionAdmins.findBySectionIdAndSubject(id, target)
+        if (existing == null && !change.active) return AdministrationOk()
         sectionAdmins.save(existing?.copy(active = change.active)
             ?: SectionAdministratorEntity(null, section.organizationId, id, target, change.active))
         audit(actor, if (change.active) "section.admin.grant" else "section.admin.revoke", id, target)
@@ -220,6 +228,7 @@ class AdministrationService(
         val starts = change.startsOn ?: today(club)
         require(change.endsOn == null || change.endsOn >= starts)
         val existing = teamAdmins.findByTeamIdAndSubject(id, target)
+        if (existing == null && !change.active) return AdministrationOk()
         val person = existing?.personId ?: directory.ownPerson(target, team.organizationId, change.name)
         val accessId = existing?.accessAssignmentId ?: UUID.randomUUID()
         if (existing == null) administration.createReadAccess(accessId, team.organizationId, id, person, starts, change.endsOn, change.active)
@@ -227,6 +236,10 @@ class AdministrationService(
         teamAdmins.save(TeamAdministratorEntity(existing?.id, team.organizationId, id, target, person, accessId, starts, change.endsOn, change.active))
         audit(actor, if (change.active) "team.admin.grant" else "team.admin.revoke", id, target)
         return AdministrationOk()
+    }
+
+    private fun requireBootstrapIdentity(actor: Actor) {
+        if (initialEmail.isBlank() || !directory.verifiedEmail(actor.subject).equals(initialEmail.trim(), ignoreCase = true)) denied()
     }
 
     private fun lock(actor: Actor): AdministrationStateEntity {

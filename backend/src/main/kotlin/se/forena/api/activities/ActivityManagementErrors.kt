@@ -1,6 +1,7 @@
 package se.forena.api.activities
 
 import org.springframework.core.annotation.Order
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.CacheControl
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
@@ -19,6 +20,10 @@ class ActivityManagementErrors {
     @ExceptionHandler(AccessDeniedException::class)
     fun denied(): ResponseEntity<ApiError> = ResponseEntity.status(403).cacheControl(CacheControl.noStore())
         .body(ApiError("Du saknar behörighet att hantera aktiviteter eller kallelser i laget."))
+
+    @ExceptionHandler(DataIntegrityViolationException::class)
+    fun integrity(): ResponseEntity<ApiError> = ResponseEntity.status(409).cacheControl(CacheControl.noStore())
+        .body(ApiError("Ändringen kunde inte genomföras. Uppdatera sidan och försök igen. Ditt utkast finns kvar."))
 
     @ExceptionHandler(IllegalStateException::class)
     fun conflict(): ResponseEntity<ApiError> = ResponseEntity.status(409).cacheControl(CacheControl.noStore())

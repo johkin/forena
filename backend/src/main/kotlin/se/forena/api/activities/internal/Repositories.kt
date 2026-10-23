@@ -131,8 +131,21 @@ interface ManagementRepository : Repository<TeamEntity, UUID> {
     @Query("""select t.id,t.organization_id,t.name,o.name as organization_name,o.time_zone,s.discipline_key,t.section_id
         from forena.team t join forena.organization o on o.id=t.organization_id
         left join forena.section s on s.id=t.section_id and s.organization_id=t.organization_id
+        where t.organization_id in (
+            select organization_id from forena.organization_member where subject=:subject and active and role in ('owner','admin')
+            union select p.organization_id from forena.team_permission_assignment p
+                join forena.person_access a on a.person_id=p.person_id and a.organization_id=p.organization_id
+                where a.subject=:subject and a.active and a.kind='self' and p.active and p.permission='activity.manage'
+            union select organization_id from forena.team_administrator where subject=:subject and active
+            union select organization_id from forena.section_administrator where subject=:subject and active)
         order by t.name""")
-    fun teams(): List<ManagementTeamRow>
+    fun teams(subject: UUID): List<ManagementTeamRow>
+
+    @Query("""select t.id,t.organization_id,t.name,o.name as organization_name,o.time_zone,s.discipline_key,t.section_id
+        from forena.team t join forena.organization o on o.id=t.organization_id
+        left join forena.section s on s.id=t.section_id and s.organization_id=t.organization_id
+        where t.id=:team""")
+    fun team(team: UUID): ManagementTeamRow?
 
     @Query("select id from forena.team where id=:team for update")
     fun lockTeam(team: UUID): UUID?

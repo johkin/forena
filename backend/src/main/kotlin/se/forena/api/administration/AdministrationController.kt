@@ -8,17 +8,22 @@ import org.springframework.security.core.Authentication
 import org.springframework.web.bind.annotation.*
 import io.swagger.v3.oas.annotations.Parameter
 import se.forena.api.identity.CurrentActorService
+import se.forena.api.identity.BrowserLoginLimiter
 
 @RestController
 @RequestMapping("/api/admin")
-class AdministrationController(private val service: AdministrationService, private val actors: CurrentActorService) {
+class AdministrationController(private val service: AdministrationService, private val actors: CurrentActorService,
+                               private val limiter: BrowserLoginLimiter) {
     @GetMapping("/overview")
     fun overview(@Parameter(hidden = true) authentication: Authentication, @Parameter(hidden = true) request: HttpServletRequest): ResponseEntity<AdministrationOverview> =
         response(service.overview(actors.from(authentication, request)))
 
     @PostMapping("/bootstrap")
-    fun bootstrap(@Parameter(hidden = true) authentication: Authentication, @Parameter(hidden = true) request: HttpServletRequest): ResponseEntity<AdministrationOk> =
-        response(service.bootstrap(actors.from(authentication, request)))
+    fun bootstrap(@Parameter(hidden = true) authentication: Authentication, @Parameter(hidden = true) request: HttpServletRequest): ResponseEntity<AdministrationOk> {
+        val actor = actors.from(authentication, request)
+        limiter.admitBootstrap(limiter.client(request), actor.subject)
+        return response(service.bootstrap(actor))
+    }
 
     @PostMapping("/platform-administrators")
     fun platform(@Parameter(hidden = true) authentication: Authentication, @Parameter(hidden = true) request: HttpServletRequest,

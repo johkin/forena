@@ -16,6 +16,9 @@ konton, databas och administrationsflöden.
    när installationen saknar systemadmin och bootstrap aldrig har använts.
 3. Personen bekräftar aktiveringen. En gemensam databasrad serialiserar bootstrap
    och alla administrativa skrivningar; parallella aktiveringar ger en vinnare.
+   Aktiv session, engångstillstånd och verifierad adress kontrolleras före låset
+   och kontrolleras igen under låset. Bootstrap har separata beständiga globala,
+   klient- och kontobudgetar; avvisade försök förbrukar också budget.
    Efter aktiveringen styr databasen. Variabeln kan tas bort och kan inte
    återaktivera bootstrap efter att den har förbrukats.
 4. Systemadmin skapar klubb med tidszon, unik adress och första sektion i den
@@ -50,6 +53,8 @@ oregistrerade konton är fortsatt ett separat paritetsområde.
   saknar sådan i klubben skapas en ny, namngiven person. Befintliga okopplade
   personer matchas aldrig automatiskt via e-post. Flera aktiva egna identiteter
   i samma klubb ger konflikt och kräver separat handläggning.
+- Återkallning av en sektions-/lagadmin som saknar tilldelning är en tom åtgärd:
+  inga personer, personkopplingar eller behörighetsrader skapas.
 - Rollens läsbehörighet har en egen tilldelningsrad; återkallning påverkar inte
   andra, oberoende läsrättigheter. Återkallad egen personkoppling nekar lagadmin.
 - Backend kontrollerar aktiv session och aktuella rättigheter igen efter låsväntan.

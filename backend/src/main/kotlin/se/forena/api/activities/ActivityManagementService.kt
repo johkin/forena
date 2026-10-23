@@ -31,7 +31,7 @@ class ActivityManagementService(
     @Transactional(readOnly = true)
     fun teams(actor: Actor): List<ManagedTeam> {
         sessions.requireActive(actor)
-        return management.teams().filter { allowed(actor, it, "activity.manage") }.map { teamDto(actor, it) }
+        return management.teams(actor.subject).filter { allowed(actor, it, "activity.manage") }.map { teamDto(actor, it) }
     }
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
@@ -164,7 +164,7 @@ class ActivityManagementService(
     }
 
     private fun requireTeam(actor: Actor, id: UUID): ManagementTeamRow {
-        val team = management.teams().singleOrNull { it.id == id } ?: throw NoSuchElementException()
+        val team = management.team(id) ?: throw NoSuchElementException()
         if (!allowed(actor, team, "activity.manage")) throw AccessDeniedException("Activity permission required")
         return team
     }

@@ -8,6 +8,7 @@ import org.springframework.data.repository.Repository
 
 interface ClubRepository : Repository<ClubEntity, UUID> {
     fun findAllByOrderByNameAsc(): List<ClubEntity>
+    fun findByIdInOrderByNameAsc(ids: Collection<UUID>): List<ClubEntity>
     fun findById(id: UUID): ClubEntity?
     fun findBySlug(slug: String): ClubEntity?
     fun save(club: ClubEntity): ClubEntity

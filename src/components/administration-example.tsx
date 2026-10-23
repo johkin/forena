@@ -5,10 +5,11 @@ import type { ParticipationFetch } from "./activity-invitation-response";
 
 export function AdministrationExample() {
   const [state, setState] = useState("bootstrap");
-  const request = useCallback<ParticipationFetch>(async (_path, init) => {
+  const request = useCallback<ParticipationFetch>(async (path, init) => {
     if (state === "loading") return new Promise<Response>(resolve => init?.signal?.addEventListener("abort", () => resolve(Response.json({})), { once: true }));
     if (state === "error") return Response.json({}, { status: 503 });
     if (init?.method && init.method !== "GET") return Response.json({ error: "Lokalt exempel: granskningen är klar. Inga verkliga behörigheter eller klubbar ändras." }, { status: 409 });
+    if (path.startsWith("/api/admin/slug?")) return Response.json({ status: "available" });
     const role = { subject: "11111111-1111-4111-8111-111111111111", email: "admin@example.invalid", active: true, startsOn: null, endsOn: null };
     const club = {
       id: "22222222-2222-4222-8222-222222222222", name: "Exempelklubben", slug: "exempelklubben", timeZone: "Europe/Stockholm", canManage: true,

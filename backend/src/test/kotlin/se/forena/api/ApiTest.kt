@@ -15,11 +15,14 @@ import java.util.UUID
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit.SECONDS
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatCode
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable
+import org.mockito.Mockito.never
+import org.mockito.Mockito.verify
 import org.mockito.Mockito.clearInvocations
 import org.mockito.Mockito.verifyNoInteractions
 import org.springframework.beans.factory.annotation.Autowired
@@ -37,6 +40,8 @@ import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.support.TransactionTemplate
 import org.testcontainers.postgresql.PostgreSQLContainer
 import se.forena.api.activities.internal.InvitationHistoryRepository
+import se.forena.api.administration.internal.ClubRepository
+import se.forena.api.activities.internal.ManagementRepository
 import se.forena.api.activities.internal.InvitationRepository
 import se.forena.api.identity.BrowserLoginLimiter
 import se.forena.api.identity.BrowserSessionSettings
@@ -63,6 +68,8 @@ class ApiTest {
             registry.add("forena.web-session.key") { Base64.getEncoder().encodeToString(ByteArray(32) { 7 }) }
         }
     }
+    @MockitoSpyBean lateinit var clubRecords: ClubRepository
+    @Autowired lateinit var managementRecords: ManagementRepository
     @Autowired lateinit var passwords: PasswordEncoder
     @Autowired lateinit var environment: Environment
     @Autowired lateinit var jdbc: JdbcTemplate
@@ -788,7 +795,10 @@ class ApiTest {
         val before = admin.queryForObject("select count(*) from forena.activity where team_id=?", Long::class.java, team)
         admin.execute("alter table forena.activity_audit add constraint test_activity_audit_failure check(false) not valid")
         try {
-            assertThat(request("/api/activities", activityBody(team, ""","invitationMode":"now","personIds":["$own"]"""), method="POST").statusCode()).isEqualTo(500)
+            val response = request("/api/activities", activityBody(team, ""","invitationMode":"now","personIds":["$own"]"""), method="POST")
+            assertThat(response.statusCode()).isEqualTo(409)
+            assertThat(response.headers().firstValue("Cache-Control").orElse("")).contains("no-store")
+            assertThat(response.body()).doesNotContain("test_activity_audit_failure", "SQL", "Exception")
             assertThat(admin.queryForObject("select count(*) from forena.activity where team_id=?", Long::class.java, team)).isEqualTo(before)
             assertThat(admin.queryForObject("select count(*) from forena.activity_schedule s join forena.activity a on a.id=s.activity_id where a.team_id=?", Long::class.java, team)).isZero()
         } finally { admin.execute("alter table forena.activity_audit drop constraint test_activity_audit_failure") }
@@ -905,6 +915,69 @@ class ApiTest {
             assertThat(admin.queryForObject("select count(*) from forena.team_administrator where organization_id=? and subject=? and active", Long::class.java, createdClub, outsider)).isEqualTo(1)
             assertThat(admin.queryForObject("select count(*) from forena.activity where organization_id=? and title='Uppdaterad browserträning' and status='cancelled'", Long::class.java, createdClub)).isEqualTo(1)
         } finally { admin.update("update forena.native_user set email=? where subject=?", "$parent@example.invalid", parent) }
+    }
+
+    @Test fun `unauthorized bootstrap never waits for the administration write lock`() {
+        DriverManager.getConnection(database.jdbcUrl, database.username, database.password).use { connection ->
+            connection.autoCommit = false
+            connection.createStatement().use { it.executeQuery("select * from forena.administration_state for update").close() }
+            try {
+                val result = CompletableFuture.supplyAsync { request("/api/admin/bootstrap", "{}", method="POST") }
+                assertThat(result.get(3, SECONDS).statusCode()).isEqualTo(403)
+            } finally { connection.rollback() }
+        }
+    }
+
+    @Test fun `failed bootstrap attempts are limited separately from login`() {
+        repeat(3) { assertThat(request("/api/admin/bootstrap", "{}", method="POST").statusCode()).isEqualTo(403) }
+        val limited = request("/api/admin/bootstrap", "{}", method="POST")
+        assertThat(limited.statusCode()).isEqualTo(429)
+        assertThat(limited.headers().firstValue("Retry-After")).isPresent()
+        assertThat(limited.headers().firstValue("Cache-Control").orElse("")).contains("no-store")
+        assertThat(limited.body()).contains("aktiveringsförsök")
+        assertThatCode { repeat(3) { loginLimiter.admit("test-bootstrap-independent") } }.doesNotThrowAnyException()
+    }
+
+    @Test fun `revoking absent administrators creates no person access or role and leaves empty sections deletable`() {
+        bootstrapAdministrator()
+        val club = createAdminClub()
+        val section = admin.queryForObject("select id from forena.section where organization_id=?", UUID::class.java, club)!!
+        request("/api/admin/clubs/$club/administrators", """{"email":"$parent@example.invalid"}""", method="POST")
+        val createdTeam = request("/api/admin/sections/$section/teams", """{"name":"Tomt lag"}""", method="POST")
+        val team = UUID.fromString(json.readTree(createdTeam.body()).get("id").asString())
+        val revoke = """{"email":"$outsider@example.invalid","active":false}"""
+        repeat(2) {
+            assertThat(request("/api/admin/sections/$section/administrators", revoke, method="POST").statusCode()).isEqualTo(200)
+            assertThat(request("/api/admin/teams/$team/administrators", revoke, method="POST").statusCode()).isEqualTo(200)
+        }
+        for (table in listOf("person", "person_access", "team_access_assignment", "team_administrator", "section_administrator")) {
+            assertThat(admin.queryForObject("select count(*) from forena.$table where organization_id=?", Long::class.java, club)).isZero()
+        }
+        assertThat(request("/api/admin/teams/$team", method="DELETE").statusCode()).isEqualTo(200)
+        assertThat(request("/api/admin/clubs/$club/sections", """{"name":"Andra sektionen","slug":"andra","disciplineKey":"common"}""", method="POST").statusCode()).isEqualTo(200)
+        assertThat(request("/api/admin/sections/$section", method="DELETE").statusCode()).isEqualTo(200)
+    }
+
+    @Test fun `management candidates and administration overview load only the callers organizations`() {
+        bootstrapAdministrator()
+        val club = createAdminClub()
+        val section = admin.queryForObject("select id from forena.section where organization_id=?", UUID::class.java, club)!!
+        val created = request("/api/admin/sections/$section/teams", """{"name":"Eget lag"}""", method="POST")
+        val team = UUID.fromString(json.readTree(created.body()).get("id").asString())
+        assertThat(request("/api/admin/sections/$section/administrators", """{"email":"$outsider@example.invalid"}""", method="POST").statusCode()).isEqualTo(200)
+        val outsiderCookie = loginCookie(outsider)
+        clearInvocations(clubRecords)
+        val overview = request("/api/admin/overview", cookie=outsiderCookie)
+        assertThat(overview.statusCode()).isEqualTo(200)
+        assertThat(overview.body()).contains(club.toString()).doesNotContain(organization.toString())
+        verify(clubRecords, never()).findAllByOrderByNameAsc()
+        verify(clubRecords).findByIdInOrderByNameAsc(setOf(club))
+        assertThat(managementRecords.teams(outsider).map { it.id }).containsExactly(team)
+        val managed = request("/api/me/managed-teams", cookie=outsiderCookie)
+        assertThat(managed.statusCode()).isEqualTo(200)
+        assertThat(managed.body()).contains(team.toString()).doesNotContain(organization.toString())
+        assertThat(managementRecords.team(team)?.id).isEqualTo(team)
+        assertThat(managementRecords.team(UUID.randomUUID())).isNull()
     }
 
     @Test fun `bootstrap is serialized and only the configured verified account can activate it`() {

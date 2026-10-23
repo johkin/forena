@@ -9,6 +9,7 @@ import java.sql.Timestamp
 import java.time.Duration
 import java.time.Instant
 import java.util.Locale
+import java.util.UUID
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.dao.DataAccessException
 import org.springframework.jdbc.core.JdbcTemplate
@@ -39,11 +40,18 @@ class BrowserLoginLimiter(
     }
 
     /** Commits the admission before any network call; no refresh/session transaction takes this lock. */
-    fun admit(client: String, email: String? = null) {
+    fun admit(client: String, email: String? = null) = admitBuckets(
+        "login-global", "client:$client", email?.let { "email:${it.trim().lowercase(Locale.ROOT)}" })
+
+    /** Separate budgets prevent bootstrap traffic from consuming login permits. */
+    fun admitBootstrap(client: String, subject: UUID) = admitBuckets(
+        "admin-bootstrap-global", "admin-bootstrap-client:$client", "admin-bootstrap-account:$subject")
+
+    private fun admitBuckets(globalScope: String, clientScope: String, identityScope: String?) {
         settings.requireEnabled()
         try {
             val delay = transaction.execute {
-                val global = settings.fingerprint("login-global")
+                val global = settings.fingerprint(globalScope)
                 jdbc.update("insert into forena.auth_rate_limit(key_hash,available_at) values(?,clock_timestamp()) on conflict do nothing", global)
                 val globalTime = jdbc.queryForObject("select available_at from forena.auth_rate_limit where key_hash=? for update", Timestamp::class.java, global)!!.toInstant()
                 val now = jdbc.queryForObject("select clock_timestamp()", Timestamp::class.java)!!.toInstant()
@@ -55,8 +63,8 @@ class BrowserLoginLimiter(
                 }
                 // Check before creating client/email rows: rejected traffic cannot grow the table.
                 if (buckets[0].retryAfter(now) > 0) return@execute buckets[0].retryAfter(now)
-                add("client:$client", 30, 5)
-                if (email != null) add("email:${email.trim().lowercase(Locale.ROOT)}", 60, 3)
+                add(clientScope, 30, 5)
+                if (identityScope != null) add(identityScope, 60, 3)
                 val retry = buckets.maxOf { it.retryAfter(now) }
                 if (retry > 0) return@execute retry
                 for (bucket in buckets) jdbc.update("""insert into forena.auth_rate_limit(key_hash,available_at) values(?,?)

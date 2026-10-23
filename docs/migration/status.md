@@ -1,5 +1,28 @@
 # Migreringsstatus
 
+## PR #165: granskningsrättning, 2026-10-23
+
+Samtliga sex kodkommentarer hanteras i samma granskningsändring:
+
+- Bootstrap nekar obehöriga före adminlåset, återkontrollerar under låset och
+  använder separata beständiga globala, klient- och kontobudgetar.
+- Återkallning utan befintlig sektions-/lagroll skapar inga person-, åtkomst-
+  eller rollrader; tomma strukturer förblir möjliga att radera.
+- Aktivitetskommandon hämtar ett lag direkt. Laglistan avgränsas till aktörens
+  organisationer och administrationsöversikten till aktörens berörda klubbar.
+  Plattformens uttryckliga helhetsöversikt finns kvar.
+- Aktiviteters dataintegritetskonflikter ger 409 med no-store och ett säkert
+  felmeddelande. Det befintliga sena rollback-provet verifierar detta.
+- Administrationsgalleriets slugkontroll returnerar rätt svarskontrakt.
+
+Lokalt verifierat för granskningsändringen: Maven `verify` med 94 tester, noll
+fel eller överhoppningar, inklusive riktiga Chromium-/PostgreSQL-flöden för auth,
+M09 och admin-kedjan; 1 145 frontendtester; typkontroll; lint; Next-/Vite-byggen;
+OpenAPI-/TypeScript-kontraktskontroll. Galleriets slugkontroll är dessutom
+provad i Chromium utan sidfel. Paketerad JVM har klarat `local-smoke.py`,
+inklusive admin-kedja, aktivitetskommandon och auth-livscykel. CI-resultat måste
+knytas till aktuell PR-head.
+
 ## M09: enstaka aktivitet och hela admin-kedjan, 2026-10-23
 
 Implementation: `9294ce2cb7c9211858d880b44de6ff0c92ba0ec4` på
