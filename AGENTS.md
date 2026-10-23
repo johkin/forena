@@ -45,6 +45,10 @@ i berörda vyer och följ [reglerna för komponentsidan](docs/design-spec.md#kom
 
 ## Kotlin-kod
 
+- Prioritera läsbar och konsekvent kod. Deklarera loggare en gång per klass som
+  `private val logger = LoggerFactory.getLogger(Klassnamn::class.java)` och använd
+  `logger.info(...)`/`logger.warn(...)` vid anropen. Använd imports i stället för
+  fullständiga paketnamn i vanlig kod när namnen inte krockar.
 - Använd Kotlin/JVM:s standardundantag för vanliga fel: `IllegalArgumentException`
   för ogiltiga argument, `IllegalStateException` för otillåtet tillstånd och
   `NoSuchElementException` när efterfrågade data saknas. Skapa inte egna

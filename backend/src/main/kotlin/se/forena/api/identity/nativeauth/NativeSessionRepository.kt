@@ -2,6 +2,7 @@ package se.forena.api.identity.nativeauth
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContext
@@ -22,6 +23,8 @@ import java.util.UUID
 @ConditionalOnProperty(name = ["forena.auth.mode"], havingValue = "native")
 class NativeSessionRepository(private val users: NativeUserRepository, private val accounts: AccountRepository,
                               private val settings: BrowserSessionSettings, private val revocations: se.forena.api.identity.internal.RevokedSessionRepository) : SecurityContextRepository {
+    private val logger = LoggerFactory.getLogger(NativeSessionRepository::class.java)
+
     override fun loadContext(holder: HttpRequestResponseHolder): SecurityContext {
         val context = SecurityContextHolder.createEmptyContext()
         val session = holder.request.getSession(false) ?: return context
@@ -31,7 +34,7 @@ class NativeSessionRepository(private val users: NativeUserRepository, private v
         if (state.size != 2 || user == null || !user.verified || user.authVersion.toString() != state[1] ||
             !accounts.existsBySubjectAndEnabledTrue(user.subject) || revocations.existsByIdAndSubject(UUID.fromString(session.id), user.subject) ||
             session.creationTime + settings.maxSeconds * 1000 <= Instant.now().toEpochMilli()) {
-            org.slf4j.LoggerFactory.getLogger(NativeSessionRepository::class.java).warn("native_auth_failed reason=inactive_session")
+            logger.warn("native_auth_failed reason=inactive_session")
             session.invalidate(); return context
         }
         val principal = User.withUsername(user.subject.toString()).password("").authorities("USER", "AUTH_VERSION_${user.authVersion}").build()

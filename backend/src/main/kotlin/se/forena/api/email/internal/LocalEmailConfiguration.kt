@@ -13,8 +13,10 @@ import se.forena.api.email.EmailSender
 @Profile("local")
 @ConditionalOnProperty(name = ["forena.auth.mode"], havingValue = "native")
 class LocalEmailConfiguration {
+    private val logger = LoggerFactory.getLogger(LocalEmailConfiguration::class.java)
+
     @Bean fun localEmailSender(): EmailSender = EmailSender { message ->
-        LoggerFactory.getLogger(LocalEmailConfiguration::class.java).info(
+        logger.info(
             "[LOCAL MAIL] To: {}\nSubject: {}\n{}", message.to, message.subject, message.text,
         )
         EmailDeliveryResult.Accepted("local/${message.idempotencyKey}")

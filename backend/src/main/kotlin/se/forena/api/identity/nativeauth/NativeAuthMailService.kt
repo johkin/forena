@@ -1,5 +1,6 @@
 package se.forena.api.identity.nativeauth
 
+import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.jdbc.core.JdbcTemplate
 import se.forena.api.email.EmailSender
@@ -18,6 +19,8 @@ import java.util.UUID
 @ConditionalOnProperty(name = ["forena.auth.mode"], havingValue = "native")
 class NativeAuthMailService(private val jdbc: JdbcTemplate, private val transaction: TransactionTemplate,
     private val sender: EmailSender, private val settings: BrowserSessionSettings) {
+    private val logger = LoggerFactory.getLogger(NativeAuthMailService::class.java)
+
     fun enqueue(email: String, kind: String, link: String, expires: Instant) {
         val id = UUID.randomUUID()
         jdbc.update("insert into forena.auth_mail_outbox(id,recipient,kind,encrypted_link,expires_at) values(?,?,?,?,?)",
@@ -43,7 +46,7 @@ class NativeAuthMailService(private val jdbc: JdbcTemplate, private val transact
                         jdbc.update("update forena.auth_mail_outbox set attempts=attempts+1,next_attempt=now()+interval '1 second' * greatest(30 * power(2,attempts),?) where id=?", result.afterSeconds, UUID.fromString(id))
                     EmailDeliveryResult.Rejected -> {
                         jdbc.update("update forena.auth_mail_outbox set attempts=5,encrypted_link='' where id=?", UUID.fromString(id))
-                        org.slf4j.LoggerFactory.getLogger(NativeAuthMailService::class.java).warn("auth_mail_rejected")
+                        logger.warn("auth_mail_rejected")
                     }
                 }
                 true

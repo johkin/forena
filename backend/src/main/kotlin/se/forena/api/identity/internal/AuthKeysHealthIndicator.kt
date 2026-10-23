@@ -21,6 +21,8 @@ class AuthKeysHealthIndicator(
     @Value("\${forena.auth.jwks-uri}") private val endpoint: String,
     requests: AuthHttpRequestFactory
 ) : HealthIndicator {
+    private val logger = LoggerFactory.getLogger(AuthKeysHealthIndicator::class.java)
+
     private val client = RestTemplate(requests)
 
     override fun health(): Health = try {
@@ -32,7 +34,7 @@ class AuthKeysHealthIndicator(
     } catch (error: Exception) {
         // Health is public: never attach provider bodies, URLs or exceptions.
         val tlsFailure = generateSequence<Throwable>(error) { it.cause }.take(16).any { it is SSLException }
-        LoggerFactory.getLogger(AuthKeysHealthIndicator::class.java).warn(
+        logger.warn(
             "auth_health_failed reason={}", if (tlsFailure) "jwks_tls" else "jwks_unavailable")
         Health.down().build()
     }

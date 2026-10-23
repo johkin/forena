@@ -3,6 +3,7 @@ package se.forena.api.identity.nativeauth
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -35,6 +36,8 @@ class StringCsrfTokenRepository : CsrfTokenRepository {
 
 class NativeTransportFilter(private val settings: BrowserSessionSettings,
     private val limiter: se.forena.api.identity.BrowserLoginLimiter) : OncePerRequestFilter() {
+    private val logger = LoggerFactory.getLogger(NativeTransportFilter::class.java)
+
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) {
         if (request.requestURI.startsWith("/api/")) {
             if (request.method !in listOf("GET", "HEAD", "OPTIONS") &&
@@ -72,7 +75,7 @@ class NativeTransportFilter(private val settings: BrowserSessionSettings,
         catch (_: BadCredentialsException) { if (!response.isCommitted) fail(response, 401, "Sessionen är inte aktiv.") }
     }
     private fun fail(response: HttpServletResponse, status: Int, message: String) {
-        org.slf4j.LoggerFactory.getLogger(NativeTransportFilter::class.java).warn("native_request_denied status={}", status)
+        logger.warn("native_request_denied status={}", status)
         response.status = status; response.contentType = "application/json"; response.writer.write("{\"error\":\"$message\"}")
     }
 }
@@ -81,6 +84,8 @@ class NativeTransportFilter(private val settings: BrowserSessionSettings,
 @EnableScheduling
 @ConditionalOnProperty(name = ["forena.auth.mode"], havingValue = "native")
 class NativeSecurityConfiguration {
+    private val logger = LoggerFactory.getLogger(NativeSecurityConfiguration::class.java)
+
     @Bean fun nativeCsrfRepository() = StringCsrfTokenRepository()
     @Bean @Order(3)
     fun nativeWebSecurity(http: HttpSecurity, contexts: NativeSessionRepository, csrf: StringCsrfTokenRepository, settings: BrowserSessionSettings,
@@ -133,7 +138,7 @@ class NativeSecurityConfiguration {
                     NativeAuthenticationEndpoints.passkeyOptions.path, NativeAuthenticationEndpoints.passkeyVerify.path, "/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/api/mcp").permitAll()
                     .anyRequest().authenticated()
             }.exceptionHandling { it.authenticationEntryPoint { _, response, _ ->
-                org.slf4j.LoggerFactory.getLogger(NativeSecurityConfiguration::class.java).warn("native_auth_failed reason=missing_session")
+                logger.warn("native_auth_failed reason=missing_session")
                 response.status = 401; response.contentType = "application/json"; response.setHeader("Cache-Control", "no-store")
                 response.writer.write("{\"error\":\"Inloggning krävs.\"}")
             } }

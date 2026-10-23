@@ -38,6 +38,8 @@ import org.slf4j.LoggerFactory
 @ConditionalOnWebApplication
 @ConditionalOnProperty(name = ["forena.auth.mode"], havingValue = "supabase", matchIfMissing = true)
 class SecurityConfiguration {
+    private val logger = LoggerFactory.getLogger(SecurityConfiguration::class.java)
+
     @Bean
     fun decoder(@Value("\${forena.auth.issuer}") issuer: String,
                 @Value("\${forena.auth.jwks-uri}") jwks: String,
@@ -67,8 +69,7 @@ class SecurityConfiguration {
             if (unavailable) response.status = 503
             else {
                 if (request.getHeader("Authorization").isNullOrBlank())
-                    LoggerFactory.getLogger(SecurityConfiguration::class.java)
-                        .warn("api_auth_failed stage=request reason=missing_bearer")
+                    logger.warn("api_auth_failed stage=request reason=missing_bearer")
                 BearerTokenAuthenticationEntryPoint().commence(request, response, exception)
             }
             response.contentType = "application/json"
