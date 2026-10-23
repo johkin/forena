@@ -825,3 +825,16 @@ aktiva Supabase-nyckel. Identiteten omprövas efter generering före leverans.
 Grupproll är en explicit konfiguration, inget bevis för deltagarnas rättigheter;
 grupptext och gruppkommandot `/ask` skickas därför inte till modellen.
 Utkast bekräftas i Förena. Se [Telegram](telegram.md) för aktivering och gränser.
+
+
+Personlig Telegram-routning använder endast RLS-lästa egna personposter och
+aktuella `person_guardians`-kopplingar. Deltagarmedlemskap med avslutsdatum
+används inte för automatisk routning. Ett barnnamn filtrerar enbart den redan
+verifierade personmängden. Varje valt lag måste också finnas i den RLS-lästa
+laglistan och genomgå den vanliga lagassistentens åtkomstkontroll. Familjer
+med fler än tre personliga lag får precisera frågan; modellen får inte välja
+en annan användare eller skapa en obegränsad anropskedja. Namn-/kallelsedata
+läggs till i den delade kontexten genom organisations- och person-ID-filter.
+Frågor sparas fortfarande inte som samtalshistorik och grupptext skickas inte
+till modellen. Avstängd funktion ger ett tydligt besked i stället för ett
+kopplingssvar som ser ut som ett svar på frågan.

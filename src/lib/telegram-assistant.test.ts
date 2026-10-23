@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createHmac, generateKeyPairSync, verify } from "node:crypto";
-const mocks = vi.hoisted(() => ({ rpc: vi.fn(), admin: vi.fn(), client: vi.fn(), answer: vi.fn(), query: vi.fn() }));
+const mocks = vi.hoisted(() => ({ rpc: vi.fn(), admin: vi.fn(), client: vi.fn(), answer: vi.fn(), query: vi.fn(), personal: {} as Record<string, { data: unknown[]; error: unknown }> }));
 vi.mock("./supabase/admin", () => ({ createAdminClient: mocks.admin }));
 vi.mock("@supabase/supabase-js", () => ({ createClient: mocks.client }));
 vi.mock("./ai/team-assistant", () => ({ answerTeamAssistant: mocks.answer }));
@@ -11,13 +11,14 @@ const team = { id: "team", name: "Team", slug: "f2016", organization_id: "org" }
 const key = Buffer.from("synthetic-signing-key-at-least-32-bytes");
 beforeEach(() => {
   vi.resetAllMocks();
+  mocks.personal = {};
   vi.stubEnv("TELEGRAM_ASSISTANT_SIGNING_JWK", JSON.stringify({ kty: "oct", alg: "HS256", k: key.toString("base64url") }));
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://db.test"); vi.stubEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "public-key");
   mocks.admin.mockReturnValue({ rpc: mocks.rpc });
   mocks.rpc.mockResolvedValueOnce({ data: { status: "ready", userId }, error: null }).mockResolvedValue({ data: userId, error: null });
-  const query = { select: vi.fn().mockReturnThis(), order: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(), maybeSingle: vi.fn().mockResolvedValue({ data: { id: "org" }, error: null }), then: (resolve: (v: unknown) => void) => resolve(mocks.query()) };
+  const query = { select: vi.fn().mockReturnThis(), order: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(), maybeSingle: vi.fn().mockResolvedValue({ data: { id: "org" }, error: null }), then: (resolve: (v: unknown) => void) => resolve(mocks.query()) };
   mocks.query.mockReturnValue({ data: [team], error: null });
-  mocks.client.mockReturnValue({ from: () => query });
+  mocks.client.mockReturnValue({ from: (table: string) => ["people", "person_guardians", "memberships"].includes(table) ? { ...query, then: (resolve: (v: unknown) => void) => resolve(mocks.personal[table] ?? { data: [], error: null }) } : query });
   mocks.answer.mockResolvedValue({ answer: "Träningen är på tisdag.", source: "ai", model: "test" });
 });
 afterEach(() => vi.unstubAllEnvs());
@@ -83,4 +84,30 @@ it("does not confuse parts of names or regex characters with a team mention", ()
   expect(telegramMentionsTeam("När tränar F2016?", { name: "F2016", slug: "f2016" })).toBe(true);
   expect(telegramMentionsTeam("Vad gör A+B?", { name: "A+B", slug: "a-b" })).toBe(true);
   expect(telegramMentionsTeam("Vad gör AAAB?", { name: "A+B", slug: "a-b" })).toBe(false);
+});
+
+it("answers ordinary questions across the family's teams with a separate named answer per child", async () => {
+  mocks.query.mockReturnValue({ data: [{ ...team, name: "F2016" }, { ...team, id: "other", name: "P2014" }], error: null });
+  mocks.personal.people = { data: [{ id: "a", display_name: "Tilda" }, { id: "b", display_name: "Johan" }], error: null };
+  mocks.personal.memberships = { data: [{ person_id: "a", team_id: "team" }, { person_id: "b", team_id: "other" }], error: null };
+  const answer = await answerTelegramQuestion(question);
+  expect(answer).toContain("Tilda – F2016");
+  expect(answer).toContain("Johan – P2014");
+  expect(mocks.answer).toHaveBeenCalledTimes(2);
+  expect(mocks.answer.mock.calls.map(call => call[0].teamId)).toEqual(["team", "other"]);
+});
+it("uses a named child's own team and never an unrelated visible team", async () => {
+  mocks.query.mockReturnValue({ data: [{ ...team, name: "F2016" }, { ...team, id: "other", name: "P2014" }], error: null });
+  mocks.personal.people = { data: [{ id: "a", display_name: "Tilda" }, { id: "b", display_name: "Johan" }], error: null };
+  mocks.personal.memberships = { data: [{ person_id: "a", team_id: "team" }, { person_id: "b", team_id: "other" }], error: null };
+  expect(await answerTelegramQuestion({ ...question, question: "När tränar Tilda?" })).toContain("Tilda – F2016");
+  expect(mocks.answer).toHaveBeenCalledTimes(1);
+  expect(mocks.answer).toHaveBeenCalledWith(expect.objectContaining({ teamId: "team" }), expect.anything());
+});
+it("bounds family fan-out and asks for a team instead of making unbounded AI calls", async () => {
+  mocks.query.mockReturnValueOnce({ data: [team, ...[1, 2, 3].map(i => ({ ...team, id: `team${i}` }))], error: null }).mockReturnValue({ data: [{ id: "org", slug: "club" }], error: null });
+  mocks.personal.people = { data: [{ id: "a", display_name: "Tilda" }], error: null };
+  mocks.personal.memberships = { data: ["team", "team1", "team2", "team3"].map(team_id => ({ person_id: "a", team_id })), error: null };
+  expect(await answerTelegramQuestion(question)).toContain("Vilket lag");
+  expect(mocks.answer).not.toHaveBeenCalled();
 });

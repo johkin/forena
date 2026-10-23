@@ -83,7 +83,7 @@ it("removes blocked chats and handles private stop commands", async () => {
 
 it("offers the same identity-free profile link to every private sender without admin access", async () => {
   for (const sender of [123, 456]) {
-    await POST(request({ update_id: 99, message: { ...message, from: { id: sender }, chat: { id: sender, type: "private" }, text: "Hej" } }));
+    await POST(request({ update_id: 99, message: { ...message, from: { id: sender }, chat: { id: sender, type: "private" }, text: "/help" } }));
     const body = JSON.parse(mocks.transport.mock.calls.at(-1)![1].body);
     expect(body.reply_markup.inline_keyboard[0][0].url).toBe("https://forena.test/profile#telegram");
     expect(body.text).toContain("din egen enhet");
@@ -128,4 +128,13 @@ it("acknowledges a suppressed or duplicate answer without sending it", async () 
   vi.stubEnv("TELEGRAM_ASSISTANT_ENABLED", "true"); mocks.assistant.mockResolvedValue(null);
   expect((await POST(request({ update_id: 103, message: { ...message, text: "Hej" } }))).status).toBe(200);
   expect(mocks.transport).not.toHaveBeenCalled();
+});
+
+it("explains that questions are disabled instead of repeating enrollment instructions", async () => {
+  await POST(request({ update_id: 200, message: { ...message, text: "När är nästa träning?" } }));
+  const body = JSON.parse(mocks.transport.mock.calls[0][1].body);
+  expect(body.text).toContain("Frågestödet i Telegram är inte aktiverat");
+  expect(body.text).not.toContain("Välkommen till Förena");
+  expect(mocks.assistant).not.toHaveBeenCalled();
+  expect(mocks.admin).not.toHaveBeenCalled();
 });
