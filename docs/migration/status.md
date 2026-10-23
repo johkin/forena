@@ -23,6 +23,14 @@ provad i Chromium utan sidfel. Paketerad JVM har klarat `local-smoke.py`,
 inklusive admin-kedja, aktivitetskommandon och auth-livscykel. CI-resultat måste
 knytas till aktuell PR-head.
 
+CI #693 för `211ea75` klarade application, database och backend inklusive
+browserproven. Native-jobbet stoppades före native-kompilering eftersom
+buildpackens rörliga `latest`-tagg hade bytt till en ren ARM64-image och gav
+`exec format error` på x86-runnern. CI-receptet låser därför buildern till
+multiarkitekturdigesten från den tidigare godkända körningen #692 och anger
+`linux/amd64` uttryckligen. Manifest, Maven-parameterstöd, workflow-YAML och
+25 release-tester har kontrollerats lokalt. Ny CI krävs för det ändrade receptet.
+
 ## M09: enstaka aktivitet och hela admin-kedjan, 2026-10-23
 
 Implementation: `9294ce2cb7c9211858d880b44de6ff0c92ba0ec4` på

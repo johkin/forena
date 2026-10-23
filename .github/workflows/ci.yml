@@ -227,6 +227,8 @@ jobs:
           backend/mvnw -f backend/pom.xml --batch-mode --no-transfer-progress
           -Pnative -DskipTests
           -Dspring-boot.build-image.imageName=forena-backend:ci
+          -Dspring-boot.build-image.imagePlatform=linux/amd64
+          -Dspring-boot.build-image.builder=paketobuildpacks/builder-noble-java-tiny@sha256:07b5e2d02f2e7dd26b6c7bf175c3381d496a4418e1bc8a8297e258e0c75ac696
           spring-boot:build-image
 
       - name: Set up browser verification for the native runtime
