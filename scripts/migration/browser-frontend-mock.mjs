@@ -133,7 +133,8 @@ try{
  await page.getByRole('link',{name:'Till min översikt',exact:true}).click();
  await page.getByRole('link',{name:/Ungdomslaget.*Målsman/}).click();await expect(page.getByRole('heading',{name:'Ungdomslaget',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Ny aktivitet',exact:true}).click();
- await expect(page.getByRole('combobox')).toHaveValue(team.id);
+ await expect(page).toHaveURL(new URL(`/teams/${team.id}`,base).href);
+ await expect(page.getByLabel('Lag',{exact:true})).toHaveCount(0);
  const createDialog=page.getByRole('dialog');
  await expect(createDialog.getByRole('heading',{name:'Skapa aktivitet',exact:true})).toBeVisible();
  await createDialog.getByLabel('Titel',{exact:true}).fill('Aktivitet från lagvyn');

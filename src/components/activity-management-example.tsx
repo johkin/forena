@@ -59,6 +59,8 @@ export function ActivityManagementExample() {
       <option value="loading">Laddning</option><option value="error">Serverfel</option>
       <option value="empty">Ingen lagbehörighet</option>
     </select></label>
+    <ActivityManagement key={state} request={request} teamId={team.id} />
+    <h3>Äldre direktlänk med förvalt lag</h3>
     <div className="welcome"><div><h3>{team.name}</h3><p>Skapa direkt från lagets översikt.</p></div>
       <TeamActivityActions key={state} teamId={team.id} request={request} onCreate={() => setOpenFromTeam(true)} />
     </div>

@@ -116,8 +116,8 @@ try {
   await page.keyboard.press('Escape');
   await expect(page.getByRole('button', { name: 'Öppna meny', exact: true })).toBeFocused();
   await page.getByRole('button', { name: 'Ny aktivitet', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Hantera aktiviteter' })).toBeVisible();
-  await expect(page.getByRole('combobox')).toHaveValue(teamId);
+  await expect(page.getByRole('heading', { name: 'Lagets aktiviteter' })).toBeVisible();
+  await expect(page.getByLabel('Lag', { exact: true })).toHaveCount(0);
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('button', { name: 'Övrigt', exact: true })).toBeVisible();
   await dialog.getByLabel('Titel', { exact: true }).fill('Browserträning');
@@ -137,7 +137,6 @@ try {
   await dialog.getByRole('button', { name: 'Skapa aktivitet', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Redigera Browserträning', exact: true })).toBeVisible();
   await page.reload();
-  await page.getByRole('combobox').selectOption(teamId);
   await page.getByRole('button', { name: 'Redigera Browserträning', exact: true }).click();
   await expect(dialog.getByLabel('Plats', { exact: true })).toHaveValue('Stora planen');
   await dialog.getByLabel('Titel', { exact: true }).fill('Uppdaterad browserträning');
@@ -150,7 +149,6 @@ try {
   await expect(page.getByText('Aktiviteten ställdes in.', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Redigera Uppdaterad browserträning', exact: true })).toHaveCount(0);
   await page.reload();
-  await page.getByRole('combobox').selectOption(teamId);
   await expect(page.getByText('Uppdaterad browserträning', { exact: true })).toBeVisible();
   await expect(page.getByText('· Inställd', { exact: true })).toBeVisible();
   for (const width of [320, 390, 768, 1440]) {
