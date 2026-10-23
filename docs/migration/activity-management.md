@@ -144,3 +144,11 @@ FORENA_M09_BROWSER_TEST=true backend/mvnw -f backend/pom.xml '-Dtest=ApiTest#bro
 CI kör samma browserprov samt paketerad JVM-/native-kontroll. `local-smoke.py`
 provar också administrationskedjan och aktivitetskommandon via HTTP mot vald
 runtime. Molnprovisionering, produktionsbootstrap och driftsättning ingår inte.
+
+## Skapa från lagvyn
+
+Kotlin-webbens lagvy visar **Ny aktivitet** efter kontroll mot
+`GET /api/me/managed-teams`. Knappen öppnar `/activities/manage?team=<id>&create=1`
+med laget valt och den gemensamma redigeraren öppen. Formuläret hämtas först
+efter att laget bekräftats i den behöriga listan; serverns läs- och skrivkontroller
+gäller fortsatt. Ogiltigt eller obehörigt lag ger ingen redigerare.

@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { z } from "zod";
 import { ActivityManagement } from "./activity-management";
+import { TeamActivityActions } from "./team-activity-actions";
 import type { ParticipationFetch } from "./activity-invitation-response";
 
 const team = {
@@ -20,6 +21,7 @@ const initial = {
 export function ActivityManagementExample() {
   const activities = useRef([initial]);
   const [state, setState] = useState("interactive");
+  const [openFromTeam, setOpenFromTeam] = useState(false);
   const request = useCallback<ParticipationFetch>(async (path, init) => {
     if (state === "loading") return new Promise<Response>(resolve => {
       init?.signal?.addEventListener("abort", () => resolve(Response.json([])), { once: true });
@@ -52,11 +54,15 @@ export function ActivityManagementExample() {
   }, [state]);
   return <section id="activity-management-example"><h2>Aktivitetshantering</h2>
     <p>Lokalt exempel: skapa, redigera och ställ in utan att skriva till verksamheten.</p>
-    <label>Exempeltillstånd<select value={state} onChange={event => setState(event.target.value)}>
+    <label>Exempeltillstånd<select value={state} onChange={event => { setState(event.target.value); setOpenFromTeam(false); }}>
       <option value="interactive">Skapa, redigera och ställ in</option>
       <option value="loading">Laddning</option><option value="error">Serverfel</option>
       <option value="empty">Ingen lagbehörighet</option>
     </select></label>
-    <ActivityManagement key={state} request={request} />
+    <div className="welcome"><div><h3>{team.name}</h3><p>Skapa direkt från lagets översikt.</p></div>
+      <TeamActivityActions key={state} teamId={team.id} request={request} onCreate={() => setOpenFromTeam(true)} />
+    </div>
+    <ActivityManagement key={`${state}-${openFromTeam}`} request={request}
+      initialTeamId={openFromTeam ? team.id : undefined} createOnLoad={openFromTeam} />
   </section>;
 }

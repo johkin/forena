@@ -17,6 +17,8 @@ let invitations=[{id,person_id:users[0],name:'Alex Exempel med ett längre famil
  {id:'44444444-4444-4444-8444-444444444444',person_id:users[1],name:'Tilda Exempel',response:'pending',response_comment:null}];
 const organization={id:'55555555-5555-4555-8555-555555555555',name:'Exempelföreningen med ett långt namn',time_zone:'Europe/Stockholm',role:'owner'};
 const team={id:'66666666-6666-4666-8666-666666666666',organization_id:organization.id,name:'Ungdomslaget',roles:['guardian','leader','team_access']};
+const managedTeam={id:team.id,organizationId:organization.id,name:team.name,organizationName:organization.name,timeZone:organization.time_zone,canManageInvitations:true};
+let activityCreates=0;
 const activities=()=>[{id,title:'Träning med laget',starts_at:'2030-10-26T16:00:00Z',ends_at:'2030-10-26T17:30:00Z',gathering_at:null,response_due_at:null,location:'Örvallen',description:'Ta med vattenflaska.',status:'scheduled',organization,team,
  people:invitations.map(invitation=>({id:invitation.person_id,name:invitation.name,invitation}))},
  {id:users[1],title:'Nästa aktivitet',starts_at:'2030-10-27T16:00:00Z',ends_at:'2030-10-27T17:30:00Z',gathering_at:null,response_due_at:null,location:'Uip',description:'',status:'scheduled',organization,team,people:invitations.map(invitation=>({id:invitation.person_id,name:invitation.name,invitation:null}))}];
@@ -70,6 +72,15 @@ await context.route('**/api/**',async route=>{
   if(overviewUnavailable)return route.fulfill({status:503,json:{error:'Tillfälligt fel'}});
   return route.fulfill({json:{reference_time:'2030-10-20T00:00:00Z',activities:current===0?activities():[],organizations:current===0?[organization]:[],teams:current===0?[team]:[]}});
  }
+ if(path==='/api/me/managed-teams')return route.fulfill({json:current===0?[managedTeam]:[]});
+ if(path===`/api/teams/${team.id}/activity-editor`)return route.fulfill({json:{team:managedTeam,
+  types:[{id,name:'Övrigt',slug:'ovrigt',system_category:'other',organization_id:null}],
+  members:[],disciplineKey:null,sectionId:null,defaults:[],groups:[],activities:[]}});
+ if(path==='/api/activities' && req.method()==='POST'){
+  assert.equal(headers['x-forena-account'],users[current]);
+  assert.equal(req.postDataJSON().teamId,team.id);activityCreates++;
+  return route.fulfill({status:201,json:{activity:{id}}});
+ }
  if(path===`/api/activities/${id}` || path===`/api/activities/${users[1]}`){
   if(current!==0)return route.fulfill({status:404,json:{error:'Aktiviteten är inte tillgänglig.'}});
   return route.fulfill({json:activities().find(activity=>path.endsWith(activity.id))});
@@ -121,6 +132,27 @@ try{
  await page.getByRole('link',{name:organization.name,exact:true}).click();await expect(page.getByRole('heading',{name:organization.name,exact:true,level:1})).toBeVisible();
  await page.getByRole('link',{name:'Till min översikt',exact:true}).click();
  await page.getByRole('link',{name:/Ungdomslaget.*Målsman/}).click();await expect(page.getByRole('heading',{name:'Ungdomslaget',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Ny aktivitet',exact:true}).click();
+ await expect(page.getByRole('combobox')).toHaveValue(team.id);
+ const createDialog=page.getByRole('dialog');
+ await expect(createDialog.getByRole('heading',{name:'Skapa aktivitet',exact:true})).toBeVisible();
+ await createDialog.getByLabel('Titel',{exact:true}).fill('Aktivitet från lagvyn');
+ await createDialog.getByLabel('Plats',{exact:true}).fill('Stora planen');
+ await createDialog.getByRole('button',{name:'Samma dag',exact:true}).click();
+ await createDialog.getByText('Välj annat datum',{exact:true}).first().click();
+ await createDialog.locator('input[name=startsOn]').fill('2030-10-25');
+ await createDialog.getByRole('button',{name:/^Starttid, välj klockslag/}).click();
+ await createDialog.locator('input[type=time][aria-label=Starttid]').fill('18:00');
+ await createDialog.getByRole('button',{name:'1,5 tim',exact:true}).click();
+ await createDialog.getByLabel('Titel',{exact:true}).click();
+ await createDialog.getByRole('button',{name:'Förhandsgranska',exact:true}).click();
+ await expect(createDialog.getByRole('button',{name:'Skapa aktivitet',exact:true})).toBeVisible();
+ assert.equal(activityCreates,0);
+ await createDialog.getByRole('button',{name:'Skapa aktivitet',exact:true}).click();
+ await expect(createDialog).toHaveCount(0);assert.equal(activityCreates,1);
+ assert.ok(!page.url().includes('create=1'));
+ await page.getByRole('link',{name:'Förena startsida',exact:true}).click();
+ await page.getByRole('link',{name:/Ungdomslaget.*Målsman/}).click();
  await page.getByRole('link',{name:'Till min översikt',exact:true}).click();
  // A legitimate activity without invitations still has readable details and named people.
  await upcoming.getByRole('button',{name:/Nästa aktivitet/}).click();await expect(page.getByRole('heading',{name:'Nästa aktivitet',exact:true})).toBeVisible();
@@ -141,6 +173,11 @@ try{
  await expect(upcoming.getByRole('button',{name:/Träning med laget/})).toBeVisible();
  // Header/menu links use the same router adapter as the activity list.
  await page.getByRole('button',{name:'Öppna meny',exact:true}).click();
+ const menu=page.getByRole('dialog');
+ const homeBox=await menu.getByRole('link',{name:'Min översikt',exact:true}).boundingBox();
+ const securityBox=await menu.getByRole('link',{name:'Inloggningsinställningar',exact:true}).boundingBox();
+ assert.ok(homeBox && securityBox && securityBox.y>=homeBox.y+homeBox.height);
+ assert.ok(homeBox.height>=44 && securityBox.height>=44);
  await page.getByRole('dialog').getByRole('link',{name:'Min översikt',exact:true}).click();
  await expect(page.getByRole('dialog')).toHaveCount(0);
  await upcoming.getByRole('button',{name:/Träning med laget/}).click();await expect(row).toHaveCount(1);

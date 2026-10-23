@@ -104,11 +104,20 @@ try {
     await page.locator('input[name=email]').first().fill(process.env.FORENA_M09_TEAM_ADMIN_EMAIL);
     await page.getByLabel('Lösenord', { exact: true }).fill('synthetic-password');
     await page.getByRole('button', { name: 'Logga in', exact: true }).click();
-    await page.getByRole('link', { name: 'Hantera aktiviteter', exact: true }).click();
   }
-  await expect(page.getByRole('heading', { name: 'Hantera aktiviteter' })).toBeVisible();
-  await page.getByRole('combobox').selectOption(teamId);
+  await page.goto(`${origin}/teams/${teamId}`);
+  await page.getByRole('button', { name: 'Öppna meny', exact: true }).click();
+  const menu = page.getByRole('dialog', { name: 'Huvudmeny' });
+  const homeLink = await menu.getByRole('link', { name: 'Min översikt', exact: true }).boundingBox();
+  const securityLink = await menu.getByRole('link', { name: 'Inloggningsinställningar', exact: true }).boundingBox();
+  assert.ok(homeLink && securityLink);
+  assert.ok(securityLink.y >= homeLink.y + homeLink.height, 'personal menu links occupy separate rows');
+  assert.ok(homeLink.height >= 44 && securityLink.height >= 44, 'menu links have accessible touch targets');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'Öppna meny', exact: true })).toBeFocused();
   await page.getByRole('button', { name: 'Ny aktivitet', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Hantera aktiviteter' })).toBeVisible();
+  await expect(page.getByRole('combobox')).toHaveValue(teamId);
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('button', { name: 'Övrigt', exact: true })).toBeVisible();
   await dialog.getByLabel('Titel', { exact: true }).fill('Browserträning');

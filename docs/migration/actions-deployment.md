@@ -58,3 +58,23 @@ Att byta auth för befintliga användare kräver en separat identifierad och tes
 kontomigrering med verksamhetskopplingar. E-postlikhet räcker inte. Äldre Next-
 deployment och dess delade beroenden behålls. Denna PR genomför ingen deploy,
 kontomigrering, databasåterställning eller ändring av externa produktionsinställningar.
+
+## Relevanta CI-jobb för pull requests
+
+`scripts/deploy/ci_scope.py` väljer PR-kontroller från ändrade filsökvägar:
+
+- Frontend, delade webbkomponenter och browserprov kör applikationskontrollerna,
+  inklusive Chromium med syntetiska API-svar.
+- Backendkod, backendtester, kontrakt, migrationer och backendens byggverktyg
+  kräver JVM- och nativejobben. Delade API-kontrakt kräver också frontendkontroller.
+- Supabase-schema och databastester kräver databasjobbet och
+  applikationskontrollerna; Edge Function-kod kräver applikationskontrollerna.
+- Dokumentation behöver inga byggen. Okända byggindata väljer alla jobb.
+
+`verify` kräver lyckad scopeberäkning och alla valda jobb. Ett jobb får bara
+vara överhoppat när scope uttryckligen anger att det inte behövs. Misslyckade,
+avbrutna eller oväntat överhoppade jobb underkänns.
+
+Push till `main` och manuella körningar verifierar alltid hela systemet och
+producerar publiceringens backendartefakter för samma commit. Befintliga
+innehållsbaserade byggcachar återanvänder oförändrad frontend och native-image.

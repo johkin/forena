@@ -155,6 +155,8 @@ export function App({ config }: { config: PublicConfig }) {
   const validActivity = z.uuid().safeParse(activityId);
   const securityPage = path === "/account/security";
   const managementPage = path === "/activities/manage";
+  const managementQuery = new URLSearchParams(location.search);
+  const managementTeam = z.uuid().safeParse(managementQuery.get("team"));
   const administrationPage = path === "/administration";
   const knownPath = administrationPage || managementPage || securityPage || homePath || path === "/migration/participation" || Boolean(match);
   async function logout() {
@@ -170,7 +172,10 @@ export function App({ config }: { config: PublicConfig }) {
     <main tabIndex={-1} className={`content ${homePath ? "personal-dashboard" : ""}`} key={auth.session.user.id}>
       {!homePath && !securityPage && !managementPage && !administrationPage ? <><p className="eyebrow">Personligt</p><h1>{!knownPath ? "Sidan finns inte" : "Kallelser"}</h1></> : null}
       {error ? <p role="alert">{error}</p> : null}
-      {administrationPage ? <Administration request={request} /> : managementPage ? <ActivityManagement request={request} /> : securityPage ? <><PasskeyRegistration pending={pending} registered={passkeyCreatedFor === accountId} supported={Boolean(window.PublicKeyCredential && navigator.credentials)} onRegister={() => void (async () => {
+      {administrationPage ? <Administration request={request} /> : managementPage ? <ActivityManagement key={location.search} request={request}
+        initialTeamId={managementTeam.success ? managementTeam.data : undefined}
+        createOnLoad={managementTeam.success && managementQuery.get("create") === "1"}
+        onEditorClose={() => { if (managementTeam.success && managementQuery.get("create") === "1") navigate(`/activities/manage?team=${managementTeam.data}`, { replace: true }); }} /> : securityPage ? <><PasskeyRegistration pending={pending} registered={passkeyCreatedFor === accountId} supported={Boolean(window.PublicKeyCredential && navigator.credentials)} onRegister={() => void (async () => {
         const expectedAccount = accountId;
         if (!expectedAccount || pending) return;
         setPending(true); setError(undefined);

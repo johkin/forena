@@ -3,6 +3,7 @@ import { AppLink } from "./app-link";
 import { useEffect, useRef, useState } from "react";
 import { PersonalHome, teamRoleLabels } from "../../src/components/personal-home";
 import { PersonalOverview } from "../../src/components/personal-overview";
+import { TeamActivityActions } from "../../src/components/team-activity-actions";
 import type { ParticipationFetch } from "../../src/components/activity-invitation-response";
 import { calendarActivity, confirmedAnswer, overviewItems, type Overview } from "./personal-overview";
 
@@ -67,6 +68,8 @@ export function MyActivitiesPage({ request, workspace, notifications=false }: { 
     {error ? <div role="alert"><p>{error}</p><button type="button" onClick={()=>setAttempt(value=>value+1)}>Försök igen</button></div> : null}
     <PersonalHome items={items} activities={activities.map(calendarActivity)} referenceTime={data.reference_time}
       title={team?.name ?? organization?.name} introduction={workspace ? "Här visas aktiviteter för dig och de personer du företräder i arbetsytan." : undefined}
+      actions={team ? <TeamActivityActions key={team.id} teamId={team.id} request={request}
+        onCreate={() => navigate(`/activities/manage?team=${team.id}&create=1`)} /> : undefined}
       organizations={data.organizations.filter(item=>!workspace || item.id===(organization?.id ?? team?.organization_id)).map(item=>({...item,role:item.role ?? undefined,href:`/organizations/${item.id}`}))}
       teams={data.teams.filter(item=>!workspace || (team ? item.id===team.id : item.organization_id===organization!.id)).map(item=>({id:item.id,organizationId:item.organization_id,name:item.name,roles:item.roles.map(role=>teamRoleLabels[role] ?? role),href:`/teams/${item.id}`}))}
       request={request} linkComponent={AppLink} onAnswered={answer} onOpenActivity={item=>navigate(`/activities/${item.activity.id}`)} />

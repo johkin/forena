@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import type { Activity } from "../domain/club";
 import type { ParticipationFetch } from "./activity-invitation-response";
 import type { OverviewItem, OverviewAnswered } from "./personal-overview-types";
@@ -14,10 +14,10 @@ export const organizationRoleLabels: Record<string,string> = { owner:"Ägare", a
 export const teamRoleLabels: Record<string,string> = { guardian:"Målsman", representative:"Ombud", leader:"Ledare", participant:"Spelare", member:"Medlem", team_access:"Lagåtkomst" };
 
 /** Complete personal page shared by Next and the Kotlin browser frontend. */
-export function PersonalHome<T extends OverviewItem>({ items, activities, organizations, teams, referenceTime, onOpenActivity, onAnswered, request, linkComponent:Link = "a", title="Min översikt", introduction="Din och barnens vardag – alla lag och föreningar på samma plats." }: {
+export function PersonalHome<T extends OverviewItem>({ items, activities, organizations, teams, referenceTime, onOpenActivity, onAnswered, request, actions, linkComponent:Link = "a", title="Min översikt", introduction="Din och barnens vardag – alla lag och föreningar på samma plats." }: {
   items:T[]; activities:Activity[]; organizations:HomeOrganization[]; teams:HomeTeam[]; referenceTime:string;
   onOpenActivity:(item:T)=>void; onAnswered?:OverviewAnswered; request?:ParticipationFetch; linkComponent?:NavigationLink;
-  title?:string; introduction?:string;
+  title?:string; introduction?:string; actions?:ReactNode;
 }) {
   const writing=useRef(new Set<string>());
   const [pendingInvitations,setPendingInvitations]=useState<ReadonlySet<string>>(new Set());
@@ -39,7 +39,7 @@ export function PersonalHome<T extends OverviewItem>({ items, activities, organi
   const namesById=new Map<string,string[]>();
   for(const item of items){const names=namesById.get(item.activity.id) ?? [];names.push(item.member.displayName);namesById.set(item.activity.id,names);}
   return <>
-    <div className="welcome"><div><p className="eyebrow">Förena · Personligt</p><h1>{title}</h1><p>{introduction}</p></div></div>
+    <div className="welcome"><div><p className="eyebrow">Förena · Personligt</p><h1>{title}</h1><p>{introduction}</p></div>{actions}</div>
     <PersonalOverview activities={pending} timeZone="Europe/Stockholm" title="Behöver svar" id="pending-activities-title" emptyMessage="Alla aktuella kallelser är besvarade." referenceTime={referenceTime} onOpenActivity={onOpenActivity} onAnswered={onAnswered} request={request} onRespond={respond} pendingInvitations={pendingInvitations} personNames={personNames} />
     <div className="personal-calendar-section">
       <div className="personal-view-switch segmented-control" role="group" aria-label="Visning av familjens aktiviteter">
