@@ -27,6 +27,12 @@ interface i `Repositories.kt`. DTO:er ligger i separata filer från tjänstelogi
 modulen `activities` äger aktiviteter/kallelser och `identity` konto/session och
 personåtkomst. Modulith verifierar beroendet `activities` → `identity` (ADR-015).
 
+Kotlin-modulen `email` har ett leverantörsoberoende `EmailSender`-gränssnitt.
+Resends REST-adapter och hemlighetskonfiguration är samlade i `email.internal`.
+`identity` äger auth-mallar och krypterad mejlkö och beror bara på mejlmodulens
+publika typer; mejlmodulen har inga beroenden till identitet eller verksamhet.
+Den äldre Next-appens mejlintegration är separat och ändras inte av detta.
+
 Ett avskilt [browserflöde](migration/browser-participation.md) återanvänder
 inloggning, sidskal och kallelsesvar genom de befintliga Next-rutterna till
 Kotlin. Backend väljs endast i servermiljön och är `legacy` som standard.

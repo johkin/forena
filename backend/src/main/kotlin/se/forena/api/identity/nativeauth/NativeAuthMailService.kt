@@ -1,11 +1,10 @@
 package se.forena.api.identity.nativeauth
 
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.jdbc.core.JdbcTemplate
-import org.springframework.mail.MailException
-import org.springframework.mail.SimpleMailMessage
-import org.springframework.mail.javamail.JavaMailSender
+import se.forena.api.email.EmailSender
+import se.forena.api.email.EmailMessage
+import se.forena.api.email.EmailDeliveryResult
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
@@ -14,13 +13,11 @@ import java.sql.Timestamp
 import java.time.Instant
 import java.util.UUID
 
-/** Durable transactional delivery; links are encrypted at rest and never logged. SMTP remains external. */
+/** Durable transactional delivery; links are encrypted at rest and never logged. The email module owns external delivery. */
 @Service
 @ConditionalOnProperty(name = ["forena.auth.mode"], havingValue = "native")
 class NativeAuthMailService(private val jdbc: JdbcTemplate, private val transaction: TransactionTemplate,
-    private val sender: JavaMailSender, private val settings: BrowserSessionSettings,
-    @Value("\${forena.native-auth.mail-from:}") private val from: String) {
-    init { require(from.contains('@') && from.none { it == '\r' || it == '\n' }) { "Configure FORENA_AUTH_MAIL_FROM" } }
+    private val sender: EmailSender, private val settings: BrowserSessionSettings) {
     fun enqueue(email: String, kind: String, link: String, expires: Instant) {
         val id = UUID.randomUUID()
         jdbc.update("insert into forena.auth_mail_outbox(id,recipient,kind,encrypted_link,expires_at) values(?,?,?,?,?)",
@@ -36,17 +33,21 @@ class NativeAuthMailService(private val jdbc: JdbcTemplate, private val transact
                 val id = row["id"].toString()
                 val title = when (row["kind"]) { "verify" -> "Verifiera din e-postadress"; "reset" -> "Återställ ditt lösenord"; else -> "Logga in" }
                 val link = settings.decrypt(row["encrypted_link"].toString(), id)
-                try {
-                    val message = SimpleMailMessage()
-                    message.setFrom(from); message.setTo(row["recipient"].toString()); message.subject = "$title i Förena"
-                    message.text = "$title genom att öppna länken nedan. Länken gäller i tio minuter och kan användas en gång.\n\n$link\n\nÖppna inloggningslänken i samma webbläsare som begärde den. Om du inte begärde detta kan du ignorera mejlet."
-                    sender.send(message)
-                    jdbc.update("update forena.auth_mail_outbox set delivered_at=now(),encrypted_link='' where id=?", UUID.fromString(id))
-                } catch (_: MailException) {
-                    jdbc.update("update forena.auth_mail_outbox set attempts=attempts+1,next_attempt=now()+interval '30 seconds' * power(2,attempts) where id=?", UUID.fromString(id))
+                val message = EmailMessage(row["recipient"].toString(), "$title i Förena",
+                    "$title genom att öppna länken nedan. Länken gäller i tio minuter och kan användas en gång.\n\n$link\n\nÖppna inloggningslänken i samma webbläsare som begärde den. Om du inte begärde detta kan du ignorera mejlet.",
+                    "native-auth/$id")
+                when (val result = sender.send(message)) {
+                    is EmailDeliveryResult.Accepted ->
+                        jdbc.update("update forena.auth_mail_outbox set delivered_at=now(),encrypted_link='' where id=?", UUID.fromString(id))
+                    is EmailDeliveryResult.Retry ->
+                        jdbc.update("update forena.auth_mail_outbox set attempts=attempts+1,next_attempt=now()+interval '1 second' * greatest(30 * power(2,attempts),?) where id=?", result.afterSeconds, UUID.fromString(id))
+                    EmailDeliveryResult.Rejected -> {
+                        jdbc.update("update forena.auth_mail_outbox set attempts=5,encrypted_link='' where id=?", UUID.fromString(id))
+                        org.slf4j.LoggerFactory.getLogger(NativeAuthMailService::class.java).warn("auth_mail_rejected")
+                    }
                 }
                 true
-            } ?: false
+            }
             if (!found) return
         }
     }

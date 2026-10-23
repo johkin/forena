@@ -1,5 +1,24 @@
 # Migreringsstatus
 
+## Resend REST i Kotlin, 2026-10-23
+
+Auth-mejl i `feature/native-auth` använder nu Resends REST-API i stället för SMTP.
+All leverantörskod är samlad i `email.internal`, bakom `EmailSender` och typade
+leveransresultat. Auth äger mallar och krypterad outbox. Samma idempotensnyckel
+återanvänds vid återförsök; tillfälliga fel och numeriskt Retry-After hanteras i
+kön, medan permanenta fel stoppar utskicket och raderar engångslänken.
+`RESEND_API_KEY` och `RESEND_FROM_EMAIL` ersätter tidigare SMTP-/avsändarvariabler.
+Next-appen och äldre Edge Functions är inte ändrade.
+
+Godkänt: full Maven `verify`, 95 tester, noll fel och två överhoppade valbara
+browserprov. Sex adapterprov täcker HTTP-kontrakt och felhantering; auth-proven
+verifierar även beständiga återförsök och permanenta fel mot lokal PostgreSQL.
+Modulith verifierar mejlmodulens gräns. Båda genererade API-kontrakten är
+oförändrade och kontraktskontrollen är godkänd. Inga riktiga mejl eller någon
+publicering ingår. Tidigare browserbevis nedan har inte körts om för detta
+backendbyte; verklig leverans från verifierad avsändardomän återstår före drift.
+Se [konfiguration och driftgränser](native-auth.md).
+
 ## Egen kontohantering och Authorization Server i Spring, 2026-10-22
 
 Lokalt JVM-försök enligt användarens instruktion och ADR-024, bakom

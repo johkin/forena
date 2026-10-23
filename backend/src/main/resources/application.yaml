@@ -54,15 +54,12 @@ forena:
     jwks-uri: "${FORENA_AUTH_JWKS_URI:}"
     publishable-key: "${FORENA_AUTH_PUBLISHABLE_KEY:}"
 
+  email:
+    resend-api-key: "${RESEND_API_KEY:}"
+    from: "${RESEND_FROM_EMAIL:}"
+
   native-auth:
     rp-id: "${FORENA_PASSKEY_RP_ID:}"
-    mail-from: "${FORENA_AUTH_MAIL_FROM:}"
-    smtp-host: "${FORENA_SMTP_HOST:}"
-    smtp-port: "${FORENA_SMTP_PORT:587}"
-    smtp-username: "${FORENA_SMTP_USERNAME:}"
-    smtp-password: "${FORENA_SMTP_PASSWORD:}"
-    smtp-auth: "${FORENA_SMTP_AUTH:true}"
-    smtp-require-tls: "${FORENA_SMTP_REQUIRE_TLS:true}"
     client-id: "${FORENA_OAUTH_CLIENT_ID:}"
     client-redirect: "${FORENA_OAUTH_CLIENT_REDIRECT:}"
     client-secret: "${FORENA_OAUTH_CLIENT_SECRET:}"

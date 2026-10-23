@@ -19,6 +19,12 @@ Liquibase äger alla nya privata auth-tabeller med samma runtime-/ownergräns.
 Supabase-läget finns kvar för jämförelse; ingen drift eller kontoimport ingår.
 Se [försökets omfattning, konfiguration och återstående driftgrindar](native-auth.md).
 
+Uppdatering 2026-10-23: auth-mejl skickas genom Resends REST-API i en separat
+`email`-modul. Auth beror på modulens leverantörsoberoende gränssnitt och äger
+fortsatt mallar och krypterad outbox. SMTP-beroende och SMTP-konfiguration tas bort.
+Ändringen gäller endast Kotlin-backenden; äldre Next-/Edge-integrationer är separata.
+
+
 ## ADR-023: Korta migreringar vid backendstart
 
 Beslut 2026-10-21 på användarens instruktion, ersätter startordningen i ADR-021:

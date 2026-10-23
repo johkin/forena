@@ -431,3 +431,10 @@ Owner-login konfigureras som `FORENA_MIGRATION_USERNAME` och
 på användarnamnet om Supabase-poolern kräver det. Ge aldrig runtime-rollen
 medlemskap i owner. Liquibase-låset samordnar starter, men lång SQL eller
 låsväntan kan överskrida plattformens startbudget; se ADR-023.
+
+Auth-mejl i native-läget skickas via Resends REST-API, inte SMTP. Sätt
+`RESEND_API_KEY` och `RESEND_FROM_EMAIL` i backendens hemlighetshantering.
+All leverantörskod finns i `se.forena.api.email.internal`; övriga moduler
+använder `EmailSender`. Auth äger mallar och krypterad outbox med stabil
+idempotensnyckel, tidsbegränsade återförsök och stopp vid permanenta fel.
+Se [konfiguration och driftgränser](../docs/migration/native-auth.md#mejl-och-driftgränser).

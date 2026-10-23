@@ -23,19 +23,33 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.core.env.Environment
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.springframework.mail.SimpleMailMessage
-import org.springframework.mail.javamail.JavaMailSenderImpl
-import org.springframework.test.context.bean.override.mockito.MockitoBean
+import se.forena.api.email.EmailSender
+import se.forena.api.email.EmailMessage
+import se.forena.api.email.EmailDeliveryResult
+import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Import
+import org.springframework.context.annotation.Primary
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.postgresql.PostgreSQLContainer
-import org.mockito.Mockito
 import se.forena.api.identity.BrowserSessionSettings
 import se.forena.api.identity.nativeauth.NativeAuthMailService
 import tools.jackson.databind.json.JsonMapper
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@Import(NativeAuthTest.MailConfiguration::class)
 class NativeAuthTest {
+    class RecordingEmailSender : EmailSender {
+        val messages = mutableListOf<EmailMessage>()
+        var result: EmailDeliveryResult = EmailDeliveryResult.Accepted("synthetic-mail-id")
+        override fun send(message: EmailMessage): EmailDeliveryResult { messages.add(message); return result }
+    }
+    @TestConfiguration(proxyBeanMethods = false)
+    class MailConfiguration {
+        @Bean @Primary fun testEmailSender() = RecordingEmailSender()
+    }
+
     companion object {
         val database = PostgreSQLContainer("postgres:17.6-alpine").withInitScript("init.sql").also { it.start() }
         @JvmStatic @DynamicPropertySource fun properties(registry: DynamicPropertyRegistry) {
@@ -49,9 +63,9 @@ class NativeAuthTest {
             registry.add("forena.web-session.enabled") { true }
             registry.add("forena.web-session.origin") { "https://app.example.invalid" }
             registry.add("forena.web-session.key") { Base64.getEncoder().encodeToString(ByteArray(32) { 9 }) }
-            registry.add("forena.native-auth.mail-from") { "Förena <auth@example.invalid>" }
+            registry.add("forena.email.from") { "Förena <auth@example.invalid>" }
+            registry.add("forena.email.resend-api-key") { "synthetic-resend-test-key" }
             registry.add("forena.native-auth.mail-delay-ms") { 3600000 }
-            registry.add("forena.native-auth.smtp-host") { "localhost" }
             registry.add("forena.native-auth.client-id") { "native-mcp-test" }
             registry.add("forena.native-auth.client-redirect") { "https://client.example.invalid/callback" }
             registry.add("forena.native-auth.client-secret") { "synthetic-oauth-client-secret-for-native-test" }
@@ -61,13 +75,17 @@ class NativeAuthTest {
     @Autowired lateinit var json: JsonMapper
     @Autowired lateinit var settings: BrowserSessionSettings
     @Autowired lateinit var mail: NativeAuthMailService
-    @MockitoBean lateinit var sender: JavaMailSenderImpl
+    @Autowired lateinit var sender: RecordingEmailSender
     private val http = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build()
     private val admin by lazy { JdbcTemplate(DriverManagerDataSource(database.jdbcUrl, database.username, database.password)) }
     private val email = "native-${UUID.randomUUID()}@example.invalid"
     private val password = "synthetic-password-for-native-test"
     private val base get() = "http://127.0.0.1:${environment.getRequiredProperty("local.server.port")}"
-    @BeforeEach fun clearLimits() { admin.update("delete from forena.auth_rate_limit") }
+    @BeforeEach fun clearLimits() {
+        admin.update("delete from forena.auth_rate_limit")
+        sender.result = EmailDeliveryResult.Accepted("synthetic-mail-id")
+        sender.messages.clear()
+    }
     private fun request(path: String, body: String? = null, cookie: String? = null, bearer: String? = null,
                         form: Boolean = false, csrf: Boolean = true): HttpResponse<String> {
         val builder = HttpRequest.newBuilder(URI(base + path)).header("Origin", settings.origin)
@@ -168,8 +186,39 @@ class NativeAuthTest {
         register(); val row = admin.queryForMap("select encrypted_link from forena.auth_mail_outbox where recipient=?", email)
         assertThat(row["encrypted_link"].toString()).doesNotContain("http", "code=")
         repeat(3) { mail.deliver() }
-        Mockito.verify(sender, Mockito.atLeastOnce()).send(Mockito.any(SimpleMailMessage::class.java))
+        assertThat(sender.messages.any { it.to == email }).isTrue()
         assertThat(admin.queryForObject("select encrypted_link from forena.auth_mail_outbox where recipient=?", String::class.java, email)).isEmpty()
+    }
+    @Test fun `outbox retries preserve message and idempotency key and honor provider delay`() {
+        register()
+        val queued = admin.queryForMap("select id,encrypted_link from forena.auth_mail_outbox where recipient=?", email)
+        val id = queued["id"] as UUID
+        sender.result = EmailDeliveryResult.Retry(120)
+        mail.deliver()
+        val retry = admin.queryForMap("select attempts,encrypted_link,next_attempt > now()+interval '110 seconds' as delayed from forena.auth_mail_outbox where id=?", id)
+        assertThat(retry["attempts"]).isEqualTo(1)
+        assertThat(retry["delayed"]).isEqualTo(true)
+        assertThat(retry["encrypted_link"]).isEqualTo(queued["encrypted_link"])
+        // A subsequent worker run must not ignore the provider's retry delay.
+        mail.deliver()
+        val first = sender.messages.single { it.to == email }
+        assertThat(first.idempotencyKey).isEqualTo("native-auth/$id")
+        admin.update("update forena.auth_mail_outbox set next_attempt=now() where id=?", id)
+        sender.result = EmailDeliveryResult.Accepted("synthetic-mail-id")
+        mail.deliver()
+        assertThat(sender.messages.filter { it.to == email }).containsExactly(first, first)
+        assertThat(admin.queryForObject("select encrypted_link from forena.auth_mail_outbox where id=?", String::class.java, id)).isEmpty()
+    }
+    @Test fun `outbox stops permanent failures and removes the sensitive link`() {
+        register()
+        sender.result = EmailDeliveryResult.Rejected
+        mail.deliver()
+        val row = admin.queryForMap("select attempts,encrypted_link,delivered_at from forena.auth_mail_outbox where recipient=?", email)
+        assertThat(row["attempts"]).isEqualTo(5)
+        assertThat(row["encrypted_link"]).isEqualTo("")
+        assertThat(row["delivered_at"]).isNull()
+        mail.deliver()
+        assertThat(sender.messages.count { it.to == email }).isEqualTo(1)
     }
     @Test fun `pending registration cannot activate an older password and stale reset links are rejected`() {
         val first = request("/api/auth/register", """{"email":"$email","password":"$password"}""")

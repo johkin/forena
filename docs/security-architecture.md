@@ -3,6 +3,10 @@
 Ett separat [försök med egen autentisering i Spring](migration/native-auth.md)
 finns bakom `FORENA_AUTH_MODE=native` (ADR-024). Där äger backend konton,
 mejllänkar, passkeys och OAuth och använder en enda lokal webbsession.
+Auth-mejl skickas genom mejlmodulens Resend REST-adapter med fast HTTPS-endpoint,
+utan redirects, med begränsade anslutnings-/lästider och backendlagrad API-nyckel.
+Outboxens stabila idempotensnyckel återanvänds vid återförsök. Leverantörens
+svarskropp eller transportundantag får inte hamna i loggar eller API-fel.
 Beskrivningarna av Supabase Auth nedan avser fortsatt det äldre körläget.
 
 ## Runtime och migrationsägare

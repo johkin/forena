@@ -81,34 +81,57 @@ FORENA_WEB_SESSION_SECURE=false
 # Sätt en base64-kodad 32-byte-nyckel i hemlighetshanteringen:
 FORENA_WEB_SESSION_KEY=
 FORENA_PASSKEY_RP_ID=localhost
-FORENA_AUTH_MAIL_FROM=Förena <auth@example.test>
-FORENA_SMTP_HOST=localhost
-FORENA_SMTP_PORT=1025
-FORENA_SMTP_AUTH=false
-FORENA_SMTP_REQUIRE_TLS=false
+# Resend-nyckel och verifierad avsändare, endast i backendens hemlighetshantering:
+RESEND_API_KEY=
+RESEND_FROM_EMAIL=Förena <auth@example.test>
 # Valfritt OAuth-prov; välj en exakt redirect för den egna testklienten:
 FORENA_OAUTH_CLIENT_ID=
 FORENA_OAUTH_CLIENT_REDIRECT=
 FORENA_OAUTH_CLIENT_SECRET=
 ```
 
-SMTP utan obligatorisk TLS tillåts bara på loopback. I drift används verifierad
-avsändardomän, riktig SMTP-host, obligatorisk TLS och SMTP-credentials i
-runtime-hemlighetshanteringen. Använd tjänstens SPF/DKIM/DMARC-konfiguration.
-Använd inga produktionsadresser i tester. En lokal mejlfångare kan visa länkarna.
+Backend skickar via Resends REST-API på `https://api.resend.com/emails`.
+SMTP används inte längre och `FORENA_SMTP_*`/`FORENA_AUTH_MAIL_FROM` ska ersättas
+med variablerna ovan. Start i native-läge kräver nyckel och avsändare; övriga
+körlägen behöver ingen Resend-konfiguration. Använd en verifierad avsändardomän,
+SPF/DKIM/DMARC och avstängd klickspårning för auth-mejlen. Sätt inte riktiga
+nycklar i exempel, frontend eller tester. Testerna fångar transporten lokalt utan
+att skicka riktiga mejl.
 
 Frontend byggs med `FORENA_AUTH_MODE=native npm run frontend:build`.
 Dess publika config innehåller lägesnamn och versions-ID, inga Supabase-nycklar
-eller SMTP-credentials. Läget måste stämma överens med backendens läge.
+eller Resend-nyckel. Läget måste stämma överens med backendens läge.
 
 ## Mejl och driftgränser
 
 Verifiering, magic link och lösenordsåterställning använder separata texter i
 samma utskickstjänst. Engångslänkar gäller i tio minuter. En beständig outbox
 skrivs i samma transaktion som token; länken är krypterad med runtime-nyckeln.
-En schemalagd worker tar radlås med SKIP LOCKED, försöker högst fem gånger och
-raderar länken efter bekräftad leverans eller utgången giltighet. SMTP-accept
-följd av processkrasch kan ge ett dubblettmejl; ingen exactly-once-garanti ges.
+En schemalagd worker tar radlås med SKIP LOCKED och försöker högst fem gånger.
+Nätverksfel, 408, 429, 5xx och samtidiga idempotenta anrop får återförsök med
+exponentiell väntan, minst det numeriska `Retry-After` som Resend anger.
+Övriga permanenta HTTP-fel stoppar utskicket och raderar länken. Även lyckad
+API-accept och utgången giltighet raderar länken. `delivered_at` betyder att
+leverantören har accepterat utskicket, inte bevisad inkorgsleverans.
+
+All Resend-specifik Kotlin-kod ligger i `email.internal`: konfiguration,
+autentisering, HTTPS-anrop, timeout och översättning av leverantörssvar.
+Modulens publika gräns är `EmailSender`, `EmailMessage` och `EmailDeliveryResult`;
+`identity.nativeauth` äger fortsatt auth-mallar och den krypterade outboxen.
+Modulith verifierar modulgränsen. Ingen ny Gradle-/Maven-submodul behövs.
+
+Varje outboxrad använder samma `native-auth/<outbox-uuid>` som idempotensnyckel
+vid alla försök, även efter omstart. Resends 24-timmarsfönster överstiger
+länkens tio minuters livstid och minskar risken för dubbletter när ett accepterat
+anrop följs av timeout eller processkrasch. Det är ingen generell exactly-once-
+garanti. Avsändare och mall ska hållas stabila medan kön töms, eftersom ändrad
+payload för samma nyckel avvisas av Resend. Providerkroppar, API-nycklar,
+transportundantag och engångslänkar loggas inte. Webhooks för faktisk leverans,
+studs och klagomål ingår ännu inte i försöket.
+
+API-kontrakt: [Skicka mejl](https://resend.com/docs/api-reference/emails/send-email),
+[idempotens](https://resend.com/docs/dashboard/emails/idempotency-keys) och
+[felkoder](https://resend.com/docs/api-reference/errors).
 
 Workern kör bara när backendprocessen kör. Drift med skalning till noll behöver
 ett verifierat sätt att hålla workern aktiv eller väcka/köra den. Mejlleverans,
@@ -130,7 +153,9 @@ Vercel- eller annan driftpublicering ingår i det lokala försöket.
 ## Verifiering
 
 `NativeAuthTest` använder riktig HTTP, lokal PostgreSQL och Spring Authorization
-Server utan Supabase issuer/nycklar. SMTP ersätts med en kontrollerad testtransport.
+Server utan Supabase issuer/nycklar. `EmailSender` ersätts med en kontrollerad
+testtransport. Separata adapterprov verifierar Resends HTTP-kontrakt,
+idempotens, Retry-After, tidsgränser och permanenta fel.
 Proven täcker kontolivscykel, versionerade engångslänkar, cookie-sessioner,
 OAuth/PKCE/consent, MCP och lokala spärrar. Testet exporterar även
 `backend/target/native-openapi.json`, separat från Supabase-lägets kontrakt.
@@ -142,5 +167,5 @@ verklig Spring-verifiering. Kör Vite preview på port 3002 efter native-bygget:
 FORENA_NATIVE_BROWSER_TEST=true backend/mvnw -f backend/pom.xml -Dtest=NativeAuthTest test
 ```
 
-Testet har en lokal testbrygga för HTTPS-origin, SMTP-länkar och testbudget.
+Testet har en lokal testbrygga för HTTPS-origin, mejllänkar och testbudget.
 Testhjälparna finns bara i testprocessen, aldrig i produktions-API:t.
