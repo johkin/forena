@@ -31,7 +31,7 @@ npm run frontend:build
 npm run frontend:dev
 ```
 
-Vite kör på `127.0.0.1:3000` och routar `/api/*` till Kotlin på
+Vite kör på `localhost:3000` och routar `/api/*` till Kotlin på
 `127.0.0.1:8080`. Servera `frontend/dist` statiskt i produktion. Den publika
 `config.json` genereras separat med en uttrycklig tillåtelselista och har
 `no-store`; nycklar för admin, databas eller migreringar får aldrig finnas där.

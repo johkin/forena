@@ -4,11 +4,11 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 127.0.0.1",
+    "dev": "vite --host localhost",
     "prebuild": "node scripts/public-config.mjs",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
-    "preview": "vite preview --host 127.0.0.1"
+    "preview": "vite preview --host localhost"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.116.0",
