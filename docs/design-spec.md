@@ -39,6 +39,9 @@ visar familjens kallelser och utloggning utan profil, administration och
 notiser. Samma `AppMenuContent` visas på `/components` i ett inaktiverat
 exempel som inte loggar ut den som granskar komponenterna.
 
+Kontomenyn använder samma navigationsklass som övriga menyer. Personliga
+länkar ligger på varsin rad med minst 44 px hög tryckyta, även i mobilpanelen.
+
 ## Kotlin-webbens Min översikt
 
 Vite och Next delar `PersonalHome`, `PersonalOverview`, `TeamCalendar`,
@@ -71,6 +74,12 @@ omigrerad administration. Headerns klocka öppnar kallelser som behöver svar.
 AI-anslutningslänken förblir dold i Vite tills motsvarande integration finns.
 Interaktiva varianter av hela startsidan finns på `/components`, med isolerade
 exempeldata. Ingen demokallelse får skriva till produktions-API:t.
+
+Lagvyn visar **Ny aktivitet** i sidans gemensamma välkomsthuvud för användare
+som finns i backendens lista över lag med aktivitetsbehörighet. Knappen öppnar
+den befintliga aktivitetsredigeraren med laget förvalt. Vanligt medlemskap ger
+inte knappen; backend kontrollerar behörigheten på nytt när formuläret hämtas
+och sparas. Varianten finns i aktivitetshanteringens exempel på `/components`.
 
 ## Personlig startsida
 

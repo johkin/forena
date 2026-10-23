@@ -90,6 +90,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .welcome h1 { font-family: var(--font-heading); margin: 0 0 8px; font-size: clamp(34px, 5vw, 52px); font-weight: 500; letter-spacing: -2px; }
 .welcome p:last-child { margin: 0; color: var(--ink-soft); }
 .welcome-actions { display: flex; gap: 9px; }
+.welcome .team-activity-actions .primary { width:auto; height:auto; font-size:14px; }
+.welcome .team-activity-actions .primary::after { content:none; }
 .primary { padding: 12px 18px; border: 0; border-radius: 10px; background: var(--primary); color: var(--on-primary); font-weight: 700; cursor: pointer; box-shadow: none; }
 .toast { margin: -14px 0 24px; padding: 12px 15px; border: 1px solid #b9d8c7; border-radius: 10px; background: #eaf7ef; font-size: 14px; }
 .demo-notice { width: fit-content; margin: -16px 0 24px; padding: 6px 10px; border-radius: 20px; background: #eeeae0; color: var(--ink-soft); font-size: 11px; }
@@ -719,7 +721,7 @@ a.personal-activity-main:hover strong, a.personal-activity-main:focus-visible st
 .header-menu-navigation nav, .header-menu-account { display:grid; gap:4px; }
 .header-menu-navigation .team-navigation { display:grid; gap:10px; }
 .header-menu-navigation .team-navigation .eyebrow:not(:first-child) { margin-top:12px; }
-.header-menu-navigation a, .header-menu-navigation nav button, .header-menu-account a { display:block; width:100%; padding:10px 12px; border:0; border-radius:9px; background:transparent; color:var(--ink); text-align:left; text-decoration:none; font-size:14px; cursor:pointer; }
+.header-menu-navigation a, .header-menu-navigation nav button, .header-menu-account a { display:block; width:100%; min-height:44px; overflow-wrap:anywhere; padding:10px 12px; border:0; border-radius:9px; background:transparent; color:var(--ink); text-align:left; text-decoration:none; font-size:14px; cursor:pointer; }
 .header-menu-navigation a:hover, .header-menu-navigation nav button:hover, .header-menu-account a:hover, .header-menu-navigation .active { background:var(--mint); }
 @media (max-width:700px) {
   .header-menu-trigger { width:40px; justify-content:center; padding:0; }
