@@ -113,11 +113,14 @@ try {
   await expect(dialog.getByRole('button', { name: 'Övrigt', exact: true })).toBeVisible();
   await dialog.getByLabel('Titel', { exact: true }).fill('Browserträning');
   await dialog.getByLabel('Plats', { exact: true }).fill('Stora planen');
+  // Late-evening defaults may cross midnight. Choose the intended single-day interval explicitly.
+  await dialog.getByRole('button', { name: 'Samma dag', exact: true }).click();
   // The shared picker exposes exact native fields as a keyboard alternative.
   await dialog.getByText('Välj annat datum', { exact: true }).first().click();
   await dialog.locator('input[name="startsOn"]').fill('2030-10-25');
   await dialog.getByRole('button', { name: /^Starttid, välj klockslag/ }).click();
   await dialog.locator('input[type=time][aria-label=Starttid]').fill('18:00');
+  await dialog.getByRole('button', { name: '1,5 tim', exact: true }).click();
   await dialog.getByLabel('Titel', { exact: true }).click();
   await dialog.getByRole('button', { name: 'Förhandsgranska', exact: true }).click();
   await expect(dialog.getByRole('button', { name: 'Skapa aktivitet', exact: true })).toBeVisible();
