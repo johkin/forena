@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { createApiFetch, safeDestination } from "./api";
+import { createApiFetch, oauthDestination, safeDestination } from "./api";
 
 const id = "11111111-1111-4111-8111-111111111111";
 const path = `/api/activities/${id}/my-invitations`;
@@ -62,4 +62,15 @@ it("allowlists the complete overview and exact activity reads while rejecting sc
  expect(transport).toHaveBeenCalledTimes(2);
  expect(safeDestination(`/teams/${id}`)).toBe(`/teams/${id}`);
  expect(safeDestination(`/organizations/${id}`)).toBe(`/organizations/${id}`);
+});
+
+
+it("preserves an OAuth authorization query without allowing it as an ordinary SPA destination", () => {
+  const next = "/oauth2/authorize?client_id=test&redirect_uri=https%3A%2F%2Fclient.example%2Fcallback&state=a%2Bb&resource=https%3A%2F%2Fapp.example%2Fapi%2Fmcp";
+  expect(oauthDestination(next)).toBe(next);
+  expect(safeDestination(next)).toBe("/");
+});
+
+it.each([null, "/", "//evil.example/oauth2/authorize?x=1", "https://evil.example/oauth2/authorize?x=1", "/oauth2/authorize", "/oauth2/authorize?", "/oauth2/authorize/../evil?x=1", "/oauth2/authorize?x=1#evil", "/oauth2/authorize?x=1\\evil", "/oauth2/authorize?x=1\n"])("rejects unsafe OAuth continuation %s", value => {
+  expect(oauthDestination(value)).toBeUndefined();
 });

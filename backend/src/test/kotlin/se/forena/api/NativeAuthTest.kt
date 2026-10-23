@@ -152,6 +152,27 @@ class NativeAuthTest {
         assertThat(request("/api/auth/logout", "{}", cookie(newLogin)).statusCode()).isEqualTo(200)
         assertThat(request("/api/auth/session", cookie=cookie(newLogin)).statusCode()).isEqualTo(401)
     }
+    @Test fun `cookie-less OAuth authorization requests are bounded before persisted sessions are created`() {
+        val challenge = Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(32) { 1 })
+        val resource = URLEncoder.encode(settings.origin + "/api/mcp", UTF_8)
+        val query = "response_type=code&client_id=native-mcp-test&redirect_uri=https%3A%2F%2Fclient.example.invalid%2Fcallback&scope=mcp%3Aread&state=bounded-state&code_challenge=$challenge&code_challenge_method=S256&resource=$resource"
+        val before = admin.queryForObject("select count(*) from forena.spring_session", Int::class.java)!!
+        val responses = (1..12).map { request("/oauth2/authorize?$query") }
+        val accepted = responses.count { it.statusCode() == 302 }
+        assertThat(accepted).isBetween(1, 5)
+        responses.filter { it.statusCode() != 302 }.forEach {
+            assertThat(it.statusCode()).isEqualTo(429)
+            assertThat(it.headers().firstValue("Retry-After").orElseThrow().toLong()).isPositive()
+            assertThat(it.headers().allValues("set-cookie")).isEmpty()
+        }
+        val fakeCookie = "__Host-forena-session=untrusted-cookie"
+        assertThat(request("/oauth2/authorize?$query", cookie=fakeCookie).statusCode()).isEqualTo(429)
+        assertThat(request("/oauth2/authorize", query, form=true).statusCode()).isEqualTo(429)
+        val after = admin.queryForObject("select count(*) from forena.spring_session", Int::class.java)!!
+        assertThat(after - before).isEqualTo(accepted)
+        assertThat(admin.queryForObject("select count(*) from forena.auth_rate_limit", Int::class.java)).isEqualTo(2)
+    }
+
     @Test fun `Spring Authorization Server consent PKCE MCP scopes revocation and account status are enforced`() {
         val cookie = register(); clearLimits()
         val verifier = "synthetic-code-verifier-with-at-least-forty-three-characters"

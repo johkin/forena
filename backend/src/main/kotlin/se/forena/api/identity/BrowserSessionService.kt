@@ -41,8 +41,26 @@ class BrowserSessionService(
     fun passkeyOptions(): JsonNode { settings.requireEnabled(); return provider.options() }
     fun passkeyVerify(challenge: String, credential: JsonNode, request: HttpServletRequest) =
         create(provider.verify(challenge, credential), request)
-    fun magicLinkVerify(code: String, verifier: String, request: HttpServletRequest) =
-        create(provider.exchangeCode(code, verifier), request)
+    fun magicLinkVerify(code: String, request: HttpServletRequest): BrowserSessionView {
+        val browser = request.getSession(false) ?: throw BadCredentialsException("Session verification failed")
+        // Consume the fresh persisted verifier under the same cross-instance session lock
+        // used for refresh. Commit before contacting the provider, even if that call fails.
+        val verifier = transaction.execute {
+            val rows = jdbc.queryForList("select primary_id from forena.spring_session where session_id=? for update", browser.id)
+            if (rows.isEmpty()) throw BadCredentialsException("Session verification failed")
+            val stored = store.findById(browser.id) ?: throw BadCredentialsException("Session verification failed")
+            val encrypted = stored.getAttribute<String>(BrowserCredentialController.MAGIC_LINK)
+                ?: throw BadCredentialsException("Session verification failed")
+            val parts = settings.decrypt(encrypted, stored.id).split('\n')
+            if (parts.size != 2 || (parts[1].toLongOrNull() ?: 0) <= Instant.now().epochSecond)
+                throw BadCredentialsException("Session verification failed")
+            stored.removeAttribute(BrowserCredentialController.MAGIC_LINK)
+            store.save(stored)
+            parts[0]
+        } ?: throw AuthenticationServiceException("Session verification failed")
+        browser.removeAttribute(BrowserCredentialController.MAGIC_LINK)
+        return create(provider.exchangeCode(code, verifier), request)
+    }
 
     private fun create(tokens: JsonNode, request: HttpServletRequest): BrowserSessionView {
         val access = text(tokens, "access_token")

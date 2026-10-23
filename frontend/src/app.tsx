@@ -11,7 +11,7 @@ import { SessionMenu } from "../../src/components/session-menu";
 import { PasswordLoginForm } from "../../src/components/password-login-form";
 import { type ParticipationFetch } from "../../src/components/activity-invitation-response";
 import { BrowserFrontendExamples } from "../../src/components/browser-frontend-examples";
-import { createApiFetch, safeDestination } from "./api";
+import { createApiFetch, oauthDestination, safeDestination } from "./api";
 import type { PublicConfig } from "./config";
 import { authRequest, parseSession, passkeyLogin, registerPasskey, type SessionView } from "./session";
 
@@ -106,7 +106,8 @@ export function App({ config }: { config: PublicConfig }) {
       if (!session) throw new Error("Inactive session");
       applySession(session); notifySessionChanged();
       const destination = native ? z.object({ destination: z.string() }).parse(await authRequest("continue")).destination : "/";
-      if (destination.startsWith("/oauth2/authorize?")) window.location.assign(safeDestination(destination));
+      const oauth = oauthDestination(destination);
+      if (oauth) window.location.assign(oauth);
       else navigate("/", { replace: true });
     } catch { setError("Länken kunde inte användas. Öppna den i samma webbläsare som begärde länken, eller begär en ny länk."); }
     finally { setPending(false); }
@@ -120,9 +121,10 @@ export function App({ config }: { config: PublicConfig }) {
       if (!session) { setError("Inloggningen misslyckades. Försök igen."); return; }
       applySession(session); notifySessionChanged();
       if (path === "/login") {
-        const destination = safeDestination(new URLSearchParams(location.search).get("next"));
-        if (destination.startsWith("/oauth2/authorize?")) window.location.assign(destination);
-        else navigate(destination, { replace: true });
+        const next = new URLSearchParams(location.search).get("next");
+        const oauth = oauthDestination(next);
+        if (oauth) window.location.assign(oauth);
+        else navigate(safeDestination(next), { replace: true });
       }
     } catch { setError("Inloggningen kunde inte genomföras. Försök igen."); }
     finally { setPending(false); }

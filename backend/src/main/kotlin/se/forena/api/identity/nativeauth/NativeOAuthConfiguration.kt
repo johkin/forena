@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.core.annotation.Order
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.authentication.BadCredentialsException
+import org.springframework.security.authentication.AuthenticationServiceException
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer
 import org.springframework.security.config.http.SessionCreationPolicy
@@ -27,6 +28,8 @@ import org.springframework.security.web.context.NullSecurityContextRepository
 import org.springframework.security.web.context.SecurityContextHolderFilter
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.web.filter.OncePerRequestFilter
+import org.springframework.web.ErrorResponseException
+import se.forena.api.identity.BrowserLoginLimiter
 import se.forena.api.identity.BrowserSessionSettings
 import java.net.URI
 import java.net.URLEncoder
@@ -35,14 +38,25 @@ import java.time.Duration
 import java.util.UUID
 
 /** Enforce the MCP resource on issuance, not a caller-supplied token audience. */
-class NativeResourceFilter(private val resource: String, private val limiter: se.forena.api.identity.BrowserLoginLimiter) : OncePerRequestFilter() {
+class NativeResourceFilter(private val resource: String, private val limiter: BrowserLoginLimiter) : OncePerRequestFilter() {
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) {
         response.setHeader("Cache-Control", "no-store")
-        if (request.method == "POST" && request.requestURI in setOf("/oauth2/token", "/oauth2/introspect", "/oauth2/revoke")) {
-            try { limiter.admit(limiter.client(request)) }
-            catch (error: org.springframework.web.ErrorResponseException) {
+        val authorizationRequest = request.requestURI == "/oauth2/authorize" && request.method in setOf("GET", "POST")
+        val tokenRequest = request.method == "POST" && request.requestURI in setOf("/oauth2/token", "/oauth2/introspect", "/oauth2/revoke")
+        // Run before SecurityContext/CSRF or the login entry point can create a session.
+        // Apply to existing cookies too: a caller-supplied cookie is not an admission pass.
+        if (authorizationRequest || tokenRequest) {
+            try {
+                val client = limiter.client(request)
+                limiter.admit(if (authorizationRequest) "oauth-authorization:$client" else client)
+            }
+            catch (error: ErrorResponseException) {
                 response.status = error.statusCode.value(); error.headers.forEach { name, values -> values.forEach { response.addHeader(name, it) } }
-                response.contentType = "application/json"; response.writer.write("{\"error\":\"temporarily_unavailable\"}"); return
+                unavailable(response); return
+            }
+            catch (_: AuthenticationServiceException) {
+                response.status = 503
+                unavailable(response); return
             }
         }
         if (request.method == "POST" && request.requestURI == "/oauth2/authorize" && request.getHeader("Origin") !in listOf(null, "null", resource.removeSuffix("/api/mcp"))) {
@@ -55,6 +69,11 @@ class NativeResourceFilter(private val resource: String, private val limiter: se
         }
         response.setHeader("Cache-Control", "no-store"); response.setHeader("Referrer-Policy", "no-referrer")
         chain.doFilter(request, response)
+    }
+
+    private fun unavailable(response: HttpServletResponse) {
+        response.contentType = "application/json"
+        response.writer.write("{\"error\":\"temporarily_unavailable\"}")
     }
 }
 
@@ -115,7 +134,7 @@ class NativeOAuthConfiguration {
     }
     @Bean @Order(1)
     fun nativeAuthorizationSecurity(http: HttpSecurity, contexts: NativeSessionRepository, csrf: StringCsrfTokenRepository,
-        settings: BrowserSessionSettings, limiter: se.forena.api.identity.BrowserLoginLimiter, clients: RegisteredClientRepository, grants: OAuth2AuthorizationService,
+        settings: BrowserSessionSettings, limiter: BrowserLoginLimiter, clients: RegisteredClientRepository, grants: OAuth2AuthorizationService,
         consents: OAuth2AuthorizationConsentService, tokens: OAuth2TokenGenerator<*>, server: AuthorizationServerSettings): SecurityFilterChain {
         val config = OAuth2AuthorizationServerConfigurer()
         http.securityMatcher(config.endpointsMatcher)

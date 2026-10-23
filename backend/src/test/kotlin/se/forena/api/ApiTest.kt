@@ -69,7 +69,10 @@ class ApiTest {
         val passkeyCalls = java.util.concurrent.atomic.AtomicInteger()
         val refreshCount = java.util.concurrent.atomic.AtomicInteger()
         val passkeyChallenges = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
-        @Volatile var magicChallenge = ""
+        val magicChallenge = java.util.concurrent.atomic.AtomicReference("")
+        val pkceExchanges = java.util.concurrent.atomic.AtomicInteger()
+        @Volatile var pkceEntered = java.util.concurrent.CountDownLatch(0)
+        @Volatile var pkceRelease = java.util.concurrent.CountDownLatch(0)
         val registrationChallenges = java.util.concurrent.ConcurrentHashMap<String, String>()
         val providerJson = JsonMapper.builder().build()
         val jwks = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).also { server ->
@@ -111,8 +114,12 @@ class ApiTest {
                 if (exchange.requestURI.rawQuery == "grant_type=pkce") {
                     val verifier = body.get("code_verifier").asString()
                     val challenge = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(java.security.MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray()))
-                    val valid = body.get("auth_code").asString() == "synthetic-code" && magicChallenge.isNotEmpty() && challenge == magicChallenge
-                    if (valid) magicChallenge = ""
+                    pkceExchanges.incrementAndGet()
+                    pkceEntered.countDown()
+                    check(pkceRelease.await(10, java.util.concurrent.TimeUnit.SECONDS))
+                    val expected = magicChallenge.get()
+                    val valid = body.get("auth_code").asString() == "synthetic-code" && expected.isNotEmpty() &&
+                        challenge == expected && magicChallenge.compareAndSet(expected, "")
                     reply(exchange, if (valid) 200 else 400, if (valid) """{"access_token":"$loginAccess","refresh_token":"synthetic-refresh"}""" else "{}")
                 } else if (refreshing) {
                     refreshCount.incrementAndGet()
@@ -129,7 +136,7 @@ class ApiTest {
                 assertThat(body.get("create_user").asBoolean()).isFalse()
                 assertThat(body.get("code_challenge_method").asString()).isEqualTo("s256")
                 assertThat(exchange.requestURI.rawQuery).isEqualTo("redirect_to=https%3A%2F%2Fapp.example.invalid%2Fauth%2Fcallback")
-                magicChallenge = body.get("code_challenge").asString()
+                magicChallenge.set(body.get("code_challenge").asString())
                 reply(exchange, 200, "{}")
             }
             server.createContext("/auth/v1/passkeys/registration/options") { exchange ->
@@ -211,7 +218,8 @@ class ApiTest {
         admin.update("delete from forena.auth_rate_limit")
         admin.update("delete from forena.spring_session")
         passwordCalls.set(0); passkeyCalls.set(0)
-        refreshCount.set(0); refreshStatus = 200; passkeyChallenges.clear(); registrationChallenges.clear(); magicChallenge = ""
+        refreshCount.set(0); refreshStatus = 200; passkeyChallenges.clear(); registrationChallenges.clear(); magicChallenge.set(""); pkceExchanges.set(0)
+        pkceEntered = java.util.concurrent.CountDownLatch(0); pkceRelease = java.util.concurrent.CountDownLatch(0)
         parent = UUID.randomUUID(); outsider = UUID.randomUUID(); session = UUID.randomUUID()
         organization = UUID.randomUUID(); activity = UUID.randomUUID()
         own = UUID.randomUUID(); child1 = UUID.randomUUID(); child2 = UUID.randomUUID(); other = UUID.randomUUID()
@@ -541,6 +549,32 @@ class ApiTest {
         assertThat(browser("/api/auth/magic-link/verify", body, cookie).statusCode()).isEqualTo(401)
     }
 
+    @Test fun `concurrent magic link confirmations exchange the provider code exactly once`() {
+        loginAccess = token()
+        pkceEntered = java.util.concurrent.CountDownLatch(1)
+        pkceRelease = java.util.concurrent.CountDownLatch(1)
+        val sent = browser("/api/auth/magic-link", """{"email":"family@example.invalid"}""")
+        val cookie = sessionCookie(sent)
+        val barrier = java.util.concurrent.CyclicBarrier(2)
+        val requests = (1..2).map { CompletableFuture.supplyAsync {
+            barrier.await(10, java.util.concurrent.TimeUnit.SECONDS)
+            browser("/api/auth/magic-link/verify", """{"code":"synthetic-code"}""", cookie)
+        } }
+        try {
+            assertThat(pkceEntered.await(5, java.util.concurrent.TimeUnit.SECONDS)).isTrue()
+            // Keep the first exchange in flight: the competing request must fail
+            // locally, without relying on the provider to reject a reused code.
+            val rejected = CompletableFuture.anyOf(*requests.toTypedArray()).get(5, java.util.concurrent.TimeUnit.SECONDS) as HttpResponse<*>
+            assertThat(rejected.statusCode()).isEqualTo(401)
+            assertThat(pkceExchanges.get()).isEqualTo(1)
+        } finally { pkceRelease.countDown() }
+        val responses = requests.map { it.get(10, java.util.concurrent.TimeUnit.SECONDS) }
+        assertThat(responses.map { it.statusCode() }).containsExactlyInAnyOrder(200, 401)
+        assertThat(pkceExchanges.get()).isEqualTo(1)
+        val success = responses.single { it.statusCode() == 200 }
+        assertThat(browser("/api/auth/session", cookie=sessionCookie(success)).statusCode()).isEqualTo(200)
+    }
+
     @Test fun `expired magic link is rejected before code exchange`() {
         loginAccess = token()
         val sent = browser("/api/auth/magic-link", """{"email":"family@example.invalid"}""")
@@ -552,7 +586,8 @@ class ApiTest {
         stored.setAttribute(key, browserSettings.encrypt("$state\n0", stored.id))
         browserStore().save(stored)
         assertThat(browser("/api/auth/magic-link/verify", """{"code":"synthetic-code"}""", cookie).statusCode()).isEqualTo(401)
-        assertThat(magicChallenge).isNotEmpty()
+        assertThat(magicChallenge.get()).isNotEmpty()
+        assertThat(pkceExchanges.get()).isZero()
     }
 
     @Test fun `passkey enrollment requires authentication and binds the challenge to the session`() {

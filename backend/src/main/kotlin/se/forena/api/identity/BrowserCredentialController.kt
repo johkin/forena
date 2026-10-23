@@ -62,12 +62,7 @@ class BrowserCredentialController(
         settings.requireEnabled()
         limiter.admit(limiter.client(request))
         if (body.code.length !in 1..2048 || body.code.any { it.isWhitespace() }) throw BadCredentialsException("Session verification failed")
-        val session = request.getSession(false) ?: throw BadCredentialsException("Session verification failed")
-        val encrypted = session.getAttribute(MAGIC_LINK) as? String ?: throw BadCredentialsException("Session verification failed")
-        val parts = settings.decrypt(encrypted, session.id).split('\n')
-        if (parts.size != 2 || (parts[1].toLongOrNull() ?: 0) <= Instant.now().epochSecond) throw BadCredentialsException("Session verification failed")
-        session.removeAttribute(MAGIC_LINK)
-        return sessions.magicLinkVerify(body.code, parts[0], request)
+        return sessions.magicLinkVerify(body.code, request)
     }
 
     @PostMapping("/api/auth/passkey/registration/options")

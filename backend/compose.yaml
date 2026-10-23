@@ -13,7 +13,7 @@ services:
       - ./scripts/bootstrap.sql:/docker-entrypoint-initdb.d/001-bootstrap.sql:ro
       - ./scripts/local-credentials.sql:/docker-entrypoint-initdb.d/002-local-credentials.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d forena"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U postgres -d forena"]
       interval: 2s
       timeout: 3s
       retries: 30

@@ -42,6 +42,13 @@ HttpOnly/Secure/SameSite=Lax följer tidigare sessionskonfiguration.
 Registrering och länkbegäran lämnar neutrala bekräftelser. API-skrivningar kräver
 kanonisk Origin och `X-Forena-Request: 1`. Befintliga klient-/e-post-/globalbudgetar
 begränsar publika inloggningsförsök och OAuth-token-/introspektions-/revokeringsanrop. OAuth-consent använder dessutom Spring CSRF.
+Även GET/POST `/oauth2/authorize` begränsas före sessionsladdning och CSRF,
+så att cookie-lösa anrop inte kan skapa obegränsat med JDBC-sessioner.
+Authorization-anrop har en separat klientbudget men delar den globala budgeten
+med övrig autentisering. Gränserna lagras i PostgreSQL och gäller över flera
+instanser och omstarter; en begränsning enbart i minnet skulle kunna kringgås.
+Avvisade anrop ger 429 med `Retry-After` utan att skapa session; ett fel i
+begränsningens databasanslutning ger 503. En godtycklig cookie ger inget undantag.
 Kontroller för personåtkomst och föreningsroller ligger oförändrat i Kotlin.
 Nya konton får inga sådana relationer automatiskt.
 

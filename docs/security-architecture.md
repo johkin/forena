@@ -21,6 +21,18 @@ Kontoregler och smala repository-/tokenservice-adaptrar bevarar kontospärr,
 generation, browserbindning och säker sessionslagring. Se
 [genomgång och verifiering](migration/spring-security.md).
 
+OAuth-authorization begränsas före sessionsskapande, även för anrop utan cookie.
+Den befintliga PostgreSQL-baserade klient-/globalbudgeten gäller över instanser
+och omstarter. Authorization har en separat klientbudget för att ett normalt
+login-/consent-/tokenflöde ska rymmas, men samma globala tak. Avvisade anrop
+skapar inga sessioner; databasfel stoppar anropet med 503. React validerar
+OAuth-fortsättning separat från vanliga sidbyten och tillåter bara den fasta
+samma-origin-sökvägen `/oauth2/authorize?`.
+
+I Supabase-lägets magic-link-adapter konsumeras PKCE-verifieraren atomiskt under
+databasens sessionslås, innan leverantören anropas. Även samtidiga bekräftelser
+över flera instanser får bara göra ett kodutbyte.
+
 ## Runtime och migrationsägare
 
 ADR-021 ersätter tabellspecifika runtime-grants med gemensam datarätt i det

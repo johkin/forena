@@ -63,7 +63,11 @@ try{
  const verifier='native-browser-code-verifier-at-least-forty-three-characters';
  const challenge=createHash('sha256').update(verifier).digest('base64url');
  const oauth=new URLSearchParams({response_type:'code',client_id:'native-mcp-test',redirect_uri:'https://client.example.invalid/callback',scope:'mcp:read',state:'browser-oauth-state',code_challenge:challenge,code_challenge_method:'S256',resource:app+'/api/mcp'});
+ await logout();await budget();
  await page.goto(app+'/oauth2/authorize?'+oauth);
+ await expect(page).toHaveURL(/\/login\?next=/);
+ await page.getByLabel('E-postadress',{exact:true}).fill(email);await page.getByLabel('Lösenord',{exact:true}).fill(password);
+ await page.getByRole('button',{name:'Logga in',exact:true}).click();
  await expect(page.getByRole('button',{name:'Godkänn läsåtkomst',exact:true})).toBeVisible();
  await page.screenshot({path:'frontend/.evidence/native-oauth-consent.png',fullPage:true});
  await page.getByRole('button',{name:'Godkänn läsåtkomst',exact:true}).click();
@@ -82,9 +86,15 @@ try{
  const revoked=await fetch(backend+'/oauth2/revoke',{method:'POST',headers:{authorization:clientAuthorization,'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({token:access,token_type_hint:'access_token'})});
  assert.equal(revoked.status,200);assert.equal((await mcp()).status,401);
  await page.goto(app+'/');await expect(page.getByRole('heading',{name:'Min översikt',exact:true})).toBeVisible();
- await logout();await budget();await page.getByLabel('E-postadress för inloggningslänk' ,{exact:true}).fill(email);await page.getByRole('button',{name:'Skicka inloggningslänk',exact:true}).click();
+ await logout();await budget();
+ const magicOauth=new URLSearchParams(oauth);magicOauth.set('state','magic-oauth-state');
+ await page.goto(app+'/oauth2/authorize?'+magicOauth);await expect(page).toHaveURL(/\/login\?next=/);
+ await page.getByLabel('E-postadress för inloggningslänk' ,{exact:true}).fill(email);await page.getByRole('button',{name:'Skicka inloggningslänk',exact:true}).click();
  await expect(page.getByRole('status')).toContainText('Om adressen har ett konto');
  await page.goto(app+'/auth/callback?code='+encodeURIComponent(await code('login')));await page.getByRole('button',{name:'Fortsätt och logga in',exact:true}).click();
+ await expect(page).toHaveURL(/https:\/\/client\.example\.invalid\/callback\?/);
+ assert.equal(oauthCallback.searchParams.get('state'),'magic-oauth-state');
+ await page.goto(app+'/');
  await expect(page.getByRole('heading',{name:'Min översikt',exact:true})).toBeVisible();
  const cookies=await context.cookies(app);assert.ok(cookies.some(cookie=>cookie.name==='__Host-forena-session'&&cookie.httpOnly&&cookie.secure));
  assert.equal(await page.evaluate(()=>localStorage.length),0);assert.ok(!await page.evaluate(()=>document.cookie.includes('forena-session')));
