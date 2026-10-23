@@ -4,3 +4,7 @@
 ## 2024-10-20 - Intl.DateTimeFormat caching optimization
 **Learning:** Frequent instantiations of `Intl.DateTimeFormat` within render functions of components (like calendars and lists) can cause unnecessary performance overhead as this is an expensive operation.
 **Action:** Memoize instances of `Intl.DateTimeFormat` using `useMemo` in React components, or cache them globally if their options don't change dynamically.
+
+## 2025-02-12 - Cached Intl.DateTimeFormat
+**Learning:** `Intl.DateTimeFormat` instantiations are heavily used in React component render cycles (e.g. lists). Doing `new Intl.DateTimeFormat` inline is extremely slow (tested ~59ms vs ~1.5ms for 100 iterations).
+**Action:** Use the pre-existing cached utility `getFormatter(timeZone, options)` exported from `src/lib/date-time.ts` everywhere possible instead of `new Intl.DateTimeFormat`.

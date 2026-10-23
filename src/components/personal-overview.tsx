@@ -4,6 +4,7 @@ import { OverviewInvitationResponse } from "./overview-invitation-response";
 import type { OverviewItem, OverviewAnswered, OverviewRespond } from "./personal-overview-types";
 import type { ParticipationFetch } from "./activity-invitation-response";
 import { attendanceNames } from "../lib/attendance-names";
+import { getFormatter } from "../lib/date-time";
 
 type Props<T extends OverviewItem> = {
   activities: T[];
@@ -28,8 +29,8 @@ export function overviewNames(items: readonly OverviewItem[]) {
 }
 
 function when(value: string, timeZone: string) {
-  return new Intl.DateTimeFormat("sv-SE", {
-    timeZone,
+  // Use cached formatter to avoid expensive instantiation of Intl.DateTimeFormat on every render
+  return getFormatter(timeZone, {
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -60,7 +61,8 @@ export function PersonalOverview<T extends OverviewItem>({ activities, timeZone,
         const dueAt = item.activity.gatheringAt ?? item.activity.startsAt;
         return <div className="personal-activity-row" data-response={people.some(person => person.invitation?.response === "pending") ? "pending" : undefined} key={item.activity.id}>
           <button className="personal-activity-main" type="button" onClick={() => onOpenActivity(item)}>
-            <span className="overview-date-badge" aria-hidden="true"><small>{new Intl.DateTimeFormat("sv-SE", { timeZone:item.organization?.timeZone ?? timeZone,weekday:"short" }).format(new Date(dueAt))}</small><strong>{new Intl.DateTimeFormat("sv-SE", { timeZone:item.organization?.timeZone ?? timeZone,day:"numeric" }).format(new Date(dueAt))}</strong></span>
+            {/* Use cached formatter to avoid expensive instantiation of Intl.DateTimeFormat inside loop */}
+            <span className="overview-date-badge" aria-hidden="true"><small>{getFormatter(item.organization?.timeZone ?? timeZone, { weekday: "short" }).format(new Date(dueAt))}</small><strong>{getFormatter(item.organization?.timeZone ?? timeZone, { day: "numeric" }).format(new Date(dueAt))}</strong></span>
             <span className="personal-activity-copy">
               <small>{[item.organization?.name, item.team.name].filter(Boolean).join(" · ")}</small>
               <strong>{item.activity.title}</strong>
