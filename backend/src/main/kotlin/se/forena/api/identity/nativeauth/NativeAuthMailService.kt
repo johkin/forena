@@ -13,7 +13,7 @@ import java.sql.Timestamp
 import java.time.Instant
 import java.util.UUID
 
-/** Durable transactional delivery; links are encrypted at rest and never logged. The email module owns external delivery. */
+/** Durable transactional delivery; encrypted links at rest. Only the local email adapter logs links. */
 @Service
 @ConditionalOnProperty(name = ["forena.auth.mode"], havingValue = "native")
 class NativeAuthMailService(private val jdbc: JdbcTemplate, private val transaction: TransactionTemplate,

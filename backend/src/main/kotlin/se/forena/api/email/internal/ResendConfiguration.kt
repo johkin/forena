@@ -6,12 +6,14 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.Profile
 import org.springframework.http.client.SimpleClientHttpRequestFactory
 import org.springframework.web.client.RestClient
 import se.forena.api.email.EmailSender
 import tools.jackson.databind.json.JsonMapper
 
 @Configuration(proxyBeanMethods = false)
+@Profile("!local")
 @ConditionalOnProperty(name = ["forena.auth.mode"], havingValue = "native")
 class ResendConfiguration {
     @Bean fun resendEmailSender(@Value("\${forena.email.resend-api-key:}") apiKey: String,

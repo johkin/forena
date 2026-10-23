@@ -1,4 +1,7 @@
 spring:
+  docker:
+    compose:
+      enabled: false
   jackson:
     deserialization:
       fail-on-unknown-properties: true

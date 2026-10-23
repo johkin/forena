@@ -1,5 +1,53 @@
 # Kotlin-backend
 
+## Lokal utveckling
+
+Med Java 25 och Docker (inklusive Compose v2) igång behövs ingen `.env`:
+
+```sh
+cd backend
+./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+Spring Boot startar PostgreSQL på `localhost:5433`, inväntar databasens healthcheck
+och kör Liquibase med separat owner-konto. API:t lyssnar på `127.0.0.1:8080`.
+[application-local.yaml](src/main/resources/application-local.yaml) innehåller
+lokala databascredentials, native-auth, sessionsnyckel och origin
+`http://localhost:3000`. Ingen Supabase-container eller Resend-nyckel behövs.
+Även med Resend-credentials i miljön används enbart loggsändaren i `local`.
+Verifieringsmejl, magic links och lösenordsåterställning syns som `[LOCAL MAIL]`
+i backendloggen, normalt inom en sekund. Öppna länkarna i samma browserprofil
+som begärde dem. Använd påhittade konton; loggen innehåller inloggningslänkar.
+
+Starta den nya React/Vite-appen i en annan terminal, från repots rot:
+
+```sh
+cd frontend
+FORENA_AUTH_MODE=native node scripts/public-config.mjs
+npm run dev
+```
+
+Öppna `http://localhost:3000`. Databasen börjar tom; skapa ett konto via
+registreringen. Kontot får inte automatiskt förenings- eller personåtkomst.
+Vite skickar `/api`, OAuth och metadata vidare till backend på 8080. Browsern
+använder relativa URL:er på samma origin, så lokal CORS-konfiguration behövs inte.
+Frontend behöver inga auth-nycklar i native-läget.
+
+Spring stoppar containern vid normal avstängning om Spring startade den;
+redan startade tjänster lämnas igång. Data sparas i Compose-volymen mellan
+starter. Profilen är endast för lokal JVM-utveckling: Compose-stödet följer
+inte med i den paketerade release-JAR:en. Övriga profiler startar inga containers
+och behåller ordinarie auth-/mejlkonfiguration.
+
+Om port 5433 är upptagen: sätt `FORENA_LOCAL_DB_PORT=55433` när backend startas;
+både Compose och JDBC använder värdet. IDE:n ska använda `backend/` som
+arbetskatalog och profilen `local`. Annan arbetskatalog kräver
+`FORENA_LOCAL_COMPOSE_FILE=/absolut/sökväg/backend/compose.yaml`.
+
+För att uttryckligen radera **alla lokala utvecklingsdata**, stoppa backend och
+kör `docker compose down --volumes` från `backend/`. Det raderar bara denna
+Compose-miljös volym. Ändrade init-skript körs först när en ny tom volym skapas.
+
 Det finns även ett explicit `FORENA_AUTH_MODE=native` för egen kontohantering,
 Spring WebAuthn och Authorization Server. Det kräver ingen Supabase Auth-issuer
 eller publishable key. [Körinstruktioner och säkerhetsgränser](../docs/migration/native-auth.md).

@@ -73,6 +73,24 @@ skicka `/oauth2/*` och metadata till backend; `/oauth/consent` går till SPA:n.
 
 ## Lokal konfiguration
 
+För lokal JVM-utveckling finns Spring-profilen `local` med färdiga värden:
+
+```sh
+cd backend
+./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+Java 25 och Docker Compose v2 krävs. Spring startar en separat PostgreSQL-container,
+kör Liquibase och använder native-auth utan `.env`, Supabase Auth eller Resend.
+Mejlen skrivs till backendloggen med `[LOCAL MAIL]`, inklusive engångslänkar;
+använd bara påhittade konton. `local` registrerar aldrig Resend-adaptern.
+Profilens publika sessionsnyckel och lösenord gäller bara lokal utveckling.
+Databasen är tom från början och bevaras i Compose-volymen mellan starter.
+Se [backendens körinstruktioner](../../backend/README.md#lokal-utveckling)
+för React-start, portar, IDE och återställning av lokala data.
+
+### Egen databas och riktiga mejl utan local-profil
+
 Använd en avsedd testdatabas. Befintlig Liquibase-bootstrap och separata
 owner-/runtime-konton gäller. Migration 012 skapar lokala konton och Spring
 Securitys tabeller i privata `forena`. Ingen koppling till `auth.users` behövs.
@@ -98,7 +116,7 @@ FORENA_OAUTH_CLIENT_SECRET=
 
 Backend skickar via Resends REST-API på `https://api.resend.com/emails`.
 SMTP används inte längre och `FORENA_SMTP_*`/`FORENA_AUTH_MAIL_FROM` ska ersättas
-med variablerna ovan. Start i native-läge kräver nyckel och avsändare; övriga
+med variablerna ovan. Start i native-läge utan `local` kräver nyckel och avsändare; övriga
 körlägen behöver ingen Resend-konfiguration. Använd en verifierad avsändardomän,
 SPF/DKIM/DMARC och avstängd klickspårning för auth-mejlen. Sätt inte riktiga
 nycklar i exempel, frontend eller tester. Testerna fångar transporten lokalt utan
@@ -132,7 +150,9 @@ länkens tio minuters livstid och minskar risken för dubbletter när ett accept
 anrop följs av timeout eller processkrasch. Det är ingen generell exactly-once-
 garanti. Avsändare och mall ska hållas stabila medan kön töms, eftersom ändrad
 payload för samma nyckel avvisas av Resend. Providerkroppar, API-nycklar,
-transportundantag och engångslänkar loggas inte. Webhooks för faktisk leverans,
+transportundantag och engångslänkar loggas inte utanför `local`. Den lokala
+loggadaptern markerar utskicket accepterat så att samma outboxflöde kan provas.
+Webhooks för faktisk leverans,
 studs och klagomål ingår ännu inte i försöket.
 
 API-kontrakt: [Skicka mejl](https://resend.com/docs/api-reference/emails/send-email),

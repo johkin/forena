@@ -39,6 +39,12 @@ Resends REST-adapter och hemlighetskonfiguration är samlade i `email.internal`.
 publika typer; mejlmodulen har inga beroenden till identitet eller verksamhet.
 Den äldre Next-appens mejlintegration är separat och ändras inte av detta.
 
+Spring-profilen `local` startar PostgreSQL via Spring Boots Docker Compose-stöd,
+med samma schema-bootstrap, separata owner-/runtime-roller och Liquibase som
+övrig Kotlin-runtime. Native-auth och en loggande `EmailSender` gör det möjligt
+att utveckla utan Supabase Auth eller Resend. Data ligger kvar i en lokal volym.
+Se [körinstruktioner](../backend/README.md#lokal-utveckling).
+
 Ett avskilt [browserflöde](migration/browser-participation.md) återanvänder
 inloggning, sidskal och kallelsesvar genom de befintliga Next-rutterna till
 Kotlin. Backend väljs endast i servermiljön och är `legacy` som standard.

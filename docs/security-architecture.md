@@ -9,6 +9,12 @@ Outboxens stabila idempotensnyckel återanvänds vid återförsök. Leverantöre
 svarskropp eller transportundantag får inte hamna i loggar eller API-fel.
 Beskrivningarna av Supabase Auth nedan avser fortsatt det äldre körläget.
 
+Spring-profilen `local` är ett uttryckligt utvecklingsundantag: en loggsändare
+ersätter Resend och skriver hela mejlet inklusive engångslänk till loggen.
+Profilen använder publika fixture-credentials/sessionsnyckel och loopback-portar;
+den får endast användas med lokala testdata. Utanför `local` registreras inte
+loggsändaren och Docker Compose är avstängt. Se [lokala körinstruktioner](../backend/README.md#lokal-utveckling).
+
 Native-lägets inloggning och logout använder nu Springs färdiga filter och
 providers enligt ADR-025. React/Vite följer Springs formulär-/WebAuthn-format.
 Kontoregler och smala repository-/tokenservice-adaptrar bevarar kontospärr,
