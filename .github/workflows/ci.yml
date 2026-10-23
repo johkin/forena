@@ -14,7 +14,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      application: ${{ steps.scope.outputs.application }}
+      database: ${{ steps.scope.outputs.database }}
+      backend: ${{ steps.scope.outputs.backend }}
+    steps:
+      - name: Check out repository and comparison history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Select relevant verification jobs
+        id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: python3 scripts/deploy/ci_scope.py select >> "$GITHUB_OUTPUT"
+
   application:
+    needs: changes
+    if: needs.changes.outputs.application == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -90,6 +111,8 @@ jobs:
           FORENA_BROWSER_BASE_URL=http://localhost:3000 node scripts/migration/browser-frontend-mock.mjs
 
   database:
+    needs: changes
+    if: needs.changes.outputs.database == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -115,6 +138,8 @@ jobs:
           test -s /tmp/database.types.ts
 
   backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -179,7 +204,8 @@ jobs:
             frontend/.evidence/m09-*.png
 
   native-image:
-    needs: backend
+    needs: [changes, backend]
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -273,21 +299,24 @@ jobs:
           retention-days: 3
           if-no-files-found: error
 
-  # Keep the existing required check; every parallel job must succeed.
+  # Keep the required check; only explicitly irrelevant PR jobs may skip.
   verify:
-    needs: [application, database, backend, native-image]
+    needs: [changes, application, database, backend, native-image]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Check out CI verification rules
+        uses: actions/checkout@v6
+
       - name: Require all checks to pass
         env:
+          APPLICATION_REQUIRED: ${{ needs.changes.outputs.application }}
+          DATABASE_REQUIRED: ${{ needs.changes.outputs.database }}
+          BACKEND_REQUIRED: ${{ needs.changes.outputs.backend }}
+          SCOPE_RESULT: ${{ needs.changes.result }}
           APPLICATION_RESULT: ${{ needs.application.result }}
           DATABASE_RESULT: ${{ needs.database.result }}
           BACKEND_RESULT: ${{ needs.backend.result }}
           NATIVE_RESULT: ${{ needs.native-image.result }}
-        run: |
-          test "$APPLICATION_RESULT" = success
-          test "$DATABASE_RESULT" = success
-          test "$BACKEND_RESULT" = success
-          test "$NATIVE_RESULT" = success
+        run: python3 scripts/deploy/ci_scope.py verify
