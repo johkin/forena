@@ -62,8 +62,9 @@ function configuration(context: EditorContext): ActivityConfiguration {
 }
 
 /** The existing editor uses the account-bound Kotlin transport, without page reloads. */
-export function ActivityManagement({ request, initialTeamId = "", createOnLoad = false, onEditorClose }: {
-  request: ParticipationFetch; initialTeamId?: string; createOnLoad?: boolean; onEditorClose?: () => void;
+export function ActivityManagement({ request, teamId, onSaved, initialTeamId = "", createOnLoad = false, onEditorClose }: {
+  request: ParticipationFetch; teamId?: string; onSaved?: () => void;
+  initialTeamId?: string; createOnLoad?: boolean; onEditorClose?: () => void;
 }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -72,7 +73,9 @@ export function ActivityManagement({ request, initialTeamId = "", createOnLoad =
   }, []);
   const [teams, setTeams] = useState<z.infer<typeof teamSchema>[]>();
   const [context, setContext] = useState<EditorContext>();
-  const [selectedTeam, setSelectedTeam] = useState(initialTeamId);
+  const [chosenTeam, setSelectedTeam] = useState(initialTeamId);
+  const selectedTeam = teamId ?? chosenTeam;
+  const canManageTeam = teams?.some(team => team.id === selectedTeam) ?? false;
   const [editing, setEditing] = useState<"create" | z.infer<typeof activitySchema> | undefined>(createOnLoad ? "create" : undefined);
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
@@ -89,7 +92,7 @@ export function ActivityManagement({ request, initialTeamId = "", createOnLoad =
   }, [request, attempt]);
 
   useEffect(() => {
-    if (!selectedTeam || !teams?.some(team => team.id === selectedTeam)) return;
+    if (!selectedTeam || !canManageTeam) return;
     const controller = new AbortController();
     request(`/api/teams/${selectedTeam}/activity-editor`, { signal: controller.signal }).then(async response => {
       if (!response.ok) throw new Error("Aktiviteterna kunde inte hämtas.");
@@ -97,7 +100,7 @@ export function ActivityManagement({ request, initialTeamId = "", createOnLoad =
     }).then(data => { if (!controller.signal.aborted) { setContext(data); setError(undefined); } })
       .catch(() => { if (!controller.signal.aborted) { setContext(undefined); setError("Aktiviteterna kunde inte hämtas. Kontrollera din behörighet och försök igen."); } });
     return () => controller.abort();
-  }, [request, selectedTeam, teams, attempt]);
+  }, [request, selectedTeam, canManageTeam, attempt]);
 
   const editorRequest = useCallback(async (path: string, init?: RequestInit) => {
     if (!context) throw new Error("Välj ett lag först.");
@@ -131,17 +134,19 @@ export function ActivityManagement({ request, initialTeamId = "", createOnLoad =
       canManageInvitations={!current && context.team.canManageInvitations}
       onClose={() => { setEditing(undefined); onEditorClose?.(); }} onNotice={setNotice}
       adapter={{ request: editorRequest, revision: current?.revision, singleOnly: true,
-        onSaved: () => setAttempt(value => value + 1) }} />;
+        onSaved: () => { setAttempt(value => value + 1); onSaved?.(); } }} />;
   }
 
+  if (teamId && teams && !canManageTeam) return null;
+
   return <section className="club-administration activity-management" aria-label="Hantera aktiviteter">
-    <h1>Hantera aktiviteter</h1>
+    {teamId ? <h2>Lagets aktiviteter</h2> : <h1>Hantera aktiviteter</h1>}
     {error ? <p role="alert">{error} <button type="button" onClick={() => setAttempt(value => value + 1)}>Försök igen</button></p> : null}
     {notice ? <p role="status">{notice}</p> : null}
-    {!teams ? <p role="status">Laddar lag…</p> : teams.length === 0 ? <p>Du saknar behörighet att hantera aktiviteter i något lag.</p> : <label>Lag<select value={selectedTeam} onChange={event => {
+    {teamId ? null : !teams ? <p role="status">Laddar lag…</p> : teams.length === 0 ? <p>Du saknar behörighet att hantera aktiviteter i något lag.</p> : <label>Lag<select value={selectedTeam} onChange={event => {
       setSelectedTeam(event.target.value); setContext(undefined); setEditing(undefined); setNotice(undefined);
     }}><option value="">Välj lag</option>{teams.map(team => <option key={team.id} value={team.id}>{team.organizationName} · {team.name}</option>)}</select></label>}
-    {selectedTeam && teams && !teams.some(team => team.id === selectedTeam) ? <p>Du saknar behörighet att hantera aktiviteter i det valda laget. Välj ett annat lag.</p>
+    {selectedTeam && teams && !canManageTeam ? <p>Du saknar behörighet att hantera aktiviteter i det valda laget. Välj ett annat lag.</p>
       : selectedTeam && !context && !error ? <p role="status">Laddar aktiviteter…</p> : null}
     {context ? <>
       <p>Tider i {context.team.timeZone}.</p>

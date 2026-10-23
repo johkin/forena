@@ -100,9 +100,10 @@ läses i gemensamma repository-frågor, utan per-aktivitet-anrop. Bara skickade
 personliga kallelser lämnas ut. `GET /api/activities/{id}` separerar rätt att
 läsa detaljer från rätt att svara och fungerar även utan en kallelse.
 
-Förenings-/laglänkar öppnar en avgränsad personlig läsvy i Kotlin-webben;
-fullständig förenings-/lagadministration är fortfarande ett annat område i
-funktionsmatrisen. Headerns klocka öppnar aktuella kallelser, inte en ny push-
+Förenings-/laglänkar öppnar en avgränsad personlig aktivitetsvy i Kotlin-webben.
+Lagets sida komponerar dessutom `ActivityManagement` med sidans lag-ID;
+serverns hanterbara lag avgör om administrativa aktiviteter och skapande visas.
+Den personliga kalendern behåller sitt personurval. Headerns klocka öppnar aktuella kallelser, inte en ny push-
 leverans. AI/MCP-anslutning, extern notifiering och arbetspass återstår i sina
 migreringsuppgifter. Det gamla `/api/me/activities` finns kvar för kompatibilitet.
 

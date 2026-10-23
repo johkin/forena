@@ -69,15 +69,15 @@ samling, lokala tider och kallelsens kommentar, även när aktivitetsläsningen
 kommer från lagmedlemskap och ingen kallelse finns.
 
 Klientnavigering behåller dokument, header och meny. Förenings-/laggenvägarna
-öppnar läsvyer för den personliga aktivitetsmängden, inte fullständig ännu
-omigrerad administration. Headerns klocka öppnar kallelser som behöver svar.
+öppnar vyer för den personliga aktivitetsmängden. På lagets sida visas dessutom
+lagets aktivitetshantering för behöriga användare. Headerns klocka öppnar kallelser som behöver svar.
 AI-anslutningslänken förblir dold i Vite tills motsvarande integration finns.
 Interaktiva varianter av hela startsidan finns på `/components`, med isolerade
 exempeldata. Ingen demokallelse får skriva till produktions-API:t.
 
-Lagvyn visar **Ny aktivitet** i sidans gemensamma välkomsthuvud för användare
+Lagvyn visar **Ny aktivitet** under **Lagets aktiviteter** för användare
 som finns i backendens lista över lag med aktivitetsbehörighet. Knappen öppnar
-den befintliga aktivitetsredigeraren med laget förvalt. Vanligt medlemskap ger
+den befintliga aktivitetsredigeraren på samma sida med laget förvalt. Vanligt medlemskap ger
 inte knappen; backend kontrollerar behörigheten på nytt när formuläret hämtas
 och sparas. Varianten finns i aktivitetshanteringens exempel på `/components`.
 
@@ -628,6 +628,6 @@ till aktiveringsknappen och en ny länk utan omladdning. Utgången länk visas o
 
 `/administration` använder gemensam AppShell, klubbskapandets tre steg, ClubSlugInput, TimeZoneSelect och SectionTeamAdministration. Övergången till Granska sparar aldrig data; först Skapa klubb skickar kommandot, exakt en gång per bekräftelse. Rolltilldelning och återkallning visar konto och kräver uttrycklig bekräftelse. Lagrollens giltighet använder den gemensamma datumväljaren.
 
-`/activities/manage` återanvänder ActivityEditorModal med kontobunden transport och uppdaterar listan utan dokumentomladdning. Inställning heter Ställ in och bevarar svar/historik. Dialogen återställer fokus och stöder Escape och avgränsad tangentbordsnavigation. Kallelser till direkt valda personer visas i appen; gränssnittet förklarar att externa meddelanden ännu inte levereras.
+Lagets sida (`/teams/:id`) visar **Lagets aktiviteter** och **Ny aktivitet** för användare som finns i serverns lista över hanterbara lag. Laget är låst till sidans kontext; ingen lagväljare visas. Den personliga översikten har ingen global ingång för att skapa aktiviteter. Den äldre direktlänken `/activities/manage` finns kvar för kompatibilitet. Aktivitetshanteringen återanvänder ActivityEditorModal med kontobunden transport och uppdaterar listan utan dokumentomladdning. Inställning heter Ställ in och bevarar svar/historik. Dialogen återställer fokus och stöder Escape och avgränsad tangentbordsnavigation. Kallelser till direkt valda personer visas i appen; gränssnittet förklarar att externa meddelanden ännu inte levereras.
 
 Komponentsidan visar samma administrations- och aktivitetskomponenter med lokala exempel för bootstrap, behörighet, formulär, laddning, tomma lägen och fel. Ingen verksamhetsskrivning görs av galleriet.

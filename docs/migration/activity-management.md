@@ -31,8 +31,10 @@ konton, databas och administrationsflöden.
 6. Klubbadmin kan skapa fler sektioner och utse sektionsadmin. Klubb-/sektionsadmin
    skapar lag inom sin behörighet och utser lagadmin. Befintliga gemensamma
    klubb-, datum-, tidszon- och lagkomponenter återanvänds.
-7. Lagadmin loggar in och öppnar **Hantera aktiviteter** (`/activities/manage`).
-   Laget blir valbart och användaren kan skapa, redigera och ställa in aktiviteter.
+7. Lagadmin loggar in och öppnar laget under **Mina lag och föreningar**.
+   På `/teams/:id` visas **Lagets aktiviteter** med **Ny aktivitet**, redigering
+   och inställning. Laget följer sidan utan en separat lagväljare. Den äldre
+   direktlänken `/activities/manage` fungerar fortfarande för sparade länkar.
 
 Tilldelningen i denna leverans kräver ett redan registrerat och verifierat
 konto. Det är en direkt, auditerad rolltilldelning, inte ett mejlinbjudningsflöde.
@@ -51,7 +53,7 @@ oregistrerade konton är fortsatt ett separat paritetsområde.
   och konton utan egen personkoppling. Klubb-/sektionsroller och daterade
   lagrättigheter kontrolleras vid varje läsning. Systemrollen ensam ger ingen
   lagarbetsyta. Den personliga kalendern och kallelserna behåller sitt personurval;
-  lagets administrativa aktivitetslista nås via **Hantera aktiviteter**.
+  lagets administrativa aktivitetslista visas på lagets sida för behöriga konton.
 - `activity.manage` och `invitation.manage` kan också tilldelas separat enligt
   M09:s personbundna rättighetsmodell. Vanligt lagmedlemskap och fristående
   läsåtkomst ger inte skrivrätt. Målsmans-/delegerad personåtkomst ärver inga
@@ -145,10 +147,15 @@ CI kör samma browserprov samt paketerad JVM-/native-kontroll. `local-smoke.py`
 provar också administrationskedjan och aktivitetskommandon via HTTP mot vald
 runtime. Molnprovisionering, produktionsbootstrap och driftsättning ingår inte.
 
-## Skapa från lagvyn
+Lagets aktivitetshantering öppnar redigeraren på samma sida efter kontroll mot
+`GET /api/me/managed-teams`. Den äldre direktlänken med `team` och `create=1`
+stöds fortsatt, med samma behörighetskontroll.
 
-Kotlin-webbens lagvy visar **Ny aktivitet** efter kontroll mot
-`GET /api/me/managed-teams`. Knappen öppnar `/activities/manage?team=<id>&create=1`
-med laget valt och den gemensamma redigeraren öppen. Formuläret hämtas först
-efter att laget bekräftats i den behöriga listan; serverns läs- och skrivkontroller
-gäller fortsatt. Ogiltigt eller obehörigt lag ger ingen redigerare.
+`scripts/migration/team-activity-navigation-browser.mjs` kontrollerar den riktiga
+frontendens menyrader, aktivitetsskapande från laget, fokus, nekad behörighet och
+overflow vid 320, 375, 390, 768 och 1280 px. Provet använder lokala API-fixturer
+och körs mot frontendservern på port 3002, utan verksamhetsskrivningar:
+
+```sh
+node scripts/migration/team-activity-navigation-browser.mjs
+```
