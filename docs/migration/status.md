@@ -1,5 +1,31 @@
 # Migreringsstatus
 
+## Spring Securitys färdiga autentiseringsflöden, 2026-10-23
+
+På `feature/native-auth` enligt ADR-025: Spring-komponenter och standardflöden
+ska användas i första hand. Native-lägets egna login-, logout-, magic-link- och
+WebAuthn-ceremonier i controllers är ersatta med Springs filter och providers.
+`NativePasskeyService` är borttagen. Spring sköter även credential-ägarkontroll
+vid borttagning, sessionsbyte och webbens säkerhetsheaders.
+
+React/Vite-klienten följer nu Springs formulär-/WebAuthn-format; ingen extra
+JSON-översättare eller `challenge_id` används i native-läget. MVC-controllers
+behålls för kontolivscykel och läsning. Smala Spring repository-/tokenservice-
+adaptrar behåller säker stränglagring, tokenversioner och webbläsarbindning.
+Next-appen och äldre Supabase-flöden är inte ändrade. Backend och den nya
+frontenden måste uppdateras tillsammans när native-kontraktet ändras.
+
+Godkänt: full Maven `verify`, 96 tester, noll fel och ett överhoppat äldre
+browser-opt-in-prov; native-browserprovet kördes. Verklig Chromium → Spring →
+PostgreSQL täcker lösenord, passkey-registrering/inloggning, magic link, reset,
+OAuth/PKCE/consent, refresh-rotation, MCP och revokering. Ett separat API-prov
+verifierar att Spring nekar borttagning av annans passkey och tillåter den egna.
+Båda OpenAPI-exporterna är genererade från servern. 1 159 frontendtester,
+typkontroll, lint samt Next- och native-Vite-bygge är godkända. Inga riktiga mejl,
+kontoflyttar eller driftpubliceringar ingår.
+
+[Granskning, genomförda byten och kvarvarande adaptrar](spring-security.md).
+
 ## Resend REST i Kotlin, 2026-10-23
 
 Auth-mejl i `feature/native-auth` använder nu Resends REST-API i stället för SMTP.

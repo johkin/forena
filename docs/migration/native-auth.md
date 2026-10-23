@@ -5,12 +5,18 @@ Aktivera både frontendbygget och backend med `FORENA_AUTH_MODE=native`.
 Det befintliga läget `supabase` finns kvar för jämförelse och återgång; det
 sker ingen automatisk fallback mellan lägena. Försöket ändrar inga driftinställningar.
 
+
+Efter ADR-025 använder inloggning, WebAuthn och logout Springs färdiga filter
+och providers. Egna controllers för dessa flöden är borttagna. Smala
+sessionsadaptrar bevarar säker lagring; React/Vite följer nu Springs standardformat
+för formulär och WebAuthn. Borttagning av passkey returnerar 204. Se [Spring-genomgången](spring-security.md).
+
 ## Ansvar och flöden
 
 Spring Security står för lösenordskodning (delegating encoder med BCrypt),
 WebAuthn-verifiering genom `Webauthn4JRelyingPartyOperations`, JDBC-lagrade
-engångstoken och OAuth Authorization Server. Egna controllers anpassar dessa
-komponenter till appens JSON-API och befintliga React-komponenter.
+engångstoken och OAuth Authorization Server. Spring-filter sköter inloggningsflödena; egna controllers hanterar
+kontoregistrering, verifiering och återställning.
 Ingen egen verifiering av signaturer, attestation eller OAuth-koder införs.
 
 Webben använder enbart Spring Session JDBC. Ett konto-ID och en sessionsversion

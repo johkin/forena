@@ -40,7 +40,11 @@ class NativeSessionRepository(private val users: NativeUserRepository, private v
     }
     override fun containsContext(request: HttpServletRequest) = request.getSession(false)?.getAttribute(IDENTITY) != null
     override fun saveContext(context: SecurityContext, request: HttpServletRequest, response: HttpServletResponse) {
-        val auth = context.authentication ?: return
+        val auth = context.authentication ?: run {
+            request.getSession(false)?.removeAttribute(IDENTITY)
+            request.getSession(false)?.removeAttribute(FindByIndexNameSessionRepository.PRINCIPAL_NAME_INDEX_NAME)
+            return
+        }
         val user = users.findById(UUID.fromString(auth.name)) ?: throw IllegalStateException("Unknown account")
         if (auth.authorities.none { it.authority == "AUTH_VERSION_${user.authVersion}" }) throw org.springframework.security.authentication.BadCredentialsException("Inactive session")
         val session = request.getSession(true)

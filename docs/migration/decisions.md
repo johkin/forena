@@ -3,6 +3,20 @@
 Status anger målbeslut för kommande implementation, inte redan införd teknik.
 Källkodsverifierat nuläge finns i [inventeringen](inventory.md).
 
+## ADR-025: Springs standardkomponenter som förstahandsval
+
+Beslut 2026-10-23 på användarens instruktion: använd så mycket som möjligt av
+Springs färdiga komponenter, inklusive hela autentiseringsflöden i Spring Security.
+Kontrollera stödet i projektets version innan egen motsvarighet byggs. Anpassa
+via konfiguration och ramverkets gränssnitt; egna controllers ska inte duplicera
+inloggning, logout eller WebAuthn-ceremonier. Transportkontrakt, säkert
+lagringsformat och Förena-regler får kräva små dokumenterade adaptrar.
+
+Native-piloten använder nu Springs password-, WebAuthn-, OTT- och logout-filter.
+OAuth använder redan Spring Authorization Server och Resource Server.
+Se [genomgång, utförda byten och kvarvarande adaptrar](spring-security.md).
+Äldre Supabase-körläge är separat. Next-appen och dess inloggning ändras inte.
+
 ## ADR-024: Försök med egen autentisering i Spring Boot
 
 Beslut 2026-10-22 på användarens instruktion: implementera och prova lokal

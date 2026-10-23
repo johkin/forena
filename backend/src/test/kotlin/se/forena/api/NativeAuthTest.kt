@@ -91,7 +91,15 @@ class NativeAuthTest {
         val builder = HttpRequest.newBuilder(URI(base + path)).header("Origin", settings.origin)
         if (csrf) builder.header("X-Forena-Request", "1")
         cookie?.let { builder.header("Cookie", it) }; bearer?.let { builder.header("Authorization", "Bearer $it") }
-        if (body == null) builder.GET() else builder.header("Content-Type", if (form) "application/x-www-form-urlencoded" else "application/json").POST(HttpRequest.BodyPublishers.ofString(body))
+        val fields = if (body != null && !form && path in listOf("/api/auth/login", "/api/auth/magic-link", "/api/auth/magic-link/verify")) json.readTree(body) else null
+        val formFields = when (path) {
+            "/api/auth/login" -> fields?.let { mapOf("email" to it.path("email").asString(), "password" to it.path("password").asString()) }
+            "/api/auth/magic-link" -> fields?.let { mapOf("username" to it.path("email").asString()) }
+            "/api/auth/magic-link/verify" -> fields?.let { mapOf("token" to it.path("code").asString()) }
+            else -> null
+        }
+        val payload = formFields?.entries?.joinToString("&") { URLEncoder.encode(it.key, UTF_8)+"="+URLEncoder.encode(it.value, UTF_8) } ?: body
+        if (payload == null) builder.GET() else builder.header("Content-Type", if (form || formFields != null) "application/x-www-form-urlencoded" else "application/json").POST(HttpRequest.BodyPublishers.ofString(payload))
         return http.send(builder.build(), HttpResponse.BodyHandlers.ofString())
     }
     private fun cookie(response: HttpResponse<String>) = response.headers().allValues("set-cookie").single { it.startsWith("__Host-forena-session=") }.substringBefore(';')
@@ -103,6 +111,7 @@ class NativeAuthTest {
         val body = """{"email":"$email","password":"$password"}"""
         assertThat(request("/api/auth/register", body, csrf=false).statusCode()).isEqualTo(403)
         val registration = request("/api/auth/register", body)
+        assertThat(registration.statusCode()).isEqualTo(200)
         assertThat(registration.body()).isEqualTo("""{"ok":true}""")
         assertThat(request("/api/auth/login", body).statusCode()).isEqualTo(401)
         val code = token("verify")
@@ -239,12 +248,46 @@ class NativeAuthTest {
         assertThat(request("/api/auth/password/reset", """{"code":"$resetB","password":"changed-synthetic-password"}""").statusCode()).isEqualTo(200)
         assertThat(request("/api/auth/password/reset", """{"code":"$resetA","password":"old-link-synthetic-password"}""").statusCode()).isEqualTo(401)
     }
+    @Autowired @org.springframework.beans.factory.annotation.Qualifier("nativeWebSecurity")
+    lateinit var webSecurity: org.springframework.security.web.SecurityFilterChain
+    @Test fun `authentication endpoints use Spring filters and credential deletion enforces ownership`() {
+        assertThat(webSecurity.filters.map { it.javaClass.simpleName }).contains(
+            "UsernamePasswordAuthenticationFilter", "OneTimeTokenAuthenticationFilter", "GenerateOneTimeTokenFilter",
+            "WebAuthnAuthenticationFilter", "WebAuthnRegistrationFilter", "LogoutFilter")
+        val session = register()
+        val subject = json.readTree(request("/api/auth/session", cookie=session).body()).path("user").path("id").asString()
+        val ownUser = Base64.getUrlEncoder().withoutPadding().encodeToString(UUID.randomUUID().toString().toByteArray())
+        val foreignUser = Base64.getUrlEncoder().withoutPadding().encodeToString(UUID.randomUUID().toString().toByteArray())
+        admin.update("insert into forena.user_entities(id,name,display_name) values(?,?,?),(?,?,?)", ownUser, subject, "Own", foreignUser, UUID.randomUUID().toString(), "Other")
+        fun credential(owner: String): String {
+            val id = Base64.getUrlEncoder().withoutPadding().encodeToString(UUID.randomUUID().toString().toByteArray())
+            admin.update("insert into forena.user_credentials(credential_id,user_entity_user_id,public_key,signature_count,uv_initialized,backup_eligible,backup_state,public_key_credential_type,label,authenticator_transports,created,last_used) values(?,?,?,0,true,false,false,'public-key','Test','internal',now(),now())", id, owner, byteArrayOf(1))
+            return id
+        }
+        val own = credential(ownUser); val foreign = credential(foreignUser)
+        fun delete(id: String) = http.send(HttpRequest.newBuilder(URI(base+"/api/auth/passkeys/"+id))
+            .header("Origin", settings.origin).header("X-Forena-Request", "1").header("Cookie", session).DELETE().build(), HttpResponse.BodyHandlers.ofString())
+        clearLimits()
+        assertThat(delete(foreign).statusCode()).isEqualTo(403)
+        assertThat(delete(own).statusCode()).isEqualTo(204)
+        assertThat(admin.queryForObject("select count(*) from forena.user_credentials where credential_id=?", Int::class.java, foreign)).isEqualTo(1)
+        assertThat(admin.queryForObject("select count(*) from forena.user_credentials where credential_id=?", Int::class.java, own)).isZero()
+    }
     @Test fun `native OpenAPI can be exported independently of the Supabase contract`() {
         val cookie = register()
         val spec = request("/v3/api-docs", cookie=cookie)
         assertThat(spec.statusCode()).isEqualTo(200)
         assertThat(spec.body()).contains("/api/auth/register", "/api/auth/password/reset", "__Host-forena-session")
         assertThat(spec.body()).doesNotContain("bearerFormat")
+        val paths = json.readTree(spec.body()).path("paths")
+        for (endpoint in se.forena.api.identity.nativeauth.NativeAuthenticationEndpoints.all) {
+            assertThat(paths.has(endpoint.path)).isTrue()
+            endpoint.request?.let { assertThat(paths.path(endpoint.path).path("post").path("requestBody").path("content")
+                .has(if (endpoint.form) "application/x-www-form-urlencoded" else "application/json")).isTrue() }
+        }
+        val schemas = json.readTree(spec.body()).path("components").path("schemas")
+        assertThat(schemas.path("Bytes").path("type").asString()).isEqualTo("string")
+        assertThat(schemas.path("PublicKeyCredentialRequestOptions").path("properties").path("timeout").path("type").asString()).isEqualTo("integer")
         Files.writeString(Path.of("target/native-openapi.json"), spec.body())
     }
     @Test @EnabledIfEnvironmentVariable(named = "FORENA_NATIVE_BROWSER_TEST", matches = "true")

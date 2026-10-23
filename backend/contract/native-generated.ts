@@ -79,6 +79,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST. */
         post: operations["login"];
         delete?: never;
         options?: never;
@@ -95,6 +96,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST. */
         post: operations["logout"];
         delete?: never;
         options?: never;
@@ -111,6 +113,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST. */
         post: operations["magicLink"];
         delete?: never;
         options?: never;
@@ -127,6 +130,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST. */
         post: operations["magicVerify"];
         delete?: never;
         options?: never;
@@ -159,6 +163,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST. */
         post: operations["options"];
         delete?: never;
         options?: never;
@@ -175,6 +180,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST. */
         post: operations["registrationOptions"];
         delete?: never;
         options?: never;
@@ -191,6 +197,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST. */
         post: operations["registrationVerify"];
         delete?: never;
         options?: never;
@@ -207,6 +214,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST. */
         post: operations["verifyPasskey"];
         delete?: never;
         options?: never;
@@ -240,6 +248,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
+        /** @description Spring WebAuthn filter; credential owner only. */
         delete: operations["deletePasskey"];
         options?: never;
         head?: never;
@@ -384,6 +393,40 @@ export interface components {
         ApiError: {
             error: string;
         };
+        AttestationConveyancePreference: string;
+        AuthenticationExtensionsClientInput: {
+            extensionId?: string;
+            input?: Record<string, never>;
+        };
+        AuthenticationExtensionsClientInputs: {
+            [key: string]: unknown;
+        };
+        AuthenticationExtensionsClientOutputObject: {
+            extensionId?: string;
+            output?: Record<string, never>;
+        };
+        AuthenticationExtensionsClientOutputs: {
+            [key: string]: unknown;
+        };
+        AuthenticatorAssertionResponse: {
+            attestationObject?: components["schemas"]["Bytes"];
+            authenticatorData?: components["schemas"]["Bytes"];
+            clientDataJSON?: components["schemas"]["Bytes"];
+            signature?: components["schemas"]["Bytes"];
+            userHandle?: components["schemas"]["Bytes"];
+        };
+        AuthenticatorAttachment: string;
+        AuthenticatorAttestationResponse: {
+            attestationObject?: components["schemas"]["Bytes"];
+            clientDataJSON?: components["schemas"]["Bytes"];
+            transports?: components["schemas"]["AuthenticatorTransport"][];
+        };
+        AuthenticatorSelectionCriteria: {
+            authenticatorAttachment?: components["schemas"]["AuthenticatorAttachment"];
+            residentKey?: components["schemas"]["ResidentKeyRequirement"];
+            userVerification?: components["schemas"]["UserVerificationRequirement"];
+        };
+        AuthenticatorTransport: string;
         BrowserAuthAcknowledgement: {
             ok: boolean;
         };
@@ -396,9 +439,16 @@ export interface components {
             user: components["schemas"]["BrowserUser"];
         };
         BrowserUser: {
-            email: string | null;
+            email: string;
             /** Format: uuid */
             id: string;
+        };
+        /** Format: base64url */
+        Bytes: string;
+        /** Format: int32 */
+        COSEAlgorithmIdentifier: number;
+        CredentialRegistrationRequest: {
+            publicKey?: components["schemas"]["RelyingPartyPublicKey"];
         };
         InvitationResponseResult: {
             ok: boolean;
@@ -406,9 +456,6 @@ export interface components {
         MagicLinkRequest: {
             /** Format: email */
             email: string;
-        };
-        MagicLinkVerifyRequest: {
-            code: string;
         };
         MyActivities: {
             activities: components["schemas"]["MyActivity"][];
@@ -454,22 +501,6 @@ export interface components {
             code?: string;
             password?: string;
         };
-        PasskeyOptions: {
-            /** Format: uuid */
-            challenge_id: string;
-            /** Format: int64 */
-            expires_at: number;
-            options: {
-                [key: string]: unknown;
-            };
-        };
-        PasskeyVerifyRequest: {
-            /** Format: uuid */
-            challenge_id: string;
-            credential: {
-                [key: string]: unknown;
-            };
-        };
         PersonalActivity: {
             description: string;
             /** Format: date-time */
@@ -511,12 +542,83 @@ export interface components {
             organization_id: string;
             roles: string[];
         };
+        PublicKeyCredentialAuthenticatorAssertionResponse: {
+            authenticatorAttachment?: components["schemas"]["AuthenticatorAttachment"];
+            clientExtensionResults?: components["schemas"]["AuthenticationExtensionsClientOutputs"];
+            id?: string;
+            rawId?: components["schemas"]["Bytes"];
+            response?: components["schemas"]["AuthenticatorAssertionResponse"];
+            type?: components["schemas"]["PublicKeyCredentialType"];
+        };
+        PublicKeyCredentialAuthenticatorAttestationResponse: {
+            authenticatorAttachment?: components["schemas"]["AuthenticatorAttachment"];
+            clientExtensionResults?: components["schemas"]["AuthenticationExtensionsClientOutputs"];
+            id?: string;
+            rawId?: components["schemas"]["Bytes"];
+            response?: components["schemas"]["AuthenticatorAttestationResponse"];
+            type?: components["schemas"]["PublicKeyCredentialType"];
+        };
+        PublicKeyCredentialCreationOptions: {
+            attestation?: components["schemas"]["AttestationConveyancePreference"];
+            authenticatorSelection?: components["schemas"]["AuthenticatorSelectionCriteria"];
+            challenge?: components["schemas"]["Bytes"];
+            excludeCredentials?: components["schemas"]["PublicKeyCredentialDescriptor"][];
+            extensions?: components["schemas"]["AuthenticationExtensionsClientInputs"];
+            pubKeyCredParams?: components["schemas"]["PublicKeyCredentialParameters"][];
+            rp?: components["schemas"]["PublicKeyCredentialRpEntity"];
+            /** Format: int64 */
+            timeout?: number;
+            user?: components["schemas"]["PublicKeyCredentialUserEntity"];
+        };
+        PublicKeyCredentialDescriptor: {
+            id?: components["schemas"]["Bytes"];
+            transports?: components["schemas"]["AuthenticatorTransport"][];
+            type?: components["schemas"]["PublicKeyCredentialType"];
+        };
+        PublicKeyCredentialParameters: {
+            alg?: components["schemas"]["COSEAlgorithmIdentifier"];
+            type?: components["schemas"]["PublicKeyCredentialType"];
+        };
+        PublicKeyCredentialRequestOptions: {
+            allowCredentials?: components["schemas"]["PublicKeyCredentialDescriptor"][];
+            challenge?: components["schemas"]["Bytes"];
+            extensions?: components["schemas"]["AuthenticationExtensionsClientInputs"];
+            rpId?: string;
+            /** Format: int64 */
+            timeout?: number;
+            userVerification?: components["schemas"]["UserVerificationRequirement"];
+        };
+        PublicKeyCredentialRpEntity: {
+            id?: string;
+            name?: string;
+        };
+        PublicKeyCredentialType: string;
+        PublicKeyCredentialUserEntity: {
+            displayName?: string;
+            id?: components["schemas"]["Bytes"];
+            name?: string;
+        };
+        RelyingPartyPublicKey: {
+            credential?: components["schemas"]["PublicKeyCredentialAuthenticatorAttestationResponse"];
+            label?: string;
+        };
+        ResidentKeyRequirement: string;
         RespondToInvitationRequest: {
             /** @description Omitted preserves the comment; null or blank clears it. Trimmed and truncated to 500 Unicode code points. Pending always clears it. */
             comment?: string | null;
             /** @enum {string} */
             response: "pending" | "accepted" | "declined";
         };
+        SuccessfulUserRegistrationResponse: {
+            success?: boolean;
+        };
+        TokenGenerationRequest: {
+            username?: string;
+        };
+        TokenLoginRequest: {
+            token?: string;
+        };
+        UserVerificationRequirement: string;
     };
     responses: never;
     parameters: never;
@@ -661,17 +763,17 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["BrowserLoginRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["BrowserLoginRequest"];
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["BrowserSessionView"];
+                    "application/json": components["schemas"]["BrowserSessionView"];
                 };
             };
         };
@@ -685,13 +787,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["BrowserAuthAcknowledgement"];
+                    "application/json": components["schemas"]["BrowserAuthAcknowledgement"];
                 };
             };
         };
@@ -705,17 +807,17 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["MagicLinkRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TokenGenerationRequest"];
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["BrowserAuthAcknowledgement"];
+                    "application/json": components["schemas"]["BrowserAuthAcknowledgement"];
                 };
             };
         };
@@ -729,17 +831,17 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["MagicLinkVerifyRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TokenLoginRequest"];
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["BrowserSessionView"];
+                    "application/json": components["schemas"]["BrowserSessionView"];
                 };
             };
         };
@@ -777,13 +879,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PasskeyOptions"];
+                    "application/json": components["schemas"]["PublicKeyCredentialRequestOptions"];
                 };
             };
         };
@@ -797,13 +899,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PasskeyOptions"];
+                    "application/json": components["schemas"]["PublicKeyCredentialCreationOptions"];
                 };
             };
         };
@@ -817,17 +919,17 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PasskeyVerifyRequest"];
+                "application/json": components["schemas"]["CredentialRegistrationRequest"];
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["BrowserAuthAcknowledgement"];
+                    "application/json": components["schemas"]["SuccessfulUserRegistrationResponse"];
                 };
             };
         };
@@ -841,17 +943,17 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PasskeyVerifyRequest"];
+                "application/json": components["schemas"]["PublicKeyCredentialAuthenticatorAssertionResponse"];
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["BrowserSessionView"];
+                    "application/json": components["schemas"]["BrowserSessionView"];
                 };
             };
         };
@@ -887,14 +989,12 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
-            200: {
+            /** @description Credential removed */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "*/*": components["schemas"]["BrowserAuthAcknowledgement"];
-                };
+                content?: never;
             };
         };
     };

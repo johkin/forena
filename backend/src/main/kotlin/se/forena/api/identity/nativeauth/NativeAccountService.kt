@@ -1,21 +1,15 @@
 package se.forena.api.identity.nativeauth
 
 import jakarta.servlet.http.HttpServletRequest
-import jakarta.servlet.http.HttpServletResponse
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.security.authentication.BadCredentialsException
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.authentication.ott.GenerateOneTimeTokenRequest
 import org.springframework.security.authentication.ott.JdbcOneTimeTokenService
 import org.springframework.security.authentication.ott.OneTimeTokenAuthenticationToken
-import org.springframework.security.core.context.SecurityContextHolder
-import org.springframework.security.core.userdetails.User
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import se.forena.api.identity.BrowserSessionSettings
-import se.forena.api.identity.BrowserSessionView
-import se.forena.api.identity.BrowserUser
 import se.forena.api.identity.internal.AccountRepository
 import se.forena.api.identity.internal.NativeUserEntity
 import se.forena.api.identity.internal.NativeUserRepository
@@ -29,9 +23,7 @@ import java.util.UUID
 @ConditionalOnProperty(name = ["forena.auth.mode"], havingValue = "native")
 class NativeAccountService(private val users: NativeUserRepository, private val accounts: AccountRepository,
     private val passwords: PasswordEncoder, private val tokens: JdbcOneTimeTokenService,
-    private val mail: NativeAuthMailService, private val settings: BrowserSessionSettings,
-    private val contexts: NativeSessionRepository) {
-    private val dummyPassword = passwords.encode("synthetic-nonexistent-account-password")
+    private val mail: NativeAuthMailService, private val settings: BrowserSessionSettings) {
     fun email(value: String): String = value.trim().lowercase(Locale.ROOT).also {
         require(it.length in 3..320 && it.matches(Regex("[^\\s@]+@[^\\s@]+\\.[^\\s@]+")))
     }
@@ -52,54 +44,34 @@ class NativeAccountService(private val users: NativeUserRepository, private val 
         if (existing != null) {
             if (!existing.verified && users.replacePendingPassword(existing.subject, hash) == 1) {
                 val token = issue(users.findById(existing.subject)!!, "verify")
-                request.getSession(true).setAttribute(VERIFY, settings.fingerprint(token))
+                request.getSession(true).setAttribute(VERIFY, settings.fingerprint(token.tokenValue))
             }
             return
         }
         val id = UUID.randomUUID()
         users.createAccount(id); users.createUser(id, email, hash)
         val token = issue(users.findById(id)!!, "verify")
-        request.getSession(true).setAttribute(VERIFY, settings.fingerprint(token))
-    }
-    fun login(rawEmail: String, rawPassword: String): NativeUserEntity {
-        val user = users.findByEmail(email(rawEmail))
-        val matches = rawPassword.toByteArray(UTF_8).size <= 72 && passwords.matches(rawPassword, user?.passwordHash ?: dummyPassword)
-        if (!matches || user == null) throw BadCredentialsException("Invalid login")
-        return requireUser(user.subject)
-    }
-    fun createSession(user: NativeUserEntity, request: HttpServletRequest, response: HttpServletResponse): BrowserSessionView {
-        requireUser(user.subject)
-        val oauthReturn = request.getSession(false)?.getAttribute(NativeOAuthConfiguration.RETURN) as? String
-        request.getSession(false)?.invalidate()
-        val principal = User.withUsername(user.subject.toString()).password("").authorities("USER", "AUTH_VERSION_${user.authVersion}").build()
-        val context = SecurityContextHolder.createEmptyContext()
-        context.authentication = UsernamePasswordAuthenticationToken.authenticated(principal, null, principal.authorities)
-        contexts.saveContext(context, request, response)
-        oauthReturn?.let { request.getSession(false)?.setAttribute(NativeOAuthConfiguration.RETURN, it) }
-        SecurityContextHolder.setContext(context)
-        return BrowserSessionView(BrowserUser(user.subject.toString(), user.email))
+        request.getSession(true).setAttribute(VERIFY, settings.fingerprint(token.tokenValue))
     }
     @Transactional
-    fun requestLink(rawEmail: String, purpose: String, request: HttpServletRequest? = null) {
+    fun requestLink(rawEmail: String, purpose: String): org.springframework.security.authentication.ott.OneTimeToken? {
         val user = users.findByEmail(email(rawEmail))
-        // Create a ceremony session even for unknown accounts; the response does not enumerate users.
-        val session = if (purpose == "login") request!!.getSession(true) else null
-        if (user == null || !user.verified || !accounts.existsBySubjectAndEnabledTrue(user.subject)) return
+        if (user == null || !user.verified || !accounts.existsBySubjectAndEnabledTrue(user.subject)) return null
         val token = issue(user, purpose)
-        if (session != null) session.setAttribute(MAGIC, settings.fingerprint(token))
+        return token
     }
-    private fun issue(user: NativeUserEntity, purpose: String): String {
+    private fun issue(user: NativeUserEntity, purpose: String): org.springframework.security.authentication.ott.OneTimeToken {
         val token = tokens.generate(GenerateOneTimeTokenRequest("$purpose:${user.subject}:${user.authVersion}", Duration.ofMinutes(10)))
         val callback = when (purpose) { "login" -> "/auth/callback?code="; "verify" -> "/auth/verify?code="; "reset" -> "/auth/reset?code="; else -> error("Unknown token purpose") }
         mail.enqueue(user.email, purpose, settings.origin + callback + URLEncoder.encode(token.tokenValue, UTF_8), token.expiresAt)
-        return token.tokenValue
+        return token
     }
-    fun magicLogin(code: String, request: HttpServletRequest): NativeUserEntity {
+    fun requireBrowserLink(code: String, request: HttpServletRequest) {
         val session = request.getSession(false) ?: throw BadCredentialsException("Invalid link")
         if (session.getAttribute(MAGIC) != settings.fingerprint(code)) throw BadCredentialsException("Invalid link")
         session.removeAttribute(MAGIC)
-        return consume(code, "login")
     }
+    fun magicLogin(code: String): NativeUserEntity = consume(code, "login")
     @Transactional
     fun verifyEmail(code: String, request: HttpServletRequest) {
         if (request.getSession(false)?.getAttribute(VERIFY) != settings.fingerprint(code)) throw BadCredentialsException("Invalid link")

@@ -72,3 +72,18 @@ it("does not invoke an authenticator or verification for an unrelated relying pa
     expect(transport).toHaveBeenCalledTimes(1);
   } finally { vi.unstubAllGlobals(); }
 });
+
+it("uses Spring form field names for native password and one-time-token login", async () => {
+  for (const [path, body, expected] of [
+    ["login", { email: user.email, password: "synthetic" }, { email: user.email, password: "synthetic" }],
+    ["magic-link", { email: user.email }, { username: user.email }],
+    ["magic-link/verify", { code: "synthetic-token" }, { token: "synthetic-token" }],
+  ] as const) {
+    const transport = vi.fn().mockResolvedValue(Response.json({ user }));
+    await authRequest(path, body, transport, undefined, true);
+    const request = transport.mock.calls[0][1];
+    expect(request.headers["Content-Type"]).toBe("application/x-www-form-urlencoded");
+    expect(Object.fromEntries(request.body)).toEqual(expected);
+    expect(request.credentials).toBe("same-origin");
+  }
+});

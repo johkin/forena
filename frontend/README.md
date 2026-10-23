@@ -137,3 +137,9 @@ föreningstidszon är ännu inte flyttade.
 lösenord, listning/namnbyte/borttagning av passkeys, PWA/offline, administration, kanaler
 och assistent. Dessa funktioner ligger kvar i den gamla appen och är inte dolda databasgenvägar i den
 nya. Det här är en avgränsad pilot, inte full M18B-funktionsparitet.
+
+I native-läget följer klienten Spring Securitys payloadformat: URL-kodade
+login-/OTT-formulär, råa WebAuthn-options/assertioner och `publicKey` vid
+registrering. Supabase-läget har kvar sitt separata kontrakt. Native-backend
+och frontend uppdateras tillsammans; inga auth-token läggs i browserlagring.
+Se [Spring-genomgången](../docs/migration/spring-security.md).

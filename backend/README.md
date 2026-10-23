@@ -438,3 +438,8 @@ All leverantörskod finns i `se.forena.api.email.internal`; övriga moduler
 använder `EmailSender`. Auth äger mallar och krypterad outbox med stabil
 idempotensnyckel, tidsbegränsade återförsök och stopp vid permanenta fel.
 Se [konfiguration och driftgränser](../docs/migration/native-auth.md#mejl-och-driftgränser).
+
+Native-inloggning använder Springs `formLogin`/`DaoAuthenticationProvider`,
+WebAuthn-filter och `oneTimeTokenLogin`; logout och passkey-borttagning använder
+också Springs filter. Se [genomgången](../docs/migration/spring-security.md) för
+konfiguration, kvarvarande adaptrar och kontroll mot projektets Spring-version.

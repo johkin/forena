@@ -10,6 +10,12 @@ Den stegvisa målarkitekturen för Kotlin/Spring Boot på Vercel och Supabase fi
 Beskrivningen nedan avser nuvarande lösning och befintliga principer; målteknik
 är inte införd bara för att den dokumenterats.
 
+Spring-komponenter och standardflöden är förstahandsvalet i Kotlin (ADR-025).
+Anpassningar görs via ramverkets gränssnitt; controllers återskapar inte
+Spring Securitys autentiseringsflöden. Native-piloten använder färdiga filter
+för lösenord, passkeys, magic link och logout. Se [genomgången](migration/spring-security.md)
+för kvarvarande kontoregler och sessions-/transportadaptrar.
+
 Repots enda Kotlin/Spring Boot-kodbas finns direkt i `backend` (ADR-019).
 M21/M22-teknikprovet är borttaget. Verksamhets-API:t hanterar
 kallelseläsning och svar genom egen och delegerad personåtkomst med Spring Data JDBC-repositories, Liquibase och åtkomstkontroller i Kotlin (ADR-012). Det använder
@@ -18,8 +24,8 @@ Enligt ADR-013 äger en Spring `@Service` med `@Transactional` hela svarslogiken
 inklusive historik och signalversion; inga verksamhetstriggers eller egna
 procedurer används i det nya API-schemat. Nuvarande Next.js-app är ännu inte omkopplad. Se [API-underlaget](../backend/README.md)
 för säkerhetsgränser, verifiering och återstående aktivering. REST-controllers
-använder typade Kotlin data classes för svar. OpenAPI genereras från controller-
-signaturer och DTO-annoteringar med springdoc, och TypeScript-typer härleds från
+använder typade Kotlin data classes för svar. OpenAPI genereras med springdoc från controller-signaturer, DTO-annoteringar
+och filter-endpointernas gemensamma typade metadata; TypeScript-typer härleds från
 exporten i CI; kontraktsspecen underhålls inte separat för hand.
 Kotlin-tjänster namnges med suffixet `Service`, exempelvis `InvitationService`.
 Varje moduls interna databasmodeller samlas i `Entities.kt` och repository-

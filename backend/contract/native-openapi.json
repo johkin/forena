@@ -76,6 +76,91 @@
         ],
         "type": "object"
       },
+      "AttestationConveyancePreference": {
+        "type": "string"
+      },
+      "AuthenticationExtensionsClientInput": {
+        "properties": {
+          "extensionId": {
+            "type": "string"
+          },
+          "input": {
+            "type": "object"
+          }
+        }
+      },
+      "AuthenticationExtensionsClientInputs": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "AuthenticationExtensionsClientOutputObject": {
+        "properties": {
+          "extensionId": {
+            "type": "string"
+          },
+          "output": {
+            "type": "object"
+          }
+        }
+      },
+      "AuthenticationExtensionsClientOutputs": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "AuthenticatorAssertionResponse": {
+        "properties": {
+          "attestationObject": {
+            "$ref": "#/components/schemas/Bytes"
+          },
+          "authenticatorData": {
+            "$ref": "#/components/schemas/Bytes"
+          },
+          "clientDataJSON": {
+            "$ref": "#/components/schemas/Bytes"
+          },
+          "signature": {
+            "$ref": "#/components/schemas/Bytes"
+          },
+          "userHandle": {
+            "$ref": "#/components/schemas/Bytes"
+          }
+        }
+      },
+      "AuthenticatorAttachment": {
+        "type": "string"
+      },
+      "AuthenticatorAttestationResponse": {
+        "properties": {
+          "attestationObject": {
+            "$ref": "#/components/schemas/Bytes"
+          },
+          "clientDataJSON": {
+            "$ref": "#/components/schemas/Bytes"
+          },
+          "transports": {
+            "items": {
+              "$ref": "#/components/schemas/AuthenticatorTransport"
+            },
+            "type": "array"
+          }
+        }
+      },
+      "AuthenticatorSelectionCriteria": {
+        "properties": {
+          "authenticatorAttachment": {
+            "$ref": "#/components/schemas/AuthenticatorAttachment"
+          },
+          "residentKey": {
+            "$ref": "#/components/schemas/ResidentKeyRequirement"
+          },
+          "userVerification": {
+            "$ref": "#/components/schemas/UserVerificationRequirement"
+          }
+        }
+      },
+      "AuthenticatorTransport": {
+        "type": "string"
+      },
       "BrowserAuthAcknowledgement": {
         "properties": {
           "ok": {
@@ -84,8 +169,7 @@
         },
         "required": [
           "ok"
-        ],
-        "type": "object"
+        ]
       },
       "BrowserLoginRequest": {
         "properties": {
@@ -105,8 +189,7 @@
         "required": [
           "email",
           "password"
-        ],
-        "type": "object"
+        ]
       },
       "BrowserSessionView": {
         "properties": {
@@ -116,16 +199,12 @@
         },
         "required": [
           "user"
-        ],
-        "type": "object"
+        ]
       },
       "BrowserUser": {
         "properties": {
           "email": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "id": {
             "format": "uuid",
@@ -135,8 +214,22 @@
         "required": [
           "email",
           "id"
-        ],
-        "type": "object"
+        ]
+      },
+      "Bytes": {
+        "format": "base64url",
+        "type": "string"
+      },
+      "COSEAlgorithmIdentifier": {
+        "format": "int32",
+        "type": "integer"
+      },
+      "CredentialRegistrationRequest": {
+        "properties": {
+          "publicKey": {
+            "$ref": "#/components/schemas/RelyingPartyPublicKey"
+          }
+        }
       },
       "InvitationResponseResult": {
         "properties": {
@@ -160,20 +253,6 @@
         },
         "required": [
           "email"
-        ],
-        "type": "object"
-      },
-      "MagicLinkVerifyRequest": {
-        "properties": {
-          "code": {
-            "maxLength": 2048,
-            "minLength": 1,
-            "type": "string",
-            "writeOnly": true
-          }
-        },
-        "required": [
-          "code"
         ],
         "type": "object"
       },
@@ -323,45 +402,6 @@
             "writeOnly": true
           }
         },
-        "type": "object"
-      },
-      "PasskeyOptions": {
-        "properties": {
-          "challenge_id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "expires_at": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "options": {
-            "additionalProperties": true,
-            "type": "object"
-          }
-        },
-        "required": [
-          "challenge_id",
-          "expires_at",
-          "options"
-        ],
-        "type": "object"
-      },
-      "PasskeyVerifyRequest": {
-        "properties": {
-          "challenge_id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "credential": {
-            "additionalProperties": true,
-            "type": "object"
-          }
-        },
-        "required": [
-          "challenge_id",
-          "credential"
-        ],
         "type": "object"
       },
       "PersonalActivity": {
@@ -521,6 +561,180 @@
         ],
         "type": "object"
       },
+      "PublicKeyCredentialAuthenticatorAssertionResponse": {
+        "properties": {
+          "authenticatorAttachment": {
+            "$ref": "#/components/schemas/AuthenticatorAttachment"
+          },
+          "clientExtensionResults": {
+            "$ref": "#/components/schemas/AuthenticationExtensionsClientOutputs"
+          },
+          "id": {
+            "type": "string"
+          },
+          "rawId": {
+            "$ref": "#/components/schemas/Bytes"
+          },
+          "response": {
+            "$ref": "#/components/schemas/AuthenticatorAssertionResponse"
+          },
+          "type": {
+            "$ref": "#/components/schemas/PublicKeyCredentialType"
+          }
+        }
+      },
+      "PublicKeyCredentialAuthenticatorAttestationResponse": {
+        "properties": {
+          "authenticatorAttachment": {
+            "$ref": "#/components/schemas/AuthenticatorAttachment"
+          },
+          "clientExtensionResults": {
+            "$ref": "#/components/schemas/AuthenticationExtensionsClientOutputs"
+          },
+          "id": {
+            "type": "string"
+          },
+          "rawId": {
+            "$ref": "#/components/schemas/Bytes"
+          },
+          "response": {
+            "$ref": "#/components/schemas/AuthenticatorAttestationResponse"
+          },
+          "type": {
+            "$ref": "#/components/schemas/PublicKeyCredentialType"
+          }
+        }
+      },
+      "PublicKeyCredentialCreationOptions": {
+        "properties": {
+          "attestation": {
+            "$ref": "#/components/schemas/AttestationConveyancePreference"
+          },
+          "authenticatorSelection": {
+            "$ref": "#/components/schemas/AuthenticatorSelectionCriteria"
+          },
+          "challenge": {
+            "$ref": "#/components/schemas/Bytes"
+          },
+          "excludeCredentials": {
+            "items": {
+              "$ref": "#/components/schemas/PublicKeyCredentialDescriptor"
+            },
+            "type": "array"
+          },
+          "extensions": {
+            "$ref": "#/components/schemas/AuthenticationExtensionsClientInputs"
+          },
+          "pubKeyCredParams": {
+            "items": {
+              "$ref": "#/components/schemas/PublicKeyCredentialParameters"
+            },
+            "type": "array"
+          },
+          "rp": {
+            "$ref": "#/components/schemas/PublicKeyCredentialRpEntity"
+          },
+          "timeout": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "user": {
+            "$ref": "#/components/schemas/PublicKeyCredentialUserEntity"
+          }
+        }
+      },
+      "PublicKeyCredentialDescriptor": {
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Bytes"
+          },
+          "transports": {
+            "items": {
+              "$ref": "#/components/schemas/AuthenticatorTransport"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "type": {
+            "$ref": "#/components/schemas/PublicKeyCredentialType"
+          }
+        }
+      },
+      "PublicKeyCredentialParameters": {
+        "properties": {
+          "alg": {
+            "$ref": "#/components/schemas/COSEAlgorithmIdentifier"
+          },
+          "type": {
+            "$ref": "#/components/schemas/PublicKeyCredentialType"
+          }
+        }
+      },
+      "PublicKeyCredentialRequestOptions": {
+        "properties": {
+          "allowCredentials": {
+            "items": {
+              "$ref": "#/components/schemas/PublicKeyCredentialDescriptor"
+            },
+            "type": "array"
+          },
+          "challenge": {
+            "$ref": "#/components/schemas/Bytes"
+          },
+          "extensions": {
+            "$ref": "#/components/schemas/AuthenticationExtensionsClientInputs"
+          },
+          "rpId": {
+            "type": "string"
+          },
+          "timeout": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "userVerification": {
+            "$ref": "#/components/schemas/UserVerificationRequirement"
+          }
+        }
+      },
+      "PublicKeyCredentialRpEntity": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "PublicKeyCredentialType": {
+        "type": "string"
+      },
+      "PublicKeyCredentialUserEntity": {
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "id": {
+            "$ref": "#/components/schemas/Bytes"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "RelyingPartyPublicKey": {
+        "properties": {
+          "credential": {
+            "$ref": "#/components/schemas/PublicKeyCredentialAuthenticatorAttestationResponse"
+          },
+          "label": {
+            "type": "string"
+          }
+        }
+      },
+      "ResidentKeyRequirement": {
+        "type": "string"
+      },
       "RespondToInvitationRequest": {
         "additionalProperties": false,
         "properties": {
@@ -544,6 +758,31 @@
           "response"
         ],
         "type": "object"
+      },
+      "SuccessfulUserRegistrationResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TokenGenerationRequest": {
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        }
+      },
+      "TokenLoginRequest": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "writeOnly": true
+          }
+        }
+      },
+      "UserVerificationRequirement": {
+        "type": "string"
       }
     },
     "securitySchemes": {
@@ -721,10 +960,11 @@
     },
     "/api/auth/login": {
       "post": {
+        "description": "Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST.",
         "operationId": "login",
         "requestBody": {
           "content": {
-            "application/json": {
+            "application/x-www-form-urlencoded": {
               "schema": {
                 "$ref": "#/components/schemas/BrowserLoginRequest"
               }
@@ -735,50 +975,46 @@
         "responses": {
           "200": {
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BrowserSessionView"
                 }
               }
             },
-            "description": "OK"
+            "description": "Success"
           }
         },
-        "security": [],
-        "tags": [
-          "native-auth-controller"
-        ]
+        "security": []
       }
     },
     "/api/auth/logout": {
       "post": {
+        "description": "Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST.",
         "operationId": "logout",
         "responses": {
           "200": {
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BrowserAuthAcknowledgement"
                 }
               }
             },
-            "description": "OK"
+            "description": "Success"
           }
         },
-        "security": [],
-        "tags": [
-          "native-auth-controller"
-        ]
+        "security": []
       }
     },
     "/api/auth/magic-link": {
       "post": {
+        "description": "Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST.",
         "operationId": "magicLink",
         "requestBody": {
           "content": {
-            "application/json": {
+            "application/x-www-form-urlencoded": {
               "schema": {
-                "$ref": "#/components/schemas/MagicLinkRequest"
+                "$ref": "#/components/schemas/TokenGenerationRequest"
               }
             }
           },
@@ -787,29 +1023,27 @@
         "responses": {
           "200": {
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BrowserAuthAcknowledgement"
                 }
               }
             },
-            "description": "OK"
+            "description": "Success"
           }
         },
-        "security": [],
-        "tags": [
-          "native-auth-controller"
-        ]
+        "security": []
       }
     },
     "/api/auth/magic-link/verify": {
       "post": {
+        "description": "Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST.",
         "operationId": "magicVerify",
         "requestBody": {
           "content": {
-            "application/json": {
+            "application/x-www-form-urlencoded": {
               "schema": {
-                "$ref": "#/components/schemas/MagicLinkVerifyRequest"
+                "$ref": "#/components/schemas/TokenLoginRequest"
               }
             }
           },
@@ -818,19 +1052,16 @@
         "responses": {
           "200": {
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BrowserSessionView"
                 }
               }
             },
-            "description": "OK"
+            "description": "Success"
           }
         },
-        "security": [],
-        "tags": [
-          "native-auth-controller"
-        ]
+        "security": []
       }
     },
     "/api/auth/oauth/consent": {
@@ -881,53 +1112,50 @@
     },
     "/api/auth/passkey/options": {
       "post": {
+        "description": "Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST.",
         "operationId": "options",
         "responses": {
           "200": {
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PasskeyOptions"
+                  "$ref": "#/components/schemas/PublicKeyCredentialRequestOptions"
                 }
               }
             },
-            "description": "OK"
+            "description": "Success"
           }
         },
-        "security": [],
-        "tags": [
-          "native-auth-controller"
-        ]
+        "security": []
       }
     },
     "/api/auth/passkey/registration/options": {
       "post": {
+        "description": "Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST.",
         "operationId": "registrationOptions",
         "responses": {
           "200": {
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PasskeyOptions"
+                  "$ref": "#/components/schemas/PublicKeyCredentialCreationOptions"
                 }
               }
             },
-            "description": "OK"
+            "description": "Success"
           }
-        },
-        "tags": [
-          "native-auth-controller"
-        ]
+        }
       }
     },
     "/api/auth/passkey/registration/verify": {
       "post": {
+        "description": "Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST.",
         "operationId": "registrationVerify",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PasskeyVerifyRequest"
+                "$ref": "#/components/schemas/CredentialRegistrationRequest"
               }
             }
           },
@@ -936,28 +1164,26 @@
         "responses": {
           "200": {
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BrowserAuthAcknowledgement"
+                  "$ref": "#/components/schemas/SuccessfulUserRegistrationResponse"
                 }
               }
             },
-            "description": "OK"
+            "description": "Success"
           }
-        },
-        "tags": [
-          "native-auth-controller"
-        ]
+        }
       }
     },
     "/api/auth/passkey/verify": {
       "post": {
+        "description": "Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST.",
         "operationId": "verifyPasskey",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PasskeyVerifyRequest"
+                "$ref": "#/components/schemas/PublicKeyCredentialAuthenticatorAssertionResponse"
               }
             }
           },
@@ -966,19 +1192,16 @@
         "responses": {
           "200": {
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BrowserSessionView"
                 }
               }
             },
-            "description": "OK"
+            "description": "Success"
           }
         },
-        "security": [],
-        "tags": [
-          "native-auth-controller"
-        ]
+        "security": []
       }
     },
     "/api/auth/passkeys": {
@@ -1006,6 +1229,7 @@
     },
     "/api/auth/passkeys/{id}": {
       "delete": {
+        "description": "Spring WebAuthn filter; credential owner only.",
         "operationId": "deletePasskey",
         "parameters": [
           {
@@ -1018,20 +1242,10 @@
           }
         ],
         "responses": {
-          "200": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/BrowserAuthAcknowledgement"
-                }
-              }
-            },
-            "description": "OK"
+          "204": {
+            "description": "Credential removed"
           }
-        },
-        "tags": [
-          "native-auth-controller"
-        ]
+        }
       }
     },
     "/api/auth/password/reset": {

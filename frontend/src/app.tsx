@@ -102,7 +102,7 @@ export function App({ config }: { config: PublicConfig }) {
     if (!callbackCode) { setError("Länken är ogiltig eller har gått ut. Begär en ny länk från inloggningssidan."); return; }
     setPending(true); setError(undefined); invalidateSessionChecks();
     try {
-      const session = parseSession(await authRequest("magic-link/verify", { code: callbackCode }));
+      const session = parseSession(await authRequest("magic-link/verify", { code: callbackCode }, fetch, undefined, native));
       if (!session) throw new Error("Inactive session");
       applySession(session); notifySessionChanged();
       const destination = native ? z.object({ destination: z.string() }).parse(await authRequest("continue")).destination : "/";
@@ -116,7 +116,7 @@ export function App({ config }: { config: PublicConfig }) {
   async function login(email?: string, password?: string) {
     setPending(true); setError(undefined); invalidateSessionChecks();
     try {
-      const session = email === undefined ? await passkeyLogin() : parseSession(await authRequest("login", { email, password }));
+      const session = email === undefined ? await passkeyLogin(native) : parseSession(await authRequest("login", { email, password }, fetch, undefined, native));
       if (!session) { setError("Inloggningen misslyckades. Försök igen."); return; }
       applySession(session); notifySessionChanged();
       if (path === "/login") {
@@ -135,7 +135,7 @@ export function App({ config }: { config: PublicConfig }) {
     <h2>Logga in utan lösenord</h2>
     <MagicLinkForm pending={pending} sent={magicSent} onRequest={email => void (async () => {
       setPending(true); setError(undefined);
-      try { z.object({ ok: z.literal(true) }).parse(await authRequest("magic-link", { email })); setMagicSent(true); }
+      try { z.object({ ok: z.literal(true) }).parse(await authRequest("magic-link", { email }, fetch, undefined, native)); setMagicSent(true); }
       catch { setError("Inloggningslänken kunde inte begäras just nu. Vänta en stund och försök igen."); }
       finally { setPending(false); }
     })()} />
@@ -155,7 +155,7 @@ export function App({ config }: { config: PublicConfig }) {
   async function logout() {
     setPending(true); setError(undefined);
     try {
-      await authRequest("logout", {});
+      await authRequest("logout", {}, fetch, undefined, native);
       applySession(null); setMagicSent(false); setPasskeyCreatedFor(undefined); notifySessionChanged();
       navigate("/login", { replace: true });
     } catch { setError("Utloggningen misslyckades. Försök igen."); }
@@ -169,7 +169,7 @@ export function App({ config }: { config: PublicConfig }) {
         const expectedAccount = accountId;
         if (!expectedAccount || pending) return;
         setPending(true); setError(undefined);
-        try { await registerPasskey(expectedAccount); if (activeAccount.current === expectedAccount) setPasskeyCreatedFor(expectedAccount); }
+        try { await registerPasskey(expectedAccount, native); if (activeAccount.current === expectedAccount) setPasskeyCreatedFor(expectedAccount); }
         catch (error) { if (activeAccount.current === expectedAccount) setError(error instanceof DOMException && error.name === "NotAllowedError" ? "Registreringen avbröts. Du kan försöka igen." : "Passkey kunde inte skapas. Försök igen senare."); }
         finally { setPending(false); }
       })()} />{native ? <NativePasskeyList key={auth.session.user.id} accountId={auth.session.user.id} revision={passkeyCreatedFor === accountId} /> : null}</> : !knownPath ? <AppLink href="/">Till startsidan</AppLink> : homePath ? <MyActivitiesPage request={request} workspace={workspace} notifications={path==="/notifications"} /> : validActivity.success ? <>

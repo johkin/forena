@@ -33,9 +33,9 @@ class StringCsrfTokenRepository : CsrfTokenRepository {
     }
 }
 
-class NativeTransportFilter(private val settings: BrowserSessionSettings) : OncePerRequestFilter() {
+class NativeTransportFilter(private val settings: BrowserSessionSettings,
+    private val limiter: se.forena.api.identity.BrowserLoginLimiter) : OncePerRequestFilter() {
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) {
-        response.setHeader("Cache-Control", "no-store"); response.setHeader("Pragma", "no-cache"); response.setHeader("Referrer-Policy", "no-referrer")
         if (request.requestURI.startsWith("/api/")) {
             if (request.method !in listOf("GET", "HEAD", "OPTIONS") &&
                 (request.getHeader("Origin") != settings.origin || request.getHeader("X-Forena-Request") != "1")) {
@@ -46,6 +46,15 @@ class NativeTransportFilter(private val settings: BrowserSessionSettings) : Once
             }
         }
         try {
+            if (request.method == "POST" && request.requestURI in setOf(NativeAuthenticationEndpoints.login.path, NativeAuthenticationEndpoints.magic.path)) {
+                val email = request.getParameter(if (request.requestURI == NativeAuthenticationEndpoints.login.path) "email" else "username") ?: ""
+                if (request.requestURI == NativeAuthenticationEndpoints.login.path &&
+                    (request.getParameter("password") ?: "").toByteArray(Charsets.UTF_8).size > 72) throw BadCredentialsException("Invalid password")
+                limiter.admit(limiter.client(request), email)
+            }
+            if ((request.method == "POST" && request.requestURI.startsWith("/api/auth/passkey")) ||
+                (request.method == "DELETE" && request.requestURI.startsWith("/api/auth/passkeys/")) ||
+                (request.method == "POST" && request.requestURI == NativeAuthenticationEndpoints.magicVerify.path)) limiter.admit(limiter.client(request))
             val auth = SecurityContextHolder.getContext().authentication
             val expected = request.getHeader("X-Forena-Account")
             if (auth != null && request.requestURI.startsWith("/api/") &&
@@ -54,6 +63,12 @@ class NativeTransportFilter(private val settings: BrowserSessionSettings) : Once
             }
             chain.doFilter(request, response)
         } catch (_: DataAccessException) { if (!response.isCommitted) fail(response, 503, "Sessionen kan inte verifieras just nu.") }
+        catch (error: org.springframework.web.ErrorResponseException) {
+            error.headers.forEach { name, values -> values.forEach { response.addHeader(name, it) } }
+            if (!response.isCommitted) fail(response, error.statusCode.value(), "Begäran kunde inte genomföras.")
+        }
+        catch (_: tools.jackson.core.JacksonException) { if (!response.isCommitted) fail(response, 400, "Ogiltig begäran.") }
+        catch (_: IllegalArgumentException) { if (!response.isCommitted) fail(response, 400, "Ogiltig begäran.") }
         catch (_: BadCredentialsException) { if (!response.isCommitted) fail(response, 401, "Sessionen är inte aktiv.") }
     }
     private fun fail(response: HttpServletResponse, status: Int, message: String) {
@@ -68,17 +83,54 @@ class NativeTransportFilter(private val settings: BrowserSessionSettings) : Once
 class NativeSecurityConfiguration {
     @Bean fun nativeCsrfRepository() = StringCsrfTokenRepository()
     @Bean @Order(3)
-    fun nativeWebSecurity(http: HttpSecurity, contexts: NativeSessionRepository, csrf: StringCsrfTokenRepository, settings: BrowserSessionSettings): SecurityFilterChain {
+    fun nativeWebSecurity(http: HttpSecurity, contexts: NativeSessionRepository, csrf: StringCsrfTokenRepository, settings: BrowserSessionSettings,
+        passkey: org.springframework.security.web.webauthn.authentication.WebAuthnAuthenticationFilter,
+        requestOptions: org.springframework.security.web.webauthn.authentication.PublicKeyCredentialRequestOptionsFilter,
+        creationOptions: org.springframework.security.web.webauthn.registration.PublicKeyCredentialCreationOptionsFilter,
+        registration: org.springframework.security.web.webauthn.registration.WebAuthnRegistrationFilter,
+        @org.springframework.beans.factory.annotation.Qualifier("nativeMagicTokens") magic: org.springframework.security.authentication.ott.OneTimeTokenService,
+        success: org.springframework.security.web.authentication.AuthenticationSuccessHandler,
+        failure: org.springframework.security.web.authentication.AuthenticationFailureHandler,
+        limiter: se.forena.api.identity.BrowserLoginLimiter, accounts: NativeAccountService,
+        sessionIds: org.springframework.session.web.http.HttpSessionIdResolver): SecurityFilterChain {
         http.securityContext { it.securityContextRepository(contexts) }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED) }
             .requestCache { it.disable() }
             .csrf { it.csrfTokenRepository(csrf).ignoringRequestMatchers("/api/**") }
-            .addFilterAfter(NativeTransportFilter(settings), SecurityContextHolderFilter::class.java)
+            .headers { it.referrerPolicy { policy -> policy.policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER) } }
+            .addFilterAfter(NativeTransportFilter(settings, limiter), org.springframework.security.web.header.HeaderWriterFilter::class.java)
+            .addFilterBefore(passkey, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter::class.java)
+            .addFilterAfter(requestOptions, org.springframework.security.web.access.intercept.AuthorizationFilter::class.java)
+            .addFilterAfter(creationOptions, org.springframework.security.web.access.intercept.AuthorizationFilter::class.java)
+            .addFilterAfter(registration, org.springframework.security.web.access.intercept.AuthorizationFilter::class.java)
+            .formLogin {
+                it.loginPage("/login").loginProcessingUrl(NativeAuthenticationEndpoints.login.path).usernameParameter("email")
+                    .successHandler(success).failureHandler(failure)
+            }
+            .oneTimeTokenLogin {
+                it.tokenService(magic).tokenGeneratingUrl(NativeAuthenticationEndpoints.magic.path).loginProcessingUrl(NativeAuthenticationEndpoints.magicVerify.path)
+                    .showDefaultSubmitPage(false)
+                    .tokenGenerationSuccessHandler { request, response, token ->
+                        request.getSession(true).setAttribute(NativeAccountService.MAGIC, settings.fingerprint(token.tokenValue))
+                        response.contentType = "application/json"; response.writer.write("{\"ok\":true}")
+                    }
+                    .authenticationConverter { request ->
+                        val authentication = org.springframework.security.web.authentication.ott.OneTimeTokenAuthenticationConverter().convert(request)
+                        val token = authentication as org.springframework.security.authentication.ott.OneTimeTokenAuthenticationToken
+                        accounts.requireBrowserLink(token.tokenValue ?: "", request)
+                        token
+                    }
+                    .authenticationSuccessHandler(success).authenticationFailureHandler(failure)
+            }
+            .logout {
+                it.logoutUrl(NativeAuthenticationEndpoints.logout.path).addLogoutHandler { request, response, _ -> sessionIds.expireSession(request, response) }
+                    .logoutSuccessHandler { _, response, _ -> response.contentType = "application/json"; response.writer.write("{\"ok\":true}") }
+            }
             .authorizeHttpRequests {
                 it.dispatcherTypeMatchers(jakarta.servlet.DispatcherType.ERROR).permitAll()
-                it.requestMatchers("/actuator/health", "/api/auth/login", "/api/auth/logout", "/api/auth/register", "/api/auth/email/verify",
-                    "/api/auth/password/reset-request", "/api/auth/password/reset", "/api/auth/magic-link", "/api/auth/magic-link/verify",
-                    "/api/auth/passkey/options", "/api/auth/passkey/verify", "/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/api/mcp").permitAll()
+                it.requestMatchers("/actuator/health", NativeAuthenticationEndpoints.login.path, NativeAuthenticationEndpoints.logout.path, "/api/auth/register", "/api/auth/email/verify",
+                    "/api/auth/password/reset-request", "/api/auth/password/reset", NativeAuthenticationEndpoints.magic.path, NativeAuthenticationEndpoints.magicVerify.path,
+                    NativeAuthenticationEndpoints.passkeyOptions.path, NativeAuthenticationEndpoints.passkeyVerify.path, "/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/api/mcp").permitAll()
                     .anyRequest().authenticated()
             }.exceptionHandling { it.authenticationEntryPoint { _, response, _ ->
                 org.slf4j.LoggerFactory.getLogger(NativeSecurityConfiguration::class.java).warn("native_auth_failed reason=missing_session")

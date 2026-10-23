@@ -30,6 +30,19 @@ produktionskomponenter som används i appen. Nya och ändrade element, relevanta
 varianter och tillstånd ska uppdateras där i samma PR. Kontrollera återanvändningen
 i berörda vyer och följ [reglerna för komponentsidan](docs/design-spec.md#komponentsidan-är-den-gemensamma-ui-referensen).
 
+## Spring som förstahandsval
+
+- Använd i första hand Springs färdiga komponenter och standardflöden. Kontrollera
+  stödet i den version projektet använder innan motsvarande funktion skrivs själv.
+- Anpassa genom konfiguration och ramverkets avsedda gränssnitt, exempelvis
+  `AuthenticationConverter`, `UserDetailsService`, handlers och repositories.
+  Egna controllers ska inte återskapa autentiseringsflöden som Spring Security äger.
+- Egen kod behövs för Förena-regler och externa integrationer. Dokumentera varför
+  en adapter eller ett eget flöde behövs och vilka säkerhetsegenskaper det bevarar.
+- Ett befintligt API-kontrakt motiverar en tunn transportadapter, inte en parallell
+  implementation av ramverkets autentisering. Ändra inte lagring eller serialisering
+  till osäkra standardval enbart för att minska mängden kod.
+
 ## Kotlin-kod
 
 - Använd Kotlin/JVM:s standardundantag för vanliga fel: `IllegalArgumentException`
