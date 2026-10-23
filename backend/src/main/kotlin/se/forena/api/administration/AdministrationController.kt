@@ -21,6 +21,7 @@ class AdministrationController(private val service: AdministrationService, priva
     @PostMapping("/bootstrap")
     fun bootstrap(@Parameter(hidden = true) authentication: Authentication, @Parameter(hidden = true) request: HttpServletRequest): ResponseEntity<AdministrationOk> {
         val actor = actors.from(authentication, request)
+        service.authorizeBootstrap(actor)
         limiter.admitBootstrap(limiter.client(request), actor.subject)
         return response(service.bootstrap(actor))
     }

@@ -45,6 +45,17 @@ interceptorn fungerar i den genererade Spring-grafen och hela admin-/aktivitets-
 och auth-flödet passerar mot lokal PostgreSQL. Detta är ett JVM/AOT-prov, inte
 ett lokalt native-binärprov.
 
+En åttonde kommentar pekade ut att obehöriga anrop kunde tömma gemensamma
+begränsningsbudgetar. En separat skrivskyddad förkontroll verifierar nu samma
+behörighetsregler innan MVC-interceptorn eller bootstrap tar budget. Budgeten
+committas fortfarande före den separata skrivtransaktionen. Kommandot kontrollerar
+sedan behörigheten före och efter låset. Okända administrativa kommandon nekas
+vid admission. Upprepade obehöriga bootstrap-/adminanrop verifieras lämna den
+gemensamma budgeten orörd; behöriga anrop begränsas fortsatt med 429.
+Hela Maven `verify` är omkört: 97 tester, inga fel eller överhoppningar,
+inklusive browserflödena. Kontraktskontrollen, AOT-paketeringen och
+`local-smoke.py --aot-runtime` är godkända även efter denna ändring.
+
 ## M09: enstaka aktivitet och hela admin-kedjan, 2026-10-23
 
 Implementation: `9294ce2cb7c9211858d880b44de6ff0c92ba0ec4` på

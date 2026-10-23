@@ -928,14 +928,20 @@ class ApiTest {
         }
     }
 
-    @Test fun `failed bootstrap attempts are limited separately from login`() {
-        repeat(3) { assertThat(request("/api/admin/bootstrap", "{}", method="POST").statusCode()).isEqualTo(403) }
-        val limited = request("/api/admin/bootstrap", "{}", method="POST")
-        assertThat(limited.statusCode()).isEqualTo(429)
-        assertThat(limited.headers().firstValue("Retry-After")).isPresent()
-        assertThat(limited.headers().firstValue("Cache-Control").orElse("")).contains("no-store")
-        assertThat(limited.body()).contains("administrationsförsök")
-        assertThatCode { repeat(3) { loginLimiter.admit("test-bootstrap-independent") } }.doesNotThrowAnyException()
+    @Test fun `unauthorized bootstrap consumes no shared budget and authorized attempts are limited separately from login`() {
+        repeat(12) { assertThat(request("/api/admin/bootstrap", "{}", method="POST").statusCode()).isEqualTo(403) }
+        assertThat(admin.queryForObject("select count(*) from forena.auth_rate_limit where key_hash=?",
+            Long::class.java, browserSettings.fingerprint("admin-bootstrap-global"))).isZero()
+        admin.update("update forena.native_user set email='bootstrap@example.invalid' where subject=?", parent)
+        try {
+            repeat(3) { loginLimiter.admitBootstrap("127.0.0.1", parent) }
+            val limited = request("/api/admin/bootstrap", "{}", method="POST")
+            assertThat(limited.statusCode()).isEqualTo(429)
+            assertThat(limited.headers().firstValue("Retry-After")).isPresent()
+            assertThat(limited.headers().firstValue("Cache-Control").orElse("")).contains("no-store")
+            assertThat(limited.body()).contains("administrationsförsök")
+            assertThatCode { repeat(3) { loginLimiter.admit("127.0.0.1") } }.doesNotThrowAnyException()
+        } finally { admin.update("update forena.native_user set email=? where subject=?", "$parent@example.invalid", parent) }
     }
 
     @Test fun `revoking absent administrators creates no person access or role and leaves empty sections deletable`() {
@@ -1015,16 +1021,22 @@ class ApiTest {
         }
     }
 
-    @Test fun `administration mutation admission returns 429 without affecting bootstrap or reads`() {
+    @Test fun `only authorized mutations consume shared admission budgets and 429 leaves reads available`() {
         val outsiderCookie = loginCookie(outsider)
-        val hash = browserSettings.fingerprint("admin-mutation-account:$outsider")
+        repeat(12) {
+            assertThat(request("/api/admin/platform-administrators", """{"email":"$parent@example.invalid"}""", cookie=outsiderCookie, method="POST").statusCode()).isEqualTo(403)
+        }
+        assertThat(admin.queryForObject("select count(*) from forena.auth_rate_limit where key_hash=?",
+            Long::class.java, browserSettings.fingerprint("admin-mutation-global"))).isZero()
+        bootstrapAdministrator()
+        val hash = browserSettings.fingerprint("admin-mutation-account:$parent")
         admin.update("insert into forena.auth_rate_limit(key_hash,available_at) values(?,clock_timestamp()+interval '60 seconds')", hash)
-        val limited = request("/api/admin/platform-administrators", """{"email":"$parent@example.invalid"}""", cookie=outsiderCookie, method="POST")
+        val limited = request("/api/admin/platform-administrators", """{"email":"$outsider@example.invalid"}""", method="POST")
         assertThat(limited.statusCode()).isEqualTo(429)
         assertThat(limited.headers().firstValue("Retry-After")).isPresent()
         assertThat(limited.headers().firstValue("Cache-Control").orElse("")).contains("no-store")
-        assertThat(request("/api/admin/overview", cookie=outsiderCookie).statusCode()).isEqualTo(200)
-        assertThat(request("/api/admin/bootstrap", "{}", cookie=outsiderCookie, method="POST").statusCode()).isEqualTo(403)
+        assertThat(request("/api/admin/overview").statusCode()).isEqualTo(200)
+        assertThat(request("/api/admin/bootstrap", "{}", method="POST").statusCode()).isEqualTo(409)
     }
 
     @Test fun `administration rechecks a revoked role after waiting for the global lock`() {

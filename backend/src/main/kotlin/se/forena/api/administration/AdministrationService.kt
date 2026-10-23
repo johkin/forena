@@ -73,11 +73,32 @@ class AdministrationService(
             if (platform) platforms.findAll().map { administrator(it.subject, true) } else emptyList(), result)
     }
 
-    @Transactional
-    fun bootstrap(actor: Actor): AdministrationOk {
+    @Transactional(readOnly = true)
+    fun authorizeMutation(actor: Actor, authority: AdministrationAuthority) {
+        sessions.requireActive(actor)
+        when (authority) {
+            AdministrationAuthority.Platform -> requirePlatform(actor)
+            is AdministrationAuthority.Club -> requireClub(actor, authority.id)
+            is AdministrationAuthority.SectionClub -> requireClub(actor,
+                (sections.findById(authority.id) ?: throw NoSuchElementException()).organizationId)
+            is AdministrationAuthority.Section -> requireSection(actor, sections.findById(authority.id) ?: throw NoSuchElementException())
+            is AdministrationAuthority.Team -> requireTeam(actor, teams.findById(authority.id) ?: throw NoSuchElementException())
+            is AdministrationAuthority.TeamBusiness -> requireBusinessTeam(actor, teams.findById(authority.id) ?: throw NoSuchElementException())
+        }
+    }
+
+    @Transactional(readOnly = true)
+    fun authorizeBootstrap(actor: Actor) = requireBootstrap(actor)
+
+    private fun requireBootstrap(actor: Actor) {
         sessions.requireActive(actor)
         check(!administration.initialized() && platforms.findAll().isEmpty())
         requireBootstrapIdentity(actor)
+    }
+
+    @Transactional
+    fun bootstrap(actor: Actor): AdministrationOk {
+        requireBootstrap(actor)
         val state = lock(actor)
         check(!state.initialized && platforms.findAll().isEmpty())
         requireBootstrapIdentity(actor)

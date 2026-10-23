@@ -18,7 +18,8 @@ konton, databas och administrationsflöden.
    och alla administrativa skrivningar; parallella aktiveringar ger en vinnare.
    Aktiv session, engångstillstånd och verifierad adress kontrolleras före låset
    och kontrolleras igen under låset. Bootstrap har separata beständiga globala,
-   klient- och kontobudgetar; avvisade försök förbrukar också budget.
+   klient- och kontobudgetar. Endast behöriga försök förbrukar denna budget;
+   obehöriga konton kan inte tömma den gemensamma adminbudgeten.
    Efter aktiveringen styr databasen. Variabeln kan tas bort och kan inte
    återaktivera bootstrap efter att den har förbrukats.
 4. Systemadmin skapar klubb med tidszon, unik adress och första sektion i den
@@ -60,6 +61,7 @@ oregistrerade konton är fortsatt ett separat paritetsområde.
 - Alla adminändringar kontrollerar aktiv session och behörighet före det globala
   låset och igen efter låsväntan. Övriga adminändringar har egna beständiga
   globala, klient- och kontobudgetar, separat från bootstrap och inloggning.
+  En skrivskyddad behörighetskontroll sker före budgetuttag.
 - Backend kontrollerar aktiv session och aktuella rättigheter igen efter låsväntan.
   Webben binder anrop till aktuellt konto och behåller Origin-/CSRF-skydden.
 - Sista systemadmin och sista klubbadmin kan inte återkallas. Sista sektionen,
