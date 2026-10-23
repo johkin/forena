@@ -26,7 +26,8 @@ class PersonalOverviewService(
     private val assignments: TeamAccessAssignmentRepository,
     private val organizationMembers: OrganizationMemberRepository,
     private val organizations: OrganizationRepository,
-    private val teams: TeamRepository
+    private val teams: TeamRepository,
+    private val management: ActivityManagementService
 ) {
     // Counts, participant rows, roles and invitations must come from the same authorized snapshot.
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
@@ -43,8 +44,11 @@ class PersonalOverviewService(
         val relations = if (people.isEmpty()) emptyList() else memberships.findByPersonIdInAndActiveTrue(people.map { it.id })
         // Delegation does not inherit another person's independent team-access assignment.
         val grants = if (ownPeople.isEmpty()) emptyList() else assignments.findByPersonIdInAndActiveTrue(ownPeople)
+        val managedTeams = management.teams(actor)
+        val managedTeamIds = managedTeams.map { it.id }.toSet()
         val orgMemberships = organizationMembers.findBySubjectAndActiveTrue(actor.subject)
-        val orgIds = (people.map { it.organizationId } + orgMemberships.map { it.organizationId }).distinct()
+        val orgIds = (people.map { it.organizationId } + orgMemberships.map { it.organizationId } +
+            managedTeams.map { it.organizationId }).distinct()
         val orgRows = if (orgIds.isEmpty()) emptyList() else organizations.findByIdInOrderByNameAsc(orgIds)
         val organizationDtos = orgRows.map { org -> PersonalOrganization(org.id, org.name, org.timeZone,
             orgMemberships.singleOrNull { it.organizationId == org.id }?.role) }
@@ -55,7 +59,8 @@ class PersonalOverviewService(
         if (id != null && rows.isEmpty()) throw NoSuchElementException("Aktiviteten kunde inte hittas.")
         // Match the legacy completeness guard: fail explicitly, never publish partial counts/calendar.
         if (rows.size > 20_000) throw ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE)
-        val teamIds = (rows.map { it.teamId } + relations.map { it.teamId } + grants.map { it.teamId }).distinct()
+        val teamIds = (rows.map { it.teamId } + relations.map { it.teamId } +
+            grants.map { it.teamId } + managedTeamIds).distinct()
         val teamRows = if (teamIds.isEmpty()) emptyList() else teams.findByIdInOrderByNameAsc(teamIds)
         val peopleById = people.associateBy { it.id }
         val membershipByTeam = relations.groupBy { it.teamId }
@@ -64,6 +69,7 @@ class PersonalOverviewService(
             val org = byOrganization.getValue(team.organizationId)
             val today = now.atZone(ZoneId.of(org.time_zone)).toLocalDate()
             val roles = linkedSetOf<String>()
+            if (team.id in managedTeamIds) roles += "team_access"
             for (member in membershipByTeam[team.id].orEmpty().filter { covers(it.startsOn, it.endsOn, today) }) {
                 roles += if (peopleById.getValue(member.personId).kind == "self") member.role else "guardian"
             }

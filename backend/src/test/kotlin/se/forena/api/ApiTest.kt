@@ -857,12 +857,51 @@ class ApiTest {
         assertThat(request("/api/admin/clubs/$club/administrators", """{"email":"$parent@example.invalid"}""", method="POST").statusCode()).isEqualTo(200)
         assertThat(request("/api/admin/teams/$team/administrators", """{"email":"$outsider@example.invalid","name":"Lagadmin"}""", method="POST").statusCode()).isEqualTo(200)
         val outsiderCookie = loginCookie(outsider)
+        assertThat(request("/api/me/overview", cookie=outsiderCookie).body()).contains(team.toString())
         assertThat(request("/api/activities", activityBody(team), cookie=outsiderCookie, method="POST").statusCode()).isEqualTo(201)
         assertThat(request("/api/admin/platform-administrators", """{"email":"$outsider@example.invalid"}""", cookie=outsiderCookie, method="POST").statusCode()).isEqualTo(403)
         assertThat(request("/api/admin/teams/$team/administrators", """{"email":"$outsider@example.invalid","active":false}""", method="POST").statusCode()).isEqualTo(200)
         assertThat(request("/api/activities", activityBody(team), cookie=outsiderCookie, method="POST").statusCode()).isEqualTo(403)
+        assertThat(request("/api/me/overview", cookie=outsiderCookie).body()).doesNotContain(team.toString())
         assertThat(admin.queryForObject("select count(*) from forena.administration_audit where target_id in (?,?,?)", Long::class.java, club, section, team)).isGreaterThanOrEqualTo(4)
         assertThat(request("/api/admin/platform-administrators", """{"email":"$parent@example.invalid","active":false}""", method="POST").statusCode()).isEqualTo(409)
+    }
+
+    @Test fun `administrative workspaces include empty teams within current business authority`() {
+        admin.update("delete from forena.person_access where subject=?", outsider)
+        bootstrapAdministrator()
+        val club = createAdminClub()
+        val section = admin.queryForObject("select id from forena.section where organization_id=?", UUID::class.java, club)!!
+        val created = request("/api/admin/sections/$section/teams", """{"name":"F2016"}""", method="POST")
+        assertThat(created.statusCode()).isEqualTo(200)
+        val team = json.readTree(created.body()).get("id").asString()
+        // Platform authority alone must not create a business workspace.
+        assertThat(request("/api/me/overview").body()).doesNotContain(team)
+        assertThat(request("/api/admin/clubs/$club/administrators", """{"email":"$parent@example.invalid"}""", method="POST").statusCode()).isEqualTo(200)
+        val clubOverview = json.readTree(request("/api/me/overview").body())
+        assertThat(clubOverview.get("teams").single { it.get("id").asString() == team }.get("roles").toString()).contains("team_access")
+        assertThat(clubOverview.get("activities").size()).isEqualTo(1)
+
+        assertThat(request("/api/admin/sections/$section/administrators", """{"email":"$outsider@example.invalid"}""", method="POST").statusCode()).isEqualTo(200)
+        val outsiderCookie = loginCookie(outsider)
+        // The section administrator has no personal identity in this club.
+        assertThat(admin.queryForObject("select count(*) from forena.person_access where subject=? and organization_id=?", Long::class.java, outsider, club)).isZero()
+        val anotherSection = request("/api/admin/clubs/$club/sections", """{"name":"Annan","slug":"annan","disciplineKey":"common"}""", method="POST")
+        assertThat(anotherSection.statusCode()).isEqualTo(200)
+        val otherSection = json.readTree(anotherSection.body()).get("id").asString()
+        val otherTeamResponse = request("/api/admin/sections/$otherSection/teams", """{"name":"Annat lag"}""", method="POST")
+        assertThat(otherTeamResponse.statusCode()).isEqualTo(200)
+        val otherTeam = json.readTree(otherTeamResponse.body()).get("id").asString()
+        val foreignClub = createAdminClub()
+        val overview = json.readTree(request("/api/me/overview", cookie=outsiderCookie).body())
+        assertThat(overview.get("teams").toList().map { it.get("id").asString() }).containsExactly(team)
+        assertThat(overview.get("organizations").toList().map { it.get("id").asString() }).containsExactly(club.toString())
+        assertThat(overview.get("activities").size()).isZero()
+        assertThat(overview.toString()).doesNotContain(otherTeam, foreignClub.toString())
+        assertThat(request("/api/admin/sections/$section/administrators", """{"email":"$outsider@example.invalid","active":false}""", method="POST").statusCode()).isEqualTo(200)
+        val revoked = json.readTree(request("/api/me/overview", cookie=outsiderCookie).body())
+        assertThat(revoked.get("teams").size()).isZero()
+        assertThat(revoked.get("organizations").size()).isZero()
     }
 
     @Test fun `section administrators are confined to their own section and foreign role grants are denied`() {
