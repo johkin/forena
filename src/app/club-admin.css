@@ -36,3 +36,8 @@
 .section-team-row h3 { overflow-wrap:anywhere; }
 .section-team-row .application-form { margin-block:16px; }
 .section-team-row small { display:block; margin-top:8px; overflow-wrap:anywhere; }
+
+.club-administration fieldset { display:grid; gap:16px; min-inline-size:0; padding:0; border:0; margin:0; }
+.club-administration li { min-width:0; overflow-wrap:anywhere; }
+.club-administration li button { max-width:100%; white-space:normal; overflow-wrap:anywhere; }
+.club-administration > .card { margin-block:24px; min-width:0; }

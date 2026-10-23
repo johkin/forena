@@ -19,7 +19,14 @@ import { prepareInvitationSchedule, requireFutureSchedule } from "@/lib/activity
 import { activityRangeDuration } from "@/lib/activity-range";
 import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
 
-type Props = { mode: "create" | "edit"; organization: Organization; team: Team; members: Member[]; activity?: Activity; draft?: ActivityDraft; source: "database" | "demo"; canManageInvitations: boolean; onClose: () => void; onNotice: (notice: string) => void; };
+export type ActivityEditorAdapter = {
+  request: (path: string, init?: RequestInit) => Promise<Response>;
+  onSaved: (activityId?: string) => void;
+  revision?: number;
+  singleOnly?: boolean;
+};
+
+type Props = { adapter?: ActivityEditorAdapter; mode: "create" | "edit"; organization: Organization; team: Team; members: Member[]; activity?: Activity; draft?: ActivityDraft; source: "database" | "demo"; canManageInvitations: boolean; onClose: () => void; onNotice: (notice: string) => void; };
 const weekdayOptions = [[1,"Mån"],[2,"Tis"],[3,"Ons"],[4,"Tor"],[5,"Fre"],[6,"Lör"],[7,"Sön"]] as const;
 const roleLabels: Record<AudienceRole,string> = { participant:"Spelare",leader:"Ledare" };
 const recipientGroups = [{role:"participant",label:"Spelare"},{role:"leader",label:"Ledare"}];
@@ -46,8 +53,15 @@ function localParts(value:string|undefined,timeZone:string) {
 }
 
 /** Edit activities and recipient selections, then preview before persisting changes. */
-export function ActivityEditorModal({mode,organization,team,members,activity,draft,source,canManageInvitations,onClose,onNotice}:Props) {
+export function ActivityEditorModal({mode,organization,team,members,activity,draft,source,canManageInvitations,onClose,onNotice,adapter}:Props) {
   useModalScrollLock();
+  const dialogRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const previous = document.activeElement;
+    dialogRef.current?.querySelector<HTMLElement>("button")?.focus();
+    return () => { if (previous instanceof HTMLElement && previous.isConnected) previous.focus(); };
+  }, []);
+  const request = adapter?.request ?? fetch;
   const timeZone=organization.timeZone??"Europe/Stockholm";
   const initial=draft?{date:draft.startsOn,time:draft.startTime}:localParts(activity?.startsAt,timeZone);
   const initialDuration=draft?.durationMinutes??(activity?Math.round((new Date(activity.endsAt).getTime()-new Date(activity.startsAt).getTime())/60000):90);
@@ -95,12 +109,12 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
   useEffect(()=>{
     if (source !== "database") return;
     const controller = new AbortController();
-    fetch(`/api/activity-configuration?teamId=${encodeURIComponent(team.id)}`,{signal:controller.signal})
+    request(`/api/activity-configuration?teamId=${encodeURIComponent(team.id)}`,{signal:controller.signal})
       .then(async response=> { const result = await response.json(); if (!response.ok) throw new Error(result.error); return result as ActivityConfiguration; })
       .then(config=> { setConfiguration(config); const requestedTypeId = activity?.activityTypeId ?? draft?.activityTypeId; const type = config.types.find(t=>requestedTypeId ? t.id===requestedTypeId : t.slug==="ovrigt" && !t.organization_id); setActivityTypeId(activity?.activityTypeId ?? type?.id ?? ""); if(mode==="create" && type) setRules(current=>applyUntouchedDefaults(current,type.defaults,touched.current)); })
       .catch(error=>{if(!controller.signal.aborted)setConfigurationError(error instanceof Error ? error.message : "Inställningarna kunde inte hämtas.");});
     return ()=>controller.abort();
-  },[source,team.id,activity?.activityTypeId,draft?.activityTypeId,mode]);
+  },[source,team.id,activity?.activityTypeId,draft?.activityTypeId,mode,request]);
   function invalidatePreview() {setDeletePreview(undefined);setSeriesPreview(undefined);setSeriesChanges(undefined);setPreview(undefined);setPayload(undefined);}
   function changeRule(key:keyof ActivityTimingRules,value:string|string[]) { invalidatePreview();touched.current.add(key);setTouchedKeys(new Set(touched.current));setRules(current=>({...current,[key]:value})); }
   function changeActivityType(id:string) { invalidatePreview();setActivityTypeId(id); if(mode==="create") {const defaults=configuration?.types.find(type=>type.id===id)?.defaults;if(defaults)setRules(current=>applyUntouchedDefaults(current,defaults,touched.current));} }
@@ -122,7 +136,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
         timeZone, durationMinutes:1, gatheringMinutesBefore:0 }).map(item => item.startsAt) };
     } catch { return { starts:[], error:"Ange giltigt datum, tid och eventuell serieperiod för att välja kallelsetider." }; }
   }, [scheduleDates, recurring, timeZone]);
-  useEffect(()=>{if(source!=="database"||!canManageInvitations)return;fetch(`/api/team-groups?teamId=${encodeURIComponent(team.id)}`).then(r=>r.ok?r.json():{groups:[],responsibilities:[]}).then(body=>{setGroups(body.groups??[]);setResponsibilities(body.responsibilities??[]);}).catch(()=>{setGroups([]);setResponsibilities([]);});},[canManageInvitations,mode,source,team.id]);
+  useEffect(()=>{if(source!=="database"||!canManageInvitations)return;request(`/api/team-groups?teamId=${encodeURIComponent(team.id)}`).then(r=>r.ok?r.json():{groups:[],responsibilities:[]}).then(body=>{setGroups(body.groups??[]);setResponsibilities(body.responsibilities??[]);}).catch(()=>{setGroups([]);setResponsibilities([]);});},[canManageInvitations,mode,source,team.id,request]);
 
   function changeKind(next:"single"|"series") {
     if(next==="series" && invitationMode==="now")setInvitationMode("none");
@@ -159,7 +173,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
         const changes={title:String(data.get("title")),description:String(data.get("description")),location:String(data.get("location")),activityTypeId:activity?.activityTypeId,startsAt:occurrences[0].startsAt,endsAt:occurrences[0].endsAt,gatheringAt:occurrences[0].gatheringAt};
         setPending(true);
         try {
-          const r=await fetch(`/api/activities/${activity?.id}/series`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({preview:true,changes})});
+          const r=await request(`/api/activities/${activity?.id}/series`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({preview:true,changes})});
           const result=await r.json();if(!r.ok)throw new Error(result.error);
           setSeriesPreview(result);setSeriesChanges(changes);setError(undefined);
         } finally {setPending(false);}
@@ -175,9 +189,9 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
     if(editScope==="following" && seriesPreview && seriesChanges) {
       setPending(true);setError(undefined);
       try {
-        const r=await fetch(`/api/activities/${activity?.id}/series`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({preview:false,token:seriesPreview.token,changes:seriesChanges})});
+        const r=await request(`/api/activities/${activity?.id}/series`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({preview:false,token:seriesPreview.token,changes:seriesChanges})});
         const result=await r.json();if(!r.ok)throw new Error(result.error);
-        onNotice(`${result.count} aktiviteter uppdaterades.`);onClose();window.location.reload();
+        onNotice(`${result.count} aktiviteter uppdaterades.`);onClose();if (adapter) adapter.onSaved(activity?.id); else window.location.reload();
       } catch(error) {setError(error instanceof Error?error.message:"Serien kunde inte sparas.");invalidatePreview();} finally {setPending(false);}
       return;
     }
@@ -186,27 +200,33 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
     if(source==="demo"){onNotice(`${String(payload.title)} förhandsgranskades i demoläge.`);onClose();return;}
     const occurrence=preview[0], endpoint=mode==="edit"?`/api/activities/${activity?.id}`:recurring?"/api/activity-series":"/api/activities";
     const body=mode==="edit"||!recurring?{...payload,...(mode==="edit" ? {timingRules:undefined} : {}),gatheringAt:occurrence.gatheringAt,startsAt:occurrence.startsAt,endsAt:occurrence.endsAt}:payload;
-    const response=await fetch(endpoint,{method:mode==="edit"?"PUT":"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
-    const result=await response.json(); setPending(false);
-    if(!response.ok){setError(result.error??"Aktiviteten kunde inte sparas");return;}
-    const savedActivityId=activity?.id??result.activity?.id;
-    if(savedActivityId&&invitationMode!=="none"&&mode==="edit"){
-      const invitationResponse=await fetch(`/api/activities/${savedActivityId}/invitations`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(invitationMode==="now"?{mode:"now",personIds:[...selectedPeople]}:{mode:"schedule",audience:"selection",selection:payload.invitationSelection,invitationSendMinutesBefore:payload.invitationSendMinutesBefore,responseDueRule:payload.responseDueRule,reminderMinutesBeforeDue:payload.reminderMinutesBeforeDue,reminderMinutesBeforeDueList:payload.reminderMinutesBeforeDueList,timingRules:payload.timingRules})});
-      const invitationResult=await invitationResponse.json();
-      if(!invitationResponse.ok){setError(invitationResult.error??"Aktiviteten sparades, men kallelsen kunde inte läggas till");return;}
+    try {
+      const response=await request(endpoint,{method:mode==="edit"?"PUT":"POST",headers:{"content-type":"application/json"},body:JSON.stringify({...body,...(adapter ? {revision:adapter.revision} : {})})});
+      const result=await response.json();
+      if(!response.ok){setError(result.error??"Aktiviteten kunde inte sparas");return;}
+      const savedActivityId=activity?.id??result.activity?.id;
+      if(savedActivityId&&invitationMode!=="none"&&mode==="edit"){
+        const invitationResponse=await request(`/api/activities/${savedActivityId}/invitations`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(invitationMode==="now"?{mode:"now",personIds:[...selectedPeople]}:{mode:"schedule",audience:"selection",selection:payload.invitationSelection,invitationSendMinutesBefore:payload.invitationSendMinutesBefore,responseDueRule:payload.responseDueRule,reminderMinutesBeforeDue:payload.reminderMinutesBeforeDue,reminderMinutesBeforeDueList:payload.reminderMinutesBeforeDueList,timingRules:payload.timingRules})});
+        const invitationResult=await invitationResponse.json();
+        if(!invitationResponse.ok){setError(invitationResult.error??"Aktiviteten sparades, men kallelsen kunde inte läggas till");return;}
+      }
+      onNotice(recurring?`${preview.length} aktiviteter skapades.`:mode==="edit"?"Aktiviteten uppdaterades.":"Aktiviteten skapades.");onClose();if (adapter) adapter.onSaved(savedActivityId); else window.location.reload();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Aktiviteten kunde inte sparas. Försök igen.");
+    } finally {
+      setPending(false);
     }
-    onNotice(recurring?`${preview.length} aktiviteter skapades.`:mode==="edit"?"Aktiviteten uppdaterades.":"Aktiviteten skapades.");onClose();window.location.reload();
   }
 
   async function remove(confirmSeries=false) {
     if(!activity || source==="demo" || editScope===null || pending)return;
-    if(editScope==="single" && !window.confirm("Ta bort aktiviteten? Om någon redan har svarat blir den i stället markerad som inställd."))return;
+    if(editScope==="single" && !window.confirm(adapter ? "Ställ in aktiviteten? Befintliga svar och historik bevaras." : "Ta bort aktiviteten? Om någon redan har svarat blir den i stället markerad som inställd."))return;
     setPending(true);setError(undefined);
     try {
       const following=editScope==="following";
-      const response=await fetch(`/api/activities/${activity.id}${following?"/series":""}`,{
+      const response=await request(`/api/activities/${activity.id}${following?"/series":""}`,{
         method:"DELETE",headers:{"content-type":"application/json"},
-        body:JSON.stringify(following?{preview:!confirmSeries,token:confirmSeries?deletePreview?.token:undefined}:{reason:"Inställd av ledare"})
+        body:JSON.stringify(following?{preview:!confirmSeries,token:confirmSeries?deletePreview?.token:undefined}:{reason:"Inställd av ledare",...(adapter ? {revision:adapter.revision} : {})})
       });
       const result=await response.json();
       if(!response.ok)throw new Error(result.error??"Aktiviteten kunde inte tas bort.");
@@ -214,22 +234,32 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
         invalidatePreview();setDeletePreview(result);return;
       }
       onNotice(following?`${result.deleted} aktiviteter togs bort och ${result.cancelled} ställdes in.`:
-        result.disposition==="cancelled"?"Aktiviteten ställdes in eftersom svar redan fanns.":"Aktiviteten togs bort.");
-      onClose();window.location.reload();
+        result.disposition==="cancelled"?"Aktiviteten ställdes in.":"Aktiviteten togs bort.");
+      onClose();if (adapter) adapter.onSaved(activity?.id); else window.location.reload();
     } catch(error) {
       setDeletePreview(undefined);setError(error instanceof Error?error.message:"Aktiviteten kunde inte tas bort.");
     } finally {setPending(false);}
   }
 
   return <div className="modal-backdrop" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget)onClose();}}>
-    <section className="modal activity-editor-modal" role="dialog" aria-modal="true" aria-labelledby="activity-editor-title">
+    <section ref={dialogRef} className="modal activity-editor-modal" role="dialog" aria-modal="true" aria-labelledby="activity-editor-title" tabIndex={-1}
+      onKeyDown={event => {
+        if (event.key === "Escape" && !pending) { event.preventDefault(); onClose(); return; }
+        if (event.key !== "Tab") return;
+        const focusable = [...event.currentTarget.querySelectorAll<HTMLElement>("button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [href]")]
+          .filter(element => element.getClientRects().length > 0);
+        const first = focusable[0], last = focusable.at(-1);
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      }}>
       <div className="card-heading"><div><p className="eyebrow">{team.name}</p><h2 id="activity-editor-title">{mode==="edit"?"Redigera aktivitet":"Skapa aktivitet"}</h2></div><button className="icon-button" onClick={onClose} aria-label="Stäng" type="button">✕</button></div>
+      {adapter && canManageInvitations ? <p>Kallelser till valda personer visas i appen. Externa meddelanden skickas inte ännu; schemalagda målgrupper sparas för kommande utskick.</p> : null}
       {draft?<div className="ai-draft-notice"><strong>AI-utkast för granskning</strong><span>Kontrollera särskilt datum, plats och text innan aktiviteten skapas.</span>{draft.sources.length?<div>{draft.sources.map(source=><a href={source.url} key={source.url} target="_blank" rel="noreferrer">{source.title}</a>)}</div>:<small>Inga webbkällor följde med utkastet.</small>}</div>:null}
       {mode==="edit" && activity?.seriesId ? <fieldset className="activity-series-scope" disabled={pending}><legend>Vilka tillfällen gäller ändringen?</legend><label><input type="radio" name="editScope" checked={editScope==="single"} onChange={()=>{setEditScope("single");invalidatePreview();}}/>Endast denna aktivitet</label><label><input type="radio" name="editScope" checked={editScope==="following"} disabled={new Date(activity.startsAt)<=new Date()} onChange={()=>{setEditScope("following");setInvitationMode("none");setActivityTypeId(activity.activityTypeId ?? "");invalidatePreview();}}/>Denna och kommande aktiviteter</label>{editScope==="following"?<p>Passerade, inställda och individuellt ändrade tillfällen hoppas över. Vald aktivitet ingår. Valet gäller även borttagning. Vid sparande bevaras kallelser och svar; tider flyttas lika mycket i lokal tid.</p>:null}</fieldset>:null}
       <form onSubmit={prepare} onChange={invalidatePreview}>
         {deletePreview?<div className="activity-preview" role="alert"><strong>Ta bort {deletePreview.count} aktiviteter?</strong><p>Tillfällen med svar markeras som inställda. Övriga tas bort. {deletePreview.skipped} tillfällen hoppas över.</p><ol>{deletePreview.activities.map(item=><li key={item.id}>{formatter.format(new Date(item.startsAt))} – {formatter.format(new Date(item.endsAt))}</li>)}</ol><button className="secondary" type="button" disabled={pending} onClick={()=>setDeletePreview(undefined)}>Tillbaka till redigering</button></div>:null}
         <fieldset className="activity-editor-fields" hidden={Boolean(deletePreview)} disabled={pending || editScope===null}>
-        {mode==="create"?<div className="activity-kind-switch" role="group" aria-label="Typ av aktivitet"><button className={kind==="single"?"selected":""} onClick={()=>changeKind("single")} type="button">En aktivitet</button><button className={kind==="series"?"selected":""} onClick={()=>changeKind("series")} type="button">Aktivitetsserie</button></div>:null}
+        {mode==="create" && !adapter?.singleOnly ?<div className="activity-kind-switch" role="group" aria-label="Typ av aktivitet"><button className={kind==="single"?"selected":""} onClick={()=>changeKind("single")} type="button">En aktivitet</button><button className={kind==="series"?"selected":""} onClick={()=>changeKind("series")} type="button">Aktivitetsserie</button></div>:null}
         <section className="editor-section" aria-labelledby="editor-basics-title">
           <div className="workflow-section-heading"><div><h3 id="editor-basics-title">Aktivitetsdetaljer</h3></div><span className="badge">Obligatoriskt</span></div>
           {source === "database" ? <fieldset className="activity-type-picker" disabled={!configuration || editScope==="following"}><legend>Aktivitetstyp</legend><div>{configuration?.types.map(type=><button type="button" key={type.id} aria-pressed={activityTypeId===type.id} onClick={()=>changeActivityType(type.id)}><ActivityTypeIcon category={type.system_category}/>{type.name}</button>)}</div>{!configuration ? <small>Laddar aktivitetstyper…</small> : null}{activity?.activityTypeId && !configuration?.types.some(type=>type.id===activity.activityTypeId) ? <p>Befintlig aktivitetstyp (inaktiv eller annan disciplin)</p> : null}</fieldset> : null}
@@ -254,7 +284,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
         </section>
         {canManageInvitations && editScope!=="following" ? <details className="editor-section editor-invitation" open={invitationOpen} onToggle={event=>setInvitationOpen(event.currentTarget.open)}>
           <summary><span className="workflow-summary-title">Kallelse &amp; svarsregler</span> <span>{invitationMode==="none"?"Ingen":invitationMode==="now"?"Skicka nu":"Schemalägg"}</span></summary>
-          <div className="activity-kind-switch invitation-mode-switch" role="group" aria-label="Kallelse"><button className={invitationMode==="none"?"selected":""} onClick={()=>{invalidatePreview();setInvitationMode("none");}} type="button">Ingen</button><button className={invitationMode==="now"?"selected":""} onClick={()=>{invalidatePreview();setInvitationMode("now");}} disabled={recurring} title={recurring ? "Använd Schemalägg för en serie" : undefined} type="button">Skicka nu</button><button className={invitationMode==="schedule"?"selected":""} onClick={()=>{invalidatePreview();setInvitationMode("schedule");}} type="button">Schemalägg</button></div>
+          <div className="activity-kind-switch invitation-mode-switch" role="group" aria-label="Kallelse"><button className={invitationMode==="none"?"selected":""} onClick={()=>{invalidatePreview();setInvitationMode("none");}} type="button">Ingen</button><button className={invitationMode==="now"?"selected":""} onClick={()=>{invalidatePreview();setInvitationMode("now");}} disabled={recurring} title={recurring ? "Använd Schemalägg för en serie" : undefined} type="button">{adapter ? "Välj personer" : "Skicka nu"}</button><button className={invitationMode==="schedule"?"selected":""} onClick={()=>{invalidatePreview();setInvitationMode("schedule");}} type="button">Schemalägg</button></div>
           {invitationMode==="now"?<div className="editor-invitation-body">
             <div className="editor-inline-heading"><strong>Välj personer</strong><Help label="Skicka nu">Markera kryssrutan för de personer som ska få kallelsen. Du kan välja spelare och ledare tillsammans.</Help></div>
             <p className="editor-recipient-count" role="status">{invited.length} valda mottagare</p>
@@ -276,7 +306,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
         {error?<p className="auth-error" role="alert">{error}</p>:null}
         {preview?<div className="activity-preview"><p className="eyebrow">Förhandsgranskning · {preview.length} {preview.length===1?"tillfälle":"tillfällen"}</p><ol>{preview.slice(0,12).map(item=><li key={item.startsAt}><strong>{formatter.format(new Date(item.startsAt))}</strong><span>{String(payload?.location)} · Slut: {formatter.format(new Date(item.endsAt))}{item.gatheringAt ? ` · Samling: ${formatter.format(new Date(item.gatheringAt))}` : ""}</span>{invitationMode === "schedule" ? <small>Kallelse: {item.sendImmediately ? "Direkt vid sparande" : formatter.format(new Date(item.invitationSendAt))} · Svar: {formatter.format(new Date(item.responseDueAt))} · Påminnelser: {item.reminderSendAts.map(t=>formatter.format(new Date(t))).join(", ") || "Inga"}</small> : null}</li>)}</ol></div>:null}
         </fieldset>
-        <div className="modal-actions">{mode==="edit"?<button className="danger" disabled={pending || editScope===null || deletePreview?.count===0} onClick={()=>void remove(Boolean(deletePreview))} type="button">{deletePreview?"Bekräfta borttagning":editScope==="following"?"Ta bort kommande":"Ta bort"}</button>:null}<button className="secondary" onClick={onClose} type="button">Avbryt</button>{deletePreview?null:preview || seriesPreview?<button className="primary" disabled={pending} onClick={()=>void save()} type="button">{pending?"Sparar…":mode==="edit"?"Spara ändring":recurring?`Skapa ${preview?.length ?? 0} aktiviteter`:"Skapa aktivitet"}</button>:<button className="primary" disabled={pending || editScope===null} type="submit">Förhandsgranska</button>}</div>
+        <div className="modal-actions">{mode==="edit"?<button className="danger" disabled={pending || editScope===null || deletePreview?.count===0} onClick={()=>void remove(Boolean(deletePreview))} type="button">{deletePreview?"Bekräfta borttagning":editScope==="following"?"Ta bort kommande":adapter?"Ställ in":"Ta bort"}</button>:null}<button className="secondary" onClick={onClose} type="button">Avbryt</button>{deletePreview?null:preview || seriesPreview?<button className="primary" disabled={pending} onClick={()=>void save()} type="button">{pending?"Sparar…":mode==="edit"?"Spara ändring":recurring?`Skapa ${preview?.length ?? 0} aktiviteter`:"Skapa aktivitet"}</button>:<button className="primary" disabled={pending || editScope===null} type="submit">Förhandsgranska</button>}</div>
       </form>
     </section>
   </div>;

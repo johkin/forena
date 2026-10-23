@@ -74,3 +74,36 @@ it("preserves an OAuth authorization query without allowing it as an ordinary SP
 it.each([null, "/", "//evil.example/oauth2/authorize?x=1", "https://evil.example/oauth2/authorize?x=1", "/oauth2/authorize", "/oauth2/authorize?", "/oauth2/authorize/../evil?x=1", "/oauth2/authorize?x=1#evil", "/oauth2/authorize?x=1\\evil", "/oauth2/authorize?x=1\n"])("rejects unsafe OAuth continuation %s", value => {
   expect(oauthDestination(value)).toBeUndefined();
 });
+
+it("binds activity commands to the current account and exact managed routes", async () => {
+  const transport = vi.fn().mockResolvedValue(Response.json({}));
+  const request = createApiFetch(async () => id, vi.fn(), transport);
+  await request("/api/me/managed-teams");
+  await request(`/api/teams/${id}/activity-editor`);
+  await request("/api/activities", { method: "POST", body: "{}" });
+  await request(`/api/activities/${id}`, { method: "PUT", body: "{}" });
+  await request(`/api/activities/${id}`, { method: "DELETE", body: "{}" });
+  for (const call of transport.mock.calls.slice(2)) {
+    expect(new Headers(call[1].headers).get("X-Forena-Account")).toBe(id);
+    expect(new Headers(call[1].headers).get("X-Forena-Request")).toBe("1");
+  }
+  await expect(request("/api/activities?team=other", { method: "POST" })).rejects.toThrow();
+  await expect(request(`/api/teams/${id}/activity-editor?subject=other`)).rejects.toThrow();
+  await expect(request(`/api/teams/${id}/activity-editor`, { method: "POST" })).rejects.toThrow();
+});
+
+it("restricts administration to exact routes and bounded slug checks", async () => {
+  const transport = vi.fn().mockResolvedValue(Response.json({}));
+  const request = createApiFetch(async () => id, vi.fn(), transport);
+  await request("/api/admin/overview");
+  await request("/api/admin/slug?slug=exempelklubben");
+  await request(`/api/admin/slug?slug=exempelklubben&organizationId=${id}`);
+  await request("/api/admin/bootstrap", { method: "POST", body: "{}" });
+  await request(`/api/admin/clubs/${id}/sections/${id}`, { method: "PUT", body: "{}" });
+  await request(`/api/admin/sections/${id}/teams/${id}`, { method: "PUT", body: "{}" });
+  await request(`/api/admin/teams/${id}/administrators`, { method: "POST", body: "{}" });
+  await expect(request("/api/admin/overview?subject=other")).rejects.toThrow();
+  await expect(request("/api/admin/slug?slug=test&extra=1")).rejects.toThrow();
+  await expect(request("/api/admin/unknown", { method: "POST" })).rejects.toThrow();
+  expect(safeDestination("/administration")).toBe("/administration");
+});

@@ -43,6 +43,8 @@ server:
     include-stacktrace: never
 
 forena:
+  administration:
+    initial-system-admin-email: "${FORENA_INITIAL_SYSTEM_ADMIN_EMAIL:}"
   web-session:
     enabled: "${FORENA_WEB_SESSION_ENABLED:true}"
     origin: "${FORENA_WEB_ORIGIN:}"
@@ -72,7 +74,7 @@ management:
       show-details: never
 
 springdoc:
-  packages-to-scan: se.forena.api.activities,se.forena.api.identity
+  packages-to-scan: se.forena.api.activities,se.forena.api.identity,se.forena.api.administration
   paths-to-match: /api/**
   writer-with-order-by-keys: true
   override-with-generic-response: false

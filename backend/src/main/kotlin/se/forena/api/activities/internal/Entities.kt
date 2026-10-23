@@ -7,6 +7,7 @@ import org.springframework.data.annotation.ReadOnlyProperty
 import org.springframework.data.annotation.Transient
 import org.springframework.data.domain.Persistable
 import org.springframework.data.relational.core.mapping.Table
+import org.springframework.data.relational.core.mapping.Column
 
 @Table(value = "activity", schema = "forena")
 data class ActivityEntity(
@@ -90,3 +91,62 @@ data class PersonalActivityRow(
     val gatheringAt: Instant?, val responseDueAt: Instant?, val location: String,
     val description: String, val status: String
 )
+
+@Table(value = "activity", schema = "forena")
+data class ManagedActivityEntity(
+    @Id @Column("id") val activityId: UUID,
+    val organizationId: UUID,
+    val teamId: UUID,
+    val activityTypeId: UUID?,
+    val title: String,
+    val description: String,
+    val location: String,
+    val startsAt: Instant,
+    val endsAt: Instant,
+    val gatheringAt: Instant?,
+    val invitationSendAt: Instant?,
+    val responseDueAt: Instant?,
+    val status: String = "scheduled",
+    val revision: Long = 0,
+    val cancelledAt: Instant? = null,
+    val cancellationReason: String? = null,
+    @Transient val newRecord: Boolean = false
+) : Persistable<UUID> {
+    override fun getId(): UUID = activityId
+    override fun isNew(): Boolean = newRecord
+}
+
+@Table(value = "activity_audit", schema = "forena")
+data class ActivityAuditEntity(
+    @Id val id: UUID?, val activityId: UUID, val organizationId: UUID,
+    val actorSubject: UUID, val operation: String, val revision: Long, val changedAt: Instant
+)
+
+@Table(value = "activity_schedule", schema = "forena")
+data class ActivityScheduleEntity(
+    @Id val id: UUID?, val activityId: UUID, val organizationId: UUID,
+    val kind: String, val dueAt: Instant, val state: String = "pending",
+    val audienceRoles: String = "", val personIds: String = "",
+    val groupIds: String = "", val responsibilityTypeIds: String = ""
+)
+
+@Table(value = "activity_type", schema = "forena")
+data class ActivityTypeEntity(
+    @Id val id: UUID, val organizationId: UUID?, val name: String, val slug: String,
+    val systemCategory: String, val disciplineKey: String?, val active: Boolean
+)
+
+data class ManagementTeamRow(
+    val id: UUID, val organizationId: UUID, val name: String, val organizationName: String,
+    val timeZone: String, val disciplineKey: String?, val sectionId: UUID?
+)
+data class ManagementPersonRow(val id: UUID, val displayName: String, val role: String)
+
+@Table(value = "activity_defaults", schema = "forena")
+data class ActivityDefaultsEntity(@Id val id: UUID, val organizationId: UUID, val sectionId: UUID?,
+    val teamId: UUID?, val activityTypeId: UUID, val disciplineKey: String, val version: String,
+    val revision: Long, val valuesJson: String)
+@Table(value = "team_audience_group", schema = "forena")
+data class AudienceGroupEntity(@Id val id: UUID, val organizationId: UUID, val teamId: UUID, val name: String, val kind: String)
+@Table(value = "team_audience_member", schema = "forena")
+data class AudienceMemberEntity(@Id val id: UUID, val groupId: UUID, val organizationId: UUID, val personId: UUID, val active: Boolean)

@@ -614,3 +614,11 @@ reservlänk om öppningen misslyckas. Profilen uppdaterar status automatiskt och
 möjlighet att försöka igen vid nätverksproblem. När länken går ut återgår profilen
 till aktiveringsknappen och en ny länk utan omladdning. Utgången länk visas också i
 `/components#telegram-example` tillsammans med övriga profiltillstånd.
+
+## Administration och aktivitetshantering i React/Kotlin
+
+`/administration` använder gemensam AppShell, klubbskapandets tre steg, ClubSlugInput, TimeZoneSelect och SectionTeamAdministration. Övergången till Granska sparar aldrig data; först Skapa klubb skickar kommandot, exakt en gång per bekräftelse. Rolltilldelning och återkallning visar konto och kräver uttrycklig bekräftelse. Lagrollens giltighet använder den gemensamma datumväljaren.
+
+`/activities/manage` återanvänder ActivityEditorModal med kontobunden transport och uppdaterar listan utan dokumentomladdning. Inställning heter Ställ in och bevarar svar/historik. Dialogen återställer fokus och stöder Escape och avgränsad tangentbordsnavigation. Kallelser till direkt valda personer visas i appen; gränssnittet förklarar att externa meddelanden ännu inte levereras.
+
+Komponentsidan visar samma administrations- och aktivitetskomponenter med lokala exempel för bootstrap, behörighet, formulär, laddning, tomma lägen och fel. Ingen verksamhetsskrivning görs av galleriet.

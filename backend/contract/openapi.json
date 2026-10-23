@@ -38,6 +38,246 @@
         ],
         "type": "object"
       },
+      "ActivityAudience": {
+        "properties": {
+          "groupIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "responsibilityTypeIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "ActivityAudienceGroup": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "personIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "ActivityCommand": {
+        "properties": {
+          "activityTypeId": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "endsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "gatheringAt": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invitationAudience": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invitationMode": {
+            "type": "string"
+          },
+          "invitationSelection": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ActivityAudience"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "location": {
+            "type": "string"
+          },
+          "personIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "revision": {
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "teamId": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "timingRules": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ActivityTimingRules"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ActivityDefaultsRow": {
+        "properties": {
+          "activityTypeId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "disciplineKey": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "scopeId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "valuesJson": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ActivityDisposition": {
+        "properties": {
+          "disposition": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ActivityEditorContext": {
+        "properties": {
+          "activities": {
+            "items": {
+              "$ref": "#/components/schemas/ManagedActivity"
+            },
+            "type": "array"
+          },
+          "defaults": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityDefaultsRow"
+            },
+            "type": "array"
+          },
+          "disciplineKey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityAudienceGroup"
+            },
+            "type": "array"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityParticipant"
+            },
+            "type": "array"
+          },
+          "sectionId": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "team": {
+            "$ref": "#/components/schemas/ManagedTeam"
+          },
+          "types": {
+            "items": {
+              "$ref": "#/components/schemas/ManagedActivityType"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "ActivityParticipant": {
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "ActivityPerson": {
         "properties": {
           "id": {
@@ -63,6 +303,248 @@
           "invitation",
           "name"
         ],
+        "type": "object"
+      },
+      "ActivityResult": {
+        "properties": {
+          "activity": {
+            "$ref": "#/components/schemas/ManagedActivity"
+          }
+        },
+        "type": "object"
+      },
+      "ActivityTimingRules": {
+        "properties": {
+          "duration": {
+            "type": "string"
+          },
+          "gatheringRule": {
+            "type": "string"
+          },
+          "invitationRule": {
+            "type": "string"
+          },
+          "reminderRules": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "responseDueRule": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "AdministrationClub": {
+        "properties": {
+          "administrators": {
+            "items": {
+              "$ref": "#/components/schemas/Administrator"
+            },
+            "type": "array"
+          },
+          "canManage": {
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/AdministrationSection"
+            },
+            "type": "array"
+          },
+          "slug": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "timeZone": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "AdministrationOk": {
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "AdministrationOverview": {
+        "properties": {
+          "canBootstrap": {
+            "type": "boolean"
+          },
+          "clubs": {
+            "items": {
+              "$ref": "#/components/schemas/AdministrationClub"
+            },
+            "type": "array"
+          },
+          "platformAdmin": {
+            "type": "boolean"
+          },
+          "platformAdministrators": {
+            "items": {
+              "$ref": "#/components/schemas/Administrator"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "AdministrationResult": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "AdministrationSection": {
+        "properties": {
+          "administrators": {
+            "items": {
+              "$ref": "#/components/schemas/Administrator"
+            },
+            "type": "array"
+          },
+          "canChangeDiscipline": {
+            "type": "boolean"
+          },
+          "canDelete": {
+            "type": "boolean"
+          },
+          "canManage": {
+            "type": "boolean"
+          },
+          "disciplineKey": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "teams": {
+            "items": {
+              "$ref": "#/components/schemas/AdministrationTeam"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "AdministrationTeam": {
+        "properties": {
+          "administrators": {
+            "items": {
+              "$ref": "#/components/schemas/Administrator"
+            },
+            "type": "array"
+          },
+          "canAssignAdministrators": {
+            "type": "boolean"
+          },
+          "canDelete": {
+            "type": "boolean"
+          },
+          "canManage": {
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "season": {
+            "type": "string"
+          },
+          "slug": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "Administrator": {
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "email": {
+            "type": "string"
+          },
+          "endsOn": {
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "startsOn": {
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subject": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "AdministratorChange": {
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "email": {
+            "type": "string"
+          },
+          "endsOn": {
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "startsOn": {
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
         "type": "object"
       },
       "ApiError": {
@@ -223,6 +705,38 @@
         "format": "int32",
         "type": "integer"
       },
+      "CancellationCommand": {
+        "properties": {
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "revision": {
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "ClubChange": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "timeZone": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "CodeRequest": {
         "properties": {
           "code": {
@@ -258,6 +772,44 @@
         },
         "type": "object"
       },
+      "CreateClub": {
+        "properties": {
+          "disciplineKey": {
+            "type": "string"
+          },
+          "organizationName": {
+            "type": "string"
+          },
+          "organizationSlug": {
+            "type": "string"
+          },
+          "season": {
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "sectionSlug": {
+            "type": "string"
+          },
+          "teamName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "teamSlug": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "timeZone": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "CredentialRegistrationRequest": {
         "properties": {
           "publicKey": {
@@ -288,6 +840,111 @@
         "required": [
           "email"
         ],
+        "type": "object"
+      },
+      "ManagedActivity": {
+        "properties": {
+          "activity_type_id": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "ends_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "gathering_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "organization_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "team_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ManagedActivityType": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "organization_id": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "slug": {
+            "type": "string"
+          },
+          "system_category": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ManagedTeam": {
+        "properties": {
+          "canManageInvitations": {
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "organizationId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "organizationName": {
+            "type": "string"
+          },
+          "timeZone": {
+            "type": "string"
+          }
+        },
         "type": "object"
       },
       "MyActivities": {
@@ -758,12 +1415,51 @@
         ],
         "type": "object"
       },
+      "SectionChange": {
+        "properties": {
+          "disciplineKey": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "SlugAvailability": {
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "SuccessfulUserRegistrationResponse": {
         "properties": {
           "success": {
             "type": "boolean"
           }
         }
+      },
+      "TeamChange": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "season": {
+            "type": "string"
+          },
+          "slug": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
       },
       "TokenGenerationRequest": {
         "properties": {
@@ -799,7 +1495,75 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/activities": {
+      "post": {
+        "operationId": "createActivity",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivityCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityResult"
+                }
+              }
+            },
+            "description": "Created activity"
+          }
+        },
+        "tags": [
+          "activity-management-controller"
+        ]
+      }
+    },
     "/api/activities/{activityId}": {
+      "delete": {
+        "operationId": "cancelActivity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "activityId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancellationCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityDisposition"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "activity-management-controller"
+        ]
+      },
       "get": {
         "description": "Activity details authorized through personal invitations, dated membership or own team access. Reading never grants response rights for another person. Unknown/unauthorized IDs return 404. No-store.",
         "operationId": "getPersonalActivity",
@@ -828,6 +1592,45 @@
         },
         "tags": [
           "personal-overview-controller"
+        ]
+      },
+      "put": {
+        "operationId": "updateActivity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "activityId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivityCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityResult"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "activity-management-controller"
         ]
       }
     },
@@ -900,6 +1703,553 @@
         },
         "tags": [
           "invitation-controller"
+        ]
+      }
+    },
+    "/api/admin/bootstrap": {
+      "post": {
+        "operationId": "bootstrap",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdministrationOk"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "administration-controller"
+        ]
+      }
+    },
+    "/api/admin/clubs": {
+      "post": {
+        "operationId": "createClub",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateClub"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdministrationResult"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "administration-controller"
+        ]
+      }
+    },
+    "/api/admin/clubs/{clubId}": {
+      "put": {
+        "operationId": "updateClub",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "clubId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClubChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdministrationOk"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "administration-controller"
+        ]
+      }
+    },
+    "/api/admin/clubs/{clubId}/administrators": {
+      "post": {
+        "operationId": "clubAdmin",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "clubId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdministratorChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdministrationOk"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "administration-controller"
+        ]
+      }
+    },
+    "/api/admin/clubs/{clubId}/sections": {
+      "post": {
+        "operationId": "createSection",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "clubId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SectionChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdministrationResult"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "administration-controller"
+        ]
+      }
+    },
+    "/api/admin/clubs/{clubId}/sections/{sectionId}": {
+      "put": {
+        "operationId": "updateSection",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "clubId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sectionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SectionChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdministrationResult"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "administration-controller"
+        ]
+      }
+    },
+    "/api/admin/overview": {
+      "get": {
+        "operationId": "overview",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdministrationOverview"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "administration-controller"
+        ]
+      }
+    },
+    "/api/admin/platform-administrators": {
+      "post": {
+        "operationId": "platform",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdministratorChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdministrationOk"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "administration-controller"
+        ]
+      }
+    },
+    "/api/admin/sections/{sectionId}": {
+      "delete": {
+        "operationId": "deleteSection",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sectionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdministrationOk"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "administration-controller"
+        ]
+      }
+    },
+    "/api/admin/sections/{sectionId}/administrators": {
+      "post": {
+        "operationId": "sectionAdmin",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sectionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdministratorChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdministrationOk"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "administration-controller"
+        ]
+      }
+    },
+    "/api/admin/sections/{sectionId}/teams": {
+      "post": {
+        "operationId": "createTeam",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sectionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdministrationResult"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "administration-controller"
+        ]
+      }
+    },
+    "/api/admin/sections/{sectionId}/teams/{teamId}": {
+      "put": {
+        "operationId": "updateTeam",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sectionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "teamId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdministrationResult"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "administration-controller"
+        ]
+      }
+    },
+    "/api/admin/slug": {
+      "get": {
+        "operationId": "slug",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "organizationId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SlugAvailability"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "administration-controller"
+        ]
+      }
+    },
+    "/api/admin/teams/{teamId}": {
+      "delete": {
+        "operationId": "deleteTeam",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "teamId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdministrationOk"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "administration-controller"
+        ]
+      }
+    },
+    "/api/admin/teams/{teamId}/administrators": {
+      "post": {
+        "operationId": "teamAdmin",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "teamId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdministratorChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdministrationOk"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "administration-controller"
         ]
       }
     },
@@ -2339,6 +3689,29 @@
         ]
       }
     },
+    "/api/me/managed-teams": {
+      "get": {
+        "operationId": "getManagedTeams",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ManagedTeam"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "activity-management-controller"
+        ]
+      }
+    },
     "/api/me/overview": {
       "get": {
         "description": "Complete authorized upcoming overview, including dated team memberships and own team access. Person rows exist independently of invitations. Only sent personal invitations are exposed. No 90-day cutoff or first-page counts. More than 20000 activities fails with 503 rather than returning an incomplete overview. No-store.",
@@ -2357,6 +3730,37 @@
         },
         "tags": [
           "personal-overview-controller"
+        ]
+      }
+    },
+    "/api/teams/{teamId}/activity-editor": {
+      "get": {
+        "operationId": "getActivityEditor",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "teamId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityEditorContext"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "activity-management-controller"
         ]
       }
     }

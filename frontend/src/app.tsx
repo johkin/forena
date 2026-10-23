@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { useLocation, useNavigate } from "react-router";
 import { AppLink } from "./app-link";
 import { z } from "zod";
+import { Administration } from "../../src/components/administration";
+import { ActivityManagement } from "../../src/components/activity-management";
 import { ActivityDetails } from "./activity-details";
 import { MyActivitiesPage } from "./my-activities";
 import { AppHeaderFrame } from "../../src/components/app-header-frame";
@@ -152,7 +154,9 @@ export function App({ config }: { config: PublicConfig }) {
   const activityId = match?.[1] ?? (path === "/migration/participation" ? config.activityId : undefined);
   const validActivity = z.uuid().safeParse(activityId);
   const securityPage = path === "/account/security";
-  const knownPath = securityPage || homePath || path === "/migration/participation" || Boolean(match);
+  const managementPage = path === "/activities/manage";
+  const administrationPage = path === "/administration";
+  const knownPath = administrationPage || managementPage || securityPage || homePath || path === "/migration/participation" || Boolean(match);
   async function logout() {
     setPending(true); setError(undefined);
     try {
@@ -164,16 +168,16 @@ export function App({ config }: { config: PublicConfig }) {
   }
   return <Frame key={auth.session.user.id} email={auth.session.user.email ?? undefined} logout={<button type="button" className="logout-button" aria-label="Logga ut från Förena" disabled={pending} onClick={() => void logout()}>{pending ? "Loggar ut…" : "Logga ut"}</button>}>
     <main tabIndex={-1} className={`content ${homePath ? "personal-dashboard" : ""}`} key={auth.session.user.id}>
-      {!homePath && !securityPage ? <><p className="eyebrow">Personligt</p><h1>{!knownPath ? "Sidan finns inte" : "Kallelser"}</h1></> : null}
+      {!homePath && !securityPage && !managementPage && !administrationPage ? <><p className="eyebrow">Personligt</p><h1>{!knownPath ? "Sidan finns inte" : "Kallelser"}</h1></> : null}
       {error ? <p role="alert">{error}</p> : null}
-      {securityPage ? <><PasskeyRegistration pending={pending} registered={passkeyCreatedFor === accountId} supported={Boolean(window.PublicKeyCredential && navigator.credentials)} onRegister={() => void (async () => {
+      {administrationPage ? <Administration request={request} /> : managementPage ? <ActivityManagement request={request} /> : securityPage ? <><PasskeyRegistration pending={pending} registered={passkeyCreatedFor === accountId} supported={Boolean(window.PublicKeyCredential && navigator.credentials)} onRegister={() => void (async () => {
         const expectedAccount = accountId;
         if (!expectedAccount || pending) return;
         setPending(true); setError(undefined);
         try { await registerPasskey(expectedAccount); if (activeAccount.current === expectedAccount) setPasskeyCreatedFor(expectedAccount); }
         catch (error) { if (activeAccount.current === expectedAccount) setError(error instanceof DOMException && error.name === "NotAllowedError" ? "Registreringen avbröts. Du kan försöka igen." : "Passkey kunde inte skapas. Försök igen senare."); }
         finally { setPending(false); }
-      })()} /><PasskeyList key={auth.session.user.id} accountId={auth.session.user.id} revision={passkeyCreatedFor === accountId} /></> : !knownPath ? <AppLink href="/">Till startsidan</AppLink> : homePath ? <MyActivitiesPage request={request} workspace={workspace} notifications={path==="/notifications"} /> : validActivity.success ? <>
+      })()} /><PasskeyList key={auth.session.user.id} accountId={auth.session.user.id} revision={passkeyCreatedFor === accountId} /></> : !knownPath ? <AppLink href="/">Till startsidan</AppLink> : homePath ? <><p><AppLink href="/activities/manage">Hantera aktiviteter</AppLink> · <AppLink href="/administration">Administration</AppLink></p><MyActivitiesPage request={request} workspace={workspace} notifications={path==="/notifications"} /></> : validActivity.success ? <>
         <ActivityDetails key={validActivity.data} activityId={validActivity.data} request={request} />
       </> : <p>Inga kallelser att visa här ännu. Öppna länken till en aktivitet för att se dina kallelser.</p>}
     </main>
