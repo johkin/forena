@@ -1,7 +1,7 @@
 # Telegram-bot: prototyp för issue 91
 
-Telegram är ett valbart försök med privata kallelser och två separata grupproller.
-WhatsApp, push och e-post finns kvar. Kanalen är avstängd från början.
+Telegram är en valbar kanal för privata kallelser och separata grupproller.
+Ordning: Telegram → push → e-post. Kanalen är avstängd från början.
 
 ## Privata chattar med spelare och vårdnadshavare
 
@@ -142,13 +142,6 @@ rensas i begränsade timbatcher efter ett dygn; snapshots följer outboxens rete
 
 ## Leverans och fel
 
-Ordning för aktiverade kanaler: Telegram → WhatsApp → push → e-post. En lyckad
-Telegram-leverans hoppar över övriga kanaler. Ett misslyckat anrop stoppar inte
-reservkanalerna. Vid partiell barnleverans kan även en reservnotis skickas.
-Lyckade barnmeddelanden sparas var för sig och återanvänds vid ett återförsök.
-API-accept följt av avbrott före databaskvittens kan ge en transportdubblett;
-kallelsesvaret är ändå idempotent. `sent` betyder API-accept, inte läskvitto.
-
 Workern sprider meddelanden till samma privata chat inom en batch. Telegram 429
 sparar `retry_after` som en botgemensam paus även för kommande körningar. Under
 pausen används reservkanalerna; Telegram får inget separat omskick om en reserv
@@ -188,11 +181,6 @@ tillhandahållits. Följande ska journalföras innan issue 91 kan stängas:
 
 ## Utvärdering och rekommendation
 
-Teknisk bedömning 2026-10-16: färre leverantörssteg än WhatsApps mallflöde,
-men familjer behöver Telegram och måste själva starta boten. Den faktiska
-installationsfriktionen är ännu inte mätt i en pilot. Gruppkoppling har fler
-steg eftersom både Förena-behörighet och Telegram-administratör krävs.
-
 Enligt [Telegrams officiella FAQ](https://core.telegram.org/bots/faq#my-bot-is-hitting-limits-how-do-i-avoid-this)
 kostar vanliga botutskick inget, med riktvärden omkring ett meddelande/sekund
 per chat, 20/minut per grupp och 30/sekund totalt. Betalda massutskick är ett
@@ -200,12 +188,6 @@ separat tillval; prototypen aktiverar dem inte. Drift och support kan fortfarand
 kosta. Kontrollera aktuella villkor före produktionsbeslut.
 [Bot API-dokumentationen](https://core.telegram.org/bots/api#setwebhook)
 beskriver webhookens hemliga header, återförsök och callback-funktionerna.
-
-Rekommendation: behåll Telegram som frivilligt pilotval. Ersätt inte WhatsApp
-och flytta inte befintliga användare innan liveflödet och en familjepilot har
-godkänts. Följ upp anslutningsgrad, faktisk svarsfrekvens, leveransfel,
-reservnotiser och supportbehov. Underlaget här är tekniskt, inte ett resultat
-från en genomförd användarutvärdering.
 
 ## Koppling och kallelser
 

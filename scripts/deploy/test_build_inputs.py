@@ -62,8 +62,7 @@ class BuildInputs(unittest.TestCase):
 
     def test_public_configuration_and_node_version_are_part_of_frontend_key(self):
         before = self.key('frontend')
-        for name in ['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
-                     'FORENA_KOTLIN_TEST_ACTIVITY_ID']:
+        for name in ['FORENA_KOTLIN_TEST_ACTIVITY_ID']:
             self.assertNotEqual(before, self.key('frontend', configuration={name: 'different'}))
         self.assertNotEqual(before, self.key('frontend', node_version='v25.0.0'))
         self.assertEqual(before, self.key('frontend', configuration={'FORENA_DB_PASSWORD': 'never-used'}))

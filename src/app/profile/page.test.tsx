@@ -5,7 +5,6 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
 vi.mock("@/components/app-shell", () => ({ AppShell: () => null }));
 vi.mock("@/components/telegram-settings", () => ({ TelegramSettings: () => null }));
 vi.mock("@/components/telegram-group-settings", () => ({ TelegramGroupSettings: () => null }));
-vi.mock("@/components/whatsapp-settings", () => ({ WhatsAppSettings: () => null }));
 vi.mock("./actions", () => ({ updateProfile: vi.fn() }));
 import ProfilePage from "./page";
 

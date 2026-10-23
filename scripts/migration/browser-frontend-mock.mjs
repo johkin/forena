@@ -21,29 +21,31 @@ const activities=()=>[{id,title:'Träning med laget',starts_at:'2030-10-26T16:00
  people:invitations.map(invitation=>({id:invitation.person_id,name:invitation.name,invitation}))},
  {id:users[1],title:'Nästa aktivitet',starts_at:'2030-10-27T16:00:00Z',ends_at:'2030-10-27T17:30:00Z',gathering_at:null,response_due_at:null,location:'Uip',description:'',status:'scheduled',organization,team,people:invitations.map(invitation=>({id:invitation.person_id,name:invitation.name,invitation:null}))}];
 const view=()=>({user:{id:users[current],email:current===0?'family@example.invalid':'other@example.invalid'}});
-await context.route('**/config.json',r=>r.fulfill({json:{supabaseUrl:'https://ckzrtxqjskosqzoitymc.supabase.co',publishableKey:'sb_publishable_synthetic',activityId:id,version:id}}));
+await context.route('**/config.json',r=>r.fulfill({json:{activityId:id,version:id}}));
 await context.route('https://*.supabase.co/**',r=>{directProviderRequests++;return r.abort();});
 await context.route('**/api/**',async route=>{
  requests++;const req=route.request();const headers=await req.allHeaders();const path=new URL(req.url()).pathname;
  assert.ok(headers.cookie?.includes('_vercel_jwt=synthetic-protection-cookie'));assert.equal(headers.authorization,undefined);
  if(req.method()!=='GET'){assert.equal(headers['x-forena-request'],'1');assert.equal(headers.origin,base.origin);}
  if(path==='/api/auth/login'){
-  const body=req.postDataJSON();if(body.password!=='synthetic-password')return route.fulfill({status:401,json:{error:'Sessionen är inte aktiv.'}});
+  const body=Object.fromEntries(new URLSearchParams(req.postData()));if(body.password!=='synthetic-password')return route.fulfill({status:401,json:{error:'Sessionen är inte aktiv.'}});
   current=body.email==='other@example.invalid'?1:0;revoked=false;
   return route.fulfill({headers:{'content-type':'application/json','set-cookie':'forena-local-session=synthetic-opaque-session; HttpOnly; SameSite=Lax; Path=/'},body:JSON.stringify(view())});
  }
  if(path==='/api/auth/magic-link'){
-  assert.equal(req.postDataJSON().email,'family@example.invalid');magicRequested=true;
+  assert.equal(new URLSearchParams(req.postData()).get('username'),'family@example.invalid');magicRequested=true;
   return route.fulfill({json:{ok:true}});
  }
  if(path==='/api/auth/magic-link/verify'){
-  assert.ok(magicRequested);assert.equal(req.postDataJSON().code,'synthetic-code');magicRequested=false;current=0;revoked=false;
+  assert.ok(magicRequested);assert.equal(new URLSearchParams(req.postData()).get('token'),'synthetic-code');magicRequested=false;current=0;revoked=false;
   return route.fulfill({headers:{'content-type':'application/json','set-cookie':'forena-local-session=synthetic-magic-session; HttpOnly; SameSite=Lax; Path=/'},body:JSON.stringify(view())});
  }
+ if(path==='/api/auth/continue')return route.fulfill({json:{destination:'/'}});
+ if(path==='/api/auth/passkeys')return route.fulfill({json:[]});
  if(path==='/api/auth/logout'){current=null;return route.fulfill({headers:{'content-type':'application/json','set-cookie':'forena-local-session=; HttpOnly; Max-Age=0; Path=/'},body:'{"ok":true}'});}
- if(path==='/api/auth/passkey/options')return route.fulfill({json:{challenge_id:id,expires_at:Math.floor(Date.now()/1000)+300,options:{challenge:'c3ludGhldGlj',rpId:base.hostname,userVerification:'required'}}});
+ if(path==='/api/auth/passkey/options')return route.fulfill({json:{challenge:'c3ludGhldGlj',rpId:base.hostname,userVerification:'required'}});
  if(path==='/api/auth/passkey/verify'){
-  assert.equal(req.postDataJSON().challenge_id,id);assert.ok(req.postDataJSON().credential.response.signature);
+  assert.ok(req.postDataJSON().response.signature);
   current=0;revoked=false;
   return route.fulfill({headers:{'content-type':'application/json','set-cookie':'forena-local-session=synthetic-passkey-session; HttpOnly; SameSite=Lax; Path=/'},body:JSON.stringify(view())});
  }
@@ -52,14 +54,14 @@ await context.route('**/api/**',async route=>{
  if(path==='/api/auth/session')return route.fulfill({json:view()});
  if(path==='/api/auth/passkey/registration/options'){
   assert.equal(headers['x-forena-account'],users[current]);
-  return route.fulfill({json:{challenge_id:id,expires_at:Math.floor(Date.now()/1000)+300,options:{
+  return route.fulfill({json:{
    challenge:'c3ludGhldGlj',rp:{id:base.hostname,name:'Förena'},user:{id:Buffer.from(users[current]).toString('base64url'),name:'family@example.invalid',displayName:'Family'},
-   pubKeyCredParams:[{type:'public-key',alg:-7}],authenticatorSelection:{residentKey:'required',userVerification:'required'},attestation:'none'}}});
+   pubKeyCredParams:[{type:'public-key',alg:-7}],authenticatorSelection:{residentKey:'required',userVerification:'required'},attestation:'none'}});
  }
  if(path==='/api/auth/passkey/registration/verify'){
   assert.equal(headers['x-forena-account'],users[current]);
-  const body=req.postDataJSON();assert.equal(body.challenge_id,id);assert.ok(body.credential.response.attestationObject);assert.ok(body.credential.response.clientDataJSON);
-  registrationVerified=true;return route.fulfill({json:{ok:true}});
+  const body=req.postDataJSON().publicKey;assert.ok(body.credential.response.attestationObject);assert.ok(body.credential.response.clientDataJSON);
+  registrationVerified=true;return route.fulfill({json:{success:true}});
  }
  privateRequests++;
  assert.ok(headers.cookie?.includes('forena-local-session='));

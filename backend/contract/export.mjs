@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
 // The integration test fetches this from the real, authenticated springdoc endpoint.
-const name = process.argv.includes("--native") ? "native-openapi.json" : "openapi.json";
+const name = "openapi.json";
 const document = JSON.parse(readFileSync(new URL(`../target/${name}`, import.meta.url), "utf8"));
 function sortKeys(value) {
   if (Array.isArray(value)) return value.map(sortKeys);

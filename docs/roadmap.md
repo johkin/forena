@@ -20,55 +20,6 @@ och säkerhetskrav ska bevaras när respektive flöde flyttas.
 
 ## 2. Första kompletta föreningsflödet
 
-- [x] Skapa förening och lag
-- [x] Bjud in ledare direkt
-- [x] Publik medlemsansökan med val av sektion och lag
-- [x] Kansligodkännande före e-postverifiering och aktivering
-- [x] Sökbar trupp med medlemsprofiler, namnredigering och mobilanpassade undergrupper
-- [ ] Komplettera medlemsprofil med bildhantering och administration av verifierade målsmanskopplingar
-- [x] Gemensam aktivitetstypskatalog med disciplinspecifika typer och systemadministration
-- [x] Kodägt fotbollspaket v1 med separata objektscheman, sektionsuppslag och paketöversikt; se [disciplinpaket](disciplines.md)
-- [x] Lagra och redigera fotbollens versionsrefererade värden för lag, lagmedlemskap, match och deltagande med native-formulär, behörighetskontroll och kopierade matchförval
-- [ ] Flytta kvarvarande disciplinöverstyrningar till sektion efter konfliktkontroll; paketdefinitioner versionshanteras i kod, administration väljer och konfigurerar paket
-- [x] Administrera aktivitetsförval med fältvis arv system/klubb/sektion/lag och revisionskontroll
-- [x] Läsbara listval för relativa tider och valbara alternativ i disciplinförval med separat arv
-- [x] Läs förval i aktivitetsdialog och ledarassistent; visa ursprung och bevara egna val
-- [x] Spara alla schemalagda påminnelser atomärt för nya aktiviteter och serier
-- [ ] Bekräftat assistentkommando för att ändra aktivitetsförval
-- [x] Skapa och redigera en aktivitet
-- [x] Skapa en aktivitetsserie med återkommande aktiviteter
-- [x] Förhandsgranska en serie och dess genererade tillfällen före publicering
-- [ ] Stöd utkast/publicering som separat livscykel
-- [ ] Uppdatera ett tillfälle eller hela den återstående serien
-- [x] Schemalägg kallelse, svarstid och påminnelsetid per aktivitet
-- [x] Svara som vårdnadshavare för ett eller flera barn
-- [x] Ändra eller ta bort ett tidigare kallelsesvar
-- [x] Valfri kommentar till ja/nej-svar och kommentar i AI-konteksten
-- [x] Modellera "inget svar" som det enda osäkra läget; obesvarade kan påminnas
-- [x] Lista obesvarade kallelser och köa manuell påminnelse
-- [x] Logga kallelse-, påminnelse- och svarshändelser i aktivitetshistoriken
-- [x] Worker för notification outbox med claim, retries och backoff
-- [x] Separat beständig schemaläggning för affärsuppgifter; outbox levererar färdiga meddelanden utan omprövning
-- [x] Rensa avslutade notifieringar och leveransdetaljer efter 90 dagar när aktiviteten också har avslutats; behåll historikevent
-- [ ] Före uppskalning: dimensionera notifieringskön för samtidiga utskick till stora föreningar (nu högst 25 mottagare per minut), parallella workers, lämpliga köindex och övervakning av köfördröjning
-- [x] Kör notification worker i Supabase Edge Function
-- [x] Schemalägg notification worker med Supabase pg_cron + pg_net
-- [x] Leverera kallelser/påminnelser via mejl med Resend
-- [x] Visa leveransstatus per kanal och mottagare i aktivitetsvyn
-- [x] Skapa och lagra Web Push-subscriptions per användare och enhet
-- [x] UI för att aktivera/inaktivera pushnotiser
-- [x] VAPID-konfiguration för Web Push
-- [x] Skicka Web Push från notification workern
-- [x] Valbar WhatsApp-kanal med verifierad kontokoppling och ett kallelsemeddelande per barn, med svarsknappar (kräver Meta-konfiguration; se [WhatsApp](whatsapp.md))
-- [x] Hantera ogiltiga/utgångna push-subscriptions (404/410)
-- [ ] notificationclick öppnar rätt aktivitet i Förena (klick öppnar appen, men push-payloaden länkar ännu till startsidan)
-- [x] Visa push-leveransstatus i aktivitetsvyn
-- [x] Registrera närvaro som ledare
-- [x] Prioritera oregistrerad närvaro för påbörjade aktiviteter i lagvyn
-- [x] Välj personer för omedelbar kallelse och målgrupper för schemalagd kallelse
-- [x] Lägg till kallelser när en aktivitet redigeras
-- [x] Stöd flera schemalagda påminnelser per aktivitet
-
 ### Nästa leverans: smart kallelseflöde
 
 Aktivitets- och kallelsegrunden finns nu på plats. Nästa vertikala leverans ska

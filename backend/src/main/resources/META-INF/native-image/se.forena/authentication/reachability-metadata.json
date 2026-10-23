@@ -1,0 +1,1168 @@
+{
+  "reflection": [
+    {
+      "type": "com.webauthn4j.data.attestation.AttestationObject",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "com.webauthn4j.data.attestation.authenticator.AuthenticatorData",
+            "com.webauthn4j.data.attestation.statement.AttestationStatement"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.webauthn4j.data.attestation.authenticator.AbstractCOSEKey"
+    },
+    {
+      "type": "com.webauthn4j.data.attestation.authenticator.COSEKey"
+    },
+    {
+      "type": "com.webauthn4j.data.attestation.authenticator.Curve",
+      "methods": [
+        {
+          "name": "deserialize",
+          "parameterTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "getValue",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.webauthn4j.data.attestation.authenticator.EC2COSEKey",
+      "allDeclaredConstructors": true,
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "com.webauthn4j.data.attestation.authenticator.EdDSACOSEKey",
+      "allDeclaredConstructors": true,
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "com.webauthn4j.data.attestation.authenticator.RSACOSEKey",
+      "allDeclaredConstructors": true,
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "com.webauthn4j.data.attestation.statement.AttestationStatement"
+    },
+    {
+      "type": "com.webauthn4j.data.attestation.statement.COSEAlgorithmIdentifier",
+      "methods": [
+        {
+          "name": "deserialize",
+          "parameterTypes": [
+            "long"
+          ]
+        },
+        {
+          "name": "getValue",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.webauthn4j.data.attestation.statement.COSEKeyOperation",
+      "methods": [
+        {
+          "name": "getValue",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.webauthn4j.data.attestation.statement.COSEKeyType",
+      "methods": [
+        {
+          "name": "getValue",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.webauthn4j.data.attestation.statement.NoneAttestationStatement",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.webauthn4j.data.client.ClientDataType",
+      "methods": [
+        {
+          "name": "create",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.webauthn4j.data.client.CollectedClientData",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "com.webauthn4j.data.client.ClientDataType",
+            "com.webauthn4j.data.client.challenge.Challenge",
+            "com.webauthn4j.data.client.Origin",
+            "java.lang.Boolean",
+            "com.webauthn4j.data.client.Origin",
+            "com.webauthn4j.data.client.TokenBinding"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.webauthn4j.data.client.Origin",
+      "methods": [
+        {
+          "name": "deserialize",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.webauthn4j.data.client.TokenBinding"
+    },
+    {
+      "type": "com.webauthn4j.data.client.TokenBindingStatus"
+    },
+    {
+      "type": "java.util.Collections$SingletonList"
+    },
+    {
+      "type": "java.util.Collections$SingletonMap"
+    },
+    {
+      "type": "java.util.Collections$UnmodifiableCollection"
+    },
+    {
+      "type": "java.util.Collections$UnmodifiableList"
+    },
+    {
+      "type": "java.util.Collections$UnmodifiableMap"
+    },
+    {
+      "type": "java.util.Collections$UnmodifiableRandomAccessList"
+    },
+    {
+      "type": "java.util.Collections$UnmodifiableSet"
+    },
+    {
+      "type": "kotlin.collections.EmptyList"
+    },
+    {
+      "type": "kotlin.collections.EmptyMap"
+    },
+    {
+      "type": "org.springframework.security.authentication.AbstractAuthenticationToken",
+      "fields": [
+        {
+          "name": "authenticated"
+        },
+        {
+          "name": "authorities"
+        },
+        {
+          "name": "details"
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.authentication.UsernamePasswordAuthenticationToken",
+      "fields": [
+        {
+          "name": "credentials"
+        },
+        {
+          "name": "principal"
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.authentication.event.AuthenticationFailureBadCredentialsEvent",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.springframework.security.core.Authentication",
+            "org.springframework.security.core.AuthenticationException"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.authentication.event.AuthenticationFailureProviderNotFoundEvent",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.springframework.security.core.Authentication",
+            "org.springframework.security.core.AuthenticationException"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "authenticationManagerBuilder",
+          "parameterTypes": [
+            "org.springframework.security.config.ObjectPostProcessor",
+            "org.springframework.context.ApplicationContext"
+          ]
+        },
+        {
+          "name": "enableGlobalAuthenticationAutowiredConfigurer",
+          "parameterTypes": [
+            "org.springframework.context.ApplicationContext"
+          ]
+        },
+        {
+          "name": "initializeAuthenticationProviderBeanManagerConfigurer",
+          "parameterTypes": [
+            "org.springframework.context.ApplicationContext"
+          ]
+        },
+        {
+          "name": "initializeUserDetailsBeanManagerConfigurer",
+          "parameterTypes": [
+            "org.springframework.context.ApplicationContext"
+          ]
+        },
+        {
+          "name": "setApplicationContext",
+          "parameterTypes": [
+            "org.springframework.context.ApplicationContext"
+          ]
+        },
+        {
+          "name": "setGlobalAuthenticationConfigurers",
+          "parameterTypes": [
+            "java.util.List"
+          ]
+        },
+        {
+          "name": "setObjectPostProcessor",
+          "parameterTypes": [
+            "org.springframework.security.config.ObjectPostProcessor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.config.annotation.configuration.ObjectPostProcessorConfiguration",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "objectPostProcessor",
+          "parameterTypes": [
+            "org.springframework.beans.factory.config.AutowireCapableBeanFactory"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.config.annotation.web.configuration.HttpSecurityConfiguration",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "httpSecurity",
+          "parameterTypes": []
+        },
+        {
+          "name": "setApplicationContext",
+          "parameterTypes": [
+            "org.springframework.context.ApplicationContext"
+          ]
+        },
+        {
+          "name": "setAuthenticationConfiguration",
+          "parameterTypes": [
+            "org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration"
+          ]
+        },
+        {
+          "name": "setContentNegotiationStrategy",
+          "parameterTypes": [
+            "org.springframework.web.accept.ContentNegotiationStrategy"
+          ]
+        },
+        {
+          "name": "setObjectPostProcessor",
+          "parameterTypes": [
+            "org.springframework.security.config.ObjectPostProcessor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.config.annotation.web.configuration.OAuth2ImportSelector",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.config.annotation.web.configuration.ObservationConfiguration",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "authenticationManagerPostProcessor",
+          "parameterTypes": [
+            "org.springframework.beans.factory.ObjectProvider",
+            "org.springframework.beans.factory.ObjectProvider"
+          ]
+        },
+        {
+          "name": "filterChainDecoratorPostProcessor",
+          "parameterTypes": [
+            "org.springframework.beans.factory.ObjectProvider",
+            "org.springframework.beans.factory.ObjectProvider"
+          ]
+        },
+        {
+          "name": "webAuthorizationManagerPostProcessor",
+          "parameterTypes": [
+            "org.springframework.beans.factory.ObjectProvider",
+            "org.springframework.beans.factory.ObjectProvider"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.config.annotation.web.configuration.ObservationImportSelector",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.config.annotation.web.configuration.SpringWebMvcImportSelector",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.config.annotation.web.configuration.WebMvcSecurityConfiguration",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "requestDataValueProcessor",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.config.annotation.web.configuration.WebSecurityConfiguration",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "conversionServicePostProcessor",
+          "parameterTypes": []
+        },
+        {
+          "name": "delegatingApplicationListener",
+          "parameterTypes": []
+        },
+        {
+          "name": "privilegeEvaluator",
+          "parameterTypes": []
+        },
+        {
+          "name": "setFilterChainProxySecurityConfigurer",
+          "parameterTypes": [
+            "org.springframework.security.config.ObjectPostProcessor",
+            "org.springframework.beans.factory.config.ConfigurableListableBeanFactory"
+          ]
+        },
+        {
+          "name": "setFilterChains",
+          "parameterTypes": [
+            "java.util.List"
+          ]
+        },
+        {
+          "name": "springSecurityFilterChain",
+          "parameterTypes": [
+            "org.springframework.beans.factory.ObjectProvider"
+          ]
+        },
+        {
+          "name": "springSecurityPathPatternParserBeanDefinitionRegistryPostProcessor",
+          "parameterTypes": []
+        },
+        {
+          "name": "webSecurityExpressionHandler",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.config.annotation.web.configuration.WebSecurityConfiguration$CompositeFilterChainProxy",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.util.List"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.core.authority.SimpleGrantedAuthority",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "getAuthority",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.core.userdetails.User",
+      "fields": [
+        {
+          "name": "accountNonExpired"
+        },
+        {
+          "name": "accountNonLocked"
+        },
+        {
+          "name": "authorities"
+        },
+        {
+          "name": "credentialsNonExpired"
+        },
+        {
+          "name": "enabled"
+        },
+        {
+          "name": "password"
+        },
+        {
+          "name": "username"
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.jackson.CoreJacksonModule",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.jackson.UserDeserializer",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.jackson.UsernamePasswordAuthenticationTokenDeserializer",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.oauth2.core.AuthorizationGrantType",
+      "methods": [
+        {
+          "name": "getValue",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest",
+      "fields": [
+        {
+          "name": "additionalParameters"
+        },
+        {
+          "name": "attributes"
+        },
+        {
+          "name": "authorizationGrantType"
+        },
+        {
+          "name": "authorizationRequestUri"
+        },
+        {
+          "name": "authorizationUri"
+        },
+        {
+          "name": "clientId"
+        },
+        {
+          "name": "redirectUri"
+        },
+        {
+          "name": "responseType"
+        },
+        {
+          "name": "scopes"
+        },
+        {
+          "name": "state"
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationResponseType",
+      "methods": [
+        {
+          "name": "getValue",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.oauth2.server.authorization.authentication.OAuth2AuthorizationCodeRequestAuthenticationProvider",
+      "methods": [
+        {
+          "name": "getAuthenticationValidatorComposite",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.oauth2.server.authorization.authentication.OAuth2AuthorizationCodeRequestAuthenticationToken",
+      "fields": [
+        {
+          "name": "validated"
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.oauth2.server.authorization.jackson.JwsAlgorithmMixin",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "org.springframework.security.oauth2.server.authorization.jackson.OAuth2AuthorizationRequestDeserializer",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.oauth2.server.authorization.jackson.OAuth2AuthorizationRequestMixin",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "org.springframework.security.oauth2.server.authorization.jackson.OAuth2AuthorizationServerJacksonModule",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.oauth2.server.authorization.jackson.OAuth2TokenFormatMixin",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat",
+      "fields": [
+        {
+          "name": "value"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.oauth2.server.authorization.web.OAuth2AuthorizationEndpointFilter",
+      "methods": [
+        {
+          "name": "createAuthorizationCodeRequestValidatingFilter",
+          "parameterTypes": [
+            "org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository",
+            "java.util.function.Consumer"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.jackson.WebJacksonModule",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.jackson.WebServletJacksonModule",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.server.jackson.WebServerJacksonModule",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.api.AuthenticatorAssertionResponse$AuthenticatorAssertionResponseBuilder",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "authenticatorData",
+          "parameterTypes": [
+            "org.springframework.security.web.webauthn.api.Bytes"
+          ]
+        },
+        {
+          "name": "build",
+          "parameterTypes": []
+        },
+        {
+          "name": "clientDataJSON",
+          "parameterTypes": [
+            "org.springframework.security.web.webauthn.api.Bytes"
+          ]
+        },
+        {
+          "name": "signature",
+          "parameterTypes": [
+            "org.springframework.security.web.webauthn.api.Bytes"
+          ]
+        },
+        {
+          "name": "userHandle",
+          "parameterTypes": [
+            "org.springframework.security.web.webauthn.api.Bytes"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.api.AuthenticatorAttestationResponse$AuthenticatorAttestationResponseBuilder",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "attestationObject",
+          "parameterTypes": [
+            "org.springframework.security.web.webauthn.api.Bytes"
+          ]
+        },
+        {
+          "name": "build",
+          "parameterTypes": []
+        },
+        {
+          "name": "clientDataJSON",
+          "parameterTypes": [
+            "org.springframework.security.web.webauthn.api.Bytes"
+          ]
+        },
+        {
+          "name": "transports",
+          "parameterTypes": [
+            "java.util.List"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.api.AuthenticatorSelectionCriteria",
+      "methods": [
+        {
+          "name": "getAuthenticatorAttachment",
+          "parameterTypes": []
+        },
+        {
+          "name": "getResidentKey",
+          "parameterTypes": []
+        },
+        {
+          "name": "getUserVerification",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.api.Bytes",
+      "methods": [
+        {
+          "name": "fromBase64",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.api.ImmutablePublicKeyCredentialUserEntity",
+      "methods": [
+        {
+          "name": "getDisplayName",
+          "parameterTypes": []
+        },
+        {
+          "name": "getId",
+          "parameterTypes": []
+        },
+        {
+          "name": "getName",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.api.PublicKeyCredential$PublicKeyCredentialBuilder",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "authenticatorAttachment",
+          "parameterTypes": [
+            "org.springframework.security.web.webauthn.api.AuthenticatorAttachment"
+          ]
+        },
+        {
+          "name": "build",
+          "parameterTypes": []
+        },
+        {
+          "name": "clientExtensionResults",
+          "parameterTypes": [
+            "org.springframework.security.web.webauthn.api.AuthenticationExtensionsClientOutputs"
+          ]
+        },
+        {
+          "name": "id",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "rawId",
+          "parameterTypes": [
+            "org.springframework.security.web.webauthn.api.Bytes"
+          ]
+        },
+        {
+          "name": "response",
+          "parameterTypes": [
+            "org.springframework.security.web.webauthn.api.AuthenticatorResponse"
+          ]
+        },
+        {
+          "name": "type",
+          "parameterTypes": [
+            "org.springframework.security.web.webauthn.api.PublicKeyCredentialType"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.api.PublicKeyCredentialCreationOptions",
+      "methods": [
+        {
+          "name": "getAttestation",
+          "parameterTypes": []
+        },
+        {
+          "name": "getAuthenticatorSelection",
+          "parameterTypes": []
+        },
+        {
+          "name": "getChallenge",
+          "parameterTypes": []
+        },
+        {
+          "name": "getExcludeCredentials",
+          "parameterTypes": []
+        },
+        {
+          "name": "getExtensions",
+          "parameterTypes": []
+        },
+        {
+          "name": "getPubKeyCredParams",
+          "parameterTypes": []
+        },
+        {
+          "name": "getRp",
+          "parameterTypes": []
+        },
+        {
+          "name": "getTimeout",
+          "parameterTypes": []
+        },
+        {
+          "name": "getUser",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.api.PublicKeyCredentialDescriptor"
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.api.PublicKeyCredentialParameters",
+      "methods": [
+        {
+          "name": "getAlg",
+          "parameterTypes": []
+        },
+        {
+          "name": "getType",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.api.PublicKeyCredentialParameters[]"
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.api.PublicKeyCredentialRequestOptions",
+      "methods": [
+        {
+          "name": "getAllowCredentials",
+          "parameterTypes": []
+        },
+        {
+          "name": "getChallenge",
+          "parameterTypes": []
+        },
+        {
+          "name": "getExtensions",
+          "parameterTypes": []
+        },
+        {
+          "name": "getRpId",
+          "parameterTypes": []
+        },
+        {
+          "name": "getTimeout",
+          "parameterTypes": []
+        },
+        {
+          "name": "getUserVerification",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.api.PublicKeyCredentialRpEntity",
+      "methods": [
+        {
+          "name": "getId",
+          "parameterTypes": []
+        },
+        {
+          "name": "getName",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.api.PublicKeyCredentialUserEntity"
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.authentication.PublicKeyCredentialRequestOptionsFilter"
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.authentication.WebAuthnAuthenticationFilter"
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.jackson.AttestationConveyancePreferenceSerializer",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.jackson.AuthenticationExtensionsClientInputSerializer",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.jackson.AuthenticationExtensionsClientInputsSerializer",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.jackson.AuthenticationExtensionsClientOutputsDeserializer",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.jackson.AuthenticatorAssertionResponseMixin$AuthenticatorAssertionResponseBuilderMixin",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.jackson.AuthenticatorAttachmentDeserializer",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.jackson.AuthenticatorAttachmentSerializer",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.jackson.AuthenticatorAttestationResponseMixin$AuthenticatorAttestationResponseBuilderMixin",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.jackson.AuthenticatorSelectionCriteriaMixin",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.jackson.AuthenticatorTransportDeserializer",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.jackson.BytesMixin",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.jackson.BytesSerializer",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.jackson.COSEAlgorithmIdentifierSerializer",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.jackson.DurationSerializer",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.jackson.ImmutablePublicKeyCredentialUserEntityMixin",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.jackson.PublicKeyCredentialCreationOptionsMixin",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.jackson.PublicKeyCredentialMixin$PublicKeyCredentialBuilderMixin",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.jackson.PublicKeyCredentialRequestOptionsMixin",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.jackson.PublicKeyCredentialTypeDeserializer",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.jackson.PublicKeyCredentialTypeSerializer",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.jackson.RelyingPartyPublicKeyMixin",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.jackson.ResidentKeyRequirementSerializer",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.jackson.UserVerificationRequirementSerializer",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.management.JdbcPublicKeyCredentialUserEntityRepository"
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.management.JdbcUserCredentialRepository"
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.management.PublicKeyCredentialUserEntityRepository"
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.management.RelyingPartyPublicKey",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.springframework.security.web.webauthn.api.PublicKeyCredential",
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.management.UserCredentialRepository"
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.management.WebAuthnRelyingPartyOperations"
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.management.Webauthn4JRelyingPartyOperations"
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.registration.PublicKeyCredentialCreationOptionsFilter"
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.registration.WebAuthnRegistrationFilter"
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.registration.WebAuthnRegistrationFilter$SuccessfulUserRegistrationResponse",
+      "methods": [
+        {
+          "name": "isSuccess",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.springframework.security.web.webauthn.registration.WebAuthnRegistrationFilter$WebAuthnRegistrationRequest",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "setPublicKey",
+          "parameterTypes": [
+            "org.springframework.security.web.webauthn.management.RelyingPartyPublicKey"
+          ]
+        }
+      ]
+    }
+  ]
+}

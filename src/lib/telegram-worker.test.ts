@@ -6,14 +6,14 @@ import { expect, it, vi } from "vitest";
 
 async function runWorker(options: { recipient?: string | null; prior?: string; failTelegram?: boolean; failPush?: boolean; failEmail?: boolean; savedChild?: boolean; statusCode?: number } = {}) {
   const writes: { table: string; value: Record<string, unknown> }[] = [];
-  const send = vi.fn(async () => { if (options.statusCode) throw new TelegramError(options.statusCode, 37); if (options.failTelegram) throw new Error("private provider body"); return "wamid.sent"; });
+  const send = vi.fn(async () => { if (options.statusCode) throw new TelegramError(options.statusCode, 37); if (options.failTelegram) throw new Error("private provider body"); return "telegram.sent"; });
   const push = vi.fn(async () => { if (options.failPush) throw new Error("push failed"); });
   const rpc = vi.fn(async (name: string) => {
     if (name === "authorize_notification_worker") return { data: true };
     if (name === "claim_notification_outbox") return { data: [{ id: "outbox", organization_id: "org", user_id: "user", type: "activity_invitation", attempts: 2, payload: { activityId: "activity" }, message: { subject: "Training", text: "Details", url: "/activities/abc", tag: "abc" } }] };
-    if (name === "telegram_recipient") return { data: options.recipient === undefined ? "46700000001" : options.recipient };
+    if (name === "telegram_recipient") return { data: options.recipient === undefined ? "111" : options.recipient };
     if (name === "telegram_invitation_messages") return { data: [
-      { id: "child-a", message: { person: "Child A", url: "/activities/abc" }, providerMessageId: options.savedChild ? "wamid.already" : null },
+      { id: "child-a", message: { person: "Child A", url: "/activities/abc" }, providerMessageId: options.savedChild ? "telegram.already" : null },
       { id: "child-b", message: { person: "Child B", url: "/activities/abc" }, providerMessageId: null },
     ] };
     return { data: null };
@@ -21,7 +21,7 @@ async function runWorker(options: { recipient?: string | null; prior?: string; f
   const from = (table: string) => {
     const builder = {
       select: () => builder, eq: () => builder, is: () => builder,
-      maybeSingle: async () => ({ data: options.prior ? { status: options.prior, provider_message_id: "wamid.prior" } : null }),
+      maybeSingle: async () => ({ data: options.prior ? { status: options.prior, provider_message_id: "telegram.prior" } : null }),
       upsert: async (value: Record<string, unknown>) => { writes.push({ table, value }); return {}; },
       update: (value: Record<string, unknown>) => { writes.push({ table, value }); return builder; },
       insert: async (value: Record<string, unknown>) => { writes.push({ table, value }); return {}; },
@@ -36,7 +36,7 @@ async function runWorker(options: { recipient?: string | null; prior?: string; f
   vm.runInNewContext(code, {
     Deno: { serve: (handler: typeof serve) => { serve = handler; }, env: { get: (key: string) => key === "TELEGRAM_ENABLED" ? "true" : "configured" } },
     createClient: () => ({ rpc, from, auth: { admin: { getUserById: async () => ({ data: { user: { email: "test@example.test" } } }) } } }),
-    webpush: { setVapidDetails: vi.fn(), sendNotification: push }, sendTelegramNotification: send, sendWhatsAppNotification: vi.fn(), TelegramError, setTimeout: (fn: () => void) => fn(),
+    webpush: { setVapidDetails: vi.fn(), sendNotification: push }, sendTelegramNotification: send, TelegramError, setTimeout: (fn: () => void) => fn(),
     crypto, Response, fetch: email, console: { info: vi.fn(), error: vi.fn(), warn: vi.fn() },
   });
   const response = await serve(new Request("https://worker.test", { headers: { "x-forena-cron-token": "test" } }));
@@ -81,12 +81,12 @@ it("uses the existing backoff when all transports fail", async () => {
 
 it("records Telegram retry_after for subsequent batches while delivering through a reserve channel", async () => {
   const w = await runWorker({ statusCode: 429 });
-  expect(w.rpc).toHaveBeenCalledWith("telegram_delivery_failure", { target_chat: "46700000001", retry_seconds: 37, blocked: false });
+  expect(w.rpc).toHaveBeenCalledWith("telegram_delivery_failure", { target_chat: "111", retry_seconds: 37, blocked: false });
   expect(w.push).toHaveBeenCalledOnce();
   expect(w.result.sent).toBe(1);
 });
 it("disconnects a blocked bot and still attempts push", async () => {
   const w = await runWorker({ statusCode: 403 });
-  expect(w.rpc).toHaveBeenCalledWith("telegram_delivery_failure", { target_chat: "46700000001", retry_seconds: 0, blocked: true });
+  expect(w.rpc).toHaveBeenCalledWith("telegram_delivery_failure", { target_chat: "111", retry_seconds: 0, blocked: true });
   expect(w.push).toHaveBeenCalledOnce();
 });

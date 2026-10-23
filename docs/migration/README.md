@@ -60,7 +60,8 @@ Arbetspass, notifieringsleverans och AI/MCP har fortsatt egna uppgifter.
 Första verksamhets-API:t finns i `backend`; [leveransen](first-flow.md)
 skiljer implementerad API-del från återstående UI-/Auth-/driftaktivering.
 
-Behåll Supabase som PostgreSQL-värd och Auth-leverantör under backendmigreringen.
+Behåll Supabase som PostgreSQL-värd. Den nya React/Kotlin-appen använder
+[Spring-autentisering](authentication.md) enligt ADR-026. Next-appen behåller sin auth.
 Cloud SQL är ett senare alternativ, inte ett villkor för att flytta backend.
 Verksamhetskoden använder Spring Data JDBC-repositories enligt ADR-011, Liquibase
 och portabla PostgreSQL-objekt. Behörigheten för det privata API:t ligger i

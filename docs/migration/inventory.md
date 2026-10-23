@@ -33,19 +33,15 @@ föreslagen förbättring som kräver egna tester i M09.
 | Resend | `src/lib/email/`, `supabase/functions/notification-worker/index.ts` | Även omedelbara administrations-/verifieringsmejl finns; inventera dem utöver outbox |
 | Web Push | `src/app/api/push-subscriptions/route.ts`, `src/lib/push-subscription.ts`, `public/sw.js` | VAPID-nycklar, prenumerationsägarskap, invalidation 404/410, originbundna prenumerationer |
 | Telegram | `src/app/api/telegram/`, `src/lib/telegram.ts`, `src/lib/telegram-assistant.ts`, `docs/telegram.md` | Samtycke + engångsbevis, hemlig webhookheader, privata svar och gruppkontroller, deduplicering |
-| WhatsApp | `src/app/api/whatsapp/`, `src/lib/whatsapp.ts`, `docs/whatsapp.md` | Signerad ingress, Meta-mallar, snapshots och idempotenta barnsvar måste bevaras |
 | AI Gateway / extern sökning | `src/lib/ai/`, `README.md` | Vercel OIDC och Perplexity-sökning är ytterligare flyttberoenden. Cloud Run kan inte antas få samma Vercel-identitet |
 | Edge Functions och cron | `supabase/functions/scheduled-task-worker/index.ts`, `supabase/functions/notification-worker/index.ts`, `docs/scheduled-tasks.md` | Separata domän- och transportjobb; dagens återförsök/checkpoints kan inte bara tas bort |
 | Storage / Realtime | `supabase/config.toml` | Aktiverade lokalt. Inga appanrop till Storage-buckets eller Realtime-prenumerationer hittades vid textsökning; drift och ej versionshanterade policies återstår att kontrollera |
+
 
 Telegram-assistenten skapar i dag ett kortlivat Supabase-JWT för användarens RLS
 med en särskild signeringshemlighet. Detta är verifierat befintligt beteende,
 inte målarkitektur. Den nya monoliten ska använda en intern verifierad
 användarkontext och undvika detta beroende enligt ADR-004.
-
-Transportworkern försöker Telegram, WhatsApp, push och sedan e-post. Bevara
-kanalernas faktiska fallback- och kvittensregler med testfall; anta inte att alla
-kanaler får samma meddelande eller att transporten bara är Resend.
 
 ## Databasens säkerhets- och migreringsberoenden
 
@@ -76,13 +72,6 @@ Driftens inventering ska ske med uttryckligen avsedd läsbehörighet och utan
 export av persondata eller hemligheter till dokumentationen.
 
 ## Befintliga tester och CI
-
-131 TS/TSX-testfiler hittades under `src/`. Vitest testar rena regler, komponent-
-rendering och HTTP-/MCP-adaptrar; flera beroenden mockas. En fil som heter
-`integration.test.ts` är inte i sig bevis för en verklig extern integration.
-43 SQL-filer använder Supabase/pgTAP för bland annat RLS, familjeisolering,
-livscykel, bemanning, Telegram/WhatsApp och cronköer. Inga Playwright-/Cypress-
-konfigurationer hittades. Inget av detta har körts om för dokumentationsändringen.
 
 `.github/workflows/ci.yml` kör appjobb (`npm ci`, test, typecheck, lint, build)
 och separat databasjobb (CLI 2.118.0, `supabase db start`, `supabase test db`,

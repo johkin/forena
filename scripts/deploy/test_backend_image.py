@@ -19,7 +19,7 @@ class BackendImage(unittest.TestCase):
 
     def test_selects_digest_without_changing_image(self):
         module.verify_image(self.image, self.metadata, self.commit)
-        result = module.configure(self.image, self.public_key, "public-ca")
+        result = module.configure(self.image, "public-ca")
         self.assertEqual(result['handler'], self.image['RepoDigests'][0])
 
     def test_rejects_wrong_commit_or_image(self):
@@ -57,7 +57,7 @@ class BackendImage(unittest.TestCase):
         for refs in [[], [module.REPOSITORY + ':latest'], ['other.example/backend@sha256:' + 'c' * 64],
                      self.image['RepoDigests'] * 2]:
             with self.assertRaises(ValueError):
-                module.configure(dict(self.image, RepoDigests=refs), self.public_key, "public-ca")
+                module.configure(dict(self.image, RepoDigests=refs), "public-ca")
 
     def test_api_route_keeps_path_and_precedes_spa_fallback(self):
         import re

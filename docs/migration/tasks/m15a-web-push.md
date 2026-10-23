@@ -4,7 +4,7 @@ Status: planerad. Beroenden: M07, M08, M10. Leverans: en avgränsad PR. Alla PR-
 
 ## Bakgrund och gemensamma beslut
 
-Båda kanalerna är befintliga funktioner och behövs i skriv-/leveransregistret före pilotcutover. Varje kanal har separat uppgift och aktivering.
+Web Push är en befintlig funktion som behövs i skriv-/leveransregistret före pilotcutover. Kanalen har separat aktivering.
 
 Läs [repoinstruktionerna](../../../AGENTS.md), [planen](../README.md),
 [nuläget](../inventory.md), [besluten](../decisions.md),
@@ -14,8 +14,8 @@ aktuell kod och eventuella tillkommande AGENTS.md.
 
 ## Relevanta filer
 
-docs/whatsapp.md, src/app/api/whatsapp/, src/app/api/push-subscriptions/route.ts, src/lib/push-subscription.ts, public/sw.js, supabase/functions/notification-worker/index.ts. Nya backend-/infra-sökvägar beskriver avsedd plats och finns inte
-nödvändigtvis innan beroendena är genomförda. Sökvägarna utgår från reporoten.
+`src/app/api/push-subscriptions/`, `src/lib/push-subscription.ts`,
+`public/sw.js` och `supabase/functions/notification-worker/index.ts`.
 
 ## Ingår
 
@@ -30,8 +30,6 @@ Aktivera → leverera testkallelse → öppna rätt aktivitet → avaktivera fun
 Parser-/adaptertest, PostgreSQL/RLS, riktig testbrowser och PWA/enhet. Prova fallback och 404/410, service-worker-cache och gammal frontend.
 
 ## Lämnas till senare
-
-WhatsApp flyttas i M15B. Gamla originbundna pushprenumerationer får inte påstås portabla; domänbyte behandlas i M18C.
 
 ## Avslut och överlämning
 

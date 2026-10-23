@@ -1,6 +1,6 @@
 # M13: Genomför kontrollerad backendpilot på Supabase PostgreSQL
 
-Status: planerad. Beroenden: M07, M09, M10, M11, M14, M15A, M15B, M16. Leverans: en avgränsad PR om inte nedan
+Status: planerad. Beroenden: M07, M09, M10, M11, M14, M15A, M16. Leverans: en avgränsad PR om inte nedan
 anges att arbetet först ska delas. Alla PR-baser är aktuell `main`.
 
 ## Bakgrund och gemensamma beslut

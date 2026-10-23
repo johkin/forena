@@ -38,6 +38,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/continue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["resume"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/email/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["verifyEmail"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/login": {
         parameters: {
             query?: never;
@@ -47,8 +79,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Password sign-in. Requires the canonical Origin and X-Forena-Request: 1. Sets an opaque HttpOnly session cookie; never returns provider tokens. */
-        post: operations["loginBrowserSession"];
+        /** @description Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST. */
+        post: operations["login"];
         delete?: never;
         options?: never;
         head?: never;
@@ -64,8 +96,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Idempotent local logout. Requires the canonical Origin and X-Forena-Request: 1. Deletes the server session before contacting Auth. */
-        post: operations["logoutBrowserSession"];
+        /** @description Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST. */
+        post: operations["logout"];
         delete?: never;
         options?: never;
         head?: never;
@@ -81,8 +113,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Request a PKCE magic link for an existing account. Requires canonical Origin and X-Forena-Request: 1. Generic acknowledgement; no provider tokens. Limited by client, email and shared Auth budget. */
-        post: operations["requestBrowserMagicLink"];
+        /** @description Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST. */
+        post: operations["magicLink"];
         delete?: never;
         options?: never;
         head?: never;
@@ -98,8 +130,24 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Exchange a one-time code with the encrypted PKCE verifier in the initiating HttpOnly session. Requires canonical Origin and X-Forena-Request: 1. Rotates session; returns verified user information only. */
-        post: operations["verifyBrowserMagicLink"];
+        /** @description Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST. */
+        post: operations["magicVerify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/oauth/consent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["consent"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -115,8 +163,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Begin WebAuthn authentication. Requires the canonical Origin and X-Forena-Request: 1. Binds the challenge to the HttpOnly Spring session for at most five minutes. */
-        post: operations["startBrowserPasskey"];
+        /** @description Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST. */
+        post: operations["options"];
         delete?: never;
         options?: never;
         head?: never;
@@ -132,8 +180,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Authenticated WebAuthn enrollment. Requires canonical Origin, X-Forena-Request: 1 and a browser session. Challenge bound to session and verified account for at most five minutes. */
-        post: operations["startBrowserPasskeyRegistration"];
+        /** @description Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST. */
+        post: operations["registrationOptions"];
         delete?: never;
         options?: never;
         head?: never;
@@ -149,8 +197,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Verify account/session-bound enrollment via Auth. Requires canonical Origin, X-Forena-Request: 1 and a browser session. Never returns provider tokens. */
-        post: operations["verifyBrowserPasskeyRegistration"];
+        /** @description Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST. */
+        post: operations["registrationVerify"];
         delete?: never;
         options?: never;
         head?: never;
@@ -166,8 +214,89 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Verify the browser-bound WebAuthn challenge via Auth and set an HttpOnly session cookie. Requires the canonical Origin and X-Forena-Request: 1. Never returns provider tokens. */
-        post: operations["verifyBrowserPasskey"];
+        /** @description Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST. */
+        post: operations["verifyPasskey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/passkeys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listPasskeys"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/passkeys/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description Spring WebAuthn filter; credential owner only. */
+        delete: operations["deletePasskey"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/password/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/password/reset-request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["resetRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["register"];
         delete?: never;
         options?: never;
         head?: never;
@@ -181,8 +310,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Verified user information only. Requires the HttpOnly browser session cookie or an existing valid Bearer token. Cache-Control: no-store. */
-        get: operations["getBrowserSession"];
+        get: operations["session"];
         put?: never;
         post?: never;
         delete?: never;
@@ -265,6 +393,40 @@ export interface components {
         ApiError: {
             error: string;
         };
+        AttestationConveyancePreference: string;
+        AuthenticationExtensionsClientInput: {
+            extensionId?: string;
+            input?: Record<string, never>;
+        };
+        AuthenticationExtensionsClientInputs: {
+            [key: string]: unknown;
+        };
+        AuthenticationExtensionsClientOutputObject: {
+            extensionId?: string;
+            output?: Record<string, never>;
+        };
+        AuthenticationExtensionsClientOutputs: {
+            [key: string]: unknown;
+        };
+        AuthenticatorAssertionResponse: {
+            attestationObject?: components["schemas"]["Bytes"];
+            authenticatorData?: components["schemas"]["Bytes"];
+            clientDataJSON?: components["schemas"]["Bytes"];
+            signature?: components["schemas"]["Bytes"];
+            userHandle?: components["schemas"]["Bytes"];
+        };
+        AuthenticatorAttachment: string;
+        AuthenticatorAttestationResponse: {
+            attestationObject?: components["schemas"]["Bytes"];
+            clientDataJSON?: components["schemas"]["Bytes"];
+            transports?: components["schemas"]["AuthenticatorTransport"][];
+        };
+        AuthenticatorSelectionCriteria: {
+            authenticatorAttachment?: components["schemas"]["AuthenticatorAttachment"];
+            residentKey?: components["schemas"]["ResidentKeyRequirement"];
+            userVerification?: components["schemas"]["UserVerificationRequirement"];
+        };
+        AuthenticatorTransport: string;
         BrowserAuthAcknowledgement: {
             ok: boolean;
         };
@@ -277,9 +439,28 @@ export interface components {
             user: components["schemas"]["BrowserUser"];
         };
         BrowserUser: {
-            email: string | null;
+            email: string;
             /** Format: uuid */
             id: string;
+        };
+        /** Format: base64url */
+        Bytes: string;
+        /** Format: int32 */
+        COSEAlgorithmIdentifier: number;
+        CodeRequest: {
+            code?: string;
+        };
+        ConsentView: {
+            clientId?: string;
+            clientName?: string;
+            csrfParameter?: string;
+            csrfToken?: string;
+            resource?: string;
+            scope?: string;
+            state?: string;
+        };
+        CredentialRegistrationRequest: {
+            publicKey?: components["schemas"]["RelyingPartyPublicKey"];
         };
         InvitationResponseResult: {
             ok: boolean;
@@ -287,9 +468,6 @@ export interface components {
         MagicLinkRequest: {
             /** Format: email */
             email: string;
-        };
-        MagicLinkVerifyRequest: {
-            code: string;
         };
         MyActivities: {
             activities: components["schemas"]["MyActivity"][];
@@ -311,21 +489,9 @@ export interface components {
         MyInvitations: {
             invitations: components["schemas"]["AccessibleInvitation"][];
         };
-        PasskeyOptions: {
-            /** Format: uuid */
-            challenge_id: string;
-            /** Format: int64 */
-            expires_at: number;
-            options: {
-                [key: string]: unknown;
-            };
-        };
-        PasskeyVerifyRequest: {
-            /** Format: uuid */
-            challenge_id: string;
-            credential: {
-                [key: string]: unknown;
-            };
+        PasskeyView: {
+            id?: string;
+            label?: string;
         };
         PersonalActivity: {
             description: string;
@@ -368,12 +534,91 @@ export interface components {
             organization_id: string;
             roles: string[];
         };
+        PublicKeyCredentialAuthenticatorAssertionResponse: {
+            authenticatorAttachment?: components["schemas"]["AuthenticatorAttachment"];
+            clientExtensionResults?: components["schemas"]["AuthenticationExtensionsClientOutputs"];
+            id?: string;
+            rawId?: components["schemas"]["Bytes"];
+            response?: components["schemas"]["AuthenticatorAssertionResponse"];
+            type?: components["schemas"]["PublicKeyCredentialType"];
+        };
+        PublicKeyCredentialAuthenticatorAttestationResponse: {
+            authenticatorAttachment?: components["schemas"]["AuthenticatorAttachment"];
+            clientExtensionResults?: components["schemas"]["AuthenticationExtensionsClientOutputs"];
+            id?: string;
+            rawId?: components["schemas"]["Bytes"];
+            response?: components["schemas"]["AuthenticatorAttestationResponse"];
+            type?: components["schemas"]["PublicKeyCredentialType"];
+        };
+        PublicKeyCredentialCreationOptions: {
+            attestation?: components["schemas"]["AttestationConveyancePreference"];
+            authenticatorSelection?: components["schemas"]["AuthenticatorSelectionCriteria"];
+            challenge?: components["schemas"]["Bytes"];
+            excludeCredentials?: components["schemas"]["PublicKeyCredentialDescriptor"][];
+            extensions?: components["schemas"]["AuthenticationExtensionsClientInputs"];
+            pubKeyCredParams?: components["schemas"]["PublicKeyCredentialParameters"][];
+            rp?: components["schemas"]["PublicKeyCredentialRpEntity"];
+            /** Format: int64 */
+            timeout?: number;
+            user?: components["schemas"]["PublicKeyCredentialUserEntity"];
+        };
+        PublicKeyCredentialDescriptor: {
+            id?: components["schemas"]["Bytes"];
+            transports?: components["schemas"]["AuthenticatorTransport"][];
+            type?: components["schemas"]["PublicKeyCredentialType"];
+        };
+        PublicKeyCredentialParameters: {
+            alg?: components["schemas"]["COSEAlgorithmIdentifier"];
+            type?: components["schemas"]["PublicKeyCredentialType"];
+        };
+        PublicKeyCredentialRequestOptions: {
+            allowCredentials?: components["schemas"]["PublicKeyCredentialDescriptor"][];
+            challenge?: components["schemas"]["Bytes"];
+            extensions?: components["schemas"]["AuthenticationExtensionsClientInputs"];
+            rpId?: string;
+            /** Format: int64 */
+            timeout?: number;
+            userVerification?: components["schemas"]["UserVerificationRequirement"];
+        };
+        PublicKeyCredentialRpEntity: {
+            id?: string;
+            name?: string;
+        };
+        PublicKeyCredentialType: string;
+        PublicKeyCredentialUserEntity: {
+            displayName?: string;
+            id?: components["schemas"]["Bytes"];
+            name?: string;
+        };
+        RegisterRequest: {
+            email?: string;
+            password?: string;
+        };
+        RelyingPartyPublicKey: {
+            credential?: components["schemas"]["PublicKeyCredentialAuthenticatorAttestationResponse"];
+            label?: string;
+        };
+        ResetRequest: {
+            code?: string;
+            password?: string;
+        };
+        ResidentKeyRequirement: string;
         RespondToInvitationRequest: {
             /** @description Omitted preserves the comment; null or blank clears it. Trimmed and truncated to 500 Unicode code points. Pending always clears it. */
             comment?: string | null;
             /** @enum {string} */
             response: "pending" | "accepted" | "declined";
         };
+        SuccessfulUserRegistrationResponse: {
+            success?: boolean;
+        };
+        TokenGenerationRequest: {
+            username?: string;
+        };
+        TokenLoginRequest: {
+            token?: string;
+        };
+        UserVerificationRequirement: string;
     };
     responses: never;
     parameters: never;
@@ -463,41 +708,7 @@ export interface operations {
             };
         };
     };
-    loginBrowserSession: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["BrowserLoginRequest"];
-            };
-        };
-        responses: {
-            /** @description Browser session created */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["BrowserSessionView"];
-                };
-            };
-            /** @description Login admission exhausted; no provider call. Retry later. */
-            429: {
-                headers: {
-                    "Retry-After"?: number;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
-    logoutBrowserSession: {
+    resume: {
         parameters: {
             query?: never;
             header?: never;
@@ -513,13 +724,899 @@ export interface operations {
                 };
                 content: {
                     "*/*": {
-                        [key: string]: boolean;
+                        [key: string]: string;
                     };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Inactive session or invalid credential */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Origin or account access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Temporary verification failure */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
         };
     };
-    requestBrowserMagicLink: {
+    verifyEmail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CodeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BrowserAuthAcknowledgement"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Inactive session or invalid credential */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Origin or account access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Shared admission budget exhausted */
+            429: {
+                headers: {
+                    /** @description Seconds until retry */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Temporary verification failure */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/x-www-form-urlencoded": components["schemas"]["BrowserLoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrowserSessionView"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Inactive session or invalid credential */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Origin or account access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Shared admission budget exhausted */
+            429: {
+                headers: {
+                    /** @description Seconds until retry */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Temporary verification failure */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrowserAuthAcknowledgement"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Inactive session or invalid credential */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Origin or account access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Temporary verification failure */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    magicLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/x-www-form-urlencoded": components["schemas"]["TokenGenerationRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrowserAuthAcknowledgement"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Inactive session or invalid credential */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Origin or account access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Shared admission budget exhausted */
+            429: {
+                headers: {
+                    /** @description Seconds until retry */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Temporary verification failure */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    magicVerify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/x-www-form-urlencoded": components["schemas"]["TokenLoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrowserSessionView"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Inactive session or invalid credential */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Origin or account access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Shared admission budget exhausted */
+            429: {
+                headers: {
+                    /** @description Seconds until retry */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Temporary verification failure */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    consent: {
+        parameters: {
+            query: {
+                client_id: string;
+                state: string;
+                scope: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ConsentView"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Inactive session or invalid credential */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Origin or account access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Temporary verification failure */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    options: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicKeyCredentialRequestOptions"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Inactive session or invalid credential */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Origin or account access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Shared admission budget exhausted */
+            429: {
+                headers: {
+                    /** @description Seconds until retry */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Temporary verification failure */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    registrationOptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicKeyCredentialCreationOptions"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Inactive session or invalid credential */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Origin or account access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Shared admission budget exhausted */
+            429: {
+                headers: {
+                    /** @description Seconds until retry */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Temporary verification failure */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    registrationVerify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CredentialRegistrationRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessfulUserRegistrationResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Inactive session or invalid credential */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Origin or account access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Shared admission budget exhausted */
+            429: {
+                headers: {
+                    /** @description Seconds until retry */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Temporary verification failure */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    verifyPasskey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublicKeyCredentialAuthenticatorAssertionResponse"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrowserSessionView"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Inactive session or invalid credential */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Origin or account access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Shared admission budget exhausted */
+            429: {
+                headers: {
+                    /** @description Seconds until retry */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Temporary verification failure */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listPasskeys: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PasskeyView"][];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Inactive session or invalid credential */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Origin or account access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Temporary verification failure */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    deletePasskey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Credential removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Inactive session or invalid credential */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Origin or account access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Shared admission budget exhausted */
+            429: {
+                headers: {
+                    /** @description Seconds until retry */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Temporary verification failure */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    reset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BrowserAuthAcknowledgement"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Inactive session or invalid credential */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Origin or account access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Shared admission budget exhausted */
+            429: {
+                headers: {
+                    /** @description Seconds until retry */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Temporary verification failure */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    resetRequest: {
         parameters: {
             query?: never;
             header?: never;
@@ -532,7 +1629,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Request completed */
+            /** @description OK */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -541,19 +1638,54 @@ export interface operations {
                     "*/*": components["schemas"]["BrowserAuthAcknowledgement"];
                 };
             };
-            /** @description Auth admission exhausted; no provider call. Retry later. */
-            429: {
+            /** @description Invalid request */
+            400: {
                 headers: {
-                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiError"];
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Inactive session or invalid credential */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Origin or account access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Shared admission budget exhausted */
+            429: {
+                headers: {
+                    /** @description Seconds until retry */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Temporary verification failure */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
         };
     };
-    verifyBrowserMagicLink: {
+    register: {
         parameters: {
             query?: never;
             header?: never;
@@ -562,105 +1694,11 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["MagicLinkVerifyRequest"];
+                "application/json": components["schemas"]["RegisterRequest"];
             };
         };
         responses: {
-            /** @description Request completed */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["BrowserSessionView"];
-                };
-            };
-            /** @description Auth admission exhausted; no provider call. Retry later. */
-            429: {
-                headers: {
-                    "Retry-After"?: number;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
-    startBrowserPasskey: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Browser-bound passkey options */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["PasskeyOptions"];
-                };
-            };
-            /** @description Login admission exhausted; no provider call. Retry later. */
-            429: {
-                headers: {
-                    "Retry-After"?: number;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
-    startBrowserPasskeyRegistration: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Request completed */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["PasskeyOptions"];
-                };
-            };
-            /** @description Auth admission exhausted; no provider call. Retry later. */
-            429: {
-                headers: {
-                    "Retry-After"?: number;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
-    verifyBrowserPasskeyRegistration: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PasskeyVerifyRequest"];
-            };
-        };
-        responses: {
-            /** @description Request completed */
+            /** @description OK */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -669,53 +1707,54 @@ export interface operations {
                     "*/*": components["schemas"]["BrowserAuthAcknowledgement"];
                 };
             };
-            /** @description Auth admission exhausted; no provider call. Retry later. */
-            429: {
+            /** @description Invalid request */
+            400: {
                 headers: {
-                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiError"];
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Inactive session or invalid credential */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Origin or account access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Shared admission budget exhausted */
+            429: {
+                headers: {
+                    /** @description Seconds until retry */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Temporary verification failure */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
         };
     };
-    verifyBrowserPasskey: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PasskeyVerifyRequest"];
-            };
-        };
-        responses: {
-            /** @description Browser session created */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["BrowserSessionView"];
-                };
-            };
-            /** @description Login admission exhausted; no provider call. Retry later. */
-            429: {
-                headers: {
-                    "Retry-After"?: number;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
-    getBrowserSession: {
+    session: {
         parameters: {
             query?: never;
             header?: never;
@@ -731,6 +1770,42 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["BrowserSessionView"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Inactive session or invalid credential */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Origin or account access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Temporary verification failure */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
         };

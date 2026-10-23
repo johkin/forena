@@ -4,8 +4,8 @@ const sessionView = z.object({ user: z.object({ id: z.uuid(), email: z.string().
 export type SessionView = z.infer<typeof sessionView>;
 
 /** Only non-secret user information crosses this boundary. The session cookie is HttpOnly. */
-export async function authRequest(path: "session" | "login" | "logout" | "passkey/options" | "passkey/verify" | "magic-link" | "magic-link/verify" | "passkey/registration/options" | "passkey/registration/verify" | "register" | "email/verify" | "password/reset-request" | "password/reset" | "continue", body?: unknown, transport: typeof fetch = fetch, accountId?: string, native = false) {
-  const form = native && body !== undefined && ["login", "magic-link", "magic-link/verify", "logout"].includes(path);
+export async function authRequest(path: "session" | "login" | "logout" | "passkey/options" | "passkey/verify" | "magic-link" | "magic-link/verify" | "passkey/registration/options" | "passkey/registration/verify" | "register" | "email/verify" | "password/reset-request" | "password/reset" | "continue", body?: unknown, transport: typeof fetch = fetch, accountId?: string) {
+  const form = body !== undefined && ["login", "magic-link", "magic-link/verify", "logout"].includes(path);
   const values = body as Record<string, string>;
   const formBody = form ? new URLSearchParams(path === "login" ? { email: values.email, password: values.password }
     : path === "magic-link" ? { username: values.email } : path === "magic-link/verify" ? { token: values.code } : {}) : undefined;
@@ -33,8 +33,8 @@ function encode(value: ArrayBuffer) {
   return btoa(String.fromCharCode(...new Uint8Array(value))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-/** The provider verifies the challenge/signature, RP ID and origin. No Supabase browser client is used. */
-export async function passkeyLogin(native = false): Promise<SessionView | null> {
+/** Spring Security verifies the challenge/signature, RP ID and origin. No Supabase browser client is used. */
+export async function passkeyLogin(): Promise<SessionView | null> {
   if (!window.PublicKeyCredential || !navigator.credentials) throw new Error("Webbläsaren stöder inte passkey.");
   const optionsSchema = z.object({
     challenge: z.string(), rpId: z.string(), timeout: z.number().optional(),
@@ -42,8 +42,7 @@ export async function passkeyLogin(native = false): Promise<SessionView | null> 
     allowCredentials: z.array(z.object({ id: z.string(), type: z.literal("public-key") })).optional(),
   });
   const raw = await authRequest("passkey/options", {});
-  const result = native ? { options: optionsSchema.parse(raw), challenge_id: undefined }
-    : z.object({ challenge_id: z.uuid(), expires_at: z.number(), options: optionsSchema }).parse(raw);
+  const result = { options: optionsSchema.parse(raw) };
   const hostname = window.location.hostname;
   if (hostname !== result.options.rpId && !hostname.endsWith(`.${result.options.rpId}`)) throw new Error("Passkey är inte konfigurerad för webbplatsen.");
   const credential = await navigator.credentials.get({ publicKey: {
@@ -59,7 +58,7 @@ export async function passkeyLogin(native = false): Promise<SessionView | null> 
       response: { clientDataJSON: encode(assertion.clientDataJSON), authenticatorData: encode(assertion.authenticatorData),
         signature: encode(assertion.signature), userHandle: assertion.userHandle ? encode(assertion.userHandle) : null },
   };
-  return parseSession(await authRequest("passkey/verify", native ? assertionPayload : { challenge_id: result.challenge_id, credential: assertionPayload }));
+  return parseSession(await authRequest("passkey/verify", assertionPayload));
 }
 
 export function clearLegacyAuth(storage: Pick<Storage, "removeItem"> = localStorage) {
@@ -68,7 +67,7 @@ export function clearLegacyAuth(storage: Pick<Storage, "removeItem"> = localStor
 }
 
 /** Registration uses the authenticated server session; provider tokens never reach JavaScript. */
-export async function registerPasskey(accountId: string, native = false): Promise<void> {
+export async function registerPasskey(accountId: string): Promise<void> {
   if (!window.PublicKeyCredential || !navigator.credentials) throw new Error("Webbläsaren stöder inte passkey.");
   const descriptor = z.object({ id: z.string(), type: z.literal("public-key"),
     transports: z.array(z.enum(["ble", "hybrid", "internal", "nfc", "usb"])).optional() });
@@ -83,8 +82,7 @@ export async function registerPasskey(accountId: string, native = false): Promis
     attestation: z.enum(["none", "indirect", "direct", "enterprise"]).optional(),
   });
   const raw = await authRequest("passkey/registration/options", {}, fetch, accountId);
-  const result = native ? { options: optionsSchema.parse(raw), challenge_id: undefined }
-    : z.object({ challenge_id: z.uuid(), expires_at: z.number(), options: optionsSchema }).parse(raw);
+  const result = { options: optionsSchema.parse(raw) };
   const hostname = window.location.hostname;
   if (hostname !== result.options.rp.id && !hostname.endsWith(`.${result.options.rp.id}`)) throw new Error("Passkey är inte konfigurerad för webbplatsen.");
   const credential = await navigator.credentials.create({ publicKey: {
@@ -99,8 +97,6 @@ export async function registerPasskey(accountId: string, native = false): Promis
     response: { clientDataJSON: encode(attestation.clientDataJSON), attestationObject: encode(attestation.attestationObject),
       transports: attestation.getTransports?.() ?? [] },
   };
-  const verified = await authRequest("passkey/registration/verify", native ? { publicKey: { credential: credentialPayload, label: "Passkey" } }
-    : { challenge_id: result.challenge_id, credential: credentialPayload }, fetch, accountId);
-  if (native) z.object({ success: z.literal(true) }).parse(verified);
-  else z.object({ ok: z.literal(true) }).parse(verified);
+  const verified = await authRequest("passkey/registration/verify", { publicKey: { credential: credentialPayload, label: "Passkey" } }, fetch, accountId);
+  z.object({ success: z.literal(true) }).parse(verified);
 }

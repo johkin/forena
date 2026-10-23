@@ -1,9 +1,11 @@
 # Arkitektur
 
-Ett separat [försök med egen autentisering i Spring](migration/native-auth.md)
-finns bakom `FORENA_AUTH_MODE=native` (ADR-024). Där äger backend konton,
-mejllänkar, passkeys och OAuth och använder en enda lokal webbsession.
-Beskrivningarna av Supabase Auth nedan avser fortsatt det äldre körläget.
+Den nya React/Kotlin-appen använder [Spring-autentisering](migration/authentication.md)
+som enda ordinarie auth-lösning. Backend äger konton, passkeys, mejllänkar,
+OAuth och Spring Session JDBC. Supabase som PostgreSQL-leverantör är separat.
+Den äldre Next-appen behåller sin befintliga Supabase Auth; beskrivningarna
+av den äldre lösningen nedan innebär ingen omkoppling.
+
 
 Den stegvisa målarkitekturen för Kotlin/Spring Boot på Vercel och Supabase finns i
 [migreringsplanen](migration/README.md) och dess [beslut](migration/decisions.md).
@@ -12,7 +14,7 @@ Beskrivningen nedan avser nuvarande lösning och befintliga principer; måltekni
 
 Spring-komponenter och standardflöden är förstahandsvalet i Kotlin (ADR-025).
 Anpassningar görs via ramverkets gränssnitt; controllers återskapar inte
-Spring Securitys autentiseringsflöden. Native-piloten använder färdiga filter
+Spring Securitys autentiseringsflöden. Appen använder färdiga filter
 för lösenord, passkeys, magic link och logout. Se [genomgången](migration/spring-security.md)
 för kvarvarande kontoregler och sessions-/transportadaptrar.
 
@@ -41,7 +43,7 @@ Den äldre Next-appens mejlintegration är separat och ändras inte av detta.
 
 Spring-profilen `local` startar PostgreSQL via Spring Boots Docker Compose-stöd,
 med samma schema-bootstrap, separata owner-/runtime-roller och Liquibase som
-övrig Kotlin-runtime. Native-auth och en loggande `EmailSender` gör det möjligt
+övrig Kotlin-runtime. Spring-autentisering och en loggande `EmailSender` gör det möjligt
 att utveckla utan Supabase Auth eller Resend. Data ligger kvar i en lokal volym.
 Se [körinstruktioner](../backend/README.md#lokal-utveckling).
 
@@ -53,14 +55,15 @@ Kotlin-anrop. Ordinarie översikt är fortsatt inte omkopplad.
 
 Den separata [browser-frontendens pilot](../frontend/README.md) i `frontend/`
 återanvänder gemensamt sidskal, header, meny, sidfot och kallelsesvar men kör
-React/Vite utan Next-server. Kotlin hanterar lösenords-/passkey-inloggning, magic link med serverlagrad PKCE, registrering av passkeys och
-tokenförnyelse; Spring Session JDBC äger serversessionens lagring, cookie och inaktivitet. Browsern skickar en ogenomskinlig HttpOnly-
-cookie direkt genom Vercels `/api/*` till Kotlin; access- och refresh-token
-lagras krypterat i det privata schemat och når inte frontenden. Backend äger
-behörighets- och sessionskontrollen. Se [webbsessioner](migration/web-sessions.md)
-och ADR-018, som ersätter ADR-017:s browserlagrade Bearer-token. Publik
-runtimekonfiguration innehåller endast det nya projektets Auth-URL,
-publishable key, version och valfri startaktivitet. Se ADR-017.
+React/Vite utan Next-server. Spring hanterar kontoregistrering, e-postverifiering,
+lösenord, passkeys, magic links, återställning och logout. Spring Session JDBC
+äger lagring, cookie och inaktivitet; sessionsinnehållet är strängar med identitet
+och generation. Browsern skickar endast en ogenomskinlig HttpOnly-cookie via
+API-proxyn. Backend äger behörigheter och sessionskontroll. Publik config
+innehåller version och valfri provaktivitet. Se [webbsessioner](migration/web-sessions.md)
+och ADR-026. OAuth/MCP går genom Spring Authorization Server med separat
+token-/resourcekontroll.
+
 
 [Actions-deployen för Kotlin-sajten](migration/actions-deployment.md) bygger
 statisk frontend och Java 25-API i en gemensam Vercel Services-deployment.
@@ -365,14 +368,6 @@ materialiseras vid INSERT i outbox. `notification-worker` läser det generiska
 `message`-fältet och hanterar transport och återförsök utan domänläsningar eller
 omprövning. `scheduled_at` i outbox gäller enbart transportens återförsök.
 Se [schemalagda uppgifter](scheduled-tasks.md).
-
-WhatsApp är en valbar transport före push/e-post. För anslutna mottagare
-materialiseras en privat meddelandesnapshot per person/kallelse atomärt vid
-outbox-INSERT. Workern levererar dessa med godkända Meta-mallar och sparar
-accept per barnmeddelande inför återförsök. Knappsvar tas emot via en separat,
-signerad webhook och uppdaterar ordinarie kallelsesvar efter aktuell
-person-/målsmans- och livscykelkontroll. Ingen AI tolkar svaren.
-Se [WhatsApp](whatsapp.md) för kontokoppling, mallar, drift och begränsningar.
 
 ## Deltagande och arbetsuppgifter
 
@@ -703,24 +698,14 @@ Hjälpfunktionerna är privata och tar inte emot referenslistor från klienter.
 
 ## Telegram-prototyp
 
-Telegram följer samma outboxgräns som WhatsApp: ett fryst meddelande per
-mottagare och kallad person skapas transaktionellt vid köläggning. Leveransordningen
-är Telegram → WhatsApp → push → e-post för de kanaler mottagaren har aktiverat.
-`messaging` äger privata kontokopplingar, engångsbevis, gruppkopplingar och
-knappreferenser; inga tabellgrants ges till klienter. Svar skriver befintliga
-`invitations` under aktivitetens lås med aktuell person-/målsmanskontroll.
-Gruppchattar får bara en navigationslänk på kommandot `/forena`; personliga
-kallelser och svar går aldrig till grupper. Lag- och ledargrupper kopplas separat.
-Se [Telegram](telegram.md) för konfiguration, verifiering och utvärdering.
-
-Vid köläggning av kallelser och påminnelser sparas `personIds` per mottagare:
-endast personerna i det aktuella urvalet som mottagaren själv är eller är
-målsman för. Både manuella och schemalagda utskick bevarar detta beslut.
-Telegram-snapshots kräver dessa ID:n och kan därför inte utökas till andra
-syskon som råkar ha kallelser till aktiviteten. Nya köposter använder samma
-personfilter för WhatsApp-reserven; äldre WhatsApp-payloads behåller sitt
-befintliga kontrakt. Äldre Telegram-köposter utan personurval ger en generell
-navigationsnotis utan privata snapshots.
+Telegram skapar frysta meddelanden per mottagare och kallad person i samma
+transaktion som köläggningen. Leveransordningen är Telegram → push → e-post.
+Privata kontokopplingar, engångsbevis och knappreferenser saknar klientgrants.
+Knappsvar kontrollerar aktuell personåtkomst och aktivitetens livscykel under lås.
+Gruppchattar får bara navigationslänkar, aldrig privata kallelser eller svar.
+Vid köläggning sparas personurvalet per mottagare; snapshots får inte utökas till
+andra syskon. Äldre köposter utan personurval ger en generell navigationsnotis.
+Se [Telegram](telegram.md).
 
 
 Telegrams kallelsepresentation delas mellan notifieringsworker och webhook.

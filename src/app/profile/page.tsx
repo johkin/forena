@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { TelegramSettings } from "@/components/telegram-settings";
 import { TelegramGroupSettings } from "@/components/telegram-group-settings";
-import { WhatsAppSettings } from "@/components/whatsapp-settings";
 import { updateProfile } from "./actions";
 
 type Props = { searchParams: Promise<{ saved?: string; error?: string; telegram?: string }> };
@@ -45,7 +44,6 @@ export default async function ProfilePage({ searchParams }: Props) {
           <div className="form-section"><h2>Integrationer</h2><div className="profile-organizations"><a href="/connect">Anslut AI<span aria-hidden="true">›</span></a></div><p className="form-help">Anslutningsinstruktioner och serveradress för AI-tjänster som stöder MCP.</p></div>
           <button className="primary application-submit" type="submit">Spara profil</button>
         </form>
-        <WhatsAppSettings />
         <TelegramSettings />
         <TelegramGroupSettings />
       </section></main>

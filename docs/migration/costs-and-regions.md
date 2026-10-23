@@ -47,12 +47,6 @@ leverantörerna. Separata testprojekt och kontrollerade utskick kvarstår.
 
 ## Tidigare Cloud SQL-scenario och avgränsning
 
-Planera Cloud Run för webbapp/API och arbetare, Cloud SQL PostgreSQL för
-verksamhetsdata, Cloud Storage för filer och Firebase Hosting med CDN för
-publika statiska resurser och samma origin till dynamiska routes. Behåll
-Supabase Auth, Resend, AI Gateway och valbara Telegram/WhatsApp/Web Push.
-Budgetera tre separata GCP-projekt: dev, test och prod.
-
 Föreslå **europe-west1 (Belgien)** som första kandidat eftersom Firebase
 Hostings direkta rewrite till Cloud Run förväntas stödjas där. Detta är ett
 **overifierat antagande; stödet är otestat**. Förslaget får låsas
@@ -69,11 +63,6 @@ budget för kvarvarande Supabase-projekt och dess underliggande resurser även
 när verksamhetsdatabasen flyttas.
 
 ## Underlag och osäkerheter
-
-Läst lokalt: [AGENTS.md](../../AGENTS.md),
-[arkitektur](../architecture.md), [säkerhetsarkitektur](../security-architecture.md),
-[schemalagda uppgifter](../scheduled-tasks.md), [MCP](../mcp.md),
-[Telegram](../telegram.md), [WhatsApp](../whatsapp.md) och [README](../../README.md).
 
 Nätpolicyn tillåter GitHub och råa GitHub-filer, men inte `cloud.google.com`,
 `firebase.google.com`, `supabase.com` eller leverantörernas prissidor.
@@ -110,8 +99,8 @@ GB/GiB och GB/TiB konverteras enligt respektive SKU.
 | CI-byggminuter | 500–1 500 | 1 000–3 000 | 1 500–5 000 |
 | Faktiska mejl inklusive Auth och reservkanal | 100–500 | 500–2 000 | 5 000–20 000 |
 | AI-genereringar, webb och privat Telegram | 100–500 | 500–2 000 | 2 000–10 000 |
-| WhatsApp debiterbara meddelanden, inklusive marginal | 0–100 | 0–200 | 1 000–5 000 |
 | Telegram/Web Push leveransförsök | 100–1 000 | 500–5 000 | 10 000–100 000 |
+
 
 Cloud Run räknas med cirka 1 vCPU och 0,5–1 GiB per aktiv instans,
 requestbaserad debitering och `min-instances=0` i grundscenariot.
@@ -199,9 +188,9 @@ och återförsök vid failover.
 | Supabase Auth och kvarvarande projektresurser | `andel organisationsplan + projekt/compute + max(0, MAU − verifierad inkluderad kvot) × p_MAU + tillägg/egress`. Ingen kvot är verifierad; reservera för tre separata projekt. | 30–65 | 30–90 | 40–180 |
 | Resend | `plan + övervolym × p_mail`, faktisk leveransvolym inklusive Auth, verifiering och reservmejl. | 0–10 | 0–15 | 20–70 |
 | AI Gateway och modeller | `Σ(inputtoken × p_in + outputtoken × p_out)/1 000 000 + sökverktyg + eventuell gatewayavgift`. | 2–20 | 5–60 | 30–350 |
-| WhatsApp | `Σ debiterbara meddelanden per land/mallkategori × p_kategori + eventuell nummer/BSP-avgift`. | 0–3 | 0–5 | 10–100 |
 | Telegram och Web Push, leverantörsreserv | `eventuella kanalavgifter`; körning och nättrafik ligger redan i GCP-posterna. | 0–2 | 0–2 | 0–10 |
 | **Externa tjänster summa** | | **32–100** | **35–172** | **100–710** |
+
 
 Resends nollalternativ avser lokalt mejlsänke/mock eller avstängda liveutskick,
 inte en verifierad gratisplan. Supabase-planavgiften ska bokas en gång per
@@ -219,18 +208,6 @@ verktygsanrop, agentens flera modellsteg, återförsök och marginal till tabell
 debiteras separat. Utgå från samtliga modellsteg, inte bara antal chattfrågor.
 Nuvarande Vercel OIDC kan inte antas fungera oförändrat på Cloud Run:
 verifiera stödd Gateway-autentisering utanför Vercel och dess kostnad innan flytt.
-
-Leveransordningen enligt arkitektur/Telegram är Telegram → WhatsApp → push →
-e-post för aktiverade kanaler. Budgetera faktisk kanalvolym, inte fyra fulla
-utskick för varje händelse. Ett barn per meddelande, partiell leverans,
-direkta svarsbekräftelser, återförsök och dubbletter kan däremot öka volymen.
-Som WhatsApp-känslighetsanalys används 0,01–0,02 USD per debiterbart meddelande
-för 1 000–5 000 meddelanden, alltså 10–100 USD. Detta är **inte verifierad
-svensk Meta-prissättning** eller verifierad mallkategori; högre kategoriavgift
-eller BSP-abonnemang kräver höjd budget. Telegrams vanliga bottrafik och Web
-Push antas sakna separat styckavgift i grundfallet; aktuella villkor, gränser
-och eventuell betald broadcast måste kontrolleras. Telegrams privata AI-frågor
-belastar AI-posten; gruppfrågor ska inte öppnas genom migrationen.
 
 ## Samlad ram och kostnader utanför grundscenariot
 
@@ -320,16 +297,6 @@ origins. Ett gemensamt faktureringskonto är möjligt men ersätter inte separat
 Terraform-state ska vara åtkomststyrd och miljöseparerad; inga hemligheter
 eller statefiler ska versionshanteras.
 
-Dev/test använder enbart syntetiska personer och filer; inga prodbackuper,
-medlemsregister eller riktiga skyddade uppgifter. Dev har lokalt mejlsänke/mock.
-Testutskick kräver explicit mottagarlista som kontrolleras på serversidan
-även för Auth-mail och reservkanaler. Använd separata Resend-nycklar/
-avsändardomäner, Telegram-botar/token/webhooks, WhatsApp-testnummer/testapp
-och pushnycklar/prenumerationer. En Telegram-bot kan bara ha en webhook;
-test får inte skriva över produktionens. Stäng av livekanaler som förval och
-använd låga miljöspecifika utskicks- och AI-tak. Testa negativa fall där
-syntetiska testhändelser försöker nå produktionsmottagare.
-
 Säkerhetsloggar ska innehålla nödvändig auditmetadata men inte personnummer,
 promptar, mejlinnehåll, tokens eller Telegram-URL:er med bothemlighet.
 Separera kortlivade driftloggar från beslutad auditretention. Logging-
@@ -383,35 +350,6 @@ automatiskt. Ingen hemlighet eller verklig konfiguration ingår i detta dokument
   som kompletterande schemaöversikt; motsvarande `main`-sidor lästes initialt.
 
 **Officiella kontrollpunkter, ej hämtade/verifierade i denna miljö**:
-
-- Firebase Hosting/Cloud Run-regioner och rewrite:
-  <https://firebase.google.com/docs/hosting/cloud-run> och
-  <https://firebase.google.com/docs/hosting/full-config>.
-- Cloud Run/Jobs-regioner och priser:
-  <https://cloud.google.com/run/docs/locations>,
-  <https://cloud.google.com/run/pricing>.
-- Cloud SQL regioner, HA och pris:
-  <https://cloud.google.com/sql/docs/postgres/locations>,
-  <https://cloud.google.com/sql/docs/postgres/high-availability>,
-  <https://cloud.google.com/sql/pricing>.
-- Hosting och Storage:
-  <https://firebase.google.com/pricing>,
-  <https://cloud.google.com/storage/pricing>.
-- Scheduler, Pub/Sub och observability:
-  <https://cloud.google.com/scheduler/pricing>,
-  <https://cloud.google.com/pubsub/pricing>,
-  <https://cloud.google.com/stackdriver/pricing>.
-- Secrets, registry, CI och nät:
-  <https://cloud.google.com/secret-manager/pricing>,
-  <https://cloud.google.com/artifact-registry/pricing>,
-  <https://cloud.google.com/build/pricing>,
-  <https://cloud.google.com/vpc/network-pricing>,
-  <https://cloud.google.com/load-balancing/pricing>.
-- Kvarvarande leverantörer:
-  <https://supabase.com/pricing>, <https://supabase.com/changelog>,
-  <https://resend.com/pricing>, <https://vercel.com/docs/ai-gateway/pricing>,
-  <https://business.whatsapp.com/products/platform-pricing>,
-  <https://core.telegram.org/bots/faq>.
 
 Lokala länkar, tabellsummor och dokumentdiff kontrolleras som dokumentations-
 validering. Inga aktuella molnpriser, regionfunktioner, SLO-egenskaper eller

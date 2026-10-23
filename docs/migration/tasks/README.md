@@ -13,7 +13,7 @@ M21/M22-koden togs bort i PR #148 och dess resultat är historiskt underlag.
 | --- | --- | --- |
 | [M01](m01-toolchain.md) | Verifiera och lås grundprojektets verktygskedja | M00 |
 | [M02](m02-database-foundation.md) | Inför Liquibase och PostgreSQL-testgrund | M01 |
-| [M03](m03-authentication.md) | Verifiera Supabase-identitet och skilj kanalgrants | M01 |
+| [M03](m03-authentication.md) | Verifiera Spring-konton, webbsessioner och separata MCP-grants | M01 |
 | [M04](m04-authorization-map.md) | Återskapa effektiv databas- och behörighetskatalog | M00 |
 | [M05](m05-participation-service.md) | Implementera personavgränsad läsning och svarstjänst i den rena verksamhetsdatabasen | M02, M03, M04 |
 | [M06](m06-durable-events.md) | Bevisa beständig modulreaktion; extern transport först vid behov | M01, M02 |
@@ -25,10 +25,9 @@ M21/M22-koden togs bort i PR #148 och dess resultat är historiskt underlag.
 | [M10](m10-notifications.md) | Flytta en kallelseleverans med kontrollerad e-post | M06, M22G, M09 |
 | [M11](m11-duties.md) | Flytta bokning av en arbetspassplats | M07 |
 | [M12](m12-data-transfer.md) | Vilande alternativ: Supabase till Cloud SQL-dataflytt | M02, M04, M08 |
-| [M13](m13-cutover.md) | Genomför kontrollerad backendpilot på Supabase PostgreSQL | M07, M09, M10, M11, M14, M15A, M15B, M16 |
+| [M13](m13-cutover.md) | Genomför kontrollerad backendpilot på Supabase PostgreSQL | M07, M09, M10, M11, M14, M15A, M16 |
 | [M14](m14-telegram.md) | Flytta Telegrams verifierade koppling och kallelsesvar | M07, M22G |
 | [M15A](m15a-web-push.md) | Flytta Web Push-prenumeration och leverans | M07, M22G, M10 |
-| [M15B](m15b-whatsapp.md) | Flytta WhatsApps koppling, leverans och kallelsesvar | M07, M22G, M10 |
 | [M16](m16-assistant-mcp.md) | Flytta en skrivskyddad assistent- och MCP-funktion | M03, M07, M22G |
 | [M17](m17-rendering.md) | Avgör SSR och förgenerering före Vite | M00 |
 | [M18A](m18a-frontend-directory.md) | Flytta befintlig frontend till egen katalog | M00 |
@@ -45,6 +44,7 @@ M21/M22-koden togs bort i PR #148 och dess resultat är historiskt underlag.
 | [M22](m22-vercel-delivery.md) | Verifiera schemalagd beständig leverans, region och Vercel-kostnad | M21 |
 | [M21](m21-vercel-probe.md) | Prova Vercel-container, PostgreSQL och händelser efter HTTP-svar | M00 |
 | [M20](m20-portable-postgres.md) | Verifiera portabel verksamhetsdatabas på Supabase PostgreSQL | M04, M07, M13 |
+
 
 M08, M12 och M18C är vilande enligt ADR-009. GCP-kopplingar utvärderas först
 vid dokumenterat konkret hinder i Vercel + Supabase. Aktiva uppgifters äldre

@@ -7,8 +7,7 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 
-PUBLIC_CONFIG = ('NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
-                 'FORENA_KOTLIN_TEST_ACTIVITY_ID')
+PUBLIC_CONFIG = ('FORENA_KOTLIN_TEST_ACTIVITY_ID',)
 COMMON = {'scripts/deploy/build_inputs.py', '.github/workflows/ci.yml', '.gitattributes'}
 
 

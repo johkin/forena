@@ -4,7 +4,7 @@ import { updateSession } from "@/lib/supabase/proxy";
 
 export async function proxy(request: NextRequest) {
   // MCP and the signed Meta webhook authenticate independently of cookies.
-  if (request.nextUrl.pathname === "/api/telegram/webhook" || request.nextUrl.pathname === "/api/whatsapp/webhook" || request.nextUrl.pathname === "/api/mcp" || request.nextUrl.pathname === "/.well-known/oauth-protected-resource" || request.nextUrl.pathname === "/.well-known/oauth-protected-resource/api/mcp") return NextResponse.next();
+  if (request.nextUrl.pathname === "/api/telegram/webhook" || request.nextUrl.pathname === "/api/mcp" || request.nextUrl.pathname === "/.well-known/oauth-protected-resource" || request.nextUrl.pathname === "/.well-known/oauth-protected-resource/api/mcp") return NextResponse.next();
   return updateSession(request);
 }
 

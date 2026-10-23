@@ -16,7 +16,7 @@ import type { PublicConfig } from "./config";
 import { authRequest, parseSession, passkeyLogin, registerPasskey, type SessionView } from "./session";
 
 import { MagicLinkForm, MagicLinkConfirmation } from "../../src/components/magic-link-form";
-import { NativeAccountPage, NativeConsentPage, NativePasskeyList } from "./native-account";
+import { AccountPage, ConsentPage, PasskeyList } from "./account";
 import { PasskeyRegistration } from "../../src/components/passkey-registration";
 
 function Frame({ children, email, logout }: { children: ReactNode; email?: string; logout?: ReactNode }) {
@@ -35,8 +35,7 @@ export function App({ config }: { config: PublicConfig }) {
   const location = useLocation();
   const navigate = useNavigate();
   const publicGallery = location.pathname === "/components";
-  const native = config.authMode === "native";
-  const accountCallback = native && ["/auth/verify", "/auth/reset"].includes(location.pathname);
+  const accountCallback = ["/auth/verify", "/auth/reset"].includes(location.pathname);
   const callback = location.pathname === "/auth/callback" || accountCallback;
   const [callbackCode] = useState(() => new URLSearchParams(window.location.search).get("code"));
   const [magicSent, setMagicSent] = useState(false);
@@ -96,16 +95,16 @@ export function App({ config }: { config: PublicConfig }) {
   })(path, init), [accountId, applySession]);
   const path = location.pathname;
   if (path === "/components") return <Frame><main tabIndex={-1} className="content component-gallery"><h1>Komponenter</h1><BrowserFrontendExamples linkComponent={AppLink} /></main></Frame>;
-  if (native && (accountCallback || ["/register", "/password/forgot"].includes(path))) return <Frame><main tabIndex={-1} className="auth-page"><NativeAccountPage key={path} action={path === "/register" ? "register" : path === "/password/forgot" ? "forgot" : path === "/auth/reset" ? "reset" : "verify"} code={callbackCode} /></main></Frame>;
+  if ((accountCallback || ["/register", "/password/forgot"].includes(path))) return <Frame><main tabIndex={-1} className="auth-page"><AccountPage key={path} action={path === "/register" ? "register" : path === "/password/forgot" ? "forgot" : path === "/auth/reset" ? "reset" : "verify"} code={callbackCode} /></main></Frame>;
   if (callback) return <Frame><main tabIndex={-1} className="auth-page"><MagicLinkConfirmation pending={pending} error={error} onConfirm={() => void (async () => {
     if (pending) return;
     if (!callbackCode) { setError("Länken är ogiltig eller har gått ut. Begär en ny länk från inloggningssidan."); return; }
     setPending(true); setError(undefined); invalidateSessionChecks();
     try {
-      const session = parseSession(await authRequest("magic-link/verify", { code: callbackCode }, fetch, undefined, native));
+      const session = parseSession(await authRequest("magic-link/verify", { code: callbackCode }));
       if (!session) throw new Error("Inactive session");
       applySession(session); notifySessionChanged();
-      const destination = native ? z.object({ destination: z.string() }).parse(await authRequest("continue")).destination : "/";
+      const destination = z.object({ destination: z.string() }).parse(await authRequest("continue")).destination;
       const oauth = oauthDestination(destination);
       if (oauth) window.location.assign(oauth);
       else navigate("/", { replace: true });
@@ -117,7 +116,7 @@ export function App({ config }: { config: PublicConfig }) {
   async function login(email?: string, password?: string) {
     setPending(true); setError(undefined); invalidateSessionChecks();
     try {
-      const session = email === undefined ? await passkeyLogin(native) : parseSession(await authRequest("login", { email, password }, fetch, undefined, native));
+      const session = email === undefined ? await passkeyLogin() : parseSession(await authRequest("login", { email, password }));
       if (!session) { setError("Inloggningen misslyckades. Försök igen."); return; }
       applySession(session); notifySessionChanged();
       if (path === "/login") {
@@ -133,17 +132,17 @@ export function App({ config }: { config: PublicConfig }) {
     <span className="brand-mark">F</span><p className="eyebrow">Förena</p><h1>Logga in</h1>
     <p>Logga in för att se dina aktiviteter och svara på kallelser.</p>
     <PasswordLoginForm onLogin={(email, password) => void login(email, password)} onPasskey={() => void login()} pending={pending} error={error} />
-    {native ? <div className="auth-form"><AppLink href="/register">Skapa konto</AppLink><AppLink href="/password/forgot">Glömt lösenord?</AppLink></div> : null}
+    <div className="auth-form"><AppLink href="/register">Skapa konto</AppLink><AppLink href="/password/forgot">Glömt lösenord?</AppLink></div>
     <h2>Logga in utan lösenord</h2>
     <MagicLinkForm pending={pending} sent={magicSent} onRequest={email => void (async () => {
       setPending(true); setError(undefined);
-      try { z.object({ ok: z.literal(true) }).parse(await authRequest("magic-link", { email }, fetch, undefined, native)); setMagicSent(true); }
+      try { z.object({ ok: z.literal(true) }).parse(await authRequest("magic-link", { email })); setMagicSent(true); }
       catch { setError("Inloggningslänken kunde inte begäras just nu. Vänta en stund och försök igen."); }
       finally { setPending(false); }
     })()} />
   </section></main></Frame>;
 
-  if (native && path === "/oauth/consent") return <Frame email={auth.session.user.email ?? undefined}><main className="auth-page" tabIndex={-1}><NativeConsentPage search={location.search} /></main></Frame>;
+  if (path === "/oauth/consent") return <Frame email={auth.session.user.email ?? undefined}><main className="auth-page" tabIndex={-1}><ConsentPage search={location.search} /></main></Frame>;
 
   const workspaceMatch = /^\/(organizations|teams)\/([^/]+)$/.exec(path);
   const workspaceId=z.uuid().safeParse(workspaceMatch?.[2]);
@@ -157,7 +156,7 @@ export function App({ config }: { config: PublicConfig }) {
   async function logout() {
     setPending(true); setError(undefined);
     try {
-      await authRequest("logout", {}, fetch, undefined, native);
+      await authRequest("logout", {});
       applySession(null); setMagicSent(false); setPasskeyCreatedFor(undefined); notifySessionChanged();
       navigate("/login", { replace: true });
     } catch { setError("Utloggningen misslyckades. Försök igen."); }
@@ -171,10 +170,10 @@ export function App({ config }: { config: PublicConfig }) {
         const expectedAccount = accountId;
         if (!expectedAccount || pending) return;
         setPending(true); setError(undefined);
-        try { await registerPasskey(expectedAccount, native); if (activeAccount.current === expectedAccount) setPasskeyCreatedFor(expectedAccount); }
+        try { await registerPasskey(expectedAccount); if (activeAccount.current === expectedAccount) setPasskeyCreatedFor(expectedAccount); }
         catch (error) { if (activeAccount.current === expectedAccount) setError(error instanceof DOMException && error.name === "NotAllowedError" ? "Registreringen avbröts. Du kan försöka igen." : "Passkey kunde inte skapas. Försök igen senare."); }
         finally { setPending(false); }
-      })()} />{native ? <NativePasskeyList key={auth.session.user.id} accountId={auth.session.user.id} revision={passkeyCreatedFor === accountId} /> : null}</> : !knownPath ? <AppLink href="/">Till startsidan</AppLink> : homePath ? <MyActivitiesPage request={request} workspace={workspace} notifications={path==="/notifications"} /> : validActivity.success ? <>
+      })()} /><PasskeyList key={auth.session.user.id} accountId={auth.session.user.id} revision={passkeyCreatedFor === accountId} /></> : !knownPath ? <AppLink href="/">Till startsidan</AppLink> : homePath ? <MyActivitiesPage request={request} workspace={workspace} notifications={path==="/notifications"} /> : validActivity.success ? <>
         <ActivityDetails key={validActivity.data} activityId={validActivity.data} request={request} />
       </> : <p>Inga kallelser att visa här ännu. Öppna länken till en aktivitet för att se dina kallelser.</p>}
     </main>

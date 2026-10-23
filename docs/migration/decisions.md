@@ -31,7 +31,7 @@ identiteter får inte kopplas via e-post utan separat migreringsbeslut.
 Liquibase äger alla nya privata auth-tabeller med samma runtime-/ownergräns.
 
 Supabase-läget finns kvar för jämförelse; ingen drift eller kontoimport ingår.
-Se [försökets omfattning, konfiguration och återstående driftgrindar](native-auth.md).
+Se [försökets omfattning, konfiguration och återstående driftgrindar](authentication.md).
 
 Uppdatering 2026-10-23: auth-mejl skickas genom Resends REST-API i en separat
 `email`-modul. Auth beror på modulens leverantörsoberoende gränssnitt och äger
@@ -659,3 +659,24 @@ Rollback före första målskrivning kan växla tillbaka efter verifiering. Efte
 målskrivning krävs separat testad återföring och ny frysning eller framåträttning;
 peka aldrig tillbaka på en gammal snapshot. Produktionsschema körs som eget
 releasejobb, inte vid varje Cloud Run-start. Expand/contract under utrullningen.
+
+
+## ADR-026: Spring-autentisering är den nya appens enda auth-lösning
+
+Datum: 2026-10-23. Ersätter ADR-024:s parallella körlägen i React/Kotlin.
+
+Backend äger konton och Spring Securitys standardflöden för lösenord, passkeys,
+engångslänkar och logout. Authorization Server äger OAuth/MCP. Inget auth-läge
+väljs vid start eller bygge. Supabase-adaptern och dess konfiguration tas bort
+ur `backend/` och `frontend/`; databasleverantören och Next-appens separata auth
+påverkas inte. Ett enda genererat API-kontrakt gäller för den nya appen.
+
+Browserbindning, säker sessionslagring, kontospärr, återkallning, DB-baserade
+rate limits, strikt Origin och verksamhetsbehörigheter bevaras. Local-profilen
+startar PostgreSQL med separata roller/Liquibase och använder loggande mejl.
+Ordinarie mejl använder EmailSender, Resend REST och krypterad outbox.
+
+JVM, AOT och GraalVM ska verifiera den ordinarie autentiseringen. Det tidigare
+Supabase-byggets gröna prov är inte tillräckligt. CI och imagefingeravtryck
+behålls som releasegrindar. Ingen produktionsaktivering eller kontomigrering
+ingår; historiska databasnamn och Liquibase-checksummor bevaras.

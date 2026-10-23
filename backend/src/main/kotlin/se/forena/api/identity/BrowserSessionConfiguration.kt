@@ -6,13 +6,13 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplicat
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.convert.support.GenericConversionService
-import org.springframework.session.config.SessionRepositoryCustomizer
 import org.springframework.session.SaveMode
+import org.springframework.session.config.SessionRepositoryCustomizer
 import org.springframework.session.jdbc.JdbcIndexedSessionRepository
 import org.springframework.session.jdbc.config.annotation.web.http.EnableJdbcHttpSession
-import org.springframework.session.web.http.DefaultCookieSerializer
-import org.springframework.session.web.http.CookieSerializer
 import org.springframework.session.web.http.CookieHttpSessionIdResolver
+import org.springframework.session.web.http.CookieSerializer
+import org.springframework.session.web.http.DefaultCookieSerializer
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.support.TransactionTemplate
 
@@ -47,7 +47,7 @@ class BrowserSessionConfiguration {
     @Bean("springSessionTransactionOperations")
     fun sessionTransactions(manager: PlatformTransactionManager): TransactionTemplate = TransactionTemplate(manager)
 
-    // String attributes only: encrypted provider state, principal ID and WebAuthn challenge.
+    // String attributes only: principal ID, account generation and WebAuthn challenge.
     // Avoid Java deserialization and native-image reflection for custom DTOs.
     @Bean("springSessionConversionService")
     fun sessionConversionService() = GenericConversionService().apply {

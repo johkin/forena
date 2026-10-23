@@ -2,7 +2,6 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
 import { sendTelegramNotification, TelegramError, type TelegramInvitation } from "../_shared/telegram.ts";
-import { sendWhatsAppNotification, type WhatsAppInvitation } from "../_shared/whatsapp.ts";
 
 type OutgoingMessage = { subject: string; text: string; url: string; tag: string };
 type OutboxPayload = { activityId?: string };
@@ -133,7 +132,7 @@ Deno.serve(async (request: Request) => {
 
   let sent = 0;
   let failed = 0;
-  const sentGroups = new Map<string, { organizationId: string; activityId: string; type: string; channel: "push" | "email" | "whatsapp" | "telegram"; count: number }>();
+  const sentGroups = new Map<string, { organizationId: string; activityId: string; type: string; channel: "push" | "email" | "telegram"; count: number }>();
 
   const telegramSentAt = new Map<string, number>();
   for (const row of rows ?? []) {
@@ -189,63 +188,7 @@ Deno.serve(async (request: Request) => {
       }, { onConflict: "outbox_id,channel" });
       if (recordError) console.error("notification_worker.telegram_record_failed", { code: recordError.code });
     }
-    let whatsappResult: ChannelResult = { status: "skipped", providerMessageId: null, lastError: "whatsapp_inactive" };
-    const { data: priorWhatsapp, error: priorError } = await supabase.from("notification_deliveries")
-      .select("status, provider_message_id").eq("outbox_id", row.id).eq("channel", "whatsapp").maybeSingle();
-    // Recovered outbox claims must not resend a previously accepted WhatsApp.
-    if (telegramResult.status === "sent") {
-      whatsappResult = { status: "skipped", providerMessageId: null, lastError: "telegram_sent" };
-    } else if (priorError) {
-      whatsappResult = { status: "failed", providerMessageId: null, lastError: "whatsapp_delivery_lookup_failed" };
-    } else if (priorWhatsapp?.status === "sent") {
-      whatsappResult = { status: "sent", providerMessageId: priorWhatsapp.provider_message_id, lastError: null };
-    } else if (Deno.env.get("WHATSAPP_ENABLED") === "true") {
-      const { data: recipient, error: recipientError } = await supabase.rpc("whatsapp_recipient", { target_user_id: row.user_id });
-      if (recipientError) {
-        whatsappResult = { status: "failed", providerMessageId: null, lastError: "whatsapp_recipient_lookup_failed" };
-      } else if (recipient) {
-        try {
-          const config = {
-            accessToken: Deno.env.get("WHATSAPP_ACCESS_TOKEN")?.trim(),
-            phoneNumberId: Deno.env.get("WHATSAPP_PHONE_NUMBER_ID")?.trim(),
-            apiVersion: Deno.env.get("WHATSAPP_API_VERSION")?.trim(),
-            templateName: Deno.env.get("WHATSAPP_TEMPLATE_NAME")?.trim(),
-            invitationTemplateName: Deno.env.get("WHATSAPP_INVITATION_TEMPLATE_NAME")?.trim(),
-            templateLanguage: Deno.env.get("WHATSAPP_TEMPLATE_LANGUAGE")?.trim(),
-          };
-          const { data: frozen, error: messageError } = await supabase.rpc("whatsapp_invitation_messages", { target_outbox_id: row.id });
-          if (messageError) throw new Error("whatsapp_message_lookup_failed");
-          const invitations = (frozen ?? []) as WhatsAppInvitation[];
-          let providerMessageId: string | null = null;
-          if (invitations.length) {
-            for (const invitation of invitations) {
-              providerMessageId = invitation.providerMessageId;
-              if (!providerMessageId) {
-                providerMessageId = await sendWhatsAppNotification(recipient, invitation.message.url, config, fetch, invitation);
-                const { error } = await supabase.rpc("record_whatsapp_invitation", { target_message_id: invitation.id, provider_id: providerMessageId });
-                if (error) throw new Error("whatsapp_message_record_failed");
-              }
-            }
-          } else {
-            providerMessageId = await sendWhatsAppNotification(recipient, (row.message as OutgoingMessage).url, config);
-          }
-          whatsappResult = { status: "sent", providerMessageId, lastError: null };
-        } catch {
-          whatsappResult = { status: "failed", providerMessageId: null, lastError: "whatsapp_send_failed" };
-        }
-      }
-    }
-    const { error: whatsappRecordError } = await supabase.from("notification_deliveries").upsert({
-      organization_id: row.organization_id, outbox_id: row.id, user_id: row.user_id,
-      channel: "whatsapp", status: whatsappResult.status, provider: "meta-whatsapp",
-      provider_message_id: whatsappResult.providerMessageId, attempts: whatsappResult.status === "skipped" ? 0 : row.attempts,
-      last_error: whatsappResult.lastError, attempted_at: attemptedAt,
-      sent_at: whatsappResult.status === "sent" ? attemptedAt : null,
-    }, { onConflict: "outbox_id,channel" });
-    if (whatsappRecordError) console.error("notification_worker.whatsapp_record_failed", { runId, outboxId: row.id, code: whatsappRecordError.code });
-    console.info("notification_worker.whatsapp_result", { runId, outboxId: row.id, status: whatsappResult.status });
-
-    const { data: subscriptionRows, error: subscriptionError } = (telegramResult.status === "sent" || whatsappResult.status === "sent")
+    const { data: subscriptionRows, error: subscriptionError } = (telegramResult.status === "sent")
       ? { data: [], error: null }
       : await supabase
       .from("push_subscriptions")
@@ -253,8 +196,8 @@ Deno.serve(async (request: Request) => {
       .eq("user_id", row.user_id)
       .is("disabled_at", null);
     if (subscriptionError) console.error("notification_worker.subscription_lookup_failed", { runId, outboxId: row.id, code: subscriptionError.code, message: subscriptionError.message });
-    const pushResult: ChannelResult = (telegramResult.status === "sent" || whatsappResult.status === "sent")
-      ? { status: "skipped", providerMessageId: null, lastError: telegramResult.status === "sent" ? "telegram_sent" : "whatsapp_sent" }
+    const pushResult: ChannelResult = (telegramResult.status === "sent")
+      ? { status: "skipped", providerMessageId: null, lastError: "telegram_sent" }
       : subscriptionError
       ? { status: "failed", providerMessageId: null, lastError: "push_subscription_lookup_failed" }
       : await sendPushNotifications(supabase, (subscriptionRows ?? []) as PushSubscriptionRow[], row.message as OutgoingMessage, row.id);
@@ -279,7 +222,7 @@ Deno.serve(async (request: Request) => {
     }, { onConflict: "outbox_id,channel" });
 
     let emailResult: ChannelResult = { status: "skipped", providerMessageId: null, lastError: null };
-    if (telegramResult.status !== "sent" && whatsappResult.status !== "sent" && pushResult.status !== "sent") {
+    if (telegramResult.status !== "sent" && pushResult.status !== "sent") {
       try {
         const { data: authUser, error: userError } = await supabase.auth.admin.getUserById(row.user_id);
         if (userError || !authUser.user?.email) throw new Error("recipient_email_missing");
@@ -308,7 +251,7 @@ Deno.serve(async (request: Request) => {
       sent_at: emailResult.status === "sent" ? new Date().toISOString() : null,
     }, { onConflict: "outbox_id,channel" });
 
-    const deliveredChannel = telegramResult.status === "sent" ? "telegram" : whatsappResult.status === "sent" ? "whatsapp" : pushResult.status === "sent" ? "push" : emailResult.status === "sent" ? "email" : null;
+    const deliveredChannel = telegramResult.status === "sent" ? "telegram" : pushResult.status === "sent" ? "push" : emailResult.status === "sent" ? "email" : null;
     if (deliveredChannel) {
       sent += 1;
       await supabase.from("notification_outbox").update({ status: "sent", sent_at: new Date().toISOString(), last_error: null }).eq("id", row.id);
@@ -355,7 +298,7 @@ Deno.serve(async (request: Request) => {
       event_type: group.type === "invitation_reminder" ? "reminder_sent" : "invitation_sent",
       channel: group.channel,
       recipient_count: group.count,
-      metadata: { provider: group.channel === "telegram" ? "telegram" : group.channel === "whatsapp" ? "meta-whatsapp" : group.channel === "push" ? "web-push" : "resend" },
+      metadata: { provider: group.channel === "telegram" ? "telegram" : group.channel === "push" ? "web-push" : "resend" },
     });
   }
 

@@ -73,8 +73,92 @@
         },
         "required": [
           "error"
-        ],
+        ]
+      },
+      "AttestationConveyancePreference": {
+        "type": "string"
+      },
+      "AuthenticationExtensionsClientInput": {
+        "properties": {
+          "extensionId": {
+            "type": "string"
+          },
+          "input": {
+            "type": "object"
+          }
+        }
+      },
+      "AuthenticationExtensionsClientInputs": {
+        "additionalProperties": true,
         "type": "object"
+      },
+      "AuthenticationExtensionsClientOutputObject": {
+        "properties": {
+          "extensionId": {
+            "type": "string"
+          },
+          "output": {
+            "type": "object"
+          }
+        }
+      },
+      "AuthenticationExtensionsClientOutputs": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "AuthenticatorAssertionResponse": {
+        "properties": {
+          "attestationObject": {
+            "$ref": "#/components/schemas/Bytes"
+          },
+          "authenticatorData": {
+            "$ref": "#/components/schemas/Bytes"
+          },
+          "clientDataJSON": {
+            "$ref": "#/components/schemas/Bytes"
+          },
+          "signature": {
+            "$ref": "#/components/schemas/Bytes"
+          },
+          "userHandle": {
+            "$ref": "#/components/schemas/Bytes"
+          }
+        }
+      },
+      "AuthenticatorAttachment": {
+        "type": "string"
+      },
+      "AuthenticatorAttestationResponse": {
+        "properties": {
+          "attestationObject": {
+            "$ref": "#/components/schemas/Bytes"
+          },
+          "clientDataJSON": {
+            "$ref": "#/components/schemas/Bytes"
+          },
+          "transports": {
+            "items": {
+              "$ref": "#/components/schemas/AuthenticatorTransport"
+            },
+            "type": "array"
+          }
+        }
+      },
+      "AuthenticatorSelectionCriteria": {
+        "properties": {
+          "authenticatorAttachment": {
+            "$ref": "#/components/schemas/AuthenticatorAttachment"
+          },
+          "residentKey": {
+            "$ref": "#/components/schemas/ResidentKeyRequirement"
+          },
+          "userVerification": {
+            "$ref": "#/components/schemas/UserVerificationRequirement"
+          }
+        }
+      },
+      "AuthenticatorTransport": {
+        "type": "string"
       },
       "BrowserAuthAcknowledgement": {
         "properties": {
@@ -84,8 +168,7 @@
         },
         "required": [
           "ok"
-        ],
-        "type": "object"
+        ]
       },
       "BrowserLoginRequest": {
         "properties": {
@@ -105,8 +188,7 @@
         "required": [
           "email",
           "password"
-        ],
-        "type": "object"
+        ]
       },
       "BrowserSessionView": {
         "properties": {
@@ -116,16 +198,12 @@
         },
         "required": [
           "user"
-        ],
-        "type": "object"
+        ]
       },
       "BrowserUser": {
         "properties": {
           "email": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "id": {
             "format": "uuid",
@@ -135,8 +213,57 @@
         "required": [
           "email",
           "id"
-        ],
+        ]
+      },
+      "Bytes": {
+        "format": "base64url",
+        "type": "string"
+      },
+      "COSEAlgorithmIdentifier": {
+        "format": "int32",
+        "type": "integer"
+      },
+      "CodeRequest": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "writeOnly": true
+          }
+        },
         "type": "object"
+      },
+      "ConsentView": {
+        "properties": {
+          "clientId": {
+            "type": "string"
+          },
+          "clientName": {
+            "type": "string"
+          },
+          "csrfParameter": {
+            "type": "string"
+          },
+          "csrfToken": {
+            "type": "string"
+          },
+          "resource": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CredentialRegistrationRequest": {
+        "properties": {
+          "publicKey": {
+            "$ref": "#/components/schemas/RelyingPartyPublicKey"
+          }
+        }
       },
       "InvitationResponseResult": {
         "properties": {
@@ -160,20 +287,6 @@
         },
         "required": [
           "email"
-        ],
-        "type": "object"
-      },
-      "MagicLinkVerifyRequest": {
-        "properties": {
-          "code": {
-            "maxLength": 2048,
-            "minLength": 1,
-            "type": "string",
-            "writeOnly": true
-          }
-        },
-        "required": [
-          "code"
         ],
         "type": "object"
       },
@@ -254,43 +367,15 @@
         ],
         "type": "object"
       },
-      "PasskeyOptions": {
+      "PasskeyView": {
         "properties": {
-          "challenge_id": {
-            "format": "uuid",
+          "id": {
             "type": "string"
           },
-          "expires_at": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "options": {
-            "additionalProperties": true,
-            "type": "object"
-          }
-        },
-        "required": [
-          "challenge_id",
-          "expires_at",
-          "options"
-        ],
-        "type": "object"
-      },
-      "PasskeyVerifyRequest": {
-        "properties": {
-          "challenge_id": {
-            "format": "uuid",
+          "label": {
             "type": "string"
-          },
-          "credential": {
-            "additionalProperties": true,
-            "type": "object"
           }
         },
-        "required": [
-          "challenge_id",
-          "credential"
-        ],
         "type": "object"
       },
       "PersonalActivity": {
@@ -450,6 +535,205 @@
         ],
         "type": "object"
       },
+      "PublicKeyCredentialAuthenticatorAssertionResponse": {
+        "properties": {
+          "authenticatorAttachment": {
+            "$ref": "#/components/schemas/AuthenticatorAttachment"
+          },
+          "clientExtensionResults": {
+            "$ref": "#/components/schemas/AuthenticationExtensionsClientOutputs"
+          },
+          "id": {
+            "type": "string"
+          },
+          "rawId": {
+            "$ref": "#/components/schemas/Bytes"
+          },
+          "response": {
+            "$ref": "#/components/schemas/AuthenticatorAssertionResponse"
+          },
+          "type": {
+            "$ref": "#/components/schemas/PublicKeyCredentialType"
+          }
+        }
+      },
+      "PublicKeyCredentialAuthenticatorAttestationResponse": {
+        "properties": {
+          "authenticatorAttachment": {
+            "$ref": "#/components/schemas/AuthenticatorAttachment"
+          },
+          "clientExtensionResults": {
+            "$ref": "#/components/schemas/AuthenticationExtensionsClientOutputs"
+          },
+          "id": {
+            "type": "string"
+          },
+          "rawId": {
+            "$ref": "#/components/schemas/Bytes"
+          },
+          "response": {
+            "$ref": "#/components/schemas/AuthenticatorAttestationResponse"
+          },
+          "type": {
+            "$ref": "#/components/schemas/PublicKeyCredentialType"
+          }
+        }
+      },
+      "PublicKeyCredentialCreationOptions": {
+        "properties": {
+          "attestation": {
+            "$ref": "#/components/schemas/AttestationConveyancePreference"
+          },
+          "authenticatorSelection": {
+            "$ref": "#/components/schemas/AuthenticatorSelectionCriteria"
+          },
+          "challenge": {
+            "$ref": "#/components/schemas/Bytes"
+          },
+          "excludeCredentials": {
+            "items": {
+              "$ref": "#/components/schemas/PublicKeyCredentialDescriptor"
+            },
+            "type": "array"
+          },
+          "extensions": {
+            "$ref": "#/components/schemas/AuthenticationExtensionsClientInputs"
+          },
+          "pubKeyCredParams": {
+            "items": {
+              "$ref": "#/components/schemas/PublicKeyCredentialParameters"
+            },
+            "type": "array"
+          },
+          "rp": {
+            "$ref": "#/components/schemas/PublicKeyCredentialRpEntity"
+          },
+          "timeout": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "user": {
+            "$ref": "#/components/schemas/PublicKeyCredentialUserEntity"
+          }
+        }
+      },
+      "PublicKeyCredentialDescriptor": {
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Bytes"
+          },
+          "transports": {
+            "items": {
+              "$ref": "#/components/schemas/AuthenticatorTransport"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "type": {
+            "$ref": "#/components/schemas/PublicKeyCredentialType"
+          }
+        }
+      },
+      "PublicKeyCredentialParameters": {
+        "properties": {
+          "alg": {
+            "$ref": "#/components/schemas/COSEAlgorithmIdentifier"
+          },
+          "type": {
+            "$ref": "#/components/schemas/PublicKeyCredentialType"
+          }
+        }
+      },
+      "PublicKeyCredentialRequestOptions": {
+        "properties": {
+          "allowCredentials": {
+            "items": {
+              "$ref": "#/components/schemas/PublicKeyCredentialDescriptor"
+            },
+            "type": "array"
+          },
+          "challenge": {
+            "$ref": "#/components/schemas/Bytes"
+          },
+          "extensions": {
+            "$ref": "#/components/schemas/AuthenticationExtensionsClientInputs"
+          },
+          "rpId": {
+            "type": "string"
+          },
+          "timeout": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "userVerification": {
+            "$ref": "#/components/schemas/UserVerificationRequirement"
+          }
+        }
+      },
+      "PublicKeyCredentialRpEntity": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "PublicKeyCredentialType": {
+        "type": "string"
+      },
+      "PublicKeyCredentialUserEntity": {
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "id": {
+            "$ref": "#/components/schemas/Bytes"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "RegisterRequest": {
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "type": "object"
+      },
+      "RelyingPartyPublicKey": {
+        "properties": {
+          "credential": {
+            "$ref": "#/components/schemas/PublicKeyCredentialAuthenticatorAttestationResponse"
+          },
+          "label": {
+            "type": "string"
+          }
+        }
+      },
+      "ResetRequest": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "writeOnly": true
+          },
+          "password": {
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "type": "object"
+      },
+      "ResidentKeyRequirement": {
+        "type": "string"
+      },
       "RespondToInvitationRequest": {
         "additionalProperties": false,
         "properties": {
@@ -473,13 +757,39 @@
           "response"
         ],
         "type": "object"
+      },
+      "SuccessfulUserRegistrationResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TokenGenerationRequest": {
+        "properties": {
+          "username": {
+            "type": "string"
+          }
+        }
+      },
+      "TokenLoginRequest": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "writeOnly": true
+          }
+        }
+      },
+      "UserVerificationRequirement": {
+        "type": "string"
       }
     },
     "securitySchemes": {
-      "bearer": {
-        "bearerFormat": "JWT",
-        "scheme": "bearer",
-        "type": "http"
+      "cookie": {
+        "description": "Opaque HttpOnly browser session; never a provider token.",
+        "in": "cookie",
+        "name": "__Host-forena-session",
+        "type": "apiKey"
       }
     }
   },
@@ -593,15 +903,77 @@
         ]
       }
     },
-    "/api/auth/login": {
+    "/api/auth/continue": {
+      "get": {
+        "operationId": "resume",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Inactive session or invalid credential"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin or account access denied"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Temporary verification failure"
+          }
+        },
+        "tags": [
+          "consent-controller"
+        ]
+      }
+    },
+    "/api/auth/email/verify": {
       "post": {
-        "description": "Password sign-in. Requires the canonical Origin and X-Forena-Request: 1. Sets an opaque HttpOnly session cookie; never returns provider tokens.",
-        "operationId": "loginBrowserSession",
+        "operationId": "verifyEmail",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/BrowserLoginRequest"
+                "$ref": "#/components/schemas/CodeRequest"
               }
             }
           },
@@ -612,65 +984,983 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/BrowserSessionView"
+                  "$ref": "#/components/schemas/BrowserAuthAcknowledgement"
                 }
               }
             },
-            "description": "Browser session created"
+            "description": "OK"
           },
-          "429": {
+          "400": {
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiError"
                 }
               }
             },
-            "description": "Login admission exhausted; no provider call. Retry later.",
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Inactive session or invalid credential"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin or account access denied"
+          },
+          "429": {
+            "description": "Shared admission budget exhausted",
             "headers": {
               "Retry-After": {
+                "description": "Seconds until retry",
                 "schema": {
-                  "format": "int64",
+                  "format": "int32",
                   "type": "integer"
-                },
-                "style": "simple"
+                }
               }
             }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Temporary verification failure"
           }
         },
+        "security": [],
         "tags": [
-          "browser-session-controller"
+          "auth-controller"
         ]
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "description": "Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST.",
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/BrowserLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserSessionView"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Inactive session or invalid credential"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin or account access denied"
+          },
+          "429": {
+            "description": "Shared admission budget exhausted",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until retry",
+                "schema": {
+                  "format": "int32",
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Temporary verification failure"
+          }
+        },
+        "security": []
       }
     },
     "/api/auth/logout": {
       "post": {
-        "description": "Idempotent local logout. Requires the canonical Origin and X-Forena-Request: 1. Deletes the server session before contacting Auth.",
-        "operationId": "logoutBrowserSession",
+        "description": "Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST.",
+        "operationId": "logout",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserAuthAcknowledgement"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Inactive session or invalid credential"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin or account access denied"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Temporary verification failure"
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/auth/magic-link": {
+      "post": {
+        "description": "Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST.",
+        "operationId": "magicLink",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenGenerationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserAuthAcknowledgement"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Inactive session or invalid credential"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin or account access denied"
+          },
+          "429": {
+            "description": "Shared admission budget exhausted",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until retry",
+                "schema": {
+                  "format": "int32",
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Temporary verification failure"
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/auth/magic-link/verify": {
+      "post": {
+        "description": "Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST.",
+        "operationId": "magicVerify",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserSessionView"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Inactive session or invalid credential"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin or account access denied"
+          },
+          "429": {
+            "description": "Shared admission budget exhausted",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until retry",
+                "schema": {
+                  "format": "int32",
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Temporary verification failure"
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/auth/oauth/consent": {
+      "get": {
+        "operationId": "consent",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "client_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "*/*": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "boolean"
-                  },
-                  "type": "object"
+                  "$ref": "#/components/schemas/ConsentView"
                 }
               }
             },
             "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Inactive session or invalid credential"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin or account access denied"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Temporary verification failure"
           }
         },
         "tags": [
-          "browser-session-controller"
+          "consent-controller"
         ]
       }
     },
-    "/api/auth/magic-link": {
+    "/api/auth/passkey/options": {
       "post": {
-        "description": "Request a PKCE magic link for an existing account. Requires canonical Origin and X-Forena-Request: 1. Generic acknowledgement; no provider tokens. Limited by client, email and shared Auth budget.",
-        "operationId": "requestBrowserMagicLink",
+        "description": "Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST.",
+        "operationId": "options",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicKeyCredentialRequestOptions"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Inactive session or invalid credential"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin or account access denied"
+          },
+          "429": {
+            "description": "Shared admission budget exhausted",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until retry",
+                "schema": {
+                  "format": "int32",
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Temporary verification failure"
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/auth/passkey/registration/options": {
+      "post": {
+        "description": "Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST.",
+        "operationId": "registrationOptions",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicKeyCredentialCreationOptions"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Inactive session or invalid credential"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin or account access denied"
+          },
+          "429": {
+            "description": "Shared admission budget exhausted",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until retry",
+                "schema": {
+                  "format": "int32",
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Temporary verification failure"
+          }
+        }
+      }
+    },
+    "/api/auth/passkey/registration/verify": {
+      "post": {
+        "description": "Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST.",
+        "operationId": "registrationVerify",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CredentialRegistrationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessfulUserRegistrationResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Inactive session or invalid credential"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin or account access denied"
+          },
+          "429": {
+            "description": "Shared admission budget exhausted",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until retry",
+                "schema": {
+                  "format": "int32",
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Temporary verification failure"
+          }
+        }
+      }
+    },
+    "/api/auth/passkey/verify": {
+      "post": {
+        "description": "Spring Security filter endpoint. Uses Spring payloads. Requires canonical Origin and X-Forena-Request: 1 for POST.",
+        "operationId": "verifyPasskey",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicKeyCredentialAuthenticatorAssertionResponse"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserSessionView"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Inactive session or invalid credential"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin or account access denied"
+          },
+          "429": {
+            "description": "Shared admission budget exhausted",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until retry",
+                "schema": {
+                  "format": "int32",
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Temporary verification failure"
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/auth/passkeys": {
+      "get": {
+        "operationId": "listPasskeys",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PasskeyView"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Inactive session or invalid credential"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin or account access denied"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Temporary verification failure"
+          }
+        },
+        "tags": [
+          "auth-controller"
+        ]
+      }
+    },
+    "/api/auth/passkeys/{id}": {
+      "delete": {
+        "description": "Spring WebAuthn filter; credential owner only.",
+        "operationId": "deletePasskey",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Credential removed"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Inactive session or invalid credential"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin or account access denied"
+          },
+          "429": {
+            "description": "Shared admission budget exhausted",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until retry",
+                "schema": {
+                  "format": "int32",
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Temporary verification failure"
+          }
+        }
+      }
+    },
+    "/api/auth/password/reset": {
+      "post": {
+        "operationId": "reset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserAuthAcknowledgement"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Inactive session or invalid credential"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin or account access denied"
+          },
+          "429": {
+            "description": "Shared admission budget exhausted",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until retry",
+                "schema": {
+                  "format": "int32",
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Temporary verification failure"
+          }
+        },
+        "security": [],
+        "tags": [
+          "auth-controller"
+        ]
+      }
+    },
+    "/api/auth/password/reset-request": {
+      "post": {
+        "operationId": "resetRequest",
         "requestBody": {
           "content": {
             "application/json": {
@@ -690,172 +1980,75 @@
                 }
               }
             },
-            "description": "Request completed"
+            "description": "OK"
           },
-          "429": {
+          "400": {
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiError"
                 }
               }
             },
-            "description": "Auth admission exhausted; no provider call. Retry later.",
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Inactive session or invalid credential"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin or account access denied"
+          },
+          "429": {
+            "description": "Shared admission budget exhausted",
             "headers": {
               "Retry-After": {
+                "description": "Seconds until retry",
                 "schema": {
-                  "format": "int64",
+                  "format": "int32",
                   "type": "integer"
-                },
-                "style": "simple"
+                }
               }
             }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Temporary verification failure"
           }
         },
+        "security": [],
         "tags": [
-          "browser-credential-controller"
+          "auth-controller"
         ]
       }
     },
-    "/api/auth/magic-link/verify": {
+    "/api/auth/register": {
       "post": {
-        "description": "Exchange a one-time code with the encrypted PKCE verifier in the initiating HttpOnly session. Requires canonical Origin and X-Forena-Request: 1. Rotates session; returns verified user information only.",
-        "operationId": "verifyBrowserMagicLink",
+        "operationId": "register",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/MagicLinkVerifyRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/BrowserSessionView"
-                }
-              }
-            },
-            "description": "Request completed"
-          },
-          "429": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Auth admission exhausted; no provider call. Retry later.",
-            "headers": {
-              "Retry-After": {
-                "schema": {
-                  "format": "int64",
-                  "type": "integer"
-                },
-                "style": "simple"
-              }
-            }
-          }
-        },
-        "tags": [
-          "browser-credential-controller"
-        ]
-      }
-    },
-    "/api/auth/passkey/options": {
-      "post": {
-        "description": "Begin WebAuthn authentication. Requires the canonical Origin and X-Forena-Request: 1. Binds the challenge to the HttpOnly Spring session for at most five minutes.",
-        "operationId": "startBrowserPasskey",
-        "responses": {
-          "200": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/PasskeyOptions"
-                }
-              }
-            },
-            "description": "Browser-bound passkey options"
-          },
-          "429": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Login admission exhausted; no provider call. Retry later.",
-            "headers": {
-              "Retry-After": {
-                "schema": {
-                  "format": "int64",
-                  "type": "integer"
-                },
-                "style": "simple"
-              }
-            }
-          }
-        },
-        "tags": [
-          "browser-session-controller"
-        ]
-      }
-    },
-    "/api/auth/passkey/registration/options": {
-      "post": {
-        "description": "Authenticated WebAuthn enrollment. Requires canonical Origin, X-Forena-Request: 1 and a browser session. Challenge bound to session and verified account for at most five minutes.",
-        "operationId": "startBrowserPasskeyRegistration",
-        "responses": {
-          "200": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/PasskeyOptions"
-                }
-              }
-            },
-            "description": "Request completed"
-          },
-          "429": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Auth admission exhausted; no provider call. Retry later.",
-            "headers": {
-              "Retry-After": {
-                "schema": {
-                  "format": "int64",
-                  "type": "integer"
-                },
-                "style": "simple"
-              }
-            }
-          }
-        },
-        "tags": [
-          "browser-credential-controller"
-        ]
-      }
-    },
-    "/api/auth/passkey/registration/verify": {
-      "post": {
-        "description": "Verify account/session-bound enrollment via Auth. Requires canonical Origin, X-Forena-Request: 1 and a browser session. Never returns provider tokens.",
-        "operationId": "verifyBrowserPasskeyRegistration",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PasskeyVerifyRequest"
+                "$ref": "#/components/schemas/RegisterRequest"
               }
             }
           },
@@ -870,87 +2063,70 @@
                 }
               }
             },
-            "description": "Request completed"
+            "description": "OK"
           },
-          "429": {
+          "400": {
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiError"
                 }
               }
             },
-            "description": "Auth admission exhausted; no provider call. Retry later.",
-            "headers": {
-              "Retry-After": {
-                "schema": {
-                  "format": "int64",
-                  "type": "integer"
-                },
-                "style": "simple"
-              }
-            }
-          }
-        },
-        "tags": [
-          "browser-credential-controller"
-        ]
-      }
-    },
-    "/api/auth/passkey/verify": {
-      "post": {
-        "description": "Verify the browser-bound WebAuthn challenge via Auth and set an HttpOnly session cookie. Requires the canonical Origin and X-Forena-Request: 1. Never returns provider tokens.",
-        "operationId": "verifyBrowserPasskey",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PasskeyVerifyRequest"
-              }
-            }
+            "description": "Invalid request"
           },
-          "required": true
-        },
-        "responses": {
-          "200": {
+          "401": {
             "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/BrowserSessionView"
-                }
-              }
-            },
-            "description": "Browser session created"
-          },
-          "429": {
-            "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiError"
                 }
               }
             },
-            "description": "Login admission exhausted; no provider call. Retry later.",
+            "description": "Inactive session or invalid credential"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin or account access denied"
+          },
+          "429": {
+            "description": "Shared admission budget exhausted",
             "headers": {
               "Retry-After": {
+                "description": "Seconds until retry",
                 "schema": {
-                  "format": "int64",
+                  "format": "int32",
                   "type": "integer"
-                },
-                "style": "simple"
+                }
               }
             }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Temporary verification failure"
           }
         },
+        "security": [],
         "tags": [
-          "browser-session-controller"
+          "auth-controller"
         ]
       }
     },
     "/api/auth/session": {
       "get": {
-        "description": "Verified user information only. Requires the HttpOnly browser session cookie or an existing valid Bearer token. Cache-Control: no-store.",
-        "operationId": "getBrowserSession",
+        "operationId": "session",
         "responses": {
           "200": {
             "content": {
@@ -961,10 +2137,50 @@
               }
             },
             "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Inactive session or invalid credential"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin or account access denied"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Temporary verification failure"
           }
         },
         "tags": [
-          "browser-session-controller"
+          "auth-controller"
         ]
       }
     },
@@ -1147,7 +2363,7 @@
   },
   "security": [
     {
-      "bearer": []
+      "cookie": []
     }
   ],
   "servers": [

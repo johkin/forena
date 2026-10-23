@@ -9,7 +9,7 @@ import type { Activity } from "../domain/club";
 import { MyActivityList, type MyActivity } from "./my-activity-list";
 import { MagicLinkForm, MagicLinkConfirmation } from "./magic-link-form";
 import { PasskeyRegistration } from "./passkey-registration";
-import { NativeAccountForm, EmailVerification, OAuthConsent } from "./native-account-form";
+import { AccountForm, EmailVerification, OAuthConsent } from "./account-form";
 import { PasskeyList } from "./passkey-list";
 import { SessionMenu } from "./session-menu";
 
@@ -51,12 +51,12 @@ export function BrowserFrontendExamples({ linkComponent }: { linkComponent?: Nav
     <section><h2>Passkey skapad</h2><PasskeyRegistration registered onRegister={() => {}} /></section>
     <section><h2>Passkey saknar stöd</h2><PasskeyRegistration supported={false} onRegister={() => {}} /></section>
     <section><h2>Passkey-fel</h2><PasskeyRegistration error="Passkey kunde inte skapas. Försök igen senare." onRegister={() => {}} /></section>
-    <section><h2>Skapa lokalt konto</h2><NativeAccountForm action="register" onSubmit={() => {}} /></section>
-    <section><h2>Återställ lösenord</h2><NativeAccountForm action="forgot" onSubmit={() => {}} /></section>
-    <section><h2>Nytt lösenord</h2><NativeAccountForm action="reset" onSubmit={() => {}} /></section>
-    <section><h2>Kontobegäran pågår</h2><NativeAccountForm action="register" pending onSubmit={() => {}} /></section>
-    <section><h2>Kontobegäran klar</h2><NativeAccountForm action="register" message="Kontrollera din inkorg." onSubmit={() => {}} /></section>
-    <section><h2>Kontobegäran misslyckades</h2><NativeAccountForm action="register" error="Försök igen senare." onSubmit={() => {}} /></section>
+    <section><h2>Skapa lokalt konto</h2><AccountForm action="register" onSubmit={() => {}} /></section>
+    <section><h2>Återställ lösenord</h2><AccountForm action="forgot" onSubmit={() => {}} /></section>
+    <section><h2>Nytt lösenord</h2><AccountForm action="reset" onSubmit={() => {}} /></section>
+    <section><h2>Kontobegäran pågår</h2><AccountForm action="register" pending onSubmit={() => {}} /></section>
+    <section><h2>Kontobegäran klar</h2><AccountForm action="register" message="Kontrollera din inkorg." onSubmit={() => {}} /></section>
+    <section><h2>Kontobegäran misslyckades</h2><AccountForm action="register" error="Försök igen senare." onSubmit={() => {}} /></section>
     <section><h2>Verifiera e-post</h2><EmailVerification onVerify={() => {}} /></section>
     <section><h2>E-post verifieras</h2><EmailVerification pending onVerify={() => {}} /></section>
     <section><h2>E-post verifierad</h2><EmailVerification verified onVerify={() => {}} /></section>
