@@ -1,5 +1,66 @@
 # Migreringsstatus
 
+## M09: enstaka aktivitet och hela admin-kedjan, 2026-10-23
+
+Implementation: `9294ce2cb7c9211858d880b44de6ff0c92ba0ec4` på
+`feat/m09-activities`, från aktuell main `fce3ce2`. Användaren utökade samma PR
+med första systemadmin, klubb/sektion/lag och administratörstilldelning.
+[Körguide och avgränsningar](activity-management.md).
+
+- Migration 013 inför aktivitetstyper, lagrättigheter, förval, målgrupper,
+  aktivitetsaudit och beständiga schemaposter. Migration 014 inför administrativ
+  bootstrap, roller, adresser/säsong och administrativ audit. Samma privata
+  dataroll, owner-gräns och Liquibase-modell gäller.
+- Ett verifierat, uttryckligen konfigurerat konto kan aktivera första systemadmin
+  en gång. Klubb med första sektion och valfritt lag skapas atomärt. Systemadmin
+  utser klubbadmin; klubb-/sektionsadmin skapar lag och tilldelar lagadmin.
+  Systemrollen ger inga automatiska verksamhetsrättigheter.
+- Lagrollen har datumgiltighet och egen personkoppling; delegation och vanlig
+  läsåtkomst ger inte skrivrätt. Återkallning påverkar inte oberoende läsgrants.
+  Sista administratören, sista sektionen och beroendebundna lag skyddas.
+- Samma ActivityEditorModal, ClubOnboarding, datum-/tidszonkomponenter och
+  SectionTeamAdministration används i den nya appen och komponentgalleriet.
+  Klubbskapandets granskningssteg skickar ingen skrivning; explicit bekräftelse
+  ger exakt ett kommando. Kontobyten och fel behåller befintliga sessionsskydd.
+- Aktivitet kan skapas, läsas, ändras och ställas in. Direkta personval skapar
+  besvarbara kallelser i appen. Aktivitet, kallelser, schemaposter, audit och
+  signalversion är atomära. Redigering bevarar kallelseschemat och kontrollerar
+  revision. Inställning delar låsordning med svar och stoppar väntande schema.
+
+Lokalt godkänt på implementationen:
+
+- Full Maven `verify`: 90 tester, noll fel/överhoppningar, inklusive verklig
+  Chromium → Spring → PostgreSQL för auth och båda M09-flödena. Tom installation
+  och uppgradering från samtliga 13 tidigare baslinjer verifierades.
+- Efter den sista tidsvalideringen: hela ApiTest omkört, 46 tester utan fel eller
+  överhoppningar, inklusive båda browserflödena mot produktionsbyggd Vite.
+  Det omfattar kontobyte från system-/klubbadmin till separat lagadmin,
+  skapa/återbesök/ändra/inställ, nekad främmande åtkomst, återkallning,
+  datumgränser, rollback vid sen audit-failure och konkurrerande bootstrap.
+- 1 145 frontendtester, typkontroll, lint, Next- och Vite-produktionsbyggen.
+  Administrations- och aktivitetsvyer kontrollerade i 320/390/768/1440 px utan
+  horisontell scroll; mobil/desktop granskade visuellt.
+- Slutlig JVM-paketering och `local-smoke.py`: migration-only två gånger,
+  tomt schema före webbstart, runtime-grants, hela admin-kedjan och
+  aktivitetskommandon, audit, schemaposter och auth-livscykel är godkända.
+- Spring-exporterad OpenAPI och reproducerbar TypeScript-generation samt
+  25 Python-releasekontroller är godkända. CI behåller obligatoriska
+  native-image-, runtime-, browser- och databasgrindar.
+
+Inget lokalt GraalVM-/OCI-bygge har körts för denna leverans. CI-resultat ska
+knytas till PR:ns aktuella head; lokala JVM-resultat är inte native-driftbevis.
+Ingen molnmigration, produktionsbootstrap, kontoflytt, verkligt mejl eller
+publicering har genomförts. Gamla Supabase-schemats reset/pgTAP är inte omkörda
+lokalt; ändringarna gäller det privata Liquibase-schemat och verifierades med
+riktig lokal PostgreSQL. Den befintliga databasgrinden i CI är kvar.
+
+Nästa beroende leverans är M06/M10:s verkliga schemalagda materialisering och
+externa kallelseleverans. M09 sparar leveransansvaret och visar begränsningen i
+UI:t. Administratörstilldelning kräver redan registrerade, verifierade konton;
+mejlinbjudan till oregistrerade konton, serier/import, närvaro och fullständig
+katalog-/disciplinadministration är fortsatt egna paritetsområden.
+
+
 ## Spring-autentisering som enda lösning, 2026-10-23
 
 Den nya React/Kotlin-appen använder enbart Spring-autentisering. Se
