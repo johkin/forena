@@ -46,6 +46,12 @@ oregistrerade konton är fortsatt ett separat paritetsområde.
   tilldela lagets verksamhetsbehörighet. Klubbrollen måste tilldelas uttryckligen.
 - Klubbadmin har verksamhetsbehörighet inom sin klubb. Sektionsadmin är
   avgränsad till sin sektion; lagadmin till sitt lag och sina giltighetsdatum.
+- Arbetsytorna i `/api/me/overview` inkluderar också lag som kontot får hantera
+  enligt aktivitetsadministrationens aktuella behörighetskontroll, även tomma lag
+  och konton utan egen personkoppling. Klubb-/sektionsroller och daterade
+  lagrättigheter kontrolleras vid varje läsning. Systemrollen ensam ger ingen
+  lagarbetsyta. Den personliga kalendern och kallelserna behåller sitt personurval;
+  lagets administrativa aktivitetslista nås via **Hantera aktiviteter**.
 - `activity.manage` och `invitation.manage` kan också tilldelas separat enligt
   M09:s personbundna rättighetsmodell. Vanligt lagmedlemskap och fristående
   läsåtkomst ger inte skrivrätt. Målsmans-/delegerad personåtkomst ärver inga
