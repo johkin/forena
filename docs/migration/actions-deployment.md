@@ -10,7 +10,11 @@ separat auth och deployment. Ingen produktionsaktivering ingår i denna PR.
 `.github/workflows/ci.yml` kör applikation, databas, backend och GraalVM-buildpack.
 `verify` kräver samtliga jobb. Backend publicerar migrations-JAR; native-jobbet
 hämtar den och kör `local-smoke.py --runtime-image` mot den byggda containern.
-Även en cacheträff måste klara detta prov för aktuell commit.
+Även en cacheträff måste klara detta prov för aktuell commit. Buildpack-bygget
+anger uttryckligen `linux/amd64`, samma arkitektur som runner, cache och release,
+och låser buildern till digesten från den senast godkända native-körningen.
+Det undviker att en ändrad `latest`-tagg byter till en ARM64-builder. Uppdatering
+av builderdigesten görs uttryckligen och verifieras med hela native-provet.
 
 `.github/workflows/deploy-kotlin.yml` gäller bara main med lyckad CI för exakt
 aktuell main-commit. GitHub-miljön `kotlin-production` behåller sin review-policy.

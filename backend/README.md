@@ -41,6 +41,22 @@ Compose-volymen bevarar data mellan starter. För att uttryckligen radera bara
 den lokala utvecklingsdatabasen: stoppa backend och kör `docker compose down -v`
 i `backend/`. Kör aldrig databasåterställning mot en extern databas.
 
+## Första systemadministratören och verksamhetsstrukturen
+
+Sätt `FORENA_INITIAL_SYSTEM_ADMIN_EMAIL` till det avsedda första kontots adress.
+Registrera och verifiera kontot, logga in och öppna `/administration`. Bekräfta
+**Aktivera systemadministration**. Bootstrap kan endast användas en gång och
+endast av det verifierade, konfigurerade kontot; därefter kan variabeln tas bort.
+
+Skapa klubb med första sektion, tilldela klubbadmin, skapa lag och tilldela
+lagadmin. Systemrollen ger ingen automatisk verksamhetsbehörighet. Det egna
+kontot kan tilldelas klubbrollen uttryckligen. Administratörer tilldelas i denna
+version till befintliga verifierade konton; inga mejlinbjudningar skickas.
+
+Lagadmin skapar/redigerar/ställer in aktiviteter via `/activities/manage`.
+Kallelseval och schemaposter sparas, men extern leverans återstår i M10.
+Se [hela kedjan, behörigheter och verifiering](../docs/migration/activity-management.md).
+
 ## Arkitektur och säkerhet
 
 Se [autentisering](../docs/migration/authentication.md),

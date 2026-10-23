@@ -9,6 +9,7 @@ import java.sql.Timestamp
 import java.time.Duration
 import java.time.Instant
 import java.util.Locale
+import java.util.UUID
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.dao.DataAccessException
 import org.springframework.jdbc.core.JdbcTemplate
@@ -39,24 +40,38 @@ class BrowserLoginLimiter(
     }
 
     /** Commits the admission before any network call; no refresh/session transaction takes this lock. */
-    fun admit(client: String, email: String? = null) {
+    fun admit(client: String, email: String? = null) = admitBuckets(
+        "login-global", "client:$client", email?.let { "email:${it.trim().lowercase(Locale.ROOT)}" })
+
+    /** Separate budgets prevent bootstrap traffic from consuming login permits. */
+    fun admitBootstrap(client: String, subject: UUID) = admitBuckets(
+        "admin-bootstrap-global", "admin-bootstrap-client:$client", "admin-bootstrap-account:$subject")
+
+    /** Ordinary administration has its own budget, sized for multi-step setup workflows. */
+    fun admitAdministration(client: String, subject: UUID) = admitBuckets(
+        "admin-mutation-global", "admin-mutation-client:$client", "admin-mutation-account:$subject",
+        Budget(1, 120), Budget(1, 60), Budget(1, 30))
+
+    private fun admitBuckets(globalScope: String, clientScope: String, identityScope: String?,
+                            globalBudget: Budget = Budget(15, 10), clientBudget: Budget = Budget(30, 5),
+                            identityBudget: Budget = Budget(60, 3)) {
         settings.requireEnabled()
         try {
             val delay = transaction.execute {
-                val global = settings.fingerprint("login-global")
+                val global = settings.fingerprint(globalScope)
                 jdbc.update("insert into forena.auth_rate_limit(key_hash,available_at) values(?,clock_timestamp()) on conflict do nothing", global)
                 val globalTime = jdbc.queryForObject("select available_at from forena.auth_rate_limit where key_hash=? for update", Timestamp::class.java, global)!!.toInstant()
                 val now = jdbc.queryForObject("select clock_timestamp()", Timestamp::class.java)!!.toInstant()
-                val buckets = mutableListOf(Bucket(global, 15, 10, globalTime))
-                fun add(scope: String, interval: Long, burst: Long) {
+                val buckets = mutableListOf(Bucket(global, globalBudget.interval, globalBudget.burst, globalTime))
+                fun add(scope: String, budget: Budget) {
                     val hash = settings.fingerprint(scope)
                     val time = jdbc.query("select available_at from forena.auth_rate_limit where key_hash=?", { rs, _ -> rs.getTimestamp(1).toInstant() }, hash).singleOrNull() ?: now
-                    buckets.add(Bucket(hash, interval, burst, time))
+                    buckets.add(Bucket(hash, budget.interval, budget.burst, time))
                 }
                 // Check before creating client/email rows: rejected traffic cannot grow the table.
                 if (buckets[0].retryAfter(now) > 0) return@execute buckets[0].retryAfter(now)
-                add("client:$client", 30, 5)
-                if (email != null) add("email:${email.trim().lowercase(Locale.ROOT)}", 60, 3)
+                add(clientScope, clientBudget)
+                if (identityScope != null) add(identityScope, identityBudget)
                 val retry = buckets.maxOf { it.retryAfter(now) }
                 if (retry > 0) return@execute retry
                 for (bucket in buckets) jdbc.update("""insert into forena.auth_rate_limit(key_hash,available_at) values(?,?)
@@ -71,6 +86,8 @@ class BrowserLoginLimiter(
     /** Deleting fully refilled buckets is equivalent to retaining their full capacity. */
     @org.springframework.scheduling.annotation.Scheduled(fixedDelay = 60000)
     fun purge() { if (!settings.enabled) return; jdbc.update("delete from forena.auth_rate_limit where available_at < clock_timestamp()-interval '10 minutes'") }
+
+    private data class Budget(val interval: Long, val burst: Long)
 
     private class Bucket(val hash: String, val interval: Long, val burst: Long, val available: Instant) {
         fun next(now: Instant) = maxOf(now, available).plusSeconds(interval)

@@ -53,3 +53,12 @@ interface UserRepository : Repository<UserEntity, UUID> {
     @Query("update forena.account set enabled=:enabled where subject=:subject")
     fun setEnabled(subject: UUID, enabled: Boolean): Int
 }
+
+interface AdministrationPersonRepository : Repository<PersonEntity, UUID> {
+    @Modifying
+    @Query("insert into forena.person(id,organization_id,display_name) values(:person,:organization,:name)")
+    fun createPerson(person: UUID, organization: UUID, name: String): Int
+    @Modifying
+    @Query("insert into forena.person_access(person_id,organization_id,subject,kind) values(:person,:organization,:subject,'self')")
+    fun createAccess(person: UUID, organization: UUID, subject: UUID): Int
+}

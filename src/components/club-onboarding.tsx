@@ -2,12 +2,13 @@
 import { useActionState, useRef, useState } from "react";
 import { clubSlug, type ClubSetupState } from "@/lib/club-administration";
 
-import { ClubSlugField } from "./club-slug-field";
+import { ClubSlugInput } from "./club-slug-input";
+import type { ComponentProps } from "react";
 import { TimeZoneSelect } from "./time-zone-select";
 
-type Props = { disciplines: { id: string; name: string }[]; managed?: boolean; action: (state: ClubSetupState, form: FormData) => Promise<ClubSetupState> };
+type Props = { checkSlug?: ComponentProps<typeof ClubSlugInput>["checkAvailability"]; disciplines: { id: string; name: string }[]; managed?: boolean; action: (state: ClubSetupState, form: FormData) => Promise<ClubSetupState> };
 /** Review the initial structure before the atomic create command. */
-export function ClubOnboarding({ disciplines, managed = false, action }: Props) {
+export function ClubOnboarding({ disciplines, managed = false, action, checkSlug = defaultSlugCheck }: Props) {
   const [step, setStep] = useState(0);
   const [values, setValues] = useState({ organizationName: "", organizationSlug: "", sectionName: "", disciplineId: "", teamName: "", season: String(new Date().getFullYear()), timeZone: "Europe/Stockholm" });
   const [manualSlug, setManualSlug] = useState(false);
@@ -28,7 +29,7 @@ export function ClubOnboarding({ disciplines, managed = false, action }: Props) 
     <fieldset data-step="0" hidden={step !== 0} disabled={pending}>
       <legend className="sr-only">Klubbens uppgifter</legend>
       <label>Klubbens namn<input name="organizationName" value={values.organizationName} maxLength={120} required onChange={event => { const name = event.target.value; setValues(current => ({ ...current, organizationName: name, organizationSlug: manualSlug ? current.organizationSlug : clubSlug(name) })); }}/></label>
-      <ClubSlugField name="organizationSlug" value={values.organizationSlug} onChange={value => { setManualSlug(true); change("organizationSlug", value); }}/>
+      <ClubSlugInput checkAvailability={checkSlug} name="organizationSlug" value={values.organizationSlug} onChange={value => { setManualSlug(true); change("organizationSlug", value); }}/>
       <TimeZoneSelect value={values.timeZone} onChange={value => change("timeZone", value)}/>
     </fieldset>
     <fieldset data-step="1" hidden={step !== 1} disabled={pending}>
@@ -40,6 +41,14 @@ export function ClubOnboarding({ disciplines, managed = false, action }: Props) 
     </fieldset>
     {step === 2 ? <div className="onboarding-review"><dl><div><dt>Klubb</dt><dd>{values.organizationName}</dd></div><div><dt>Adress</dt><dd>/o/{values.organizationSlug}</dd></div><div><dt>Tidszon</dt><dd>{values.timeZone}</dd></div><div><dt>Sektion</dt><dd>{values.sectionName}</dd></div><div><dt>Disciplin</dt><dd>{disciplines.find(d => d.id === values.disciplineId)?.name}</dd></div>{addTeam ? <div><dt>Första laget</dt><dd>{values.teamName} · {values.season}</dd></div> : null}</dl><p>{managed ? "Du administrerar klubbens struktur från systemadministrationen och blir inte automatiskt medlem i klubben." : "Du blir ägare för klubben. Du kan lägga till fler sektioner senare."}</p><p>Ingen aktivitet eller kallelse skapas.</p></div> : null}
     {state.error ? <p role="alert" className="auth-error">{state.error}</p> : null}
-    <div className="modal-actions">{step > 0 ? <button type="button" className="secondary" disabled={pending} onClick={() => move(step - 1)}>Tillbaka</button> : null}{step < 2 ? <button type="button" className="primary" onClick={advance}>Nästa</button> : <button type="submit" className="primary" disabled={pending}>{pending ? "Skapar…" : "Skapa klubb"}</button>}</div>
+    <div className="modal-actions">{step > 0 ? <button type="button" className="secondary" disabled={pending} onClick={() => move(step - 1)}>Tillbaka</button> : null}{step < 2 ? <button key="advance" type="button" className="primary" onClick={event => { event.preventDefault(); advance(); }}>Nästa</button> : <button key="create" type="submit" className="primary" disabled={pending}>{pending ? "Skapar…" : "Skapa klubb"}</button>}</div>
   </form>;
+}
+
+async function defaultSlugCheck(slug: string, organizationId?: string): Promise<"available" | "taken" | "error"> {
+  const query = new URLSearchParams({ slug, ...(organizationId ? { organizationId } : {}) });
+  const response = await fetch(`/api/organizations/slug-availability?${query}`, { cache: "no-store" });
+  if (!response.ok) return "error";
+  const result: unknown = await response.json();
+  return result && typeof result === "object" && "status" in result && (result.status === "available" || result.status === "taken") ? result.status : "error";
 }

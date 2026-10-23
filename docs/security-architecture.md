@@ -825,3 +825,11 @@ aktiva Supabase-nyckel. Identiteten omprövas efter generering före leverans.
 Grupproll är en explicit konfiguration, inget bevis för deltagarnas rättigheter;
 grupptext och gruppkommandot `/ask` skickas därför inte till modellen.
 Utkast bekräftas i Förena. Se [Telegram](telegram.md) för aktivering och gränser.
+
+## React/Kotlin: första administratören och rollkedjan
+
+M09:s bootstrap kräver en aktiv, verifierad Spring-identitet vars e-postadress uttryckligen anges i `FORENA_INITIAL_SYSTEM_ADMIN_EMAIL`. En bekräftad, transaktionell engångsaktivering är tillåten bara innan bootstrap har förbrukats och när plattformsroller saknas. Ett konfigurerat namn, ett klientfält eller det första registrerade kontot ger aldrig i sig en roll.
+
+Systemrollen ger strukturadministration och plattforms-/klubbrollhantering, inte automatiska verksamhetsrättigheter. Klubb-, sektions- och lagbehörighet är skilda, kontrolleras mot aktuell databas och är avgränsade till rätt mål. Lagrollen har egna giltighetsdatum och egen personkoppling; målsmansåtkomst och vanlig läsning ger inte skrivrätt. Rollens egen lästilldelning kan återkallas utan att oberoende läsåtkomst påverkas.
+
+Rolländringar sparar aktör, operation, mål, berört konto, kanal, tid och korrelations-ID utan lösenord, token eller privata kommentarer. Sista administratören skyddas och beroenden hindrar strukturradering. Befintliga verifierade konton kan tilldelas roller efter uttrycklig bekräftelse; e-post används för att identifiera det valda kontot, aldrig för automatisk sammanslagning med befintliga personer. [Körguide](migration/activity-management.md).

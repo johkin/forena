@@ -4,6 +4,22 @@
  */
 
 export interface paths {
+    "/api/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createActivity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/activities/{activityId}": {
         parameters: {
             query?: never;
@@ -13,9 +29,9 @@ export interface paths {
         };
         /** @description Activity details authorized through personal invitations, dated membership or own team access. Reading never grants response rights for another person. Unknown/unauthorized IDs return 404. No-store. */
         get: operations["getPersonalActivity"];
-        put?: never;
+        put: operations["updateActivity"];
         post?: never;
-        delete?: never;
+        delete: operations["cancelActivity"];
         options?: never;
         head?: never;
         patch?: never;
@@ -32,6 +48,246 @@ export interface paths {
         get: operations["getMyInvitations"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/bootstrap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["bootstrap"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/clubs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createClub"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/clubs/{clubId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["updateClub"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/clubs/{clubId}/administrators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["clubAdmin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/clubs/{clubId}/sections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createSection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/clubs/{clubId}/sections/{sectionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["updateSection"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["overview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/platform-administrators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["platform"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/sections/{sectionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["deleteSection"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/sections/{sectionId}/administrators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["sectionAdmin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/sections/{sectionId}/teams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createTeam"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/sections/{sectionId}/teams/{teamId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["updateTeam"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/slug": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["slug"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/teams/{teamId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["deleteTeam"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/teams/{teamId}/administrators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["teamAdmin"];
         delete?: never;
         options?: never;
         head?: never;
@@ -353,6 +609,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/me/managed-teams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getManagedTeams"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/me/overview": {
         parameters: {
             query?: never;
@@ -362,6 +634,22 @@ export interface paths {
         };
         /** @description Complete authorized upcoming overview, including dated team memberships and own team access. Person rows exist independently of invitations. Only sent personal invitations are exposed. No 90-day cutoff or first-page counts. More than 20000 activities fails with 503 rather than returning an incomplete overview. No-store. */
         get: operations["getPersonalOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{teamId}/activity-editor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getActivityEditor"];
         put?: never;
         post?: never;
         delete?: never;
@@ -384,11 +672,154 @@ export interface components {
             response: "pending" | "accepted" | "declined";
             response_comment: string | null;
         };
+        ActivityAudience: {
+            groupIds?: string[];
+            responsibilityTypeIds?: string[];
+            roles?: string[];
+        };
+        ActivityAudienceGroup: {
+            /** Format: uuid */
+            id?: string;
+            kind?: string;
+            name?: string;
+            personIds?: string[];
+        };
+        ActivityCommand: {
+            /** Format: uuid */
+            activityTypeId?: string | null;
+            description?: string;
+            /** Format: date-time */
+            endsAt?: string;
+            /** Format: date-time */
+            gatheringAt?: string | null;
+            invitationAudience?: string | null;
+            invitationMode?: string;
+            invitationSelection?: components["schemas"]["ActivityAudience"] | null;
+            location?: string;
+            personIds?: string[];
+            /** Format: int64 */
+            revision?: number | null;
+            /** Format: date-time */
+            startsAt?: string;
+            /** Format: uuid */
+            teamId?: string | null;
+            timingRules?: components["schemas"]["ActivityTimingRules"] | null;
+            title?: string;
+        };
+        ActivityDefaultsRow: {
+            /** Format: uuid */
+            activityTypeId?: string;
+            disciplineKey?: string;
+            /** Format: uuid */
+            id?: string;
+            /** Format: int64 */
+            revision?: number;
+            scope?: string;
+            /** Format: uuid */
+            scopeId?: string;
+            valuesJson?: string;
+            version?: string;
+        };
+        ActivityDisposition: {
+            disposition?: string;
+        };
+        ActivityEditorContext: {
+            activities?: components["schemas"]["ManagedActivity"][];
+            defaults?: components["schemas"]["ActivityDefaultsRow"][];
+            disciplineKey?: string | null;
+            groups?: components["schemas"]["ActivityAudienceGroup"][];
+            members?: components["schemas"]["ActivityParticipant"][];
+            /** Format: uuid */
+            sectionId?: string | null;
+            team?: components["schemas"]["ManagedTeam"];
+            types?: components["schemas"]["ManagedActivityType"][];
+        };
+        ActivityParticipant: {
+            displayName?: string;
+            /** Format: uuid */
+            id?: string;
+            role?: string;
+        };
         ActivityPerson: {
             /** Format: uuid */
             id: string;
             invitation: components["schemas"]["AccessibleInvitation"] | null;
             name: string;
+        };
+        ActivityResult: {
+            activity?: components["schemas"]["ManagedActivity"];
+        };
+        ActivityTimingRules: {
+            duration?: string;
+            gatheringRule?: string;
+            invitationRule?: string;
+            reminderRules?: string[];
+            responseDueRule?: string;
+        };
+        AdministrationClub: {
+            administrators?: components["schemas"]["Administrator"][];
+            canManage?: boolean;
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            sections?: components["schemas"]["AdministrationSection"][];
+            slug?: string | null;
+            timeZone?: string;
+        };
+        AdministrationOk: {
+            ok?: boolean;
+        };
+        AdministrationOverview: {
+            canBootstrap?: boolean;
+            clubs?: components["schemas"]["AdministrationClub"][];
+            platformAdmin?: boolean;
+            platformAdministrators?: components["schemas"]["Administrator"][];
+        };
+        AdministrationResult: {
+            /** Format: uuid */
+            id?: string;
+        };
+        AdministrationSection: {
+            administrators?: components["schemas"]["Administrator"][];
+            canChangeDiscipline?: boolean;
+            canDelete?: boolean;
+            canManage?: boolean;
+            disciplineKey?: string;
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            slug?: string | null;
+            teams?: components["schemas"]["AdministrationTeam"][];
+        };
+        AdministrationTeam: {
+            administrators?: components["schemas"]["Administrator"][];
+            canAssignAdministrators?: boolean;
+            canDelete?: boolean;
+            canManage?: boolean;
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            season?: string;
+            slug?: string | null;
+        };
+        Administrator: {
+            active?: boolean;
+            email?: string;
+            /** Format: date */
+            endsOn?: string | null;
+            /** Format: date */
+            startsOn?: string | null;
+            /** Format: uuid */
+            subject?: string;
+        };
+        AdministratorChange: {
+            active?: boolean;
+            email?: string;
+            /** Format: date */
+            endsOn?: string | null;
+            name?: string;
+            /** Format: date */
+            startsOn?: string | null;
         };
         ApiError: {
             error: string;
@@ -447,6 +878,16 @@ export interface components {
         Bytes: string;
         /** Format: int32 */
         COSEAlgorithmIdentifier: number;
+        CancellationCommand: {
+            reason?: string | null;
+            /** Format: int64 */
+            revision?: number | null;
+        };
+        ClubChange: {
+            name?: string;
+            slug?: string;
+            timeZone?: string;
+        };
         CodeRequest: {
             code?: string;
         };
@@ -459,6 +900,17 @@ export interface components {
             scope?: string;
             state?: string;
         };
+        CreateClub: {
+            disciplineKey?: string;
+            organizationName?: string;
+            organizationSlug?: string;
+            season?: string;
+            sectionName?: string;
+            sectionSlug?: string;
+            teamName?: string | null;
+            teamSlug?: string | null;
+            timeZone?: string;
+        };
         CredentialRegistrationRequest: {
             publicKey?: components["schemas"]["RelyingPartyPublicKey"];
         };
@@ -468,6 +920,47 @@ export interface components {
         MagicLinkRequest: {
             /** Format: email */
             email: string;
+        };
+        ManagedActivity: {
+            /** Format: uuid */
+            activity_type_id?: string | null;
+            description?: string;
+            /** Format: date-time */
+            ends_at?: string;
+            /** Format: date-time */
+            gathering_at?: string | null;
+            /** Format: uuid */
+            id?: string;
+            location?: string;
+            /** Format: uuid */
+            organization_id?: string;
+            /** Format: int64 */
+            revision?: number;
+            /** Format: date-time */
+            starts_at?: string;
+            status?: string;
+            /** Format: uuid */
+            team_id?: string;
+            title?: string;
+        };
+        ManagedActivityType: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            /** Format: uuid */
+            organization_id?: string | null;
+            slug?: string;
+            system_category?: string;
+        };
+        ManagedTeam: {
+            canManageInvitations?: boolean;
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            /** Format: uuid */
+            organizationId?: string;
+            organizationName?: string;
+            timeZone?: string;
         };
         MyActivities: {
             activities: components["schemas"]["MyActivity"][];
@@ -609,8 +1102,21 @@ export interface components {
             /** @enum {string} */
             response: "pending" | "accepted" | "declined";
         };
+        SectionChange: {
+            disciplineKey?: string;
+            name?: string;
+            slug?: string;
+        };
+        SlugAvailability: {
+            status?: string;
+        };
         SuccessfulUserRegistrationResponse: {
             success?: boolean;
+        };
+        TeamChange: {
+            name?: string;
+            season?: string;
+            slug?: string | null;
         };
         TokenGenerationRequest: {
             username?: string;
@@ -628,6 +1134,30 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    createActivity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivityCommand"];
+            };
+        };
+        responses: {
+            /** @description Created activity */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ActivityResult"];
+                };
+            };
+        };
+    };
     getPersonalActivity: {
         parameters: {
             query?: never;
@@ -646,6 +1176,58 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PersonalActivity"];
+                };
+            };
+        };
+    };
+    updateActivity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                activityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivityCommand"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ActivityResult"];
+                };
+            };
+        };
+    };
+    cancelActivity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                activityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CancellationCommand"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ActivityDisposition"];
                 };
             };
         };
@@ -704,6 +1286,371 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    bootstrap: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdministrationOk"];
+                };
+            };
+        };
+    };
+    createClub: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateClub"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdministrationResult"];
+                };
+            };
+        };
+    };
+    updateClub: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clubId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClubChange"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdministrationOk"];
+                };
+            };
+        };
+    };
+    clubAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clubId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdministratorChange"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdministrationOk"];
+                };
+            };
+        };
+    };
+    createSection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clubId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SectionChange"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdministrationResult"];
+                };
+            };
+        };
+    };
+    updateSection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clubId: string;
+                sectionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SectionChange"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdministrationResult"];
+                };
+            };
+        };
+    };
+    overview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdministrationOverview"];
+                };
+            };
+        };
+    };
+    platform: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdministratorChange"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdministrationOk"];
+                };
+            };
+        };
+    };
+    deleteSection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sectionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdministrationOk"];
+                };
+            };
+        };
+    };
+    sectionAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sectionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdministratorChange"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdministrationOk"];
+                };
+            };
+        };
+    };
+    createTeam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sectionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamChange"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdministrationResult"];
+                };
+            };
+        };
+    };
+    updateTeam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sectionId: string;
+                teamId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamChange"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdministrationResult"];
+                };
+            };
+        };
+    };
+    slug: {
+        parameters: {
+            query: {
+                slug: string;
+                organizationId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SlugAvailability"];
+                };
+            };
+        };
+    };
+    deleteTeam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdministrationOk"];
+                };
+            };
+        };
+    };
+    teamAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdministratorChange"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdministrationOk"];
                 };
             };
         };
@@ -1930,6 +2877,26 @@ export interface operations {
             };
         };
     };
+    getManagedTeams: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ManagedTeam"][];
+                };
+            };
+        };
+    };
     getPersonalOverview: {
         parameters: {
             query?: never;
@@ -1946,6 +2913,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PersonalOverview"];
+                };
+            };
+        };
+    };
+    getActivityEditor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ActivityEditorContext"];
                 };
             };
         };

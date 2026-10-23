@@ -254,3 +254,9 @@ serietillfällen. Arbetaren fyller aldrig i regler retroaktivt. Vid disciplinbyt
 ignoreras överstyrningar med tidigare `discipline_id`; historiska aktiviteter och
 fasta tidsstämplar skrivs inte om. Den tidigare tabellen `activity_defaults` tas
 bort före drift utan kopiering av värden.
+
+## Kotlin-kommandon i M09
+
+Den nya backendens `ActivityTimes` använder samma begränsade tidsgrammatik, tidszon och skillnad mellan kalenderdagar och förflutna timmar som TypeScript. Gemensamma förval och sektion-/lagöverstyrningar används med explicit version; ett uttryckligt utkast bevarar sina tider. Samtliga framtida påminnelser sparas atomärt med aktivitet, audit och signalversion.
+
+Redigering räknar inte om kallelseschemat. Ny start får inte hamna före en bevarad sista svarstid. Omedelbara personval skapar besvarbara kallelser i appen, medan schemalagd materialisering och extern leverans hör till M06/M10. [Omfattning och verifiering](migration/activity-management.md).

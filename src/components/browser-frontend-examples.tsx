@@ -11,6 +11,8 @@ import { MagicLinkForm, MagicLinkConfirmation } from "./magic-link-form";
 import { PasskeyRegistration } from "./passkey-registration";
 import { AccountForm, EmailVerification, OAuthConsent } from "./account-form";
 import { PasskeyList } from "./passkey-list";
+import { AdministrationExample } from "./administration-example";
+import { ActivityManagementExample } from "./activity-management-example";
 import { SessionMenu } from "./session-menu";
 
 /** Actual pilot components with local fixtures; no login or database mutations. */
@@ -31,6 +33,8 @@ export function BrowserFrontendExamples({ linkComponent }: { linkComponent?: Nav
     { id: "44444444-4444-4444-8444-444444444444", person_id: "55555555-5555-4555-8555-555555555555", name: "Robin Exempel", response: "declined", response_comment: "Bevaras vid snabbsvar" },
   ] }];
   return <>
+    <AdministrationExample />
+    <ActivityManagementExample />
     <PersonalHomeExample linkComponent={linkComponent} />
     <section><h2>Mina aktiviteter</h2><MyActivityList linkComponent={linkComponent} request={request} activities={activities} loadMore={() => {}} /></section>
     <section><h2>Aktivitet utan utskickad kallelse</h2><MyActivityList linkComponent={linkComponent} activities={[{ ...activities[0], invitations: [] }]} /></section>

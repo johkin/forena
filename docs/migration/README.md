@@ -119,3 +119,12 @@ Vid varje avslut uppdateras status med commit/PR, ändrat beteende, exakt körda
 kontroller, begränsningar och nästa beroende uppgift. Om arbetet växer ska PR:n
 avslutas i byggbart skick och återstoden få en ny uppgift med en överlämning:
 beslut, filer, verifiering, kvarstående arbete och beroenden.
+
+## M09 med hela administrationskedjan, 2026-10-23
+
+På användarens begäran ingår även första systemadmin, klubb med första sektion,
+lag och administratörstilldelning i M09:s PR. [Körguiden](activity-management.md)
+beskriver bootstrap för ett verifierat, konfigurerat konto, rollgränser och
+vägen till första aktiviteten. Ingen produktionsbootstrap är genomförd.
+Aktivitetskommandon och schemaposter är atomära; extern kallelseleverans ligger
+fortfarande i M06/M10. [Status](status.md) redovisar aktuell verifiering.

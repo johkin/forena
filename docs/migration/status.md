@@ -1,5 +1,122 @@
 # Migreringsstatus
 
+## PR #165: granskningsrättning, 2026-10-23
+
+Samtliga sex kodkommentarer hanteras i samma granskningsändring:
+
+- Bootstrap nekar obehöriga före adminlåset, återkontrollerar under låset och
+  använder separata beständiga globala, klient- och kontobudgetar.
+- Återkallning utan befintlig sektions-/lagroll skapar inga person-, åtkomst-
+  eller rollrader; tomma strukturer förblir möjliga att radera.
+- Aktivitetskommandon hämtar ett lag direkt. Laglistan avgränsas till aktörens
+  organisationer och administrationsöversikten till aktörens berörda klubbar.
+  Plattformens uttryckliga helhetsöversikt finns kvar.
+- Aktiviteters dataintegritetskonflikter ger 409 med no-store och ett säkert
+  felmeddelande. Det befintliga sena rollback-provet verifierar detta.
+- Administrationsgalleriets slugkontroll returnerar rätt svarskontrakt.
+
+Lokalt verifierat för granskningsändringen: Maven `verify` med 94 tester, noll
+fel eller överhoppningar, inklusive riktiga Chromium-/PostgreSQL-flöden för auth,
+M09 och admin-kedjan; 1 145 frontendtester; typkontroll; lint; Next-/Vite-byggen;
+OpenAPI-/TypeScript-kontraktskontroll. Galleriets slugkontroll är dessutom
+provad i Chromium utan sidfel. Paketerad JVM har klarat `local-smoke.py`,
+inklusive admin-kedja, aktivitetskommandon och auth-livscykel. CI-resultat måste
+knytas till aktuell PR-head.
+
+CI #693 för `211ea75` klarade application, database och backend inklusive
+browserproven. Native-jobbet stoppades före native-kompilering eftersom
+buildpackens rörliga `latest`-tagg hade bytt till en ren ARM64-image och gav
+`exec format error` på x86-runnern. CI-receptet låser därför buildern till
+multiarkitekturdigesten från den tidigare godkända körningen #692 och anger
+`linux/amd64` uttryckligen. Manifest, Maven-parameterstöd, workflow-YAML och
+25 release-tester har kontrollerats lokalt. Ny CI krävs för det ändrade receptet.
+
+En tillkommande säkerhetskommentar utökar samma skydd till alla övriga
+administrativa skrivningar: behörighet kontrolleras före adminlåset och igen
+efter väntan, och en Spring MVC-interceptor begränsar mutationer före
+bodytolkning och servicetransaktion. Bootstrap, övrig administration och
+inloggning har separata budgetar. Regressionstester provar samtliga tolv övriga
+skrivvägar med låset upptaget, återkallad roll under väntan och 429 utan att
+läsning eller bootstrap blockeras av mutationsbudgeten. Full Maven `verify`
+har passerat med 97 tester utan fel eller överhoppningar, inklusive samtliga
+browserprov. Kontraktskontrollen är fortsatt grön. AOT-paketering med omkörda
+429-regressioner och `local-smoke.py --aot-runtime` har också passerat: nya
+interceptorn fungerar i den genererade Spring-grafen och hela admin-/aktivitets-
+och auth-flödet passerar mot lokal PostgreSQL. Detta är ett JVM/AOT-prov, inte
+ett lokalt native-binärprov.
+
+En åttonde kommentar pekade ut att obehöriga anrop kunde tömma gemensamma
+begränsningsbudgetar. En separat skrivskyddad förkontroll verifierar nu samma
+behörighetsregler innan MVC-interceptorn eller bootstrap tar budget. Budgeten
+committas fortfarande före den separata skrivtransaktionen. Kommandot kontrollerar
+sedan behörigheten före och efter låset. Okända administrativa kommandon nekas
+vid admission. Upprepade obehöriga bootstrap-/adminanrop verifieras lämna den
+gemensamma budgeten orörd; behöriga anrop begränsas fortsatt med 429.
+Hela Maven `verify` är omkört: 97 tester, inga fel eller överhoppningar,
+inklusive browserflödena. Kontraktskontrollen, AOT-paketeringen och
+`local-smoke.py --aot-runtime` är godkända även efter denna ändring.
+
+## M09: enstaka aktivitet och hela admin-kedjan, 2026-10-23
+
+Implementation: `9294ce2cb7c9211858d880b44de6ff0c92ba0ec4` på
+`feat/m09-activities`, från aktuell main `fce3ce2`. Användaren utökade samma PR
+med första systemadmin, klubb/sektion/lag och administratörstilldelning.
+[Körguide och avgränsningar](activity-management.md).
+
+- Migration 013 inför aktivitetstyper, lagrättigheter, förval, målgrupper,
+  aktivitetsaudit och beständiga schemaposter. Migration 014 inför administrativ
+  bootstrap, roller, adresser/säsong och administrativ audit. Samma privata
+  dataroll, owner-gräns och Liquibase-modell gäller.
+- Ett verifierat, uttryckligen konfigurerat konto kan aktivera första systemadmin
+  en gång. Klubb med första sektion och valfritt lag skapas atomärt. Systemadmin
+  utser klubbadmin; klubb-/sektionsadmin skapar lag och tilldelar lagadmin.
+  Systemrollen ger inga automatiska verksamhetsrättigheter.
+- Lagrollen har datumgiltighet och egen personkoppling; delegation och vanlig
+  läsåtkomst ger inte skrivrätt. Återkallning påverkar inte oberoende läsgrants.
+  Sista administratören, sista sektionen och beroendebundna lag skyddas.
+- Samma ActivityEditorModal, ClubOnboarding, datum-/tidszonkomponenter och
+  SectionTeamAdministration används i den nya appen och komponentgalleriet.
+  Klubbskapandets granskningssteg skickar ingen skrivning; explicit bekräftelse
+  ger exakt ett kommando. Kontobyten och fel behåller befintliga sessionsskydd.
+- Aktivitet kan skapas, läsas, ändras och ställas in. Direkta personval skapar
+  besvarbara kallelser i appen. Aktivitet, kallelser, schemaposter, audit och
+  signalversion är atomära. Redigering bevarar kallelseschemat och kontrollerar
+  revision. Inställning delar låsordning med svar och stoppar väntande schema.
+
+Lokalt godkänt på implementationen:
+
+- Full Maven `verify`: 90 tester, noll fel/överhoppningar, inklusive verklig
+  Chromium → Spring → PostgreSQL för auth och båda M09-flödena. Tom installation
+  och uppgradering från samtliga 13 tidigare baslinjer verifierades.
+- Efter den sista tidsvalideringen: hela ApiTest omkört, 46 tester utan fel eller
+  överhoppningar, inklusive båda browserflödena mot produktionsbyggd Vite.
+  Det omfattar kontobyte från system-/klubbadmin till separat lagadmin,
+  skapa/återbesök/ändra/inställ, nekad främmande åtkomst, återkallning,
+  datumgränser, rollback vid sen audit-failure och konkurrerande bootstrap.
+- 1 145 frontendtester, typkontroll, lint, Next- och Vite-produktionsbyggen.
+  Administrations- och aktivitetsvyer kontrollerade i 320/390/768/1440 px utan
+  horisontell scroll; mobil/desktop granskade visuellt.
+- Slutlig JVM-paketering och `local-smoke.py`: migration-only två gånger,
+  tomt schema före webbstart, runtime-grants, hela admin-kedjan och
+  aktivitetskommandon, audit, schemaposter och auth-livscykel är godkända.
+- Spring-exporterad OpenAPI och reproducerbar TypeScript-generation samt
+  25 Python-releasekontroller är godkända. CI behåller obligatoriska
+  native-image-, runtime-, browser- och databasgrindar.
+
+Inget lokalt GraalVM-/OCI-bygge har körts för denna leverans. CI-resultat ska
+knytas till PR:ns aktuella head; lokala JVM-resultat är inte native-driftbevis.
+Ingen molnmigration, produktionsbootstrap, kontoflytt, verkligt mejl eller
+publicering har genomförts. Gamla Supabase-schemats reset/pgTAP är inte omkörda
+lokalt; ändringarna gäller det privata Liquibase-schemat och verifierades med
+riktig lokal PostgreSQL. Den befintliga databasgrinden i CI är kvar.
+
+Nästa beroende leverans är M06/M10:s verkliga schemalagda materialisering och
+externa kallelseleverans. M09 sparar leveransansvaret och visar begränsningen i
+UI:t. Administratörstilldelning kräver redan registrerade, verifierade konton;
+mejlinbjudan till oregistrerade konton, serier/import, närvaro och fullständig
+katalog-/disciplinadministration är fortsatt egna paritetsområden.
+
+
 ## Spring-autentisering som enda lösning, 2026-10-23
 
 Den nya React/Kotlin-appen använder enbart Spring-autentisering. Se

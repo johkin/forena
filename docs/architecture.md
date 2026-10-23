@@ -733,3 +733,9 @@ internt kortlivat användar-JWT och en klient med vanlig RLS. Service-klienten
 överlämnas aldrig till assistenten. Grupper har en uttryckligt vald roll men
 ingen verifierad komplett publik; därför körs inte assistenten i grupper.
 Konfiguration, begränsningar och granskningsflöde finns i [Telegram](telegram.md).
+
+## M09: struktur, roller och enstaka aktiviteter i React/Kotlin
+
+Den nya appen har nu modulen `administration` för bootstrap, klubb-/sektions-/lagstruktur och administrativa roller. Den använder identitetsmodulens publika katalog för verifierade konton och uttryckliga egna personkopplingar. `activities` äger aktivitetens kommandon, typer, förval, schemaposter, audit och signalversion. Inga interna repositories anropas över modulgränser och inga modulcykler införs.
+
+Alla administrativa skrivningar serialiseras mot en gemensam låsrad och kontrollerar session/rättigheter efter låsväntan. Aktivitetsskrivningar använder samma livscykellås som kallelsesvar. Struktur och rollfakta lagras i det privata Liquibase-schemat; äldre Next-appens databas och auth är separata. [Flöden och gränser](migration/activity-management.md).

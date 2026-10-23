@@ -21,7 +21,7 @@ M21/M22-koden togs bort i PR #148 och dess resultat är historiskt underlag.
 | [M07A](m07a-activity-overview.md) | Mina aktiviteter via egen och delegerad personåtkomst | Befintlig M03/M05-grund; driftprov före acceptans |
 | [M07B](m07b-personal-activity-scope.md) | Aktiviteter via lagmedlemskap/egen lagåtkomst även utan kallelse, med separat svarsrätt | M07A; nästa startsidesteg |
 | [M08](m08-cloud-foundation.md) | Vilande GCP-alternativ, endast efter konkret blockerare | M01, M02 |
-| [M09](m09-activities.md) | Flytta skapa och ändra en enskild aktivitet | M07 |
+| [M09](m09-activities.md) | Enstaka aktivitet samt första systemadmin, klubb/sektion/lag och administratörstilldelning | M07 |
 | [M10](m10-notifications.md) | Flytta en kallelseleverans med kontrollerad e-post | M06, M22G, M09 |
 | [M11](m11-duties.md) | Flytta bokning av en arbetspassplats | M07 |
 | [M12](m12-data-transfer.md) | Vilande alternativ: Supabase till Cloud SQL-dataflytt | M02, M04, M08 |

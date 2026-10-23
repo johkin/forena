@@ -125,7 +125,7 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
         # Recreate an empty schema so JVM and native must migrate before serving HTTP.
         docker("exec", container, "psql", "-U", "postgres", "-v", "ON_ERROR_STOP=1", "-c",
                "drop schema forena cascade; create schema forena authorization forena_api_owner; revoke all on schema forena from public")
-        env.update(FORENA_MIGRATE="true", FORENA_MIGRATION_USERNAME="forena_api_owner",
+        env.update(FORENA_INITIAL_SYSTEM_ADMIN_EMAIL="smoke@example.invalid", FORENA_MIGRATE="true", FORENA_MIGRATION_USERNAME="forena_api_owner",
                    FORENA_MIGRATION_PASSWORD="local-owner-only", PORT=str(http_port),
                    FORENA_WEB_SESSION_ENABLED="true", FORENA_WEB_ORIGIN="https://app.example.invalid",
                    FORENA_WEB_SESSION_KEY=base64.b64encode(bytes(range(32))).decode(),
@@ -151,7 +151,7 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
             if args.runtime_image:
                 # Host networking only connects the Linux test container to the
                 # disposable PostgreSQL on loopback.
-                runtime_keys = ("FORENA_MIGRATE", "FORENA_MIGRATION_USERNAME", "FORENA_MIGRATION_PASSWORD", "PORT", "FORENA_DB_CA_CERTIFICATE", "FORENA_JDBC_URL", "FORENA_DB_USERNAME", "FORENA_DB_PASSWORD",
+                runtime_keys = ("FORENA_INITIAL_SYSTEM_ADMIN_EMAIL", "FORENA_MIGRATE", "FORENA_MIGRATION_USERNAME", "FORENA_MIGRATION_PASSWORD", "PORT", "FORENA_DB_CA_CERTIFICATE", "FORENA_JDBC_URL", "FORENA_DB_USERNAME", "FORENA_DB_PASSWORD",
                                 "RESEND_API_KEY", "RESEND_FROM_EMAIL", "SPRING_APPLICATION_JSON",
                                 "FORENA_OAUTH_CLIENT_ID", "FORENA_OAUTH_CLIENT_REDIRECT", "FORENA_OAUTH_CLIENT_SECRET",
                                 "FORENA_WEB_SESSION_ENABLED", "FORENA_WEB_ORIGIN", "FORENA_WEB_SESSION_KEY")
@@ -187,7 +187,7 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
             origin = env["FORENA_WEB_ORIGIN"]
             cookie = None
             subject = None
-            def call(path, body=None, *, form=False, status=200, bound=True, account=True):
+            def call(path, body=None, *, form=False, status=200, bound=True, account=True, method=None):
                 nonlocal cookie
                 headers = {"Origin": origin, "X-Forena-Request": "1"} if bound else {}
                 if cookie:
@@ -198,7 +198,7 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
                 if body is not None:
                     headers["Content-Type"] = "application/x-www-form-urlencoded" if form else "application/json"
                     data = (urllib.parse.urlencode(body) if form else json.dumps(body)).encode()
-                request = urllib.request.Request(f"http://127.0.0.1:{http_port}{path}", data=data, headers=headers)
+                request = urllib.request.Request(f"http://127.0.0.1:{http_port}{path}", data=data, headers=headers, method=method)
                 try:
                     response = urllib.request.urlopen(request, timeout=10)
                 except urllib.error.HTTPError as error:
@@ -248,8 +248,44 @@ insert into forena.invitation(id,organization_id,activity_id,person_id) values('
             assert len(overview["activities"]) == 1 and overview["teams"] == []
             assert overview["activities"][0]["team"]["roles"] == []
             assert call(f"/api/activities/{activity}")["team"]["roles"] == []
+            # Exercise the same commands in JVM, AOT and native-image releases.
+            assert call("/api/me/managed-teams") == []
+            seed(f"insert into forena.organization_member(organization_id,subject,role) values('{organization}','{subject}','admin')")
+            seed(f"insert into forena.team_membership(organization_id,team_id,person_id,role,starts_on) values('{organization}','{team}','{person}','participant',current_date)")
+            assert call("/api/me/managed-teams")[0]["id"] == team
+            command = {"teamId": team, "title": "Managed smoke activity", "location": "Local pitch",
+                       "startsAt": "2030-10-25T16:00:00Z", "endsAt": "2030-10-25T17:30:00Z",
+                       "invitationMode": "now", "personIds": [person]}
+            created = call("/api/activities", command, status=201)["activity"]
+            managed_id = created["id"]
+            assert created["revision"] == 0
+            editor = call(f"/api/teams/{team}/activity-editor")
+            assert any(item["id"] == managed_id for item in editor["activities"])
+            assert editor["members"] and editor["types"] and editor["defaults"] == []
+            assert seed(f"select count(*) from forena.activity_schedule where activity_id='{managed_id}' and state='pending'") == "1"
+            update = command | {"title": "Updated smoke activity", "invitationMode": "none", "personIds": [], "revision": 0}
+            assert call(f"/api/activities/{managed_id}", update, method="PUT")["activity"]["revision"] == 1
+            call(f"/api/activities/{managed_id}", update, method="PUT", status=409)
+            assert call(f"/api/activities/{managed_id}", {"revision": 1}, method="DELETE")["disposition"] == "cancelled"
+            assert seed(f"select count(*) from forena.activity_audit where activity_id='{managed_id}'") == "3"
+            assert seed(f"select count(*) from forena.activity_schedule where activity_id='{managed_id}' and state='pending'") == "0"
+            print("PASS: activity create, scoped editor DTOs, update, revision conflict, cancellation, audit and durable schedule", flush=True)
             seed(f"update forena.person_access set active=false where subject='{subject}'")
             assert call("/api/me/activities")["activities"] == []
+            assert call("/api/admin/overview")["canBootstrap"] is True
+            call("/api/admin/bootstrap", {})
+            call("/api/admin/bootstrap", {}, status=409)
+            created_club = call("/api/admin/clubs", {
+                "organizationName": "Admin smoke club", "organizationSlug": "admin-smoke-club", "timeZone": "Europe/Stockholm",
+                "sectionName": "Football", "sectionSlug": "football", "disciplineKey": "football"})["id"]
+            created_section = call("/api/admin/overview")["clubs"]
+            created_section = next(item for item in created_section if item["id"] == created_club)["sections"][0]["id"]
+            call(f"/api/admin/clubs/{created_club}/administrators", {"email": credentials["email"]})
+            created_team = call(f"/api/admin/sections/{created_section}/teams", {"name": "Admin team"})["id"]
+            call(f"/api/admin/teams/{created_team}/administrators", {"email": credentials["email"], "name": "Smoke leader"})
+            admin_activity = call("/api/activities", {"teamId": created_team, "title": "Admin chain activity", "startsAt": "2030-10-25T16:00:00Z", "endsAt": "2030-10-25T17:00:00Z"}, status=201)["activity"]["id"]
+            call(f"/api/activities/{admin_activity}", {}, method="DELETE")
+            print("PASS: first system administrator → club/section → club administrator → team → team administrator → activity", flush=True)
             # Actual WebAuthn options exercise Spring's JSON mixins and string-only session storage.
             clear_limits()
             options = call("/api/auth/passkey/registration/options", {})

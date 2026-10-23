@@ -1,6 +1,6 @@
 # M09: Flytta skapa och ändra en enskild aktivitet
 
-Status: planerad. Beroenden: M07. Leverans: en avgränsad PR om inte nedan
+Status: implementerad på `feat/m09-activities`; aktuell verifiering och driftstatus finns i [status](../status.md). Beroenden: M07. Leverans: en avgränsad PR om inte nedan
 anges att arbetet först ska delas. Alla PR-baser är aktuell `main`.
 
 ## Bakgrund och gemensamma beslut
@@ -19,6 +19,9 @@ src/app/api/activities/route.ts, src/app/api/activities/[activityId]/route.ts, s
 nödvändigtvis innan beroendena är genomförda. Sökvägarna utgår från reporoten.
 
 ## Ingår
+
+Användaren utökade 2026-10-23 samma PR med [hela administrationskedjan](m09a-club-team-administration.md). Se [körguide och gränser](../activity-management.md) för första systemadmin, klubb/sektion/lag och rolltilldelning.
+
 
 Implementera skapa/ändra/inställ en aktivitet med domänregler, tidszon, disciplinförval, deltagare och schemaläggningsposter i en transaktion. Återanvänd applikationstjänst i webbens adapter. Fastställ activities/discipline-gräns utan cykel. Bevara audit och eventansvar.
 
