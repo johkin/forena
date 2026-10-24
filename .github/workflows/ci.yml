@@ -36,8 +36,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          base_sha=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=main&event=push&status=success&per_page=1" \
-            --jq '.workflow_runs[0].head_sha // empty')
+          if ! base_sha=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=main&event=push&status=success&per_page=1" \
+            --jq '.workflow_runs[0].head_sha // empty'); then
+            echo '::warning::Baseline lookup failed; running all verification jobs.'
+            base_sha=
+          fi
           echo "MAIN_BASE_SHA=$base_sha" >> "$GITHUB_ENV"
 
       - name: Calculate backend build inputs

@@ -1,8 +1,10 @@
 """Skip only unaffected checks, keeping complete current-release verification."""
 import itertools
+import os
 from pathlib import Path
 import subprocess
 import tempfile
+import textwrap
 import unittest
 from ci_scope import COMPONENTS, changed_paths, select_scope, verify_results
 
@@ -66,6 +68,34 @@ class CiScope(unittest.TestCase):
         for event, paths in [('push', None), ('pull_request', None),
                              ('workflow_dispatch', []), ('unknown', [])]:
             self.assertTrue(all(select_scope(event, paths, backend_cache_hit=True).values()))
+
+    def test_workflow_baseline_lookup_handles_api_failure_under_strict_bash(self):
+        root = Path(__file__).resolve().parents[2]
+        workflow = (root / '.github/workflows/ci.yml').read_text()
+        step = workflow.split('      - name: Compare main with its last successful verification\n', 1)[1]
+        step = step.split('\n      - name:', 1)[0]
+        script = textwrap.dedent(step.split('        run: |\n', 1)[1])
+        commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = Path(directory)
+            gh = temporary / 'gh'
+            gh.write_text('#!/bin/sh\nprintf "%s\\n" "$LOOKUP_OUTPUT"\nexit "$LOOKUP_STATUS"\n')
+            gh.chmod(0o755)
+            github_env = temporary / 'github-env'
+            for status, output, expected in [(0, commit, commit), (0, '', ''),
+                                             (1, '', ''), (1, commit, '')]:
+                with self.subTest(status=status, output=output):
+                    github_env.write_text('')
+                    result = subprocess.run(['bash', '-euo', 'pipefail', '-c', script],
+                        env={**os.environ, 'PATH': directory + os.pathsep + os.environ['PATH'],
+                             'GITHUB_REPOSITORY': 'example/repository', 'GITHUB_ENV': str(github_env),
+                             'LOOKUP_OUTPUT': output, 'LOOKUP_STATUS': str(status)},
+                        capture_output=True, text=True)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(github_env.read_text(), f'MAIN_BASE_SHA={expected}\n')
+                    if not expected:
+                        self.assertTrue(all(select_scope('push', changed_paths(expected, root),
+                                                         backend_cache_hit=True).values()))
 
     def test_changes_since_successful_baseline_include_intermediate_failed_commits(self):
         with tempfile.TemporaryDirectory() as directory:
