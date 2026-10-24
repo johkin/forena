@@ -1,33 +1,39 @@
-"""Only explicitly irrelevant PR jobs may skip; releases retain every check."""
+"""Skip only unaffected checks, keeping complete current-release verification."""
 import itertools
+from pathlib import Path
+import subprocess
+import tempfile
 import unittest
-from ci_scope import COMPONENTS, select_scope, verify_results
+from ci_scope import COMPONENTS, changed_paths, select_scope, verify_results
 
 
 class CiScope(unittest.TestCase):
     def test_frontend_pr_does_not_build_backend_or_database(self):
         self.assertEqual(select_scope('pull_request', [
             'frontend/src/app.tsx', 'src/components/session-menu.tsx',
-            'scripts/migration/activity-management-browser.mjs', 'package-lock.json',
-            'docs/design-spec.md', '.github/workflows/ci.yml', 'scripts/deploy/ci_scope.py']),
-            dict(application=True, database=False, backend=False))
+            'package-lock.json', 'docs/design-spec.md']),
+            dict(application=True, database=False, backend=False, native=False))
 
     def test_backend_code_tests_migrations_and_build_inputs_require_backend(self):
         for path in ['backend/src/main/kotlin/Activity.kt',
                      'backend/src/test/kotlin/ApiTest.kt',
                      'backend/src/main/resources/db/010.sql', 'backend/pom.xml',
                      'deploy/backend/entrypoint.sh', 'scripts/deploy/build_inputs.py',
-                     'scripts/deploy/use-backend-image.py', '.gitattributes', 'pom.xml']:
+                     'scripts/deploy/use-backend-image.py', '.gitattributes', 'pom.xml',
+                     '.github/workflows/ci.yml', 'scripts/deploy/ci_scope.py',
+                     'scripts/deploy/test_ci_scope.py',
+                     'scripts/migration/activity-management-browser.mjs',
+                     'scripts/migration/auth-browser.mjs']:
             with self.subTest(path=path):
                 self.assertTrue(select_scope('pull_request', [path])['backend'])
 
     def test_database_and_shared_contract_changes_select_their_dependents(self):
         self.assertEqual(select_scope('pull_request', ['supabase/migrations/010.sql']),
-                         dict(application=True, database=True, backend=False))
+                         dict(application=True, database=True, backend=False, native=False))
         self.assertEqual(select_scope('pull_request', ['backend/contract/generated.ts']),
-                         dict(application=True, database=False, backend=True))
+                         dict(application=True, database=False, backend=True, native=True))
         self.assertEqual(select_scope('pull_request', ['supabase/functions/worker/index.ts']),
-                         dict(application=True, database=False, backend=False))
+                         dict(application=True, database=False, backend=False, native=False))
 
     def test_mixed_changes_combine_checks_independent_of_order(self):
         paths = ['backend/src/main/kotlin/Activity.kt', 'src/components/header.tsx',
@@ -40,16 +46,60 @@ class CiScope(unittest.TestCase):
             'backend/README.md', 'backend/docs/architecture.md', 'docs/design-spec.md']).values()))
         self.assertTrue(all(select_scope('pull_request', ['new-toolchain.conf']).values()))
 
-    def test_main_and_manual_runs_always_produce_release_artifacts(self):
-        for event in ['push', 'workflow_dispatch']:
-            for paths in [[], ['frontend/src/app.tsx']]:
-                self.assertTrue(all(select_scope(event, paths).values()))
+    def test_main_reuses_identical_backend_but_verifies_current_frontend(self):
+        self.assertEqual(select_scope('push', ['frontend/src/app.tsx'], backend_cache_hit=True),
+                         dict(application=True, database=False, backend=False, native=True))
+        self.assertEqual(select_scope('push', ['docs/design-spec.md'], backend_cache_hit=True),
+                         dict(application=False, database=False, backend=False, native=True))
+
+    def test_missing_or_expired_backend_cache_requires_a_build(self):
+        self.assertEqual(select_scope('push', ['frontend/src/app.tsx']),
+                         dict(application=True, database=False, backend=True, native=True))
+        self.assertTrue(select_scope('push', [], backend_cache_hit=False)['backend'])
+
+    def test_changed_backend_and_browser_tests_are_verified_even_with_a_cache(self):
+        for path in ['backend/src/main/kotlin/Activity.kt',
+                     'scripts/migration/activity-management-browser.mjs']:
+            self.assertTrue(select_scope('push', [path], backend_cache_hit=True)['backend'])
+
+    def test_unknown_baseline_manual_and_unknown_events_require_every_check(self):
+        for event, paths in [('push', None), ('pull_request', None),
+                             ('workflow_dispatch', []), ('unknown', [])]:
+            self.assertTrue(all(select_scope(event, paths, backend_cache_hit=True).values()))
+
+    def test_changes_since_successful_baseline_include_intermediate_failed_commits(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(['git', 'init', '--quiet'], cwd=root, check=True)
+            def commit(name):
+                (root / name).parent.mkdir(parents=True, exist_ok=True)
+                (root / name).write_text(name)
+                subprocess.run(['git', 'add', '.'], cwd=root, check=True)
+                subprocess.run(['git', '-c', 'user.name=Test', '-c', 'user.email=test@example.invalid',
+                                'commit', '--quiet', '-m', name], cwd=root, check=True)
+                return subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
+            baseline = commit('README.md')
+            intermediate = commit('supabase/migrations/change.sql')  # An intervening unsuccessful build.
+            commit('frontend/src/app.tsx')
+            paths = changed_paths(baseline, root)
+            scope = select_scope('push', paths, backend_cache_hit=True)
+            self.assertTrue(scope['database'])
+            self.assertTrue(scope['application'])
+            self.assertFalse(scope['backend'])
+            self.assertIsNone(changed_paths('', root))
+            self.assertIsNone(changed_paths('0' * 40, root))
+            subprocess.run(['git', 'checkout', '--quiet', baseline], cwd=root, check=True)
+            self.assertIsNone(changed_paths(intermediate, root))
 
     def test_valid_combinations_and_all_unexpected_results(self):
-        for flags in itertools.product(['true', 'false'], repeat=3):
+        for flags in itertools.product(['true', 'false'], repeat=len(COMPONENTS)):
             required = dict(zip(COMPONENTS, flags))
-            valid = {name: 'success' if required[name] == 'true' else 'skipped' for name in COMPONENTS}
-            valid['native-image'] = valid['backend']
+            valid = {('native-image' if name == 'native' else name):
+                     'success' if required[name] == 'true' else 'skipped' for name in COMPONENTS}
+            if required['backend'] == 'true' and required['native'] != 'true':
+                with self.assertRaises(ValueError):
+                    verify_results(required, 'success', valid)
+                continue
             verify_results(required, 'success', valid)
             for job in valid:
                 for state in ['', 'failure', 'cancelled', 'skipped', 'success']:

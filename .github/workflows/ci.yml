@@ -16,22 +16,73 @@ concurrency:
 jobs:
   changes:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
     outputs:
       application: ${{ steps.scope.outputs.application }}
       database: ${{ steps.scope.outputs.database }}
       backend: ${{ steps.scope.outputs.backend }}
+      native: ${{ steps.scope.outputs.native }}
     steps:
       - name: Check out repository and comparison history
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
+      - name: Compare main with its last successful verification
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          base_sha=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=main&event=push&status=success&per_page=1" \
+            --jq '.workflow_runs[0].head_sha // empty')
+          echo "MAIN_BASE_SHA=$base_sha" >> "$GITHUB_ENV"
+
+      - name: Calculate backend build inputs
+        if: github.event_name == 'push'
+        id: backend-inputs
+        run: python3 scripts/deploy/build_inputs.py backend >> "$GITHUB_OUTPUT"
+
+      - name: Restore verified backend bundle for main
+        if: github.event_name == 'push'
+        id: backend-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ runner.temp }}/forena-backend.tar.gz
+            ${{ runner.temp }}/backend-image.json
+            ${{ runner.temp }}/forena-api.jar
+          key: native-linux-amd64-v2-${{ steps.backend-inputs.outputs.epoch }}-${{ steps.backend-inputs.outputs.fingerprint }}
+
+      - name: Validate the restored backend image and migration JAR
+        if: steps.backend-cache.outputs.cache-hit == 'true'
+        run: |
+          docker load --input "$RUNNER_TEMP/forena-backend.tar.gz"
+          docker image inspect forena-backend:ci > "$RUNNER_TEMP/backend-image-inspect.json"
+          python3 scripts/deploy/use-backend-image.py verify-cache \
+            "$RUNNER_TEMP/backend-image.json" "$RUNNER_TEMP/backend-image-inspect.json" "$GITHUB_SHA"
+
       - name: Select relevant verification jobs
         id: scope
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || env.MAIN_BASE_SHA }}
+          BACKEND_CACHE_HIT: ${{ steps.backend-cache.outputs.cache-hit }}
         run: python3 scripts/deploy/ci_scope.py select >> "$GITHUB_OUTPUT"
+
+      - name: Retain the verified bundle for reuse in this run
+        if: steps.scope.outputs.native == 'true' && steps.scope.outputs.backend == 'false'
+        uses: actions/upload-artifact@v7
+        with:
+          name: forena-reused-backend-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/forena-backend.tar.gz
+            ${{ runner.temp }}/backend-image.json
+            ${{ runner.temp }}/forena-api.jar
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
 
   application:
     needs: changes
@@ -163,19 +214,37 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24.19.0
           cache: npm
-          cache-dependency-path: backend/contract/package-lock.json
+          cache-dependency-path: |
+            backend/contract/package-lock.json
+            package-lock.json
 
       - name: Verify Spring-generated OpenAPI and TypeScript types
         run: |
           npm ci --prefix backend/contract --ignore-scripts
           npm run check --prefix backend/contract
 
+      - name: Install browser dependencies
+        run: npm ci
+
+      - name: Calculate browser build inputs
+        id: frontend-inputs
+        run: python3 scripts/deploy/build_inputs.py frontend >> "$GITHUB_OUTPUT"
+
+      - name: Restore unchanged browser build
+        id: frontend-cache
+        uses: actions/cache@v4
+        with:
+          path: frontend/dist
+          key: frontend-${{ runner.os }}-${{ steps.frontend-inputs.outputs.fingerprint }}
+
+      - name: Build browser client
+        if: steps.frontend-cache.outputs.cache-hit != 'true'
+        run: npm run frontend:build
+
       - name: Verify real browser accounts, WebAuthn, OAuth and activity management
         run: |
-          npm ci
-          npm run frontend:build
           npx playwright install --with-deps chromium
           npm run preview --workspace @forena/frontend -- --port 3002 > "$RUNNER_TEMP/auth-preview.log" 2>&1 &
           preview_pid=$!
@@ -205,7 +274,10 @@ jobs:
 
   native-image:
     needs: [changes, backend]
-    if: needs.changes.outputs.backend == 'true'
+    if: >-
+      always() && needs.changes.result == 'success' &&
+      needs.changes.outputs.native == 'true' &&
+      (needs.backend.result == 'success' || needs.backend.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -221,34 +293,46 @@ jobs:
           cache-dependency-path: backend/pom.xml
 
       - name: Download verified migration JAR
+        if: needs.changes.outputs.backend == 'true'
         uses: actions/download-artifact@v8
         with:
           name: forena-migration-jar-${{ github.sha }}
           path: backend/target
+
+      - name: Download the already verified backend bundle
+        if: needs.changes.outputs.backend == 'false'
+        uses: actions/download-artifact@v8
+        with:
+          name: forena-reused-backend-${{ github.sha }}
+          path: ${{ runner.temp }}
 
       - name: Calculate backend build inputs
         id: backend-inputs
         run: python3 scripts/deploy/build_inputs.py backend >> "$GITHUB_OUTPUT"
 
       - name: Restore unchanged native image
+        if: needs.changes.outputs.backend == 'true'
         id: native-cache
         uses: actions/cache/restore@v4
         with:
           path: |
             ${{ runner.temp }}/forena-backend.tar.gz
             ${{ runner.temp }}/backend-image.json
-          key: native-linux-amd64-v1-${{ steps.backend-inputs.outputs.epoch }}-${{ steps.backend-inputs.outputs.fingerprint }}
+            ${{ runner.temp }}/forena-api.jar
+          key: native-linux-amd64-v2-${{ steps.backend-inputs.outputs.epoch }}-${{ steps.backend-inputs.outputs.fingerprint }}
 
       - name: Load and verify cached image
-        if: steps.native-cache.outputs.cache-hit == 'true'
+        if: needs.changes.outputs.backend == 'false' || steps.native-cache.outputs.cache-hit == 'true'
         run: |
           docker load --input "$RUNNER_TEMP/forena-backend.tar.gz"
           docker image inspect forena-backend:ci > "$RUNNER_TEMP/backend-image-inspect.json"
           python3 scripts/deploy/use-backend-image.py verify-cache \
             "$RUNNER_TEMP/backend-image.json" "$RUNNER_TEMP/backend-image-inspect.json" "$GITHUB_SHA"
+          mkdir -p backend/target
+          cp "$RUNNER_TEMP/forena-api.jar" backend/target/forena-api.jar
 
       - name: Build native container with Spring Boot buildpacks
-        if: steps.native-cache.outputs.cache-hit != 'true'
+        if: needs.changes.outputs.backend == 'true' && steps.native-cache.outputs.cache-hit != 'true'
         run: >-
           backend/mvnw -f backend/pom.xml --batch-mode --no-transfer-progress
           -Pnative -DskipTests
@@ -263,10 +347,26 @@ jobs:
           node-version: 24.19.0
           cache: npm
 
-      - name: Build browser client and install Chromium
+      - name: Install browser dependencies
+        run: npm ci
+
+      - name: Calculate browser build inputs
+        id: frontend-inputs
+        run: python3 scripts/deploy/build_inputs.py frontend >> "$GITHUB_OUTPUT"
+
+      - name: Restore unchanged browser build
+        id: frontend-cache
+        uses: actions/cache@v4
+        with:
+          path: frontend/dist
+          key: frontend-${{ runner.os }}-${{ steps.frontend-inputs.outputs.fingerprint }}
+
+      - name: Build browser client
+        if: steps.frontend-cache.outputs.cache-hit != 'true'
+        run: npm run frontend:build
+
+      - name: Install Chromium
         run: |
-          npm ci
-          npm run frontend:build
           npx playwright install --with-deps chromium
 
       - name: Verify native Spring authentication against disposable PostgreSQL
@@ -276,16 +376,18 @@ jobs:
         run: |
           docker save forena-backend:ci | gzip > "$RUNNER_TEMP/forena-backend.tar.gz"
           docker image inspect forena-backend:ci > "$RUNNER_TEMP/backend-image-inspect.json"
+          cp backend/target/forena-api.jar "$RUNNER_TEMP/forena-api.jar"
           python3 scripts/deploy/use-backend-image.py record \
             "$RUNNER_TEMP/backend-image.json" "$RUNNER_TEMP/backend-image-inspect.json" "$GITHUB_SHA"
 
       - name: Cache successfully tested native image
-        if: steps.native-cache.outputs.cache-hit != 'true'
+        if: needs.changes.outputs.backend == 'true' && steps.native-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: |
             ${{ runner.temp }}/forena-backend.tar.gz
             ${{ runner.temp }}/backend-image.json
+            ${{ runner.temp }}/forena-api.jar
           key: ${{ steps.native-cache.outputs.cache-primary-key }}
 
       - name: Retain tested backend image
@@ -299,7 +401,7 @@ jobs:
           retention-days: 3
           if-no-files-found: error
 
-  # Keep the required check; only explicitly irrelevant PR jobs may skip.
+  # Keep the required check; reuse never bypasses current-release integration.
   verify:
     needs: [changes, application, database, backend, native-image]
     if: always()
@@ -314,6 +416,7 @@ jobs:
           APPLICATION_REQUIRED: ${{ needs.changes.outputs.application }}
           DATABASE_REQUIRED: ${{ needs.changes.outputs.database }}
           BACKEND_REQUIRED: ${{ needs.changes.outputs.backend }}
+          NATIVE_REQUIRED: ${{ needs.changes.outputs.native }}
           SCOPE_RESULT: ${{ needs.changes.result }}
           APPLICATION_RESULT: ${{ needs.application.result }}
           DATABASE_RESULT: ${{ needs.database.result }}
