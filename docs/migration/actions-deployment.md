@@ -7,9 +7,10 @@ separat auth och deployment. Ingen produktionsaktivering ingår i denna PR.
 
 ## Workflow och artefakter
 
-`.github/workflows/ci.yml` kör applikation, databas, backend och GraalVM-buildpack.
-`verify` kräver samtliga jobb. Backend publicerar migrations-JAR; native-jobbet
-hämtar den och kör `local-smoke.py --runtime-image` mot den byggda containern.
+`.github/workflows/ci.yml` väljer berörda applikations-, databas- och backendjobb.
+`verify` kräver alla valda jobb. Varje main-release kräver native-jobbet, som
+återanvänder en verifierad backend eller hämtar migrations-JAR från ett nytt
+backendbygge och kör `local-smoke.py --runtime-image` mot containern.
 Även en cacheträff måste klara detta prov för aktuell commit. Buildpack-bygget
 anger uttryckligen `linux/amd64`, samma arkitektur som runner, cache och release,
 och låser buildern till digesten från den senast godkända native-körningen.
@@ -41,11 +42,22 @@ omfattar frontend, delade komponenter, publika resurser, låsta npm-beroenden,
 Node-version och valfri provaktivitet. Dokumentation och runtime-secrets ingår inte.
 En ny UTC-vecka förnyar rörliga buildpack-/basimage-inputs vid nästa CI-körning.
 
-Metadata innehåller `sourceCommit`, `verifiedCommit`, `buildInputs` och `imageId`.
+Metadata innehåller `sourceCommit`, `verifiedCommit`, `buildInputs`, `imageId`
+och `migrationJarSha256`. Cachepaketet innehåller både imagen och migrations-JAR.
 Cache kan återanvändas endast för identiska inputs och måste verifieras på nytt
 för aktuell commit. Release kräver linux/amd64 och exakt registry-digest.
-PR-cacher får inte ersätta main-cacher. Alla tester och säkerhetskontroller körs
-även vid cacheträff. Gamla Supabase-auth-images matchar inte den nya byggnyckeln.
+PR-cacher får inte ersätta main-cacher. Main återställer paketet före jobburvalet
+och kontrollerar imageidentitet, byggindata och JAR-checksumma. Paketet skickas
+sedan som en artefakt inom samma körning; det kan inte försvinna genom
+cachevräkning mellan scopeberäkningen och native-jobbet.
+
+Oförändrad backend med giltig cache behöver varken kompileras eller köra om
+JVM-sviten. Aktuell frontend körs ändå mot imagen och en disponibel databas i
+native-jobbets HTTP-/browserprov. Ny verifieringsmetadata och publiceringens
+imageartefakt skapas för aktuell release-commit. Cachemiss, veckoförnyelse eller
+ändrade backendindata kräver backendbygge och JVM-svit. En ändrad eller trasig
+cacheartefakt stoppar körningen. Den nya v2-nyckeln kräver ett första fullständigt
+bygge för att fylla cachen med både image och migrations-JAR.
 
 ## Databas och aktivering
 
@@ -59,14 +71,16 @@ kontomigrering med verksamhetskopplingar. E-postlikhet räcker inte. Äldre Next
 deployment och dess delade beroenden behålls. Denna PR genomför ingen deploy,
 kontomigrering, databasåterställning eller ändring av externa produktionsinställningar.
 
-## Relevanta CI-jobb för pull requests
+## Relevanta CI-jobb
 
-`scripts/deploy/ci_scope.py` väljer PR-kontroller från ändrade filsökvägar:
+`scripts/deploy/ci_scope.py` väljer kontroller från ändrade filsökvägar:
 
-- Frontend, delade webbkomponenter och browserprov kör applikationskontrollerna,
+- Frontend och delade webbkomponenter kör applikationskontrollerna,
   inklusive Chromium med syntetiska API-svar.
 - Backendkod, backendtester, kontrakt, migrationer och backendens byggverktyg
   kräver JVM- och nativejobben. Delade API-kontrakt kräver också frontendkontroller.
+- Browserproven som körs mot Spring och CI:s urvals-/workflowregler kräver också
+  backendverifiering. En ändring av testet får inte hoppa över själva provet.
 - Supabase-schema och databastester kräver databasjobbet och
   applikationskontrollerna; Edge Function-kod kräver applikationskontrollerna.
 - Dokumentation behöver inga byggen. Okända byggindata väljer alla jobb.
@@ -75,6 +89,13 @@ kontomigrering, databasåterställning eller ändring av externa produktionsinst
 vara överhoppat när scope uttryckligen anger att det inte behövs. Misslyckade,
 avbrutna eller oväntat överhoppade jobb underkänns.
 
-Push till `main` och manuella körningar verifierar alltid hela systemet och
-producerar publiceringens backendartefakter för samma commit. Befintliga
-innehållsbaserade byggcachar återanvänder oförändrad frontend och native-image.
+PR:er jämförs med sin bas. Push till `main` jämförs med den senaste lyckade
+main-körningen, så att ändringar från misslyckade eller avbrutna körningar följer
+med till nästa kontroll. Saknad eller icke-ancestral bas och okända byggindata
+väljer alla jobb. Manuella körningar behåller full verifiering.
+
+Main kräver alltid aktuell native-integration och publiceringens backendartefakt,
+även när JVM-jobbet återanvänds. Oförändrat Supabase-schema kör inget databasjobb.
+Frontendbygget återanvänds även i JVM- och native-jobben med samma Node-version
+och innehållsnyckel som applikationsjobbet. Äldre Next-deployens produktionsbygge
+är ett separat flöde.

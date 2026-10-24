@@ -1,14 +1,15 @@
-"""Select relevant PR checks; main always produces all verified release artifacts."""
+"""Select affected checks and reuse verified backend builds for main releases."""
 import os
 from pathlib import PurePosixPath
+import re
 import subprocess
 import sys
 
-COMPONENTS = ('application', 'database', 'backend')
+COMPONENTS = ('application', 'database', 'backend', 'native')
 
 
-def select_scope(event, paths):
-    if event != 'pull_request':
+def select_scope(event, paths, *, backend_cache_hit=False):
+    if event not in {'pull_request', 'push'} or paths is None:
         return dict.fromkeys(COMPONENTS, True)
     scope = dict.fromkeys(COMPONENTS, False)
     for path in paths:
@@ -25,7 +26,11 @@ def select_scope(event, paths):
             scope['application'] = True
             if not path.startswith('supabase/functions/'):
                 scope['database'] = True
-        elif path in {'scripts/deploy/build_inputs.py', 'scripts/deploy/use-backend-image.py'}:
+        elif path in {'scripts/deploy/build_inputs.py', 'scripts/deploy/use-backend-image.py',
+                      'scripts/deploy/ci_scope.py', 'scripts/deploy/test_ci_scope.py',
+                      '.github/workflows/ci.yml',
+                      'scripts/migration/activity-management-browser.mjs',
+                      'scripts/migration/auth-browser.mjs'}:
             scope['application'] = scope['backend'] = True
         elif path.startswith(('frontend/', 'src/', 'public/', 'scripts/', 'deploy/frontend/')) or path in {
                 'package.json', 'package-lock.json', 'tsconfig.json', '.npmrc',
@@ -36,18 +41,39 @@ def select_scope(event, paths):
         else:
             # Unknown build inputs must not silently lose verification.
             return dict.fromkeys(COMPONENTS, True)
+    if event == 'push':
+        # A missing/expired exact-key cache must produce a fresh release image.
+        scope['backend'] |= not backend_cache_hit
+        scope['native'] = True
+    else:
+        scope['native'] = scope['backend']
     return scope
+
+
+def changed_paths(base, root=None):
+    """An unknown baseline cannot establish that any component is unchanged."""
+    if not re.fullmatch(r'[0-9a-f]{40}', base or ''):
+        return None
+    ancestor = subprocess.run(['git', 'merge-base', '--is-ancestor', base, 'HEAD'],
+                              cwd=root, stderr=subprocess.DEVNULL)
+    if ancestor.returncode != 0:
+        return None
+    return subprocess.check_output([
+        'git', 'diff', '--name-only', '--no-renames', '-z', base, 'HEAD'
+    ], cwd=root).decode().split('\0')
 
 
 def verify_results(required, scope_result, results):
     if scope_result != 'success' or set(required) != set(COMPONENTS):
         raise ValueError('CI scope did not finish successfully')
+    if required['backend'] == 'true' and required['native'] != 'true':
+        raise ValueError('Backend changes require native verification')
     for component, value in required.items():
         if value not in {'true', 'false'}:
             raise ValueError('Missing or invalid CI scope')
         expected = 'success' if value == 'true' else 'skipped'
-        jobs = ('backend', 'native-image') if component == 'backend' else (component,)
-        if any(results.get(job) != expected for job in jobs):
+        job = 'native-image' if component == 'native' else component
+        if results.get(job) != expected:
             raise ValueError('Required CI jobs did not finish successfully')
 
 
@@ -61,13 +87,9 @@ if __name__ == '__main__':
                 ('backend', 'BACKEND_RESULT'), ('native-image', 'NATIVE_RESULT'))})
     elif sys.argv[1:] == ['select']:
         event = os.environ['GITHUB_EVENT_NAME']
-        paths = []
-        if event == 'pull_request':
-            paths = subprocess.check_output([
-                'git', 'diff', '--name-only', '--no-renames', '-z',
-                os.environ['BASE_SHA'], 'HEAD'
-            ]).decode().split('\0')
-        for name, required in select_scope(event, paths).items():
+        paths = changed_paths(os.environ.get('BASE_SHA'))
+        for name, required in select_scope(event, paths,
+                backend_cache_hit=os.environ.get('BACKEND_CACHE_HIT') == 'true').items():
             print(name + '=' + str(required).lower())
     else:
         raise SystemExit('Usage: ci_scope.py select|verify')

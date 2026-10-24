@@ -2,6 +2,11 @@
 import importlib.util
 from pathlib import Path
 import unittest
+import hashlib
+import tempfile
+import json
+import subprocess
+import sys
 
 spec = importlib.util.spec_from_file_location('backend_image', Path(__file__).with_name('use-backend-image.py'))
 module = importlib.util.module_from_spec(spec)
@@ -52,6 +57,37 @@ class BackendImage(unittest.TestCase):
     def test_rejects_wrong_platform(self):
         with self.assertRaises(ValueError):
             module.verify_image(dict(self.image, Architecture='arm64'), self.metadata, self.commit)
+
+    def test_cached_migration_jar_must_match_the_verified_bundle(self):
+        with tempfile.TemporaryDirectory() as directory:
+            jar = Path(directory) / 'forena-api.jar'
+            jar.write_bytes(b'verified migration jar')
+            metadata = dict(self.metadata, migrationJarSha256=hashlib.sha256(jar.read_bytes()).hexdigest())
+            module.verify_migration_jar(metadata, jar)
+            with self.assertRaises(ValueError):
+                module.verify_migration_jar(self.metadata, jar)
+            jar.write_bytes(b'another jar')
+            with self.assertRaises(ValueError):
+                module.verify_migration_jar(metadata, jar)
+
+    def test_bundle_commands_record_verify_and_reject_a_changed_jar(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            metadata = root / 'backend-image.json'
+            inspect = root / 'inspect.json'
+            jar = root / 'forena-api.jar'
+            inspect.write_text(json.dumps([self.image]))
+            jar.write_bytes(b'verified migration jar')
+            command = [sys.executable, str(Path(module.__file__).resolve())]
+            subprocess.run([*command, 'record', str(metadata), str(inspect), self.commit], check=True)
+            subprocess.run([*command, 'verify-cache', str(metadata), str(inspect), self.commit], check=True)
+            self.assertEqual(json.loads(metadata.read_text())['migrationJarSha256'],
+                             hashlib.sha256(jar.read_bytes()).hexdigest())
+            jar.write_bytes(b'another jar')
+            rejected = subprocess.run([*command, 'verify-cache', str(metadata), str(inspect), self.commit],
+                                      capture_output=True, text=True)
+            self.assertNotEqual(rejected.returncode, 0)
+            self.assertIn('Migration JAR differs', rejected.stderr)
 
     def test_rejects_mutable_wrong_or_ambiguous_registry_reference(self):
         for refs in [[], [module.REPOSITORY + ':latest'], ['other.example/backend@sha256:' + 'c' * 64],

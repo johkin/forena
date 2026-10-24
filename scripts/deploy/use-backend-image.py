@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Verify the CI image identity and select its immutable registry reference."""
 import json
+import hashlib
 from pathlib import Path
 import re
 import sys
@@ -10,6 +11,12 @@ import shutil
 from build_inputs import fingerprint
 
 REPOSITORY = 'vcr.vercel.com/johkin/forena-kotlin/backend'
+
+
+def verify_migration_jar(metadata, path):
+    expected = metadata.get('migrationJarSha256', '')
+    if not re.fullmatch(r'[0-9a-f]{64}', expected) or hashlib.sha256(path.read_bytes()).hexdigest() != expected:
+        raise ValueError('Migration JAR differs from the verified backend build')
 
 
 def verify_image(image, metadata, commit):
@@ -81,10 +88,13 @@ def main():
     path = Path(metadata_path)
     metadata = json.loads(path.read_text()) if path.exists() else None
     if mode == 'record':
-        path.write_text(json.dumps(record_image(image, commit, metadata), indent=2) + '\n')
+        metadata = record_image(image, commit, metadata)
+        metadata['migrationJarSha256'] = hashlib.sha256((path.parent / 'forena-api.jar').read_bytes()).hexdigest()
+        path.write_text(json.dumps(metadata, indent=2) + '\n')
         return
     if mode == 'verify-cache':
         verify_image(image, metadata, metadata.get('verifiedCommit', ''))
+        verify_migration_jar(metadata, path.parent / 'forena-api.jar')
         return
     verify_image(image, metadata, commit)
     if mode == 'configure':
