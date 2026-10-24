@@ -12,6 +12,7 @@ import { ActivityDutySchedule } from "@/components/activity-duty-schedule";
 import type { ActivityRole } from "@/lib/activity-participation";
 import { AttendanceModal } from "@/components/attendance-modal";
 import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
+import { getFormatter } from "@/lib/date-time";
 
 type DeliveryChannel = {
   channel: "email" | "push";
@@ -80,8 +81,9 @@ export function ActivityDetailModal({ activity, organization, team, canManageAct
   const activityEnded = new Date(activity.endsAt).getTime() <= now;
   const readOnly = activityEnded || activity.status === "cancelled";
   const activityStarted = new Date(activity.startsAt).getTime() <= now;
-  const date = new Intl.DateTimeFormat("sv-SE", { timeZone, weekday: "long", day: "numeric", month: "long" }).format(new Date(activity.startsAt));
-  const time = new Intl.DateTimeFormat("sv-SE", { timeZone, hour: "2-digit", minute: "2-digit" });
+  // Use cached formatter for performance
+  const date = getFormatter(timeZone, { weekday: "long", day: "numeric", month: "long" }).format(new Date(activity.startsAt));
+  const time = getFormatter(timeZone, { hour: "2-digit", minute: "2-digit" });
 
   const loadDelivery = useCallback(async (activityId: string, shouldApply: () => boolean = () => true) => {
     try {
@@ -131,11 +133,11 @@ export function ActivityDetailModal({ activity, organization, team, canManageAct
     <section className="modal activity-detail-modal" role="dialog" aria-modal="true" aria-labelledby="activity-detail-title">
       <div className="card-heading"><div><p className="eyebrow">{team.name}</p><h2 id="activity-detail-title">{activity.title}</h2></div><button className="icon-button" onClick={onClose} aria-label="Stäng" type="button">✕</button></div>
       <div className="activity-detail-body">
-        <p><span>Datum</span><strong>{date}{activityDateKey(activity.startsAt, timeZone) !== activityDateKey(activity.endsAt, timeZone) ? ` – ${new Intl.DateTimeFormat("sv-SE", { timeZone, weekday: "long", day: "numeric", month: "long" }).format(new Date(activity.endsAt))}` : ""}</strong></p>
+        <p><span>Datum</span><strong>{date}{activityDateKey(activity.startsAt, timeZone) !== activityDateKey(activity.endsAt, timeZone) ? ` – ${getFormatter(timeZone, { weekday: "long", day: "numeric", month: "long" }).format(new Date(activity.endsAt))}` : ""}</strong></p>
         {activity.gatheringAt ? <p><span>Samling</span><strong>{time.format(new Date(activity.gatheringAt))}</strong></p> : null}
         <p><span>Tid</span><strong>{time.format(new Date(activity.startsAt))}–{time.format(new Date(activity.endsAt))}</strong></p>
         <p><span>Plats</span><strong>{activity.location || "Ingen plats angiven"}</strong></p>
-        {activity.responseDueAt ? <p><span>Svara senast</span><strong>{new Intl.DateTimeFormat("sv-SE", { timeZone, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(activity.responseDueAt))}</strong></p> : null}
+        {activity.responseDueAt ? <p><span>Svara senast</span><strong>{getFormatter(timeZone, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(activity.responseDueAt))}</strong></p> : null}
         {activity.seriesId ? <span className="activity-series-badge">Aktivitetsserie</span> : null}
       </div>
 
@@ -162,7 +164,8 @@ export function ActivityDetailModal({ activity, organization, team, canManageAct
           <span><strong>{deliveryStatus.failed}</strong> misslyckade</span>
         </div>
         {deliveryStatus.deliveries.length ? <ol className="delivery-list">{deliveryStatus.deliveries.slice(0, 20).map((delivery) => <li key={delivery.outboxId}>
-          <div><strong>{delivery.type === "invitation_reminder" ? "Påminnelse" : "Kallelse"}</strong><small>{new Intl.DateTimeFormat("sv-SE", { timeZone, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(delivery.scheduledAt))} · försök {delivery.attempts}</small></div>
+          {/* Use cached formatter inside list mapping for better performance */}
+          <div><strong>{delivery.type === "invitation_reminder" ? "Påminnelse" : "Kallelse"}</strong><small>{getFormatter(timeZone, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(delivery.scheduledAt))} · försök {delivery.attempts}</small></div>
           <div className="delivery-channels">{delivery.channels.map((channel) => <span className={`delivery-channel ${channel.status}`} key={channel.channel}>{channel.channel === "email" ? "E-post" : "Push"}: {statusLabels[channel.status]}</span>)}</div>
         </li>)}</ol> : <p className="overview-empty">Inga notifieringar har köats för aktiviteten ännu.</p>}
       </details> : null}
