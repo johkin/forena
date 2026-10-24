@@ -43,13 +43,21 @@ page.setDefaultTimeout(10000);
 const errors = [];
 page.on('pageerror', error => errors.push(error.message));
 await mkdir('frontend/.evidence', { recursive: true });
+
+async function login(email) {
+  await page.locator('input[name=email]').first().fill(email);
+  await page.getByLabel('Lösenord', { exact: true }).fill('synthetic-password');
+  await page.getByRole('button', { name: 'Logga in', exact: true }).click();
+  // A click can finish before the login request. Wait for the authenticated
+  // shell so the session cookie is saved before the next document navigation.
+  await expect(page.getByRole('link', { name: 'Visa kallelser som behöver svar' })).toBeVisible();
+}
+
 try {
   const adminChain = process.env.FORENA_M09_ADMIN_CHAIN === 'true';
   let teamId = process.env.FORENA_M09_TEAM;
   await page.goto(origin + (adminChain ? '/administration' : '/activities/manage'));
-  await page.locator('input[name=email]').first().fill(process.env.FORENA_M09_EMAIL);
-  await page.getByLabel('Lösenord', { exact: true }).fill('synthetic-password');
-  await page.getByRole('button', { name: 'Logga in', exact: true }).click();
+  await login(process.env.FORENA_M09_EMAIL);
   if (adminChain) {
     page.once('dialog', confirmation => confirmation.accept());
     await page.getByRole('button', { name: 'Aktivera systemadministration', exact: true }).click();
@@ -101,9 +109,7 @@ try {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.getByRole('button', { name: 'Öppna meny', exact: true }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Logga ut från Förena', exact: true }).click();
-    await page.locator('input[name=email]').first().fill(process.env.FORENA_M09_TEAM_ADMIN_EMAIL);
-    await page.getByLabel('Lösenord', { exact: true }).fill('synthetic-password');
-    await page.getByRole('button', { name: 'Logga in', exact: true }).click();
+    await login(process.env.FORENA_M09_TEAM_ADMIN_EMAIL);
   }
   await page.goto(`${origin}/teams/${teamId}`);
   await page.getByRole('button', { name: 'Öppna meny', exact: true }).click();
