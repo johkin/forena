@@ -4,6 +4,7 @@ import { SystemAdminLink } from "./system-admin-link";
 import type { ReactNode } from "react";
 import { AppHeaderFrame } from "./app-header-frame";
 import { SessionMenu } from "./session-menu";
+import { ApplicationMenu } from "./application-menu";
 import type { Organization, Team, Workspace } from "@/domain/club";
 import { OrganizationMenu } from "./organization-menu";
 import { NavigationLinks } from "./navigation-links";
@@ -36,18 +37,12 @@ export function AppMenuContent({ organization, team, workspaces, navigation, acc
   if (accountMenu === "session") return <SessionMenu accountEmail={accountEmail} homeHref={homeHref} loginHref={loginHref}
     navigation={accountEmail ? <NavigationLinks label="Personligt" items={[{ href: homeHref, label: "Familjens kallelser" }]} /> : undefined}
     logout={<LogoutButton destination={logoutDestination} />} />;
-  return <>
-        {accountEmail ? <div className="header-menu-section"><NavigationLinks label="Personligt" items={[{ href: "/", label: "Min översikt" }]} /></div> : null}
-        {organization && workspaces?.length ? <div className="header-menu-section"><p className="eyebrow">Arbetsyta</p><WorkspaceSwitcher organization={organization} team={team} workspaces={workspaces} /></div> : null}
-        {navigation ? <div className="header-menu-section header-menu-navigation">{navigation}</div> : null}
-        {organization && accountEmail ? <div className="header-menu-section header-menu-account"><p className="eyebrow">Assistent</p><NavigationLinks label="Assistent" items={[{ href: `/o/${organization.slug}/memories`, label: "Minnen" }, ...(adminHref ? [{ href: `/o/${organization.slug}/activity-settings`, label: "Aktivitetsinställningar" }] : [])]} /></div> : null}
-        {organization ? <div className="header-menu-section header-menu-account"><p className="eyebrow">Förening</p><OrganizationMenu organizationSlug={organization.slug} canAdminister={Boolean(adminHref)} /></div> : !navigation && !accountEmail ? <div className="header-menu-section"><NavigationLinks label="Navigation" items={[{ href: homeHref, label: "Översikt" }]} /></div> : null}
-        <div className="header-menu-section header-menu-account">
-          {accountEmail ? <><p className="eyebrow">Konto</p><small className="header-menu-email">{accountEmail}</small>{accountMenu === "full" ? <><a href="/profile">Min profil</a><SystemAdminLink accountEmail={accountEmail}/></> : null}<LogoutButton destination={logoutDestination} /></>
-            : <a href={loginHref ?? `/login?next=${encodeURIComponent(homeHref)}`}>Logga in</a>}
-          {accountMenu === "full" ? <a href="/connect">Anslut AI</a> : null}
-          <a href="/components">Komponenter</a>
-        </div>
-  </>;
+  return <ApplicationMenu accountEmail={accountEmail}
+    personalNavigation={<NavigationLinks label="Personligt" items={[{ href: "/", label: "Min översikt" }]} />}
+    workspace={organization && workspaces?.length ? <WorkspaceSwitcher organization={organization} team={team} workspaces={workspaces} /> : undefined}
+    navigation={navigation}
+    assistantNavigation={organization && accountEmail ? <NavigationLinks label="Assistent" items={[{ href: `/o/${organization.slug}/memories`, label: "Minnen" }, ...(adminHref ? [{ href: `/o/${organization.slug}/activity-settings`, label: "Aktivitetsinställningar" }] : [])]} /> : undefined}
+    organizationNavigation={organization ? <OrganizationMenu organizationSlug={organization.slug} canAdminister={Boolean(adminHref)} /> : !navigation && !accountEmail ? <NavigationLinks label="Navigation" items={[{ href: homeHref, label: "Översikt" }]} /> : undefined}
+    accountLinks={accountEmail ? <><a href="/profile">Min profil</a><SystemAdminLink accountEmail={accountEmail} /></> : undefined}
+    logout={<LogoutButton destination={logoutDestination} />} loginHref={loginHref ?? `/login?next=${encodeURIComponent(homeHref)}`} connectHref="/connect" />;
 }
-

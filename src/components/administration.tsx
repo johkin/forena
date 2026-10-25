@@ -5,37 +5,39 @@ import { z } from "zod";
 import { ActivityDatePicker } from "./activity-date-picker";
 import { ClubOnboarding } from "./club-onboarding";
 import { ClubSlugInput } from "./club-slug-input";
-import { TimeZoneSelect } from "./time-zone-select";
+import { ClubStructureAdministration } from "./club-structure-administration";
 import { SectionTeamAdministration } from "./section-team-administration";
 import { clubSlug, type ClubSetupState } from "../lib/club-administration";
 import type { ParticipationFetch } from "./activity-invitation-response";
 
-const administratorSchema = z.object({ subject: z.uuid(), email: z.string(), active: z.boolean(), startsOn: z.string().nullable(), endsOn: z.string().nullable() });
-const teamSchema = z.object({ id: z.uuid(), name: z.string(), slug: z.string().nullable(), season: z.string(), canManage: z.boolean(), canDelete: z.boolean(), canAssignAdministrators: z.boolean(), administrators: z.array(administratorSchema) });
-const sectionSchema = z.object({ id: z.uuid(), name: z.string(), slug: z.string().nullable(), disciplineKey: z.string(), canManage: z.boolean(), canChangeDiscipline: z.boolean(), canDelete: z.boolean(), administrators: z.array(administratorSchema), teams: z.array(teamSchema) });
-const clubSchema = z.object({ id: z.uuid(), name: z.string(), slug: z.string().nullable(), timeZone: z.string(), canManage: z.boolean(), administrators: z.array(administratorSchema), sections: z.array(sectionSchema) });
-export const administrationOverviewSchema = z.object({ platformAdmin: z.boolean(), canBootstrap: z.boolean(), platformAdministrators: z.array(administratorSchema), clubs: z.array(clubSchema) });
-type Overview = z.infer<typeof administrationOverviewSchema>;
-type Mutation = (path: string, method: "POST" | "PUT" | "DELETE", body?: unknown) => Promise<void>;
+import { administratorSchema, clubSchema, sectionSchema } from "../lib/administration";
+import { SystemAdministrationHome } from "./system-administration-home";
+import type { NavigationLink } from "./navigation-link";
+import { useAdministrationOverview } from "./administration-context";
+export { administrationOverviewSchema } from "../lib/administration";
+type Mutation = (path: string, method: "POST" | "PUT" | "DELETE", body?: unknown) => Promise<{ id?: string }>;
 const disciplines = [{ id: "common", name: "Allmän verksamhet" }, { id: "football", name: "Fotboll" }];
 
-export function Administration({ request }: { request: ParticipationFetch }) {
-  const [data, setData] = useState<Overview>();
+export function Administration({ request, path = "/administration", onNavigate, linkComponent: Link = "a" }: {
+  request: ParticipationFetch; path?: string; onNavigate?: (href: string) => void; linkComponent?: NavigationLink;
+}) {
+  const { data, error: loadError, refresh } = useAdministrationOverview(request);
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
   const [pending, setPending] = useState(false);
   const pendingRequest = useRef(false);
-  const [attempt, setAttempt] = useState(0);
+  const [createdClubId, setCreatedClubId] = useState<string>();
+  const navigatedClub = useRef<string | undefined>(undefined);
+  const [pathname, search = ""] = path.split("?");
+  const query = new URLSearchParams(search);
+  const q = (query.get("q") ?? "").trim().slice(0, 120);
+  const page = Math.max(1, Math.min(10000, Number.parseInt(query.get("page") ?? "1", 10) || 1));
   useEffect(() => {
-    const controller = new AbortController();
-    request("/api/admin/overview", { signal: controller.signal }).then(async response => {
-      if (!response.ok) throw new Error("Administrationen kunde inte hämtas.");
-      return administrationOverviewSchema.parse(await response.json());
-    }).then(result => { if (!controller.signal.aborted) { setData(result); setError(undefined); } })
-      .catch(() => { if (!controller.signal.aborted) setError("Administrationen kunde inte hämtas. Försök igen."); });
-    return () => controller.abort();
-  }, [request, attempt]);
-
+    if (createdClubId && navigatedClub.current !== createdClubId && data?.clubs.some(club => club.id === createdClubId)) {
+      navigatedClub.current = createdClubId;
+      onNavigate?.(`/system/organizations/${createdClubId}`);
+    }
+  }, [createdClubId, data, onNavigate]);
   const mutate = useCallback<Mutation>(async (path, method, body) => {
     if (pendingRequest.current) throw new Error("Vänta tills ändringen har sparats.");
     pendingRequest.current = true;
@@ -46,12 +48,14 @@ export function Administration({ request }: { request: ParticipationFetch }) {
         const problem = z.object({ error: z.string() }).safeParse(await response.json().catch(() => null));
         throw new Error(problem.success ? problem.data.error : "Ändringen kunde inte sparas. Försök igen.");
       }
-      setAttempt(value => value + 1); setNotice("Ändringen har sparats.");
+      const result = z.object({ id: z.uuid().optional() }).parse(await response.json());
+      refresh(); setNotice("Ändringen har sparats.");
+      return result;
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "Ändringen kunde inte sparas.";
       setError(message); throw new Error(message);
     } finally { pendingRequest.current = false; setPending(false); }
-  }, [request]);
+  }, [request, refresh]);
   const checkSlug = useCallback(async (slug: string, organizationId?: string): Promise<"available" | "taken" | "error"> => {
     const query = new URLSearchParams({ slug, ...(organizationId ? { organizationId } : {}) });
     const response = await request(`/api/admin/slug?${query}`);
@@ -62,32 +66,74 @@ export function Administration({ request }: { request: ParticipationFetch }) {
     try {
       const sectionName = String(form.get("sectionName"));
       const teamName = String(form.get("teamName") ?? "");
-      await mutate("/api/admin/clubs", "POST", {
+      const created = await mutate("/api/admin/clubs", "POST", {
         organizationName: form.get("organizationName"), organizationSlug: form.get("organizationSlug"),
         timeZone: form.get("timeZone"), sectionName, sectionSlug: clubSlug(sectionName), disciplineKey: form.get("disciplineId"),
         ...(form.get("addTeam") === "on" ? { teamName, teamSlug: clubSlug(teamName), season: form.get("season") } : {}),
       });
+      if (created.id) setCreatedClubId(created.id);
       return {};
     } catch (cause) { return { error: cause instanceof Error ? cause.message : "Klubben kunde inte skapas." }; }
   }, [mutate]);
-  return <section className="club-administration" aria-label="Administration">
-    <h1>Administration</h1>
-    {error ? <p role="alert">{error} <button type="button" onClick={() => setAttempt(value => value + 1)}>Försök igen</button></p> : null}
-    {notice ? <p role="status">{notice}</p> : null}
-    {!data ? <p role="status">Laddar administration…</p> : <>
-      {data.canBootstrap ? <section className="card"><h2>Aktivera första systemadministratören</h2>
-        <p>Ditt verifierade konto är utsett i installationens konfiguration. Bekräfta för att aktivera systemadministrationen.</p>
-        <button type="button" className="primary" disabled={pending} onClick={() => {
-          if (window.confirm("Aktivera systemadministration för ditt verifierade konto?")) void mutate("/api/admin/bootstrap", "POST", {}).catch(() => {});
-        }}>Aktivera systemadministration</button>
-      </section> : null}
-      {data.platformAdmin ? <>
-        <details className="card"><summary>Systemadministratörer</summary><AdministratorForm label="Systemadministratör" path="/api/admin/platform-administrators" items={data.platformAdministrators} mutate={mutate} pending={pending} /></details>
-        <details className="card"><summary>Skapa klubb</summary><ClubOnboarding managed disciplines={disciplines} action={createClub} checkSlug={checkSlug} /></details>
-      </> : null}
-      {!data.platformAdmin && !data.canBootstrap && data.clubs.length === 0 ? <p>Du saknar administratörsbehörighet. En administratör behöver tilldela ditt verifierade konto en roll. Vid en ny installation anger serveransvarig adressen för den första systemadministratören.</p> : null}
-      {data.clubs.map(club => <ClubAdministration key={club.id} club={club} platformAdmin={data.platformAdmin} mutate={mutate} pending={pending} checkSlug={checkSlug} />)}
-    </>}
+  const messages = <>{error || loadError ? <p role="alert">{error ?? loadError} <button type="button" onClick={refresh}>Försök igen</button></p> : null}
+    {notice ? <p role="status">{notice}</p> : null}</>;
+  const title = pathname === "/system/administrators" ? "Administratörer" : pathname === "/system/organizations" ? "Klubbar" : "Systemadministration";
+  if (!data) return <section className="application-card" aria-label="Administration"><h1>{title}</h1>{messages}{!loadError ? <p role="status">Laddar administration…</p> : null}</section>;
+  if (data.canBootstrap) return <section className="application-card" aria-label="Administration"><p className="eyebrow">Förena · System</p><h1>Systemadministration</h1>{messages}
+    <section className="form-section"><h2>Aktivera första systemadministratören</h2>
+      <p>Ditt verifierade konto är utsett i installationens konfiguration. Bekräfta för att aktivera systemadministrationen.</p>
+      <button type="button" className="primary" disabled={pending} onClick={() => {
+        if (window.confirm("Aktivera systemadministration för ditt verifierade konto?")) void mutate("/api/admin/bootstrap", "POST", {}).catch(() => {});
+      }}>Aktivera systemadministration</button>
+    </section></section>;
+  if (pathname.startsWith("/system") && !data.platformAdmin) return <section className="application-card" aria-label="Administration"><h1>Systemadministration</h1>
+    {messages}<p>Du saknar behörighet till systemadministrationen.</p><Link href="/">Till min översikt</Link></section>;
+  if ((pathname === "/system" || pathname === "/administration") && data.platformAdmin)
+    return <section aria-label="Administration">{messages}<SystemAdministrationHome linkComponent={Link} /></section>;
+  if (pathname === "/system/administrators") return <section className="application-card" aria-label="Administration"><p className="eyebrow">System</p><h1>Administratörer</h1>
+    <p>Systemadministratörer är plattformsroller och är helt separerade från roller i en förening.</p>{messages}
+    <AdministratorForm label="Systemadministratör" path="/api/admin/platform-administrators" items={data.platformAdministrators} mutate={mutate} pending={pending} />
+  </section>;
+  const unavailable: Record<string, string> = { "/system/disciplines": "Discipliner", "/system/activity-types": "Aktivitetstyper", "/system/memories": "Assistentminnen" };
+  if (unavailable[pathname]) return <section className="application-card" aria-label="Administration"><p className="eyebrow">System</p><h1>{unavailable[pathname]}</h1>
+    <p>Den här funktionen finns i Next-appen men har ännu inte flyttats till den nya appen.</p><Link href="/system">Till systemadministrationen</Link>
+  </section>;
+  const teamRoute = /^\/organizations\/([^/]+)\/sections\/([^/]+)\/teams$/.exec(pathname);
+  const clubId = teamRoute?.[1] ?? (pathname.startsWith("/system/organizations/") ? pathname.slice("/system/organizations/".length)
+    : /^\/organizations\/([^/]+)\/administration$/.exec(pathname)?.[1]);
+  if (clubId) {
+    const club = data.clubs.find(item => item.id === clubId);
+    if (!club) return <section className="application-card" aria-label="Administration"><h1>Klubben är inte tillgänglig</h1><p>Du saknar åtkomst eller klubben finns inte längre.</p><Link href={data.platformAdmin ? "/system/organizations" : "/administration"}>Till klubbar</Link></section>;
+    if (teamRoute) {
+      const section = club.sections.find(item => item.id === teamRoute[2]);
+      if (!section || !section.canManage) return <section className="application-card" aria-label="Administration"><h1>Lagen är inte tillgängliga</h1><p>Du saknar behörighet till lagadministrationen i den här sektionen.</p></section>;
+      return <section className="application-card" aria-label="Administration"><p className="eyebrow">{club.name} · {section.name}</p><h1>Hantera lag</h1>{messages}
+        <Link href={data.platformAdmin ? `/system/organizations/${club.id}` : `/organizations/${club.id}/administration`}>Till klubbens administration</Link>
+        <SectionAdministration club={club} section={section} mutate={mutate} pending={pending} />
+      </section>;
+    }
+    return <section className="application-card" aria-label="Administration"><p className="eyebrow">{data.platformAdmin ? "System · Klubb" : "Förening"}</p><h1>{club.name}</h1>{messages}
+      <ClubAdministration club={club} linkComponent={Link} platformAdmin={data.platformAdmin} mutate={mutate} pending={pending} checkSlug={checkSlug} />
+    </section>;
+  }
+  if (pathname !== "/system/organizations" && pathname !== "/administration")
+    return <section className="application-card" aria-label="Administration"><h1>Sidan finns inte</h1><Link href="/system">Till systemadministrationen</Link></section>;
+  const matching = data.clubs.filter(club => club.name.toLocaleLowerCase("sv-SE").includes(q.toLocaleLowerCase("sv-SE")));
+  const listPath = data.platformAdmin ? "/system/organizations" : "/administration";
+  const pageLink = (next: number) => `${listPath}?${new URLSearchParams({ page: String(next), ...(q ? { q } : {}) })}`;
+  return <section className="application-card" aria-label="Administration"><p className="eyebrow">{data.platformAdmin ? "System" : "Förening"}</p><h1>Klubbar</h1>
+    <p>Hantera klubbarnas uppgifter och sektioner.</p>{messages}
+    <form className="club-search" key={q} onSubmit={event => {
+      event.preventDefault(); const search = String(new FormData(event.currentTarget).get("q") ?? "").trim();
+      onNavigate?.(`${listPath}?${new URLSearchParams({ ...(search ? { q: search } : {}) })}`);
+    }}><label>Sök klubb<input name="q" defaultValue={q} maxLength={120} /></label><button className="secondary">Sök</button></form>
+    <div className="system-admin-grid">{matching.slice((page - 1) * 30, page * 30).map(club => <Link key={club.id} href={data.platformAdmin ? `/system/organizations/${club.id}` : `/organizations/${club.id}/administration`}>
+      <strong>{club.name}</strong><span>/o/{club.slug}</span>
+    </Link>)}</div>
+    {!matching.length ? <p>Inga klubbar matchar sökningen.</p> : null}
+    <nav className="modal-actions" aria-label="Sidor med klubbar">{page > 1 ? <Link className="secondary" href={pageLink(page - 1)}>Föregående</Link> : null}
+      {page * 30 < matching.length ? <Link className="secondary" href={pageLink(page + 1)}>Nästa</Link> : null}</nav>
+    {data.platformAdmin ? <details className="club-admin-add"><summary>Skapa klubb</summary><ClubOnboarding managed disciplines={disciplines} action={createClub} checkSlug={checkSlug} /></details> : null}
   </section>;
 }
 
@@ -124,47 +170,40 @@ function AdministratorForm({ label, path, items, mutate, pending, team = false }
   </div>;
 }
 
-function ClubAdministration({ club, platformAdmin, mutate, pending, checkSlug }: {
-  club: z.infer<typeof clubSchema>; platformAdmin: boolean; mutate: Mutation; pending: boolean;
+function ClubAdministration({ club, platformAdmin, mutate, pending, checkSlug, linkComponent }: {
+  club: z.infer<typeof clubSchema>; platformAdmin: boolean; mutate: Mutation; pending: boolean; linkComponent?: NavigationLink;
   checkSlug: (slug: string, organizationId?: string) => Promise<"available" | "taken" | "error">;
 }) {
   const [error, setError] = useState<string>();
-  async function updateClub(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
+  const saveClub = async (form: FormData) => {
     try { await mutate(`/api/admin/clubs/${club.id}`, "PUT", { name: form.get("name"), slug: form.get("slug"), timeZone: form.get("timeZone") }); setError(undefined); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Klubben kunde inte sparas."); }
-  }
-  return <section className="card" aria-label={`Klubb ${club.name}`}><h2>{club.name}</h2>
-    {club.canManage ? <form className="application-form" onSubmit={event => void updateClub(event)}><fieldset disabled={pending}>
-      <label>Klubbens namn<input name="name" defaultValue={club.name} required maxLength={120}/></label>
-      <ClubSlugInput defaultValue={club.slug ?? clubSlug(club.name)} organizationId={club.id} checkAvailability={checkSlug}/>
-      <TimeZoneSelect defaultValue={club.timeZone}/><button type="submit" className="primary">Spara klubb</button>
-    </fieldset></form> : null}
+  };
+  const saveSection = async (form: FormData) => {
+    const id = String(form.get("sectionId") ?? "");
+    const name = String(form.get("name"));
+    try { await mutate(`/api/admin/clubs/${club.id}/sections${id ? `/${id}` : ""}`, id ? "PUT" : "POST", {
+      name, slug: String(form.get("slug") || clubSlug(name)), disciplineKey: form.get("disciplineId"),
+    }); setError(undefined); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Sektionen kunde inte sparas."); }
+  };
+  const deleteSection = async (form: FormData) => {
+    try { await mutate(`/api/admin/sections/${String(form.get("sectionId"))}`, "DELETE"); setError(undefined); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Sektionen kunde inte tas bort."); }
+  };
+  return <section aria-label={`Klubb ${club.name}`}>
     {error ? <p role="alert">{error}</p> : null}
-    {platformAdmin ? <AdministratorForm label="Klubbadministratör" path={`/api/admin/clubs/${club.id}/administrators`} items={club.administrators} mutate={mutate} pending={pending}/> : null}
-    {club.sections.map(section => <SectionAdministration key={section.id} club={club} section={section} mutate={mutate} pending={pending}/>)}
-    {club.canManage ? <SectionForm clubId={club.id} mutate={mutate} pending={pending}/> : null}
+    {platformAdmin ? <AdministratorForm label="Klubbadministratör" path={`/api/admin/clubs/${club.id}/administrators`} items={club.administrators} mutate={mutate} pending={pending} /> : null}
+    <ClubStructureAdministration structure={{ organization: { id: club.id, name: club.name, slug: club.slug ?? clubSlug(club.name), assistantName: "", timeZone: club.timeZone },
+      sections: club.sections.map(section => ({ id: section.id, name: section.name, slug: section.slug ?? clubSlug(section.name), disciplineId: section.disciplineKey, canChangeDiscipline: section.canChangeDiscipline, teamCount: section.teams.length })),
+    }} disciplines={disciplines} linkComponent={linkComponent} system={platformAdmin} canManage={club.canManage} pending={pending} assistantNameAvailable={false}
+      slugField={<ClubSlugInput defaultValue={club.slug ?? clubSlug(club.name)} organizationId={club.id} checkAvailability={checkSlug} />}
+      saveClub={saveClub} saveSection={saveSection} deleteSection={deleteSection}
+      canManageTeams={sectionId => club.sections.some(section => section.id === sectionId && section.canManage)}
+      canDeleteSection={sectionId => club.sections.some(section => section.id === sectionId && section.canDelete)}
+      teamHref={sectionId => `/organizations/${club.id}/sections/${sectionId}/teams`}
+      sectionTools={sectionId => club.canManage ? <AdministratorForm label="Sektionsadministratör" path={`/api/admin/sections/${sectionId}/administrators`} items={club.sections.find(section => section.id === sectionId)?.administrators ?? []} mutate={mutate} pending={pending} /> : null} />
   </section>;
-}
-
-function SectionForm({ clubId, section, mutate, pending }: { clubId: string; section?: z.infer<typeof sectionSchema>; mutate: Mutation; pending: boolean }) {
-  const [error, setError] = useState<string>();
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); const form = new FormData(event.currentTarget); const name = String(form.get("name"));
-    try {
-      await mutate(`/api/admin/clubs/${clubId}/sections${section ? `/${section.id}` : ""}`, section ? "PUT" : "POST", {
-        name, slug: String(form.get("slug") || clubSlug(name)), disciplineKey: form.get("disciplineKey") || section?.disciplineKey,
-      }); setError(undefined);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Sektionen kunde inte sparas."); }
-  }
-  return <form className="application-form club-admin-section" onSubmit={event => void submit(event)}><h3>{section ? "Ändra sektion" : "Lägg till sektion"}</h3><fieldset disabled={pending}>
-    <label>Sektionens namn<input name="name" defaultValue={section?.name} required maxLength={120}/></label>
-    <label>Sektionens adressnamn<input name="slug" defaultValue={section?.slug ?? ""} pattern="[a-z0-9]+(?:-[a-z0-9]+)*" maxLength={120}/></label>
-    <label>Disciplin<select name="disciplineKey" defaultValue={section?.disciplineKey ?? "common"} disabled={section && !section.canChangeDiscipline}>{disciplines.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-    {section && !section.canChangeDiscipline ? <p>Disciplinen kan inte ändras när sektionen har lag eller sparade förval.</p> : null}
-    <button type="submit" className="primary">Spara sektion</button>
-  </fieldset>{error ? <p role="alert">{error}</p> : null}</form>;
 }
 
 function SectionAdministration({ club, section, mutate, pending }: { club: z.infer<typeof clubSchema>; section: z.infer<typeof sectionSchema>; mutate: Mutation; pending: boolean }) {
@@ -179,9 +218,6 @@ function SectionAdministration({ club, section, mutate, pending }: { club: z.inf
     catch (cause) { setError(cause instanceof Error ? cause.message : "Laget kunde inte tas bort."); }
   };
   return <section className="club-admin-section" aria-label={`Sektion ${section.name}`}><h3>{section.name}</h3>
-    {club.canManage ? <><SectionForm clubId={club.id} section={section} mutate={mutate} pending={pending}/><button type="button" className="danger" disabled={pending || !section.canDelete} onClick={() => {
-      if (window.confirm(`Ta bort sektionen ${section.name}?`)) void mutate(`/api/admin/sections/${section.id}`, "DELETE").catch(() => {});
-    }}>Ta bort sektion</button><AdministratorForm label="Sektionsadministratör" path={`/api/admin/sections/${section.id}/administrators`} items={section.administrators} mutate={mutate} pending={pending}/></> : null}
     {section.canManage ? <SectionTeamAdministration structure={{
       organization: { id: club.id, name: club.name, slug: club.slug ?? clubSlug(club.name), assistantName: "", timeZone: club.timeZone },
       section: { id: section.id, name: section.name, slug: section.slug ?? clubSlug(section.name), disciplineName: disciplines.find(item => item.id === section.disciplineKey)?.name ?? section.disciplineKey },

@@ -21,6 +21,14 @@ uppdaterad när ett beslut eller en gemensam princip ändras.
 - [Bemanningsschema](docs/activity-duty-schedule.md) – platser, självservice och ändringsförslag.
 - [Roadmap](docs/roadmap.md) – planerad utveckling och prioriteringar.
 
+Next-appen är den kanoniska förlagan för alla befintliga och framtida användarflöden.
+Vid migrering till React/Kotlin ska utseende, layout, navigation, texter och
+interaktioner behållas. Återanvänd Next-appens produktionskomponenter och den
+gemensamma CSS-ingången `src/app/ui-styles.css`; bygg inte förenklade pilotvyer.
+En ännu inte flyttad funktion ska beskrivas som återstående funktionalitet,
+inte ersättas av ett annat arbetsflöde eller en knapp som påstår sig fungera.
+Jämför berörda vyer i båda apparna på mobil och desktop före leverans.
+
 Vid gränssnittsändringar ska både arkitekturen och designreglerna följas.
 Menyer, header och footer ska återanvändas från centrala komponenter; skapa
 inte egna kopior för enskilda sidor eller administrationsområden.

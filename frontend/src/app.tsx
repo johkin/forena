@@ -9,7 +9,10 @@ import { MyActivitiesPage } from "./my-activities";
 import { AppHeaderFrame } from "../../src/components/app-header-frame";
 import { AppShellFrame } from "../../src/components/app-shell-frame";
 import { AppFooter } from "../../src/components/app-footer";
-import { SessionMenu } from "../../src/components/session-menu";
+import { ApplicationMenu } from "../../src/components/application-menu";
+import { NavigationLinksView } from "../../src/components/navigation-links-view";
+import { systemNavigationItems } from "../../src/components/system-navigation-items";
+import { AdministrationProvider, useAdministrationAccess } from "../../src/components/administration-context";
 import { PasswordLoginForm } from "../../src/components/password-login-form";
 import { type ParticipationFetch } from "../../src/components/activity-invitation-response";
 import { BrowserFrontendExamples } from "../../src/components/browser-frontend-examples";
@@ -22,9 +25,19 @@ import { AccountPage, ConsentPage, PasskeyList } from "./account";
 import { PasskeyRegistration } from "../../src/components/passkey-registration";
 
 function Frame({ children, email, logout }: { children: ReactNode; email?: string; logout?: ReactNode }) {
-  const menu = <SessionMenu homeLabel="Min översikt" linkComponent={AppLink} accountEmail={email} securityHref="/account/security" logout={logout} />;
+  const { pathname } = useLocation();
+  const administration = useAdministrationAccess()?.data;
+  const system = administration?.platformAdmin ?? false;
+  const systemWorkspace = system && (pathname.startsWith("/system") || pathname === "/administration");
+  const menu = <ApplicationMenu accountEmail={email} linkComponent={AppLink}
+    personalNavigation={<NavigationLinksView label="Personligt" items={[{ href: "/", label: "Min översikt" }]} pathname={pathname} linkComponent={AppLink} />}
+    navigation={systemWorkspace
+      ? <NavigationLinksView label="Systemadministration" items={systemNavigationItems} pathname={pathname === "/administration" ? "/system" : pathname} linkComponent={AppLink} /> : undefined}
+    accountLinks={<><AppLink href="/account/security">Inloggningsinställningar</AppLink>
+      {system || administration?.canBootstrap ? <AppLink href="/system">Systemadministration</AppLink> : administration?.clubs.length ? <AppLink href="/administration">Föreningsadministration</AppLink> : null}</>}
+    logout={logout} />;
   return <><div className="app-page"><AppShellFrame sidebar={menu}
-    header={<AppHeaderFrame linkComponent={AppLink} sidebarNavigation actions={!email ? <AppLink className="secondary" href="/login">Logga in</AppLink> : <AppLink className="notification-trigger" href="/notifications" aria-label="Visa kallelser som behöver svar"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg></AppLink>}>{menu}</AppHeaderFrame>}>
+    header={<AppHeaderFrame homeHref={systemWorkspace ? "/system" : "/"} linkComponent={AppLink} sidebarNavigation actions={!email ? <AppLink className="secondary" href="/login">Logga in</AppLink> : <AppLink className="notification-trigger" href="/notifications" aria-label="Visa kallelser som behöver svar"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg></AppLink>}>{menu}</AppHeaderFrame>}>
     {children}
   </AppShellFrame></div><AppFooter showConnect={false} /></>;
 }
@@ -157,7 +170,7 @@ export function App({ config }: { config: PublicConfig }) {
   const managementPage = path === "/activities/manage";
   const managementQuery = new URLSearchParams(location.search);
   const managementTeam = z.uuid().safeParse(managementQuery.get("team"));
-  const administrationPage = path === "/administration";
+  const administrationPage = path === "/administration" || path === "/system" || path.startsWith("/system/") || /^\/organizations\/[^/]+\/(?:administration|sections\/[^/]+\/teams)$/.test(path);
   const knownPath = administrationPage || managementPage || securityPage || homePath || path === "/migration/participation" || Boolean(match);
   async function logout() {
     setPending(true); setError(undefined);
@@ -168,11 +181,11 @@ export function App({ config }: { config: PublicConfig }) {
     } catch { setError("Utloggningen misslyckades. Försök igen."); }
     finally { setPending(false); }
   }
-  return <Frame key={auth.session.user.id} email={auth.session.user.email ?? undefined} logout={<button type="button" className="logout-button" aria-label="Logga ut från Förena" disabled={pending} onClick={() => void logout()}>{pending ? "Loggar ut…" : "Logga ut"}</button>}>
-    <main tabIndex={-1} className={`content ${homePath ? "personal-dashboard" : ""}`} key={auth.session.user.id}>
+  return <AdministrationProvider key={auth.session.user.id} request={request} routeKey={administrationPage ? location.key : "personal"}><Frame email={auth.session.user.email ?? undefined} logout={<button type="button" className="logout-button" aria-label="Logga ut från Förena" disabled={pending} onClick={() => void logout()}>{pending ? "Loggar ut…" : "Logga ut"}</button>}>
+    <main tabIndex={-1} className={administrationPage ? "application-page" : `content ${homePath ? "personal-dashboard" : ""}`} key={auth.session.user.id}>
       {!homePath && !securityPage && !managementPage && !administrationPage ? <><p className="eyebrow">Personligt</p><h1>{!knownPath ? "Sidan finns inte" : "Kallelser"}</h1></> : null}
       {error ? <p role="alert">{error}</p> : null}
-      {administrationPage ? <Administration request={request} /> : managementPage ? <ActivityManagement key={location.search} request={request}
+      {administrationPage ? <Administration request={request} path={path + location.search} onNavigate={navigate} linkComponent={AppLink} /> : managementPage ? <ActivityManagement key={location.search} request={request}
         initialTeamId={managementTeam.success ? managementTeam.data : undefined}
         createOnLoad={managementTeam.success && managementQuery.get("create") === "1"}
         onEditorClose={() => { if (managementTeam.success && managementQuery.get("create") === "1") navigate(`/activities/manage?team=${managementTeam.data}`, { replace: true }); }} /> : securityPage ? <><PasskeyRegistration pending={pending} registered={passkeyCreatedFor === accountId} supported={Boolean(window.PublicKeyCredential && navigator.credentials)} onRegister={() => void (async () => {
@@ -182,9 +195,9 @@ export function App({ config }: { config: PublicConfig }) {
         try { await registerPasskey(expectedAccount); if (activeAccount.current === expectedAccount) setPasskeyCreatedFor(expectedAccount); }
         catch (error) { if (activeAccount.current === expectedAccount) setError(error instanceof DOMException && error.name === "NotAllowedError" ? "Registreringen avbröts. Du kan försöka igen." : "Passkey kunde inte skapas. Försök igen senare."); }
         finally { setPending(false); }
-      })()} /><PasskeyList key={auth.session.user.id} accountId={auth.session.user.id} revision={passkeyCreatedFor === accountId} /></> : !knownPath ? <AppLink href="/">Till startsidan</AppLink> : homePath ? <><p><AppLink href="/administration">Administration</AppLink></p><MyActivitiesPage request={request} workspace={workspace} notifications={path==="/notifications"} /></> : validActivity.success ? <>
+      })()} /><PasskeyList key={auth.session.user.id} accountId={auth.session.user.id} revision={passkeyCreatedFor === accountId} /></> : !knownPath ? <AppLink href="/">Till startsidan</AppLink> : homePath ? <MyActivitiesPage request={request} workspace={workspace} notifications={path==="/notifications"} /> : validActivity.success ? <>
         <ActivityDetails key={validActivity.data} activityId={validActivity.data} request={request} />
       </> : <p>Inga kallelser att visa här ännu. Öppna länken till en aktivitet för att se dina kallelser.</p>}
     </main>
-  </Frame>;
+  </Frame></AdministrationProvider>;
 }

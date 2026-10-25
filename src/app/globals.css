@@ -711,6 +711,7 @@ a.personal-activity-main:hover strong, a.personal-activity-main:focus-visible st
 .header-menu-heading { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; font-size:20px; }
 .header-menu-heading button { border:0; background:transparent; color:var(--ink); font-size:28px; cursor:pointer; }
 .header-menu-section { padding:18px 0; border-top:1px solid var(--line); }
+.header-menu-section > nav[aria-label="Personligt"] a { display:flex; align-items:center; min-height:44px; }
 .header-menu-section .eyebrow { margin-bottom:10px; }
 .header-menu-section .workspace-switcher { width:100%; }
 .header-menu-section .workspace-copy { flex:1; min-width:0; width:auto; }

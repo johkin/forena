@@ -72,6 +72,7 @@ await context.route('**/api/**',async route=>{
   if(overviewUnavailable)return route.fulfill({status:503,json:{error:'Tillfälligt fel'}});
   return route.fulfill({json:{reference_time:'2030-10-20T00:00:00Z',activities:current===0?activities():[],organizations:current===0?[organization]:[],teams:current===0?[team]:[]}});
  }
+ if(path==='/api/admin/overview')return route.fulfill({json:{platformAdmin:false,canBootstrap:false,platformAdministrators:[],clubs:[]}});
  if(path==='/api/me/managed-teams')return route.fulfill({json:current===0?[managedTeam]:[]});
  if(path===`/api/teams/${team.id}/activity-editor`)return route.fulfill({json:{team:managedTeam,
   types:[{id,name:'Övrigt',slug:'ovrigt',system_category:'other',organization_id:null}],

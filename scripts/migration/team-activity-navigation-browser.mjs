@@ -36,6 +36,7 @@ try {
         organizations: [{ id: organizationId, name: team.organizationName, role: null, time_zone: team.timeZone }],
         teams: [{ id: teamId, organization_id: organizationId, name: team.name, roles: ['leader'] }],
       };
+      else if (path === '/api/admin/overview') json = { platformAdmin: false, canBootstrap: false, platformAdministrators: [], clubs: [] };
       else if (path === '/api/me/managed-teams') json = canManage ? [team] : [];
       else if (path === `/api/teams/${teamId}/activity-editor`) {
         editorReads++;
@@ -61,7 +62,7 @@ try {
     if (mobile) await page.getByRole('button', { name: 'Öppna meny' }).click();
     const navigation = page.locator(mobile ? '#header-menu' : '.app-sidebar').getByRole('navigation', { name: 'Personligt' });
     const home = await navigation.getByRole('link', { name: 'Min översikt' }).boundingBox();
-    const security = await navigation.getByRole('link', { name: 'Inloggningsinställningar' }).boundingBox();
+    const security = await page.locator(mobile ? '#header-menu' : '.app-sidebar').getByRole('link', { name: 'Inloggningsinställningar' }).boundingBox();
     assert.ok(home && security && home.height >= 44 && security.y >= home.y + home.height);
     if (mobile) {
       await page.keyboard.press('Escape');
