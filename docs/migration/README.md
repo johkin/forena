@@ -1,5 +1,10 @@
 # Stegvis migrering till Kotlin på Vercel och Supabase
 
+**2026-10-25:** M06 och M10 implementeras tillsammans: schemalagd materialisering,
+Modulith JDBC-register och kontrollerad Resend-leverans via Springs HTTP-interface.
+Arbetaren är avstängd som standard. [Körguide](invitation-delivery.md) och
+[status](status.md) skiljer lokal verifiering från återstående M22G-/driftacceptans.
+
 **2026-10-21:** Kotlin-koden är samlad direkt i `backend/` enligt
 [ADR-019](decisions.md#adr-019-en-kotlin-kodbas-direkt-i-backend).
 M21/M22-probets kod, skript och deployfiler är borttagna. Dokumenterade

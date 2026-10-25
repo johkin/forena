@@ -54,8 +54,10 @@ kontot kan tilldelas klubbrollen uttryckligen. Administratörer tilldelas i denn
 version till befintliga verifierade konton; inga mejlinbjudningar skickas.
 
 Lagadmin skapar/redigerar/ställer in aktiviteter via `/activities/manage`.
-Kallelseval och schemaposter sparas, men extern leverans återstår i M10.
+Kallelseval och schemaposter sparas. M06/M10:s schemalagda bearbetning och
+e-postkedja kan aktiveras för uttryckliga testmottagare; den är avstängd som standard.
 Se [hela kedjan, behörigheter och verifiering](../docs/migration/activity-management.md).
+Se även [kallelseleveransens körguide](../docs/migration/invitation-delivery.md).
 
 ## Arkitektur och säkerhet
 
@@ -78,7 +80,8 @@ API-kontobindning hindrar gamla flikar från att skriva under ett annat konto.
 MCP accepterar endast opaka OAuth-token, aldrig browsercookies; verksamhets-API:t
 accepterar aldrig MCP-token. OAuth kräver exakt redirect, resource, PKCE och consent.
 
-`EmailSender` är leverantörsoberoende. `email.internal` innehåller Resend REST;
+`EmailSender` är leverantörsoberoende. `email.internal` innehåller Resends
+Spring HTTP Service Client, registrerad med `@ImportHttpServices`;
 `identity.authentication` äger mallar och krypterad outbox. Local använder logg.
 
 ## Egen databas och runtime-inställningar

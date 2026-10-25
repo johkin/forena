@@ -1,5 +1,7 @@
 package se.forena.api.identity.internal
 
+import se.forena.api.identity.NotificationRecipient
+
 import java.time.Instant
 import java.util.Optional
 import java.util.UUID
@@ -61,4 +63,17 @@ interface AdministrationPersonRepository : Repository<PersonEntity, UUID> {
     @Modifying
     @Query("insert into forena.person_access(person_id,organization_id,subject,kind) values(:person,:organization,:subject,'self')")
     fun createAccess(person: UUID, organization: UUID, subject: UUID): Int
+}
+
+interface NotificationRecipientRepository : Repository<AccountEntity, UUID> {
+    @Query("""
+        select a.subject, u.email
+        from forena.person_access p
+        join forena.account a on a.subject = p.subject and a.enabled
+        join forena.native_user u on u.subject = a.subject and u.verified
+        where p.person_id = :person and p.organization_id = :organization and p.active
+        order by a.subject
+        limit 1001
+    """)
+    fun forPerson(person: UUID, organization: UUID): List<NotificationRecipient>
 }

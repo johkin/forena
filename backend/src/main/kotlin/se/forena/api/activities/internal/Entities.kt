@@ -125,10 +125,20 @@ data class ActivityAuditEntity(
 
 @Table(value = "activity_schedule", schema = "forena")
 data class ActivityScheduleEntity(
-    @Id val id: UUID?, val activityId: UUID, val organizationId: UUID,
-    val kind: String, val dueAt: Instant, val state: String = "pending",
-    val audienceRoles: String = "", val personIds: String = "",
-    val groupIds: String = "", val responsibilityTypeIds: String = ""
+    @Id val id: UUID?,
+    val activityId: UUID,
+    val organizationId: UUID,
+    val kind: String,
+    val dueAt: Instant,
+    val state: String = "pending",
+    val audienceRoles: String = "",
+    val personIds: String = "",
+    val groupIds: String = "",
+    val responsibilityTypeIds: String = "",
+    val attempts: Int = 0,
+    val nextAttempt: Instant = dueAt,
+    val lastError: String? = null,
+    val completedAt: Instant? = null
 )
 
 @Table(value = "activity_type", schema = "forena")

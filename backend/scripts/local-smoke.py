@@ -132,6 +132,9 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
                    FORENA_DB_CA_CERTIFICATE=(ROOT / "backend/certs/supabase-ca.crt").read_text(),
                    FORENA_OAUTH_CLIENT_ID="mcp-test", FORENA_OAUTH_CLIENT_REDIRECT="https://client.example.invalid/callback",
                    FORENA_OAUTH_CLIENT_SECRET="synthetic-oauth-client-secret-for-auth-test",
+                   FORENA_NOTIFICATIONS_ENABLED="true",
+                   FORENA_NOTIFICATION_WORKER_TOKEN="synthetic-smoke-worker-token-at-least-32-chars",
+                   FORENA_NOTIFICATION_TEST_RECIPIENTS="sink@example.invalid",
                    RESEND_API_KEY="synthetic-unused-key", RESEND_FROM_EMAIL="auth@example.invalid",
                    SPRING_APPLICATION_JSON=json.dumps({"forena.authentication.mail-delay-ms": 3600000}))
         # Startup must fail before serving HTTP if the separate owner is unavailable.
@@ -153,6 +156,7 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
                 # disposable PostgreSQL on loopback.
                 runtime_keys = ("FORENA_INITIAL_SYSTEM_ADMIN_EMAIL", "FORENA_MIGRATE", "FORENA_MIGRATION_USERNAME", "FORENA_MIGRATION_PASSWORD", "PORT", "FORENA_DB_CA_CERTIFICATE", "FORENA_JDBC_URL", "FORENA_DB_USERNAME", "FORENA_DB_PASSWORD",
                                 "RESEND_API_KEY", "RESEND_FROM_EMAIL", "SPRING_APPLICATION_JSON",
+                                "FORENA_NOTIFICATIONS_ENABLED", "FORENA_NOTIFICATION_WORKER_TOKEN", "FORENA_NOTIFICATION_TEST_RECIPIENTS",
                                 "FORENA_OAUTH_CLIENT_ID", "FORENA_OAUTH_CLIENT_REDIRECT", "FORENA_OAUTH_CLIENT_SECRET",
                                 "FORENA_WEB_SESSION_ENABLED", "FORENA_WEB_ORIGIN", "FORENA_WEB_SESSION_KEY")
                 entrypoint = ["--entrypoint", args.runtime_entrypoint] if args.runtime_entrypoint else []
@@ -263,6 +267,28 @@ insert into forena.invitation(id,organization_id,activity_id,person_id) values('
             assert any(item["id"] == managed_id for item in editor["activities"])
             assert editor["members"] and editor["types"] and editor["defaults"] == []
             assert seed(f"select count(*) from forena.activity_schedule where activity_id='{managed_id}' and state='pending'") == "1"
+            # Run the actual packaged worker in JVM/AOT/native modes. The fixture address is
+            # deliberately outside the allowlist: prove the full handover without external HTTP.
+            def worker_call(path, method):
+                request = urllib.request.Request(
+                    f"http://127.0.0.1:{http_port}/internal/notifications/{path}",
+                    headers={"Authorization": "Bearer " + env["FORENA_NOTIFICATION_WORKER_TOKEN"]},
+                    method=method,
+                )
+                with urllib.request.urlopen(request, timeout=15) as response:
+                    assert "no-store" in response.headers["Cache-Control"]
+                    return json.load(response)
+
+            worker_result = worker_call("run", "POST")
+            assert worker_result["schedules"] == 1 and worker_result["processedEmails"] == 1
+            assert seed(f"select state from forena.activity_schedule where activity_id='{managed_id}'") == "completed"
+            assert seed("select count(*) from forena.event_publication where completion_date is not null") == "1"
+            assert seed("select count(*) from forena.invitation_email where state='suppressed' and attempts=0") == "1"
+            worker_status = worker_call("status", "GET")
+            assert worker_status["suppressedEmails"] == 1 and worker_status["incompletePublications"] == 0
+            assert worker_status["startedAt"] and worker_status["completedAt"]
+            assert worker_call("run", "POST")["processedEmails"] == 0
+            print("PASS: packaged notification worker, registry handover, allowlist, replay and status without email HTTP", flush=True)
             update = command | {"title": "Updated smoke activity", "invitationMode": "none", "personIds": [], "revision": 0}
             assert call(f"/api/activities/{managed_id}", update, method="PUT")["activity"]["revision"] == 1
             call(f"/api/activities/{managed_id}", update, method="PUT", status=409)

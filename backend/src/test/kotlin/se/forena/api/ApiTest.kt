@@ -49,6 +49,16 @@ import tools.jackson.databind.json.JsonMapper
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class ApiTest {
+    @Test fun `disabled notification worker rejects even an authenticated browser session`() {
+        val base = "http://127.0.0.1:${environment.getRequiredProperty("local.server.port")}/internal/notifications"
+        for (path in listOf("status", "run")) {
+            val request = HttpRequest.newBuilder(URI("$base/$path")).header("Cookie", loginCookie())
+            if (path == "run") request.POST(HttpRequest.BodyPublishers.noBody())
+            val response = HttpClient.newHttpClient().send(request.build(), HttpResponse.BodyHandlers.ofString())
+            assertThat(response.statusCode()).isEqualTo(401)
+        }
+    }
+
     companion object {
         val database = PostgreSQLContainer("postgres:17.6-alpine").withInitScript("init.sql").also { it.start() }
         @JvmStatic @DynamicPropertySource
