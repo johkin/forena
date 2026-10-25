@@ -717,6 +717,81 @@ class ApiTest {
         assertThat(request("/api/activities/$id", activityBody(team)).statusCode()).isEqualTo(409)
     }
 
+    @Test fun `editing can invite team members atomically while retaining existing answers`() {
+        val team = managedTeam()
+        val created = request("/api/activities", activityBody(team), method = "POST")
+        val id = UUID.fromString(json.readTree(created.body()).get("activity").get("id").asString())
+        val extra = ""","revision":0,"invitationMode":"now","personIds":["$own"]"""
+        assertThat(request("/api/activities/$id", activityBody(team, extra)).statusCode()).isEqualTo(200)
+        val invitation = json.readTree(request("/api/activities/$id/my-invitations").body()).get("invitations").get(0).get("id").asString()
+        assertThat(request("/api/invitations/$invitation/respond", """{"response":"accepted","comment":"Kommer direkt"}""").statusCode()).isEqualTo(200)
+        assertThat(request("/api/activities/$id", activityBody(team, extra.replace("revision\":0", "revision\":1"))).statusCode()).isEqualTo(200)
+        assertThat(admin.queryForObject("select count(*) from forena.invitation where activity_id=?", Long::class.java, id)).isEqualTo(1)
+        assertThat(admin.queryForObject("select response from forena.invitation where activity_id=?", String::class.java, id)).isEqualTo("accepted")
+        val before = admin.queryForObject("select revision from forena.activity where id=?", Long::class.java, id)
+        val invalid = activityBody(team, ""","invitationMode":"now","personIds":["$other"]""").replace("Ny aktivitet", "Får inte sparas")
+        assertThat(request("/api/activities/$id", invalid).statusCode()).isEqualTo(400)
+        assertThat(admin.queryForObject("select revision from forena.activity where id=?", Long::class.java, id)).isEqualTo(before)
+        assertThat(admin.queryForObject("select title from forena.activity where id=?", String::class.java, id)).isEqualTo("Ny aktivitet")
+        admin.update("update forena.activity set invitation_send_at=null where id=?", id)
+        val scheduled = activityBody(team, ""","revision":2,"invitationMode":"schedule","invitationSelection":{"roles":["participant"]}""")
+        assertThat(request("/api/activities/$id", scheduled).statusCode()).isEqualTo(200)
+        val preserved = json.readTree(request("/api/activities/$id/my-invitations").body()).get("invitations")
+        assertThat(preserved.size()).isEqualTo(1)
+        assertThat(preserved.get(0).get("response").asString()).isEqualTo("accepted")
+        assertThat(preserved.get(0).get("response_comment").asString()).isEqualTo("Kommer direkt")
+    }
+
+    @Test fun `weekly series creates all occurrences with one identity and rolls back a late failure`() {
+        val team = managedTeam()
+        val body = """{"teamId":"$team","title":"Veckoträning","startsOn":"2030-10-21","endsOn":"2030-11-04","startTime":"18:00","timeZone":"Europe/Stockholm","weekdays":[1],"timingRules":{"duration":"PT1H","gatheringRule":"start-15m"}}"""
+        val created = request("/api/activity-series", body, method = "POST")
+        assertThat(created.statusCode()).isEqualTo(201)
+        val result = json.readTree(created.body())
+        assertThat(result.get("count").asInt()).isEqualTo(3)
+        val series = UUID.fromString(result.get("seriesId").asString())
+        assertThat(admin.queryForObject("select count(*) from forena.activity where series_id=?", Long::class.java, series)).isEqualTo(3)
+        assertThat(result.get("activities").get(0).get("starts_at").asString()).isEqualTo("2030-10-21T16:00:00Z")
+        assertThat(result.get("activities").get(1).get("starts_at").asString()).isEqualTo("2030-10-28T17:00:00Z")
+        admin.execute("alter table forena.activity add constraint test_series_failure check(title <> 'Återställ serie' or starts_at < '2030-10-28'::timestamptz) not valid")
+        try {
+            assertThat(request("/api/activity-series", body.replace("Veckoträning", "Återställ serie"), method = "POST").statusCode()).isEqualTo(409)
+            assertThat(admin.queryForObject("select count(*) from forena.activity where title='Återställ serie'", Long::class.java)).isZero()
+        } finally { admin.execute("alter table forena.activity drop constraint test_series_failure") }
+        admin.update("update forena.organization_member set active=false where subject=?", parent)
+        assertThat(request("/api/activity-series", body, method = "POST").statusCode()).isEqualTo(403)
+    }
+
+    @Test fun `manager overview and details show activities without granting participant response rights`() {
+        val team = managedTeam()
+        admin.update("update forena.team_membership set active=false where person_id=?", own)
+        admin.update("update forena.person_access set active=false where subject=?", parent)
+        val created = request("/api/activities", activityBody(team), method = "POST")
+        val id = json.readTree(created.body()).get("activity").get("id").asString()
+        val detail = request("/api/activities/$id")
+        assertThat(detail.statusCode()).isEqualTo(200)
+        assertThat(json.readTree(detail.body()).get("people").size()).isZero()
+        assertThat(request("/api/me/overview").body()).contains(id)
+        assertThat(request("/api/activities/$id/my-invitations").statusCode()).isEqualTo(404)
+        admin.update("update forena.organization_member set active=false where subject=?", parent)
+        assertThat(request("/api/activities/$id").statusCode()).isEqualTo(404)
+        assertThat(request("/api/me/overview").body()).doesNotContain(id)
+    }
+
+    @Test fun `empty personal and managed scopes cannot match placeholder IDs`() {
+        val zero = UUID(0, 0)
+        val id = UUID.randomUUID()
+        admin.update("insert into forena.team(id,organization_id,name) values(?,?,'Skyddat lag')", zero, organization)
+        admin.update("insert into forena.person(id,organization_id,display_name) values(?,?,'Skyddad person')", zero, organization)
+        admin.update("insert into forena.activity(id,organization_id,team_id,title,starts_at,ends_at,status) values(?,?,?,'Skyddad aktivitet','2030-10-25T16:00:00Z','2030-10-25T17:00:00Z','scheduled')", id, organization, zero)
+        admin.update("insert into forena.invitation(id,organization_id,activity_id,person_id) values(gen_random_uuid(),?,?,?)", organization, id, zero)
+        admin.update("update forena.person_access set active=false where subject=?", parent)
+        val overview = request("/api/me/overview")
+        assertThat(overview.statusCode()).isEqualTo(200)
+        assertThat(json.readTree(overview.body()).get("activities").size()).isZero()
+        assertThat(request("/api/activities/$id").statusCode()).isEqualTo(404)
+    }
+
     @Test fun `activity permissions never inherit from guardianship membership or read access`() {
         val team = admin.queryForObject("select team_id from forena.activity where id=?", UUID::class.java, activity)!!
         admin.update("insert into forena.team_membership(organization_id,team_id,person_id,role,starts_on) values(?,?,?,'leader',current_date)", organization, team, child1)

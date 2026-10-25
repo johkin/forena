@@ -1,6 +1,9 @@
 package se.forena.api.activities
 
 import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalTime
+import java.util.UUID
 import java.time.ZoneId
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -30,4 +33,31 @@ class ActivityTimesTest {
         assertThat(deadline).isEqualTo(Instant.parse("2030-10-25T10:00:00Z"))
         assertThat(schedule).containsExactly(now)
     }
+    private fun series() = ActivitySeriesCommand(
+        teamId = UUID.randomUUID(), title = "Veckoträning",
+        startsOn = LocalDate.parse("2030-10-21"), endsOn = LocalDate.parse("2030-11-04"),
+        startTime = LocalTime.parse("18:00"), timeZone = "Europe/Stockholm",
+        weekdays = listOf(1), timingRules = ActivityTimingRules(duration = "PT1H", gatheringRule = "start-15m"))
+
+    @Test fun `weekly series keeps local start time over DST with independent gathering and duration`() {
+        val occurrences = ActivityTimes.weekly(series(), stockholm)
+        assertThat(occurrences.map { it.startsAt }).containsExactly(
+            Instant.parse("2030-10-21T16:00:00Z"), Instant.parse("2030-10-28T17:00:00Z"), Instant.parse("2030-11-04T17:00:00Z"))
+        assertThat(occurrences).allSatisfy {
+            assertThat(it.endsAt).isEqualTo(it.startsAt.plusSeconds(3600))
+            assertThat(it.gatheringAt).isEqualTo(it.startsAt.minusSeconds(900))
+        }
+    }
+
+    @Test fun `weekly series rejects invalid bounds weekdays excessive counts and nonexistent local start`() {
+        val base = series()
+        for (invalid in listOf(
+            base.copy(weekdays = emptyList()), base.copy(weekdays = listOf(0)),
+            base.copy(endsOn = base.startsOn.minusDays(1)), base.copy(endsOn = base.startsOn.plusDays(367)),
+            base.copy(endsOn = base.startsOn.plusDays(120), weekdays = (1..7).toList()),
+            base.copy(startsOn = LocalDate.parse("2030-03-31"), endsOn = LocalDate.parse("2030-03-31"),
+                weekdays = listOf(7), startTime = LocalTime.parse("02:30"))
+        )) assertThatThrownBy { ActivityTimes.weekly(invalid, stockholm) }.isInstanceOf(IllegalArgumentException::class.java)
+    }
+
 }

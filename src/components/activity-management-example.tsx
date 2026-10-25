@@ -2,6 +2,8 @@
 
 import { useCallback, useRef, useState } from "react";
 import { z } from "zod";
+import { previewRuleWeeklySeries } from "../lib/activity-series";
+import { normalizeActivityTimingRules } from "../lib/activity-time-rules";
 import { ActivityManagement } from "./activity-management";
 import { TeamActivityActions } from "./team-activity-actions";
 import type { ParticipationFetch } from "./activity-invitation-response";
@@ -34,6 +36,20 @@ export function ActivityManagementExample() {
         ? { ...activity, status: "cancelled", revision: activity.revision + 1 } : activity);
       return Response.json({ disposition: "cancelled" });
     }
+    if (path === "/api/activity-series") {
+      const command = z.object({ title: z.string(), description: z.string(), location: z.string(),
+        startsOn: z.string(), endsOn: z.string(), startTime: z.string(), timeZone: z.string(),
+        weekdays: z.array(z.number()), timingRules: z.unknown(), activityTypeId: z.uuid(),
+      }).parse(JSON.parse(String(init?.body)));
+      const occurrences = previewRuleWeeklySeries({ ...command, rules: normalizeActivityTimingRules(command.timingRules) });
+      const created = occurrences.map(occurrence => ({ ...initial, id: crypto.randomUUID(),
+        title: command.title, description: command.description, location: command.location,
+        activity_type_id: command.activityTypeId, starts_at: occurrence.startsAt,
+        ends_at: occurrence.endsAt, gathering_at: occurrence.gatheringAt,
+      }));
+      activities.current = [...activities.current, ...created];
+      return Response.json({ seriesId: crypto.randomUUID(), count: created.length, activities: created }, { status: 201 });
+    }
     if (init?.method === "POST" || init?.method === "PUT") {
       const command = z.object({ title: z.string(), description: z.string().default(""), location: z.string(),
         startsAt: z.string(), endsAt: z.string(), gatheringAt: z.string().nullable(),
@@ -60,6 +76,8 @@ export function ActivityManagementExample() {
       <option value="empty">Ingen lagbehörighet</option>
     </select></label>
     <ActivityManagement key={state} request={request} teamId={team.id} />
+    <h3>Redigera från en öppnad aktivitet</h3>
+    <ActivityManagement key={`details-${state}`} request={request} teamId={team.id} activityId={initial.id} />
     <h3>Äldre direktlänk med förvalt lag</h3>
     <div className="welcome"><div><h3>{team.name}</h3><p>Skapa direkt från lagets översikt.</p></div>
       <TeamActivityActions key={state} teamId={team.id} request={request} onCreate={() => setOpenFromTeam(true)} />

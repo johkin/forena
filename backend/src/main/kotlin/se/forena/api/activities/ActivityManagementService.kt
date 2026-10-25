@@ -1,5 +1,6 @@
 package se.forena.api.activities
 
+import java.time.Instant
 import java.time.ZoneId
 import java.util.UUID
 import tools.jackson.databind.json.JsonMapper
@@ -53,6 +54,10 @@ class ActivityManagementService(
     @Transactional
     fun create(actor: Actor, command: ActivityCommand): ActivityResult {
         sessions.requireActive(actor)
+        return createOccurrence(actor, command)
+    }
+
+    private fun createOccurrence(actor: Actor, command: ActivityCommand, seriesId: UUID? = null): ActivityResult {
         val teamId = requireNotNull(command.teamId)
         requireTeam(actor, teamId)
         check(management.lockTeam(teamId) != null)
@@ -66,6 +71,33 @@ class ActivityManagementService(
         val id = UUID.randomUUID()
         val schedulingCommand = if (command.timingRules == null) command.copy(timingRules = inheritedRules(team, type.id)) else command
         val schedule = if (command.invitationMode == "schedule") ActivityTimes.schedule(schedulingCommand, zone, now) else null
+        val row = ManagedActivityEntity(id, team.organizationId, teamId, type.id,
+            command.title.trim(), command.description.trim(), command.location.trim(),
+            command.startsAt, command.endsAt, command.gatheringAt,
+            if (command.invitationMode == "now") now else schedule?.second?.first(), schedule?.first,
+            seriesId = seriesId, newRecord = true)
+        applyInvitations(actor, team, row, command, schedule)
+        record(actor, row, "created")
+        return ActivityResult(activityDto(row))
+    }
+
+    @Transactional
+    fun createSeries(actor: Actor, command: ActivitySeriesCommand): ActivitySeriesResult {
+        sessions.requireActive(actor)
+        val team = requireTeam(actor, command.teamId)
+        require(command.timeZone == team.timeZone)
+        val occurrences = ActivityTimes.weekly(command, ZoneId.of(team.timeZone))
+        val seriesId = UUID.randomUUID()
+        val created = occurrences.map { createOccurrence(actor, it, seriesId).activity }
+        return ActivitySeriesResult(seriesId, created.size, created)
+    }
+
+    private fun applyInvitations(
+        actor: Actor, team: ManagementTeamRow, row: ManagedActivityEntity, command: ActivityCommand,
+        schedule: Pair<Instant, List<Instant>>?
+    ) {
+        val now = clock.now()
+        require(command.invitationMode in listOf("none", "now", "schedule"))
         val roles = when (command.invitationAudience) {
             "players" -> listOf("participant")
             "leaders" -> listOf("leader")
@@ -91,25 +123,21 @@ class ActivityManagementService(
         } else {
             require(personIds.isEmpty() && command.invitationSelection == null && command.invitationAudience == null)
         }
-        val row = ManagedActivityEntity(id, team.organizationId, teamId, type.id,
-            command.title.trim(), command.description.trim(), command.location.trim(),
-            command.startsAt, command.endsAt, command.gatheringAt,
-            if (command.invitationMode == "now") now else schedule?.second?.first(), schedule?.first, newRecord = true)
         activities.save(row)
+        if (command.invitationMode == "none") return
+        val existing = schedules.findByActivityId(row.activityId)
+        for (entry in existing.filter { it.state == "pending" }) schedules.save(entry.copy(state = "cancelled"))
         if (command.invitationMode == "now") {
-            for (person in personIds) invitations.create(UUID.randomUUID(), team.organizationId, id, person)
+            for (person in personIds) invitations.create(UUID.randomUUID(), team.organizationId, row.activityId, person)
         }
-        if (command.invitationMode != "none") {
-            val times = schedule?.second ?: listOf(now)
-            for ((index, due) in times.withIndex()) {
-                schedules.save(ActivityScheduleEntity(null, id, team.organizationId,
-                    if (index == 0) "invitation" else "reminder", due,
-                    audienceRoles = roles.joinToString(","), personIds = personIds.joinToString(","),
-                    groupIds = selectedGroups.joinToString(","), responsibilityTypeIds = selectedResponsibilities.joinToString(",")))
-            }
+        val times = schedule?.second ?: listOf(now)
+        for ((index, due) in times.withIndex()) {
+            val kind = if (index == 0) "invitation" else "reminder"
+            val previous = existing.singleOrNull { it.kind == kind && it.dueAt == due }
+            schedules.save(ActivityScheduleEntity(previous?.id, row.activityId, team.organizationId, kind, due,
+                audienceRoles = roles.joinToString(","), personIds = personIds.joinToString(","),
+                groupIds = selectedGroups.joinToString(","), responsibilityTypeIds = selectedResponsibilities.joinToString(",")))
         }
-        record(actor, row, "created")
-        return ActivityResult(activityDto(row))
     }
 
     @Transactional
@@ -118,20 +146,33 @@ class ActivityManagementService(
         require(command.teamId == null || command.teamId == current.teamId)
         check(current.status == "scheduled" && current.endsAt > clock.now())
         command.revision?.let { check(it == current.revision) }
-        // Invitation rescheduling is a separate explicit command; an edit never silently changes it.
-        require(command.invitationMode == "none" && command.personIds.isEmpty() && command.invitationSelection == null)
         val team = requireTeam(actor, current.teamId)
         ActivityTimes.validate(command, ZoneId.of(team.timeZone), creating = false)
-        require(current.responseDueAt == null || current.responseDueAt <= command.startsAt)
+        if (command.invitationMode != "schedule") require(current.responseDueAt == null || current.responseDueAt <= command.startsAt)
         val typeId = command.activityTypeId ?: current.activityTypeId
         if (typeId != current.activityTypeId) requireType(team, typeId)
         val changed = current.copy(activityTypeId = typeId, title = command.title.trim(),
             description = command.description.trim(), location = command.location.trim(),
             startsAt = command.startsAt, endsAt = command.endsAt, gatheringAt = command.gatheringAt,
             revision = current.revision + 1)
-        activities.save(changed)
-        record(actor, changed, "updated")
-        return ActivityResult(activityDto(changed))
+        val now = clock.now()
+        val schedulingCommand = if (command.invitationMode == "schedule" && command.timingRules == null)
+            command.copy(timingRules = inheritedRules(team, requireType(team, typeId).id)) else command
+        val schedule = if (command.invitationMode == "schedule")
+            ActivityTimes.schedule(schedulingCommand, ZoneId.of(team.timeZone), now) else null
+        val withInvitations = when (command.invitationMode) {
+            "none" -> changed
+            "now" -> changed.copy(invitationSendAt = now)
+            "schedule" -> changed.copy(
+                // Previously sent invitations and their answers remain visible.
+                invitationSendAt = if ((current.invitationSendAt == null || current.invitationSendAt <= now) &&
+                    invitations.existsByActivityId(id)) current.invitationSendAt ?: now else schedule?.second?.first(),
+                responseDueAt = schedule?.first)
+            else -> throw IllegalArgumentException("Unknown invitation mode")
+        }
+        applyInvitations(actor, team, withInvitations, command, schedule)
+        record(actor, withInvitations, "updated")
+        return ActivityResult(activityDto(withInvitations))
     }
 
     @Transactional

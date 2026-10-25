@@ -27,7 +27,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Activity details authorized through personal invitations, dated membership or own team access. Reading never grants response rights for another person. Unknown/unauthorized IDs return 404. No-store. */
+        /** @description Activity details authorized through personal invitations, dated membership, own team access or current activity-management permission. Reading never grants response rights for another person. Unknown/unauthorized IDs return 404. No-store. */
         get: operations["getPersonalActivity"];
         put: operations["updateActivity"];
         post?: never;
@@ -48,6 +48,22 @@ export interface paths {
         get: operations["getMyInvitations"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/activity-series": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createActivitySeries"];
         delete?: never;
         options?: never;
         head?: never;
@@ -632,7 +648,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Complete authorized upcoming overview, including dated team memberships and own team access. Person rows exist independently of invitations. Only sent personal invitations are exposed. No 90-day cutoff or first-page counts. More than 20000 activities fails with 503 rather than returning an incomplete overview. No-store. */
+        /** @description Complete authorized upcoming overview, including dated team memberships, own team access and currently managed teams. Person rows exist independently of invitations. Only sent personal invitations are exposed. No 90-day cutoff or first-page counts. More than 20000 activities fails with 503 rather than returning an incomplete overview. No-store. */
         get: operations["getPersonalOverview"];
         put?: never;
         post?: never;
@@ -748,6 +764,34 @@ export interface components {
         };
         ActivityResult: {
             activity?: components["schemas"]["ManagedActivity"];
+        };
+        ActivitySeriesCommand: {
+            /** Format: uuid */
+            activityTypeId?: string | null;
+            description?: string;
+            /** Format: date */
+            endsOn?: string;
+            invitationAudience?: string | null;
+            invitationMode?: string;
+            invitationSelection?: components["schemas"]["ActivityAudience"] | null;
+            location?: string;
+            /** Format: time-local */
+            startTime?: string;
+            /** Format: date */
+            startsOn?: string;
+            /** Format: uuid */
+            teamId?: string;
+            timeZone?: string;
+            timingRules?: components["schemas"]["ActivityTimingRules"];
+            title?: string;
+            weekdays?: number[];
+        };
+        ActivitySeriesResult: {
+            activities?: components["schemas"]["ManagedActivity"][];
+            /** Format: int32 */
+            count?: number;
+            /** Format: uuid */
+            seriesId?: string;
         };
         ActivityTimingRules: {
             duration?: string;
@@ -1286,6 +1330,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    createActivitySeries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivitySeriesCommand"];
+            };
+        };
+        responses: {
+            /** @description Created weekly activity series */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ActivitySeriesResult"];
                 };
             };
         };

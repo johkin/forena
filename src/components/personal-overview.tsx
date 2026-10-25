@@ -24,7 +24,7 @@ type Props<T extends OverviewItem> = {
 
 /** Count people once, even when their invitations occur in several activities. */
 export function overviewNames(items: readonly OverviewItem[]) {
-  const people = new Map(items.map(item => [item.member.id, { personId: item.member.id, displayName: item.member.displayName }]));
+  const people = new Map(items.filter(item => !item.activityOnly).map(item => [item.member.id, { personId: item.member.id, displayName: item.member.displayName }]));
   return attendanceNames([...people.values()]);
 }
 
@@ -72,7 +72,7 @@ export function PersonalOverview<T extends OverviewItem>({ activities, timeZone,
             </span>
             <b aria-hidden="true">→</b>
           </button>
-          <div className="personal-activity-people">{people.map(person => <OverviewInvitationResponse key={person.member.id} item={person} displayName={names.get(person.member.id)} readOnly={person.activity.status === "cancelled" || Date.parse(person.activity.endsAt) <= Date.parse(referenceTime ?? new Date().toISOString())} demo={demo} onAnswered={onAnswered} request={request} onRespond={onRespond} busy={person.invitation ? pendingInvitations?.has(person.invitation.id) : false} />)}</div>
+          <div className="personal-activity-people">{people.filter(person => !person.activityOnly).map(person => <OverviewInvitationResponse key={person.member.id} item={person} displayName={names.get(person.member.id)} readOnly={person.activity.status === "cancelled" || Date.parse(person.activity.endsAt) <= Date.parse(referenceTime ?? new Date().toISOString())} demo={demo} onAnswered={onAnswered} request={request} onRespond={onRespond} busy={person.invitation ? pendingInvitations?.has(person.invitation.id) : false} />)}</div>
         </div>;
       })}
     </div> : <p className="overview-empty">{emptyMessage}</p>}

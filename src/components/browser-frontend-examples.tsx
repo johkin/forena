@@ -3,6 +3,7 @@ import type { NavigationLink } from "./navigation-link";
 import { useCallback, useRef, useState } from "react";
 import { PasswordLoginForm } from "./password-login-form";
 import { ActivityInvitationResponse, type ParticipationFetch } from "./activity-invitation-response";
+import { PersonalOverview } from "./personal-overview";
 import { PersonalHome } from "./personal-home";
 import type { OverviewItem } from "./personal-overview-types";
 import type { Activity } from "../domain/club";
@@ -91,6 +92,12 @@ function PersonalHomeExample({linkComponent}:{linkComponent?:NavigationLink}) {
     <PersonalHome items={items} activities={[second,first]} organizations={[{id:"o1",name:"Exempelföreningen",role:"owner",href:"/organizations/11111111-1111-4111-8111-111111111111"}]} teams={[{id:"t1",organizationId:"o1",name:"F2016",roles:["Målsman","Ledare","Lagåtkomst"],href:"/teams/22222222-2222-4222-8222-222222222222"}]} referenceTime="2030-10-20T00:00:00Z" request={request} linkComponent={linkComponent}
       onOpenActivity={item=>setSelected(item.activity.title)} onAnswered={(id,response)=>setItems(previous=>previous.map(item=>item.invitation?.id===id?{...item,invitation:{...item.invitation,response}}:item))} />
     {selected ? <p role="status">Öppnad exempelaktivitet: {selected}</p> : null}
+    <h3>Ledarkort utan personlig deltagare</h3>
+    <PersonalOverview activities={[{ activity: first, team: { name: "F2016" },
+      organization: { name: "Exempelföreningen", timeZone: "Europe/Stockholm" },
+      member: { id: first.id, displayName: "" }, activityOnly: true,
+    }]} timeZone="Europe/Stockholm" title="Lagets aktiviteter" id="managed-overview-example"
+      referenceTime="2030-10-20T00:00:00Z" onOpenActivity={item => setSelected(item.activity.title)} />
   </section>;
 }
 

@@ -313,6 +313,94 @@
         },
         "type": "object"
       },
+      "ActivitySeriesCommand": {
+        "properties": {
+          "activityTypeId": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "endsOn": {
+            "format": "date",
+            "type": "string"
+          },
+          "invitationAudience": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invitationMode": {
+            "type": "string"
+          },
+          "invitationSelection": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ActivityAudience"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "location": {
+            "type": "string"
+          },
+          "startTime": {
+            "format": "time-local",
+            "type": "string"
+          },
+          "startsOn": {
+            "format": "date",
+            "type": "string"
+          },
+          "teamId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "timeZone": {
+            "type": "string"
+          },
+          "timingRules": {
+            "$ref": "#/components/schemas/ActivityTimingRules"
+          },
+          "title": {
+            "type": "string"
+          },
+          "weekdays": {
+            "items": {
+              "format": "int32",
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "ActivitySeriesResult": {
+        "properties": {
+          "activities": {
+            "items": {
+              "$ref": "#/components/schemas/ManagedActivity"
+            },
+            "type": "array"
+          },
+          "count": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "seriesId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "ActivityTimingRules": {
         "properties": {
           "duration": {
@@ -1565,7 +1653,7 @@
         ]
       },
       "get": {
-        "description": "Activity details authorized through personal invitations, dated membership or own team access. Reading never grants response rights for another person. Unknown/unauthorized IDs return 404. No-store.",
+        "description": "Activity details authorized through personal invitations, dated membership, own team access or current activity-management permission. Reading never grants response rights for another person. Unknown/unauthorized IDs return 404. No-store.",
         "operationId": "getPersonalActivity",
         "parameters": [
           {
@@ -1703,6 +1791,36 @@
         },
         "tags": [
           "invitation-controller"
+        ]
+      }
+    },
+    "/api/activity-series": {
+      "post": {
+        "operationId": "createActivitySeries",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivitySeriesCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivitySeriesResult"
+                }
+              }
+            },
+            "description": "Created weekly activity series"
+          }
+        },
+        "tags": [
+          "activity-management-controller"
         ]
       }
     },
@@ -3714,7 +3832,7 @@
     },
     "/api/me/overview": {
       "get": {
-        "description": "Complete authorized upcoming overview, including dated team memberships and own team access. Person rows exist independently of invitations. Only sent personal invitations are exposed. No 90-day cutoff or first-page counts. More than 20000 activities fails with 503 rather than returning an incomplete overview. No-store.",
+        "description": "Complete authorized upcoming overview, including dated team memberships, own team access and currently managed teams. Person rows exist independently of invitations. Only sent personal invitations are exposed. No 90-day cutoff or first-page counts. More than 20000 activities fails with 503 rather than returning an incomplete overview. No-store.",
         "operationId": "getPersonalOverview",
         "responses": {
           "200": {

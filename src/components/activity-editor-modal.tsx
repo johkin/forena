@@ -85,7 +85,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
   const [invitationMode,setInvitationMode]=useState<"none"|"now"|"schedule">("none");
   const [selectedPeople,setSelectedPeople]=useState<Set<string>>(new Set());
   const [descriptionOpen,setDescriptionOpen]=useState(Boolean(draft?.description||activity?.description));
-  const [invitationOpen,setInvitationOpen]=useState(canManageInvitations && mode==="create");
+  const [invitationOpen,setInvitationOpen]=useState(canManageInvitations);
   const [configuration,setConfiguration] = useState<ActivityConfiguration>();
   const [configurationError,setConfigurationError] = useState<string>();
   const [activityTypeId,setActivityTypeId] = useState(activity?.activityTypeId ?? draft?.activityTypeId ?? "");
@@ -166,6 +166,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
       if(invitationMode==="schedule") {
         const now = Date.now();
         if(mode==="create") occurrences=occurrences.map(item=>prepareInvitationSchedule({...item,reminderSendAt:null},now));
+        else if (adapter) occurrences=occurrences.map(item=>prepareInvitationSchedule({...item,reminderSendAt:null},now));
         else occurrences.forEach(item=>requireFutureSchedule({...item,reminderSendAt:null},now));
       }
       if(mode==="edit" && editScope==="following") {
@@ -199,13 +200,13 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
     setPending(true); setError(undefined);
     if(source==="demo"){onNotice(`${String(payload.title)} förhandsgranskades i demoläge.`);onClose();return;}
     const occurrence=preview[0], endpoint=mode==="edit"?`/api/activities/${activity?.id}`:recurring?"/api/activity-series":"/api/activities";
-    const body=mode==="edit"||!recurring?{...payload,...(mode==="edit" ? {timingRules:undefined} : {}),gatheringAt:occurrence.gatheringAt,startsAt:occurrence.startsAt,endsAt:occurrence.endsAt}:payload;
+    const body=mode==="edit"||!recurring?{...payload,...(mode==="edit" && !adapter ? {timingRules:undefined} : {}),gatheringAt:occurrence.gatheringAt,startsAt:occurrence.startsAt,endsAt:occurrence.endsAt}:payload;
     try {
       const response=await request(endpoint,{method:mode==="edit"?"PUT":"POST",headers:{"content-type":"application/json"},body:JSON.stringify({...body,...(adapter ? {revision:adapter.revision} : {})})});
       const result=await response.json();
       if(!response.ok){setError(result.error??"Aktiviteten kunde inte sparas");return;}
       const savedActivityId=activity?.id??result.activity?.id;
-      if(savedActivityId&&invitationMode!=="none"&&mode==="edit"){
+      if(savedActivityId&&invitationMode!=="none"&&mode==="edit"&&!adapter){
         const invitationResponse=await request(`/api/activities/${savedActivityId}/invitations`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(invitationMode==="now"?{mode:"now",personIds:[...selectedPeople]}:{mode:"schedule",audience:"selection",selection:payload.invitationSelection,invitationSendMinutesBefore:payload.invitationSendMinutesBefore,responseDueRule:payload.responseDueRule,reminderMinutesBeforeDue:payload.reminderMinutesBeforeDue,reminderMinutesBeforeDueList:payload.reminderMinutesBeforeDueList,timingRules:payload.timingRules})});
         const invitationResult=await invitationResponse.json();
         if(!invitationResponse.ok){setError(invitationResult.error??"Aktiviteten sparades, men kallelsen kunde inte läggas till");return;}
@@ -253,7 +254,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
         if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
       }}>
       <div className="card-heading"><div><p className="eyebrow">{team.name}</p><h2 id="activity-editor-title">{mode==="edit"?"Redigera aktivitet":"Skapa aktivitet"}</h2></div><button className="icon-button" onClick={onClose} aria-label="Stäng" type="button">✕</button></div>
-      {adapter && canManageInvitations ? <p>Kallelser till valda personer visas i appen. Externa meddelanden skickas inte ännu; schemalagda målgrupper sparas för kommande utskick.</p> : null}
+      {adapter && canManageInvitations ? <p>Kallelser till valda personer visas i appen. Schemalagda kallelser och externa meddelanden skickas inte ännu.</p> : null}
       {draft?<div className="ai-draft-notice"><strong>AI-utkast för granskning</strong><span>Kontrollera särskilt datum, plats och text innan aktiviteten skapas.</span>{draft.sources.length?<div>{draft.sources.map(source=><a href={source.url} key={source.url} target="_blank" rel="noreferrer">{source.title}</a>)}</div>:<small>Inga webbkällor följde med utkastet.</small>}</div>:null}
       {mode==="edit" && activity?.seriesId ? <fieldset className="activity-series-scope" disabled={pending}><legend>Vilka tillfällen gäller ändringen?</legend><label><input type="radio" name="editScope" checked={editScope==="single"} onChange={()=>{setEditScope("single");invalidatePreview();}}/>Endast denna aktivitet</label><label><input type="radio" name="editScope" checked={editScope==="following"} disabled={new Date(activity.startsAt)<=new Date()} onChange={()=>{setEditScope("following");setInvitationMode("none");setActivityTypeId(activity.activityTypeId ?? "");invalidatePreview();}}/>Denna och kommande aktiviteter</label>{editScope==="following"?<p>Passerade, inställda och individuellt ändrade tillfällen hoppas över. Vald aktivitet ingår. Valet gäller även borttagning. Vid sparande bevaras kallelser och svar; tider flyttas lika mycket i lokal tid.</p>:null}</fieldset>:null}
       <form onSubmit={prepare} onChange={invalidatePreview}>
@@ -283,8 +284,8 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
           <small>Samlingen räknas före aktivitetens start. Välj kallelse och mottagare nedan.</small>
         </section>
         {canManageInvitations && editScope!=="following" ? <details className="editor-section editor-invitation" open={invitationOpen} onToggle={event=>setInvitationOpen(event.currentTarget.open)}>
-          <summary><span className="workflow-summary-title">Kallelse &amp; svarsregler</span> <span>{invitationMode==="none"?"Ingen":invitationMode==="now"?"Skicka nu":"Schemalägg"}</span></summary>
-          <div className="activity-kind-switch invitation-mode-switch" role="group" aria-label="Kallelse"><button className={invitationMode==="none"?"selected":""} onClick={()=>{invalidatePreview();setInvitationMode("none");}} type="button">Ingen</button><button className={invitationMode==="now"?"selected":""} onClick={()=>{invalidatePreview();setInvitationMode("now");}} disabled={recurring} title={recurring ? "Använd Schemalägg för en serie" : undefined} type="button">{adapter ? "Välj personer" : "Skicka nu"}</button><button className={invitationMode==="schedule"?"selected":""} onClick={()=>{invalidatePreview();setInvitationMode("schedule");}} type="button">Schemalägg</button></div>
+          <summary><span className="workflow-summary-title">Kallelse &amp; svarsregler</span> <span>{invitationMode==="none"?(mode==="edit"?"Behåll befintliga":"Ingen"):invitationMode==="now"?"Skicka nu":"Schemalägg"}</span></summary>
+          <div className="activity-kind-switch invitation-mode-switch" role="group" aria-label="Kallelse"><button className={invitationMode==="none"?"selected":""} onClick={()=>{invalidatePreview();setInvitationMode("none");}} type="button">{mode==="edit" ? "Behåll befintliga" : "Ingen"}</button><button className={invitationMode==="now"?"selected":""} onClick={()=>{invalidatePreview();setInvitationMode("now");}} disabled={recurring} title={recurring ? "Använd Schemalägg för en serie" : undefined} type="button">{adapter ? "Välj personer" : "Skicka nu"}</button><button className={invitationMode==="schedule"?"selected":""} onClick={()=>{invalidatePreview();setInvitationMode("schedule");}} type="button">Schemalägg</button></div>
           {invitationMode==="now"?<div className="editor-invitation-body">
             <div className="editor-inline-heading"><strong>Välj personer</strong><Help label="Skicka nu">Markera kryssrutan för de personer som ska få kallelsen. Du kan välja spelare och ledare tillsammans.</Help></div>
             <p className="editor-recipient-count" role="status">{invited.length} valda mottagare</p>

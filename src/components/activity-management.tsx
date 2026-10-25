@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { z } from "zod";
+import { createPortal } from "react-dom";
 import { ActivityEditorModal } from "./activity-editor-modal";
 import type { Activity, Member, Organization, Team } from "../domain/club";
 import { normalizeDefaultsPatch, resolveDisciplineDefaults } from "../lib/discipline-defaults";
@@ -62,8 +63,8 @@ function configuration(context: EditorContext): ActivityConfiguration {
 }
 
 /** The existing editor uses the account-bound Kotlin transport, without page reloads. */
-export function ActivityManagement({ request, teamId, onSaved, initialTeamId = "", createOnLoad = false, onEditorClose }: {
-  request: ParticipationFetch; teamId?: string; onSaved?: () => void;
+export function ActivityManagement({ request, teamId, activityId, onSaved, initialTeamId = "", createOnLoad = false, onEditorClose }: {
+  request: ParticipationFetch; teamId?: string; activityId?: string; onSaved?: () => void;
   initialTeamId?: string; createOnLoad?: boolean; onEditorClose?: () => void;
 }) {
   const [now, setNow] = useState(() => Date.now());
@@ -109,6 +110,7 @@ export function ActivityManagement({ request, teamId, onSaved, initialTeamId = "
       groups: context.groups.filter(group => group.kind === "group"),
       responsibilities: context.groups.filter(group => group.kind === "responsibility"),
     });
+    if (path === "/api/activity-series") return request(path, init);
     if (init?.method === "POST" || init?.method === "PUT") {
       const command = commandSchema.parse(JSON.parse(String(init.body)));
       return request(path, { ...init, body: JSON.stringify(command) });
@@ -131,16 +133,19 @@ export function ActivityManagement({ request, teamId, onSaved, initialTeamId = "
       gatheringAt: current.gathering_at ?? undefined, status: current.status === "scheduled" ? "published" : "cancelled" } : undefined;
     editor = <ActivityEditorModal key={current?.id ?? "create"} mode={current ? "edit" : "create"}
       organization={organization} team={team} activity={activity} members={members} source="database"
-      canManageInvitations={!current && context.team.canManageInvitations}
+      canManageInvitations={context.team.canManageInvitations}
       onClose={() => { setEditing(undefined); onEditorClose?.(); }} onNotice={setNotice}
-      adapter={{ request: editorRequest, revision: current?.revision, singleOnly: true,
+      adapter={{ request: editorRequest, revision: current?.revision,
         onSaved: () => { setAttempt(value => value + 1); onSaved?.(); } }} />;
   }
 
   if (teamId && teams && !canManageTeam) return null;
 
+  const selectedActivity = context?.activities.find(item => item.id === activityId);
+  const canEditActivity = selectedActivity?.status === "scheduled" && Date.parse(selectedActivity.ends_at) > now;
+
   return <section className="club-administration activity-management" aria-label="Hantera aktiviteter">
-    {teamId ? <h2>Lagets aktiviteter</h2> : <h1>Hantera aktiviteter</h1>}
+    {!teamId ? <h1>Hantera aktiviteter</h1> : null}
     {error ? <p role="alert">{error} <button type="button" onClick={() => setAttempt(value => value + 1)}>Försök igen</button></p> : null}
     {notice ? <p role="status">{notice}</p> : null}
     {teamId ? null : !teams ? <p role="status">Laddar lag…</p> : teams.length === 0 ? <p>Du saknar behörighet att hantera aktiviteter i något lag.</p> : <label>Lag<select value={selectedTeam} onChange={event => {
@@ -149,13 +154,13 @@ export function ActivityManagement({ request, teamId, onSaved, initialTeamId = "
     {selectedTeam && teams && !canManageTeam ? <p>Du saknar behörighet att hantera aktiviteter i det valda laget. Välj ett annat lag.</p>
       : selectedTeam && !context && !error ? <p role="status">Laddar aktiviteter…</p> : null}
     {context ? <>
-      <p>Tider i {context.team.timeZone}.</p>
-      <button type="button" className="primary" onClick={() => setEditing("create")}>Ny aktivitet</button>
-      {context.activities.length === 0 ? <p>Inga aktiviteter ännu.</p> : <ul>{context.activities.map(activity => <li key={activity.id}>
+      {activityId ? canEditActivity ? <button type="button" className="secondary" onClick={() => setEditing(selectedActivity)}>Redigera</button> : null
+        : <button type="button" className="primary" aria-label="Ny aktivitet" onClick={() => setEditing("create")}>Ny aktivitet</button>}
+      {!teamId && !activityId ? context.activities.length === 0 ? <p>Inga aktiviteter ännu.</p> : <ul>{context.activities.map(activity => <li key={activity.id}>
         <strong>{activity.title}</strong> · {new Intl.DateTimeFormat("sv-SE", { timeZone: context.team.timeZone, dateStyle: "medium", timeStyle: "short" }).format(new Date(activity.starts_at))}
         {activity.status === "cancelled" ? <span> · Inställd</span> : Date.parse(activity.ends_at) > now ? <button type="button" className="secondary" onClick={() => setEditing(activity)}>Redigera {activity.title}</button> : <span> · Avslutad</span>}
-      </li>)}</ul>}
+      </li>)}</ul> : null}
     </> : null}
-    {editor}
+    {editor ? createPortal(editor, document.body) : null}
   </section>;
 }

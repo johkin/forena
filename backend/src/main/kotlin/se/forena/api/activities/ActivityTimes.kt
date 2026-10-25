@@ -3,12 +3,44 @@ package se.forena.api.activities
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
 /** Same bounded grammar and DST semantics as activity-time-rules.ts. */
 object ActivityTimes {
     private val grammar = Regex("^(start|deadline)((?:-[0-9]{1,6}[dhm]){0,4})(/d)?$")
     private val offset = Regex("-([0-9]{1,6})([dhm])")
     private val duration = Regex("^PT(?:(\\d+)H)?(?:(\\d+)M)?$")
+
+    fun weekly(command: ActivitySeriesCommand, zone: ZoneId): List<ActivityCommand> {
+        require(command.endsOn >= command.startsOn)
+        require(ChronoUnit.DAYS.between(command.startsOn, command.endsOn) <= 366)
+        require(command.startsOn.year in 1900..9999 && command.endsOn.year in 1900..9999)
+        require(command.weekdays.isNotEmpty() && command.weekdays.all { it in 1..7 })
+        require(command.invitationMode in listOf("none", "schedule"))
+        val duration = minutes(command.timingRules.duration)
+        val occurrences = mutableListOf<ActivityCommand>()
+        var date = command.startsOn
+        while (date <= command.endsOn) {
+            if (date.dayOfWeek.value in command.weekdays) {
+                val local = date.atTime(command.startTime)
+                val offsets = zone.rules.getValidOffsets(local)
+                // Reject nonexistent start times; overlaps choose the earlier instant, like the editor.
+                require(offsets.isNotEmpty())
+                val start = local.toInstant(offsets.first())
+                occurrences += ActivityCommand(
+                    teamId = command.teamId, activityTypeId = command.activityTypeId,
+                    title = command.title, description = command.description, location = command.location,
+                    startsAt = start, endsAt = start.plusSeconds(duration * 60),
+                    gatheringAt = evaluate(command.timingRules.gatheringRule, "start", start, zone),
+                    timingRules = command.timingRules, invitationMode = command.invitationMode,
+                    invitationAudience = command.invitationAudience, invitationSelection = command.invitationSelection)
+                require(occurrences.size <= 100)
+            }
+            date = date.plusDays(1)
+        }
+        require(occurrences.isNotEmpty())
+        return occurrences
+    }
 
     fun minutes(value: String): Long {
         val match = requireNotNull(duration.matchEntire(value))

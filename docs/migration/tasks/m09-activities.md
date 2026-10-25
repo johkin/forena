@@ -44,3 +44,14 @@ enligt AGENTS.md; behåll CI-skydd. Uppdatera [status](../status.md) med PR/comm
 ändrat beteende, körda/godkända/misslyckade/ej körda kontroller, begränsningar och
 nästa beroende uppgift. Om omfånget växer, skapa en separat uppgiftsfil och
 lämna en kort överlämning med beslut, filer, tester och återstående arbete.
+
+## Utökning 2026-10-25
+
+Användaren begärde paritet för översikt, kallelser vid redigering och skapande
+av återkommande aktiviteter. React/Kotlin återanvänder nu de gemensamma korten
+och serieformuläret. Redigering nås från öppnad aktivitet; extra listan på
+lagöversikten tas bort. Kallelseval sparas atomärt vid redigering och veckoserier
+skapas i en transaktion med beständig serieidentitet. Se
+[aktivitetsflödet](../activity-management.md#återkommande-aktiviteter).
+Äldre avgränsningen om att lämna allt seriestöd till senare gäller därför inte
+längre skapandet; massändring av kommande tillfällen och extern leverans återstår.

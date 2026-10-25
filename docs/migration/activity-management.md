@@ -1,4 +1,4 @@
-# Enstaka aktiviteter och hela administrationskedjan
+# Aktiviteter, serier och hela administrationskedjan
 
 M09 omfattar också första systemadministratören, klubb, sektion, lag och
 administratörstilldelning enligt användarens utökning 2026-10-23.
@@ -32,8 +32,9 @@ konton, databas och administrationsflöden.
    skapar lag inom sin behörighet och utser lagadmin. Befintliga gemensamma
    klubb-, datum-, tidszon- och lagkomponenter återanvänds.
 7. Lagadmin loggar in och öppnar laget under **Mina lag och föreningar**.
-   På `/teams/:id` visas **Lagets aktiviteter** med **Ny aktivitet**, redigering
-   och inställning. Laget följer sidan utan en separat lagväljare. Den äldre
+   På `/teams/:id` visas **Ny aktivitet** i sidans rubrik. Aktiviteter visas i
+   den gemensamma agendan/kalendern; **Redigera** och **Ställ in** nås från
+   aktivitetsdetaljerna. Laget följer sidan utan en separat lagväljare. Den äldre
    direktlänken `/activities/manage` fungerar fortfarande för sparade länkar.
 
 Tilldelningen i denna leverans kräver ett redan registrerat och verifierat
@@ -52,8 +53,10 @@ oregistrerade konton är fortsatt ett separat paritetsområde.
   enligt aktivitetsadministrationens aktuella behörighetskontroll, även tomma lag
   och konton utan egen personkoppling. Klubb-/sektionsroller och daterade
   lagrättigheter kontrolleras vid varje läsning. Systemrollen ensam ger ingen
-  lagarbetsyta. Den personliga kalendern och kallelserna behåller sitt personurval;
-  lagets administrativa aktivitetslista visas på lagets sida för behöriga konton.
+  lagarbetsyta. Kallelser och personrader behåller sitt personurval;
+  hanterbara lags kommande aktiviteter ingår i översikten. Aktiviteter utan
+  personlig deltagare visas utan person-/svarsrader; läsrätten ger inga nya
+  kallelsesvarsrättigheter.
 - `activity.manage` och `invitation.manage` kan också tilldelas separat enligt
   M09:s personbundna rättighetsmodell. Vanligt lagmedlemskap och fristående
   läsåtkomst ger inte skrivrätt. Målsmans-/delegerad personåtkomst ärver inga
@@ -96,8 +99,11 @@ förfallen nu; passerade påminnelser hoppas över. Samtliga framtida påminnels
 sparas, inte bara den första. Förval läses fältvis från gemensam profil,
 sektion och lag; inga sparade aktivitetstider räknas om när förval ändras.
 
-Redigering ändrar endast aktivitetens uttryckliga tider och metadata; ett
-befintligt kallelseschema ligger kvar. En flytt får inte lägga aktivitetsstarten före den bevarade sista svarstiden. Webbens revisionsvillkor nekar överskrivning
+Redigering bevarar befintligt kallelseschema om **Behåll befintliga** är valt.
+Uttryckligt val av mottagare eller nytt schema sparas atomärt med aktiviteten,
+under samma revisions- och behörighetskontroll. Nya personkallelser är
+dubblettsäkra och bevarar tidigare svar och kommentarer. Ett nytt schema
+ersätter väntande schemaposter men döljer aldrig redan skickade kallelser. En flytt får inte lägga aktivitetsstarten före den bevarade sista svarstiden. Webbens revisionsvillkor nekar överskrivning
 av en nyare ändring och bevarar utkastet. Äldre anrop utan revision fungerar.
 
 Inställning använder samma aktivitetslås och låsordning som kallelsesvar,
@@ -107,7 +113,7 @@ M09:s nya knapp heter **Ställ in**; den raderar inte aktivitetshistorik.
 
 Schemaposterna är beständigt domänansvar, inte påstådd mejlleverans.
 M06/M10 implementerar materialisering och extern leverans. UI:t säger
-uttryckligen att meddelanden inte skickas ännu. Serier, import, närvaro,
+uttryckligen att externa meddelanden inte skickas ännu. Import, närvaro,
 fullständiga disciplinpaket och inbjudan till oregistrerade konton återstår.
 
 ## Persistens och modulgränser
@@ -159,3 +165,18 @@ och körs mot frontendservern på port 3002, utan verksamhetsskrivningar:
 ```sh
 node scripts/migration/team-activity-navigation-browser.mjs
 ```
+
+## Återkommande aktiviteter
+
+`POST /api/activity-series` skapar en veckoserie med vald start-/slutdag,
+veckodagar och lokalt startklockslag i föreningens tidszon. Den gemensamma
+redigeraren visar samma förhandsgranskning som äldre appen. Backend beräknar
+och validerar själv tillfällena: högst 366 dagars period och 100 tillfällen.
+Startklockslag i en sommartidslucka avvisas; vid överlapp väljs den tidigare
+tidpunkten. Varje tillfälle får egna tider, samling och eventuellt kallelseschema.
+
+Alla tillfällen, schemaposter, audit och signaler sparas i samma transaktion.
+Migration 015 lägger till en beständig `series_id` på aktiviteterna. Tillfällen
+kan redigeras eller ställas in individuellt; massändring av kommande tillfällen
+är ännu inte exponerad i React/Kotlin. Extern leverans och materialisering av
+schemalagda målgrupper är fortsatt M06/M10 och påstås inte fungera av denna ändring.

@@ -1,5 +1,41 @@
 # Migreringsstatus
 
+## Lokalt arbetsutkast: aktivitetsöversikt, kallelser och veckoserier, 2026-10-25
+
+Översikten återanvänder aktivitetskorten utan extra administrationslista.
+**Ny aktivitet** ligger vid lagrubriken och **Redigera** i aktivitetsdetaljerna.
+Lag som kontot får administrera ingår i läsurvalet utan att person-/svarsrätt
+vidgas. Kallelser till valda personer kan läggas till vid redigering i samma
+transaktion, med tidigare svar och kommentarer bevarade. Veckoserier har
+förhandsgranskning, lokala tider över sommartidsbyten och gemensamt `series_id`.
+Samtliga tillfällen sparas atomärt genom `POST /api/activity-series`.
+Komponentsidan använder samma formulär och visar även ledarkort utan personrader.
+
+Verifierat lokalt för arbetsutkastet:
+
+- `npm test`: 1 147 tester godkända. Redigerarens fyra tester är dessutom omkörda
+  efter den sista förtydligande textändringen.
+- `npm run typecheck`, `npm run lint`, `npm run build` och
+  `npm run frontend:build`: godkända för senaste koden.
+- Maven `verify -Dtest=ApiTest,ActivityTimesTest`: 63 tester godkända utan
+  överhoppningar, inklusive de två Chromium → Spring → PostgreSQL-flödena.
+  Båda provar skapande, omladdning, redigering, inställning och veckoserier;
+  det ena går även genom bootstrap, klubb, sektion och separat lagadministratör.
+- Liquibase `MigrationTest`: 15 godkända fall för tom installation och
+  uppgradering från tidigare baslinjer, med runtime-/dataskydd och bevarade data.
+  Detta kördes separat före de sista tjänste-/browserrättningarna; migration 015
+  och changeloggen är oförändrade sedan den körningen.
+- `team-activity-navigation-browser.mjs`: godkänt vid 320, 375, 390, 768 och
+  1280 px för kort, detaljredigering, kallelsekommando, serieval, fokus, behörighet
+  och frånvaro av horisontell overflow.
+- OpenAPI/TypeScript-kontraktet är genererat från Spring-exporten.
+
+Verifieringen ovan är lokal; CI-resultat redovisas i PR:ens kontroller.
+Ingen driftsättning ingår. Native/OCI har inte byggts här. Äldre Supabase-schemats reset/pgTAP har inte körts om;
+ändringen gäller det privata Liquibase-schemat och provades mot lokal PostgreSQL.
+Schemalagd materialisering och externa kallelseutskick är fortsatt M06/M10.
+Skapande av serier ingår nu; massändring av kommande tillfällen återstår.
+
 ## PR #165: granskningsrättning, 2026-10-23
 
 Samtliga sex kodkommentarer hanteras i samma granskningsändring:

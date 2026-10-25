@@ -19,3 +19,11 @@ it("updates only the server-confirmed person's answer, retaining comments and un
  expect(updated.activities[0].people[0].invitation?.response).toBe("pending");
  expect(data.activities[0].people[1].invitation?.response).toBe("declined");
 });
+
+it("keeps a managed activity visible without inventing a participant or response right",()=>{
+ const rows=overviewItems([{...data.activities[0],people:[]}]);
+ expect(rows).toHaveLength(1);
+ expect(rows[0].activityOnly).toBe(true);
+ expect(rows[0].invitation).toBeUndefined();
+ expect(rows[0].member.displayName).toBe("");
+});

@@ -17,8 +17,10 @@ interface ActivityRepository : Repository<ActivityEntity, UUID> {
 }
 
 interface InvitationRepository : Repository<InvitationEntity, UUID> {
+    fun existsByActivityId(activityId: UUID): Boolean
+
     @Modifying
-    @Query("insert into forena.invitation(id,organization_id,activity_id,person_id) values(:id,:organization,:activity,:person)")
+    @Query("insert into forena.invitation(id,organization_id,activity_id,person_id) values(:id,:organization,:activity,:person) on conflict (activity_id,person_id) do nothing")
     fun create(id: UUID, organization: UUID, activity: UUID, person: UUID): Int
 
     fun findByActivityIdInAndPersonIdIn(activityIds: Collection<UUID>, personIds: Collection<UUID>): List<InvitationEntity>
@@ -86,9 +88,10 @@ interface OrganizationMemberRepository : Repository<OrganizationMemberEntity, UU
 
 // Membership/access only widens activity reads, never invitation response rights.
 private const val PERSONAL_SCOPE = """
-    exists (select 1 from forena.invitation i where i.activity_id = a.id
+    (:hasManagedTeams and a.team_id in (:managedTeams))
+    or exists (select 1 from forena.invitation i where :hasPeople and i.activity_id = a.id
         and i.organization_id = a.organization_id and i.person_id in (:people))
-    or exists (select 1 from forena.team_membership m where m.team_id = a.team_id
+    or exists (select 1 from forena.team_membership m where :hasPeople and m.team_id = a.team_id
         and m.organization_id = a.organization_id and m.person_id in (:people) and m.active
         and m.starts_on <= (a.starts_at at time zone o.time_zone)::date
         and (m.ends_on is null or m.ends_on >= (a.starts_at at time zone o.time_zone)::date))
@@ -102,11 +105,11 @@ interface PersonalActivityRepository : Repository<ActivityEntity, UUID> {
     @Query("""select a.* from forena.activity a join forena.organization o on o.id = a.organization_id
         where a.status = 'scheduled' and a.ends_at > :now and (""" + PERSONAL_SCOPE + """)
         order by a.starts_at, a.id limit 20001""")
-    fun findUpcoming(people: Collection<UUID>, ownPeople: Collection<UUID>, hasOwnPeople: Boolean, now: Instant): List<PersonalActivityRow>
+    fun findUpcoming(people: Collection<UUID>, ownPeople: Collection<UUID>, hasOwnPeople: Boolean, hasPeople: Boolean, managedTeams: Collection<UUID>, hasManagedTeams: Boolean, now: Instant): List<PersonalActivityRow>
 
     @Query("""select a.* from forena.activity a join forena.organization o on o.id = a.organization_id
         where a.id = :id and (""" + PERSONAL_SCOPE + ")")
-    fun findAccessible(id: UUID, people: Collection<UUID>, ownPeople: Collection<UUID>, hasOwnPeople: Boolean): PersonalActivityRow?
+    fun findAccessible(id: UUID, people: Collection<UUID>, ownPeople: Collection<UUID>, hasOwnPeople: Boolean, hasPeople: Boolean, managedTeams: Collection<UUID>, hasManagedTeams: Boolean): PersonalActivityRow?
 }
 
 interface ManagedActivityRepository : Repository<ManagedActivityEntity, UUID> {
