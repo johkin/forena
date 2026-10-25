@@ -47,9 +47,17 @@ page.on('pageerror', error => errors.push(error.message));
 await mkdir('frontend/.evidence', { recursive: true });
 
 async function login(email) {
-  await page.locator('input[name=email]').first().fill(email);
-  await page.getByLabel('Lösenord', { exact: true }).fill('synthetic-password');
-  await page.getByRole('button', { name: 'Logga in', exact: true }).click();
+  // Logout can still be replacing an administration form with an email input.
+  // Wait for the guest view before choosing the login form's fields.
+  await expect(page.getByRole('heading', { name: 'Logga in', exact: true })).toBeVisible();
+  const form = page.locator('form.auth-form').filter({ has: page.locator('input[name=password]') });
+  await form.locator('input[name=email]').fill(email);
+  await form.getByLabel('Lösenord', { exact: true }).fill('synthetic-password');
+  const [loggedIn] = await Promise.all([
+    page.waitForResponse(response => new URL(response.url()).pathname === '/api/auth/login' && response.request().method() === 'POST'),
+    form.getByRole('button', { name: 'Logga in', exact: true }).click(),
+  ]);
+  assert.equal(loggedIn.status(), 200);
   // A click can finish before the login request. Wait for the authenticated
   // shell so the session cookie is saved before the next document navigation.
   await expect(page.getByRole('link', { name: 'Visa kallelser som behöver svar' })).toBeVisible();
@@ -63,6 +71,7 @@ try {
   if (adminChain) {
     page.once('dialog', confirmation => confirmation.accept());
     await page.getByRole('button', { name: 'Aktivera systemadministration', exact: true }).click();
+    await page.getByRole('link', { name: /^Klubbar/ }).first().click();
     await expect(page.getByText('Skapa klubb', { exact: true })).toBeVisible();
     await page.getByText('Skapa klubb', { exact: true }).click();
     const onboarding = page.locator('form.club-onboarding');
@@ -72,7 +81,7 @@ try {
     await onboarding.getByRole('button', { name: 'Nästa', exact: true }).click();
     assert.equal(clubCreates, 0, 'review must not create a club');
     await onboarding.getByRole('button', { name: 'Skapa klubb', exact: true }).click();
-    const club = page.locator('section.card').filter({ has: page.getByRole('heading', { name: 'Browserklubben', exact: true }) });
+    const club = page.getByRole('region', { name: 'Klubb Browserklubben', exact: true });
     await expect(club).toBeVisible();
     await club.getByLabel('Klubbadministratör: e-post', { exact: true }).fill(process.env.FORENA_M09_EMAIL);
     page.once('dialog', confirmation => confirmation.accept());
@@ -80,7 +89,8 @@ try {
       page.waitForResponse(response => /\/api\/admin\/clubs\/[^/]+\/administrators$/.test(response.url()) && response.request().method() === 'POST'),
       club.getByRole('button', { name: 'Tilldela klubbadministratör', exact: true }).click(),
     ]);
-    const section = club.getByRole('region', { name: 'Sektion Fotboll', exact: true });
+    await club.getByRole('link', { name: 'Hantera lag', exact: true }).click();
+    const section = page.getByRole('region', { name: 'Sektion Fotboll', exact: true });
     const teamForm = section.locator('form').filter({ has: page.getByRole('button', { name: 'Lägg till lag', exact: true }) });
     await teamForm.locator('input[name=name]').fill('Browserlaget');
     const [created] = await Promise.all([

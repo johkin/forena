@@ -6,6 +6,8 @@ const editorReads = new RegExp(`^/api/teams/${uuid}/activity-editor$`, "i");
 const activityWrites = new RegExp(`^/api/activities/${uuid}$`, "i");
 const adminResource = new RegExp(`^/api/admin/(?:bootstrap|platform-administrators|clubs|(?:clubs|sections|teams)/${uuid}(?:/(?:administrators|sections|teams)(?:/${uuid})?)?)$`, "i");
 const adminSlug = new RegExp(`^/api/admin/slug\\?slug=[a-z0-9-]{1,120}(?:&organizationId=${uuid})?$`, "i");
+const systemDestination = new RegExp(`^/system/(?:organizations(?:/${uuid})?|administrators|disciplines|activity-types|memories)$`, "i");
+const clubAdministrationDestination = new RegExp(`^/organizations/${uuid}/(?:administration|sections/${uuid}/teams)$`, "i");
 const writes = new RegExp(`^/api/invitations/${uuid}/respond$`, "i");
 
 /** Only allowlisted, same-origin API calls receive the HttpOnly session cookie. */
@@ -49,7 +51,7 @@ export function createApiFetch(readAccount: () => Promise<string | null>, unauth
 }
 
 export function safeDestination(value: string | null) {
-  return value === "/" || value === "/activities/manage" || value === "/administration" || value === "/components" || value === "/notifications" || (value !== null && new RegExp(`^/(?:activities|organizations|teams)/${uuid}$`, "i").test(value)) ? value! : "/";
+  return value === "/" || value === "/activities/manage" || value === "/administration" || value === "/system" || (systemDestination.test(value ?? "") || clubAdministrationDestination.test(value ?? "")) || value === "/components" || value === "/notifications" || (value !== null && new RegExp(`^/(?:activities|organizations|teams)/${uuid}$`, "i").test(value)) ? value! : "/";
 }
 
 /** OAuth resumes through the server, preserving the query without allowing arbitrary redirects. */

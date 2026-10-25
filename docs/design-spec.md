@@ -1,5 +1,18 @@
 # Förena – gränssnittets designregler
 
+## Next-appen är förlagan
+
+Alla migrerade och nya funktioner ska följa Next-appens utseende och arbetsflöden.
+Behåll sidstruktur, navigation, texter, formulär, dialoger och interaktioner.
+Använd samma produktionskomponenter och samma CSS-ingång, `src/app/ui-styles.css`,
+i båda apparna. Den gemensamma ingången bevarar Next-appens kaskadordning och
+förhindrar att samma dialog får olika layout i Vite. En backendadapter får
+anpassa transport och behörighetskontroll, men ska inte införa en egen design.
+
+Funktioner som ännu inte har flyttats ska redovisas som återstående. En
+layoutjämförelse eller en informationssida innebär inte att funktionen är färdig.
+Verifiera berörda produktionsvyer i båda apparna på mobil och desktop.
+
 ## Komponentsidan är den gemensamma UI-referensen
 
 Alla UI-element som används i systemet ska finnas representerade på `/components`.
@@ -27,7 +40,7 @@ Dessa regler beskriver kravet; befintliga luckor i galleriet ska fyllas när de
 berörda UI-delarna ändras och innebär inte att dagens galleri redan är komplett.
 
 Den nya browserpiloten återanvänder `AppHeaderFrame`, `AppShellFrame`,
-`SessionMenu`, `AppFooter` och `ActivityInvitationResponse`. Next-appens
+`ApplicationMenu`, `NavigationLinksView`, `AppFooter` och `ActivityInvitationResponse`. Next-appens
 sidskal använder samma byggdelar. `PasswordLoginForm` och de nya pilotvarianterna
 visas på `/components` i båda apparna, med lokala syntetiska data och utan
 inloggning eller verksamhetsskrivningar. Menyns fokuslås, Escape och mobila
@@ -75,7 +88,7 @@ AI-anslutningslänken förblir dold i Vite tills motsvarande integration finns.
 Interaktiva varianter av hela startsidan finns på `/components`, med isolerade
 exempeldata. Ingen demokallelse får skriva till produktions-API:t.
 
-Lagvyn visar **Ny aktivitet** under **Lagets aktiviteter** för användare
+Lagvyn visar **Ny aktivitet** vid lagrubriken för användare
 som finns i backendens lista över lag med aktivitetsbehörighet. Knappen öppnar
 den befintliga aktivitetsredigeraren på samma sida med laget förvalt. Vanligt medlemskap ger
 inte knappen; backend kontrollerar behörigheten på nytt när formuläret hämtas
@@ -631,3 +644,23 @@ till aktiveringsknappen och en ny länk utan omladdning. Utgången länk visas o
 Lagets sida (`/teams/:id`) visar **Ny aktivitet** vid sidrubriken för användare som finns i serverns lista över hanterbara lag. Aktiviteter visas i de gemensamma aktivitetskorten och kalendern, utan en extra administrationslista. **Redigera** finns i öppnade aktivitetsdetaljer, med kallelseval även vid redigering. Skapandet erbjuder **En aktivitet** och **Aktivitetsserie** med veckodagar, slutdatum och förhandsgranskning. Laget är låst till sidans kontext; ingen lagväljare visas. Den personliga översikten har ingen global ingång för att skapa aktiviteter. Den äldre direktlänken `/activities/manage` finns kvar för kompatibilitet. Aktivitetshanteringen återanvänder ActivityEditorModal med kontobunden transport och uppdaterar listan utan dokumentomladdning. Inställning heter Ställ in och bevarar svar/historik. Dialogen återställer fokus och stöder Escape och avgränsad tangentbordsnavigation. Kallelser till direkt valda personer visas i appen; gränssnittet förklarar att externa meddelanden ännu inte levereras.
 
 Komponentsidan visar samma administrations- och aktivitetskomponenter med lokala exempel för bootstrap, behörighet, formulär, laddning, tomma lägen och fel. Ingen verksamhetsskrivning görs av galleriet.
+
+### Administration enligt Next-förlagan
+
+`/system` använder samma `SystemAdministrationHome` i båda apparna. Menyns
+systemlänkar, ordning och aktuell-sida-markering kommer från samma lista.
+`ApplicationMenu` samlar gemensam menystruktur; endast serverkontrollerade
+roller får administrativa länkar. Personlig navigation och konto har samma
+separata avsnitt som i Next, med minst 44 px hög tryckyta.
+
+Klubbar har sökning, sidindelning och Skapa klubb. Klubbdetaljer återanvänder
+`ClubStructureAdministration`, med samma sektioner, fält, disciplinlås och
+borttagningsskydd som Next för de funktioner backend stöder. Lag hanteras på
+en separat sida via **Hantera lag**, inte som formulär under varje sektion.
+Kataloger och minnen har ännu ingen Kotlin-hantering; deras informationssidor
+säger detta tydligt och innehåller inga skenbara redigeringsverktyg.
+
+`ui-parity-browser.mjs` jämför verkliga produktionskomponenter i båda apparna,
+med exakt CSS/layout och högst 0,01 procent pixelskillnad för kantutjämning.
+Next-utvecklingsindikatorn räknas inte som produktgränssnitt. Galleriet visar
+samma systemmeny, översikt och administrativa navigering med lokala exempel.

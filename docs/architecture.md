@@ -754,3 +754,30 @@ kontrollerat genom samma aktuella rättighetskälla som aktivitetskommandona.
 Personrader och svarsrätt behåller sitt separata urval. Kort utan personlig
 deltagare visar enbart aktivitetsuppgifter; ingen låtsasdeltagare visas.
 Redigeraren öppnas från aktivitetsdetaljer och Ny aktivitet ligger i lagrubriken.
+
+### Gemensam Next/React-Kotlin-design
+
+Next-appen är den kanoniska förlagan även när en funktion flyttas till Kotlin.
+Båda browseringångarna importerar `src/app/ui-styles.css`, med samma stilmallar
+i samma ordning. `ApplicationMenu`, `NavigationLinksView`,
+`SystemAdministrationHome` och `ClubStructureAdministration` delar menyer,
+översikt och klubb-/sektionsformulär. Routrarnas egna länkadaptrar och
+server-/API-kommandon tillför transport utan att återskapa markup eller CSS.
+
+React/Kotlin samlar administrationsåtkomst i en kontobunden
+`AdministrationProvider`. Meny och sidor använder samma verifierade snapshot,
+som laddas om vid administrativ navigation, fokus och synlighetsbyte. Kontobyte
+avmonterar cachen. Läsfel döljer tidigare administrativt underlag. Backend
+kontrollerar fortfarande varje skrivning och inga rättigheter härleds från menyn.
+
+`/system` visar samma översikt som Next. Klubblista, klubbdetaljer och
+systemadministratörer har separata sidor. Föreningsadministratörer går genom
+`/administration` och sina förenings-/sektionsrutter, utan systemroll. Lag öppnas
+via **Hantera lag**. `/administration` är fortsatt kompatibel ingång.
+Katalogadministration, assistentminnen, full profil, assistentens klubbnamn och
+mejlbaserade administratörsinbjudningar är ännu inte flyttade; sådant ska inte
+presenteras som fungerande Kotlin-funktioner.
+
+Den gemensamma aktivitetsdialogen jämförs visuellt mellan Next och Vite vid
+320, 390, 768 och 1280 px. CI sparar skärmbilder. Klockslag får inte radbrytas;
+de smalaste skärmarna staplar tidsmodulerna i båda apparna.

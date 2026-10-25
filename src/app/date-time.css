@@ -48,3 +48,9 @@
   .activity-time-controls { grid-template-columns:28px minmax(0,1fr) 28px; }
   .activity-time-controls > .activity-time-value { font-size:16px; }
 }
+
+/* Keep the complete clock value readable in the narrowest supported viewport. */
+@media (max-width:360px) {
+  .editor-time-steppers { grid-template-columns:minmax(0,1fr); }
+}
+.activity-time-controls > .activity-time-value { white-space:nowrap; }

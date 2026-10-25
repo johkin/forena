@@ -38,3 +38,25 @@ Från reporoten körs `npm test`, `npm run typecheck`, `npm run lint`,
 `npm run build` (Next) och `npm run frontend:build` (Vite). CI kör både kontrollerade
 browserprov för navigation/kontoisolering och riktiga Spring-/PostgreSQL-flöden
 med virtuell WebAuthn. Se backendguiden för JVM respektive GraalVM/AOT.
+
+## Next är den visuella förlagan
+
+Båda apparna importerar `src/app/ui-styles.css`. Lägg gemensamma stilmallar där
+i Next-appens ordning. Meny, systemöversikt, klubb-/sektionsformulär och
+aktivitetsdialoger använder samma produktionskomponenter i `src/components`.
+Återskapa inte funktionerna som enklare pilotsidor.
+
+Systemadministration börjar på `/system`, med separata sidor för Klubbar och
+Administratörer. Klubb-/sektionsadministratörer behåller `/administration` och
+öppnar lag via Hantera lag. Kataloger och assistentminnen är inte flyttade ännu.
+
+Kör Next på port 3004 och Vite på port 3005 och jämför dem från reporoten:
+
+```sh
+node scripts/migration/ui-parity-browser.mjs
+node scripts/migration/administration-navigation-browser.mjs
+```
+
+Origin kan anges med `FORENA_PARITY_NEXT`, `FORENA_PARITY_VITE` respektive
+`FORENA_NAVIGATION_FRONTEND`; endast lokala adresser accepteras. CI kör proven
+mot produktionsbyggen och sparar jämförelsebilder i en separat artefakt.

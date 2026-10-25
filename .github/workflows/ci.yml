@@ -156,13 +156,28 @@ jobs:
           set -euo pipefail
           npm run preview --workspace @forena/frontend -- --host 127.0.0.1 > "$RUNNER_TEMP/frontend-preview.log" 2>&1 &
           preview_pid=$!
-          trap 'kill "$preview_pid" 2>/dev/null || true' EXIT
-          for attempt in {1..50}; do
-            if curl --silent --fail http://127.0.0.1:3000/ >/dev/null; then break; fi
+          npm run start -- --hostname 127.0.0.1 --port 3004 > "$RUNNER_TEMP/next-preview.log" 2>&1 &
+          next_pid=$!
+          trap 'kill "$preview_pid" "$next_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..75}; do
+            if curl --silent --fail http://127.0.0.1:3000/ >/dev/null && curl --silent --fail http://127.0.0.1:3004/components >/dev/null; then break; fi
             sleep 0.2
           done
           curl --silent --fail http://127.0.0.1:3000/ >/dev/null
+          curl --silent --fail http://127.0.0.1:3004/components >/dev/null
           FORENA_BROWSER_BASE_URL=http://localhost:3000 node scripts/migration/browser-frontend-mock.mjs
+          FORENA_NAVIGATION_FRONTEND=http://127.0.0.1:3000 node scripts/migration/team-activity-navigation-browser.mjs
+          FORENA_NAVIGATION_FRONTEND=http://127.0.0.1:3000 node scripts/migration/administration-navigation-browser.mjs
+          FORENA_PARITY_NEXT=http://127.0.0.1:3004 FORENA_PARITY_VITE=http://127.0.0.1:3000 node scripts/migration/ui-parity-browser.mjs
+
+      - name: Retain Next and Kotlin UI comparison screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: next-kotlin-ui-parity-${{ github.sha }}
+          path: frontend/.evidence/parity/
+          retention-days: 7
+          if-no-files-found: ignore
 
   database:
     needs: changes

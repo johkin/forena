@@ -120,3 +120,10 @@ it("allows atomic series creation with account and CSRF binding, without widenin
   await expect(request("/api/activity-series", { method: "PUT" })).rejects.toThrow();
   await expect(request("/api/activity-series?team=other", { method: "POST" })).rejects.toThrow();
 });
+
+it.each(["/system", "/system/organizations", `/system/organizations/${id}`, "/system/administrators", "/system/disciplines", "/system/activity-types", "/system/memories", `/organizations/${id}/administration`, `/organizations/${id}/sections/${id}/teams`])("preserves the canonical administration destination across login: %s", value => {
+  expect(safeDestination(value)).toBe(value);
+});
+it.each(["/system/organizations/invalid", "/system/unknown", "https://other.test/system", "//other.test/system", "/system/organizations?redirect=https://other.test"]) ("rejects unsupported administration destinations: %s", value => {
+  expect(safeDestination(value)).toBe("/");
+});

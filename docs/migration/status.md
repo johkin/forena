@@ -1,5 +1,44 @@
 # Migreringsstatus
 
+## Next som UI-förlaga: administration och aktivitetsredigering, 2026-10-25
+
+Bas är mergad PR #177 (`6a44b1f`). Next-appen är nu uttryckligen kanonisk i
+arbetsinstruktioner och designregler. Båda apparna laddar samma CSS-ingång i
+samma ordning och delar fullmeny, systemnavigation, systemstartsida och
+klubb-/sektionsformulär. React/Kotlin har separata sidor för klubbar,
+klubbuppgifter och sektionslag. Menyn hämtar behörigheter från en kontobunden
+snapshot som uppdateras vid navigation, fokus och synlighet; läsfel tar bort
+tidigare administrationsbehörigheter från gränssnittet.
+
+Aktivitetsredigeraren får även bemanningsstilarna som tidigare saknades i Vite.
+Tidsfält bryts inte mitt i klockslaget och staplas på skärmar upp till 360 px.
+Komponentsidorna visar samma produktionskomponenter i båda apparna.
+
+Verifierat lokalt för denna ändring:
+
+- 1 161 frontendtester, typkontroll, lint, Next-bygge och Vite-bygge godkända.
+- Visuell jämförelse av produktionsbyggena vid 320, 390, 768 och 1280 px:
+  systemstartsida och aktivitetsredigerare har samma mått och beräknade stilar.
+  PNG-jämförelsen tillåter högst 0,01 procent pixelavvikelse för kantutjämning.
+- Administrationsnavigation, sparande, återkallad systemroll och separat
+  föreningsadministratör provade vid samma fyra bredder. Aktivitetsnavigation
+  godkänd även vid 375 px. Sessions-/kontobytesprovet godkänt.
+- Två riktiga Chromium → Spring → PostgreSQL-prov godkända, inklusive
+  bootstrap, klubb, sektion, separat lagadministratör samt skapa/redigera/
+  ställa in aktiviteter och skapa veckoserier.
+- 39 Pythonregressioner för driftsättningsskript och CI godkända.
+
+CI kör nu även browsernavigation och jämförelsen mellan Next och Vite samt
+sparar jämförelsebilderna som artefakt. Resultaten ovan är lokala; CI redovisas
+separat i PR:ens kontroller. Ingen driftsättning eller schemaändring ingår.
+
+Disciplinkatalog, aktivitetstyper och assistentminnen har fortfarande ingen
+Kotlin-implementation och visas uttryckligen som ännu inte flyttade.
+Assistentnamn, fullständig profil och mejlinbjudningar till administratörer
+återstår också. Befintlig tilldelning kräver registrerat, verifierat konto och
+beskrivs som sådan. Ändringen flyttar befintlig funktionalitet till Next-layouten;
+den innebär inte full funktionell paritet för dessa återstående områden.
+
 ## Lokalt arbetsutkast: aktivitetsöversikt, kallelser och veckoserier, 2026-10-25
 
 Översikten återanvänder aktivitetskorten utan extra administrationslista.
