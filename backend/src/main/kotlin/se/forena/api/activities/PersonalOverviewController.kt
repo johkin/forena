@@ -16,12 +16,12 @@ import se.forena.api.identity.Actor
 @RestController
 class PersonalOverviewController(private val overview: PersonalOverviewService, private val actors: CurrentActorService) {
     @GetMapping("/api/me/overview", produces = ["application/json"])
-    @Operation(operationId = "getPersonalOverview", description = "Complete authorized upcoming overview, including dated team memberships and own team access. Person rows exist independently of invitations. Only sent personal invitations are exposed. No 90-day cutoff or first-page counts. More than 20000 activities fails with 503 rather than returning an incomplete overview. No-store.")
+    @Operation(operationId = "getPersonalOverview", description = "Complete authorized upcoming overview, including dated team memberships, own team access and currently managed teams. Person rows exist independently of invitations. Only sent personal invitations are exposed. No 90-day cutoff or first-page counts. More than 20000 activities fails with 503 rather than returning an incomplete overview. No-store.")
     fun list(@Parameter(hidden = true) authentication: Authentication, @Parameter(hidden = true) request: HttpServletRequest): ResponseEntity<PersonalOverview> =
         ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(overview.overview(actors.from(authentication, request)))
 
     @GetMapping("/api/activities/{activityId}", produces = ["application/json"])
-    @Operation(operationId = "getPersonalActivity", description = "Activity details authorized through personal invitations, dated membership or own team access. Reading never grants response rights for another person. Unknown/unauthorized IDs return 404. No-store.")
+    @Operation(operationId = "getPersonalActivity", description = "Activity details authorized through personal invitations, dated membership, own team access or current activity-management permission. Reading never grants response rights for another person. Unknown/unauthorized IDs return 404. No-store.")
     fun activity(@Parameter(hidden = true) authentication: Authentication, @Parameter(hidden = true) request: HttpServletRequest,
                  @PathVariable activityId: UUID): ResponseEntity<PersonalActivity> =
         ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(overview.activity(actors.from(authentication, request), activityId))

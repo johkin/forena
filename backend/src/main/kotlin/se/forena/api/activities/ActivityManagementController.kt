@@ -37,6 +37,14 @@ class ActivityManagementController(
                @RequestBody command: ActivityCommand): ResponseEntity<ActivityResult> =
         ResponseEntity.status(201).cacheControl(CacheControl.noStore()).body(management.create(actors.from(authentication, request), command))
 
+    @PostMapping("/api/activity-series")
+    @Operation(operationId = "createActivitySeries")
+    @ApiResponse(responseCode = "201", description = "Created weekly activity series", useReturnTypeSchema = true)
+    fun createSeries(@Parameter(hidden = true) authentication: Authentication,
+                     @Parameter(hidden = true) request: HttpServletRequest,
+                     @RequestBody command: ActivitySeriesCommand): ResponseEntity<ActivitySeriesResult> =
+        ResponseEntity.status(201).cacheControl(CacheControl.noStore()).body(management.createSeries(actors.from(authentication, request), command))
+
     @PutMapping("/api/activities/{activityId}")
     @Operation(operationId = "updateActivity")
     fun update(@Parameter(hidden = true) authentication: Authentication,

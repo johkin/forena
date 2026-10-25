@@ -17,7 +17,7 @@ export function createApiFetch(readAccount: () => Promise<string | null>, unauth
       path === "/api/me/overview" || /^\/api\/me\/activities(?:\?offset=\d{1,6})?$/.test(path)
     );
     const allowedWrite = (["POST", "PUT", "DELETE"].includes(method) && adminResource.test(path)) || (method === "PUT" && writes.test(path)) ||
-      (method === "POST" && path === "/api/activities") ||
+      (method === "POST" && (path === "/api/activities" || path === "/api/activity-series")) ||
       (["PUT", "DELETE"].includes(method) && activityWrites.test(path));
     if (!allowedRead && !allowedWrite) throw new Error("Unsupported API request");
     const account = await readAccount();

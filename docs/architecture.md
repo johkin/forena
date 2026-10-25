@@ -740,3 +740,17 @@ Konfiguration, begränsningar och granskningsflöde finns i [Telegram](telegram.
 Den nya appen har nu modulen `administration` för bootstrap, klubb-/sektions-/lagstruktur och administrativa roller. Den använder identitetsmodulens publika katalog för verifierade konton och uttryckliga egna personkopplingar. `activities` äger aktivitetens kommandon, typer, förval, schemaposter, audit och signalversion. Inga interna repositories anropas över modulgränser och inga modulcykler införs.
 
 Alla administrativa skrivningar serialiseras mot en gemensam låsrad och kontrollerar session/rättigheter efter låsväntan. Aktivitetsskrivningar använder samma livscykellås som kallelsesvar. Struktur och rollfakta lagras i det privata Liquibase-schemat; äldre Next-appens databas och auth är separata. [Flöden och gränser](migration/activity-management.md).
+
+### Aktivitetsserier och ledarens översikt i React/Kotlin
+
+Aktivitetshanteringen skapar veckoserier i en transaktion via
+`POST /api/activity-series`. Kotlin beräknar lokala datum och tider, validerar
+hela urvalet och sparar tillfällen med gemensamt `series_id`. Individuell
+redigering kan uttryckligen lägga till kallelser eller ersätta väntande schema
+i samma transaktion. Befintliga svar och kommentarer bevaras.
+
+Översiktens läsurval omfattar även lag där kontot har `activity.manage`,
+kontrollerat genom samma aktuella rättighetskälla som aktivitetskommandona.
+Personrader och svarsrätt behåller sitt separata urval. Kort utan personlig
+deltagare visar enbart aktivitetsuppgifter; ingen låtsasdeltagare visas.
+Redigeraren öppnas från aktivitetsdetaljer och Ny aktivitet ligger i lagrubriken.

@@ -2,6 +2,8 @@ package se.forena.api.activities
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalTime
 import java.util.UUID
 import tools.jackson.databind.annotation.JsonSerialize
 
@@ -34,6 +36,29 @@ data class ActivityCommand(
     val invitationSelection: ActivityAudience? = null,
     @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC) val personIds: List<UUID> = emptyList(),
     val revision: Long? = null
+)
+
+data class ActivitySeriesCommand(
+    val teamId: UUID,
+    val activityTypeId: UUID? = null,
+    val title: String,
+    val description: String = "",
+    val location: String = "",
+    val startsOn: LocalDate,
+    val endsOn: LocalDate,
+    val startTime: LocalTime,
+    val timeZone: String,
+    @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC) val weekdays: List<Int>,
+    val timingRules: ActivityTimingRules,
+    val invitationMode: String = "none",
+    val invitationAudience: String? = null,
+    val invitationSelection: ActivityAudience? = null
+)
+
+data class ActivitySeriesResult(
+    val seriesId: UUID,
+    val count: Int,
+    @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC) val activities: List<ManagedActivity>
 )
 
 data class ManagedTeam(

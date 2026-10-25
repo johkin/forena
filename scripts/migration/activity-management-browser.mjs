@@ -12,6 +12,7 @@ const browser = await chromium.launch({ headless: true,
 });
 const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
 let writes = 0;
+let seriesWrites = 0;
 let clubCreates = 0;
 let lastCreatedTeamId;
 await context.route('**/*', async route => {
@@ -24,6 +25,7 @@ await context.route('**/*', async route => {
   if (url.pathname.startsWith('/api/admin/') && request.method() !== 'GET') console.log('ADMIN COMMAND', request.method(), url.pathname);
   if (url.pathname === '/api/admin/clubs' && request.method() === 'POST') clubCreates++;
   if (url.pathname.startsWith('/api/activities') && request.method() !== 'GET') writes++;
+  if (url.pathname === '/api/activity-series' && request.method() === 'POST') seriesWrites++;
   const api = url.pathname.startsWith('/api/');
   const response = await fetch(new URL(url.pathname + url.search, api ? backend : frontend), {
     method: request.method(), headers, redirect: 'manual',
@@ -70,7 +72,7 @@ try {
     await onboarding.getByRole('button', { name: 'Nästa', exact: true }).click();
     assert.equal(clubCreates, 0, 'review must not create a club');
     await onboarding.getByRole('button', { name: 'Skapa klubb', exact: true }).click();
-    const club = page.getByRole('region', { name: 'Klubb Browserklubben', exact: true });
+    const club = page.locator('section.card').filter({ has: page.getByRole('heading', { name: 'Browserklubben', exact: true }) });
     await expect(club).toBeVisible();
     await club.getByLabel('Klubbadministratör: e-post', { exact: true }).fill(process.env.FORENA_M09_EMAIL);
     page.once('dialog', confirmation => confirmation.accept());
@@ -112,6 +114,7 @@ try {
     await login(process.env.FORENA_M09_TEAM_ADMIN_EMAIL);
   }
   await page.goto(`${origin}/teams/${teamId}`);
+  await expect(page.getByRole('button', { name: 'Ny aktivitet', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Öppna meny', exact: true }).click();
   const menu = page.getByRole('dialog', { name: 'Huvudmeny' });
   const homeLink = await menu.getByRole('link', { name: 'Min översikt', exact: true }).boundingBox();
@@ -122,7 +125,7 @@ try {
   await page.keyboard.press('Escape');
   await expect(page.getByRole('button', { name: 'Öppna meny', exact: true })).toBeFocused();
   await page.getByRole('button', { name: 'Ny aktivitet', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Lagets aktiviteter' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Lagets aktiviteter' })).toHaveCount(0);
   await expect(page.getByLabel('Lag', { exact: true })).toHaveCount(0);
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('button', { name: 'Övrigt', exact: true })).toBeVisible();
@@ -141,36 +144,65 @@ try {
   await expect(dialog.getByRole('button', { name: 'Skapa aktivitet', exact: true })).toBeVisible();
   await page.screenshot({ path: 'frontend/.evidence/m09-create-mobile.png', fullPage: true });
   await dialog.getByRole('button', { name: 'Skapa aktivitet', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Redigera Browserträning', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Browserträning/ })).toBeVisible();
   await page.reload();
-  await page.getByRole('button', { name: 'Redigera Browserträning', exact: true }).click();
+  await page.getByRole('button', { name: /Browserträning/ }).click();
+  await page.getByRole('button', { name: 'Redigera', exact: true }).click();
   await expect(dialog.getByLabel('Plats', { exact: true })).toHaveValue('Stora planen');
   await dialog.getByLabel('Titel', { exact: true }).fill('Uppdaterad browserträning');
   await dialog.getByRole('button', { name: 'Förhandsgranska', exact: true }).click();
   await dialog.getByRole('button', { name: 'Spara ändring', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Redigera Uppdaterad browserträning', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Redigera Uppdaterad browserträning', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Uppdaterad browserträning', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Redigera', exact: true }).click();
   page.once('dialog', confirmation => confirmation.accept());
   await dialog.getByRole('button', { name: 'Ställ in', exact: true }).click();
   await expect(page.getByText('Aktiviteten ställdes in.', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Redigera Uppdaterad browserträning', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Redigera', exact: true })).toHaveCount(0);
   await page.reload();
   await expect(page.getByText('Uppdaterad browserträning', { exact: true })).toBeVisible();
-  await expect(page.getByText('· Inställd', { exact: true })).toBeVisible();
+  await expect(page.getByText('Aktiviteten är inställd.', { exact: true })).toBeVisible();
   for (const width of [320, 390, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `horizontal overflow at ${width}`);
   }
   await page.screenshot({ path: 'frontend/.evidence/m09-cancelled-desktop.png', fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${origin}/teams/${teamId}`);
+  await page.getByRole('button', { name: 'Ny aktivitet', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Aktivitetsserie', exact: true }).click();
+  await dialog.getByLabel('Titel', { exact: true }).fill('Browserveckoträning');
+  await dialog.getByLabel('Plats', { exact: true }).fill('Örvallen');
+  for (const checkbox of await dialog.locator('input[name=weekdays]:checked').all()) await checkbox.uncheck();
+  await dialog.getByRole('checkbox', { name: 'Mån', exact: true }).check();
+  await dialog.getByText('Välj annat datum', { exact: true }).first().click();
+  await dialog.locator('input[name=startsOn]').fill('2030-10-21');
+  const seriesEnd = dialog.getByRole('group', { name: 'Serien slutar', exact: true });
+  await seriesEnd.getByText('Välj annat datum', { exact: true }).click();
+  await dialog.locator('input[name=endsOn]').fill('2030-11-04');
+  await dialog.getByRole('button', { name: 'Förhandsgranska', exact: true }).click();
+  await expect(dialog.getByRole('button', { name: 'Skapa 3 aktiviteter', exact: true })).toBeVisible();
+  await page.screenshot({ path: 'frontend/.evidence/m09-series-mobile.png', fullPage: false });
+  const [seriesResponse] = await Promise.all([
+    page.waitForResponse(response => new URL(response.url()).pathname === '/api/activity-series' && response.request().method() === 'POST'),
+    dialog.getByRole('button', { name: 'Skapa 3 aktiviteter', exact: true }).click(),
+  ]);
+  assert.equal(seriesResponse.status(), 201);
+  const createdSeries = await seriesResponse.json();
+  assert.equal(createdSeries.count, 3);
+  await expect(page.getByRole('button', { name: /Browserveckoträning/ })).toHaveCount(3);
+  await page.reload();
+  await expect(page.getByRole('button', { name: /Browserveckoträning/ })).toHaveCount(3);
+  assert.equal(seriesWrites, 1, 'one atomic series command');
   assert.equal(writes, 3, 'exactly one create, update and cancellation');
   assert.deepEqual(errors, []);
   if (adminChain) assert.equal(clubCreates, 1, 'one club creation per user confirmation');
   if (adminChain) console.log('PASS first system admin → club + section → club admin → team → separate team-admin account → activity.');
-  console.log('PASS Chromium → Spring → PostgreSQL: create, reload, edit, cancel, reload; mobile and desktop.');
+  console.log('PASS Chromium → Spring → PostgreSQL: create, reload, edit, cancel, reload, weekly series; mobile and desktop.');
 } catch (cause) {
-  console.log('Browser state:', await page.locator('main').innerText({ timeout: 2000 }).catch(() => 'unavailable'));
+  console.log('Browser failure:', String(cause));
+  console.log('Browser state:', (await page.locator('main').innerText({ timeout: 2000 }).catch(() => 'unavailable')).slice(0,12000));
   console.log('Browser errors:', errors);
-  await page.screenshot({ path: 'frontend/.evidence/m09-failure.png', fullPage: true, timeout: 3000 });
+  await page.screenshot({ path: 'frontend/.evidence/m09-failure.png', fullPage: false, timeout: 3000 });
   throw cause;
 } finally {
   await browser.close();

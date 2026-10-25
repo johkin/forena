@@ -53,9 +53,14 @@ class PersonalOverviewService(
         val organizationDtos = orgRows.map { org -> PersonalOrganization(org.id, org.name, org.timeZone,
             orgMemberships.singleOrNull { it.organizationId == org.id }?.role) }
         val byOrganization = organizationDtos.associateBy { it.id }
-        val rows = if (people.isEmpty()) emptyList() else if (id == null)
-            activities.findUpcoming(people.map { it.id }, ownPeople.ifEmpty { people.map { it.id } }, ownPeople.isNotEmpty(), now)
-        else listOfNotNull(activities.findAccessible(id, people.map { it.id }, ownPeople.ifEmpty { people.map { it.id } }, ownPeople.isNotEmpty()))
+        // Boolean guards disable empty scopes; placeholders only keep SQL IN lists valid.
+        val noId = listOf(UUID(0, 0))
+        val personIds = people.map { it.id }.ifEmpty { noId }
+        val ownIds = ownPeople.ifEmpty { noId }
+        val managerIds = managedTeamIds.toList().ifEmpty { noId }
+        val rows = if (id == null)
+            activities.findUpcoming(personIds, ownIds, ownPeople.isNotEmpty(), people.isNotEmpty(), managerIds, managedTeamIds.isNotEmpty(), now)
+        else listOfNotNull(activities.findAccessible(id, personIds, ownIds, ownPeople.isNotEmpty(), people.isNotEmpty(), managerIds, managedTeamIds.isNotEmpty()))
         if (id != null && rows.isEmpty()) throw NoSuchElementException("Aktiviteten kunde inte hittas.")
         // Match the legacy completeness guard: fail explicitly, never publish partial counts/calendar.
         if (rows.size > 20_000) throw ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE)
@@ -76,7 +81,7 @@ class PersonalOverviewService(
             if (accessByTeam[team.id].orEmpty().any { covers(it.startsOn, it.endsOn, today) }) roles += "team_access"
             team.id to PersonalTeam(team.id, team.organizationId, team.name, roles.toList())
         }
-        val invitationRows = if (rows.isEmpty()) emptyList() else
+        val invitationRows = if (rows.isEmpty() || people.isEmpty()) emptyList() else
             invitations.findByActivityIdInAndPersonIdIn(rows.map { it.id }, people.map { it.id })
         val byActivity = invitationRows.groupBy { it.activityId }
         val result = rows.map { row ->

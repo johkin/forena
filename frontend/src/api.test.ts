@@ -107,3 +107,16 @@ it("restricts administration to exact routes and bounded slug checks", async () 
   await expect(request("/api/admin/unknown", { method: "POST" })).rejects.toThrow();
   expect(safeDestination("/administration")).toBe("/administration");
 });
+
+it("allows atomic series creation with account and CSRF binding, without widening other routes", async () => {
+  const transport = vi.fn().mockResolvedValue(Response.json({ count: 3 }));
+  const request = createApiFetch(async () => id, vi.fn(), transport);
+  await request("/api/activity-series", { method: "POST", body: "{}" });
+  expect(transport).toHaveBeenCalledOnce();
+  const headers = new Headers(transport.mock.calls[0][1].headers);
+  expect(headers.get("X-Forena-Account")).toBe(id);
+  expect(headers.get("X-Forena-Request")).toBe("1");
+  await expect(request("/api/activity-series")).rejects.toThrow();
+  await expect(request("/api/activity-series", { method: "PUT" })).rejects.toThrow();
+  await expect(request("/api/activity-series?team=other", { method: "POST" })).rejects.toThrow();
+});

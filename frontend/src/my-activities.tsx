@@ -67,7 +67,7 @@ export function MyActivitiesPage({ request, workspace, notifications=false }: { 
     {workspace ? <p><AppLink href="/">Till min översikt</AppLink></p> : null}
     {error ? <div role="alert"><p>{error}</p><button type="button" onClick={()=>setAttempt(value=>value+1)}>Försök igen</button></div> : null}
     <PersonalHome items={items} activities={activities.map(calendarActivity)} referenceTime={data.reference_time}
-      teamContent={team ? <ActivityManagement key={team.id} teamId={team.id} request={request} onSaved={() => setAttempt(value => value + 1)} /> : undefined}
+      actions={team ? <ActivityManagement key={team.id} teamId={team.id} request={request} onSaved={() => setAttempt(value => value + 1)} /> : undefined}
       title={team?.name ?? organization?.name} introduction={workspace ? "Här visas aktiviteter för dig och de personer du företräder i arbetsytan." : undefined}
       organizations={data.organizations.filter(item=>!workspace || item.id===(organization?.id ?? team?.organization_id)).map(item=>({...item,role:item.role ?? undefined,href:`/organizations/${item.id}`}))}
       teams={data.teams.filter(item=>!workspace || (team ? item.id===team.id : item.organization_id===organization!.id)).map(item=>({id:item.id,organizationId:item.organization_id,name:item.name,roles:item.roles.map(role=>teamRoleLabels[role] ?? role),href:`/teams/${item.id}`}))}

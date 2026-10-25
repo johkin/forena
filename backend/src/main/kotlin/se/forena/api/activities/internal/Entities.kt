@@ -110,6 +110,7 @@ data class ManagedActivityEntity(
     val revision: Long = 0,
     val cancelledAt: Instant? = null,
     val cancellationReason: String? = null,
+    val seriesId: UUID? = null,
     @Transient val newRecord: Boolean = false
 ) : Persistable<UUID> {
     override fun getId(): UUID = activityId

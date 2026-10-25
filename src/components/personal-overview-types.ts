@@ -8,6 +8,7 @@ export type OverviewPersonItem = {
 };
 export type OverviewItem = OverviewPersonItem & {
   activity: Pick<Activity, "id" | "title" | "startsAt" | "endsAt" | "location" | "gatheringAt" | "status" | "responseDueAt">;
+  activityOnly?: boolean;
   team: { name: string };
   organization?: { name: string; timeZone?: string };
 };

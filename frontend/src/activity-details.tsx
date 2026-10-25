@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ActivityManagement } from "../../src/components/activity-management";
 import { AppLink } from "./app-link";
 import { ActivityInvitationResponse, type ParticipationFetch } from "../../src/components/activity-invitation-response";
 import type { PersonalActivity } from "./personal-overview";
@@ -32,6 +33,7 @@ export function ActivityDetails({ activityId,request }: { activityId:string; req
     {activity.gathering_at ? <p>Samling: <time dateTime={activity.gathering_at}>{when(activity.gathering_at)}</time></p> : null}
     {activity.location ? <p>Plats: {activity.location}</p> : null}
     {activity.description ? <p className="activity-description">{activity.description}</p> : null}
+    <ActivityManagement key={activity.id} teamId={activity.team.id} activityId={activity.id} request={request} onSaved={() => setAttempt(value => value + 1)} />
     {activity.response_due_at ? <p>Svara senast: <time dateTime={activity.response_due_at}>{when(activity.response_due_at)}</time></p> : null}
     {ended ? <p role="status">Aktiviteten är avslutad. Svaren kan inte ändras.</p> : null}
     {invitations ? <ActivityInvitationResponse activityId={activityId} cancelled={cancelled} readOnly={ended} request={request} /> : <>
