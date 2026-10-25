@@ -63,15 +63,15 @@ export function TeamMenu({
       {!hideTrigger ? <button
         className={`mobile-menu-button ${triggerOnly ? "" : "team-menu-desktop-trigger"}`}
         type="button"
-        aria-label={open ? "Stäng meny" : "Öppna meny"}
         aria-expanded={open}
         aria-controls={triggerOnly ? "mobile-main-navigation" : "main-navigation"}
         onClick={() => setOpen((current) => !current)}
       >
-        {open ? "✕" : "☰"}
+        <span className="sr-only">{open ? "Stäng meny" : "Öppna meny"}</span>
+        <span aria-hidden="true">{open ? "✕" : "☰"}</span>
       </button> : null}
 
-      {open ? <button className="mobile-menu-backdrop" aria-label="Stäng meny" type="button" onClick={() => setOpen(false)} /> : null}
+      {open ? <button className="mobile-menu-backdrop" type="button" onClick={() => setOpen(false)}><span className="sr-only">Stäng meny</span></button> : null}
 
       {!triggerOnly || open ? <aside id={triggerOnly ? "mobile-main-navigation" : "main-navigation"} className={`sidebar ${open ? "mobile-open" : ""}`} aria-label="Huvudmeny">{links}</aside> : null}
     </>
