@@ -1,5 +1,25 @@
 # Migreringsstatus
 
+## Rättning av bildjämförelsen efter PR #181, 2026-10-25
+
+CI-körning 40222654506 byggde båda apparna och godkände backend/native samt
+sessions-, aktivitets- och administrationsproven. Bildjämförelsen stoppade
+application-jobbet: 28 av 260 760 pixlar i systemstartsidan skilde ett RGB-steg
+längs avrundade kanter. Aktivitetsredigerarens bilder var identiska.
+Den tidigare areagränsen på 0,01 procent gav ett falskt fel.
+
+Jämförelsen begränsar nu både storlek och utbredning: högst ett RGB-steg i
+högst 0,1 procent av pixlarna, med identisk opacitet och bildstorlek. En enda
+större färgskillnad stoppar kontrollen. Dessutom jämförs exakt CSS och relativ
+geometri för samtliga element i både systemstartsidan och redigeraren.
+Regressioner provar CI-mönstret, enstaka tydliga pixelskillnader, utbredd
+färgförskjutning, opacitet och ändrade dimensioner. Apparnas kod ändras inte.
+
+Lokalt godkända: 1 170 tester (inklusive nio bildregressioner), typkontroll,
+lint och Next-bygge. De ursprungliga CI-bilderna klarar den nya jämförelsen.
+Produktionsbyggena klarar browserprovet med systemets Chromium vid 320, 390,
+768 och 1280 px. CI med Playwrights Chromium redovisas separat i rättnings-PR:en.
+
 ## Next som UI-förlaga: administration och aktivitetsredigering, 2026-10-25
 
 Bas är mergad PR #177 (`6a44b1f`). Next-appen är nu uttryckligen kanonisk i
