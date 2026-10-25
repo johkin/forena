@@ -1,5 +1,72 @@
 # Migreringsstatus
 
+## M06/M10 tillsammans: beständiga kallelser och kontrollerad e-post, 2026-10-25
+
+Implementation: `2b53fb0106eb750855dabe70e11ac8f1b05f8b5c` på
+`feat/m06-m10-delivery`, från main `88dce8e`. [Körguide, ansvar och driftgränser](invitation-delivery.md).
+
+- Migration 016 inför Moduliths JDBC v2-register, mottagarcheckpoints,
+  oföränderliga snapshots, transportförsök och heartbeat. Befintliga scheman får
+  beständig backoff, slutförande och felstatus. Samma owner-/runtime-gräns gäller.
+- Schemalagd materialisering avgränsar aktuella målgrupper och verifierade
+  konton med aktiv explicit personåtkomst. Påminnelser kräver obesvarad kallelse;
+  inställning, påbörjad aktivitet och passerad svarstid stoppar aktuellt schema.
+- Kallelser, checkpoint, schemakvittens och registerpost är atomära.
+  `@TransactionalEventListener`/`REQUIRES_NEW` gör en idempotent överlämning;
+  Modulith äger alla registerskrivningar. En dokumenterad read-only SPI-adapter
+  begränsar återtagsläsning och shutdown-diagnostik till 20 publiceringar.
+- Spring Security skyddar separata stateless arbetar-/statusendpoints. Arbetaren
+  driver beständigt arbete under HTTP-begäran. Första försöket sparas före
+  provideranropet; samma nyckel och payload återanvänds. 23-timmarsgräns och
+  högst fem försök stoppar osäkra automatiska omsändningar.
+- Resend använder Springs deklarativa HTTP Service Client, registrerad med
+  `@ImportHttpServices` och konfigurerad via `RestClientHttpServiceGroupConfigurer`.
+  Auth återanvänder samma adapter. Ny/omarbetad Kotlin-kod är formaterad med
+  ktfmt 0.64:s Kotlin language-style.
+- Extern verksamhetsleverans är avstängd som standard. Aktivering kräver en
+  separat arbetartoken och uttryckliga testmottagare. Adresser utanför listan
+  spärras utan HTTP. Web Push ingår fortsatt i M15A.
+
+Lokalt verifierat för implementationens källkod:
+
+- Full Maven `verify`: 117 testfall, 114 godkända, inga fel och tre överhoppade
+  valbara browserprov. `MigrationTest` omfattar 16 fall för tom installation
+  och uppgradering från alla tidigare baslinjer, med dataskydd och runtime-grants.
+- Därefter `-Pnative -Dtest=NotificationTest,ApiTest,EmailProfileTest,ResendEmailSenderTest verify`:
+  80 testfall, 78 godkända och två överhoppade browserprov, inga fel.
+  Detta provar även den nya standardavstängda arbetarspärren mot en giltig
+  browsercookie och Springs hanterade HTTP-klient/profilval.
+- Efter sista filsamlingen/formateringen och tillagt statusprov:
+  `-Pnative '-Dtest=ArchitectureTest,NotificationTest#worker*' verify`, tre
+  godkända testfall utan överhoppningar, samt förnyad AOT-generering/paketering.
+- NotificationTest täcker rollback efter sen domänskrivning, replay efter
+  registerkvittensförlust, aktuell personåtkomst/mottagarbehörighet,
+  samtidiga arbetare, provider-timeout, backoff, permanent fel, testmottagarspärr,
+  passerat idempotensfönster och begränsad registerläsning med 10 000 poster.
+  Separata riktiga JVM:er avslutas med exit 137 före/efter syntetisk providereffekt
+  och med SIGTERM efter effekt. Återtag ger en slutlig providereffekt och kvittens.
+- Färdig AOT-JAR har klarat `local-smoke.py --aot-runtime` mot lokal PostgreSQL:
+  tom bootstrap, migrationsläge två gånger, owner/runtime-verifiering, auth- och
+  admin-kedja samt verkligt HTTP-anrop till den aktiverade arbetaren efter
+  AOT-bygget. Schema, registry-handover, testmottagarspärr, replay och status
+  passerar utan externa e-postanrop. Detta är ett JVM/AOT-prov, inte native-binär.
+- 1 170 frontendtester, `npm run typecheck`, `npm run lint`, `npm run build`
+  och `npm run frontend:build` godkända. OpenAPI/TypeScript-kontraktskontrollen
+  är godkänd och det publika kontraktet oförändrat. 39 Python-releasekontroller
+  är godkända, inklusive routingen av arbetar-/statuspaths. Diffkontroll godkänd.
+
+Ingen molnmigration, produktionspublicering, verkligt mejlutskick eller
+scheduleraktivering har genomförts. Native-/OCI-bygge och verkliga browserprov
+är inte körda lokalt; Chromium saknas här. Äldre Supabase-schemats reset/pgTAP
+är inte omkörda; ändringen gäller det privata Liquibase-schemat och är verifierad
+mot lokal PostgreSQL. CI-resultat måste knytas till PR:ns aktuella head.
+
+Nästa driftacceptans är M22G: aktuellt native-/OCI-prov, oberoende väckning och
+larm, scheduler-tillitsgräns, kapacitet samt ett kontrollerat riktigt Resend-prov
+från verifierad avsändare. Gamla Next-köer äger fortsatt sina egna data; inga
+producenter kopieras eller dubbleras för den privata Kotlin-kedjan. Produktionens
+notifieringspolicy, Telegram, Web Push och disciplinernas signalworker återstår.
+
 ## Rättning av bildjämförelsen efter PR #181, 2026-10-25
 
 CI-körning 40222654506 byggde båda apparna och godkände backend/native samt
