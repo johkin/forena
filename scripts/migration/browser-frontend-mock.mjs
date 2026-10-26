@@ -19,9 +19,9 @@ const organization={id:'55555555-5555-4555-8555-555555555555',name:'Exempelföre
 const team={id:'66666666-6666-4666-8666-666666666666',organization_id:organization.id,name:'Ungdomslaget',roles:['guardian','leader','team_access']};
 const managedTeam={id:team.id,organizationId:organization.id,name:team.name,organizationName:organization.name,timeZone:organization.time_zone,canManageInvitations:true};
 let activityCreates=0;
-const activities=()=>[{id,title:'Träning med laget',starts_at:'2030-10-26T16:00:00Z',ends_at:'2030-10-26T17:30:00Z',gathering_at:null,response_due_at:null,location:'Örvallen',description:'Ta med vattenflaska.',status:'scheduled',organization,team,
+const activities=()=>[{id,can_manage_activities:true,title:'Träning med laget',starts_at:'2030-10-26T16:00:00Z',ends_at:'2030-10-26T17:30:00Z',gathering_at:null,response_due_at:'2030-10-19T10:00:00Z',location:'Örvallen',description:'Ta med vattenflaska.',status:'scheduled',organization,team,
  people:invitations.map(invitation=>({id:invitation.person_id,name:invitation.name,invitation}))},
- {id:users[1],title:'Nästa aktivitet',starts_at:'2030-10-27T16:00:00Z',ends_at:'2030-10-27T17:30:00Z',gathering_at:null,response_due_at:null,location:'Uip',description:'',status:'scheduled',organization,team,people:invitations.map(invitation=>({id:invitation.person_id,name:invitation.name,invitation:null}))}];
+ {id:users[1],can_manage_activities:true,title:'Nästa aktivitet',starts_at:'2030-10-27T16:00:00Z',ends_at:'2030-10-27T17:30:00Z',gathering_at:null,response_due_at:null,location:'Uip',description:'',status:'scheduled',organization,team,people:invitations.map(invitation=>({id:invitation.person_id,name:invitation.name,invitation:null}))}];
 const view=()=>({user:{id:users[current],email:current===0?'family@example.invalid':'other@example.invalid'}});
 await context.route('**/config.json',r=>r.fulfill({json:{activityId:id,version:id}}));
 await context.route('https://*.supabase.co/**',r=>{directProviderRequests++;return r.abort();});
@@ -135,6 +135,7 @@ try{
  await expect(replyFilter).toHaveAttribute('aria-pressed','true');
  await replyFilter.click();
  await page.getByRole('link',{name:'Visa kallelser som behöver svar'}).click();await expect(page.getByRole('heading',{name:'Dina kallelser'})).toBeVisible();
+ await expect(page.getByRole('button',{name:/Träning med laget/})).toHaveCount(1);
  await page.getByRole('link',{name:'Till min översikt',exact:true}).click();
  await page.getByRole('link',{name:organization.name,exact:true}).click();await expect(page.getByRole('heading',{name:organization.name,exact:true,level:1})).toBeVisible();
  await page.getByRole('link',{name:'Till min översikt',exact:true}).click();
@@ -218,7 +219,7 @@ try{
  await expect(page.getByRole('button',{name:'Behöver svar (0)',exact:true})).toBeVisible();
  await expect(upcoming.getByRole('button',{name:/Träning med laget/})).toHaveCount(1);await expect(upcoming.locator('.badge')).toHaveText('2');
  await page.reload();await page.getByRole('button',{name:'Behöver svar (0)',exact:true}).click();
- await expect(page.getByText('Alla aktuella kallelser i urvalet är besvarade.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Inga kallelser i urvalet behöver svar just nu.',{exact:true})).toBeVisible();
  await page.goto(new URL(`/activities/${id}`,base).href);
  platformDenied=true;await page.reload();await expect(page.getByRole('alert')).toBeVisible();await expect(page.getByRole('heading',{name:'Kallelser'})).toBeVisible();
  platformDenied=false;await page.reload();await expect(row).toHaveCount(1);

@@ -694,6 +694,66 @@ class ApiTest {
         assertThat(json.readTree(respond("{}").body()).get("error").asString()).isEqualTo("Ogiltigt kallelsesvar.")
         Files.writeString(Path.of("target/openapi.json"), result.body())
     }
+    @Test fun `deadline blocks participant answers and comments without changing history`() {
+        admin.update("update forena.activity set response_due_at=now()-interval '1 minute' where id=?", activity)
+        assertThat(respond("""{"response":"accepted","comment":"För sent"}""").statusCode()).isEqualTo(409)
+        assertThat(respond("""{"response":"pending"}""").statusCode()).isEqualTo(409)
+        assertThat(row()["response"]).isEqualTo("pending")
+        assertThat(history()).isZero()
+        assertThat(dirty()).isZero()
+        val detail = json.readTree(request("/api/activities/$activity").body())
+        assertThat(detail.get("can_manage_activities").asBoolean()).isFalse()
+    }
+
+    @Test fun `current activity permission bypasses the deadline only for authorized people and the same team`() {
+        val team = admin.queryForObject("select team_id from forena.activity where id=?", UUID::class.java, activity)!!
+        admin.update("update forena.activity set response_due_at=now()-interval '1 minute' where id=?", activity)
+        // Another person's leadership/permission is not inherited through guardianship.
+        admin.update("insert into forena.team_permission_assignment(organization_id,team_id,person_id,permission,starts_on) values(?,?,?,'activity.manage',current_date)", organization, team, child1)
+        assertThat(respond("""{"response":"accepted"}""").statusCode()).isEqualTo(409)
+        val otherTeam = UUID.randomUUID()
+        admin.update("insert into forena.team(id,organization_id,name) values(?,?,'Annat lag')", otherTeam, organization)
+        admin.update("insert into forena.team_permission_assignment(organization_id,team_id,person_id,permission,starts_on) values(?,?,?,'activity.manage',current_date)", organization, otherTeam, own)
+        assertThat(respond("""{"response":"accepted"}""").statusCode()).isEqualTo(409)
+        admin.update("insert into forena.team_permission_assignment(organization_id,team_id,person_id,permission,starts_on) values(?,?,?,'activity.manage',current_date)", organization, team, own)
+        assertThat(respond("""{"response":"accepted"}""").statusCode()).isEqualTo(200)
+        assertThat(json.readTree(request("/api/activities/$activity").body()).get("can_manage_activities").asBoolean()).isTrue()
+        val foreign = admin.queryForObject("select id from forena.invitation where activity_id=? and person_id=?", UUID::class.java, activity, other)!!
+        assertThat(request("/api/invitations/$foreign/respond", """{"response":"accepted"}""").statusCode()).isEqualTo(403)
+        admin.update("update forena.team_permission_assignment set active=false where person_id=?", own)
+        assertThat(respond("""{"response":"declined"}""").statusCode()).isEqualTo(409)
+        assertThat(row()["response"]).isEqualTo("accepted")
+        assertThat(json.readTree(request("/api/activities/$activity").body()).get("can_manage_activities").asBoolean()).isFalse()
+    }
+
+    @Test fun `deadline exception rechecks permission after waiting for the activity lock`() {
+        val team = admin.queryForObject("select team_id from forena.activity where id=?", UUID::class.java, activity)!!
+        admin.update("insert into forena.team_permission_assignment(organization_id,team_id,person_id,permission,starts_on) values(?,?,?,'activity.manage',current_date)", organization, team, own)
+        admin.update("update forena.activity set response_due_at=now()-interval '1 minute' where id=?", activity)
+        DriverManager.getConnection(database.jdbcUrl, database.username, database.password).use { connection ->
+            connection.autoCommit = false
+            connection.prepareStatement("select id from forena.activity where id=? for update").use {
+                it.setObject(1, activity); it.executeQuery().close()
+            }
+            val result = CompletableFuture.supplyAsync { respond("""{"response":"accepted"}""") }
+            awaitRuntimeLocks(1)
+            admin.update("update forena.team_permission_assignment set active=false where person_id=?", own)
+            connection.commit()
+            assertThat(result.get(5, SECONDS).statusCode()).isEqualTo(409)
+        }
+        assertThat(history()).isZero()
+        assertThat(dirty()).isZero()
+    }
+
+    @Test fun `management never bypasses cancellation or activity end`() {
+        managedTeam()
+        admin.update("update forena.activity set response_due_at=now()-interval '1 minute',status='cancelled' where id=?", activity)
+        assertThat(respond("""{"response":"accepted"}""").statusCode()).isEqualTo(409)
+        admin.update("update forena.activity set status='scheduled',response_due_at=now()-interval '3 hours',starts_at=now()-interval '2 hours',ends_at=now()-interval '1 hour' where id=?", activity)
+        assertThat(respond("""{"response":"accepted"}""").statusCode()).isEqualTo(409)
+        assertThat(history()).isZero()
+    }
+
     private fun managedTeam(): UUID {
         val team = admin.queryForObject("select team_id from forena.activity where id=?", UUID::class.java, activity)!!
         admin.update("insert into forena.organization_member(organization_id,subject,role) values(?,?,'admin')", organization, parent)

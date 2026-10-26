@@ -1,7 +1,7 @@
 import { expect,it } from "vitest";
 import { confirmedAnswer, overviewItems, type Overview } from "./personal-overview";
 const data:Overview={reference_time:"2029-12-01T00:00:00Z",organizations:[],teams:[],activities:[{
- id:"a",title:"Träning",starts_at:"2030-01-01T10:00:00Z",ends_at:"2030-01-01T12:00:00Z",gathering_at:null,response_due_at:null,location:"Örvallen",description:"",status:"scheduled",
+ id:"a",can_manage_activities:false,title:"Träning",starts_at:"2030-01-01T10:00:00Z",ends_at:"2030-01-01T12:00:00Z",gathering_at:null,response_due_at:null,location:"Örvallen",description:"",status:"scheduled",
  organization:{id:"o",name:"Klubb",time_zone:"Europe/Stockholm",role:null},team:{id:"t",name:"F2016",organization_id:"o",roles:[]},
  people:[{id:"p1",name:"Johan",invitation:{id:"i1",person_id:"p1",name:"Johan",response:"pending",response_comment:null}},
  {id:"p2",name:"Tilda",invitation:{id:"i2",person_id:"p2",name:"Tilda",response:"declined",response_comment:"Hämtas senare"}},
@@ -26,4 +26,10 @@ it("keeps a managed activity visible without inventing a participant or response
  expect(rows[0].activityOnly).toBe(true);
  expect(rows[0].invitation).toBeUndefined();
  expect(rows[0].member.displayName).toBe("");
+});
+
+it("uses verified activity permission rather than leader labels for the deadline exception", () => {
+ const activity = data.activities[0];
+ expect(overviewItems([{...activity,team:{...activity.team,roles:["leader"]},can_manage_activities:false}])[0].canManageActivity).toBe(false);
+ expect(overviewItems([{...activity,can_manage_activities:true}])[0].canManageActivity).toBe(true);
 });

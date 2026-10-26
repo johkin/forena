@@ -38,3 +38,14 @@ it("defers reads while a response is being saved",()=>{
   ActivityInvitationResponse({activityId:"a",cancelled:false});
   hooks.effects[1]();expect(fetch).not.toHaveBeenCalled();
 });
+
+it("disables all response controls and rejects clicks after the deadline", () => {
+ const request = vi.fn();
+ const tree = ActivityInvitationResponse({ activityId:"a",cancelled:false,responseClosed:true,request });
+ const controls = elements(tree).filter(element => element.type === "button" || element.type === "input");
+ expect(controls.length).toBeGreaterThan(0);
+ expect(controls.every(element => element.props.disabled)).toBe(true);
+ const button = controls.find(element => element.type === "button");
+ (button?.props.onClick as () => void)();
+ expect(request).not.toHaveBeenCalled();
+});

@@ -4,6 +4,21 @@ import { PersonalHome } from "./personal-home";
 import type { OverviewItem } from "./personal-overview-types";
 import type { Activity } from "../domain/club";
 
+it("counts a manager’s mixed family invitation after the response deadline, until the activity ends", () => {
+ const activity: Activity = { id:"training", organizationId:"club", teamId:"team", title:"Träning", location:"Örvallen",
+  startsAt:"2026-10-26T16:00:00Z", endsAt:"2026-10-26T17:00:00Z", responseDueAt:"2026-10-26T10:00:00Z" };
+ const items: OverviewItem[] = (["accepted", "pending"] as const).map((response, index) => ({
+  activity, canManageActivity:true, team:{name:"F2016"}, member:{id:`p${index}`,displayName:index === 0 ? "Johan" : "Tilda"}, invitation:{id:`i${index}`,response},
+ }));
+ for (const referenceTime of ["2026-10-26T12:00:00Z", activity.startsAt]) {
+  const html = renderToStaticMarkup(<PersonalHome items={items} activities={[activity]} organizations={[]} teams={[]}
+   referenceTime={referenceTime} onOpenActivity={() => {}} />);
+  expect(html).toContain("Behöver svar (1)");
+  expect(html.match(/class="personal-activity-row"/g)).toHaveLength(1);
+  expect(html).toContain("Ej svarat");
+ }
+});
+
 it("shows each activity once and counts pending activities across the complete dataset",()=>{
  const activities:Activity[]=Array.from({length:55},(_,index)=>({id:`a${index}`,organizationId:"o",teamId:"t",title:`Aktivitet ${index}`,startsAt:"2030-01-01T10:00:00Z",endsAt:"2030-01-01T12:00:00Z",location:"Örvallen"}));
  const items:OverviewItem[]=activities.flatMap(activity=>["Johan","Tilda"].map((name,index)=>({activity,organization:{name:"Klubb",timeZone:"Europe/Stockholm"},team:{name:"F2016"},member:{id:name,displayName:name},invitation:activity.id==="a54"?{id:`i${index}`,response:"pending" as const}:undefined})));

@@ -1,5 +1,6 @@
 "use client";
 
+import { invitationResponseOpen } from "../lib/pending-invitations";
 import { OverviewInvitationResponse } from "./overview-invitation-response";
 import type { OverviewItem, OverviewAnswered, OverviewRespond } from "./personal-overview-types";
 import type { ParticipationFetch } from "./activity-invitation-response";
@@ -72,7 +73,16 @@ export function PersonalOverview<T extends OverviewItem>({ activities, timeZone,
             </span>
             <b aria-hidden="true">→</b>
           </button>
-          <div className="personal-activity-people">{people.filter(person => !person.activityOnly).map(person => <OverviewInvitationResponse key={person.member.id} item={person} displayName={names.get(person.member.id)} readOnly={person.activity.status === "cancelled" || Date.parse(person.activity.endsAt) <= Date.parse(referenceTime ?? new Date().toISOString())} demo={demo} onAnswered={onAnswered} request={request} onRespond={onRespond} busy={person.invitation ? pendingInvitations?.has(person.invitation.id) : false} />)}</div>
+          <div className="personal-activity-people">{people.filter(person => !person.activityOnly).map(person => {
+            const currentTime = referenceTime ?? new Date().toISOString();
+            const deadlinePassed = person.invitation && person.activity.responseDueAt
+              && Date.parse(person.activity.responseDueAt) <= Date.parse(currentTime) && !person.canManageActivity;
+            return <OverviewInvitationResponse key={person.member.id} item={person} displayName={names.get(person.member.id)}
+              readOnly={!invitationResponseOpen(person, currentTime)}
+              closedMessage={deadlinePassed ? "Svarstiden har gått ut" : undefined}
+              demo={demo} onAnswered={onAnswered} request={request} onRespond={onRespond}
+              busy={person.invitation ? pendingInvitations?.has(person.invitation.id) : false} />;
+          })}</div>
         </div>;
       })}
     </div> : <p className="overview-empty">{emptyMessage}</p>}

@@ -1031,6 +1031,7 @@ export interface components {
             label?: string;
         };
         PersonalActivity: {
+            can_manage_activities: boolean;
             description: string;
             /** Format: date-time */
             ends_at: string;

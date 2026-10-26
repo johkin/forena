@@ -62,6 +62,12 @@ Vite och Next delar `PersonalHome`, `PersonalOverview`, `TeamCalendar`,
 Förena · Personligt och ingressen från målbilden, Agenda/Kalender,
 filterchips, Kommande aktiviteter med räknare och Mina lag och föreningar.
 Behöver svar är ett av/på-filter med antal aktiviteter inom valt lag.
+Efter sista svarstid gråas vanliga deltagares svarsknappar ut och kallelsen
+ingår inte i Behöver svar. Verifierad `activity.manage` för aktivitetens lag
+ger undantag från svarstiden, fram till aktivitetens slut. En visad rolletikett
+som Ledare ger inte i sig undantag. Samma villkor används på kallelsesidan,
+i agendan och i kalenderns urval; servern kontrollerar varje skrivning.
+Inställda och avslutade aktiviteter kan aldrig besvaras genom undantaget.
 Alla lag är förvalt; lagchips visar förening och lag och kombineras med
 svarsfiltret. Varje aktivitet visas en gång i datumordning. Båda vyerna
 behåller samma filter; ett tomt urval har förklarande text och tillgängliga filter.

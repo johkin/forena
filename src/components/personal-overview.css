@@ -75,3 +75,9 @@
 .activity-details-toolbar { display:flex; justify-content:flex-start; margin-bottom:12px; }
 .activity-details-toolbar:empty, .activity-details-toolbar:has(> .activity-management:empty) { display:none; }
 .activity-edit-button { display:inline-flex; align-items:center; justify-content:center; padding:10px; }
+
+.personal-activity-person[data-read-only] .overview-response-actions button:disabled,
+[data-response-closed] .personal-response button:disabled {
+  background:var(--surface-container); color:var(--ink-soft); border-color:var(--line); cursor:default; opacity:1;
+}
+[data-response-closed] input:disabled { cursor:default; }

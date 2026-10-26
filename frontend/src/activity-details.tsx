@@ -1,3 +1,5 @@
+import { invitationResponseOpen } from "../../src/lib/pending-invitations";
+import { calendarActivity } from "./personal-overview";
 import { useEffect, useState } from "react";
 import { ActivityManagement } from "../../src/components/activity-management";
 import { ActivityInvitationResponse, type ParticipationFetch } from "../../src/components/activity-invitation-response";
@@ -24,6 +26,9 @@ export function ActivityDetails({ activityId,request }: { activityId:string; req
   const cancelled=activity.status==="cancelled";
   const ended=Date.parse(activity.ends_at)<=now;
   const invitations=activity.people.some(person=>person.invitation!==null);
+  const responseClosed = !invitationResponseOpen({
+    activity:calendarActivity(activity), canManageActivity:activity.can_manage_activities,
+  }, new Date(now).toISOString());
   return <><section className="card activity-details" aria-label="Aktivitetsdetaljer">
     <div className="activity-details-toolbar">
       <ActivityManagement key={activity.id} teamId={activity.team.id} activityId={activity.id} request={request} onSaved={() => setAttempt(value => value + 1)} />
@@ -36,7 +41,7 @@ export function ActivityDetails({ activityId,request }: { activityId:string; req
     {activity.description ? <p className="activity-description">{activity.description}</p> : null}
     {activity.response_due_at ? <p>Svara senast: <time dateTime={activity.response_due_at}>{when(activity.response_due_at)}</time></p> : null}
     {ended ? <p role="status">Aktiviteten är avslutad. Svaren kan inte ändras.</p> : null}
-    {invitations ? <ActivityInvitationResponse activityId={activityId} cancelled={cancelled} readOnly={ended} request={request} /> : <>
+    {invitations ? <ActivityInvitationResponse activityId={activityId} cancelled={cancelled} readOnly={ended} responseClosed={responseClosed} request={request} /> : <>
       {cancelled ? <p role="status">Aktiviteten är inställd.</p> : null}
       <div className="personal-activity-people">{activity.people.map(person=><p key={person.id}><strong>{person.name}</strong> · Ingen kallelse ännu.</p>)}</div>
     </>}
