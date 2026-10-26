@@ -134,9 +134,15 @@ class ActivityManagementService(
         for ((index, due) in times.withIndex()) {
             val kind = if (index == 0) "invitation" else "reminder"
             val previous = existing.singleOrNull { it.kind == kind && it.dueAt == due }
-            schedules.save(ActivityScheduleEntity(previous?.id, row.activityId, team.organizationId, kind, due,
-                audienceRoles = roles.joinToString(","), personIds = personIds.joinToString(","),
-                groupIds = selectedGroups.joinToString(","), responsibilityTypeIds = selectedResponsibilities.joinToString(",")))
+            val entry = previous ?: ActivityScheduleEntity(null, row.activityId, team.organizationId, kind, due)
+            schedules.save(
+                entry.copy(
+                    audienceRoles = roles.joinToString(","),
+                    personIds = personIds.joinToString(","),
+                    groupIds = selectedGroups.joinToString(","),
+                    responsibilityTypeIds = selectedResponsibilities.joinToString(","),
+                )
+            )
         }
     }
 

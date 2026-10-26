@@ -752,6 +752,56 @@ class ApiTest {
         assertThat(preserved.get(0).get("response_comment").asString()).isEqualTo("Kommer direkt")
     }
 
+    @Test
+    fun `editing unchanged schedules preserves delivery state and retry history`() {
+        val team = managedTeam()
+        val extra =
+            ""","invitationMode":"schedule","invitationSelection":{"roles":["participant"]}"""
+        val body = activityBody(team, extra)
+        val created = request("/api/activities", body, method = "POST")
+        assertThat(created.statusCode()).isEqualTo(201)
+        val id = UUID.fromString(json.readTree(created.body()).get("activity").get("id").asString())
+        val query = "select * from forena.activity_schedule where activity_id=? order by id"
+
+        for ((revision, state) in
+            listOf("pending", "completed", "failed", "cancelled").withIndex()) {
+            admin.update(
+                "update forena.activity_schedule set state=?, attempts=3, next_attempt=due_at+interval '5 minutes', last_error='materialization-failed', completed_at=case when ?='completed' then due_at else null end where activity_id=?",
+                state,
+                state,
+                id,
+            )
+            val before = admin.queryForList(query, id)
+            assertThat(before).isNotEmpty()
+            val changed =
+                activityBody(team, "$extra,\"revision\":$revision")
+                    .replace("Ny aktivitet", "Ändrad aktivitet $revision")
+            assertThat(request("/api/activities/$id", changed).statusCode()).isEqualTo(200)
+            assertThat(admin.queryForList(query, id)).isEqualTo(before)
+        }
+
+        admin.update(
+            "update forena.activity_schedule set state='pending', completed_at=null where activity_id=?",
+            id,
+        )
+        val previous = admin.queryForList(query, id)
+        val moved = activityBody(team, "$extra,\"revision\":4").replace("2030-10-25", "2030-10-26")
+        assertThat(request("/api/activities/$id", moved).statusCode()).isEqualTo(200)
+        val schedules = admin.queryForList(query, id)
+        val previousIds = previous.map { it["id"] }.toSet()
+        assertThat(schedules.filter { it["id"] in previousIds })
+            .isEqualTo(previous.map { it + ("state" to "cancelled") })
+        val added = schedules.filter { it["id"] !in previousIds }
+        assertThat(added).hasSize(previous.size)
+        for (entry in added) {
+            assertThat(entry["state"]).isEqualTo("pending")
+            assertThat(entry["attempts"]).isEqualTo(0)
+            assertThat(entry["next_attempt"]).isEqualTo(entry["due_at"])
+            assertThat(entry["last_error"]).isNull()
+            assertThat(entry["completed_at"]).isNull()
+        }
+    }
+
     @Test fun `weekly series creates all occurrences with one identity and rolls back a late failure`() {
         val team = managedTeam()
         val body = """{"teamId":"$team","title":"Veckoträning","startsOn":"2030-10-21","endsOn":"2030-11-04","startTime":"18:00","timeZone":"Europe/Stockholm","weekdays":[1],"timingRules":{"duration":"PT1H","gatheringRule":"start-15m"}}"""
