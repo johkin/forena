@@ -54,6 +54,28 @@ it("allows only bounded overview read paths", async () => {
   expect(transport).toHaveBeenCalledTimes(2);
 });
 
+it("allows account-bound calendar and disposition reads without accepting scope overrides", async () => {
+  const transport = vi.fn().mockResolvedValue(Response.json({}));
+  const account = vi.fn(async () => id);
+  const request = createApiFetch(account, vi.fn(), transport);
+  await request("/api/me/calendar?month=2030-01");
+  await request("/api/me/calendar?month=2030-12");
+  await request(`/api/activities/${id}/disposition`);
+  for (const [, init] of transport.mock.calls) {
+    expect(new Headers(init.headers).get("X-Forena-Account")).toBe(id);
+    expect(init.credentials).toBe("same-origin");
+  }
+  for (const path of ["/api/me/calendar", "/api/me/calendar?month=2030-00",
+    "/api/me/calendar?month=2030-13", "/api/me/calendar?month=2030-1",
+    "/api/me/calendar?month=2030-01&subject=other", `/api/activities/${id}/disposition?subject=other`]) {
+    await expect(request(path)).rejects.toThrow("Unsupported API request");
+  }
+  await expect(request("/api/me/calendar?month=2030-01", { method: "PUT" })).rejects.toThrow();
+  await expect(request(`/api/activities/${id}/disposition`, { method: "POST" })).rejects.toThrow();
+  expect(account).toHaveBeenCalledTimes(3);
+  expect(transport).toHaveBeenCalledTimes(3);
+});
+
 it("allowlists the complete overview and exact activity reads while rejecting scope overrides",async()=>{
  const transport=vi.fn().mockResolvedValue(Response.json({}));const request=createApiFetch(async()=>id,vi.fn(),transport);
  await request("/api/me/overview");await request(`/api/activities/${id}`);

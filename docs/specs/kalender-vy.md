@@ -206,15 +206,15 @@ nytt registreringssätt. Produktkravens status är fortsatt Redo.
 | AK-008 | K-004, K-018 | Implementerat och verifierat: en aktivitetsknapp med separata personrader, renderer- och browserprov. |
 | AK-009 | K-014, K-015, K-017 | Implementerat och verifierat: Deltog/Deltog inte/Deltagande okänt med text, skilda färger och tillgängligt knappinnehåll; enhetstest och browser. |
 | AK-010 | K-016 | Implementerat och verifierat: framtida aktivitet ger ingen faktisk närvarostatus, oberoende av svar; `personal-calendar.test.ts`. |
-| AK-011 | K-019, K-020 | Implementerat. Kotlin-API verifierat före/efter utskick, även utan svar. Supabase-RPC och pgTAP-prov tillagda; Supabase-integrationskörningen är blockerad enligt begränsningen nedan. |
-| AK-012 | K-021, K-022 | Implementerat. Kotlin verifierar borttagningsmarkering och 404; UI visar Inställd utan närvaro. Supabase-integration återstår att köra. |
+| AK-011 | K-019, K-020 | Implementerat. Kotlin-API verifierat före/efter utskick, även utan svar. Legacy-RPC och pgTAP-prov verifierade i CI-körning 40412604362 på commit `77217df`. |
+| AK-012 | K-021, K-022 | Implementerat. Kotlin verifierar borttagningsmarkering och 404; UI visar Inställd utan närvaro. Legacy-integration verifierad i samma CI-körning. |
 | AK-013 | K-023, K-011 | Implementerat och verifierat: kombinerade person-/lagurval i `personal-calendar.test.ts`; filterminne i `calendar-filters.test.tsx`. |
 | AK-014 | K-024 | Implementerat och verifierat: gemensamt svarsvillkor bevarat; befintliga översikts-/svarstester och kalenderns browserexempel. |
 | AK-015 | K-025 | Implementerat och verifierat: barnurval utesluter egna och andra barns rader, enhetstest och browser. |
 | AK-016 | K-026, K-008 | Implementerat och verifierat: egna aktiviteter består utan personfilter och vid inaktuellt sparat barnurval; enhetstest. |
 | AK-017 | K-008, K-023, K-025, K-026 | Implementerat och verifierat: Mina aktiviteter kombineras med barn, medan ledarmöten avskiljs från barnens rader; urvals- och API-test. |
 | AK-018 | K-027 | Implementerat och verifierat: medlems-/ledarrader skapas utan personlig kallelse; `personal-dashboard.test.ts` och kalenderns API-test. |
-| AK-019 | K-028, K-025, K-027 | Implementerat och verifierat: okallad barnträning visas, enbart ledaraktivitet döljs för barn; data- och API-test. Supabases målgruppshjälpare behöver fortfarande integrationsköras. |
+| AK-019 | K-028, K-025, K-027 | Implementerat och verifierat: okallad barnträning visas, enbart ledaraktivitet döljs för barn; data- och API-test. Legacy-databasens målgruppshjälpare verifierade i samma CI-körning. |
 | AK-020 | K-029, K-011 | Implementerat och verifierat: olika konton/enheter har olika lagringsnycklar och egna urval; `calendar-filters.test.tsx`. |
 | AK-021 | K-030 | Implementerat och verifierat: separat laddningsläge för vald månad, abort av ersatta anrop och exempel på `/components`. |
 | AK-022 | K-031 | Implementerat och verifierat: fel med Försök igen, inget falskt tomt resultat; API-route-test och browser. |
@@ -234,9 +234,16 @@ Det gemensamma browserexemplet finns i
 Supabase-imagen kunde inte packas upp i miljöns Docker-lagring (`no space left
 on device`). `supabase db reset --local` och `supabase test db` kunde därför
 inte ansluta till en lokal Supabase-databas. Den nya legacy-migrationen och
-dess pgTAP-prov är skrivna men inte integrationsverifierade. Kotlin använder
+dess pgTAP-prov har därefter verifierats i GitHub Actions: jobb `database`
+i [körning 40412604362](https://github.com/johkin/forena/actions/runs/40412604362)
+på commit `77217df` är godkänt. Kotlin använder
 sin egen isolerade PostgreSQL-testdatabas; dess migrations-/API-resultat
 redovisas separat och ersätter inte Supabase-provet.
+
+Kalenderns klienttransport tillåter nu månadsanrop och aktivitetens
+borttagningskontroll med kontobindning. `frontend/src/api.test.ts` verifierar
+att felaktiga månader, andra metoder och tillägg som ändrar personurval nekas.
+Browserprovet verifierar kalenderhämtning genom den riktiga klienttransporten.
 
 ### Slutkontroller
 
@@ -255,7 +262,8 @@ redovisas separat och ersätter inte Supabase-provet.
   historik, status per person, laddning, fel/återförsök, tom månad,
   barnurval samt borttagningsknappen före/efter utskick är kontrollerade.
   Inga JavaScript-fel eller horisontell överrinning noterades.
-- Supabase: blockerad lokal integrationskörning enligt begränsningen ovan.
+- Legacy-databasen: lokal körning blockerad enligt ovan; migrations- och
+  säkerhetstester godkända i CI på `77217df`.
 
 
 ## Bekräftade beslut och motiv

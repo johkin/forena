@@ -1,7 +1,7 @@
 import type { ParticipationFetch } from "../../src/components/activity-invitation-response";
 
 const uuid = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
-const reads = new RegExp(`^/api/activities/${uuid}(?:/my-invitations)?$`, "i");
+const reads = new RegExp(`^/api/activities/${uuid}(?:/my-invitations|/disposition)?$`, "i");
 const editorReads = new RegExp(`^/api/teams/${uuid}/activity-editor$`, "i");
 const rosterReads = new RegExp(`^/api/teams/${uuid}/roster(?:/access)?$`, "i");
 const rosterMembers = new RegExp(`^/api/teams/${uuid}/roster/members/${uuid}$`, "i");
@@ -21,7 +21,7 @@ export function createApiFetch(readAccount: () => Promise<string | null>, unauth
     const method = init.method ?? "GET";
     const allowedRead = method === "GET" && (
       path === "/api/admin/overview" || adminSlug.test(path) || reads.test(path) || editorReads.test(path) || rosterReads.test(path) || path === "/api/me/managed-teams" ||
-      path === "/api/me/overview" || /^\/api\/me\/activities(?:\?offset=\d{1,6})?$/.test(path)
+      path === "/api/me/overview" || /^\/api\/me\/calendar\?month=\d{4}-(?:0[1-9]|1[0-2])$/.test(path) || /^\/api\/me\/activities(?:\?offset=\d{1,6})?$/.test(path)
     );
     const allowedWrite = (["POST", "PUT", "DELETE"].includes(method) && adminResource.test(path)) || (method === "PUT" && writes.test(path)) ||
       (method === "POST" && (path === "/api/activities" || path === "/api/activity-series")) ||

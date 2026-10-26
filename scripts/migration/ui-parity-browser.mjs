@@ -53,6 +53,8 @@ try {
       await page.locator('#activity-management-example').getByRole('button', { name: 'Redigera', exact: true }).click();
       const dialog = page.getByRole('dialog', { name: 'Redigera aktivitet', exact: true });
       await expect(dialog.getByText('Kallelse & svarsregler', { exact: true })).toBeVisible();
+      await expect(dialog.getByRole('button', { name: 'Ta bort', exact: true })).toBeVisible();
+      await expect(dialog.getByRole('button', { name: 'Ställ in', exact: true })).toBeVisible();
       await dialog.getByRole('button', { name: 'Välj personer', exact: true }).click();
       await page.evaluate(() => document.fonts.ready);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));

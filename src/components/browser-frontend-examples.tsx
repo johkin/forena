@@ -94,7 +94,7 @@ function PersonalHomeExample({linkComponent}:{linkComponent?:NavigationLink}) {
   const [calendarMode, setCalendarMode] = useState("success");
   const scope: CalendarScope = {
     people: items.filter(item => item.activity.id === "a1").map((item, index) => ({ id: item.member.id, displayName: item.member.displayName, isSelf: index === 0, teamIds: ["t1", "t2"] })),
-    teams: [{ id: "t1", name: "F2016" }, { id: "t2", name: "Testlaget" }],
+    teams: [{ id: "t1", name: "Exempelföreningen · F2016" }, { id: "t2", name: "Exempelföreningen · Testlaget" }],
   };
   const loadCalendarMonth = useCallback(async (month: string, signal: AbortSignal): Promise<CalendarMonth<OverviewItem>> => {
     if (calendarMode === "error") throw new Error("Exempelfel");
@@ -106,7 +106,7 @@ function PersonalHomeExample({linkComponent}:{linkComponent?:NavigationLink}) {
     const monthItems: OverviewItem[] = calendarMode === "empty" ? [] : [...items.filter(item => calendarMonth(item.activity.startsAt) === month),
       ...[past, cancelled, unknown].flatMap(activity => people.map((person, index) => ({ ...person, activity, attendance: activity.id === "unknown" ? "unknown" as const : index % 2 ? "absent" as const : "present" as const })))];
     return { people: people.map((person, index) => ({ id: person.member.id, displayName: person.member.displayName, isSelf: index === 0, teamIds: ["t1", "t2"] })),
-      teams: [{ id: "t1", name: "F2016" }, { id: "t2", name: "Testlaget" }], items: monthItems,
+      teams: [{ id: "t1", name: "Exempelföreningen · F2016" }, { id: "t2", name: "Exempelföreningen · Testlaget" }], items: monthItems,
       activities: [...new Map(monthItems.map(item => [item.activity.id, { ...item.activity, organizationId: "o1", teamId: item.activity.id === "a2" ? "t2" : "t1" }])).values()] };
   }, [items, calendarMode]);
   const [canManageActivity,setCanManageActivity]=useState(true);
