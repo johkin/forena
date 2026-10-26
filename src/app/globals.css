@@ -598,7 +598,7 @@ a.personal-activity-main:hover strong, a.personal-activity-main:focus-visible st
 /* Shared controls and editor sections */
 .primary, .secondary, .danger, .icon-button { border-radius:10px; }
 .icon-button { min-width:36px; min-height:36px; }
-.activity-editor-modal { width:min(760px,100%); }
+.activity-editor-modal { --activity-editor-inset:26px; width:min(760px,100%); padding:var(--activity-editor-inset); }
 .activity-editor-modal form { gap:14px; margin-top:18px; }
 .activity-editor-modal .form-row { grid-template-columns:repeat(2,minmax(0,1fr)); }
 .activity-editor-modal input, .activity-editor-modal select, .activity-editor-modal textarea { min-width:0; max-width:100%; }
@@ -627,16 +627,15 @@ a.personal-activity-main:hover strong, a.personal-activity-main:focus-visible st
 .person-picker-group h4 { margin:0; padding:7px 9px; background:var(--cream); color:var(--ink-soft); font-size:11px; }
 .reminder-row { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:end; gap:9px; }
 .reminder-row .secondary { height:42px; }
-.activity-editor-modal .modal-actions { position:sticky; bottom:-26px; z-index:2; margin:0 -26px -26px; padding:12px 26px; border-top:1px solid var(--line); background:var(--paper); }
+.activity-editor-modal .modal-actions { position:sticky; bottom:calc(-1 * var(--activity-editor-inset)); z-index:2; margin:0 calc(-1 * var(--activity-editor-inset)) calc(-1 * var(--activity-editor-inset)); padding:16px var(--activity-editor-inset) max(16px,env(safe-area-inset-bottom)); border-top:1px solid var(--line); background:var(--paper); }
 @media (max-width:560px) {
-  .activity-editor-modal { padding:16px; }
+  .activity-editor-modal { --activity-editor-inset:16px; }
   .activity-editor-modal .card-heading h2 { font-size:20px; }
   .activity-editor-modal form { margin-top:12px; }
   .editor-section { padding:12px; }
   .editor-fields { grid-template-columns:1fr; }
   .activity-editor-modal .form-row { gap:8px; }
   .activity-editor-modal input, .activity-editor-modal select, .activity-editor-modal textarea { padding:9px 10px; }
-  .activity-editor-modal .modal-actions { bottom:-16px; margin:0 -16px -16px; padding:10px 16px; }
   .activity-editor-modal .modal-actions .primary { flex:1 1 100%; order:-1; }
   .activity-editor-modal .modal-actions .danger { margin-right:auto; }
   .audience-options { grid-template-columns:1fr; }
