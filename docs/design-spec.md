@@ -59,24 +59,28 @@ länkar ligger på varsin rad med minst 44 px hög tryckyta, även i mobilpanele
 
 Vite och Next delar `PersonalHome`, `PersonalOverview`, `TeamCalendar`,
 `OverviewInvitationResponse` och `personal-overview.css`. Min översikt har
-Förena · Personligt och ingressen från målbilden, Behöver svar med räknare,
-Agenda/Kalender, Kommande aktiviteter med räknare och Mina lag och föreningar.
+Förena · Personligt och ingressen från målbilden, Agenda/Kalender,
+filterchips, Kommande aktiviteter med räknare och Mina lag och föreningar.
+Behöver svar är ett av/på-filter med antal aktiviteter inom valt lag.
+Alla lag är förvalt; lagchips visar förening och lag och kombineras med
+svarsfiltret. Varje aktivitet visas en gång i datumordning. Båda vyerna
+behåller samma filter; ett tomt urval har förklarande text och tillgängliga filter.
 Varje aktivitet grupperar namngivna personrader. Utan skickad kallelse visas
 Ingen kallelse ännu; annars visas svar och direkta Kommer/Kan ej-knappar.
 Personraderna är komprimerade med namn, status och svarsknappar på samma rad.
 Förnamn används när det är unikt bland översiktens personer, annars läggs
 efternamnets initial till och vid fortsatt namnkrock visas hela namnet.
 Varje person räknas en gång över alla aktiviteter; samma kortnamn används i
-både Behöver svar och Kommande aktiviteter. Hjälpmedel och knapparnas etiketter
+alla filterurval och båda visningslägena. Hjälpmedel och knapparnas etiketter
 behåller fullständiga namn. På mobil utelämnas den dekorativa avataren;
 knapparnas sidopadding minskas men tryckytan är minst 44 × 44 px och radien
 12 px. Långa namn får radbrytas. Vid mycket smalt utrymme eller förstorad text
 får knapparna flytta ned för att undvika överlappning och horisontell scroll.
 
-Ett bekräftat svar uppdaterar samma persons tillstånd i båda sektionerna.
-Aktiviteten ligger kvar i Behöver svar tills inga relevanta kallelser återstår;
-den finns fortfarande bland kommande. Kommentar bevaras vid snabbsvar.
-Samma kallelse är låst i båda sektionerna under skrivning, andra personers
+Ett bekräftat svar uppdaterar personraden, svarsfiltrets urval och räknare.
+Aktiviteten ligger kvar i urvalet tills inga relevanta kallelser återstår;
+den finns fortfarande bland alla aktiviteter. Kommentar bevaras vid snabbsvar.
+Samma kallelse är låst under skrivning, andra personers
 knappar förblir tillgängliga. Fel visas vid personraden. Detaljvyn visar plats,
 samling, lokala tider och kallelsens kommentar, även när aktivitetsläsningen
 kommer från lagmedlemskap och ingen kallelse finns.
@@ -102,10 +106,10 @@ ordning, personrader utan kallelse, räknare, roller och konkreta acceptansfall.
 Den avgränsade Kotlin-piloten ovan är inte den färdiga startsidan.
 
 `/` är den inloggade användarens Förena-brandade **Min översikt**, utan vald
-klubb. Visa först **Behöver svar**, därefter hela familjens kommande aktiviteter
-och sist **Mina lag och föreningar** med användarens roller. Agenda är grundläge
+klubb. Visa Agenda/Kalender med filterchips och en gemensam aktivitetslista,
+sist **Mina lag och föreningar** med användarens roller. Agenda är grundläge
 på mobil; kalender är ett uttryckligt alternativ och visar samtliga familjens
-aktiviteter oavsett lag, klubb eller disciplin. Ett arbetsyteval begränsar aldrig
+aktiviteter oavsett lag, klubb eller disciplin när Alla lag är valt och svarsfiltret är av. Ett arbetsyteval begränsar aldrig
 den personliga sidan. Visa även aktiviteter med nej-svar; en aktivitet förekommer
 en gång med separata namn/svar för berörda familjemedlemmar.
 
@@ -667,3 +671,12 @@ opacitet och bildmått måste vara identiska. Även en ensam större färgskilln
 eller en utbredd färgförskjutning stoppar kontrollen.
 Next-utvecklingsindikatorn räknas inte som produktgränssnitt. Galleriet visar
 samma systemmeny, översikt och administrativa navigering med lokala exempel.
+
+### Aktivitetsdetaljernas navigering och redigering
+
+Till min översikt använder den gemensamma `OverviewBackLink` med vänsterpil,
+projektets gröna färg, fokusram och minst 44 px tryckyta ovanför sidrubriken.
+Aktivitetens redigeringsåtgärd ligger i en egen rad i kortets övre vänstra hörn.
+`ActivityEditButton` visar en pennikon med hjälpmedelsetikett och tooltip,
+minst 44 × 44 px tryckyta och befintlig behörighetskontroll. Den ska inte
+bryta aktivitetens löpande uppgifter. Båda elementen visas på `/components`.

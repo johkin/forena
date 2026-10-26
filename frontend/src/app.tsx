@@ -1,3 +1,4 @@
+import { OverviewBackLink } from "../../src/components/overview-back-link";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { AppLink } from "./app-link";
@@ -183,6 +184,7 @@ export function App({ config }: { config: PublicConfig }) {
   }
   return <AdministrationProvider key={auth.session.user.id} request={request} routeKey={administrationPage ? location.key : "personal"}><Frame email={auth.session.user.email ?? undefined} logout={<button type="button" className="logout-button" aria-label="Logga ut från Förena" disabled={pending} onClick={() => void logout()}>{pending ? "Loggar ut…" : "Logga ut"}</button>}>
     <main tabIndex={-1} className={administrationPage ? "application-page" : `content ${homePath ? "personal-dashboard" : ""}`} key={auth.session.user.id}>
+      {validActivity.success && !managementPage ? <OverviewBackLink linkComponent={AppLink} /> : null}
       {!homePath && !securityPage && !managementPage && !administrationPage ? <><p className="eyebrow">Personligt</p><h1>{!knownPath ? "Sidan finns inte" : "Kallelser"}</h1></> : null}
       {error ? <p role="alert">{error}</p> : null}
       {administrationPage ? <Administration request={request} path={path + location.search} onNavigate={navigate} linkComponent={AppLink} /> : managementPage ? <ActivityManagement key={location.search} request={request}

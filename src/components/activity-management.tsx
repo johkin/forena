@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { z } from "zod";
 import { createPortal } from "react-dom";
+import { ActivityEditButton } from "./activity-edit-button";
 import { ActivityEditorModal } from "./activity-editor-modal";
 import type { Activity, Member, Organization, Team } from "../domain/club";
 import { normalizeDefaultsPatch, resolveDisciplineDefaults } from "../lib/discipline-defaults";
@@ -154,7 +155,7 @@ export function ActivityManagement({ request, teamId, activityId, onSaved, initi
     {selectedTeam && teams && !canManageTeam ? <p>Du saknar behörighet att hantera aktiviteter i det valda laget. Välj ett annat lag.</p>
       : selectedTeam && !context && !error ? <p role="status">Laddar aktiviteter…</p> : null}
     {context ? <>
-      {activityId ? canEditActivity ? <button type="button" className="secondary" onClick={() => setEditing(selectedActivity)}>Redigera</button> : null
+      {activityId ? canEditActivity ? <ActivityEditButton onClick={() => setEditing(selectedActivity)} /> : null
         : <button type="button" className="primary" aria-label="Ny aktivitet" onClick={() => setEditing("create")}>Ny aktivitet</button>}
       {!teamId && !activityId ? context.activities.length === 0 ? <p>Inga aktiviteter ännu.</p> : <ul>{context.activities.map(activity => <li key={activity.id}>
         <strong>{activity.title}</strong> · {new Intl.DateTimeFormat("sv-SE", { timeZone: context.team.timeZone, dateStyle: "medium", timeStyle: "short" }).format(new Date(activity.starts_at))}

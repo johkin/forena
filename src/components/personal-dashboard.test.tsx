@@ -29,8 +29,8 @@ it("renders a neutral personal home with grouped family activities, club labels 
   expect(html).toContain('href="/o/aik/t/f2013"');
   expect(html).toContain("Målsman · Ledare");
   expect(html).toContain('href="/" aria-current="page"');
-  expect(html.match(/class="personal-activity-row"/g)).toHaveLength(3); // One needs reply, two distinct upcoming activities.
-  expect(html.match(/class="personal-activity-person"/g)).toHaveLength(5);
+  expect(html.match(/class="personal-activity-row"/g)).toHaveLength(2); // Each of the two activities appears once.
+  expect(html.match(/class="personal-activity-person"/g)).toHaveLength(3);
   expect(html).not.toContain('class="assistant-launcher"');
 });
 it("renders useful empty states without choosing a default club", () => {

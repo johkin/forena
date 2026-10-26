@@ -121,13 +121,19 @@ try{
  // A same-tab self-notification must not erase the accepted login.
  await page.waitForTimeout(200);assert.equal(sessionReads,beforeLoginReads);
  assert.equal(await page.evaluate(()=>window.documentInstance),'same-document');sessionUnavailable=false;
- const pendingSection=page.locator('section[aria-labelledby="pending-activities-title"]');
- await expect(pendingSection.locator('.badge')).toHaveText('1');await expect(upcoming.locator('.badge')).toHaveText('2');
- await expect(pendingSection.getByRole('button',{name:/Kommer: Alex/})).toHaveAttribute('aria-pressed','true');
- await expect(pendingSection.getByRole('button',{name:'Kommer: Tilda Exempel',exact:true})).toHaveAttribute('aria-pressed','false');
+ const replyFilter=page.getByRole('button',{name:'Behöver svar (1)',exact:true});
+ await expect(upcoming.locator('.badge')).toHaveText('2');
+ await replyFilter.click();
+ await expect(upcoming.locator('.badge')).toHaveText('1');
+ await expect(upcoming.getByRole('button',{name:/Nästa aktivitet/})).toHaveCount(0);
+ await expect(upcoming.getByRole('button',{name:/Kommer: Alex/})).toHaveAttribute('aria-pressed','true');
+ await expect(upcoming.getByRole('button',{name:'Kommer: Tilda Exempel',exact:true})).toHaveAttribute('aria-pressed','false');
+ await page.getByRole('group',{name:'Filtrera på lag'}).getByRole('button',{name:`${organization.name} · ${team.name}`,exact:true}).click();
  await page.getByRole('button',{name:'Kalender',exact:true}).click();await expect(page.getByRole('heading',{name:'oktober 2030'})).toBeVisible();
  await expect(page.getByRole('button',{name:/Träning med laget.*Exempelföreningen/})).toHaveCount(1);
  await page.getByRole('button',{name:'Agenda',exact:true}).click();
+ await expect(replyFilter).toHaveAttribute('aria-pressed','true');
+ await replyFilter.click();
  await page.getByRole('link',{name:'Visa kallelser som behöver svar'}).click();await expect(page.getByRole('heading',{name:'Dina kallelser'})).toBeVisible();
  await page.getByRole('link',{name:'Till min översikt',exact:true}).click();
  await page.getByRole('link',{name:organization.name,exact:true}).click();await expect(page.getByRole('heading',{name:organization.name,exact:true,level:1})).toBeVisible();
@@ -209,9 +215,10 @@ try{
  await page.screenshot({path:'frontend/.evidence/desktop.png',fullPage:true});await page.setViewportSize({width:390,height:844});await page.screenshot({path:'frontend/.evidence/mobile.png',fullPage:true});
  await page.getByRole('button',{name:'Öppna meny',exact:true}).click();await expect(page.getByRole('dialog',{name:'Huvudmeny'})).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);
  await upcoming.getByRole('button',{name:'Kommer: Tilda Exempel',exact:true}).click();
- await expect(page.locator('section[aria-labelledby="pending-activities-title"]').getByText('Alla aktuella kallelser är besvarade.',{exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Behöver svar (0)',exact:true})).toBeVisible();
  await expect(upcoming.getByRole('button',{name:/Träning med laget/})).toHaveCount(1);await expect(upcoming.locator('.badge')).toHaveText('2');
- await page.reload();await expect(page.getByText('Alla aktuella kallelser är besvarade.',{exact:true})).toBeVisible();
+ await page.reload();await page.getByRole('button',{name:'Behöver svar (0)',exact:true}).click();
+ await expect(page.getByText('Alla aktuella kallelser i urvalet är besvarade.',{exact:true})).toBeVisible();
  await page.goto(new URL(`/activities/${id}`,base).href);
  platformDenied=true;await page.reload();await expect(page.getByRole('alert')).toBeVisible();await expect(page.getByRole('heading',{name:'Kallelser'})).toBeVisible();
  platformDenied=false;await page.reload();await expect(row).toHaveCount(1);
@@ -232,9 +239,9 @@ try{
  assert.equal(await page.evaluate(()=>localStorage.length),0);
  await page.goto(new URL('/components',base).href);await expect(page.getByRole('heading',{name:'Komponenter',exact:true})).toBeVisible();assert.deepEqual(errors,[]);assert.equal(directProviderRequests,0);
  const homeExample=page.getByRole('region',{name:'Min översikt – interaktivt exempel'});
- await expect(homeExample.locator('.overview-person-copy strong [aria-hidden]').filter({hasText:/^Johan E$/})).toHaveCount(3);
- await expect(homeExample.locator('.overview-person-copy strong [aria-hidden]').filter({hasText:/^Tilda$/})).toHaveCount(3);
- await expect(homeExample.locator('.overview-person-copy strong').filter({hasText:/^Alex Exempel$/})).toHaveCount(3);
+ await expect(homeExample.locator('.overview-person-copy strong [aria-hidden]').filter({hasText:/^Johan E$/})).toHaveCount(2);
+ await expect(homeExample.locator('.overview-person-copy strong [aria-hidden]').filter({hasText:/^Tilda$/})).toHaveCount(2);
+ await expect(homeExample.locator('.overview-person-copy strong').filter({hasText:/^Alex Exempel$/})).toHaveCount(2);
  for(const width of [320,390,768]){await page.setViewportSize({width,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
  await page.setViewportSize({width:390,height:844});
  await homeExample.screenshot({path:'frontend/.evidence/compact-invitations.png'});
@@ -288,5 +295,5 @@ try{
  assert.ok(!await page.evaluate(()=>document.cookie.includes('forena-local-session')));
  assert.equal(await page.evaluate(()=>localStorage.length),0);
  assert.deepEqual(errors,[]);
- assert.ok(requests>0);console.log('PASS: overview invitations without per-activity reads; direct answers without navigation, isolated save failure, persisted answers and preserved comments; client navigation and persistent header without session refetch; back/forward, menu links and gallery-to-private session initialization; HttpOnly session, CSRF header, legacy cleanup, no browser/provider tokens, password and WebAuthn without reload, virtual WebAuthn registration, magic-link request and explicit clean-URL callback, save/reload, revocation, account switch, logout, public gallery, complete overview counters, independent participant rows without invitations, synchronized sections and write locks, calendar, workspace links, responsive overview, retry, private-data isolation and keyboard menu');
+ assert.ok(requests>0);console.log('PASS: overview invitations without per-activity reads; direct answers without navigation, isolated save failure, persisted answers and preserved comments; client navigation and persistent header without session refetch; back/forward, menu links and gallery-to-private session initialization; HttpOnly session, CSRF header, legacy cleanup, no browser/provider tokens, password and WebAuthn without reload, virtual WebAuthn registration, magic-link request and explicit clean-URL callback, save/reload, revocation, account switch, logout, public gallery, complete overview counters, independent participant rows without invitations, combined reply/team filters and write locks, calendar, workspace links, responsive overview, retry, private-data isolation and keyboard menu');
 }finally{await browser.close();}

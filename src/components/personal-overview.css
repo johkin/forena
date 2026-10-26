@@ -63,3 +63,15 @@
 .personal-view-switch button[aria-pressed=true] { background:var(--paper); color:var(--primary); box-shadow:var(--shadow); }
 .notification-trigger { display:grid; place-items:center; width:44px; height:44px; border:1px solid var(--line); border-radius:12px; background:var(--paper); color:var(--ink); }
 .activity-description { white-space:pre-wrap; overflow-wrap:anywhere; }
+.personal-activity-filters { display:grid; gap:12px; margin-bottom:16px; }
+.personal-team-filters { display:flex; flex-wrap:wrap; gap:8px; }
+.personal-filter-chip { min-height:44px; max-width:100%; padding:10px 16px; border:1px solid var(--line); border-radius:24px; background:var(--paper); color:var(--ink); cursor:pointer; overflow-wrap:anywhere; text-align:left; }
+.personal-filter-chip:hover { border-color:var(--primary); }
+.personal-filter-chip[aria-pressed="true"] { background:var(--primary); color:var(--on-primary); border-color:var(--primary); }
+.personal-filter-chip:focus-visible { outline:2px solid var(--primary); outline-offset:3px; }
+.overview-back-link { display:inline-flex; align-items:center; gap:8px; min-height:44px; width:fit-content; max-width:100%; margin-bottom:12px; padding:8px 0; color:var(--primary); text-decoration:none; font-weight:600; }
+.overview-back-link:hover { text-decoration:underline; text-underline-offset:4px; }
+.overview-back-link:focus-visible { outline:2px solid var(--primary); outline-offset:4px; border-radius:4px; }
+.activity-details-toolbar { display:flex; justify-content:flex-start; margin-bottom:12px; }
+.activity-details-toolbar:empty, .activity-details-toolbar:has(> .activity-management:empty) { display:none; }
+.activity-edit-button { display:inline-flex; align-items:center; justify-content:center; padding:10px; }
