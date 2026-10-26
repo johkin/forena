@@ -15,12 +15,12 @@ import {
 } from "./actions";
 
 import Link from "next/link";
+import { NextNavigationLink } from "@/components/next-navigation-link";
 import { primaryRosterRole, rosterRoleLabel } from "@/lib/roster-roles";
 import {
-  GroupEditor,
   RosterSubmit,
-  TeamRoster,
 } from "@/components/team-roster";
+import { TeamRosterWorkspace } from "@/components/team-roster-workspace";
 
 type Props = {
   params: Promise<{ organizationSlug: string; teamSlug: string }>;
@@ -232,9 +232,6 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
     ),
   }));
   const member = roster.find((person) => person.id === selectedPersonId);
-  const selectedGroup = rosterGroups.find(
-    (group) => group.id === selectedGroupId,
-  );
   const { data: guardians, error: guardianError } = member
     ? await supabase
         .from("person_guardians")
@@ -295,84 +292,17 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
         adminHref={isAdmin ? `/o/${organizationSlug}/admin/roles` : undefined}
       >
         <main className="content">
-          <section className="application-card members-admin-card">
-            <div className="application-page-heading">
-              <div>
-                <p className="eyebrow">
-                  {organization.name} · {team.name}
-                </p>
-                <h1>Truppen</h1>
-                <p>
-                  {roster.length} medlemmar · {rosterGroups.length}{" "}
-                  {rosterGroups.length === 1 ? "undergrupp" : "undergrupper"}
-                </p>
-              </div>
-            </div>
-            {saved ? (
-              <div className="auth-message">{saved} har uppdaterats.</div>
-            ) : null}
-            {leaderSaved ? (
-              <div className="auth-message">{leaderSaved} har uppdaterats.</div>
-            ) : null}
-            {invited ? (
-              <div className="auth-message">
-                Inbjudan har skickats till {invited}.
-              </div>
-            ) : null}
-            {groupSaved ? (
-              <div className="auth-message">
-                Gruppen {groupSaved} har sparats.
-              </div>
-            ) : null}
-            {groupDeleted ? (
-              <div className="auth-message">
-                Gruppen {groupDeleted} har tagits bort.
-              </div>
-            ) : null}
-            {error ? <div className="auth-error">{error}</div> : null}
-            <nav className="squad-tabs" aria-label="Truppen">
-              <Link
-                aria-current={member || view !== "groups" ? "page" : undefined}
-                href={destination}
-              >
-                Medlemmar
-              </Link>
-              <Link
-                aria-current={view === "groups" ? "page" : undefined}
-                href={`${destination}?view=groups`}
-              >
-                Undergrupper
-              </Link>
-            </nav>
-            {selectedPersonId && !member ? (
-              <p className="auth-error">
-                Medlemmen finns inte i lagets aktiva trupp.
-              </p>
-            ) : null}
-            {member ? (
-              <>
-                <Link className="squad-back" href={destination}>
-                  ← Tillbaka till truppen
-                </Link>
-                <div className="squad-profile-heading">
-                  <span className="member-avatar" aria-hidden="true">
-                    {member.name
-                      .split(" ")
-                      .map((part) => part[0])
-                      .slice(0, 2)
-                      .join("")}
-                  </span>
-                  <div>
-                    <h2>{member.name}</h2>
-                    <p>{member.title}</p>
-                  </div>
-                  <Link
-                    className="secondary"
-                    href={`${destination}?person=${member.id}${edit ? "" : "&edit=1"}`}
-                  >
-                    {edit ? "Visa profil" : "Redigera medlem"}
-                  </Link>
-                </div>
+          <TeamRosterWorkspace
+            people={roster.map(person => ({ ...person,
+              guardians: person.id === member?.id ? (guardians ?? []).map(guardian => ({ name: guardian.contact_name || "Målsman", phone: guardian.contact_phone ?? "" })) : [],
+              childIds: person.id === member?.id ? children.map(child => child.id) : [],
+            }))}
+            groups={rosterGroups} team={team} organization={organization}
+            destination={destination} search={new URLSearchParams(Object.entries({ person: selectedPersonId, view, group: selectedGroupId, edit, error, saved, leaderSaved, invited, groupSaved, groupDeleted }).filter((entry): entry is [string, string] => typeof entry[1] === "string")).toString()}
+            actions={{ updateMemberName, createTeamGroup, updateTeamGroup, deleteTeamGroup }}
+            organizationSlug={organizationSlug} teamSlug={teamSlug} linkComponent={NextNavigationLink}
+            guardianError={Boolean(guardianError)} childError={Boolean(childError)}
+            memberDetails={member ? <>
                 {member.roles.includes("participant") ? <DisciplineFields teamId={team.id} scope="teamMembership" personId={member.id}/> : null}
                 {edit ? (
                   <form
@@ -476,158 +406,8 @@ export default async function TeamMembersPage({ params, searchParams }: Props) {
                     ) : null}
                   </section>
                 )}
-                <section className="squad-section">
-                  <h3>Undergrupper</h3>
-                  <div className="squad-list">
-                    {rosterGroups
-                      .filter((group) => group.personIds.includes(member.id))
-                      .map((group) => (
-                        <Link
-                          className="squad-person"
-                          key={group.id}
-                          href={`${destination}?view=groups&group=${group.id}`}
-                        >
-                          <strong>{group.name}</strong>
-                          <span aria-hidden="true">›</span>
-                        </Link>
-                      ))}
-                  </div>
-                  {!rosterGroups.some((group) =>
-                    group.personIds.includes(member.id),
-                  ) ? (
-                    <p className="form-help">Ingår inte i någon undergrupp.</p>
-                  ) : null}
-                </section>
-                <section className="squad-section">
-                  <h3>Målsmän</h3>
-                  {guardianError ? (
-                    <p className="auth-error">Målsmän kunde inte hämtas.</p>
-                  ) : guardians?.length ? (
-                    <div className="squad-list">
-                      {guardians.map((guardian, index) => (
-                        <div className="squad-person" key={index}>
-                          <span className="squad-person-copy">
-                            <strong>
-                              {guardian.contact_name || "Målsman"}
-                            </strong>
-                            {guardian.contact_phone ? (
-                              <a
-                                href={`tel:${guardian.contact_phone.replace(/[^+\d]/g, "")}`}
-                              >
-                                {guardian.contact_phone}
-                              </a>
-                            ) : null}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="form-help">Inga målsmän registrerade.</p>
-                  )}
-                </section>
-                {childError ? (
-                  <p className="auth-error">Barn i laget kunde inte hämtas.</p>
-                ) : children.length ? (
-                  <section className="squad-section">
-                    <h3>Barn i laget</h3>
-                    <div className="squad-list">
-                      {children.map((child) => (
-                        <Link
-                          key={child.id}
-                          className="squad-person"
-                          href={`${destination}?person=${child.id}`}
-                        >
-                          <strong>{child.name}</strong>
-                          <span aria-hidden="true">›</span>
-                        </Link>
-                      ))}
-                    </div>
-                  </section>
-                ) : null}
-              </>
-            ) : view === "groups" ? (
-              <>
-                {selectedGroup ? (
-                  <>
-                    <Link
-                      className="squad-back"
-                      href={`${destination}?view=groups`}
-                    >
-                      ← Alla undergrupper
-                    </Link>
-                    <h2>{selectedGroup.name}</h2>
-                    <p className="form-help">
-                      Tryck på en person för att lägga till eller ta bort.
-                      Ändringarna gäller när du sparar.
-                    </p>
-                    <GroupEditor
-                      key={selectedGroup.id}
-                      group={selectedGroup}
-                      people={roster}
-                      organizationSlug={organizationSlug}
-                      teamSlug={teamSlug}
-                      action={updateTeamGroup}
-                      deleteAction={deleteTeamGroup}
-                    />
-                  </>
-                ) : (
-                  <>
-                    {selectedGroupId ? (
-                      <p className="auth-error">Gruppen kunde inte hittas.</p>
-                    ) : null}
-                    <div className="squad-list">
-                      {rosterGroups.map((group) => (
-                        <Link
-                          className="squad-person"
-                          key={group.id}
-                          href={`${destination}?view=groups&group=${group.id}`}
-                        >
-                          <span className="squad-person-copy">
-                            <strong>{group.name}</strong>
-                            <small>{group.personIds.length} medlemmar</small>
-                          </span>
-                          <span aria-hidden="true">›</span>
-                        </Link>
-                      ))}
-                    </div>
-                    {!rosterGroups.length ? (
-                      <p className="squad-empty">
-                        Skapa en undergrupp för till exempel matchtrupp eller
-                        rotationsträning.
-                      </p>
-                    ) : null}
-                    <details className="squad-create">
-                      <summary>+ Ny undergrupp</summary>
-                      <form action={createTeamGroup} className="squad-form">
-                        <input
-                          type="hidden"
-                          name="organizationSlug"
-                          value={organizationSlug}
-                        />
-                        <input type="hidden" name="teamSlug" value={teamSlug} />
-                        <label>
-                          Gruppnamn
-                          <input
-                            name="name"
-                            required
-                            maxLength={80}
-                            placeholder="Till exempel Lag Gul"
-                          />
-                        </label>
-                        <RosterSubmit>Skapa grupp</RosterSubmit>
-                      </form>
-                    </details>
-                  </>
-                )}
-              </>
-            ) : (
-              <TeamRoster
-                people={roster}
-                groups={rosterGroups}
-                href={destination}
-              />
-            )}
-          </section>
+            </> : undefined}
+          />
         </main>
       </AppShell>
     </>

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { Administration } from "../../src/components/administration";
 import { ActivityManagement } from "../../src/components/activity-management";
 import { ActivityDetails } from "./activity-details";
+import { TeamRosterNavigation, TeamRosterPage } from "./team-roster";
 import { MyActivitiesPage } from "./my-activities";
 import { AppHeaderFrame } from "../../src/components/app-header-frame";
 import { AppShellFrame } from "../../src/components/app-shell-frame";
@@ -25,15 +26,18 @@ import { MagicLinkForm, MagicLinkConfirmation } from "../../src/components/magic
 import { AccountPage, ConsentPage, PasskeyList } from "./account";
 import { PasskeyRegistration } from "../../src/components/passkey-registration";
 
-function Frame({ children, email, logout }: { children: ReactNode; email?: string; logout?: ReactNode }) {
+function Frame({ children, email, logout, request }: { children: ReactNode; email?: string; logout?: ReactNode; request?: ParticipationFetch }) {
   const { pathname } = useLocation();
   const administration = useAdministrationAccess()?.data;
   const system = administration?.platformAdmin ?? false;
   const systemWorkspace = system && (pathname.startsWith("/system") || pathname === "/administration");
+  const teamMatch = /^\/teams\/([^/]+)(?:\/members)?$/.exec(pathname);
+  const teamId = z.uuid().safeParse(teamMatch?.[1]);
   const menu = <ApplicationMenu accountEmail={email} linkComponent={AppLink}
     personalNavigation={<NavigationLinksView label="Personligt" items={[{ href: "/", label: "Min översikt" }]} pathname={pathname} linkComponent={AppLink} />}
     navigation={systemWorkspace
-      ? <NavigationLinksView label="Systemadministration" items={systemNavigationItems} pathname={pathname === "/administration" ? "/system" : pathname} linkComponent={AppLink} /> : undefined}
+      ? <NavigationLinksView label="Systemadministration" items={systemNavigationItems} pathname={pathname === "/administration" ? "/system" : pathname} linkComponent={AppLink} />
+      : request && teamId.success ? <TeamRosterNavigation key={teamId.data} request={request} teamId={teamId.data} pathname={pathname} /> : undefined}
     accountLinks={<><AppLink href="/account/security">Inloggningsinställningar</AppLink>
       {system || administration?.canBootstrap ? <AppLink href="/system">Systemadministration</AppLink> : administration?.clubs.length ? <AppLink href="/administration">Föreningsadministration</AppLink> : null}</>}
     logout={logout} />;
@@ -172,7 +176,10 @@ export function App({ config }: { config: PublicConfig }) {
   const managementQuery = new URLSearchParams(location.search);
   const managementTeam = z.uuid().safeParse(managementQuery.get("team"));
   const administrationPage = path === "/administration" || path === "/system" || path.startsWith("/system/") || /^\/organizations\/[^/]+\/(?:administration|sections\/[^/]+\/teams)$/.test(path);
-  const knownPath = administrationPage || managementPage || securityPage || homePath || path === "/migration/participation" || Boolean(match);
+  const rosterMatch = /^\/teams\/([^/]+)\/members$/.exec(path);
+  const rosterTeam = z.uuid().safeParse(rosterMatch?.[1]);
+  const rosterPage = Boolean(rosterMatch && rosterTeam.success);
+  const knownPath = rosterPage || administrationPage || managementPage || securityPage || homePath || path === "/migration/participation" || Boolean(match);
   async function logout() {
     setPending(true); setError(undefined);
     try {
@@ -182,12 +189,12 @@ export function App({ config }: { config: PublicConfig }) {
     } catch { setError("Utloggningen misslyckades. Försök igen."); }
     finally { setPending(false); }
   }
-  return <AdministrationProvider key={auth.session.user.id} request={request} routeKey={administrationPage ? location.key : "personal"}><Frame email={auth.session.user.email ?? undefined} logout={<button type="button" className="logout-button" aria-label="Logga ut från Förena" disabled={pending} onClick={() => void logout()}>{pending ? "Loggar ut…" : "Logga ut"}</button>}>
+  return <AdministrationProvider key={auth.session.user.id} request={request} routeKey={administrationPage ? location.key : "personal"}><Frame request={request} email={auth.session.user.email ?? undefined} logout={<button type="button" className="logout-button" aria-label="Logga ut från Förena" disabled={pending} onClick={() => void logout()}>{pending ? "Loggar ut…" : "Logga ut"}</button>}>
     <main tabIndex={-1} className={administrationPage ? "application-page" : `content ${homePath ? "personal-dashboard" : ""}`} key={auth.session.user.id}>
       {validActivity.success && !managementPage ? <OverviewBackLink linkComponent={AppLink} /> : null}
-      {!homePath && !securityPage && !managementPage && !administrationPage ? <><p className="eyebrow">Personligt</p><h1>{!knownPath ? "Sidan finns inte" : "Kallelser"}</h1></> : null}
+      {!homePath && !securityPage && !managementPage && !administrationPage && !rosterPage ? <><p className="eyebrow">Personligt</p><h1>{!knownPath ? "Sidan finns inte" : "Kallelser"}</h1></> : null}
       {error ? <p role="alert">{error}</p> : null}
-      {administrationPage ? <Administration request={request} path={path + location.search} onNavigate={navigate} linkComponent={AppLink} /> : managementPage ? <ActivityManagement key={location.search} request={request}
+      {rosterPage && rosterTeam.success ? <TeamRosterPage key={rosterTeam.data} request={request} teamId={rosterTeam.data} /> : administrationPage ? <Administration request={request} path={path + location.search} onNavigate={navigate} linkComponent={AppLink} /> : managementPage ? <ActivityManagement key={location.search} request={request}
         initialTeamId={managementTeam.success ? managementTeam.data : undefined}
         createOnLoad={managementTeam.success && managementQuery.get("create") === "1"}
         onEditorClose={() => { if (managementTeam.success && managementQuery.get("create") === "1") navigate(`/activities/manage?team=${managementTeam.data}`, { replace: true }); }} /> : securityPage ? <><PasskeyRegistration pending={pending} registered={passkeyCreatedFor === accountId} supported={Boolean(window.PublicKeyCredential && navigator.credentials)} onRegister={() => void (async () => {

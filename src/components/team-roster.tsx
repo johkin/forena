@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import type { NavigationLink } from "./navigation-link";
 import { rosterRoleLabel, rosterSections } from "@/lib/roster-roles";
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
@@ -12,7 +12,7 @@ export type RosterPerson = {
   title: string;
   linked: boolean;
 };
-export type RosterGroup = { id: string; name: string; personIds: string[] };
+export type RosterGroup = { id: string; name: string; personIds: string[]; revision?: number };
 
 export function RosterSubmit({ children }: { children: React.ReactNode }) {
   const { pending } = useFormStatus();
@@ -27,10 +27,12 @@ export function TeamRoster({
   people,
   groups,
   href,
+  linkComponent: Link = "a",
 }: {
   people: RosterPerson[];
   groups: RosterGroup[];
   href: string;
+  linkComponent?: NavigationLink;
 }) {
   const [search, setSearch] = useState("");
   const [groupId, setGroupId] = useState("");
@@ -125,6 +127,7 @@ export function GroupEditor({
   teamSlug,
   action,
   deleteAction,
+  pending = false,
 }: {
   group: RosterGroup;
   people: RosterPerson[];
@@ -132,7 +135,9 @@ export function GroupEditor({
   teamSlug: string;
   action: (data: FormData) => Promise<void>;
   deleteAction: (data: FormData) => Promise<void>;
+  pending?: boolean;
 }) {
+  const [name, setName] = useState(group.name);
   const [selected, setSelected] = useState(() => new Set(group.personIds));
   const [search, setSearch] = useState("");
   const [mobileList, setMobileList] = useState("available");
@@ -146,135 +151,138 @@ export function GroupEditor({
     });
   return (
     <form action={action} className="squad-form">
-      <input type="hidden" name="organizationSlug" value={organizationSlug} />
-      <input type="hidden" name="teamSlug" value={teamSlug} />
-      <input type="hidden" name="groupId" value={group.id} />
-      {[...selected].map((id) => (
-        <input key={id} type="hidden" name="personIds" value={id} />
-      ))}
-      <label>
-        Gruppnamn
-        <input name="name" defaultValue={group.name} required maxLength={80} />
-      </label>
-      <label>
-        Sök medlemmar
-        <input
-          type="search"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Sök på namn"
-        />
-      </label>
-      <div className="squad-mobile-switch" aria-label="Visa medlemslista">
-        {[
-          ["available", "Ej i gruppen", people.length - selected.size],
-          ["selected", "I gruppen", selected.size],
-        ].map(([id, label, count]) => (
-          <button
-            key={id}
-            type="button"
-            className={mobileList === id ? "selected" : ""}
-            aria-pressed={mobileList === id}
-            onClick={() => setMobileList(String(id))}
-          >
-            {label} ({count})
-          </button>
+      <fieldset disabled={pending} className="squad-fieldset">
+        <input type="hidden" name="organizationSlug" value={organizationSlug} />
+        <input type="hidden" name="teamSlug" value={teamSlug} />
+        <input type="hidden" name="groupId" value={group.id} />
+        {group.revision !== undefined ? <input type="hidden" name="revision" value={group.revision} /> : null}
+        {[...selected].map((id) => (
+          <input key={id} type="hidden" name="personIds" value={id} />
         ))}
-      </div>
-      <div className="squad-picker">
-        {[false, true].map((chosen) => {
-          const filtered = people.filter(
-            (person) =>
-              selected.has(person.id) === chosen &&
-              person.name
-                .toLocaleLowerCase("sv")
-                .includes(search.trim().toLocaleLowerCase("sv")),
-          );
-          return (
-            <section
-              key={String(chosen)}
-              className={`squad-picker-list ${mobileList === (chosen ? "selected" : "available") ? "mobile-active" : ""}`}
+        <label>
+          Gruppnamn
+          <input name="name" value={name} onChange={event => setName(event.target.value)} required maxLength={80} />
+        </label>
+        <label>
+          Sök medlemmar
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Sök på namn"
+          />
+        </label>
+        <div className="squad-mobile-switch" role="group" aria-label="Visa medlemslista">
+          {[
+            ["available", "Ej i gruppen", people.length - selected.size],
+            ["selected", "I gruppen", selected.size],
+          ].map(([id, label, count]) => (
+            <button
+              key={id}
+              type="button"
+              className={mobileList === id ? "selected" : ""}
+              aria-pressed={mobileList === id}
+              onClick={() => setMobileList(String(id))}
             >
-              <h2>
-                {chosen ? "I gruppen" : "Ej i gruppen"}{" "}
-                <span className="badge">
-                  {chosen ? selected.size : people.length - selected.size}
-                </span>
-              </h2>
-              {rosterSections(filtered, true).map(
-                ({ role, label, people: members }) => {
-                  return members.length ? (
-                    <div key={role}>
-                      <h3>{label}</h3>
-                      {members.map((person) => (
-                        <button
-                          key={person.id}
-                          type="button"
-                          className="squad-person"
-                          onClick={() => toggle(person.id)}
-                        >
-                          <span className="squad-person-copy">
-                            <span className="sr-only">{chosen ? "Ta bort " : "Lägg till "}</span>
-                            <strong>{person.name}</strong>
-                            <small>{person.title}</small>
-                            <span className="sr-only">{chosen ? " ur gruppen" : " i gruppen"}</span>
-                          </span>
-                          <span aria-hidden="true">{chosen ? "−" : "+"}</span>
-                        </button>
-                      ))}
-                    </div>
-                  ) : null;
-                },
-              )}
-              {!filtered.length ? (
-                <p className="squad-empty">
-                  {search
-                    ? "Ingen matchar sökningen."
-                    : chosen
-                      ? "Välj personer från den andra listan."
-                      : "Alla i laget är valda."}
-                </p>
-              ) : null}
-            </section>
-          );
-        })}
-      </div>
-      <div className="squad-save-bar">
-        <span role="status">
-          {selected.size} {selected.size === 1 ? "vald" : "valda"}
-        </span>
-        <RosterSubmit>Spara grupp</RosterSubmit>
-      </div>
-      <div className="squad-danger">
-        {confirmDelete ? (
-          <>
-            <p>Ta bort {group.name}? Medlemmarna finns kvar i laget.</p>
+              {label} ({count})
+            </button>
+          ))}
+        </div>
+        <div className="squad-picker">
+          {[false, true].map((chosen) => {
+            const filtered = people.filter(
+              (person) =>
+                selected.has(person.id) === chosen &&
+                person.name
+                  .toLocaleLowerCase("sv")
+                  .includes(search.trim().toLocaleLowerCase("sv")),
+            );
+            return (
+              <section
+                key={String(chosen)}
+                className={`squad-picker-list ${mobileList === (chosen ? "selected" : "available") ? "mobile-active" : ""}`}
+              >
+                <h2>
+                  {chosen ? "I gruppen" : "Ej i gruppen"}{" "}
+                  <span className="badge">
+                    {chosen ? selected.size : people.length - selected.size}
+                  </span>
+                </h2>
+                {rosterSections(filtered, true).map(
+                  ({ role, label, people: members }) => {
+                    return members.length ? (
+                      <div key={role}>
+                        <h3>{label}</h3>
+                        {members.map((person) => (
+                          <button
+                            key={person.id}
+                            type="button"
+                            className="squad-person"
+                            onClick={() => toggle(person.id)}
+                          >
+                            <span className="squad-person-copy">
+                              <span className="sr-only">{chosen ? "Ta bort " : "Lägg till "}</span>
+                              <strong>{person.name}</strong>
+                              <small>{person.title}</small>
+                              <span className="sr-only">{chosen ? " ur gruppen" : " i gruppen"}</span>
+                            </span>
+                            <span aria-hidden="true">{chosen ? "−" : "+"}</span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : null;
+                  },
+                )}
+                {!filtered.length ? (
+                  <p className="squad-empty">
+                    {search
+                      ? "Ingen matchar sökningen."
+                      : chosen
+                        ? "Välj personer från den andra listan."
+                        : "Alla i laget är valda."}
+                  </p>
+                ) : null}
+              </section>
+            );
+          })}
+        </div>
+        <div className="squad-save-bar">
+          <span role="status">
+            {selected.size} {selected.size === 1 ? "vald" : "valda"}
+          </span>
+          <RosterSubmit>Spara grupp</RosterSubmit>
+        </div>
+        <div className="squad-danger">
+          {confirmDelete ? (
+            <>
+              <p>Ta bort {group.name}? Medlemmarna finns kvar i laget.</p>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setConfirmDelete(false)}
+              >
+                Avbryt
+              </button>{" "}
+              <button
+                type="submit"
+                className="danger-button"
+                formAction={deleteAction}
+                formNoValidate
+              >
+                Ja, ta bort gruppen
+              </button>
+            </>
+          ) : (
             <button
               type="button"
-              className="secondary"
-              onClick={() => setConfirmDelete(false)}
-            >
-              Avbryt
-            </button>{" "}
-            <button
-              type="submit"
               className="danger-button"
-              formAction={deleteAction}
-              formNoValidate
+              onClick={() => setConfirmDelete(true)}
             >
-              Ja, ta bort gruppen
+              Ta bort grupp
             </button>
-          </>
-        ) : (
-          <button
-            type="button"
-            className="danger-button"
-            onClick={() => setConfirmDelete(true)}
-          >
-            Ta bort grupp
-          </button>
-        )}
-      </div>
+          )}
+        </div>
+      </fieldset>
     </form>
   );
 }

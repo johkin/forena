@@ -145,6 +145,34 @@ migrationsmetadata. Rättigheter och sessionsschema verifieras en gång efter
 Liquibase; fel stoppar start. Löpande DB-health använder Spring Boots
 anslutningskontroll. Tunga dataflyttar körs separat i återupptagbara batcher.
 
+## Truppen i React/Kotlin
+
+`/teams/{id}/members` använder samma `TeamRosterWorkspace`, `TeamRoster` och
+`GroupEditor` som Next-appens medlemsadministration. Listan, profilerna och
+undergrupperna delar markup och CSS. Next behåller sina befintliga profilfält
+för discipliner och inloggningsinbjudningar som en profilutökning; dessa flöden
+är ännu inte migrerade till Kotlin.
+
+`TeamRosterService` äger läsning och transaktionella kommandon under
+`/api/teams/{id}/roster`. `roster.manage` kontrolleras separat från medlemsroller,
+`activity.manage` och delegerad personåtkomst. Klubb-, sektions- och lagadmin
+följer samma befintliga verksamhetsgränser som aktivitetsadministrationen;
+systemadmin ger ingen automatisk åtkomst. Lagets datum beräknas i föreningens
+tidszon. Skrivningar låser laget och kontrollerar session och behörighet igen.
+
+Undergrupper återanvänder `team_audience_group` med `kind=group` och
+`team_audience_member`, så schemalagda kallelser använder samma sparade urval.
+Ansvarsgrupper är separata och får inte ändras genom grupp-API:t. Gruppnamn är
+unika per lag utan hänsyn till versaler. Versionskontroll avvisar gamla utkast;
+namn, medlemsval och revisionslogg sparas i samma transaktion. Gruppborttagning
+raderar bara gruppen och dess personval, aldrig medlemskap eller personer.
+
+`RosterDirectory` lämnar identitetsfakta till den behörighetskontrollerade
+tjänsten. Registrerade målsmän är aktiva explicita `person_access`-kopplingar
+med `kind=guardian`; kontaktfält finns på kopplingen. Barn i profilen begränsas
+till aktiva medlemmar i det aktuella laget. Namnredigering ändrar bara personens
+namn och ger aldrig nya roller, ansvar eller personåtkomst.
+
 ## Lager
 
 1. **Domän** – förening, lag, person, aktivitet, kallelse och medlemskap.

@@ -38,6 +38,7 @@ try {
       };
       else if (path === '/api/admin/overview') json = { platformAdmin: false, canBootstrap: false, platformAdministrators: [], clubs: [] };
       else if (path === '/api/me/managed-teams') json = canManage ? [team] : [];
+      else if (path === `/api/teams/${teamId}/roster/access`) json = false;
       else if (path === `/api/teams/${teamId}/activity-editor`) {
         editorReads++;
         json = { team, disciplineKey: null, sectionId: null, defaults: [], groups: [], members: [{ id: personId, displayName: 'Alex', role: 'participant' }], activities: [activity],
@@ -72,7 +73,7 @@ try {
     await expect(page.getByRole('heading', { name: 'F2016', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Lagets aktiviteter' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Ny aktivitet', exact: true })).toBeVisible();
-    await expect(page.getByLabel('Lag', { exact: true })).toHaveCount(0);
+    await expect(page.getByRole('combobox', { name: 'Lag', exact: true })).toHaveCount(0);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     await page.getByRole('button', { name: 'Ny aktivitet', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'Skapa aktivitet' });

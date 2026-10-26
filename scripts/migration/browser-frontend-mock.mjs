@@ -74,6 +74,7 @@ await context.route('**/api/**',async route=>{
  }
  if(path==='/api/admin/overview')return route.fulfill({json:{platformAdmin:false,canBootstrap:false,platformAdministrators:[],clubs:[]}});
  if(path==='/api/me/managed-teams')return route.fulfill({json:current===0?[managedTeam]:[]});
+ if(path===`/api/teams/${team.id}/roster/access`)return route.fulfill({json:false});
  if(path===`/api/teams/${team.id}/activity-editor`)return route.fulfill({json:{team:managedTeam,
   types:[{id,name:'Övrigt',slug:'ovrigt',system_category:'other',organization_id:null}],
   members:[],disciplineKey:null,sectionId:null,defaults:[],groups:[],activities:[]}});
@@ -142,7 +143,7 @@ try{
  await page.getByRole('link',{name:/Ungdomslaget.*Målsman/}).click();await expect(page.getByRole('heading',{name:'Ungdomslaget',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Ny aktivitet',exact:true}).click();
  await expect(page).toHaveURL(new URL(`/teams/${team.id}`,base).href);
- await expect(page.getByLabel('Lag',{exact:true})).toHaveCount(0);
+ await expect(page.getByRole('combobox',{name:'Lag',exact:true})).toHaveCount(0);
  const createDialog=page.getByRole('dialog');
  await expect(createDialog.getByRole('heading',{name:'Skapa aktivitet',exact:true})).toBeVisible();
  await createDialog.getByLabel('Titel',{exact:true}).fill('Aktivitet från lagvyn');

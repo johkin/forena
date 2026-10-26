@@ -3,6 +3,11 @@ import type { ParticipationFetch } from "../../src/components/activity-invitatio
 const uuid = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 const reads = new RegExp(`^/api/activities/${uuid}(?:/my-invitations)?$`, "i");
 const editorReads = new RegExp(`^/api/teams/${uuid}/activity-editor$`, "i");
+const rosterReads = new RegExp(`^/api/teams/${uuid}/roster(?:/access)?$`, "i");
+const rosterMembers = new RegExp(`^/api/teams/${uuid}/roster/members/${uuid}$`, "i");
+const rosterGroups = new RegExp(`^/api/teams/${uuid}/roster/groups$`, "i");
+const rosterGroup = new RegExp(`^/api/teams/${uuid}/roster/groups/${uuid}$`, "i");
+const rosterDeletion = new RegExp(`^/api/teams/${uuid}/roster/groups/${uuid}\\?revision=\\d{1,16}$`, "i");
 const activityWrites = new RegExp(`^/api/activities/${uuid}$`, "i");
 const adminResource = new RegExp(`^/api/admin/(?:bootstrap|platform-administrators|clubs|(?:clubs|sections|teams)/${uuid}(?:/(?:administrators|sections|teams)(?:/${uuid})?)?)$`, "i");
 const adminSlug = new RegExp(`^/api/admin/slug\\?slug=[a-z0-9-]{1,120}(?:&organizationId=${uuid})?$`, "i");
@@ -15,12 +20,14 @@ export function createApiFetch(readAccount: () => Promise<string | null>, unauth
   return async (path, init = {}) => {
     const method = init.method ?? "GET";
     const allowedRead = method === "GET" && (
-      path === "/api/admin/overview" || adminSlug.test(path) || reads.test(path) || editorReads.test(path) || path === "/api/me/managed-teams" ||
+      path === "/api/admin/overview" || adminSlug.test(path) || reads.test(path) || editorReads.test(path) || rosterReads.test(path) || path === "/api/me/managed-teams" ||
       path === "/api/me/overview" || /^\/api\/me\/activities(?:\?offset=\d{1,6})?$/.test(path)
     );
     const allowedWrite = (["POST", "PUT", "DELETE"].includes(method) && adminResource.test(path)) || (method === "PUT" && writes.test(path)) ||
       (method === "POST" && (path === "/api/activities" || path === "/api/activity-series")) ||
-      (["PUT", "DELETE"].includes(method) && activityWrites.test(path));
+      (["PUT", "DELETE"].includes(method) && activityWrites.test(path)) ||
+      (method === "PUT" && (rosterMembers.test(path) || rosterGroup.test(path))) ||
+      (method === "POST" && rosterGroups.test(path)) || (method === "DELETE" && rosterDeletion.test(path));
     if (!allowedRead && !allowedWrite) throw new Error("Unsupported API request");
     const account = await readAccount();
     if (!account) { unauthorized(); return Response.json({ error: "Inloggning krävs." }, { status: 401 }); }
@@ -51,7 +58,11 @@ export function createApiFetch(readAccount: () => Promise<string | null>, unauth
 }
 
 export function safeDestination(value: string | null) {
-  return value === "/" || value === "/activities/manage" || value === "/administration" || value === "/system" || (systemDestination.test(value ?? "") || clubAdministrationDestination.test(value ?? "")) || value === "/components" || value === "/notifications" || (value !== null && new RegExp(`^/(?:activities|organizations|teams)/${uuid}$`, "i").test(value)) ? value! : "/";
+  if (value === null) return "/";
+  const knownRoute = ["/", "/activities/manage", "/administration", "/system", "/components", "/notifications"].includes(value);
+  const workspace = new RegExp(`^/(?:activities|organizations|teams)/${uuid}$`, "i").test(value);
+  const roster = new RegExp(`^/teams/${uuid}/members$`, "i").test(value);
+  return knownRoute || workspace || roster || systemDestination.test(value) || clubAdministrationDestination.test(value) ? value : "/";
 }
 
 /** OAuth resumes through the server, preserving the query without allowing arbitrary redirects. */

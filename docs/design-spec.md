@@ -268,6 +268,15 @@ dialogen kan scrollas med touch och att bakgrunden är stilla.
 - Vyerna använder `roster.manage`. Ledarnas funktioner visas från lagets ansvar;
   namnredigering ändrar inte roller eller ansvar.
 
+React/Kotlin-vyn `/teams/{id}/members` delar `TeamRosterWorkspace`, medlemslista
+och gruppredigerare med Next-appen. Lagvyn och den gemensamma menyn visar Truppen
+för serververifierad `roster.manage`. `/components` i båda apparna har samma
+interaktiva truppexempel med profil, redigering, dubbla roller, gruppval, tomt
+underlag, laddning, sparande, fel och nekad behörighet. Ett sparfel behåller
+namn och gjorda personval. Gamla gruppversioner avvisas; användaren hämtar
+senaste versionen genom att uppdatera sidan. Kotlin har ännu inte Next-appens
+disciplinfält eller e-postinbjudningar i profilen.
+
 ## Kompakta aktivitetsvyer och komponentreferens
 
 - Aktivitetsdetaljer visas i en kort sammanfattning med datum, tid, samling och

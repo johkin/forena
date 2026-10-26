@@ -136,7 +136,7 @@ try {
   await expect(page.getByRole('button', { name: 'Öppna meny', exact: true })).toBeFocused();
   await page.getByRole('button', { name: 'Ny aktivitet', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Lagets aktiviteter' })).toHaveCount(0);
-  await expect(page.getByLabel('Lag', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('combobox', { name: 'Lag', exact: true })).toHaveCount(0);
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('button', { name: 'Övrigt', exact: true })).toBeVisible();
   await dialog.getByLabel('Titel', { exact: true }).fill('Browserträning');

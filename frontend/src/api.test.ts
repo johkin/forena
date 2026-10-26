@@ -127,3 +127,28 @@ it.each(["/system", "/system/organizations", `/system/organizations/${id}`, "/sy
 it.each(["/system/organizations/invalid", "/system/unknown", "https://other.test/system", "//other.test/system", "/system/organizations?redirect=https://other.test"]) ("rejects unsupported administration destinations: %s", value => {
   expect(safeDestination(value)).toBe("/");
 });
+
+it("restricts roster transport to exact resources and binds mutations to the account", async () => {
+  const transport = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+  const account = vi.fn(async () => id);
+  const request = createApiFetch(account, vi.fn(), transport);
+  const base = `/api/teams/${id}/roster`;
+  await request(base);
+  await request(`${base}/access`);
+  await request(`${base}/members/${id}`, { method: "PUT", body: "{}" });
+  await request(`${base}/groups`, { method: "POST", body: "{}" });
+  await request(`${base}/groups/${id}`, { method: "PUT", body: "{}" });
+  await request(`${base}/groups/${id}?revision=0`, { method: "DELETE" });
+  for (const [, init] of transport.mock.calls.slice(2)) {
+    expect(new Headers(init.headers).get("X-Forena-Account")).toBe(id);
+    expect(new Headers(init.headers).get("X-Forena-Request")).toBe("1");
+  }
+  const calls = account.mock.calls.length;
+  for (const [path, method] of [[`${base}?subject=${id}`, "GET"], [`${base}/members/${id}`, "POST"],
+    [`${base}/groups/${id}?revision=0&subject=${id}`, "DELETE"], [`${base}/groups/${id}?revision=-1`, "DELETE"],
+    [`${base}/groups/${id}`, "DELETE"], [`${base}/access`, "PUT"]]) {
+    await expect(request(path, { method })).rejects.toThrow();
+  }
+  expect(account.mock.calls).toHaveLength(calls);
+  expect(safeDestination(`/teams/${id}/members`)).toBe(`/teams/${id}/members`);
+});

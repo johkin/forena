@@ -60,3 +60,13 @@ node scripts/migration/administration-navigation-browser.mjs
 Origin kan anges med `FORENA_PARITY_NEXT`, `FORENA_PARITY_VITE` respektive
 `FORENA_NAVIGATION_FRONTEND`; endast lokala adresser accepteras. CI kör proven
 mot produktionsbyggen och sparar jämförelsebilder i en separat artefakt.
+
+## Truppen
+
+Öppna laget från Min översikt och välj **Truppen**, eller navigera till
+`/teams/{id}/members`. Länk och menyalternativ kräver serververifierad
+`roster.manage`. Där finns sökbar medlemslista, gruppfilter, medlemsprofiler,
+uttrycklig namnredigering och undergrupper med två personlistor (växling på
+telefon). Sparande sker genom Kotlin; ett sparfel behåller utkastet.
+`/components` visar samma komponenter med lokala syntetiska uppgifter.
+Next-appens e-postinbjudningar och profilens disciplinfält återstår i Kotlin.

@@ -1,3 +1,4 @@
+import { TeamRosterLink } from "./team-roster";
 import { OverviewBackLink } from "../../src/components/overview-back-link";
 import { needsInvitationResponse } from "../../src/lib/pending-invitations";
 import { useNavigate } from "react-router";
@@ -68,7 +69,7 @@ export function MyActivitiesPage({ request, workspace, notifications=false }: { 
     {workspace ? <OverviewBackLink linkComponent={AppLink} /> : null}
     {error ? <div role="alert"><p>{error}</p><button type="button" onClick={()=>setAttempt(value=>value+1)}>Försök igen</button></div> : null}
     <PersonalHome items={items} activities={activities.map(calendarActivity)} referenceTime={data.reference_time}
-      actions={team ? <ActivityManagement key={team.id} teamId={team.id} request={request} onSaved={() => setAttempt(value => value + 1)} /> : undefined}
+      actions={team ? <><TeamRosterLink key={`roster-${team.id}`} request={request} teamId={team.id} /><ActivityManagement key={team.id} teamId={team.id} request={request} onSaved={() => setAttempt(value => value + 1)} /></> : undefined}
       title={team?.name ?? organization?.name} introduction={workspace ? "Här visas aktiviteter för dig och de personer du företräder i arbetsytan." : undefined}
       organizations={data.organizations.filter(item=>!workspace || item.id===(organization?.id ?? team?.organization_id)).map(item=>({...item,role:item.role ?? undefined,href:`/organizations/${item.id}`}))}
       teams={data.teams.filter(item=>!workspace || (team ? item.id===team.id : item.organization_id===organization!.id)).map(item=>({id:item.id,organizationId:item.organization_id,name:item.name,roles:item.roles.map(role=>teamRoleLabels[role] ?? role),href:`/teams/${item.id}`}))}

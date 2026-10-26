@@ -862,3 +862,22 @@ Undantaget vidgar aldrig vilka personer kontot får svara för. Personåtkomst,
 aktiv session, skickad kallelse och aktivitetens livscykel kontrolleras fortsatt;
 inställda eller avslutade aktiviteter är låsta även för ledare. Läsmodellens
 `can_manage_activities` styr UI men ersätter ingen serverkontroll.
+
+## Kotlin: administration av truppen
+
+API:t för `/api/teams/{id}/roster` kräver aktiv session och serverkontrollerad
+`roster.manage` för det valda laget. En ledar-/spelar-/målsmansroll och
+`activity.manage` ger inte i sig rättigheten. Personbundna tilldelningar kräver
+aktuell egen personkoppling; delegation är ingen administrativ fullmakt.
+Systemadmin ger ingen automatisk verksamhetsåtkomst. Skrivningar kontrollerar
+session och rättighet före och efter lagets radlås.
+
+Alla personval verifieras mot lagets datumgiltiga aktiva trupp. Grupp-ID,
+organisation och `kind=group` kontrolleras på servern. Grupprevision och ett
+transaktionsgemensamt laglås hindrar förlorade uppdateringar; namn, urval och
+revisionspost återställs tillsammans vid fel. Gruppborttagning lämnar
+medlemskap orörda. Kontaktuppgifter och barn lämnas bara genom den behöriga
+truppsnapshoten; barn i andra lag följer inte med. Alla svar är `no-store`.
+Migration 017 behåller befintliga separata owner-/runtime-roller och gör inga
+klientgrants eller nya RLS-policyer. Browsertransporten tillåter bara exakta
+API-rutter och binder varje skrivning till den inloggade kontots identitet.

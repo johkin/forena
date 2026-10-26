@@ -321,3 +321,37 @@ interface ScheduledInvitationRepository : Repository<ActivityScheduleEntity, UUI
     @Query("select id, recipient, subject, body from forena.invitation_notification where id = :id")
     fun notification(id: UUID): InvitationNotificationSnapshot?
 }
+
+/** Roster reads are scoped by the authorized team and its local date. */
+interface RosterRepository : Repository<TeamEntity, UUID> {
+    @Query("""select p.id,p.display_name,m.role from forena.team_membership m
+        join forena.person p on p.id=m.person_id and p.organization_id=m.organization_id
+        where m.team_id=:team and m.active and m.starts_on<=:today and (m.ends_on is null or m.ends_on>=:today)
+        order by p.display_name,p.id,m.role""")
+    fun members(team: UUID, today: java.time.LocalDate): List<ManagementPersonRow>
+
+    @Modifying
+    @Query("insert into forena.team_audience_group(id,organization_id,team_id,name,kind) values(:id,:organization,:team,:name,'group')")
+    fun createGroup(id: UUID, organization: UUID, team: UUID, name: String): Int
+
+    @Modifying
+    @Query("""update forena.team_audience_group set name=:name,revision=revision+1
+        where id=:id and team_id=:team and kind='group' and revision=:revision""")
+    fun updateGroup(id: UUID, team: UUID, name: String, revision: Long): Int
+
+    @Modifying
+    @Query("delete from forena.team_audience_member where group_id=:group")
+    fun clearGroup(group: UUID): Int
+
+    @Modifying
+    @Query("insert into forena.team_audience_member(group_id,organization_id,person_id) values(:group,:organization,:person)")
+    fun addMember(group: UUID, organization: UUID, person: UUID): Int
+
+    @Modifying
+    @Query("delete from forena.team_audience_group where id=:id and team_id=:team and kind='group' and revision=:revision")
+    fun deleteGroup(id: UUID, team: UUID, revision: Long): Int
+
+    @Modifying
+    @Query("insert into forena.roster_audit(organization_id,team_id,actor_subject,operation,target_id) values(:organization,:team,:actor,:operation,:target)")
+    fun audit(organization: UUID, team: UUID, actor: UUID, operation: String, target: UUID): Int
+}

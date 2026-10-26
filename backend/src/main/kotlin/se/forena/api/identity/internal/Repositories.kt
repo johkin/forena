@@ -1,6 +1,8 @@
 package se.forena.api.identity.internal
 
 import se.forena.api.identity.NotificationRecipient
+import se.forena.api.identity.RosterGuardian
+import se.forena.api.identity.RosterSelf
 
 import java.time.Instant
 import java.util.Optional
@@ -76,4 +78,23 @@ interface NotificationRecipientRepository : Repository<AccountEntity, UUID> {
         limit 1001
     """)
     fun forPerson(person: UUID, organization: UUID): List<NotificationRecipient>
+}
+
+interface RosterIdentityRepository : Repository<PersonEntity, UUID> {
+    @Query("""select g.person_id,g.subject,
+        coalesce(nullif(g.contact_name,''),p.display_name,'Målsman') as name,g.contact_phone as phone
+        from forena.person_access g
+        left join forena.person_access a on a.subject=g.subject and a.organization_id=g.organization_id and a.kind='self' and a.active
+        left join forena.person p on p.id=a.person_id and p.organization_id=a.organization_id
+        where g.organization_id=:organization and g.person_id in (:people) and g.kind='guardian' and g.active
+        order by name,g.subject""")
+    fun guardians(organization: UUID, people: Collection<UUID>): List<RosterGuardian>
+
+    @Query("""select person_id,subject from forena.person_access
+        where organization_id=:organization and person_id in (:people) and kind='self' and active""")
+    fun accounts(organization: UUID, people: Collection<UUID>): List<RosterSelf>
+
+    @Modifying
+    @Query("update forena.person set display_name=:name where id=:person and organization_id=:organization")
+    fun rename(organization: UUID, person: UUID, name: String): Int
 }

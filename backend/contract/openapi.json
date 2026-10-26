@@ -1507,6 +1507,122 @@
         ],
         "type": "object"
       },
+      "RosterContact": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RosterGroupCommand": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "personIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "revision": {
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "RosterMember": {
+        "properties": {
+          "childIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "guardians": {
+            "items": {
+              "$ref": "#/components/schemas/RosterContact"
+            },
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "linked": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RosterNameCommand": {
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RosterSubgroup": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "personIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "RosterTeam": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "organizationName": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "SectionChange": {
         "properties": {
           "disciplineKey": {
@@ -1549,6 +1665,26 @@
               "string",
               "null"
             ]
+          }
+        },
+        "type": "object"
+      },
+      "TeamRosterSnapshot": {
+        "properties": {
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/RosterSubgroup"
+            },
+            "type": "array"
+          },
+          "people": {
+            "items": {
+              "$ref": "#/components/schemas/RosterMember"
+            },
+            "type": "array"
+          },
+          "team": {
+            "$ref": "#/components/schemas/RosterTeam"
           }
         },
         "type": "object"
@@ -3883,6 +4019,235 @@
         },
         "tags": [
           "activity-management-controller"
+        ]
+      }
+    },
+    "/api/teams/{teamId}/roster": {
+      "get": {
+        "operationId": "getTeamRoster",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "teamId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamRosterSnapshot"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "team-roster-controller"
+        ]
+      }
+    },
+    "/api/teams/{teamId}/roster/access": {
+      "get": {
+        "operationId": "getRosterAccess",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "teamId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "team-roster-controller"
+        ]
+      }
+    },
+    "/api/teams/{teamId}/roster/groups": {
+      "post": {
+        "operationId": "createRosterGroup",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "teamId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RosterGroupCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/RosterSubgroup"
+                }
+              }
+            },
+            "description": "Created subgroup"
+          }
+        },
+        "tags": [
+          "team-roster-controller"
+        ]
+      }
+    },
+    "/api/teams/{teamId}/roster/groups/{groupId}": {
+      "delete": {
+        "operationId": "deleteRosterGroup",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "teamId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "revision",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Subgroup deleted"
+          }
+        },
+        "tags": [
+          "team-roster-controller"
+        ]
+      },
+      "put": {
+        "operationId": "updateRosterGroup",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "teamId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RosterGroupCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Subgroup saved"
+          }
+        },
+        "tags": [
+          "team-roster-controller"
+        ]
+      }
+    },
+    "/api/teams/{teamId}/roster/members/{personId}": {
+      "put": {
+        "operationId": "renameRosterMember",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "teamId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "personId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RosterNameCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Member renamed"
+          }
+        },
+        "tags": [
+          "team-roster-controller"
         ]
       }
     }
