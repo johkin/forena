@@ -73,7 +73,8 @@ interface AdministrationRepository : Repository<AdministrationStateEntity, Boole
         and not exists(select 1 from forena.team_access_assignment where team_id=:team)
         and not exists(select 1 from forena.team_permission_assignment where team_id=:team)
         and not exists(select 1 from forena.activity_defaults where team_id=:team)
-        and not exists(select 1 from forena.team_audience_group where team_id=:team)""")
+        and not exists(select 1 from forena.team_audience_group where team_id=:team)
+        and not exists(select 1 from forena.roster_audit where team_id=:team)""")
     fun teamEmpty(team: UUID): Boolean
     @Query("select not exists(select 1 from forena.team where section_id=:section) and not exists(select 1 from forena.activity_defaults where section_id=:section)")
     fun sectionDisciplineMutable(section: UUID): Boolean

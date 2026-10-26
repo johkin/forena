@@ -674,6 +674,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/teams/{teamId}/roster": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTeamRoster"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{teamId}/roster/access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getRosterAccess"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{teamId}/roster/groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createRosterGroup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{teamId}/roster/groups/{groupId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["updateRosterGroup"];
+        post?: never;
+        delete: operations["deleteRosterGroup"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{teamId}/roster/members/{personId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["renameRosterMember"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1147,6 +1227,43 @@ export interface components {
             /** @enum {string} */
             response: "pending" | "accepted" | "declined";
         };
+        RosterContact: {
+            name?: string;
+            phone?: string;
+        };
+        RosterGroupCommand: {
+            name?: string;
+            personIds?: string[];
+            /** Format: int64 */
+            revision?: number | null;
+        };
+        RosterMember: {
+            childIds?: string[];
+            guardians?: components["schemas"]["RosterContact"][];
+            /** Format: uuid */
+            id?: string;
+            linked?: boolean;
+            name?: string;
+            roles?: string[];
+            title?: string;
+        };
+        RosterNameCommand: {
+            name?: string;
+        };
+        RosterSubgroup: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            personIds?: string[];
+            /** Format: int64 */
+            revision?: number;
+        };
+        RosterTeam: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            organizationName?: string;
+        };
         SectionChange: {
             disciplineKey?: string;
             name?: string;
@@ -1162,6 +1279,11 @@ export interface components {
             name?: string;
             season?: string;
             slug?: string | null;
+        };
+        TeamRosterSnapshot: {
+            groups?: components["schemas"]["RosterSubgroup"][];
+            people?: components["schemas"]["RosterMember"][];
+            team?: components["schemas"]["RosterTeam"];
         };
         TokenGenerationRequest: {
             username?: string;
@@ -3005,6 +3127,149 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["ActivityEditorContext"];
                 };
+            };
+        };
+    };
+    getTeamRoster: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TeamRosterSnapshot"];
+                };
+            };
+        };
+    };
+    getRosterAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": boolean;
+                };
+            };
+        };
+    };
+    createRosterGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RosterGroupCommand"];
+            };
+        };
+        responses: {
+            /** @description Created subgroup */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RosterSubgroup"];
+                };
+            };
+        };
+    };
+    updateRosterGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: string;
+                groupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RosterGroupCommand"];
+            };
+        };
+        responses: {
+            /** @description Subgroup saved */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deleteRosterGroup: {
+        parameters: {
+            query: {
+                revision: number;
+            };
+            header?: never;
+            path: {
+                teamId: string;
+                groupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Subgroup deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    renameRosterMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: string;
+                personId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RosterNameCommand"];
+            };
+        };
+        responses: {
+            /** @description Member renamed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

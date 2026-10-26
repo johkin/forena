@@ -16,6 +16,7 @@ import { PasskeyList } from "./passkey-list";
 import { AdministrationExample } from "./administration-example";
 import { ActivityManagementExample } from "./activity-management-example";
 import { SessionMenu } from "./session-menu";
+import { TeamRosterExample } from "./team-roster-example";
 
 /** Actual pilot components with local fixtures; no login or database mutations. */
 export function BrowserFrontendExamples({ linkComponent }: { linkComponent?: NavigationLink }) {
@@ -37,6 +38,7 @@ export function BrowserFrontendExamples({ linkComponent }: { linkComponent?: Nav
   return <>
     <AdministrationExample />
     <ActivityManagementExample />
+    <TeamRosterExample />
     <OverviewBackLink linkComponent={linkComponent} />
     <PersonalHomeExample linkComponent={linkComponent} />
     <section><h2>Mina aktiviteter</h2><MyActivityList linkComponent={linkComponent} request={request} activities={activities} loadMore={() => {}} /></section>

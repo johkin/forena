@@ -160,6 +160,6 @@ data class ActivityDefaultsEntity(@Id val id: UUID, val organizationId: UUID, va
     val teamId: UUID?, val activityTypeId: UUID, val disciplineKey: String, val version: String,
     val revision: Long, val valuesJson: String)
 @Table(value = "team_audience_group", schema = "forena")
-data class AudienceGroupEntity(@Id val id: UUID, val organizationId: UUID, val teamId: UUID, val name: String, val kind: String)
+data class AudienceGroupEntity(@Id val id: UUID, val organizationId: UUID, val teamId: UUID, val name: String, val kind: String, val revision: Long = 0)
 @Table(value = "team_audience_member", schema = "forena")
 data class AudienceMemberEntity(@Id val id: UUID, val groupId: UUID, val organizationId: UUID, val personId: UUID, val active: Boolean)

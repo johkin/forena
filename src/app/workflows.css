@@ -205,3 +205,5 @@
 .person-selection-shortcuts button:disabled { opacity:.5; cursor:default; }
 .person-selection-summary { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; font-size:13px; }
 @media (hover:hover) { .person-selection-shortcuts button:hover:not(:disabled) { background:var(--primary); color:var(--on-primary); } }
+
+.squad-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 18px; }

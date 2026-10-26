@@ -155,6 +155,98 @@ class ApiTest {
     private fun history() = admin.queryForObject("select count(*) from forena.invitation_history where invitation_id=?", Long::class.java, invitation)!!
     private fun dirty() = admin.queryForObject("select coalesce((select dirty_revision from forena.activity_signal_state where activity_id=?),0)", Long::class.java, activity)!!
 
+    private fun rosterTeam(): UUID = admin.queryForObject("select team_id from forena.activity where id=?", UUID::class.java, activity)!!
+    private fun rosterMember(person: UUID, role: String = "participant", start: String = "current_date", end: String = "null") {
+        admin.update("insert into forena.team_membership(organization_id,team_id,person_id,role,starts_on,ends_on) values(?,?,?,?, $start, $end)", organization, rosterTeam(), person, role)
+    }
+    private fun rosterPermission(person: UUID = own, permission: String = "roster.manage") {
+        admin.update("insert into forena.team_permission_assignment(organization_id,team_id,person_id,permission,starts_on) values(?,?,?,?,current_date)", organization, rosterTeam(), person, permission)
+    }
+
+    @Test fun `roster permission is independent of membership activity rights and delegated identity`() {
+        val path = "/api/teams/${rosterTeam()}/roster"
+        rosterMember(own, "leader")
+        rosterMember(child1)
+        rosterPermission(own, "activity.manage")
+        rosterPermission(child1)
+        assertThat(request("$path/access").body()).isEqualTo("false")
+        assertThat(request(path).statusCode()).isEqualTo(403)
+        assertThat(request("$path/members/$child1", """{"name":"Nytt namn"}""").statusCode()).isEqualTo(403)
+        assertThat(request("$path/groups", """{"name":"Gul"}""", method = "POST").statusCode()).isEqualTo(403)
+        rosterPermission()
+        assertThat(request("$path/access").body()).isEqualTo("true")
+        assertThat(request(path).statusCode()).isEqualTo(200)
+        assertThat(request(path, cookie = loginCookie(outsider)).statusCode()).isEqualTo(403)
+        admin.update("update forena.team_permission_assignment set ends_on=current_date-1,starts_on=current_date-2 where person_id=? and permission='roster.manage'", own)
+        assertThat(request(path).statusCode()).isEqualTo(403)
+    }
+
+    @Test fun `roster snapshot includes current roles responsibilities guardians and only children in this team`() {
+        rosterPermission()
+        rosterMember(own, "leader")
+        rosterMember(own)
+        rosterMember(child1)
+        rosterMember(other, "volunteer")
+        rosterMember(child2, start = "current_date+1")
+        val responsibility = UUID.randomUUID()
+        admin.update("insert into forena.team_audience_group(id,organization_id,team_id,name,kind) values(?,?,?,'Tränare','responsibility')", responsibility, organization, rosterTeam())
+        admin.update("insert into forena.team_audience_member(group_id,organization_id,person_id) values(?,?,?)", responsibility, organization, own)
+        admin.update("update forena.person_access set contact_name='Registrerad målsman',contact_phone='+46701234567' where person_id=? and kind='guardian'", child1)
+        val response = request("/api/teams/${rosterTeam()}/roster")
+        assertThat(response.statusCode()).isEqualTo(200)
+        assertThat(response.headers().firstValue("Cache-Control").orElse("")).contains("no-store")
+        val snapshot = json.readTree(response.body())
+        val people = snapshot.get("people").toList()
+        assertThat(people.map { it.get("id").asString() }).containsExactlyInAnyOrder(own.toString(), child1.toString(), other.toString())
+        val leader = people.single { it.get("id").asString() == own.toString() }
+        assertThat(leader.get("roles").toString()).contains("leader", "participant")
+        assertThat(leader.get("title").asString()).isEqualTo("Tränare")
+        assertThat(leader.get("childIds").toString()).contains(child1.toString()).doesNotContain(child2.toString())
+        val child = people.single { it.get("id").asString() == child1.toString() }
+        assertThat(child.get("guardians").toString()).contains("Registrerad målsman", "+46701234567")
+        assertThat(snapshot.get("groups").isEmpty).isTrue()
+    }
+
+    @Test fun `roster rename changes only current member name and records actor`() {
+        rosterPermission()
+        rosterMember(own, "leader")
+        rosterMember(child1, start = "current_date-2", end = "current_date-1")
+        val path = "/api/teams/${rosterTeam()}/roster/members"
+        assertThat(request("$path/$child1", """{"name":"Saknar medlemskap"}""").statusCode()).isEqualTo(404)
+        assertThat(request("$path/$other", """{"name":"Annat lag"}""").statusCode()).isEqualTo(404)
+        assertThat(request("$path/$own", """{"name":"   "}""").statusCode()).isEqualTo(400)
+        assertThat(request("$path/$own", """{"name":" Robin Nytt namn "}""").statusCode()).isEqualTo(204)
+        assertThat(admin.queryForObject("select display_name from forena.person where id=?", String::class.java, own)).isEqualTo("Robin Nytt namn")
+        assertThat(admin.queryForObject("select role from forena.team_membership where person_id=?", String::class.java, own)).isEqualTo("leader")
+        assertThat(admin.queryForObject("select actor_subject from forena.roster_audit where team_id=? and operation='member.updated'", UUID::class.java, rosterTeam())).isEqualTo(parent)
+    }
+
+    @Test fun `roster groups validate selections atomically reject stale updates and delete only the group`() {
+        rosterPermission()
+        rosterMember(own, "leader")
+        rosterMember(child1)
+        val base = "/api/teams/${rosterTeam()}/roster/groups"
+        val created = request(base, """{"name":"Lag Gul","personIds":["$child1","$child1"]}""", method = "POST")
+        assertThat(created.statusCode()).isEqualTo(201)
+        val id = json.readTree(created.body()).get("id").asString()
+        assertThat(request(base, """{"name":" lag gul "}""", method = "POST").statusCode()).isEqualTo(409)
+        assertThat(request("$base/$id", """{"name":"Fel urval","personIds":["$child2"],"revision":0}""").statusCode()).isEqualTo(400)
+        assertThat(admin.queryForObject("select name from forena.team_audience_group where id=?::uuid", String::class.java, id)).isEqualTo("Lag Gul")
+        assertThat(admin.queryForObject("select person_id from forena.team_audience_member where group_id=?::uuid", UUID::class.java, id)).isEqualTo(child1)
+        assertThat(request("$base/$id", """{"name":"Lag Blå","personIds":["$own"],"revision":0}""").statusCode()).isEqualTo(204)
+        assertThat(request("$base/$id", """{"name":"Gammalt utkast","personIds":[],"revision":0}""").statusCode()).isEqualTo(409)
+        assertThat(request("$base/$id?revision=0", method = "DELETE").statusCode()).isEqualTo(409)
+        assertThat(admin.queryForObject("select person_id from forena.team_audience_member where group_id=?::uuid", UUID::class.java, id)).isEqualTo(own)
+        val responsibility = UUID.randomUUID()
+        admin.update("insert into forena.team_audience_group(id,organization_id,team_id,name,kind) values(?,?,?,'Ansvar','responsibility')", responsibility, organization, rosterTeam())
+        assertThat(request("$base/$responsibility", """{"name":"Får inte ändras","revision":0}""").statusCode()).isEqualTo(409)
+        assertThat(request("$base/$responsibility?revision=0", method = "DELETE").statusCode()).isEqualTo(404)
+        assertThat(request("$base/$id?revision=1", method = "DELETE").statusCode()).isEqualTo(204)
+        assertThat(admin.queryForObject("select count(*) from forena.team_membership where team_id=?", Long::class.java, rosterTeam())).isEqualTo(2)
+        assertThat(admin.queryForObject("select count(*) from forena.team_audience_member where group_id=?::uuid", Long::class.java, id)).isZero()
+        assertThat(admin.queryForObject("select count(*) from forena.roster_audit where team_id=?", Long::class.java, rosterTeam())).isEqualTo(3)
+    }
+
     @Test fun `logout committed during activity lock wait rejects the pending write`() {
         DriverManager.getConnection(database.jdbcUrl, database.username, database.password).use { connection ->
             connection.autoCommit = false

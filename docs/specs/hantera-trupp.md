@@ -4,7 +4,8 @@
 - Senast uppdaterad: 2026-10-26
 - Berörda dokument: [Designregler: Truppen](../design-spec.md#truppen),
   [arkitektur](../architecture.md), [säkerhetsarkitektur](../security-architecture.md)
-- Implementation och verifiering: Ej påbörjad inom denna feature.
+- Implementation och verifiering: Delvis implementerad; se kravredovisningen nedan.
+  Produktkravens status är fortsatt Redo.
 
 ## Problem och mål
 
@@ -292,8 +293,30 @@ design- och säkerhetsdokument stämmas av mot denna spec och uppdateras i samma
   medlemskapet bestå och leveransen kunna återförsökas utan dubbletter.
   Samtidiga godkännanden får skapa högst ett aktivt medlemskap för samma roll.
 
-Specen har verifierats som dokument. Ovanstående produktbeteenden är ännu inte
-implementerade eller verifierade inom denna feature.
+Specen har verifierats som dokument. Produktbeteendena är endast delvis
+implementerade och verifierade; se kravredovisningen nedan.
+
+## Implementation och verifiering
+
+Delimplementation 2026-10-26, beställd utifrån avsnittet
+[Truppen i designreglerna](../design-spec.md#truppen). Denna ändring implementerar
+inte hela den utökade featurespecen. Kraven och benämningsbeslutet ovan är
+oförändrade; återstående funktioner ska inte betraktas som bortvalda.
+
+| Krav / acceptanskriterium | Status och evidens |
+| --- | --- |
+| K-001, AK-024 | Medlemslista, sökning, gruppfilter, rollordning, profil och uttrycklig redigering implementerade och verifierade i båda apparna på mobil och desktop. `src/components/team-roster-workspace.tsx`, `scripts/migration/team-roster-browser.mjs`. Full funktionell likvärdighet enligt K-001/AK-001 återstår. |
+| K-002 | Lagmedlemskap och undergrupper hanteras separat från enskilda aktiviteters urval. Implementerat; API- och browserprov verifierar att gruppborttagning bevarar lagmedlemskap. |
+| K-001, AK-025 | Delvis implementerat och verifierat: kontokopplingsstatus, namnredigering utan roll-/ansvarsändring, undergrupper, registrerade målsmän och barn i aktuellt lag. Disciplinfält, inloggningsadress och inbjudan/inloggningslänk återstår i Kotlin; Next behåller befintliga flöden. |
+| K-001, AK-026 | Undergrupper implementerade och verifierade: skapa, namn, personval, sökning som bevarar val, mobilväxling och bekräftad borttagning. Grupprevision, behörighet och atomära ändringar verifieras i `backend/src/test/kotlin/se/forena/api/ApiTest.kt`. |
+| K-008, AK-004 | Återstår. Denna delimplementation behåller designförlagans benämning Truppen; målbenämningen i denna spec är fortsatt Lagmedlemmar. |
+| K-001, AK-027 | Kontaktlistan för vanliga medlemmar/vårdnadshavare återstår i Kotlin. Next-appens kontaktlista finns kvar. |
+| K-003–K-007, K-009–K-026; AK-002–AK-003, AK-005–AK-023, AK-028 | Återstår inom den utökade featuren: direktregistrering, start/avslut/arkivering, vårdnadshavaradministration, ansökan, granskning, e-postverifiering, dubbletthantering och automatisk åtkomstgräns vid 18 år. Befintlig datumgiltig läsning och administrativa behörighetskontroller innebär inte att dessa flöden är implementerade. |
+
+Verifiering och begränsningar redovisas i
+[migreringsstatus](../migration/status.md#truppen-medlemsprofiler-och-undergrupper-2026-10-26).
+API-/PostgreSQL-tester och separata browserprov med mockad API-transport finns;
+hela den utökade featurens acceptansflöden är inte genomförda.
 
 ## Befintligt ansökningsflöde som underlag
 

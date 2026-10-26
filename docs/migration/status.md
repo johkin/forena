@@ -1,5 +1,50 @@
 # Migreringsstatus
 
+## Truppen: medlemsprofiler och undergrupper, 2026-10-26
+
+Lokalt implementerat enligt [Truppen-specen](../design-spec.md#truppen).
+React/Kotlin-rutten `/teams/{id}/members` och Next delar
+`TeamRosterWorkspace`, medlemslistan och gruppredigeraren. Sökning, gruppfilter,
+rollordning, fullständiga namn, profilens målsmän/barn och namnredigering ingår.
+Gruppval använder två listor på desktop och växling med antal på telefon.
+Sparfel behåller utkast; borttagning kräver bekräftelse och lämnar medlemskap
+orörda. Gemensamma interaktiva exempel finns på `/components` i båda apparna.
+
+Migration 017 inför `roster.manage`, grupprevisioner, unika gruppnamn,
+registrerade målsmanskontakter och revisionslogg. API:t återanvänder befintliga
+kallelsemålgrupper; ansvarsgrupper får inte ändras genom undergruppskommandon.
+Session och lagbehörighet kontrolleras före/efter radlås; samtliga personval
+kontrolleras mot datumgiltiga aktiva medlemskap. API-kontraktet är genererat
+från den testade springdoc-exporten. Inga driftmigrationer eller deploymenter
+har gjorts i denna leverans.
+
+Verifierat lokalt:
+
+- `npm test`: 137 testfiler, 1 179 godkända tester. Efter slutlig
+  transportjustering: 56 relevanta tester godkända i tre filer.
+- Full Maven `test`: 129 testfall, 126 godkända, tre valbara miljöberoende prov
+  överhoppade, inga fel. Migrationstestets 17 fall omfattar tom installation
+  och uppgradering från samtliga 16 tidigare baslinjer.
+- Efter sista läsoptimeringen: `-Dtest=ApiTest#roster*,ArchitectureTest test`,
+  sex godkända tester utan överhoppningar.
+- `npm run typecheck`, `npm run lint`, Next-produktionsbygge och
+  `npm run frontend:build` godkända för slutlig källkod.
+- `scripts/migration/team-roster-browser.mjs`: samma layout/CSS i Next och
+  Vite vid 320, 375, 390, 768 och 1 280 pixlar. Profil, namnredigering,
+  dubbla roller, personval, sparande, bekräftad borttagning och overflow
+  verifierade. Separat browserprov med mockat API verifierar JSON-payload,
+  kontobindning, grupprevision och bevarat utkast efter 409. API-/databaskedjan
+  verifieras av de riktiga HTTP-/PostgreSQL-testerna ovan.
+- `scripts/migration/team-activity-navigation-browser.mjs`: befintliga
+  aktivitetsflöden, behörighet, fokus och layout godkända i samma fem bredder.
+
+Next-profilens disciplinfält och e-postinbjudningar finns kvar som
+profilutökning och återstår i Kotlin. Detta är en delimplementation av
+[den utökade featurespecen](../specs/hantera-trupp.md), vars kravredovisning
+anger återstående flöden: bland annat Lagmedlemmar som benämning,
+kontaktlista, direktregistrering, avslut/arkivering, vårdnadshavaradministration
+och medlemsansökningar. Dessa krav är inte bortvalda.
+
 ## M06/M10 tillsammans: beständiga kallelser och kontrollerad e-post, 2026-10-25
 
 Implementation: `2b53fb0106eb750855dabe70e11ac8f1b05f8b5c` på

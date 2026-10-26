@@ -74,6 +74,7 @@ await context.route('**/api/**',async route=>{
  }
  if(path==='/api/admin/overview')return route.fulfill({json:{platformAdmin:false,canBootstrap:false,platformAdministrators:[],clubs:[]}});
  if(path==='/api/me/managed-teams')return route.fulfill({json:current===0?[managedTeam]:[]});
+ if(path===`/api/teams/${team.id}/roster/access`)return route.fulfill({json:false});
  if(path===`/api/teams/${team.id}/activity-editor`)return route.fulfill({json:{team:managedTeam,
   types:[{id,name:'Övrigt',slug:'ovrigt',system_category:'other',organization_id:null}],
   members:[],disciplineKey:null,sectionId:null,defaults:[],groups:[],activities:[]}});
