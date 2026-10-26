@@ -99,7 +99,9 @@ Den nya webbens startsida visar **Min översikt** via `GET /api/me/overview`.
 Sidan har Agenda/Kalender, kombinerbara filterchips för Behöver svar och lag,
 en gemensam aktivitetslista och Mina lag och föreningar. Varje berörd person
 har en rad, även utan kallelse. Filtren begränsar samma underlag i båda vyerna;
-svarsräknaren räknar aktiviteter inom valt lag, inte personer. Lag identifieras
+svarsräknaren räknar aktiviteter inom valt lag, inte personer.
+`needsInvitationResponse` delar urvalsvillkoret med kallelsesidan: obesvarad,
+inte inställd och ännu inte avslutad. Passerad svarstid stänger inte svar. Lag identifieras
 med ID från aktivitetsunderlaget, även för gästkallelser utan laggenväg.
 Bekräftade svar uppdaterar urval och räknare; ett gemensamt skrivlås hindrar
 samtidiga svar för samma kallelse.

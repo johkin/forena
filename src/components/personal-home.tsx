@@ -7,6 +7,7 @@ import type { OverviewItem, OverviewAnswered } from "./personal-overview-types";
 import type { NavigationLink } from "./navigation-link";
 import { PersonalOverview, overviewNames } from "./personal-overview";
 import { TeamCalendar } from "./team-calendar";
+import { needsInvitationResponse } from "../lib/pending-invitations";
 
 export type HomeOrganization = { id:string; name:string; role?:string; href:string };
 export type HomeTeam = { id:string; organizationId:string; name:string; roles:string[]; href:string };
@@ -33,8 +34,7 @@ export function PersonalHome<T extends OverviewItem>({ items, activities, organi
   const [view,setView]=useState<"agenda"|"calendar">("agenda");
   const [needsReply, setNeedsReply] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState<string>();
-  const now=Date.parse(referenceTime);
-  const pendingIds=new Set(items.filter(item=>item.activity.status !== "cancelled" && item.invitation?.response==="pending" && Date.parse(item.activity.startsAt)>now && (!item.activity.responseDueAt || Date.parse(item.activity.responseDueAt)>now)).map(item=>item.activity.id));
+  const pendingIds = new Set(items.filter(item => needsInvitationResponse(item, referenceTime)).map(item => item.activity.id));
   const activityById = new Map(activities.map(activity => [activity.id, activity]));
   // Include guest invitations and managed activities even without a team shortcut.
   const filterTeams = new Map<string, string>();
