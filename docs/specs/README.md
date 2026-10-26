@@ -48,6 +48,8 @@ Exempel på implementation:
 
 ## Sparade specar
 
+- [Telegram-boten](telegram-bot.md) – Redo.
+
 - [AI-assistenten](ai-assistent.md) – Redo.
 
 - [Lagmedlemmar – hantera trupp och medlemsansökningar](hantera-trupp.md) – Redo.
