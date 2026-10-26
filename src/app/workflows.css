@@ -33,7 +33,7 @@
 .activity-editor-modal .settings-fields fieldset { border:0; padding:16px; background:var(--surface-low); border-radius:12px; }
 .activity-editor-modal .timing-choice-row { padding-block:8px; border-bottom:1px solid var(--line); }
 .activity-editor-modal .activity-preview { background:var(--positive-surface); border-color:#c5edc1; border-radius:16px; }
-.activity-editor-modal .modal-actions { margin-top:16px; padding:16px 0 max(8px,env(safe-area-inset-bottom)); background:var(--cream); }
+.activity-editor-modal .modal-actions { margin-top:16px; background:var(--cream); }
 
 /* Attendance: action summary plus single-column mobile roster, shared selection state. */
 .attendance-modal { background:var(--cream); }
@@ -115,7 +115,8 @@
   .activity-editor-modal { width:min(640px,100%); }
 }
 @media (max-width:767px) {
-  .activity-editor-modal, .attendance-modal { padding:16px; }
+  .activity-editor-modal { --activity-editor-inset:16px; }
+  .attendance-modal { padding:16px; }
   .activity-editor-modal .editor-section { padding:20px; }
   .activity-editor-modal .editor-fields { grid-template-columns:minmax(0,1fr); }
   .activity-editor-modal .invitation-mode-switch button { padding:8px 6px; font-size:12px; }

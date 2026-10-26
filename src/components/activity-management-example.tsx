@@ -77,6 +77,7 @@ export function ActivityManagementExample() {
     </select></label>
     <ActivityManagement key={state} request={request} teamId={team.id} />
     <h3>Redigera från en öppnad aktivitet</h3>
+    <p>Öppna Redigera för att prova dialogens åtgärdsrad. Knappar och fokusramar ska rymmas med luft till kanterna även på mobil och när formuläret scrollas.</p>
     <ActivityManagement key={`details-${state}`} request={request} teamId={team.id} activityId={initial.id} />
     <h3>Äldre direktlänk med förvalt lag</h3>
     <div className="welcome"><div><h3>{team.name}</h3><p>Skapa direkt från lagets översikt.</p></div>
