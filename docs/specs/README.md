@@ -48,6 +48,8 @@ Exempel på implementation:
 
 ## Sparade specar
 
+- [AI-assistenten](ai-assistent.md) – Redo.
+
 - [Lagmedlemmar – hantera trupp och medlemsansökningar](hantera-trupp.md) – Redo.
 
 - [Kalender-vyn – historik, filter och dagens datum](kalender-vy.md) – Redo.
