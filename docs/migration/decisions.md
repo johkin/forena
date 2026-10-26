@@ -594,6 +594,17 @@ privata kommentarer. Leveranslogg och revisionshistorik har separata ändamål.
 
 ## ADR-005: Händelser — fastställd riktning, M06 avgör mekanismen
 
+Uppföljning 2026-10-25: användaren har beställt M06/M10 tillsammans och bekräftat
+Spring som förstahandsval. Kallelsekedjan använder Moduliths JDBC-register för
+beständig modulreaktion och en separat specialiserad transportjournal för
+providerförsök. Snapshot/checkpoint, register och schemakvittens delar commit;
+transportens första försök sparas före HTTP. Registret skriver alla sina egna
+stateövergångar. En avgränsad read-only SPI-dekorator behövs eftersom standard-
+läsningen materialiserar hela backloggen. Resend använder ett deklarativt
+Spring HTTP-interface via `@ImportHttpServices`. Verksamhetsaktivering och
+molnväckning kräver fortsatt M22G; endast allowlistade testmottagare stöds nu.
+Se [implementationens gränser och körguide](invitation-delivery.md).
+
 Postgres är tillståndskälla. Synkrona publika modul-API:er används för omedelbart
 svar och gemensam transaktion. Interna händelser används för efterföljande
 reaktioner; bara uttalade integrationshändelser går till Pub/Sub. Inget Kafka

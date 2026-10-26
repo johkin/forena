@@ -61,9 +61,9 @@ def configure(image, certificate):
 def routes():
     # Same request.path transform emitted by @vercel/container: retain API paths.
     return [
-        {'src': '/(?:config\\.json|app-version\\.json|api(?:/.*)?)',
+        {'src': '/(?:config\\.json|app-version\\.json|api(?:/.*)?|internal/notifications(?:/.*)?)',
          'headers': {'Cache-Control': 'no-store'}, 'continue': True},
-        {'src': '/(api(?:/.*)?|oauth2(?:/.*)?|\\.well-known/oauth-authorization-server|\\.well-known/oauth-protected-resource(?:/.*)?|actuator/health)', 'dest': '/backend',
+        {'src': '/(api(?:/.*)?|internal/notifications(?:/.*)?|oauth2(?:/.*)?|\\.well-known/oauth-authorization-server|\\.well-known/oauth-protected-resource(?:/.*)?|actuator/health)', 'dest': '/backend',
          'transforms': [{'type': 'request.path', 'op': 'set', 'args': '/$1'}]},
         {'handle': 'filesystem'},
         {'src': '/.*', 'dest': '/index.html'}]

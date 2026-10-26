@@ -31,6 +31,7 @@ spring:
   modulith:
     events:
       jdbc:
+        schema: forena
         schema-initialization:
           enabled: false
       republish-outstanding-events-on-restart: false
@@ -43,6 +44,10 @@ server:
     include-stacktrace: never
 
 forena:
+  notifications:
+    enabled: "${FORENA_NOTIFICATIONS_ENABLED:false}"
+    worker-token: "${FORENA_NOTIFICATION_WORKER_TOKEN:}"
+    test-recipients: "${FORENA_NOTIFICATION_TEST_RECIPIENTS:}"
   administration:
     initial-system-admin-email: "${FORENA_INITIAL_SYSTEM_ADMIN_EMAIL:}"
   web-session:

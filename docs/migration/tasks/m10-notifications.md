@@ -1,6 +1,8 @@
 # M10: Flytta en kallelseleverans med kontrollerad e-post
 
-Status: planerad. Beroenden: M06, M08, M09. Leverans: en avgränsad PR om inte nedan
+Status: gemensam implementation med M06 på `feat/m06-m10-delivery`; se
+[körguide och driftgränser](../invitation-delivery.md) och [aktuell verifiering](../status.md).
+Beroenden: M06, M09, M22G före drift. Leverans: en avgränsad PR om inte nedan
 anges att arbetet först ska delas. Alla PR-baser är aktuell `main`.
 
 ## Bakgrund och gemensamma beslut
@@ -28,7 +30,9 @@ Commit och beständigt leveransansvar är atomära; överlämningen lämnar inge
 
 ## Verifiering
 
-PostgreSQL + transportkontrakt, Resend-testläge/avsedd testdomän, Cloud Run scale-to-zero och Scheduler-trigger; mät köfördröjning och kontrollera larm/operatörsåtertag.
+PostgreSQL + transportkontrakt, Resend-testläge/avsedd testdomän, Vercel-väckning
+utan användartrafik och Supabase Cron enligt M22G; mät köfördröjning och kontrollera
+larm/operatörsåtertag. M08/Cloud Run är vilande alternativ enligt ADR-009.
 
 ## Lämnas till senare
 

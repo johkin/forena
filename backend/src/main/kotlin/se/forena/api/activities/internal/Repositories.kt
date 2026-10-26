@@ -1,5 +1,7 @@
 package se.forena.api.activities.internal
 
+import se.forena.api.activities.InvitationNotificationSnapshot
+
 import java.time.Instant
 import org.springframework.data.jdbc.repository.query.Query
 import org.springframework.data.jdbc.repository.query.Modifying
@@ -188,4 +190,134 @@ interface AudienceGroupRepository : Repository<AudienceGroupEntity, UUID> {
 }
 interface AudienceMemberRepository : Repository<AudienceMemberEntity, UUID> {
     fun findByGroupIdInAndActiveTrue(groups: Collection<UUID>): List<AudienceMemberEntity>
+}
+
+data class ScheduledInvitationRow(
+    val id: UUID,
+    val activityId: UUID,
+    val organizationId: UUID,
+    val kind: String,
+    val audienceRoles: String,
+    val personIds: String,
+    val groupIds: String,
+    val responsibilityTypeIds: String,
+)
+
+data class InvitationAudienceRow(val id: UUID, val displayName: String)
+
+data class InvitationMessageContext(
+    val organizationName: String,
+    val teamName: String,
+    val timeZone: String,
+)
+
+interface ScheduledInvitationRepository : Repository<ActivityScheduleEntity, UUID> {
+    @Query(
+        """
+        select id from forena.activity_schedule
+        where state = 'pending' and due_at <= :now and next_attempt <= :now
+        order by next_attempt, due_at, id limit 20
+    """
+    )
+    fun due(now: Instant): List<UUID>
+
+    // Lock the activity before the schedule, matching edits, cancellation and invitation answers.
+    @Query(
+        """
+        select a.id from forena.activity a
+        join forena.activity_schedule s on s.activity_id = a.id
+        where s.id = :schedule
+        for update of a skip locked
+    """
+    )
+    fun lockActivity(schedule: UUID): UUID?
+
+    @Query(
+        """
+        select * from forena.activity_schedule
+        where id = :id and state = 'pending' and due_at <= :now and next_attempt <= :now
+        for update skip locked
+    """
+    )
+    fun lockDue(id: UUID, now: Instant): ScheduledInvitationRow?
+
+    @Query(
+        """
+        select o.name as organization_name, t.name as team_name, o.time_zone
+        from forena.organization o join forena.team t on t.organization_id = o.id
+        where t.id = :team
+    """
+    )
+    fun context(team: UUID): InvitationMessageContext
+
+    @Query(
+        """
+        select distinct p.id, p.display_name
+        from forena.team_membership m
+        join forena.person p on p.id = m.person_id and p.organization_id = m.organization_id
+        where m.team_id = :team and m.organization_id = :organization and m.active
+          and m.starts_on <= :day and (m.ends_on is null or m.ends_on >= :day)
+          and ((:hasPeople and p.id in (:people)) or (:hasRoles and m.role in (:roles)) or (:hasGroups and exists (
+            select 1 from forena.team_audience_member am
+            join forena.team_audience_group g on g.id = am.group_id and g.organization_id = am.organization_id
+            where am.person_id = p.id and am.organization_id = p.organization_id and am.active
+              and g.team_id = m.team_id and g.id in (:groups))))
+        order by p.id limit 1001
+    """
+    )
+    fun audience(
+        team: UUID,
+        organization: UUID,
+        day: java.time.LocalDate,
+        people: Collection<UUID>,
+        roles: Collection<String>,
+        groups: Collection<UUID>,
+        hasPeople: Boolean,
+        hasRoles: Boolean,
+        hasGroups: Boolean,
+    ): List<InvitationAudienceRow>
+
+    @Modifying
+    @Query(
+        """
+        update forena.activity_schedule
+        set state = :state, completed_at = :now, last_error = null where id = :id
+    """
+    )
+    fun finish(id: UUID, state: String, now: Instant)
+
+    @Modifying
+    @Query(
+        """
+        update forena.activity_schedule
+        set attempts = attempts + 1,
+            state = case when attempts >= 4 then 'failed' else 'pending' end,
+            next_attempt = cast(:now as timestamptz) + interval '1 second' * (30 * power(2, least(attempts, 8))),
+            last_error = 'materialization_failed'
+        where id = :id and state = 'pending'
+    """
+    )
+    fun fail(id: UUID, now: Instant)
+
+    @Query(
+        """
+        insert into forena.invitation_notification(id, schedule_id, invitation_id, recipient_subject, decided_at, recipient, subject, body)
+        values (:id, :schedule, :invitation, :recipient, :now, :email, :subject, :body)
+        on conflict (schedule_id, invitation_id, recipient_subject) do nothing
+        returning id
+    """
+    )
+    fun checkpoint(
+        id: UUID,
+        schedule: UUID,
+        invitation: UUID,
+        recipient: UUID,
+        now: Instant,
+        email: String,
+        subject: String,
+        body: String,
+    ): UUID?
+
+    @Query("select id, recipient, subject, body from forena.invitation_notification where id = :id")
+    fun notification(id: UUID): InvitationNotificationSnapshot?
 }

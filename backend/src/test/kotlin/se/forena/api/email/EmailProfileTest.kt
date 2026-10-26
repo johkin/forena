@@ -12,33 +12,76 @@ import tools.jackson.databind.json.JsonMapper
 
 @ExtendWith(OutputCaptureExtension::class)
 class EmailProfileTest {
-    private val context = ApplicationContextRunner()
-        .withUserConfiguration(LocalEmailConfiguration::class.java, ResendConfiguration::class.java)
-        .withBean(JsonMapper::class.java, { JsonMapper.builder().build() })
+    private val context =
+        ApplicationContextRunner()
+            .withUserConfiguration(
+                LocalEmailConfiguration::class.java,
+                ResendConfiguration::class.java,
+            )
+            .withBean(JsonMapper::class.java, { JsonMapper.builder().build() })
 
-    @Test fun `local logs mail even when Resend credentials are configured`(output: CapturedOutput) {
-        context.withPropertyValues("spring.profiles.active=local", "forena.email.resend-api-key=unused",
-            "forena.email.from=unused@example.test").run { application ->
-            assertThat(application).hasSingleBean(EmailSender::class.java).hasBean("localEmailSender")
-                .doesNotHaveBean("resendEmailSender")
-            val result = application.getBean(EmailSender::class.java).send(
-                EmailMessage("local@example.test", "Test", "http://localhost:3000/auth/callback?token=local-test", "test/1"))
-            assertThat(result).isEqualTo(EmailDeliveryResult.Accepted("local/test/1"))
-            assertThat(output.out).contains("[LOCAL MAIL]", "local@example.test", "token=local-test")
-        }
-    }
-
-    @Test fun `outside local only the Resend sender is registered`() {
-        context.withPropertyValues("forena.email.resend-api-key=test-key", "forena.email.from=test@example.test")
+    @Test
+    fun `local logs mail even when Resend credentials are configured`(output: CapturedOutput) {
+        context
+            .withPropertyValues(
+                "spring.profiles.active=local",
+                "forena.email.resend-api-key=unused",
+                "forena.email.from=unused@example.test",
+            )
             .run { application ->
-                assertThat(application).hasSingleBean(EmailSender::class.java).hasBean("resendEmailSender")
-                    .doesNotHaveBean("localEmailSender")
+                assertThat(application)
+                    .hasSingleBean(EmailSender::class.java)
+                    .hasBean("localEmailSender")
+                    .doesNotHaveBean("resendEmailSender")
+                val result =
+                    application
+                        .getBean(EmailSender::class.java)
+                        .send(
+                            EmailMessage(
+                                "local@example.test",
+                                "Test",
+                                "http://localhost:3000/auth/callback?token=local-test",
+                                "test/1",
+                            )
+                        )
+                assertThat(result).isEqualTo(EmailDeliveryResult.Accepted("local/test/1"))
+                assertThat(output.out)
+                    .contains("[LOCAL MAIL]", "local@example.test", "token=local-test")
             }
     }
 
-    @Test fun `local sender needs no Resend configuration`() {
+    @Test
+    fun `outside local only the Resend sender is registered`() {
+        context
+            .withPropertyValues(
+                "forena.email.resend-api-key=test-key",
+                "forena.email.from=test@example.test",
+            )
+            .run { application ->
+                assertThat(application)
+                    .hasSingleBean(EmailSender::class.java)
+                    .hasBean("resendEmailSender")
+                    .doesNotHaveBean("localEmailSender")
+                assertThat(application)
+                    .hasSingleBean(se.forena.api.email.internal.ResendHttpApi::class.java)
+            }
+    }
+
+    @Test
+    fun `missing credentials fail before creating the managed HTTP client`() {
+        context.withPropertyValues("forena.email.from=test@example.test").run { application ->
+            assertThat(application).hasFailed()
+            assertThat(application.startupFailure)
+                .hasRootCauseInstanceOf(IllegalArgumentException::class.java)
+        }
+    }
+
+    @Test
+    fun `local sender needs no Resend configuration`() {
         context.withPropertyValues("spring.profiles.active=local").run { application ->
-            assertThat(application).hasSingleBean(EmailSender::class.java).hasBean("localEmailSender")
+            assertThat(application)
+                .hasSingleBean(EmailSender::class.java)
+                .hasBean("localEmailSender")
         }
     }
 }

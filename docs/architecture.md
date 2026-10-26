@@ -1,5 +1,21 @@
 # Arkitektur
 
+## Kotlin: schemalagda kallelser och e-post
+
+M06/M10 använder Spring Data JDBC, Spring-transaktioner och Moduliths JDBC
+Event Publication Registry. `activities` äger schema, mottagarbeslut och
+oföränderliga meddelandesnapshots; `notifications` äger idempotent överlämning,
+transportförsök, providerkvitton och driftstatus. `identity` lämnar verifierade
+mottagare med aktuell explicit personåtkomst. Resend är ett Spring HTTP Service
+Client-interface registrerat via `@ImportHttpServices` i den befintliga
+`email`-modulen, som också används av auth.
+
+En separat autentiserad HTTP-arbetare driver scheman, återtag och e-post under
+själva begäran. Ingen nödvändig kallelseleverans kräver en in-memory-lyssnare
+efter HTTP-svaret. Kedjan är avstängd som standard och begränsad till
+testmottagare; molnväckning och pilotgrindar återstår i M22G.
+Se [transaktioner, återtag och driftgränser](migration/invitation-delivery.md).
+
 Den nya React/Kotlin-appen använder [Spring-autentisering](migration/authentication.md)
 som enda ordinarie auth-lösning. Backend äger konton, passkeys, mejllänkar,
 OAuth och Spring Session JDBC. Supabase som PostgreSQL-leverantör är separat.

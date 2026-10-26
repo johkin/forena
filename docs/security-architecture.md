@@ -1,5 +1,21 @@
 # Säkerhetsarkitektur
 
+## Kotlin: kallelsearbetare och testleverans
+
+`/internal/notifications/**` har en egen stateless Spring Security Resource
+Server-kedja med separat Bearer-hemlighet. Browsercookies, MCP-token och
+query-token ger ingen arbetarbehörighet. Arbetaren är avstängd som standard;
+aktivering kräver en uttrycklig testmottagarlista. Adresser utanför listan
+spärras före HTTP, och produktionsmedlemmars mejl omdirigeras inte till en sink.
+
+Mottagarbeslut kräver aktiv explicit personåtkomst samt verifierat, aktiverat
+konto. Snapshoten sparas i det privata Liquibase-schemat utan Data API-grants;
+händelseregistret innehåller endast ID/version. Transporten sparar försöket före
+HTTP och använder samma idempotensnyckel vid återförsök. Efter högst fem försök
+eller 23 timmar kräver okänd provideraccept operatörsutredning. Inga provider-
+felkroppar eller tokens loggas. Statusvägen lämnar endast aggregat och heartbeat.
+Se [körguide och scheduler-tillitsgräns](migration/invitation-delivery.md).
+
 Den nya React/Kotlin-appen använder [Spring-autentisering](migration/authentication.md)
 som enda ordinarie auth-lösning. Backend äger konton, passkeys, mejllänkar,
 OAuth och Spring Session JDBC. Supabase som PostgreSQL-leverantör är separat.

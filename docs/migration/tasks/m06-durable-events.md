@@ -1,6 +1,8 @@
 # M06: Bevisa beständig modulreaktion i verksamhetsflödet
 
-Status: planerad. Beroenden: M01, M02. Leverans: en avgränsad PR om inte nedan
+Status: gemensam implementation med M10 på `feat/m06-m10-delivery`; se
+[körguide och driftgränser](../invitation-delivery.md) och [aktuell verifiering](../status.md).
+Beroenden: M01, M02. Leverans: en avgränsad PR om inte nedan
 anges att arbetet först ska delas. Alla PR-baser är aktuell `main`.
 
 ## Bakgrund och gemensamma beslut
