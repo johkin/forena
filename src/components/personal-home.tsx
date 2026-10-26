@@ -49,7 +49,7 @@ export function PersonalHome<T extends OverviewItem>({ items, activities, organi
     .sort((left, right) => Date.parse(left.activity.startsAt) - Date.parse(right.activity.startsAt));
   const visibleIds = new Set(filteredItems.map(item => item.activity.id));
   const filteredActivities = activities.filter(activity => visibleIds.has(activity.id));
-  const emptyMessage = needsReply ? "Alla aktuella kallelser i urvalet är besvarade."
+  const emptyMessage = needsReply ? "Inga kallelser i urvalet behöver svar just nu."
     : activeTeamId ? "Inga kommande aktiviteter för det valda laget." : "Inga kommande aktiviteter i dina eller barnens lag.";
   const personNames=overviewNames(items);
   const byId=new Map(items.map(item=>[item.activity.id,item]));

@@ -23,6 +23,16 @@ try {
       const reply = home.getByRole('button', { name: /^Behöver svar/ });
       await expect(rows).toHaveCount(2);
       await expect(reply).toHaveText('Behöver svar (1)');
+      const permission = home.getByLabel('Behörighet i exemplet', { exact: true });
+      await permission.selectOption('participant');
+      await expect(reply).toHaveText('Behöver svar (0)');
+      await expect(rows.getByRole('button', { name: 'Kommer: Tilda Exempel', exact: true })).toBeDisabled();
+      await reply.click();
+      await expect(rows).toHaveCount(0);
+      await reply.click();
+      await permission.selectOption('manager');
+      await expect(reply).toHaveText('Behöver svar (1)');
+      await expect(rows.getByRole('button', { name: 'Kommer: Tilda Exempel', exact: true })).toBeEnabled();
       await page.evaluate(() => document.fonts.ready);
       layouts.push(await home.evaluate(element => {
         const origin = element.getBoundingClientRect();
@@ -44,7 +54,7 @@ try {
       await page.keyboard.press('Enter');
       await expect(reply).toHaveAttribute('aria-pressed', 'true');
       await expect(rows).toHaveCount(0);
-      await expect(home.getByText('Alla aktuella kallelser i urvalet är besvarade.', { exact: true })).toBeVisible();
+      await expect(home.getByText('Inga kallelser i urvalet behöver svar just nu.', { exact: true })).toBeVisible();
       await filters.getByRole('button', { name: 'Alla lag', exact: true }).click();
       await expect(rows).toHaveCount(1);
       await expect(rows.getByRole('button', { name: /Träning F2016/ })).toHaveCount(1);

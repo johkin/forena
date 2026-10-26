@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import type { components } from "../../backend/contract/generated";
 type Invitation = components["schemas"]["MyInvitations"]["invitations"][number];
 export type ParticipationFetch = (path: string, init?: RequestInit) => Promise<Response>;
-export function ActivityInvitationResponse({ activityId, cancelled, readOnly = false, request = fetch }: { activityId:string; cancelled:boolean; readOnly?:boolean; request?: ParticipationFetch }) {
+export function ActivityInvitationResponse({ activityId, cancelled, readOnly = false, responseClosed = false, request = fetch }: { activityId:string; cancelled:boolean; readOnly?:boolean; responseClosed?:boolean; request?: ParticipationFetch }) {
   const [items,setItems] = useState<Invitation[]>([]);
   // Keep unsaved text separate from server state so a push cannot erase edits.
   const [drafts,setDrafts] = useState<Record<string,string>>({});
@@ -32,7 +32,7 @@ export function ActivityInvitationResponse({ activityId, cancelled, readOnly = f
     return ()=>controller.abort();
   },[activityId,refreshVersion,pending,request]);
   async function answer(item:Invitation,response:Invitation["response"]) {
-    if (readOnly || cancelled) return;
+    if (readOnly || cancelled || responseClosed) return;
     setPending(true);setError(undefined);setSaved(undefined);
     const comment=response==="pending"?"":drafts[item.id] ?? item.response_comment ?? "";
     try {
@@ -43,7 +43,8 @@ export function ActivityInvitationResponse({ activityId, cancelled, readOnly = f
       setSaved(`Svaret för ${item.name} har sparats.`);
     } catch {setError("Svaret kunde inte sparas. Försök igen.");} finally {setPending(false);}
   }
-  return <section aria-label="Dina kallelser">
+  return <section aria-label="Dina kallelser" data-response-closed={responseClosed || undefined}>
+    {responseClosed && !readOnly && !cancelled ? <p>Svarstiden har gått ut.</p> : null}
     {!cancelled && loading ? <p role="status">Laddar kallelser…</p> : null}
     {!cancelled && !loading && !error && items.length === 0 ? <p>Inga kallelser att visa för den här aktiviteten.</p> : null}
     {cancelled?<p role="status">Aktiviteten är inställd.</p>:items.map(item=>{
@@ -52,13 +53,13 @@ export function ActivityInvitationResponse({ activityId, cancelled, readOnly = f
       const changed=comment !== (item.response_comment ?? "");
       return <div key={item.id} className="personal-invitation-response">
         <strong>{item.name}</strong>
-        <label>Kommentar<input disabled={pending} maxLength={500} value={comment}
+        <label>Kommentar<input disabled={pending || responseClosed} maxLength={500} value={comment}
           onChange={e=>{setSaved(undefined);setDrafts(current=>({...current,[item.id]:e.target.value}));}}/></label>
         <div className="personal-response">
-          <button type="button" className={item.response==="accepted"?"selected":""} disabled={pending} onClick={()=>void answer(item,"accepted")}>Kommer</button>
-          <button type="button" className={item.response==="declined"?"selected":""} disabled={pending} onClick={()=>void answer(item,"declined")}>Kan inte</button>
-          {changed && item.response!=="pending"?<button type="button" disabled={pending} onClick={()=>void answer(item,item.response)}>Spara kommentar</button>:null}
-          {item.response!=="pending"?<button type="button" disabled={pending} onClick={()=>void answer(item,"pending")}>Ta bort svar</button>:null}
+          <button type="button" className={item.response==="accepted"?"selected":""} disabled={pending || responseClosed} onClick={()=>void answer(item,"accepted")}>Kommer</button>
+          <button type="button" className={item.response==="declined"?"selected":""} disabled={pending || responseClosed} onClick={()=>void answer(item,"declined")}>Kan inte</button>
+          {changed && item.response!=="pending"?<button type="button" disabled={pending || responseClosed} onClick={()=>void answer(item,item.response)}>Spara kommentar</button>:null}
+          {item.response!=="pending"?<button type="button" disabled={pending || responseClosed} onClick={()=>void answer(item,"pending")}>Ta bort svar</button>:null}
         </div>
       </div>;
     })}

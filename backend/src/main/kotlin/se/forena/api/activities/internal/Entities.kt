@@ -15,7 +15,9 @@ data class ActivityEntity(
     val organizationId: UUID,
     val status: String,
     val endsAt: Instant,
-    val invitationSendAt: Instant?
+    val invitationSendAt: Instant?,
+    val teamId: UUID,
+    val responseDueAt: Instant?
 )
 
 /** Identity is immutable; the Kotlin service owns response metadata. */

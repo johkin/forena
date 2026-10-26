@@ -36,7 +36,8 @@ data class PersonalActivity(
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val organization: PersonalOrganization,
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val team: PersonalTeam,
     @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC)
-    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val people: List<ActivityPerson>
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val people: List<ActivityPerson>,
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val can_manage_activities: Boolean
 )
 data class PersonalOverview(
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val reference_time: Instant,

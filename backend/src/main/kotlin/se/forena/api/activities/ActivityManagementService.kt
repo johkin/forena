@@ -30,6 +30,13 @@ class ActivityManagementService(
     private val json: JsonMapper
 ) {
     @Transactional(readOnly = true)
+    fun canManageActivity(actor: Actor, teamId: UUID): Boolean {
+        sessions.requireActive(actor)
+        val team = management.team(teamId) ?: return false
+        return allowed(actor, team, "activity.manage")
+    }
+
+    @Transactional(readOnly = true)
     fun teams(actor: Actor): List<ManagedTeam> {
         sessions.requireActive(actor)
         return management.teams(actor.subject).filter { allowed(actor, it, "activity.manage") }.map { teamDto(actor, it) }

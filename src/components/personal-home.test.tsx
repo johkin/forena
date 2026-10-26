@@ -4,11 +4,11 @@ import { PersonalHome } from "./personal-home";
 import type { OverviewItem } from "./personal-overview-types";
 import type { Activity } from "../domain/club";
 
-it("counts a mixed family invitation after the response deadline, until the activity ends", () => {
+it("counts a manager’s mixed family invitation after the response deadline, until the activity ends", () => {
  const activity: Activity = { id:"training", organizationId:"club", teamId:"team", title:"Träning", location:"Örvallen",
   startsAt:"2026-10-26T16:00:00Z", endsAt:"2026-10-26T17:00:00Z", responseDueAt:"2026-10-26T10:00:00Z" };
  const items: OverviewItem[] = (["accepted", "pending"] as const).map((response, index) => ({
-  activity, team:{name:"F2016"}, member:{id:`p${index}`,displayName:index === 0 ? "Johan" : "Tilda"}, invitation:{id:`i${index}`,response},
+  activity, canManageActivity:true, team:{name:"F2016"}, member:{id:`p${index}`,displayName:index === 0 ? "Johan" : "Tilda"}, invitation:{id:`i${index}`,response},
  }));
  for (const referenceTime of ["2026-10-26T12:00:00Z", activity.startsAt]) {
   const html = renderToStaticMarkup(<PersonalHome items={items} activities={[activity]} organizations={[]} teams={[]}

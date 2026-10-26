@@ -99,7 +99,7 @@ class PersonalOverviewService(
                 })
             }.sortedWith(compareBy<ActivityPerson> { it.name }.thenBy { it.id })
             PersonalActivity(row.id, row.title, row.startsAt, row.endsAt, row.gatheringAt, row.responseDueAt,
-                row.location, row.description, row.status, org, byTeam.getValue(row.teamId), personRows)
+                row.location, row.description, row.status, org, byTeam.getValue(row.teamId), personRows, row.teamId in managedTeamIds)
         }
         return PersonalOverview(now, result, organizationDtos, byTeam.values.filter { it.roles.isNotEmpty() })
     }

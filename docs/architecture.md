@@ -100,8 +100,13 @@ Sidan har Agenda/Kalender, kombinerbara filterchips för Behöver svar och lag,
 en gemensam aktivitetslista och Mina lag och föreningar. Varje berörd person
 har en rad, även utan kallelse. Filtren begränsar samma underlag i båda vyerna;
 svarsräknaren räknar aktiviteter inom valt lag, inte personer.
-`needsInvitationResponse` delar urvalsvillkoret med kallelsesidan: obesvarad,
-inte inställd och ännu inte avslutad. Passerad svarstid stänger inte svar. Lag identifieras
+`needsInvitationResponse` delar urvalsvillkoret med kallelsesidan och
+`invitationResponseOpen` styr svarsknapparna. Sista svarstid stänger vanliga
+svar; verifierad `activity.manage` för just laget ger undantag fram till slutet.
+Snapshotens `can_manage_activities` kommer från samma behörighetskälla som
+redigeraren. `InvitationService` kontrollerar aktuella rättigheter efter radlås;
+personåtkomst krävs separat och inställda/avslutade aktiviteter förblir låsta.
+Lag identifieras
 med ID från aktivitetsunderlaget, även för gästkallelser utan laggenväg.
 Bekräftade svar uppdaterar urval och räknare; ett gemensamt skrivlås hindrar
 samtidiga svar för samma kallelse.

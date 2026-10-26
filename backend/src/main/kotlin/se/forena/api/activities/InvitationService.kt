@@ -23,7 +23,8 @@ class InvitationService(
     private val activities: ActivityRepository,
     private val invitations: InvitationRepository,
     private val history: InvitationHistoryRepository,
-    private val signals: ActivitySignalRepository
+    private val signals: ActivitySignalRepository,
+    private val management: ActivityManagementService
 ) {
     @Transactional(readOnly = true)
     fun list(actor: Actor, activity: UUID): MyInvitations {
@@ -71,6 +72,8 @@ class InvitationService(
             throw IllegalStateException("Aktiviteten är inställd eller avslutad. Svaret kan inte ändras.")
         if (activity.invitationSendAt?.isAfter(now) == true)
             throw IllegalStateException("Kallelsen har inte skickats ännu. Svaret kan inte ändras.")
+        if (activity.responseDueAt?.let { !it.isAfter(now) } == true && !management.canManageActivity(actor, activity.teamId))
+            throw IllegalStateException("Svarstiden har gått ut. Svaret kan inte ändras.")
         val comment = when {
             change.response == "pending" -> null
             change.commentProvided -> change.comment?.trim()

@@ -60,7 +60,7 @@ export function MyActivitiesPage({ request, workspace, notifications=false }: { 
     const pendingIds = new Set(items.filter(item => needsInvitationResponse(item, data.reference_time)).map(item => item.activity.id));
     return <><OverviewBackLink linkComponent={AppLink} /><h1>Dina kallelser</h1>
       {error ? <p role="alert">{error}</p> : null}
-      <PersonalOverview activities={items.filter(item=>pendingIds.has(item.activity.id))} timeZone="Europe/Stockholm" title="Behöver svar" emptyMessage="Alla aktuella kallelser är besvarade." referenceTime={data.reference_time} onAnswered={answer} onOpenActivity={item=>navigate(`/activities/${item.activity.id}`)} request={request} />
+      <PersonalOverview activities={items.filter(item=>pendingIds.has(item.activity.id))} timeZone="Europe/Stockholm" title="Behöver svar" emptyMessage="Inga kallelser att svara på just nu." referenceTime={data.reference_time} onAnswered={answer} onOpenActivity={item=>navigate(`/activities/${item.activity.id}`)} request={request} />
       {saved ? <p className="sr-only" role="status">{saved}</p> : null}
     </>;
   }

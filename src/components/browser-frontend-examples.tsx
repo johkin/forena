@@ -76,6 +76,7 @@ export function BrowserFrontendExamples({ linkComponent }: { linkComponent?: Nav
     <section><h2>Passkeys laddas</h2><PasskeyList pending onRemove={() => {}} /></section>
     <section><h2>Passkey-listfel</h2><PasskeyList error="Passkeys kunde inte hämtas." onRemove={() => {}} /></section>
     <section><h2>Kallelsesvar</h2><ActivityInvitationResponse activityId="33333333-3333-4333-8333-333333333333" cancelled={false} request={request} /></section>
+    <section><h2>Passerad svarstid utan aktivitetsbehörighet</h2><ActivityInvitationResponse activityId="33333333-3333-4333-8333-333333333333" cancelled={false} responseClosed request={request} /></section>
     <section><h2>Inställd aktivitet</h2><ActivityInvitationResponse activityId="33333333-3333-4333-8333-333333333333" cancelled request={request} /></section>
     <section><h2>Kontomeny</h2><SessionMenu homeLabel="Min översikt" securityHref="/account/security" linkComponent={linkComponent} accountEmail="familj@example.invalid" logout={<button type="button" disabled>Logga ut</button>} /></section>
   </>;
@@ -87,11 +88,15 @@ function PersonalHomeExample({linkComponent}:{linkComponent?:NavigationLink}) {
   const first:Activity={id:"a1",organizationId:"o1",teamId:"t1",title:"Träning F2016",startsAt:"2030-10-26T15:45:00Z",endsAt:"2030-10-26T17:00:00Z",responseDueAt:"2030-10-19T10:00:00Z",location:"Örvallen"};
   const second:Activity={...first,id:"a2",teamId:"t2",title:"Spela mera",startsAt:"2030-10-23T14:00:00Z",endsAt:"2030-10-23T15:00:00Z",location:"Uip"};
   const [items,setItems]=useState<OverviewItem[]>(()=>[second,first].flatMap(activity=>["Johan Exempel","Johan Andersson","Tilda Exempel","Alex Exempel","Alex Ekblad"].map((name,index)=>({activity,organization:{name:"Exempelföreningen",timeZone:"Europe/Stockholm"},team:{name:activity.teamId === "t1" ? "F2016" : "Testlaget"},member:{id:`p${index}`,displayName:name},invitation:activity.id==="a1"?{id:`i${index}`,response:"pending" as const}:undefined}))));
+  const [canManageActivity,setCanManageActivity]=useState(true);
   const [selected,setSelected]=useState<string>();
   const request:ParticipationFetch=async()=>Response.json({ok:true});
   return <section className="personal-dashboard" aria-label="Min översikt – interaktivt exempel">
-    <p>Träningens svarstid har passerat men obesvarade kallelser ska fortfarande visas. Prova svarsfilter och lagfilter tillsammans, växla till kalender och svara tills urvalet blir tomt. Komprimerade kallelserader: unika förnamn, efternamnsinitialer och hela namn vid namnkrock. Svarsknapparna behåller minst 44 px tryckyta.</p>
-    <PersonalHome items={items} activities={[second,first]} organizations={[{id:"o1",name:"Exempelföreningen",role:"owner",href:"/organizations/11111111-1111-4111-8111-111111111111"}]} teams={[{id:"t1",organizationId:"o1",name:"F2016",roles:["Målsman","Ledare","Lagåtkomst"],href:"/teams/22222222-2222-4222-8222-222222222222"}]} referenceTime="2030-10-20T00:00:00Z" request={request} linkComponent={linkComponent}
+    <p>Träningens svarstid har passerat och endast den som får redigera aktiviteter kan svara efter tidsgränsen. Prova svarsfilter och lagfilter tillsammans, växla till kalender och svara tills urvalet blir tomt. Komprimerade kallelserader: unika förnamn, efternamnsinitialer och hela namn vid namnkrock. Svarsknapparna behåller minst 44 px tryckyta.</p>
+    <label>Behörighet i exemplet<select aria-label="Behörighet i exemplet" value={canManageActivity ? "manager" : "participant"} onChange={event=>setCanManageActivity(event.target.value === "manager")}>
+      <option value="manager">Får redigera aktiviteter</option><option value="participant">Deltagare utan aktivitetsbehörighet</option>
+    </select></label>
+    <PersonalHome items={items.map(item=>({...item,canManageActivity}))} activities={[second,first]} organizations={[{id:"o1",name:"Exempelföreningen",role:"owner",href:"/organizations/11111111-1111-4111-8111-111111111111"}]} teams={[{id:"t1",organizationId:"o1",name:"F2016",roles:["Målsman","Ledare","Lagåtkomst"],href:"/teams/22222222-2222-4222-8222-222222222222"}]} referenceTime="2030-10-20T00:00:00Z" request={request} linkComponent={linkComponent}
       onOpenActivity={item=>setSelected(item.activity.title)} onAnswered={(id,response)=>setItems(previous=>previous.map(item=>item.invitation?.id===id?{...item,invitation:{...item.invitation,response}}:item))} />
     {selected ? <p role="status">Öppnad exempelaktivitet: {selected}</p> : null}
     <h3>Ledarkort utan personlig deltagare</h3>
