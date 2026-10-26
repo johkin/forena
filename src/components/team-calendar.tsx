@@ -62,7 +62,7 @@ export function TeamCalendar({ activities, timeZone, onSelectActivity, heading =
         const items = byDate.get(key) ?? [];
         return <div className={`calendar-day ${items.length ? "has-activity" : ""}`} key={key}>
           <strong>{day}</strong>
-          {(showAllEvents ? items : items.slice(0, 4)).map((item) => <button className="calendar-event" key={item.id} onClick={() => onSelectActivity(item)} type="button" title={eventLabel(item)} aria-label={`${formatter.format(new Date(item.startsAt))} ${eventLabel(item)}`}><b>{localDateKey(item.startsAt, timeZone) === key ? formatter.format(new Date(item.startsAt)) : "Fortsätter"}</b><span>{eventLabel(item)}</span></button>)}
+          {(showAllEvents ? items : items.slice(0, 4)).map((item) => <button className="calendar-event" key={item.id} onClick={() => onSelectActivity(item)} type="button" title={eventLabel(item)}><b>{localDateKey(item.startsAt, timeZone) === key ? formatter.format(new Date(item.startsAt)) : "Fortsätter"}</b> <span>{eventLabel(item)}</span></button>)}
           {!showAllEvents && items.length > 4 ? <small>+{items.length - 4} till</small> : null}
         </div>;
       })}

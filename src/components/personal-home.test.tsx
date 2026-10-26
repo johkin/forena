@@ -28,6 +28,6 @@ it("uses the same unambiguous short names in both sections, counting each person
  expect(html.match(/>Johan Kindgren<\/strong>/g)).toHaveLength(2);
  expect(html).toContain('title="Johan Svensson"><span aria-hidden="true">Johan S</span><span class="sr-only">Johan Svensson</span></strong>');
  expect(html).toContain('title="Tilda Kindgren"><span aria-hidden="true">Tilda</span><span class="sr-only">Tilda Kindgren</span></strong>');
- expect(html).toContain('aria-label="Kommer: Johan Kindgren"');
+ expect(html).toContain('<span aria-hidden="true">✓</span> Kommer<span class="sr-only"> för Johan Kindgren</span>');
  expect(html).not.toContain('>Tilda K</strong>');
 });
