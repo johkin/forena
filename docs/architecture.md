@@ -96,10 +96,13 @@ kommandon; AI:n får aldrig direkt databasåtkomst.
 
 Den nya webbens startsida visar **Min översikt** via `GET /api/me/overview`.
 `PersonalHome`, `PersonalOverview` och `TeamCalendar` delas med Next-appen.
-Sidan har Behöver svar, Agenda/Kalender, Kommande aktiviteter och Mina lag och
-föreningar. Varje berörd person har en rad, även utan kallelse. Ett gemensamt
-bekräftat svarstillstånd uppdaterar båda sektionerna; ett gemensamt skrivlås
-hindrar samtidiga svar för samma kallelse från de två representationerna.
+Sidan har Agenda/Kalender, kombinerbara filterchips för Behöver svar och lag,
+en gemensam aktivitetslista och Mina lag och föreningar. Varje berörd person
+har en rad, även utan kallelse. Filtren begränsar samma underlag i båda vyerna;
+svarsräknaren räknar aktiviteter inom valt lag, inte personer. Lag identifieras
+med ID från aktivitetsunderlaget, även för gästkallelser utan laggenväg.
+Bekräftade svar uppdaterar urval och räknare; ett gemensamt skrivlås hindrar
+samtidiga svar för samma kallelse.
 
 `PersonAccessService` härleder egen och delegerad personåtkomst; familj är inte
 ett backendbegrepp. `team_membership` ger datumgiltig aktivitetsläsning för

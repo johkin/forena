@@ -78,7 +78,11 @@ export function ActivityManagementExample() {
     <ActivityManagement key={state} request={request} teamId={team.id} />
     <h3>Redigera från en öppnad aktivitet</h3>
     <p>Öppna Redigera för att prova dialogens åtgärdsrad. Knappar och fokusramar ska rymmas med luft till kanterna även på mobil och när formuläret scrollas.</p>
-    <ActivityManagement key={`details-${state}`} request={request} teamId={team.id} activityId={initial.id} />
+    <div className="card activity-details">
+      <div className="activity-details-toolbar"><ActivityManagement key={`details-${state}`} request={request} teamId={team.id} activityId={initial.id} /></div>
+      <p className="eyebrow">{team.organizationName} · {team.name}</p>
+      <h3>{initial.title}</h3><p>{initial.location}</p>
+    </div>
     <h3>Äldre direktlänk med förvalt lag</h3>
     <div className="welcome"><div><h3>{team.name}</h3><p>Skapa direkt från lagets översikt.</p></div>
       <TeamActivityActions key={state} teamId={team.id} request={request} onCreate={() => setOpenFromTeam(true)} />

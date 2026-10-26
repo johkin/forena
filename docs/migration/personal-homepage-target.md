@@ -12,9 +12,11 @@ Kotlin-webben. Se [funktionsmatrisen](feature-parity.md) för återstående flyt
    notifieringsflödet när detta migrerats; en overksam knapp uppfyller inte målet.
 2. Ögonbryn **FÖRENA · PERSONLIGT**, rubrik **Min översikt** och ingress
    **Din och barnens vardag – alla lag och föreningar på samma plats.**
-3. Den hopfällbara sektionen **Behöver svar**, med antal berörda aktiviteter.
-4. Växling **Agenda / Kalender**, med agenda som grundläge på mobil.
-5. Den hopfällbara sektionen **Kommande aktiviteter**, med antal aktiviteter.
+3. Växling **Agenda / Kalender**, med agenda som grundläge på mobil.
+4. Kombinerbara filterchips: **Behöver svar (antal aktiviteter)** och
+   **Alla lag** / förening och lag. Alla lag och inget svarsfilter är förval.
+5. Den hopfällbara sektionen **Kommande aktiviteter**, med antal aktiviteter
+   i urvalet. Varje aktivitet visas en gång i datumordning.
 6. **Mina lag och föreningar**, grupperat per förening och lag med användarens
    faktiska roller och klickbara länkar till motsvarande arbetsyta.
 7. Gemensam sidfot med Förena-texten, **Anslut AI** och **Källkod**. AI-länken
@@ -28,7 +30,7 @@ exempeldata. Räknare och innehåll ska hämtas för det inloggade kontot.
 
 ## Aktiviteter och personrader
 
-- Ett kort per aktivitet inom respektive sektion, med förening/lag, datumbricka
+- Ett kort per aktivitet i det filtrerade urvalet, med förening/lag, datumbricka
   med veckodag/dag, rubrik, lokal tid och plats. Samling visas enligt Next-
   appens befintliga tidsregler. Klick på rubrik/detaljlänk öppnar aktiviteten.
 - Under kortets aktivitetsdel visas en rad per berörd person, med initialavatar
@@ -47,15 +49,16 @@ exempeldata. Räknare och innehåll ska hämtas för det inloggade kontot.
 
 ## Sektioner, räknare och kalender
 
-**Behöver svar** är ett urval ur hela den behöriga aktivitetsmängden. En
-aktivitet med två obesvarade personkallelser räknas en gång. När ett svar sparats
-uppdateras personraden och sektionens urval/antal från bekräftat tillstånd.
-Aktiviteten ligger kvar där så länge en annan relevant person behöver svara.
+**Behöver svar** filtrerar hela den behöriga aktivitetsmängden inom valt lag.
+En aktivitet med två obesvarade personkallelser räknas en gång. När ett svar
+sparats uppdateras personraden och filtrets urval/antal från bekräftat tillstånd.
+Aktiviteten ligger kvar så länge en annan relevant person behöver svara.
 
-**Kommande aktiviteter** visar hela det relevanta urvalet, även aktiviteter
-utan kallelse och aktiviteter med nej-svar. En aktivitet som behöver svar finns
-också kvar här. Samma aktivitet får alltså förekomma i båda sektionerna, men
-bara en gång per sektion. Ett sparat svar ska synas i båda representationerna.
+**Kommande aktiviteter** visar det filtrerade urvalet, även aktiviteter utan
+kallelse och aktiviteter med nej-svar när svarsfiltret är av. Det finns ingen
+separat lista som duplicerar aktiviteter som behöver svar. Lag identifieras
+med ID och chipsen visar föreningsnamnet. Gästkallelser och ledaraktiviteter
+utan personlig deltagare får också lagfilter från aktivitetsunderlaget.
 
 Räknarna och Behöver svar får inte härledas enbart från den första hämtade
 50-posterssidan. Paginering/filtrering ska ge korrekt antal och urval över hela
@@ -64,7 +67,7 @@ bevara Next-flödets funktion; pilotens 90-dagarsgräns är inte ett beslut om
 slutlig produktomfattning.
 
 Agenda och kalender använder samma behöriga aktivitetsunderlag över alla
-föreningar och lag, med konsekvent svarsläge efter växling. Agendan och
+föreningar och lag, med samma filter och konsekvent svarsläge efter växling. Agendan och
 aktivitetsdetaljer visar föreningens lokala tid; familjekalendern visar
 uttryckligen svensk tid enligt befintliga designregler.
 
@@ -86,8 +89,10 @@ browsern för att få gränssnittet att likna bilderna. Ändrade produktionsvari
 ska samtidigt finnas på `/components`.
 
 Verifiera särskilt med två personer på samma aktivitet: en obesvarad aktivitet
-syns i båda sektionerna men räknas en gång i varje; ett svar påverkar rätt person
-och båda vyerna; när alla svarat försvinner aktiviteten bara från Behöver svar.
+visas en gång och räknas en gång; ett svar påverkar rätt person
+och båda vyerna; när alla svarat försvinner aktiviteten bara ur svarsfiltret.
+Kombinera lag- och svarsfilter, växla vy och verifiera tomt urval samt återgång
+till Alla lag utan svarsfiltret.
 Verifiera även en aktivitet utan kallelse med två namngivna personrader, flera
 föreningar/roller, fler än 50 aktiviteter, agenda/kalender, återkallad åtkomst,
 omladdning och tangentbord. Granska 320/375/390/768 px och desktop utan

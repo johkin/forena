@@ -1,3 +1,4 @@
+import { OverviewBackLink } from "../../src/components/overview-back-link";
 import { useNavigate } from "react-router";
 import { AppLink } from "./app-link";
 import { useEffect, useRef, useState } from "react";
@@ -41,7 +42,7 @@ export function MyActivitiesPage({ request, workspace, notifications=false }: { 
   if(!data)return <>{header}{error ? <div role="alert"><p>{error}</p><button type="button" onClick={()=>setAttempt(value=>value+1)}>Försök igen</button></div> : <p role="status">Laddar din översikt…</p>}</>;
   const organization=workspace?.kind==="organization" ? data.organizations.find(item=>item.id===workspace.id) : undefined;
   const team=workspace?.kind==="team" ? data.teams.find(item=>item.id===workspace.id) : undefined;
-  if(workspace && !organization && !team)return <><h1>Arbetsytan är inte tillgänglig</h1><p>Du saknar åtkomst eller kopplingen har upphört.</p><AppLink href="/">Till min översikt</AppLink></>;
+  if(workspace && !organization && !team)return <><h1>Arbetsytan är inte tillgänglig</h1><p>Du saknar åtkomst eller kopplingen har upphört.</p><OverviewBackLink linkComponent={AppLink} /></>;
   const activities=workspace ? data.activities.filter(item=>team ? item.team.id===team.id : item.organization.id===organization!.id) : data.activities;
   const items=overviewItems(activities);
   const answer=(id:string,response:"accepted"|"declined")=>{
@@ -57,14 +58,14 @@ export function MyActivitiesPage({ request, workspace, notifications=false }: { 
   if(notifications){
     const now=Date.parse(data.reference_time);
     const pendingIds=new Set(items.filter(item=>item.invitation?.response==="pending" && Date.parse(item.activity.startsAt)>now && (!item.activity.responseDueAt || Date.parse(item.activity.responseDueAt)>now)).map(item=>item.activity.id));
-    return <><h1>Dina kallelser</h1><p><AppLink href="/">Till min översikt</AppLink></p>
+    return <><OverviewBackLink linkComponent={AppLink} /><h1>Dina kallelser</h1>
       {error ? <p role="alert">{error}</p> : null}
       <PersonalOverview activities={items.filter(item=>pendingIds.has(item.activity.id))} timeZone="Europe/Stockholm" title="Behöver svar" emptyMessage="Alla aktuella kallelser är besvarade." referenceTime={data.reference_time} onAnswered={answer} onOpenActivity={item=>navigate(`/activities/${item.activity.id}`)} request={request} />
       {saved ? <p className="sr-only" role="status">{saved}</p> : null}
     </>;
   }
   return <>
-    {workspace ? <p><AppLink href="/">Till min översikt</AppLink></p> : null}
+    {workspace ? <OverviewBackLink linkComponent={AppLink} /> : null}
     {error ? <div role="alert"><p>{error}</p><button type="button" onClick={()=>setAttempt(value=>value+1)}>Försök igen</button></div> : null}
     <PersonalHome items={items} activities={activities.map(calendarActivity)} referenceTime={data.reference_time}
       actions={team ? <ActivityManagement key={team.id} teamId={team.id} request={request} onSaved={() => setAttempt(value => value + 1)} /> : undefined}
