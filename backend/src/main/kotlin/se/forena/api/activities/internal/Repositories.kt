@@ -380,19 +380,19 @@ interface AttendanceRepository : Repository<ActivityEntity, UUID> {
         coalesce((select case when m.role='leader' then 'leader' else 'participant' end from forena.team_membership m where m.team_id=:team and m.person_id=p.id and m.active
             and m.starts_on<=:date and (m.ends_on is null or m.ends_on>=:date) order by m.role limit 1),'participant') as role,
         i.response,exists(select 1 from forena.attendance_record r where r.activity_id=:activity and r.person_id=p.id) as present
-        from forena.person p left join forena.invitation i on i.person_id=p.id and i.activity_id=:activity
+        from forena.person p left join forena.invitation i on :includeInvitations and i.person_id=p.id and i.activity_id=:activity
         where p.organization_id=:organization and (i.id is not null or exists(select 1 from forena.team_membership m
             where m.team_id=:team and m.person_id=p.id and m.active and m.starts_on<=:date and (m.ends_on is null or m.ends_on>=:date)))
         order by p.display_name,p.id""")
-    fun roster(activity: UUID, team: UUID, organization: UUID, date: java.time.LocalDate): List<AttendancePerson>
+    fun roster(activity: UUID, team: UUID, organization: UUID, date: java.time.LocalDate, includeInvitations: Boolean): List<AttendancePerson>
 
     @Modifying
     @Query("""insert into forena.attendance_report(activity_id,organization_id,reported_by,reported_at) values(:activity,:organization,:actor,:now)
         on conflict(activity_id) do update set reported_by=:actor,reported_at=:now""")
     fun report(activity: UUID, organization: UUID, actor: UUID, now: Instant): Int
 
-    @Modifying @Query("delete from forena.attendance_record where activity_id=:activity")
-    fun clear(activity: UUID): Int
+    @Modifying @Query("delete from forena.attendance_record where activity_id=:activity and person_id in (:people)")
+    fun clearEligible(activity: UUID, people: List<UUID>): Int
 
     @Modifying @Query("insert into forena.attendance_record(activity_id,organization_id,person_id) values(:activity,:organization,:person)")
     fun present(activity: UUID, organization: UUID, person: UUID): Int

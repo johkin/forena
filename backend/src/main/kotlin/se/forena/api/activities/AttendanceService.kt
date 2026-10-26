@@ -30,7 +30,7 @@ class AttendanceService(
     fun read(actor: Actor, id: UUID): AttendanceSnapshot {
         val activity = activities.findById(id).orElseThrow { NoSuchElementException() }
         authorize(actor, activity)
-        return snapshot(activity)
+        return snapshot(actor, activity)
     }
 
     @Transactional
@@ -40,13 +40,13 @@ class AttendanceService(
         val activity = activities.findLockedByActivityId(id) ?: throw NoSuchElementException()
         authorize(actor, activity)
         check(activity.status == "scheduled" && activity.startsAt <= clock.now())
-        val eligible = snapshot(activity).roster.map { it.personId }.toSet()
+        val eligible = snapshot(actor, activity).roster.map { it.personId }.toSet()
         val present = command.personIds.distinct()
         require(present.size <= 1000 && present.all { it in eligible })
         attendance.report(id, activity.organizationId, actor.subject, clock.now())
-        attendance.clear(id)
+        if (eligible.isNotEmpty()) attendance.clearEligible(id, eligible.toList())
         present.forEach { attendance.present(id, activity.organizationId, it) }
-        return snapshot(activity)
+        return snapshot(actor, activity)
     }
 
     private fun authorize(actor: Actor, activity: ManagedActivityEntity) {
@@ -55,9 +55,11 @@ class AttendanceService(
         if (!management.canManageAttendance(actor, activity.teamId)) throw AccessDeniedException("Attendance permission required")
     }
 
-    private fun snapshot(activity: ManagedActivityEntity): AttendanceSnapshot {
+    private fun snapshot(actor: Actor, activity: ManagedActivityEntity): AttendanceSnapshot {
         val zone = attendance.timeZone(activity.organizationId)
-        val roster = attendance.roster(activity.activityId, activity.teamId, activity.organizationId, activity.startsAt.atZone(ZoneId.of(zone)).toLocalDate())
+        val roster = attendance.roster(activity.activityId, activity.teamId, activity.organizationId,
+            activity.startsAt.atZone(ZoneId.of(zone)).toLocalDate(),
+            management.canManageInvitations(actor, activity.teamId))
         val eligible = roster.map { it.personId }.toSet()
         val teamGroups = groups.findByTeamId(activity.teamId).filter { it.kind == "group" }
         val members = if (teamGroups.isEmpty()) emptyList() else groupMembers.findByGroupIdInAndActiveTrue(teamGroups.map { it.id })

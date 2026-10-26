@@ -31,6 +31,7 @@ class InvitationService(
         sessions.requireActive(actor)
         val current = activities.findById(activity).orElse(null)
             ?: throw NoSuchElementException("Aktiviteten kunde inte hittas.")
+        if (current.deletedAt != null) throw NoSuchElementException("Aktiviteten kunde inte hittas.")
         val people = access.people(actor, current.organizationId)
         val rows = if (people.isEmpty()) emptyList() else
             invitations.findByActivityIdAndPersonIdIn(activity, people.map { it.id })

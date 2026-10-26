@@ -30,6 +30,13 @@ class ActivityManagementService(
     private val json: JsonMapper
 ) {
     @Transactional(readOnly = true)
+    fun canManageInvitations(actor: Actor, teamId: UUID): Boolean {
+        sessions.requireActive(actor)
+        val team = management.team(teamId) ?: return false
+        return allowed(actor, team, "invitation.manage")
+    }
+
+    @Transactional(readOnly = true)
     fun canManageAttendance(actor: Actor, teamId: UUID): Boolean {
         sessions.requireActive(actor)
         val team = management.team(teamId) ?: return false

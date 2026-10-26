@@ -187,7 +187,7 @@ class ApiTest {
         rosterMember(own)
         rosterMember(child1)
         rosterMember(other, "volunteer")
-        rosterMember(child2, start = "current_date+1")
+        rosterMember(child2, start = "(current_timestamp at time zone 'Europe/Stockholm')::date+1")
         val responsibility = UUID.randomUUID()
         admin.update("insert into forena.team_audience_group(id,organization_id,team_id,name,kind) values(?,?,?,'Tränare','responsibility')", responsibility, organization, rosterTeam())
         admin.update("insert into forena.team_audience_member(group_id,organization_id,person_id) values(?,?,?)", responsibility, organization, own)
@@ -359,6 +359,58 @@ class ApiTest {
         assertThat(people.single { it.get("id").asString() == child1.toString() }.get("attendance").asString()).isEqualTo("present")
         assertThat(people.single { it.get("id").asString() == child2.toString() }.get("attendance").asString()).isEqualTo("absent")
         assertThat(people.toString()).doesNotContain(other.toString())
+    }
+
+    @Test fun `deleted activities never expose invitations before or after the former send time`() {
+        managedTeam()
+        admin.update("update forena.activity set invitation_send_at=now()+interval '1 day' where id=?", activity)
+        val path = "/api/activities/$activity/my-invitations"
+        val scheduled = request(path)
+        assertThat(scheduled.statusCode()).isEqualTo(200)
+        assertThat(json.readTree(scheduled.body()).get("invitations").size()).isZero()
+        assertThat(request("/api/activities/$activity", """{"action":"delete"}""", method="DELETE").statusCode()).isEqualTo(200)
+        assertThat(request(path).statusCode()).isEqualTo(404)
+        // Move the former send time into the past without changing the tombstone.
+        admin.update("update forena.activity set invitation_send_at=now()-interval '1 hour' where id=?", activity)
+        assertThat(request(path).statusCode()).isEqualTo(404)
+        assertThat(request(path, cookie=loginCookie(outsider)).statusCode()).isEqualTo(404)
+        assertThat(respond("""{"response":"accepted"}""").statusCode()).isEqualTo(409)
+        assertThat(history()).isZero()
+    }
+
+    @Test fun `attendance only managers cannot read invitation answers or guests and preserve hidden attendance`() {
+        rosterMember(own, start = "current_date-2")
+        rosterMember(child1, start = "current_date-2")
+        rosterMember(child2, start = "current_date-4", end = "current_date-3")
+        rosterPermission(permission = "attendance.manage")
+        admin.update("update forena.activity set starts_at=now()-interval '2 hours',ends_at=now()-interval '1 hour' where id=?", activity)
+        admin.update("update forena.invitation set response='accepted',responded_at=now() where activity_id=? and person_id=?", activity, child1)
+        admin.update("update forena.invitation set response='declined',responded_at=now() where activity_id=? and person_id=?", activity, other)
+        val path = "/api/activities/$activity/attendance"
+        val limited = request(path)
+        assertThat(limited.statusCode()).isEqualTo(200)
+        val roster = json.readTree(limited.body()).get("roster").toList()
+        assertThat(roster.map { it.get("personId").asString() }).containsExactlyInAnyOrder(own.toString(), child1.toString())
+        assertThat(roster.all { it.get("response").isNull }).isTrue()
+
+        rosterPermission(permission = "invitation.manage")
+        val full = json.readTree(request(path).body()).get("roster").toList()
+        assertThat(full.single { it.get("personId").asString() == child1.toString() }.get("response").asString()).isEqualTo("accepted")
+        assertThat(full.single { it.get("personId").asString() == other.toString() }.get("response").asString()).isEqualTo("declined")
+        assertThat(request(path, """{"personIds":["$other"]}""").statusCode()).isEqualTo(200)
+        admin.update("update forena.team_permission_assignment set active=false where person_id=? and permission='invitation.manage'", own)
+
+        val reported = request(path, """{"personIds":["$child1"]}""")
+        assertThat(reported.statusCode()).isEqualTo(200)
+        val reportedRoster = json.readTree(reported.body()).get("roster").toList()
+        assertThat(reportedRoster.map { it.get("personId").asString() }).containsExactlyInAnyOrder(own.toString(), child1.toString())
+        assertThat(reportedRoster.all { it.get("response").isNull }).isTrue()
+        assertThat(admin.queryForList("select person_id from forena.attendance_record where activity_id=?", UUID::class.java, activity))
+            .containsExactlyInAnyOrder(child1, other)
+        assertThat(request(path, """{"personIds":["$other"]}""").statusCode()).isEqualTo(400)
+        admin.update("update forena.team_permission_assignment set active=false where person_id=? and permission='attendance.manage'", own)
+        assertThat(request(path).statusCode()).isEqualTo(403)
+        assertThat(request(path, """{"personIds":[]}""").statusCode()).isEqualTo(403)
     }
 
     @Test fun `personal overview includes dated member rows without invitations using organization local date`() {

@@ -245,6 +245,15 @@ borttagningskontroll med kontobindning. `frontend/src/api.test.ts` verifierar
 att felaktiga månader, andra metoder och tillägg som ändrar personurval nekas.
 Browserprovet verifierar kalenderhämtning genom den riktiga klienttransporten.
 
+PR-granskningens rättningar verifieras i `ApiTest`: raderade aktiviteters
+kallelser ska ge 404 både före och efter den tidigare utskickstiden.
+Närvaroansvariga utan `invitation.manage` får endast lagets datumgiltiga
+medlemmar och inga kallelsesvar; gästers befintliga närvaro bevaras vid
+rapportering. Testet täcker också tillagd och återkallad behörighet.
+Efter rättningarna passerar API-delens 72 tester lokalt mot PostgreSQL 17;
+två webbläsarprov körs separat i CI. Ett äldre medlemskapstest använder nu
+föreningens tidszon även när det skapar morgondagens testdata.
+
 ### Slutkontroller
 
 - Hela TypeScript-sviten: 140 testfiler, 1 190 godkända tester.

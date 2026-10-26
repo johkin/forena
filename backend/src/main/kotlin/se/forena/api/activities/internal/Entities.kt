@@ -14,6 +14,7 @@ data class ActivityEntity(
     @Id val id: UUID,
     val organizationId: UUID,
     val status: String,
+    val deletedAt: Instant?,
     val endsAt: Instant,
     val invitationSendAt: Instant?,
     val teamId: UUID,

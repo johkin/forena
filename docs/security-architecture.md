@@ -897,9 +897,15 @@ Kotlin återanvänder närvarodialogen genom en kontobunden transport.
 `attendance.manage` kontrolleras separat från aktivitets-/kallelserätt;
 rapportering låser aktiviteten, kontrollerar session och behörighet igen,
 validerar personurvalet och sparar rapport och närvaro i en transaktion.
+Utan `invitation.manage` omfattar närvarolistan endast datumgiltiga, aktiva
+lagmedlemmar och lämnar inga kallelsesvar. Inbjudna gäster och kallelsesvar
+kräver den separata kallelsebehörigheten. Rapportering ändrar endast den
+behöriga listans personer och bevarar närvaroposter utanför den.
 
 Borttagning efter kallelseutskick stoppas under aktivitetslåset, oberoende av
-om någon svarat. Inställning bevarar kallelser, svar och historik. Tillåtna
-åtgärder från läs-API:t är endast UI-underlag; mutationen kontrollerar alltid
+om någon svarat. Inställning bevarar kallelser, svar och historik.
+Raderade aktiviteter ger 404 även i personens kallelse-API, oberoende av
+den tidigare planerade utskickstiden. Tillåtna åtgärder från läs-API:t är
+endast UI-underlag; mutationen kontrollerar alltid
 aktuell utskicksstatus och behörighet på nytt. Kontoseparerade filter i
 localStorage innehåller endast person-/lag-ID:n och ger ingen dataåtkomst.
