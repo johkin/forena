@@ -20,6 +20,7 @@ uppdaterad när ett beslut eller en gemensam princip ändras.
 - [MCP-server](docs/mcp.md) – verktyg, behörigheter, transport och anslutning.
 - [Bemanningsschema](docs/activity-duty-schedule.md) – platser, självservice och ändringsförslag.
 - [Roadmap](docs/roadmap.md) – planerad utveckling och prioriteringar.
+- [Featurespecar](docs/specs/README.md) – intervjuflöde, sparade krav och specmall.
 
 Next-appen är den kanoniska förlagan för alla befintliga och framtida användarflöden.
 Vid migrering till React/Kotlin ska utseende, layout, navigation, texter och
@@ -37,6 +38,21 @@ Alla UI-element ska finnas representerade på `/components` med samma
 produktionskomponenter som används i appen. Nya och ändrade element, relevanta
 varianter och tillstånd ska uppdateras där i samma PR. Kontrollera återanvändningen
 i berörda vyer och följ [reglerna för komponentsidan](docs/design-spec.md#komponentsidan-är-den-gemensamma-ui-referensen).
+
+## Grilla fram en featurespec före implementation
+
+- Vid `grill-me`, ”grilla”, ”intervjua mig”, begäran om en featurespec eller nya
+  features med oklara produktbeslut: läs och följ
+  [grill-me](.agents/skills/grill-me/SKILL.md).
+- Spara specen löpande i `docs/specs/<feature-slug>.md` med krav, avgränsningar,
+  beslut och verifierbara acceptanskriterier. Använd
+  [mallen](docs/specs/_template.md) och återanvänd samma fil vid fortsatt intervju.
+- Fråga i omgångar, invänta svar och skilj bekräftade beslut från förslag.
+  Markera `Redo` först när blockerande frågor är lösta och användaren bekräftat
+  sammanfattningen. Tydligt avgränsade rättningar kräver inte en ny intervju.
+- När användaren beställer implementation av en spec: läs och följ
+  [implement-spec](.agents/skills/implement-spec/SKILL.md). En begäran om en
+  intervju eller spec innebär inte i sig en beställning av implementation.
 
 ## Kodkvalitet och läsbarhet
 
@@ -155,4 +171,3 @@ Skapa nya utvecklingsbrancher från aktuell `main` och rikta alla nya PR:er mot
 - Skilj mellan godkända, misslyckade, överhoppade, pågående och ej körda kontroller.
 - Sammanfatta vad som ändrats, var ändringen finns och vad som faktiskt har
   verifierats. Lova inte fortsatt bevakning om ingen sådan har satts upp.
-
