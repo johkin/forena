@@ -30,6 +30,13 @@ class ActivityManagementService(
     private val json: JsonMapper
 ) {
     @Transactional(readOnly = true)
+    fun canManageAttendance(actor: Actor, teamId: UUID): Boolean {
+        sessions.requireActive(actor)
+        val team = management.team(teamId) ?: return false
+        return allowed(actor, team, "attendance.manage")
+    }
+
+    @Transactional(readOnly = true)
     fun canManageActivity(actor: Actor, teamId: UUID): Boolean {
         sessions.requireActive(actor)
         val team = management.team(teamId) ?: return false
@@ -55,7 +62,7 @@ class ActivityManagementService(
                 if (it.teamId == null) "section" else "team", it.teamId ?: requireNotNull(it.sectionId),
                 it.disciplineKey, it.version, it.revision, it.valuesJson) },
             if (allowed(actor, team, "invitation.manage")) audienceGroups(team) else emptyList(),
-            activities.findByTeamIdOrderByStartsAtAsc(teamId).map(::activityDto))
+            activities.findByTeamIdOrderByStartsAtAsc(teamId).filter { it.deletedAt == null }.map(::activityDto))
     }
 
     @Transactional
@@ -130,7 +137,10 @@ class ActivityManagementService(
         } else {
             require(personIds.isEmpty() && command.invitationSelection == null && command.invitationAudience == null)
         }
-        activities.save(row)
+        val leaderAudience = if (command.invitationMode == "none") row.leadersOnly else
+            (roles == listOf("leader") && selectedGroups.isEmpty() && selectedResponsibilities.isEmpty()) ||
+                (personIds.isNotEmpty() && participants(team).filter { it.id in personIds }.all { it.role == "leader" })
+        activities.save(row.copy(leadersOnly = leaderAudience))
         if (command.invitationMode == "none") return
         val existing = schedules.findByActivityId(row.activityId)
         for (entry in existing.filter { it.state == "pending" }) schedules.save(entry.copy(state = "cancelled"))
@@ -192,6 +202,16 @@ class ActivityManagementService(
     fun cancel(actor: Actor, id: UUID, command: CancellationCommand): ActivityDisposition {
         val current = lock(actor, id)
         command.revision?.let { check(it == current.revision) }
+        if (current.deletedAt != null) throw NoSuchElementException()
+        require(command.action in listOf("cancel", "delete"))
+        if (command.action == "delete") {
+            check(!hasSentInvitations(current)) { "Skickade kallelser hindrar borttagning." }
+            val deleted = current.copy(status = "cancelled", deletedAt = clock.now(), revision = current.revision + 1)
+            activities.save(deleted)
+            schedules.findByActivityId(id).filter { it.state == "pending" }.forEach { schedules.save(it.copy(state = "cancelled")) }
+            record(actor, deleted, "deleted")
+            return ActivityDisposition("deleted")
+        }
         if (current.status == "cancelled") return ActivityDisposition()
         check(current.endsAt > clock.now())
         require(command.reason == null || command.reason.length <= 500)
@@ -206,11 +226,24 @@ class ActivityManagementService(
         return ActivityDisposition()
     }
 
+    @Transactional(readOnly = true)
+    fun disposition(actor: Actor, id: UUID): ActivityDeletionOptions {
+        val row = activities.findById(id).orElseThrow { NoSuchElementException() }
+        sessions.requireActive(actor)
+        requireTeam(actor, row.teamId)
+        if (row.deletedAt != null) throw NoSuchElementException()
+        return ActivityDeletionOptions(!hasSentInvitations(row))
+    }
+
+    private fun hasSentInvitations(row: ManagedActivityEntity): Boolean =
+        invitations.existsByActivityId(row.activityId) && (row.invitationSendAt == null || row.invitationSendAt <= clock.now())
+
     private fun lock(actor: Actor, id: UUID): ManagedActivityEntity {
         sessions.requireActive(actor)
         val identity = activities.findById(id).orElseThrow { NoSuchElementException() }
         requireTeam(actor, identity.teamId)
         val current = activities.findLockedByActivityId(id) ?: throw NoSuchElementException()
+        if (current.deletedAt != null) throw NoSuchElementException()
         // Same lifecycle lock/order as InvitationService; recheck after any lock wait.
         sessions.requireActive(actor)
         requireTeam(actor, current.teamId)

@@ -1,5 +1,6 @@
 package se.forena.api.activities.internal
 
+import se.forena.api.activities.AttendancePerson
 import se.forena.api.activities.InvitationNotificationSnapshot
 
 import java.time.Instant
@@ -105,12 +106,24 @@ private const val PERSONAL_SCOPE = """
 
 interface PersonalActivityRepository : Repository<ActivityEntity, UUID> {
     @Query("""select a.* from forena.activity a join forena.organization o on o.id = a.organization_id
-        where a.status = 'scheduled' and a.ends_at > :now and (""" + PERSONAL_SCOPE + """)
+        where a.deleted_at is null and a.status in ('scheduled','cancelled') and a.starts_at < :until and a.ends_at > :from
+        and (""" + PERSONAL_SCOPE + """) order by a.starts_at, a.id limit 20001""")
+    fun findMonth(people: Collection<UUID>, ownPeople: Collection<UUID>, hasOwnPeople: Boolean, hasPeople: Boolean,
+        managedTeams: Collection<UUID>, hasManagedTeams: Boolean, from: Instant, until: Instant): List<PersonalActivityRow>
+
+    @Query("""select r.activity_id,p.id as person_id,
+        exists(select 1 from forena.attendance_record x where x.activity_id=r.activity_id and x.person_id=p.id) as present
+        from forena.attendance_report r join forena.person p on p.organization_id=r.organization_id
+        where r.activity_id in (:activities) and p.id in (:people)""")
+    fun attendance(activities: Collection<UUID>, people: Collection<UUID>): List<PersonalAttendanceRow>
+
+    @Query("""select a.* from forena.activity a join forena.organization o on o.id = a.organization_id
+        where a.deleted_at is null and a.status = 'scheduled' and a.ends_at > :now and (""" + PERSONAL_SCOPE + """)
         order by a.starts_at, a.id limit 20001""")
     fun findUpcoming(people: Collection<UUID>, ownPeople: Collection<UUID>, hasOwnPeople: Boolean, hasPeople: Boolean, managedTeams: Collection<UUID>, hasManagedTeams: Boolean, now: Instant): List<PersonalActivityRow>
 
     @Query("""select a.* from forena.activity a join forena.organization o on o.id = a.organization_id
-        where a.id = :id and (""" + PERSONAL_SCOPE + ")")
+        where a.deleted_at is null and a.id = :id and (""" + PERSONAL_SCOPE + ")")
     fun findAccessible(id: UUID, people: Collection<UUID>, ownPeople: Collection<UUID>, hasOwnPeople: Boolean, hasPeople: Boolean, managedTeams: Collection<UUID>, hasManagedTeams: Boolean): PersonalActivityRow?
 }
 
@@ -354,4 +367,33 @@ interface RosterRepository : Repository<TeamEntity, UUID> {
     @Modifying
     @Query("insert into forena.roster_audit(organization_id,team_id,actor_subject,operation,target_id) values(:organization,:team,:actor,:operation,:target)")
     fun audit(organization: UUID, team: UUID, actor: UUID, operation: String, target: UUID): Int
+}
+
+interface AttendanceRepository : Repository<ActivityEntity, UUID> {
+    @Query("select time_zone from forena.organization where id=:organization")
+    fun timeZone(organization: UUID): String
+
+    @Query("select reported_at from forena.attendance_report where activity_id=:activity")
+    fun reportedAt(activity: UUID): Instant?
+
+    @Query("""select p.id as person_id,p.display_name,
+        coalesce((select case when m.role='leader' then 'leader' else 'participant' end from forena.team_membership m where m.team_id=:team and m.person_id=p.id and m.active
+            and m.starts_on<=:date and (m.ends_on is null or m.ends_on>=:date) order by m.role limit 1),'participant') as role,
+        i.response,exists(select 1 from forena.attendance_record r where r.activity_id=:activity and r.person_id=p.id) as present
+        from forena.person p left join forena.invitation i on i.person_id=p.id and i.activity_id=:activity
+        where p.organization_id=:organization and (i.id is not null or exists(select 1 from forena.team_membership m
+            where m.team_id=:team and m.person_id=p.id and m.active and m.starts_on<=:date and (m.ends_on is null or m.ends_on>=:date)))
+        order by p.display_name,p.id""")
+    fun roster(activity: UUID, team: UUID, organization: UUID, date: java.time.LocalDate): List<AttendancePerson>
+
+    @Modifying
+    @Query("""insert into forena.attendance_report(activity_id,organization_id,reported_by,reported_at) values(:activity,:organization,:actor,:now)
+        on conflict(activity_id) do update set reported_by=:actor,reported_at=:now""")
+    fun report(activity: UUID, organization: UUID, actor: UUID, now: Instant): Int
+
+    @Modifying @Query("delete from forena.attendance_record where activity_id=:activity")
+    fun clear(activity: UUID): Int
+
+    @Modifying @Query("insert into forena.attendance_record(activity_id,organization_id,person_id) values(:activity,:organization,:person)")
+    fun present(activity: UUID, organization: UUID, person: UUID): Int
 }

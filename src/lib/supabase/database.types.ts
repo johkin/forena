@@ -373,6 +373,9 @@ export interface Database {
       list_platform_admins: { Args: Record<never, never>; Returns: { user_id: string; email: string | null; created_at: string }[] };
       has_section_role: { Args: { target_section_id: string; allowed_roles: string[]; target_user_id?: string }; Returns: boolean };
       has_team_permission: { Args: { target_team_id: string; target_permission: string }; Returns: boolean };
+      calendar_activity_audiences: { Args: { target_activity_ids: string[] }; Returns: { activity_id: string; leaders_only: boolean }[] };
+      activity_deletion_options: { Args: { target_activity_id: string }; Returns: boolean };
+      set_activity_disposition: { Args: { target_activity_id: string; target_action: string; target_cancellation_reason?: string | null }; Returns: "deleted" | "cancelled" };
       delete_or_cancel_activity: { Args: { target_activity_id: string; target_cancellation_reason?: string | null }; Returns: "deleted" | "cancelled" };
       can_manage_team: { Args: { target_team_id: string; target_user_id?: string }; Returns: boolean };
       assign_existing_guardian_team_access: { Args: { target_organization_id: string; target_team_id: string; target_user_id: string; target_responsibility_slug: string; target_access_profile_key: string }; Returns: undefined };

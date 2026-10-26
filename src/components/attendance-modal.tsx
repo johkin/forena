@@ -1,5 +1,6 @@
 "use client";
 
+import type { ParticipationFetch } from "./activity-invitation-response";
 import { useEffect, useMemo, useState } from "react";
 import { PersonSelectionList } from "./person-selection-list";
 import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
@@ -12,12 +13,12 @@ type Row = {
   present: boolean;
 };
 
-type Props = { activityId: string; onClose: () => void; onSaved?: () => void };
+type Props = { request?: ParticipationFetch; activityId: string; onClose: () => void; onSaved?: () => void };
 const roleLabels = { leader: "Ledare", participant: "Spelare", volunteer: "Funktionärer", guardian: "Målsmän" } as const;
 const roles: Row["role"][] = ["participant", "leader", "guardian", "volunteer"];
 
 /** Load permitted attendance rows and edit a controlled selection before saving. */
-export function AttendanceModal({ activityId, onClose, onSaved }: Props) {
+export function AttendanceModal({ activityId, onClose, onSaved, request }: Props) {
   useModalScrollLock();
   const [rows, setRows] = useState<Row[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -30,7 +31,7 @@ export function AttendanceModal({ activityId, onClose, onSaved }: Props) {
   const [quickGroups, setQuickGroups] = useState<{id:string;label:string;personIds:string[]}[]>([]);
 
   useEffect(() => {
-    fetch(`/api/activities/${activityId}/attendance`).then(async (response) => {
+    (request ?? fetch)(`/api/activities/${activityId}/attendance`).then(async (response) => {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Närvaron kunde inte hämtas");
       return body;
@@ -41,7 +42,7 @@ export function AttendanceModal({ activityId, onClose, onSaved }: Props) {
       setSelected(new Set((body.roster ?? []).filter((row: Row) => row.present).map((row: Row) => row.personId)));
       setReportedAt(body.reportedAt ?? null);
     }).catch((reason) => setError(reason.message));
-  }, [activityId]);
+  }, [activityId, request]);
 
   const accepted = useMemo(() => rows.filter((row) => row.response === "accepted"), [rows]);
   const absent = rows.filter((row) => !selected.has(row.personId));
@@ -62,7 +63,7 @@ export function AttendanceModal({ activityId, onClose, onSaved }: Props) {
   async function save() {
     setSaving(true); setError("");
     try {
-      const response = await fetch(`/api/activities/${activityId}/attendance`, {
+      const response = await (request ?? fetch)(`/api/activities/${activityId}/attendance`, {
         method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ personIds: [...selected] }),
       });
       const body = await response.json();

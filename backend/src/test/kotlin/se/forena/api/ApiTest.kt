@@ -291,6 +291,76 @@ class ApiTest {
         assertThat(request("/api/activities/$activity/my-invitations").statusCode()).isEqualTo(404)
     }
 
+
+    @Test fun `calendar reads exactly one Stockholm month with historical membership and independent attendance`() {
+        admin.update("delete from forena.invitation where activity_id=?", activity)
+        admin.update("update forena.activity set starts_at='2026-10-12T15:00:00Z',ends_at='2026-10-12T16:00:00Z' where id=?", activity)
+        val team = rosterTeam()
+        for (person in listOf(child1, child2)) admin.update("insert into forena.team_membership(organization_id,team_id,person_id,role,starts_on,ends_on) values(?,?,?,'participant','2026-10-01','2026-10-20')", organization, team, person)
+        admin.update("insert into forena.attendance_report values(?,?,?,now())", activity, organization, parent)
+        admin.update("insert into forena.attendance_record values(?,?,?)", activity, organization, child1)
+        val response = request("/api/me/calendar?month=2026-10")
+        assertThat(response.statusCode()).isEqualTo(200)
+        assertThat(response.headers().firstValue("cache-control").orElse("")).contains("no-store")
+        val calendar = json.readTree(response.body())
+        assertThat(calendar.get("activities").size()).isEqualTo(1)
+        val people = calendar.get("activities").get(0).get("people")
+        assertThat(people.single { it.get("id").asString() == child1.toString() }.get("attendance").asString()).isEqualTo("present")
+        assertThat(people.single { it.get("id").asString() == child2.toString() }.get("attendance").asString()).isEqualTo("absent")
+        assertThat(people.toString()).doesNotContain(other.toString())
+        assertThat(json.readTree(request("/api/me/calendar?month=2026-11").body()).get("activities").size()).isZero()
+        assertThat(json.readTree(request("/api/me/overview").body()).get("activities").size()).isZero()
+        assertThat(request("/api/me/calendar?month=2026-13").statusCode()).isEqualTo(400)
+        assertThat(request("/api/me/calendar?month=2026-10", cookie=null).statusCode()).isEqualTo(401)
+        admin.update("update forena.person_access set active=false where subject=?", parent)
+        assertThat(json.readTree(request("/api/me/calendar?month=2026-10").body()).get("activities").size()).isZero()
+    }
+
+    @Test fun `calendar retains cancellations and unknown attendance and excludes children from leader meetings`() {
+        admin.update("delete from forena.invitation where activity_id=?", activity)
+        val team = rosterTeam()
+        admin.update("update forena.activity set starts_at='2026-10-12T15:00:00Z',ends_at='2026-10-12T16:00:00Z' where id=?", activity)
+        for ((person, role) in listOf(own to "leader", child1 to "participant")) admin.update("insert into forena.team_membership(organization_id,team_id,person_id,role,starts_on) values(?,?,?,?, '2020-01-01')", organization, team, person, role)
+        val snapshot = json.readTree(request("/api/me/calendar?month=2026-10").body())
+        assertThat(snapshot.get("people").single { it.get("id").asString() == own.toString() }.get("isSelf").asBoolean()).isTrue()
+        var rows = snapshot.get("activities")
+        assertThat(rows.get(0).get("people").size()).isEqualTo(2)
+        assertThat(rows.get(0).get("people").all { it.get("attendance").asString() == "unknown" }).isTrue()
+        admin.update("update forena.activity set leaders_only=true where id=?", activity)
+        rows = json.readTree(request("/api/me/calendar?month=2026-10").body()).get("activities")
+        assertThat(rows.get(0).get("people").size()).isEqualTo(1)
+        assertThat(rows.get(0).get("people").get(0).get("id").asString()).isEqualTo(own.toString())
+        admin.update("update forena.activity set status='cancelled' where id=?", activity)
+        assertThat(json.readTree(request("/api/me/calendar?month=2026-10").body()).get("activities").get(0).get("status").asString()).isEqualTo("cancelled")
+    }
+
+    @Test fun `deletion is denied after invitations even without replies while unsent events may be deleted or cancelled`() {
+        val team = managedTeam()
+        assertThat(json.readTree(request("/api/activities/$activity/disposition").body()).get("canDelete").asBoolean()).isFalse()
+        assertThat(request("/api/activities/$activity", """{"action":"delete"}""", method="DELETE").statusCode()).isEqualTo(409)
+        assertThat(request("/api/activities/$activity", """{"action":"cancel"}""", method="DELETE").statusCode()).isEqualTo(200)
+        val created = request("/api/activities", activityBody(team), method="POST")
+        val id = json.readTree(created.body()).get("activity").get("id").asString()
+        assertThat(json.readTree(request("/api/activities/$id/disposition").body()).get("canDelete").asBoolean()).isTrue()
+        assertThat(request("/api/activities/$id", """{"action":"delete"}""", method="DELETE").statusCode()).isEqualTo(200)
+        assertThat(request("/api/activities/$id").statusCode()).isEqualTo(404)
+        assertThat(request("/api/me/calendar?month=2030-10").body()).doesNotContain(id)
+        assertThat(request("/api/teams/$team/activity-editor").body()).doesNotContain(id)
+    }
+
+    @Test fun `attendance reporting uses its own team permission and rejects unrelated people`() {
+        val team = managedTeam()
+        admin.update("update forena.activity set starts_at=now()-interval '2 hours',ends_at=now()-interval '1 hour' where id=?", activity)
+        assertThat(request("/api/activities/$activity/attendance", """{"personIds":["$child1"]}""").statusCode()).isEqualTo(200)
+        assertThat(request("/api/activities/$activity/attendance", """{"personIds":["${UUID.randomUUID()}"]}""").statusCode()).isEqualTo(400)
+        assertThat(request("/api/activities/$activity/attendance", """{"personIds":[]}""", cookie=loginCookie(outsider)).statusCode()).isEqualTo(403)
+        val month = java.time.YearMonth.now(java.time.ZoneId.of("Europe/Stockholm"))
+        val people = json.readTree(request("/api/me/calendar?month=$month").body()).get("activities").get(0).get("people")
+        assertThat(people.single { it.get("id").asString() == child1.toString() }.get("attendance").asString()).isEqualTo("present")
+        assertThat(people.single { it.get("id").asString() == child2.toString() }.get("attendance").asString()).isEqualTo("absent")
+        assertThat(people.toString()).doesNotContain(other.toString())
+    }
+
     @Test fun `personal overview includes dated member rows without invitations using organization local date`() {
         admin.update("delete from forena.invitation where activity_id=?", activity)
         admin.update("update forena.organization set time_zone='America/Los_Angeles' where id=?", organization)

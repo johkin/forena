@@ -14,7 +14,7 @@ export function calendarActivity(item: PersonalActivity): Activity {
 export function overviewItems(activities: PersonalActivity[]): OverviewItem[] {
   return activities.flatMap<OverviewItem>(item=>item.people.length ? item.people.map(person=>({ activity:calendarActivity(item), canManageActivity:item.can_manage_activities,
     team:{name:item.team.name}, organization:{name:item.organization.name,timeZone:item.organization.time_zone},
-    member:{id:person.id,displayName:person.name}, invitation:person.invitation ?? undefined })) : [{
+    member:{id:person.id,displayName:person.name}, attendance:person.attendance === "present" || person.attendance === "absent" ? person.attendance : "unknown", invitation:person.invitation ?? undefined })) : [{
       activity:calendarActivity(item), canManageActivity:item.can_manage_activities, team:{name:item.team.name},
       organization:{name:item.organization.name,timeZone:item.organization.time_zone},
       member:{id:item.id,displayName:""}, activityOnly:true,

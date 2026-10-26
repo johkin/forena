@@ -52,6 +52,13 @@ class ActivityManagementController(
                @PathVariable activityId: UUID, @RequestBody command: ActivityCommand): ResponseEntity<ActivityResult> =
         ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(management.update(actors.from(authentication, request), activityId, command))
 
+    @GetMapping("/api/activities/{activityId}/disposition")
+    @Operation(operationId = "getActivityDeletionOptions")
+    fun disposition(@Parameter(hidden = true) authentication: Authentication,
+                    @Parameter(hidden = true) request: HttpServletRequest,
+                    @PathVariable activityId: UUID): ResponseEntity<ActivityDeletionOptions> =
+        ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(management.disposition(actors.from(authentication, request), activityId))
+
     @DeleteMapping("/api/activities/{activityId}")
     @Operation(operationId = "cancelActivity")
     fun cancel(@Parameter(hidden = true) authentication: Authentication,

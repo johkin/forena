@@ -66,8 +66,10 @@ kontots översikt. Tidsintervall, tomma lägen och laddnings-/felhantering ska
 bevara Next-flödets funktion; pilotens 90-dagarsgräns är inte ett beslut om
 slutlig produktomfattning.
 
-Agenda och kalender använder samma behöriga aktivitetsunderlag över alla
-föreningar och lag, med samma filter och konsekvent svarsläge efter växling. Agendan och
+Agenda och kalender använder samma behörighetsregler över alla föreningar och
+lag, med samma person-/lag-/svarsfilter och konsekvent svarsläge efter växling.
+Agendan behåller kommande urval; kalendern hämtar en månad i taget, inklusive
+historiska och inställda aktiviteter enligt [kalenderspecen](../specs/kalender-vy.md). Agendan och
 aktivitetsdetaljer visar föreningens lokala tid; familjekalendern visar
 uttryckligen svensk tid enligt befintliga designregler.
 

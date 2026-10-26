@@ -4,7 +4,7 @@
 - Senast uppdaterad: 2026-10-26
 - Berörda dokument: [Designregler](../design-spec.md), [arkitektur](../architecture.md),
   [startsidemål](../migration/personal-homepage-target.md)
-- Implementation och verifiering: Ej påbörjad inom denna feature.
+- Implementation och verifiering: Implementerad. App-/Kotlin-kontroller godkända; Supabase-integrationsprov återstår enligt begränsningen nedan.
 
 ## Problem och mål
 
@@ -24,7 +24,6 @@ kallelsens utskicksstatus.
 ### Ingår inte
 
 Ändring av agendans tidsurval och nya sätt att registrera närvaro ingår inte.
-Implementation har inte beställts.
 
 ## Användare, roller och flöden
 
@@ -188,7 +187,76 @@ tomlägen följer K-030–K-032.
   urval ska ”Inga aktiviteter för valt urval denna månad” visas. Texten får
   inte visas medan hämtningen pågår eller när hämtningen misslyckats.
 
-Produktbeteendena är inte implementerade eller verifierade inom denna feature.
+## Implementation och verifiering
+
+Kalendern har ett separat månads-API i Next och Kotlin. Agendans tidsurval är
+oförändrat. Gränssnitt, flerval och filterminne delas mellan apparna. Kotlin
+återanvänder befintlig närvarodialog genom en adapter; kalendern inför inget
+nytt registreringssätt. Produktkravens status är fortsatt Redo.
+
+| Acceptanskriterium | Krav | Implementation och evidens |
+| --- | --- | --- |
+| AK-001 | K-001, K-013, K-015 | Implementerat och verifierat: historik oberoende av svar/närvaro i `personal-dashboard.test.ts` och `ApiTest` (`calendar reads exactly one Stockholm month…`). |
+| AK-002 | K-002 | Implementerat och verifierat: datumgiltiga medlemsperioder i samma datatester samt befintligt API-test för föreningslokala medlemsgränser. |
+| AK-003 | K-003 | Implementerat och verifierat: månad i API, halvöppna Stockholmgränser, sommartid och årsskifte i `personal-calendar.test.ts`, route-test och browserbläddring. |
+| AK-004 | K-005–K-007 | Implementerat och verifierat i browser: dagens ram/`aria-current`, öppningsmånad och I dag, även när aktuell månad redan visas. |
+| AK-005 | K-008, K-009 | Implementerat och verifierat: filtertrösklar i `calendar-filters.test.tsx`, egna personer i API-snapshot och gemensamt UI-exempel. |
+| AK-006 | K-010 | Implementerat och verifierat: personurval avgränsar laglistan i `personal-calendar.test.ts`. |
+| AK-007 | K-011 | Implementerat och verifierat: Alla som förval samt minne i `calendar-filters.test.tsx`. |
+| AK-008 | K-004, K-018 | Implementerat och verifierat: en aktivitetsknapp med separata personrader, renderer- och browserprov. |
+| AK-009 | K-014, K-015, K-017 | Implementerat och verifierat: Deltog/Deltog inte/Deltagande okänt med text, skilda färger och tillgängligt knappinnehåll; enhetstest och browser. |
+| AK-010 | K-016 | Implementerat och verifierat: framtida aktivitet ger ingen faktisk närvarostatus, oberoende av svar; `personal-calendar.test.ts`. |
+| AK-011 | K-019, K-020 | Implementerat. Kotlin-API verifierat före/efter utskick, även utan svar. Supabase-RPC och pgTAP-prov tillagda; Supabase-integrationskörningen är blockerad enligt begränsningen nedan. |
+| AK-012 | K-021, K-022 | Implementerat. Kotlin verifierar borttagningsmarkering och 404; UI visar Inställd utan närvaro. Supabase-integration återstår att köra. |
+| AK-013 | K-023, K-011 | Implementerat och verifierat: kombinerade person-/lagurval i `personal-calendar.test.ts`; filterminne i `calendar-filters.test.tsx`. |
+| AK-014 | K-024 | Implementerat och verifierat: gemensamt svarsvillkor bevarat; befintliga översikts-/svarstester och kalenderns browserexempel. |
+| AK-015 | K-025 | Implementerat och verifierat: barnurval utesluter egna och andra barns rader, enhetstest och browser. |
+| AK-016 | K-026, K-008 | Implementerat och verifierat: egna aktiviteter består utan personfilter och vid inaktuellt sparat barnurval; enhetstest. |
+| AK-017 | K-008, K-023, K-025, K-026 | Implementerat och verifierat: Mina aktiviteter kombineras med barn, medan ledarmöten avskiljs från barnens rader; urvals- och API-test. |
+| AK-018 | K-027 | Implementerat och verifierat: medlems-/ledarrader skapas utan personlig kallelse; `personal-dashboard.test.ts` och kalenderns API-test. |
+| AK-019 | K-028, K-025, K-027 | Implementerat och verifierat: okallad barnträning visas, enbart ledaraktivitet döljs för barn; data- och API-test. Supabases målgruppshjälpare behöver fortfarande integrationsköras. |
+| AK-020 | K-029, K-011 | Implementerat och verifierat: olika konton/enheter har olika lagringsnycklar och egna urval; `calendar-filters.test.tsx`. |
+| AK-021 | K-030 | Implementerat och verifierat: separat laddningsläge för vald månad, abort av ersatta anrop och exempel på `/components`. |
+| AK-022 | K-031 | Implementerat och verifierat: fel med Försök igen, inget falskt tomt resultat; API-route-test och browser. |
+| AK-023 | K-032 | Implementerat och verifierat i browser: exakt tomtext först efter lyckad hämtning; fel visas separat. |
+
+Evidens finns i [urvalstester](../../src/lib/personal-calendar.test.ts),
+[filtertester](../../src/components/calendar-filters.test.tsx),
+[datatester](../../src/data/personal-dashboard.test.ts),
+[route-tester](../../src/app/api/me/calendar/route.test.ts),
+[Kotlin-API-tester](../../backend/src/test/kotlin/se/forena/api/ApiTest.kt) och
+[pgTAP-provet](../../supabase/tests/calendar_lifecycle_test.sql).
+Det gemensamma browserexemplet finns i
+[BrowserFrontendExamples](../../src/components/browser-frontend-examples.tsx).
+
+### Verifieringsbegränsning
+
+Supabase-imagen kunde inte packas upp i miljöns Docker-lagring (`no space left
+on device`). `supabase db reset --local` och `supabase test db` kunde därför
+inte ansluta till en lokal Supabase-databas. Den nya legacy-migrationen och
+dess pgTAP-prov är skrivna men inte integrationsverifierade. Kotlin använder
+sin egen isolerade PostgreSQL-testdatabas; dess migrations-/API-resultat
+redovisas separat och ersätter inte Supabase-provet.
+
+### Slutkontroller
+
+- Hela TypeScript-sviten: 140 testfiler, 1 190 godkända tester.
+- Efter sista mobilnavigeringsändringen: 17 riktade UI-/urvalstester godkända.
+- `npm run typecheck`: godkänd för Next och Vite.
+- `npm run lint` samt riktad slutlint av ändrade TypeScript-filer: godkända.
+- `npm run build` och `npm run frontend:build`: godkända.
+- OpenAPI/TypeScript-kontrakt genererat från den riktiga Spring-servern;
+  `backend/contract`-kontrollen är godkänd.
+- Slutliga Kotlin-API-/tids-/arkitekturtester: 17 godkända, inklusive
+  kallelsegräns för radering, närvarobehörighet, personåtkomst och dagens
+  månadsurval. Uppgraderingstesternas omkörning gav 18 godkända fall
+  från tom installation och tidigare schemaversioner.
+- Browser: Next och Vite på 390 respektive 1 440 px. Månadsbyte, I dag,
+  historik, status per person, laddning, fel/återförsök, tom månad,
+  barnurval samt borttagningsknappen före/efter utskick är kontrollerade.
+  Inga JavaScript-fel eller horisontell överrinning noterades.
+- Supabase: blockerad lokal integrationskörning enligt begränsningen ovan.
+
 
 ## Bekräftade beslut och motiv
 
@@ -249,9 +317,11 @@ Inga blockerande produktfrågor återstår från intervjun.
 Intervjuns enskilda svar och accepterade rekommendationer är sparade från
 2026-10-26. Användaren bekräftade den slutliga sammanfattningen och
 avgränsningarna med ”ja” i fortsatt svar 10. Status är Redo.
-Implementation har inte beställts eller påbörjats inom denna feature.
+Implementation beställd och utförd 2026-10-26 enligt denna spec.
 
 ## Ändringshistorik
+
+- 2026-10-26: Implementation beställd och genomförd; lagt till spårbar verifieringsmatris och redovisat blockerad Supabase-kontroll.
 
 - 2026-10-26: Slutlig sammanfattning och avgränsningar bekräftade i svar 10.
   Markerat specen Redo och stängt återstående frågor. Implementation är

@@ -96,10 +96,11 @@ kommandon; AI:n får aldrig direkt databasåtkomst.
 
 Den nya webbens startsida visar **Min översikt** via `GET /api/me/overview`.
 `PersonalHome`, `PersonalOverview` och `TeamCalendar` delas med Next-appen.
-Sidan har Agenda/Kalender, kombinerbara filterchips för Behöver svar och lag,
+Sidan har Agenda/Kalender, kombinerbara filterchips för Behöver svar, personer och lag,
 en gemensam aktivitetslista och Mina lag och föreningar. Varje berörd person
-har en rad, även utan kallelse. Filtren begränsar samma underlag i båda vyerna;
-svarsräknaren räknar aktiviteter inom valt lag, inte personer.
+har en rad, även utan kallelse. Samma filter används i båda vyerna;
+kalenderns separata månadsurval innehåller även historik och inställda aktiviteter.
+Svarsräknaren räknar aktiviteter inom valt lag, inte personer.
 `needsInvitationResponse` delar urvalsvillkoret med kallelsesidan och
 `invitationResponseOpen` styr svarsknapparna. Sista svarstid stänger vanliga
 svar; verifierad `activity.manage` för just laget ger undantag fram till slutet.
@@ -537,7 +538,7 @@ samma urvalsregler men validerar inte tider som inte ändras. Antal och datum
 förhandsgranskas separat innan bekräftelse. Kontrolltoken och låsning skyddar
 mot ändrat urval; hela borttagningen sker i en transaktion med auditlogg.
 Varje tillfälle använder `delete_or_cancel_activity`: publicerade aktiviteter
-med svar ställs in, övriga tas bort. Historik och undantag lämnas kvar.
+med skickade kallelser ställs in, övriga tas bort. Historik och undantag lämnas kvar.
 
 ### Tomma arbetsytor och gemensamt sidskal
 
@@ -622,7 +623,7 @@ Roll- och undergruppssnabbval återanvänds i närvaro och Skicka nu. De påverk
 bara visade, tillåtna personer och behåller dolda val. Undergrupper hämtas
 lagavgränsat med den autentiserade RLS-klienten efter befintlig behörighetskontroll.
 
-Min översikts kalender och agenda visar alla publicerade kommande aktiviteter
+Min översikts agenda visar alla publicerade kommande aktiviteter
 i familjens lag, via medlemskap eller användarens egen lagåtkomst vid aktivitetens
 lokala datum. Personliga gästkallelser och bokade uppgifter inkluderas också.
 Läsning använder användarens session och RLS; klubbmedlemskap ensamt fyller inte
@@ -835,3 +836,38 @@ presenteras som fungerande Kotlin-funktioner.
 Den gemensamma aktivitetsdialogen jämförs visuellt mellan Next och Vite vid
 320, 390, 768 och 1280 px. CI sparar skärmbilder. Klockslag får inte radbrytas;
 de smalaste skärmarna staplar tidsmodulerna i båda apparna.
+
+## Kalenderns månadsurval
+
+Familjekalendern har ett separat autentiserat `GET /api/me/calendar?month=YYYY-MM`.
+Next använder användarens Supabase-session; Vite använder sin kontobundna
+Spring-transport. Båda återanvänder `PersonalHome`, `TeamCalendar` och samma
+filterkomponent. Agendans befintliga kommande urval ändras inte.
+
+Månadsgränserna är halvöppna i `Europe/Stockholm`; överlappande flerdagarsaktiviteter
+inkluderas. Medlemskap prövas mot aktivitetens startdatum i föreningens tidszon,
+inklusive avslutade medlemsperioder. Aktuell personåtkomst krävs fortfarande.
+Ledarnas egna rader kan finnas utan kallelse. Ledaraktiviteter avskiljs från
+barnens rader genom målgruppsmetadata, aldrig genom anmälningsstatus.
+
+Filter lagrar endast person-/lag-ID:n i versionsmärkt localStorage per konto.
+”Mina aktiviteter” samlar kontots egna personrelationer; personval och lagval
+används i båda vyerna. Ingen synkronisering mellan enheter införs. Månadsanrop
+avbryts vid byte; en äldre månad får inte ersätta den valda månadens resultat.
+Ett misslyckat anrop ger fel och återförsök, inte en tom kalender.
+
+Faktisk närvaro kommer från närvarorapporten och personposterna. I Kotlin finns
+motsvarande beständiga `attendance_report`/`attendance_record` samt en adapter
+till samma befintliga `AttendanceModal` som Next använder. Rapportering kräver
+`attendance.manage`, kontrolleras efter aktivitetslås och sparas atomärt.
+En saknad rapport betyder okänt. Kalenderläsningen lämnar endast närvaro för
+kontots aktuellt tillgängliga personer. Supabase-hjälparen för målgrupp lämnar
+endast aktivitets-ID och klassificering inom aktuell föreningsåtkomst, aldrig
+andra familjers kallelser.
+
+Borttagning och inställning är separata kommandon. Skickade kallelser skyddas
+även utan svar; servern kontrollerar detta under samma aktivitetslås som
+utskick. Kotlin använder en borttagningsmarkering för att behålla auditens
+referenser, men filtrerar bort aktiviteten från listor, kalender och detaljer.
+Nexts befintliga serie-/assistentanrop behåller sitt kontrakt men använder
+samma skärpta regel. Se [kalenderspecen](specs/kalender-vy.md).

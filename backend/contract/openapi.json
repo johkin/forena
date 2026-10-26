@@ -204,6 +204,14 @@
         },
         "type": "object"
       },
+      "ActivityDeletionOptions": {
+        "properties": {
+          "canDelete": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
       "ActivityDisposition": {
         "properties": {
           "disposition": {
@@ -280,6 +288,9 @@
       },
       "ActivityPerson": {
         "properties": {
+          "attendance": {
+            "type": "string"
+          },
           "id": {
             "format": "uuid",
             "type": "string"
@@ -299,6 +310,7 @@
           }
         },
         "required": [
+          "attendance",
           "id",
           "invitation",
           "name"
@@ -645,6 +657,88 @@
           "error"
         ]
       },
+      "AttendanceCommand": {
+        "properties": {
+          "personIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "AttendanceGroup": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "personIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "AttendancePerson": {
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "personId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "present": {
+            "type": "boolean"
+          },
+          "response": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "AttendanceSnapshot": {
+        "properties": {
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/AttendanceGroup"
+            },
+            "type": "array"
+          },
+          "reportedAt": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "roster": {
+            "items": {
+              "$ref": "#/components/schemas/AttendancePerson"
+            },
+            "type": "array"
+          },
+          "started": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
       "AttestationConveyancePreference": {
         "type": "string"
       },
@@ -793,8 +887,55 @@
         "format": "int32",
         "type": "integer"
       },
+      "CalendarPerson": {
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "isSelf": {
+            "type": "boolean"
+          },
+          "teamIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "displayName",
+          "id",
+          "isSelf",
+          "teamIds"
+        ],
+        "type": "object"
+      },
+      "CalendarTeam": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object"
+      },
       "CancellationCommand": {
         "properties": {
+          "action": {
+            "type": "string"
+          },
           "reason": {
             "type": [
               "string",
@@ -1128,6 +1269,9 @@
           "can_manage_activities": {
             "type": "boolean"
           },
+          "can_manage_attendance": {
+            "type": "boolean"
+          },
           "description": {
             "type": "string"
           },
@@ -1181,6 +1325,7 @@
         },
         "required": [
           "can_manage_activities",
+          "can_manage_attendance",
           "description",
           "ends_at",
           "gathering_at",
@@ -1193,6 +1338,39 @@
           "status",
           "team",
           "title"
+        ],
+        "type": "object"
+      },
+      "PersonalCalendar": {
+        "properties": {
+          "activities": {
+            "items": {
+              "$ref": "#/components/schemas/PersonalActivity"
+            },
+            "type": "array"
+          },
+          "people": {
+            "items": {
+              "$ref": "#/components/schemas/CalendarPerson"
+            },
+            "type": "array"
+          },
+          "reference_time": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "teams": {
+            "items": {
+              "$ref": "#/components/schemas/CalendarTeam"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "activities",
+          "people",
+          "reference_time",
+          "teams"
         ],
         "type": "object"
       },
@@ -1231,6 +1409,18 @@
             },
             "type": "array"
           },
+          "calendar_people": {
+            "items": {
+              "$ref": "#/components/schemas/CalendarPerson"
+            },
+            "type": "array"
+          },
+          "calendar_teams": {
+            "items": {
+              "$ref": "#/components/schemas/CalendarTeam"
+            },
+            "type": "array"
+          },
           "organizations": {
             "items": {
               "$ref": "#/components/schemas/PersonalOrganization"
@@ -1250,6 +1440,8 @@
         },
         "required": [
           "activities",
+          "calendar_people",
+          "calendar_teams",
           "organizations",
           "reference_time",
           "teams"
@@ -1851,6 +2043,107 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ActivityResult"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "activity-management-controller"
+        ]
+      }
+    },
+    "/api/activities/{activityId}/attendance": {
+      "get": {
+        "operationId": "getActivityAttendance",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "activityId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceSnapshot"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "attendance-controller"
+        ]
+      },
+      "put": {
+        "operationId": "reportActivityAttendance",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "activityId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttendanceCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceSnapshot"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "attendance-controller"
+        ]
+      }
+    },
+    "/api/activities/{activityId}/disposition": {
+      "get": {
+        "operationId": "getActivityDeletionOptions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "activityId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityDeletionOptions"
                 }
               }
             },
@@ -3944,6 +4237,37 @@
         },
         "tags": [
           "activity-overview-controller"
+        ]
+      }
+    },
+    "/api/me/calendar": {
+      "get": {
+        "description": "One half-open Stockholm calendar month, including cancelled and historical activities within authorized membership dates. Attendance only for currently accessible people. No-store.",
+        "operationId": "getPersonalCalendar",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "month",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalCalendar"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "personal-overview-controller"
         ]
       }
     },

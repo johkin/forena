@@ -15,7 +15,7 @@ import org.junit.jupiter.params.provider.ValueSource
 import org.testcontainers.postgresql.PostgreSQLContainer
 
 class MigrationTest {
-    @ParameterizedTest @ValueSource(ints = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16])
+    @ParameterizedTest @ValueSource(ints = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17])
     fun `empty install or previous baseline upgrade validates and is repeatable without data loss`(baseline: Int) {
         PostgreSQLContainer("postgres:17.6-alpine").withInitScript("init.sql").use { pg ->
             pg.start()
@@ -63,7 +63,7 @@ class MigrationTest {
                     migrations.validate()
                     connection.createStatement().use { statement ->
                         statement.executeQuery("select count(*) from forena.databasechangelog").use {
-                            it.next(); assertThat(it.getInt(1)).isEqualTo(17)
+                            it.next(); assertThat(it.getInt(1)).isEqualTo(18)
                         }
                         statement.executeQuery("select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='forena' and c.relkind='r' and c.relname not like 'databasechangelog%' and (c.relrowsecurity or c.relforcerowsecurity)").use {
                             it.next(); assertThat(it.getInt(1)).isZero()

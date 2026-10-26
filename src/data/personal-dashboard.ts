@@ -1,13 +1,16 @@
+import { calendarMonthBounds, type CalendarScope } from "@/lib/personal-calendar";
 import type { FamilyActivity, Organization, Team } from "@/domain/club";
 import { createClient } from "@/lib/supabase/server";
 import { invitationAvailable } from "@/lib/invitation-availability";
 import { activityDateKey } from "@/lib/activity-range";
 
-export type PersonalActivity = FamilyActivity & { organization: Organization };
+export type PersonalActivity = FamilyActivity & { organization: Organization; attendance?: "present" | "absent" | "unknown" };
 export type PersonalTeam = { team: Team; organization: Organization; roles: string[] };
 export type PersonalOrganization = Organization & { role?: "owner" | "admin" | "leader" | "member" };
 export type PersonalDashboardData = {
   accountEmail?: string;
+  accountId?: string;
+  calendarScope?: CalendarScope;
   activities: PersonalActivity[];
   teams: PersonalTeam[];
   organizations: PersonalOrganization[];
@@ -21,8 +24,9 @@ export async function readPersonalPages<T>(page: (from: number, to: number) => P
     const result = await page(rows.length, rows.length + 499);
     if (result.error || result.count === null || !result.data) throw new Error("Din översikt kunde inte hämtas.");
     rows.push(...result.data);
+    if (rows.length > 20000) throw new Error("Din översikt kunde inte hämtas fullständigt.");
     if (rows.length >= result.count) return rows;
-    if (!result.data.length || rows.length > 20000) throw new Error("Din översikt kunde inte hämtas fullständigt.");
+    if (!result.data.length) throw new Error("Din översikt kunde inte hämtas fullständigt.");
   }
 }
 
@@ -33,7 +37,8 @@ async function readIds<T>(ids: string[], read: (ids: string[]) => Promise<T[]>):
   return rows;
 }
 
-export async function getPersonalDashboard(): Promise<PersonalDashboardData | null> {
+export async function getPersonalDashboard(month?: string): Promise<PersonalDashboardData | null> {
+  const bounds = month ? calendarMonthBounds(month) : undefined;
   const supabase = await createClient(); // Caller session, never service role.
   const { data: auth, error: authError } = await supabase.auth.getUser();
   if (authError || !auth.user) return null;
@@ -58,13 +63,21 @@ export async function getPersonalDashboard(): Promise<PersonalDashboardData | nu
   ]);
   const activityIds = [...invitations.map(i => i.activity_id), ...dutyLinks.map(d => d.activity_id)];
   const relatedTeamIds = [...memberships.flatMap(m => m.team_id ? [m.team_id] : []), ...access.map(a => a.team_id)];
-  const activityColumns = "id, organization_id, team_id, activity_type_id, title, description_markdown, gathering_at, starts_at, ends_at, location, status, series_id, invitation_send_at, response_due_at" as const;
+  const activityColumns = "id, organization_id, team_id, activity_type_id, title, description_markdown, gathering_at, starts_at, ends_at, location, status, series_id, invitation_send_at, response_due_at, invitation_audience_kind, invitation_audience_roles, invitation_audience_group_ids, invitation_audience_responsibility_type_ids" as const;
   // Caller RLS remains in force. Team membership broadens the calendar, never the reply roster.
+  const readActivities = (field: "id" | "team_id", ids: string[]) => readPersonalPages((from, to) => {
+    const query = supabase.from("activities").select(activityColumns, { count: "exact" }).in(field, ids);
+    const dated = bounds ? query.in("status", ["published", "cancelled"]).lt("starts_at", bounds.until).gt("ends_at", bounds.from)
+      : query.eq("status", "published").gte("ends_at", referenceTime);
+    return dated.order("id").range(from, to);
+  });
   const [linkedActivities, teamActivities] = await Promise.all([
-    readIds(activityIds, ids => readPersonalPages((from, to) => supabase.from("activities").select(activityColumns, { count: "exact" }).in("id", ids).eq("status", "published").gte("ends_at", referenceTime).order("id").range(from, to))),
-    readIds(relatedTeamIds, ids => readPersonalPages((from, to) => supabase.from("activities").select(activityColumns, { count: "exact" }).in("team_id", ids).eq("status", "published").gte("ends_at", referenceTime).order("id").range(from, to))),
+    readIds(activityIds, ids => readActivities("id", ids)),
+    readIds(relatedTeamIds, ids => readActivities("team_id", ids)),
   ]);
   const activityRows = [...new Map([...linkedActivities, ...teamActivities].map(a => [a.id, a])).values()];
+  const audiences = month ? await readIds(activityRows.map(a => a.id), ids => readPersonalPages((from, to) => supabase.rpc("calendar_activity_audiences", { target_activity_ids: ids }, { count: "exact" }).order("activity_id").range(from, to))) : [];
+  const leaderActivityIds = new Set(audiences.filter(row => row.leaders_only).map(row => row.activity_id));
   const teamIds = [...memberships.flatMap(m => m.team_id ? [m.team_id] : []), ...access.map(a => a.team_id), ...activityRows.flatMap(a => a.team_id ? [a.team_id] : [])];
   const teamRows = await readIds(teamIds, ids => readPersonalPages((from, to) => supabase.from("teams").select("id, organization_id, section_id, slug, name, season", { count: "exact" }).in("id", ids).order("id").range(from, to)));
   const teamById = new Map<string, Team>(teamRows.map(t => [t.id, { id: t.id, organizationId: t.organization_id, sectionId: t.section_id, slug: t.slug, name: t.name, season: t.season }]));
@@ -84,6 +97,10 @@ export async function getPersonalDashboard(): Promise<PersonalDashboardData | nu
       const hasDutyAssignment = dutyKeys.has(key);
       const date = activityDateKey(a.starts_at, organization.timeZone ?? "Europe/Stockholm");
       const coversDate = (row: { starts_on: string; ends_on: string | null }) => row.starts_on <= date && (!row.ends_on || row.ends_on >= date);
+      const leadersOnly = leaderActivityIds.has(a.id) || a.invitation_audience_kind === "leaders" || (a.invitation_audience_kind === "selection"
+        && a.invitation_audience_roles?.length === 1 && a.invitation_audience_roles[0] === "leader"
+        && !a.invitation_audience_group_ids?.length && !a.invitation_audience_responsibility_type_ids?.length);
+      if (month && leadersOnly && !ownIds.has(personId)) return [];
       const belongsToTeam = memberships.some(m => m.person_id === personId && m.team_id === team.id && coversDate(m)) ||
         access.some(link => link.person_id === personId && link.team_id === team.id && coversDate(link));
       if (!invitation && !hasDutyAssignment && !belongsToTeam) return [];
@@ -109,5 +126,26 @@ export async function getPersonalDashboard(): Promise<PersonalDashboardData | nu
   }).sort((a, b) => a.organization.name.localeCompare(b.organization.name, "sv") || a.team.name.localeCompare(b.team.name, "sv"));
   const organizationRoleById = new Map(organizationMemberships.map(membership => [membership.organization_id, membership.role]));
   const personalOrganizations: PersonalOrganization[] = [...organizationById.values()].map(organization => ({ ...organization, role: organizationRoleById.get(organization.id) }));
-  return { accountEmail: auth.user.email, activities, teams, organizations: personalOrganizations.sort((a, b) => a.name.localeCompare(b.name, "sv")), referenceTime };
+  const calendarScope: CalendarScope = {
+    people: people.filter(person => !ownIds.has(person.id) || memberships.some(m => {
+      const today = activityDateKey(referenceTime, organizationById.get(person.organization_id)?.timeZone ?? "Europe/Stockholm");
+      return m.person_id === person.id && ["leader", "participant"].includes(m.role) && m.starts_on <= today && (!m.ends_on || m.ends_on >= today);
+    })).map(person => ({
+      id: person.id, displayName: person.display_name, isSelf: ownIds.has(person.id),
+      teamIds: [...new Set([...memberships.filter(m => m.person_id === person.id).flatMap(m => m.team_id ? [m.team_id] : []), ...access.filter(a => a.person_id === person.id).map(a => a.team_id), ...activities.filter(item => item.member.id === person.id).map(item => item.team.id)])],
+    })),
+    teams: [...teamById.values()].map(team => ({ id: team.id, name: `${organizationById.get(team.organizationId)?.name ?? ""} · ${team.name}` })),
+  };
+  if (month && activities.length) {
+    const ids = [...new Set(activities.map(item => item.activity.id))];
+    const reports = await readIds(ids, ids => readPersonalPages((from, to) => supabase.from("activity_attendance_reports").select("id, activity_id", { count: "exact" }).in("activity_id", ids).order("id").range(from, to)));
+    const records = await readIds(reports.map(report => report.id), ids => readPersonalPages((from, to) => supabase.from("activity_attendance_records").select("report_id, person_id", { count: "exact" }).in("report_id", ids).in("person_id", personIds).order("report_id").order("person_id").range(from, to)));
+    const reportByActivity = new Map(reports.map(report => [report.activity_id, report.id]));
+    const present = new Set(records.map(record => `${record.report_id}:${record.person_id}`));
+    for (const item of activities) {
+      const report = reportByActivity.get(item.activity.id);
+      item.attendance = !report ? "unknown" : present.has(`${report}:${item.member.id}`) ? "present" : "absent";
+    }
+  }
+  return { accountId: userId, calendarScope, accountEmail: auth.user.email, activities, teams, organizations: personalOrganizations.sort((a, b) => a.name.localeCompare(b.name, "sv")), referenceTime };
 }

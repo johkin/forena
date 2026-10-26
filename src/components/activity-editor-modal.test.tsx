@@ -16,12 +16,12 @@ function elements(node:unknown):ReactElement<Record<string,unknown>>[] {
 const render=()=>elements(ActivityEditorModal({mode:"edit",organization,team,activity:{...activity,seriesId:"series",startsAt:"2030-10-20T16:00:00Z",endsAt:"2030-10-20T17:00:00Z",gatheringAt:"2030-10-20T15:30:00Z"},members:[],source:"database",canManageInvitations:false,onClose:vi.fn(),onNotice:vi.fn()}));
 beforeEach(()=>{vi.unstubAllGlobals();hooks.index=0;hooks.values=[];hooks.setters=[];vi.stubGlobal("window",{confirm:vi.fn(()=>true),location:{reload:vi.fn()}});});
 it("requires a scope before deletion",()=>{
- const button=render().find(el=>el.type==="button"&&el.props.children==="Ta bort");expect(button?.props.disabled).toBe(true);
+ const button=render().find(el=>el.type==="button"&&el.props.children==="Ställ in");expect(button?.props.disabled).toBe(true);
 });
 it("previews the series instead of deleting only the anchor",async()=>{
  hooks.values[1]="following";
  const fetch=vi.fn().mockResolvedValue({ok:true,json:async()=>({count:2,token:"preview",activities:[]})});vi.stubGlobal("fetch",fetch);
- const button=render().find(el=>el.type==="button"&&el.props.children==="Ta bort kommande");
+ const button=render().find(el=>el.type==="button"&&el.props.children==="Ta bort eller ställ in kommande");
  (button!.props.onClick as ()=>void)();
  await vi.waitFor(()=>expect(hooks.setters[3]).toHaveBeenCalledWith(expect.objectContaining({count:2})));
  expect(fetch.mock.calls[0][0]).toBe(`/api/activities/${activity.id}/series`);

@@ -695,3 +695,30 @@ Aktivitetens redigeringsåtgärd ligger i en egen rad i kortets övre vänstra h
 `ActivityEditButton` visar en pennikon med hjälpmedelsetikett och tooltip,
 minst 44 × 44 px tryckyta och befintlig behörighetskontroll. Den ska inte
 bryta aktivitetens löpande uppgifter. Båda elementen visas på `/components`.
+
+## Kalender med historik och personurval
+
+Kalenderalternativet i Min översikt hämtar en månad i taget, inklusive historiska
+och inställda aktiviteter. Agenda behåller sitt kommande tidsurval. Person- och
+lagchips stöder flerval och ”Alla”; eget urval heter ”Mina aktiviteter”.
+Personfiltret visas när en barnrelation finns och fler än en person kan väljas;
+lagfiltret visas vid flera relevanta lag och följer personvalet. Samma filter
+används i båda vyerna. Senaste person-/lagval sparas per konto och enhet.
+”Behöver svar” är av vid öppning och döljer avslutade/inställda aktiviteter när
+filtret aktiveras.
+
+Kalendern öppnas på dagens svenska datum, markerat med en inre ram och
+`aria-current="date"`. ”I dag” återför till aktuell månad. Gemensamma aktiviteter
+har en post med separat personrad: Deltog, Deltog inte eller Deltagande okänt.
+Text kompletterar färg. Kommande aktiviteter är neutrala och inställda visar
+Inställd utan närvaromarkering. Laddning, fel med Försök igen och lyckad tom
+månad är olika tillstånd. Det gemensamma exemplet på `/components` visar dessa
+varianter i både Next och Vite.
+
+Aktivitetsredigeraren erbjuder Ställ in och, när servern bekräftat att inga
+kallelser skickats, Ta bort. Reglerna tillämpas även på servern. Befintlig
+närvaroregistrering återanvänds; kalendervyn har inga egna registreringskontroller.
+
+På smala skärmar visar familjekalendern månadens dagar som läsbara dagsrader
+med veckodag och aktivitetskort. På desktop används sjudagarsrutnätet.
+Personnamn och närvarotext ska kunna läsas utan att brytas till enstaka bokstäver.

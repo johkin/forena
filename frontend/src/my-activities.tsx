@@ -1,9 +1,10 @@
+import { kotlinCalendarSchema } from "./calendar";
 import { TeamRosterLink } from "./team-roster";
 import { OverviewBackLink } from "../../src/components/overview-back-link";
 import { needsInvitationResponse } from "../../src/lib/pending-invitations";
 import { useNavigate } from "react-router";
 import { AppLink } from "./app-link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityManagement } from "../../src/components/activity-management";
 import { PersonalHome, teamRoleLabels } from "../../src/components/personal-home";
 import { PersonalOverview } from "../../src/components/personal-overview";
@@ -11,8 +12,21 @@ import type { ParticipationFetch } from "../../src/components/activity-invitatio
 import { calendarActivity, confirmedAnswer, overviewItems, type Overview } from "./personal-overview";
 
 type Workspace = { kind:"organization"|"team"; id:string };
-export function MyActivitiesPage({ request, workspace, notifications=false }: { request:ParticipationFetch; workspace?:Workspace; notifications?:boolean }) {
+export function MyActivitiesPage({ request, workspace, notifications=false, accountId }: { request:ParticipationFetch; accountId?:string; workspace?:Workspace; notifications?:boolean }) {
   const navigate=useNavigate();
+  const workspaceKind = workspace?.kind;
+  const workspaceId = workspace?.id;
+  const loadCalendarMonth = useCallback(async (month: string, signal: AbortSignal) => {
+    const response = await request(`/api/me/calendar?month=${encodeURIComponent(month)}`, { signal, cache: "no-store" });
+    if (!response.ok) throw new Error("Aktiviteterna kunde inte hämtas.");
+    const snapshot = kotlinCalendarSchema.parse(await response.json());
+    const rows = snapshot.activities.filter(item => !workspaceId || (workspaceKind === "team" ? item.team.id === workspaceId : item.organization.id === workspaceId));
+    const teamIds = new Set(rows.map(item => item.team.id));
+    return { items: overviewItems(rows), activities: rows.map(calendarActivity),
+      people: snapshot.people.map(person => ({ ...person, teamIds: person.teamIds.filter(id => !workspaceId || workspaceKind !== "team" || id === workspaceId) })),
+      teams: snapshot.teams.filter(team => !workspaceId || (workspaceKind === "team" ? team.id === workspaceId : teamIds.has(team.id))),
+    };
+  }, [request, workspaceId, workspaceKind]);
   const [data,setData]=useState<Overview>();
   const [attempt,setAttempt]=useState(0);
   const [error,setError]=useState<string>();
@@ -68,7 +82,7 @@ export function MyActivitiesPage({ request, workspace, notifications=false }: { 
   return <>
     {workspace ? <OverviewBackLink linkComponent={AppLink} /> : null}
     {error ? <div role="alert"><p>{error}</p><button type="button" onClick={()=>setAttempt(value=>value+1)}>Försök igen</button></div> : null}
-    <PersonalHome items={items} activities={activities.map(calendarActivity)} referenceTime={data.reference_time}
+    <PersonalHome calendarScope={{people:data.calendar_people,teams:data.calendar_teams}} accountId={accountId} loadCalendarMonth={loadCalendarMonth} items={items} activities={activities.map(calendarActivity)} referenceTime={data.reference_time}
       actions={team ? <><TeamRosterLink key={`roster-${team.id}`} request={request} teamId={team.id} /><ActivityManagement key={team.id} teamId={team.id} request={request} onSaved={() => setAttempt(value => value + 1)} /></> : undefined}
       title={team?.name ?? organization?.name} introduction={workspace ? "Här visas aktiviteter för dig och de personer du företräder i arbetsytan." : undefined}
       organizations={data.organizations.filter(item=>!workspace || item.id===(organization?.id ?? team?.organization_id)).map(item=>({...item,role:item.role ?? undefined,href:`/organizations/${item.id}`}))}
