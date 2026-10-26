@@ -48,4 +48,6 @@ Exempel på implementation:
 
 ## Sparade specar
 
+- [Närvaroregistrering](narvaroregistrering.md) – Redo.
+
 - [Lagmedlemmar – hantera trupp och medlemsansökningar](hantera-trupp.md) – Redo.
