@@ -1,7 +1,7 @@
 # AI-assistenten
 
-- Status: Redo
-- Senast uppdaterad: 2026-10-26
+- Status: Utkast – komplettering om roll- och åldersanpassat bemötande pågår.
+- Senast uppdaterad: 2026-10-27
 - Berörda dokument: [Designregler](../design-spec.md),
   [arkitektur](../architecture.md), [säkerhetsarkitektur](../security-architecture.md),
   [assistentminne](../assistant-memory.md), [MCP](../mcp.md),
@@ -230,6 +230,18 @@ nuläge, inte ett beslutat krav på den nya assistenten.
   svar ska inte behöva vänta på övriga botar. Förena-boten får sammanfatta
   när underlaget är klart och ska ange saknade delar enligt K-017.
 
+- K-021: Assistenten ska svara professionellt till ledare och andra
+  funktionärer inom klubben: sakligt, tydligt och handlingsinriktat utan
+  överdrivet beröm. Till målsmän ska bemötandet vara varmare, mer förklarande
+  och hjälpsamt, med konkreta nästa steg och samma saklighet. Assistenten
+  ska inte förutsätta att målsmän kan sportens begrepp eller klubbens
+  processer, utan förklara dessa när det behövs.
+- K-022: För spelare ska ton och uttryck anpassas efter spelarens ålder:
+  under 13 år enkelt och konkret, 13–17 år direkt och respektfullt utan
+  påtvingad slang, och från 18 år ett vuxet bemötande. Åldersanpassning får
+  inte bli nedlåtande. Hantering av flera roller och okänd ålder samt
+  underlag för åldersval preciseras i den pågående kompletteringen.
+
 ## Bevarad funktionsomfattning från Next
 
 Följande ingår genom K-002, med de uttryckliga ändringarna i denna spec:
@@ -417,6 +429,19 @@ Ingen provider har anropats och inga externa system har ändrats i inventeringen
   minnesförslag. En separat bekräftelse ska använda plattformens befintliga
   domänregler. Assistenten får inte påstå att ett osparat förslag är genomfört.
 
+- AK-036 (K-021): Givet en ledare eller annan funktionär, när assistenten
+  besvarar en fråga, ska svaret vara sakligt, tydligt och handlingsinriktat
+  utan överdrivet beröm.
+- AK-037 (K-021): Givet en målsman, när assistenten besvarar en fråga,
+  ska svaret vara varmt, sakligt och hjälpsamt med konkreta nästa steg.
+  Om svaret bygger på sportbegrepp eller klubbprocesser ska nödvändiga
+  förklaringar ges utan att förkunskaper förutsätts.
+- AK-038 (K-022): Givet spelare som är 12, 13, 17 respektive 18 år och
+  ställer samma fråga, ska svaren följa respektive åldersgrupp: enkelt och
+  konkret för 12-åringen, direkt och respektfullt utan påtvingad slang för
+  13- och 17-åringen samt vuxet bemötande för 18-åringen. Inget svar får
+  vara nedlåtande.
+
 ## Verifiering vid implementation
 
 Verifiera varje krav och acceptanskriterium i berörda lager, med särskilda
@@ -428,10 +453,22 @@ Browserprov ska omfatta mobil och desktop, samtal → fråga → botrespons →
 förslag → granskning → bekräftelse → återläst ändring. Redovisa lokal
 verifiering och faktisk målmiljöverifiering separat enligt AGENTS.md.
 
-Kravbild och avgränsningar är bekräftade. Ingen
+Den tidigare kravbilden är bekräftad; kompletteringen om bemötande har
+fortfarande öppna frågor. Ingen
 assistentimplementation eller driftverifiering har gjorts inom denna feature.
 
 ## Bekräftade beslut och motiv
+
+- 2026-10-27, komplettering svar 1–3: Användaren bekräftade sakligt,
+  tydligt och handlingsinriktat bemötande till ledare/funktionärer utan
+  överdrivet beröm, samt varmare och mer förklarande hjälp till målsmän
+  med konkreta nästa steg. Målsmän kan sakna kunskap om sporten och
+  klubbens processer. Åldersgrupperna under 13 år, 13–17 år och från 18 år
+  med föreslagna tonlägen bekräftades. Kraven finns i K-021–K-022.
+- 2026-10-27: Användaren beställde en komplettering av denna spec med
+  professionellt bemötande till ledare och andra funktionärer, mer
+  tillmötesgående bemötande till målsmän samt åldersanpassad ton och
+  uttryck för spelare. Kompletteringen tas fram med grill-me.
 
 - 2026-10-26, svar 20: Användaren bekräftade slutlig sammanfattning och
   avgränsningar med ”ja”. Specen är Redo. Teknisk modell/provider och exakt
@@ -506,8 +543,16 @@ assistentimplementation eller driftverifiering har gjorts inom denna feature.
 
 ## Obekräftade antaganden och förslag
 
-Inga obekräftade produktförslag återstår. Följande är implementationsval
-inom den bekräftade kravbilden:
+Förslag i kompletteringen 2026-10-27, ännu inte bekräftade:
+
+- Vid flera roller styr frågans sammanhang bemötandet.
+- Spelarens egen registrerade ålder används om den är tillgänglig inom
+  befintlig behörighet. Vid okänd ålder används enkelt, neutralt och
+  respektfullt språk utan att gissa ålder från exempelvis lagnamn.
+- Klubb- och sektionsprofilen får sätta sin prägel inom tonreglerna, men
+  får inte åsidosätta roll- och åldersanpassningen.
+
+Följande är implementationsval inom den tidigare bekräftade kravbilden:
 
 - Exakt visuell utformning av botavsändare, exempelvis avatarer/emblem,
   väljs vid implementation inom kravet på tydligt namn och klubbtillhörighet.
@@ -516,16 +561,31 @@ inom den bekräftade kravbilden:
 
 ## Öppna frågor
 
-Inga blockerande produktfrågor återstår från intervjun.
+Kompletteringen 2026-10-27 har följande blockerande frågor:
+
+- Vilken roll ska styra när användaren exempelvis är både ledare och målsman?
+- Vilket åldersunderlag får användas, och hur ska okänd ålder hanteras?
+- Hur förhåller sig tonreglerna till klubbens och sektionens egna instruktioner?
 
 ## Bekräftelse
 
 Svar 1–20 är sparade med de uttryckliga ändringarna av samtalsmodell och
 webbsökning. Användaren bekräftade slutlig sammanfattning och avgränsningar
-2026-10-26 med ”ja” i svar 20. Status är Redo. Implementation har inte
-beställts eller påbörjats inom denna feature.
+2026-10-26 med ”ja” i svar 20. Den tidigare kravbilden är fortsatt bekräftad.
+Specen återöppnades som Utkast 2026-10-27 för kompletteringen om bemötande;
+tonlägen och åldersgrupper bekräftades i kompletteringens svar 1–3.
+Återstående gränsfall och slutlig sammanfattning är ännu inte bekräftade.
+Implementation har inte beställts eller påbörjats inom denna feature.
 
 ## Ändringshistorik
+
+- 2026-10-27: Sparat kompletteringens svar 1–3. Preciserat K-021,
+  lagt till K-022 och uppdaterat AK-036–AK-038 med bekräftade tonlägen,
+  förklaringsbehov för målsmän och åldersgränser. Kvarvarande förslag
+  gäller flera roller, okänd ålder och klubb-/sektionsinstruktioner.
+- 2026-10-27: Återöppnat specen för intervju om roll- och åldersanpassat
+  bemötande. Sparat användarens önskemål som K-021 och preliminära
+  acceptanskriterier AK-036–AK-038, med förslag och öppna frågor åtskilda.
 
 - 2026-10-26: Slutlig sammanfattning och avgränsningar bekräftade i svar 20.
   Markerat specen Redo. Implementation är fortsatt ej påbörjad.
