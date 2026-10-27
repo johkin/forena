@@ -13,6 +13,8 @@ const adminResource = new RegExp(`^/api/admin/(?:bootstrap|platform-administrato
 const adminSlug = new RegExp(`^/api/admin/slug\\?slug=[a-z0-9-]{1,120}(?:&organizationId=${uuid})?$`, "i");
 const systemDestination = new RegExp(`^/system/(?:organizations(?:/${uuid})?|administrators|disciplines|activity-types|memories)$`, "i");
 const clubAdministrationDestination = new RegExp(`^/organizations/${uuid}/(?:administration|sections/${uuid}/teams)$`, "i");
+const attendanceReads = new RegExp(`^/api/activities/${uuid}/attendance(?:/access)?$`, "i");
+const attendanceWrites = new RegExp(`^/api/activities/${uuid}/attendance$`, "i");
 const writes = new RegExp(`^/api/invitations/${uuid}/respond$`, "i");
 
 /** Only allowlisted, same-origin API calls receive the HttpOnly session cookie. */
@@ -20,13 +22,13 @@ export function createApiFetch(readAccount: () => Promise<string | null>, unauth
   return async (path, init = {}) => {
     const method = init.method ?? "GET";
     const allowedRead = method === "GET" && (
-      path === "/api/admin/overview" || adminSlug.test(path) || reads.test(path) || editorReads.test(path) || rosterReads.test(path) || path === "/api/me/managed-teams" ||
+      path === "/api/admin/overview" || attendanceReads.test(path) || adminSlug.test(path) || reads.test(path) || editorReads.test(path) || rosterReads.test(path) || path === "/api/me/managed-teams" ||
       path === "/api/me/overview" || /^\/api\/me\/calendar\?month=\d{4}-(?:0[1-9]|1[0-2])$/.test(path) || /^\/api\/me\/activities(?:\?offset=\d{1,6})?$/.test(path)
     );
     const allowedWrite = (["POST", "PUT", "DELETE"].includes(method) && adminResource.test(path)) || (method === "PUT" && writes.test(path)) ||
       (method === "POST" && (path === "/api/activities" || path === "/api/activity-series")) ||
       (["PUT", "DELETE"].includes(method) && activityWrites.test(path)) ||
-      (method === "PUT" && (rosterMembers.test(path) || rosterGroup.test(path))) ||
+      (method === "PUT" && (attendanceWrites.test(path) || rosterMembers.test(path) || rosterGroup.test(path))) ||
       (method === "POST" && rosterGroups.test(path)) || (method === "DELETE" && rosterDeletion.test(path));
     if (!allowedRead && !allowedWrite) throw new Error("Unsupported API request");
     const account = await readAccount();

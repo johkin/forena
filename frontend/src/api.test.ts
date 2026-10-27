@@ -174,3 +174,18 @@ it("restricts roster transport to exact resources and binds mutations to the acc
   expect(account.mock.calls).toHaveLength(calls);
   expect(safeDestination(`/teams/${id}/members`)).toBe(`/teams/${id}/members`);
 });
+
+it("restricts attendance transport to exact account-bound read and write paths", async () => {
+  const transport = vi.fn().mockResolvedValue(Response.json({}));
+  const request = createApiFetch(async () => id, vi.fn(), transport);
+  const path = `/api/activities/${id}/attendance`;
+  await request(path);
+  await request(`${path}/access`);
+  await request(path, { method: "PUT", body: "{}" });
+  await expect(request(`${path}?team=other`)).rejects.toThrow();
+  await expect(request(`${path}/access`, { method: "PUT" })).rejects.toThrow();
+  await expect(request(path, { method: "DELETE" })).rejects.toThrow();
+  expect(transport).toHaveBeenCalledTimes(3);
+  expect(new Headers(transport.mock.calls[2][1].headers).get("X-Forena-Account")).toBe(id);
+  expect(new Headers(transport.mock.calls[2][1].headers).get("X-Forena-Request")).toBe("1");
+});

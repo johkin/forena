@@ -3,7 +3,7 @@ import type { ReactElement } from "react";
 const hooks = vi.hoisted(() => ({ index:0, values:[] as unknown[] }));
 vi.mock("react", async original => ({ ...await original<typeof import("react")>(),
   useState: (initial:unknown) => { const index=hooks.index++; return [index in hooks.values ? hooks.values[index] : initial, (value:unknown) => { hooks.values[index]=typeof value === "function" ? value(hooks.values[index]) : value; }]; },
-  useEffect: () => {}, useMemo: (factory:() => unknown) => factory(),
+  useRef: () => ({current:null}), useEffect: () => {}, useMemo: (factory:() => unknown) => factory(),
 }));
 vi.mock("@/lib/use-modal-scroll-lock", () => ({ useModalScrollLock: () => {} }));
 import { PersonSelectionList } from "./person-selection-list";
@@ -21,7 +21,7 @@ const rows = [
   {personId:"coach", displayName:"Ledare Ett", role:"leader", response:"accepted", present:true},
 ];
 function render(onClose=vi.fn()) {hooks.index=0;return elements(AttendanceModal({activityId:"activity",onClose}));}
-beforeEach(() => {vi.restoreAllMocks();hooks.values=[rows,new Set(["one","coach"]),null,"",false,"all",""];});
+beforeEach(() => {vi.restoreAllMocks();vi.stubGlobal("requestAnimationFrame", (callback: () => void) => { callback(); return 1; });hooks.values=[rows,new Set(["one","coach"]),null,"",false,"all","",[],{revision:0,writable:true,roster:rows,candidates:[],groups:[],history:[],status:"scheduled",reportedAt:null},false,false,null,false,"",0];});
 it("filters the shared roster without changing the saved attendance or totals", async () => {
   let tree=render();
   const search=tree.find(e=>e.type==="input" && e.props.type==="search")!;
@@ -54,4 +54,36 @@ it("applies group selection while keeping people hidden by the search", () => {
   const shortcut=elements(PersonSelectionList(list.props as Parameters<typeof PersonSelectionList>[0])).find(e=>e.type==="button" && elements(e.props.children).some(child=>child.props.children==="Grön"))!;
   (shortcut.props.onClick as ()=>void)();
   expect([...hooks.values[1] as Set<string>].sort()).toEqual(["coach","one","two"]);
+});
+
+it("requires explicit zero confirmation and cancelling it never sends a write", async () => {
+  hooks.values[1] = new Set();
+  const fetch = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, {status:204}));
+  let tree = render();
+  await (tree.find(e => e.type === "button" && e.props.children === "Spara närvaro")!.props.onClick as () => Promise<void>)();
+  expect(fetch).not.toHaveBeenCalled();
+  tree = render();
+  expect(tree.some(e => e.props.children === "Du rapporterar 0 närvarande. Alla i listan registreras som frånvarande.")).toBe(true);
+  (tree.find(e => e.type === "button" && e.props.children === "Avbryt bekräftelse")!.props.onClick as () => void)();
+  expect(fetch).not.toHaveBeenCalled();
+  tree = render();
+  await (tree.find(e => e.type === "button" && e.props.children === "Spara närvaro")!.props.onClick as () => Promise<void>)();
+  tree = render();
+  await (tree.find(e => e.type === "button" && e.props.children === "Bekräfta 0 närvarande")!.props.onClick as () => Promise<void>)();
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(JSON.parse(fetch.mock.calls[0][1]!.body as string).personIds).toEqual([]);
+});
+
+it("keeps the entire draft on save errors and supports retry", async () => {
+  const fetch = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(Response.json({error:"Tillfälligt fel"}, {status:503})).mockResolvedValueOnce(new Response(null, {status:204}));
+  const onClose = vi.fn();
+  let tree = render(onClose);
+  await (tree.find(e => e.type === "button" && e.props.children === "Spara närvaro")!.props.onClick as () => Promise<void>)();
+  expect(onClose).not.toHaveBeenCalled();
+  expect([...hooks.values[1] as Set<string>]).toEqual(["one", "coach"]);
+  tree = render(onClose);
+  expect(tree.some(e => e.props.role === "alert" && e.props.children === "Tillfälligt fel")).toBe(true);
+  await (tree.find(e => e.type === "button" && e.props.children === "Spara närvaro")!.props.onClick as () => Promise<void>)();
+  expect(onClose).toHaveBeenCalledTimes(1);
+  expect(fetch).toHaveBeenCalledTimes(2);
 });

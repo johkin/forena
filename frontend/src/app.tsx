@@ -18,6 +18,7 @@ import { AdministrationProvider, useAdministrationAccess } from "../../src/compo
 import { PasswordLoginForm } from "../../src/components/password-login-form";
 import { type ParticipationFetch } from "../../src/components/activity-invitation-response";
 import { BrowserFrontendExamples } from "../../src/components/browser-frontend-examples";
+import { AttendanceExamples } from "../../src/components/attendance-examples";
 import { createApiFetch, oauthDestination, safeDestination } from "./api";
 import type { PublicConfig } from "./config";
 import { authRequest, parseSession, passkeyLogin, registerPasskey, type SessionView } from "./session";
@@ -114,7 +115,7 @@ export function App({ config }: { config: PublicConfig }) {
     setError("Logga in igen för att fortsätta.");
   })(path, init), [accountId, applySession]);
   const path = location.pathname;
-  if (path === "/components") return <Frame><main tabIndex={-1} className="content component-gallery"><h1>Komponenter</h1><BrowserFrontendExamples linkComponent={AppLink} /></main></Frame>;
+  if (path === "/components") return <Frame><main tabIndex={-1} className="content component-gallery"><h1>Komponenter</h1><BrowserFrontendExamples linkComponent={AppLink} /><AttendanceExamples /></main></Frame>;
   if ((accountCallback || ["/register", "/password/forgot"].includes(path))) return <Frame><main tabIndex={-1} className="auth-page"><AccountPage key={path} action={path === "/register" ? "register" : path === "/password/forgot" ? "forgot" : path === "/auth/reset" ? "reset" : "verify"} code={callbackCode} /></main></Frame>;
   if (callback) return <Frame><main tabIndex={-1} className="auth-page"><MagicLinkConfirmation pending={pending} error={error} onConfirm={() => void (async () => {
     if (pending) return;

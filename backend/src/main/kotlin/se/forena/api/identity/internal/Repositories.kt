@@ -81,6 +81,12 @@ interface NotificationRecipientRepository : Repository<AccountEntity, UUID> {
 }
 
 interface RosterIdentityRepository : Repository<PersonEntity, UUID> {
+    @Query("""select p.display_name from forena.person_access a
+        join forena.person p on p.id=a.person_id and p.organization_id=a.organization_id
+        where a.subject=:subject and a.organization_id=:organization and a.kind='self' and a.active
+        order by p.id limit 1""")
+    fun actorName(organization: UUID, subject: UUID): String?
+
     @Query("""select g.person_id,g.subject,
         coalesce(nullif(g.contact_name,''),p.display_name,'Målsman') as name,g.contact_phone as phone
         from forena.person_access g

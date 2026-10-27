@@ -44,8 +44,24 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["getActivityAttendance"];
-        put: operations["reportActivityAttendance"];
+        get: operations["getAttendance"];
+        put: operations["saveAttendance"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/activities/{activityId}/attendance/access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getAttendanceAccess"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1001,29 +1017,53 @@ export interface components {
         ApiError: {
             error: string;
         };
+        AttendanceChange: {
+            displayName: string;
+            /** Format: uuid */
+            personId: string;
+            present: boolean;
+            previousPresent: boolean | null;
+        };
         AttendanceCommand: {
-            personIds?: string[];
+            confirmEmpty: boolean;
+            personIds: string[];
+            /** Format: int64 */
+            revision: number;
+            rosterIds: string[];
         };
         AttendanceGroup: {
             /** Format: uuid */
-            id?: string;
-            label?: string;
-            personIds?: string[];
+            id: string;
+            label: string;
+            personIds: string[];
+        };
+        AttendanceHistory: {
+            actorName: string;
+            /** Format: date-time */
+            changedAt: string;
+            changes: components["schemas"]["AttendanceChange"][];
+            /** Format: int64 */
+            revision: number;
         };
         AttendancePerson: {
-            displayName?: string;
+            displayName: string;
             /** Format: uuid */
-            personId?: string;
-            present?: boolean;
-            response?: string | null;
-            role?: string;
+            personId: string;
+            present: boolean | null;
+            response: string | null;
+            role: string;
         };
         AttendanceSnapshot: {
-            groups?: components["schemas"]["AttendanceGroup"][];
+            candidates: components["schemas"]["AttendancePerson"][];
+            groups: components["schemas"]["AttendanceGroup"][];
+            history: components["schemas"]["AttendanceHistory"][];
             /** Format: date-time */
-            reportedAt?: string | null;
-            roster?: components["schemas"]["AttendancePerson"][];
-            started?: boolean;
+            reportedAt: string | null;
+            /** Format: int64 */
+            revision: number;
+            roster: components["schemas"]["AttendancePerson"][];
+            status: string;
+            writable: boolean;
         };
         AttestationConveyancePreference: string;
         AuthenticationExtensionsClientInput: {
@@ -1499,7 +1539,7 @@ export interface operations {
             };
         };
     };
-    getActivityAttendance: {
+    getAttendance: {
         parameters: {
             query?: never;
             header?: never;
@@ -1521,7 +1561,7 @@ export interface operations {
             };
         };
     };
-    reportActivityAttendance: {
+    saveAttendance: {
         parameters: {
             query?: never;
             header?: never;
@@ -1536,13 +1576,33 @@ export interface operations {
             };
         };
         responses: {
+            /** @description Attendance and history saved atomically */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getAttendanceAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                activityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
             /** @description OK */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["AttendanceSnapshot"];
+                    "*/*": boolean;
                 };
             };
         };

@@ -28,7 +28,8 @@ class PersonalOverviewService(
     private val organizationMembers: OrganizationMemberRepository,
     private val organizations: OrganizationRepository,
     private val teams: TeamRepository,
-    private val management: ActivityManagementService
+    private val management: ActivityManagementService,
+    private val attendanceAccess: AttendanceService
 ) {
     // Counts, participant rows, roles and invitations must come from the same authorized snapshot.
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
@@ -54,9 +55,11 @@ class PersonalOverviewService(
         val grants = if (ownPeople.isEmpty()) emptyList() else assignments.findByPersonIdInAndActiveTrue(ownPeople)
         val managedTeams = management.teams(actor)
         val managedTeamIds = managedTeams.map { it.id }.toSet()
+        val attendanceTeams = attendanceAccess.teams(actor)
+        val readableTeamIds = (managedTeamIds + attendanceTeams.map { it.id }).toSet()
         val orgMemberships = organizationMembers.findBySubjectAndActiveTrue(actor.subject)
         val orgIds = (people.map { it.organizationId } + orgMemberships.map { it.organizationId } +
-            managedTeams.map { it.organizationId }).distinct()
+            managedTeams.map { it.organizationId } + attendanceTeams.map { it.organizationId }).distinct()
         val orgRows = if (orgIds.isEmpty()) emptyList() else organizations.findByIdInOrderByNameAsc(orgIds)
         val organizationDtos = orgRows.map { org -> PersonalOrganization(org.id, org.name, org.timeZone,
             orgMemberships.singleOrNull { it.organizationId == org.id }?.role) }
@@ -65,19 +68,19 @@ class PersonalOverviewService(
         val noId = listOf(UUID(0, 0))
         val personIds = people.map { it.id }.ifEmpty { noId }
         val ownIds = ownPeople.ifEmpty { noId }
-        val managerIds = managedTeamIds.toList().ifEmpty { noId }
+        val managerIds = readableTeamIds.toList().ifEmpty { noId }
         val rows = if (month != null) {
             val zone = ZoneId.of("Europe/Stockholm")
-            activities.findMonth(personIds, ownIds, ownPeople.isNotEmpty(), people.isNotEmpty(), managerIds, managedTeamIds.isNotEmpty(),
+            activities.findMonth(personIds, ownIds, ownPeople.isNotEmpty(), people.isNotEmpty(), managerIds, readableTeamIds.isNotEmpty(),
                 month.atDay(1).atStartOfDay(zone).toInstant(), month.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant())
         } else if (id == null)
-            activities.findUpcoming(personIds, ownIds, ownPeople.isNotEmpty(), people.isNotEmpty(), managerIds, managedTeamIds.isNotEmpty(), now)
-        else listOfNotNull(activities.findAccessible(id, personIds, ownIds, ownPeople.isNotEmpty(), people.isNotEmpty(), managerIds, managedTeamIds.isNotEmpty()))
+            activities.findUpcoming(personIds, ownIds, ownPeople.isNotEmpty(), people.isNotEmpty(), managerIds, readableTeamIds.isNotEmpty(), now)
+        else listOfNotNull(activities.findAccessible(id, personIds, ownIds, ownPeople.isNotEmpty(), people.isNotEmpty(), managerIds, readableTeamIds.isNotEmpty()))
         if (id != null && rows.isEmpty()) throw NoSuchElementException("Aktiviteten kunde inte hittas.")
         // Match the legacy completeness guard: fail explicitly, never publish partial counts/calendar.
         if (rows.size > 20_000) throw ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE)
         val teamIds = (rows.map { it.teamId } + relations.map { it.teamId } +
-            grants.map { it.teamId } + managedTeamIds).distinct()
+            grants.map { it.teamId } + readableTeamIds).distinct()
         val teamRows = if (teamIds.isEmpty()) emptyList() else teams.findByIdInOrderByNameAsc(teamIds)
         val attendanceTeamIds = teamRows.filter { management.canManageAttendance(actor, it.id) }.map { it.id }.toSet()
         val peopleById = people.associateBy { it.id }
@@ -87,7 +90,7 @@ class PersonalOverviewService(
             val org = byOrganization.getValue(team.organizationId)
             val today = now.atZone(ZoneId.of(org.time_zone)).toLocalDate()
             val roles = linkedSetOf<String>()
-            if (team.id in managedTeamIds) roles += "team_access"
+            if (team.id in readableTeamIds) roles += "team_access"
             for (member in membershipByTeam[team.id].orEmpty().filter { covers(it.startsOn, it.endsOn, today) }) {
                 roles += if (peopleById.getValue(member.personId).kind == "self") member.role else "guardian"
             }
@@ -97,7 +100,7 @@ class PersonalOverviewService(
         val invitationRows = if (rows.isEmpty() || people.isEmpty()) emptyList() else
             invitations.findByActivityIdInAndPersonIdIn(rows.map { it.id }, people.map { it.id })
         val byActivity = invitationRows.groupBy { it.activityId }
-        val attendanceRows = if (month == null || rows.isEmpty() || people.isEmpty()) emptyList() else
+        val attendanceRows = if (rows.isEmpty() || people.isEmpty()) emptyList() else
             activities.attendance(rows.map { it.id }, people.map { it.id })
         val attendance = attendanceRows.associateBy { it.activityId to it.personId }
         val result = rows.map { row ->
@@ -119,7 +122,7 @@ class PersonalOverviewService(
             PersonalActivity(row.id, row.title, row.startsAt, row.endsAt, row.gatheringAt, row.responseDueAt,
                 row.location, row.description, row.status, org, byTeam.getValue(row.teamId), personRows, row.teamId in managedTeamIds, row.teamId in attendanceTeamIds)
         }
-        val visible = if (month == null) result else result.filter { it.people.isNotEmpty() || it.can_manage_activities }
+        val visible = if (month == null) result else result.filter { it.people.isNotEmpty() || it.can_manage_activities || it.can_manage_attendance }
         val scopePeople = people.filter { person ->
             person.kind != "self" || relations.any { member ->
                 val org = byOrganization.getValue(person.organizationId)

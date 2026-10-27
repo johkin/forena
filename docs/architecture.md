@@ -874,3 +874,30 @@ utskick. Kotlin använder en borttagningsmarkering för att behålla auditens
 referenser, men filtrerar bort aktiviteten från listor, kalender och detaljer.
 Nexts befintliga serie-/assistentanrop behåller sitt kontrakt men använder
 samma skärpta regel. Se [kalenderspecen](specs/kalender-vy.md).
+
+## Närvaroregistrering i React/Kotlin
+
+`AttendanceService` äger `/api/activities/{id}/attendance`. En repeatable-read-
+snapshot samlar personurval, rapport, kandidater, undergrupper och historik.
+`AttendanceModal` och `PersonSelectionList` är samma produktionskomponenter i
+Next och React. React använder det genererade OpenAPI-kontraktet och den
+kontobundna transporten; Next använder fortsatt sitt äldre API.
+
+Första urvalet bygger på medlemskapets giltighet på aktivitetens lokala datum
+samt alla kallade personer. Senare inaktivering tar inte bort historiska
+medlemskap. Rapporten sparar hela det bedömda urvalet inklusive frånvarande.
+Tillägg kräver befintligt medlemskap i ett lag i samma klubb och sektion.
+Tillägget skapar ingen medlems-/kallelserelation.
+
+Aktivitetslås och rapportrevision 0 före första rapporten serialiserar både
+första registrering, korrigering och inställning. Session och `attendance.manage`
+för det faktiska laget kontrolleras igen efter låset. Rapport, personposter och
+historik skrivs i samma Spring-transaktion. Historikens namn är snapshots;
+`identity` lämnar rapportörens visningsnamn genom `RosterDirectory`.
+Saknas en aktiv egen person används ”Användare utan visningsnamn”; kontots
+e-postadress används aldrig som reservnamn. Kontots ID bevaras separat för
+spårbarhet. Importerad historik använder konto-ID när visningsnamn saknas.
+
+Personligt aktivitetsunderlag läser enbart redan behöriga personers sparade
+närvaro i ett batchanrop. `unknown` betyder okänd, `absent` bedömd frånvaro och
+`present` närvaro. Kalenderns befintliga statuskontrakt bevaras. Se [spec och verifiering](specs/narvaroregistrering.md).
