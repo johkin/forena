@@ -329,7 +329,7 @@ Verifierat 2026-10-27:
 - `npm run typecheck`, `npm run lint` och `npm run frontend:build`: godkända.
 - `npm run build`: godkänt Next-produktionsbygge även efter den sista
   kompatibilitetsrättningen.
-- `cd backend && ./mvnw verify`: 143 godkända tester, 3 befintliga browserprov
+- `cd backend && ./mvnw verify`: 144 godkända tester, 3 befintliga browserprov
   överhoppade eftersom deras uttryckliga browserinställning inte aktiverats.
   Samtliga 19 migrationsbaslinjer är godkända. Alla närvarons API-prov kördes.
 - `cd backend/contract && npm run generate`: OpenAPI exporterat från den verkliga
@@ -408,6 +408,11 @@ avgränsningar 2026-10-26 med ”ja” i svar 13. Status är Redo.
 Implementation beställd och genomförd 2026-10-27; se verifieringsmatrisen ovan.
 
 ## Ändringshistorik
+
+- 2026-10-27: Rättat två granskningspunkter i PR #199: e-post används inte som
+  reservnamn i närvarohistorik eller import, och Tab/Shift+Tab hålls i dialogen
+  även från dialogramen eller sidan efter sparfel och avstämning. Regressioner
+  täcks av API-, migrations- och browserprov för AK-016 och AK-003/AK-019.
 
 - 2026-10-27: Integrerat med kalenderns migration 018 och bevarat befintliga
   rapporter via migration 019; verifierat uppgradering och aktiverat närvarons

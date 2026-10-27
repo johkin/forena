@@ -891,6 +891,9 @@ första registrering, korrigering och inställning. Session och `attendance.mana
 för det faktiska laget kontrolleras igen efter låset. Rapport, personposter och
 historik skrivs i samma Spring-transaktion. Historikens namn är snapshots;
 `identity` lämnar rapportörens visningsnamn genom `RosterDirectory`.
+Saknas en aktiv egen person används ”Användare utan visningsnamn”; kontots
+e-postadress används aldrig som reservnamn. Kontots ID bevaras separat för
+spårbarhet. Importerad historik använder konto-ID när visningsnamn saknas.
 
 Personligt aktivitetsunderlag läser enbart redan behöriga personers sparade
 närvaro i ett batchanrop. `unknown` betyder okänd, `absent` bedömd frånvaro och

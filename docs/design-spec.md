@@ -742,3 +742,9 @@ för avstämning; först därefter kan ledaren använda dess version och spara s
 korrigerade urval. Historiken visar rapportör, tidpunkt och varje ändrad persons
 föregående/nya närvaro. Dialogen låser bakgrundsrullning, håller tangentbordsfokus,
 stöder Escape och återför fokus till öppningsknappen.
+Tab och Shift+Tab hålls inom dialogen även när fokus ligger på dialogramen
+efter sparfel, avstämning eller medlemsval. Om ett borttaget/inaktiverat
+element lämnar fokus på sidan fångas nästa Tab-tryck och förs tillbaka till
+dialogens första eller sista aktiva kontroll.
+En fördröjd fokusåterställning flyttar inte fokus från en kontroll som
+användaren redan har valt i dialogen.

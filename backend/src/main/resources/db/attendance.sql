@@ -54,7 +54,7 @@ INSERT INTO forena.attendance_history(id,activity_id,organization_id,revision,ac
    coalesce((SELECT p.display_name FROM forena.person_access x
       JOIN forena.person p ON p.id=x.person_id AND p.organization_id=x.organization_id
       WHERE x.subject=r.reported_by AND x.organization_id=r.organization_id AND x.kind='self' AND x.active
-      ORDER BY p.id LIMIT 1),(SELECT email FROM forena.native_user WHERE subject=r.reported_by),r.reported_by::text),r.reported_at
+      ORDER BY p.id LIMIT 1),r.reported_by::text),r.reported_at
  FROM forena.attendance_report r;
 INSERT INTO forena.attendance_change(history_id,person_id,display_name,previous_present,present)
  SELECT h.id,r.person_id,p.display_name,NULL,r.present

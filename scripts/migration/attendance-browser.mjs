@@ -7,6 +7,29 @@ const origins = [process.env.FORENA_PARITY_NEXT ?? 'http://127.0.0.1:3004', proc
 for (const origin of origins) assert.ok(['127.0.0.1', 'localhost'].includes(new URL(origin).hostname));
 const browser = await chromium.launch({ headless: true, ...(process.env.FORENA_BROWSER_EXECUTABLE ? { executablePath: process.env.FORENA_BROWSER_EXECUTABLE } : {}) });
 await mkdir('frontend/.evidence/attendance', { recursive: true });
+async function verifyFocusContainment(page, dialog) {
+  const controls = dialog.locator('button:enabled:visible, input:enabled:visible, summary:visible, a[href]:visible');
+  await dialog.focus();
+  await page.keyboard.press('Shift+Tab');
+  await expect(controls.last()).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(controls.first()).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(controls.last()).toBeFocused();
+  await dialog.focus();
+  await page.keyboard.press('Tab');
+  await expect(controls.first()).toBeFocused();
+  // Disabled or removed controls can leave the active element on body during an async save.
+  await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); });
+  await expect(page.locator('body')).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(controls.last()).toBeFocused();
+  await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); });
+  await page.keyboard.press('Tab');
+  await expect(controls.first()).toBeFocused();
+  await dialog.focus();
+}
+
 try {
   for (const width of [320, 375, 390, 768, 1280]) {
     const images = new Map();
@@ -68,6 +91,8 @@ try {
           style: 'body * { visibility: hidden; } .modal-backdrop, .modal-backdrop * { visibility: visible; }' });
         if (app === 0) images.set(mode, image);
         else assertSameRendering(images.get(mode), image, `${mode} ${width}px`);
+        // Screenshot-only visibility isolation can blur controls; restore the dialog before testing Escape.
+        await dialog.focus();
         await page.keyboard.press('Escape');
         await expect(dialog).toHaveCount(0);
         await expect(example.getByRole('button', { name: 'Öppna närvaro' })).toBeFocused();
@@ -77,6 +102,26 @@ try {
     }
     console.log(`PASS ${width}px: Next/React attendance parity, history, cancellation, additions, zero confirmation, conflicts, errors, keyboard and overflow`);
   }
+
+  // Exercise keyboard recovery separately from pixel comparisons so interaction state cannot affect snapshots.
+  for (const origin of origins) {
+    for (const width of [390, 1280]) {
+      const page = await browser.newPage({ viewport: { width, height: 900 } });
+      await page.goto(`${origin}/components`);
+      const example = page.locator('#attendance-example');
+      await example.getByLabel('Närvaroläge').selectOption('Sparfel');
+      await example.getByRole('button', { name: 'Öppna närvaro' }).click();
+      const dialog = page.getByRole('dialog', { name: 'Rapportera närvaro' });
+      await dialog.getByRole('checkbox').first().check();
+      await dialog.getByRole('button', { name: 'Spara närvaro', exact: true }).click();
+      await expect(dialog.getByRole('alert')).toBeVisible();
+      await verifyFocusContainment(page, dialog);
+      await page.keyboard.press('Escape');
+      await expect(example.getByRole('button', { name: 'Öppna närvaro' })).toBeFocused();
+      await page.close();
+    }
+  }
+  console.log('PASS keyboard regression: Tab and Shift+Tab wrap from dialog container, body and controls after save errors on mobile/desktop in both apps');
 
   // Production React entry and account-bound transport, with explicit synthetic HTTP responses.
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
@@ -122,8 +167,10 @@ try {
   await expect(dialog.getByRole('checkbox')).toHaveCount(1);
   await dialog.getByRole('button', { name: 'Spara närvaro', exact: true }).click();
   await expect(dialog.getByRole('alert').first()).toContainText('Dina val finns kvar');
+  await verifyFocusContainment(page, dialog);
   await dialog.getByRole('button', { name: 'Läs in senaste rapporten för avstämning' }).click();
   await dialog.getByRole('button', { name: 'Använd senaste versionen och behåll mina val' }).click();
+  await verifyFocusContainment(page, dialog);
   await dialog.getByRole('button', { name: 'Spara närvaro', exact: true }).click();
   await expect(dialog).toHaveCount(0);
   assert.equal(writes, 2);

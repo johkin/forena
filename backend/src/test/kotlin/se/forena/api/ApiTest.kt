@@ -186,6 +186,30 @@ class ApiTest {
         assertThat(request(attendancePath(), attendanceBody()).statusCode()).isEqualTo(403)
     }
 
+    @Test fun `attendance history never uses the account email when the reporter lacks an active display name`() {
+        startAttendance()
+        admin.update("insert into forena.organization_member(organization_id,subject,role) values(?,?,'admin')", organization, parent)
+        admin.update("update forena.person_access set active=false where organization_id=? and subject=? and kind='self'", organization, parent)
+        val email = "$parent@example.invalid"
+
+        for (revision in 0..1) {
+            if (revision == 1) {
+                admin.update("delete from forena.person_access where organization_id=? and subject=? and kind='self'", organization, parent)
+            }
+            assertThat(request(attendancePath(), attendanceBody(revision)).statusCode()).isEqualTo(204)
+            val response = request(attendancePath())
+            assertThat(response.statusCode()).isEqualTo(200)
+            assertThat(response.body()).doesNotContain(email)
+            val history = json.readTree(response.body()).get("history").toList()
+            assertThat(history).hasSize(revision + 1)
+            assertThat(history.all { it.get("actorName").asString() == "Användare utan visningsnamn" }).isTrue()
+        }
+
+        val stored = admin.queryForList("select actor_subject,actor_name from forena.attendance_history where activity_id=?", activity)
+        assertThat(stored).hasSize(2)
+        assertThat(stored.all { it["actor_subject"] == parent && it["actor_name"] == "Användare utan visningsnamn" }).isTrue()
+    }
+
     @Test fun `attendance assesses all people preserves answers supports corrections and zero with history`() {
         startAttendance()
         val path = attendancePath()

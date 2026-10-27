@@ -57,6 +57,7 @@ class MigrationTest {
                                 it.execute("insert into forena.invitation_history(invitation_id,organization_id,actor_subject$sessionColumn,channel,previous_response,response,revision) values('$legacyInvitation','$organization','$subject'$sessionValue,'web','pending','accepted',7)")
                                 it.execute("insert into forena.activity_signal_state(activity_id,dirty_revision) values('$legacyActivity',9)")
                                 if (baseline >= 18) {
+                                    it.execute("insert into forena.native_user(subject,email,password_hash) values('$subject','legacy-report-$subject@example.invalid','synthetic-unused-hash')")
                                     it.execute("insert into forena.attendance_report(activity_id,organization_id,reported_by,reported_at) values('$legacyActivity','$organization','$subject',now())")
                                     it.execute("insert into forena.attendance_record(activity_id,organization_id,person_id) values('$legacyActivity','$organization','$person')")
                                     it.execute("insert into forena.activity(id,organization_id,team_id,title,starts_at,ends_at) values('$legacyZeroActivity','$organization','$team','Zero',now(),now()+interval '1 hour')")
@@ -120,21 +121,23 @@ class MigrationTest {
                             }
                         }
                         if (baseline >= 18) admin.createStatement().use { statement ->
-                            statement.executeQuery("select r.revision,p.present,h.actor_subject,c.previous_present from forena.attendance_report r join forena.attendance_record p on p.activity_id=r.activity_id join forena.attendance_history h on h.activity_id=r.activity_id join forena.attendance_change c on c.history_id=h.id and c.person_id=p.person_id where r.activity_id='$legacyActivity'").use {
+                            statement.executeQuery("select r.revision,p.present,h.actor_subject,c.previous_present,h.actor_name from forena.attendance_report r join forena.attendance_record p on p.activity_id=r.activity_id join forena.attendance_history h on h.activity_id=r.activity_id join forena.attendance_change c on c.history_id=h.id and c.person_id=p.person_id where r.activity_id='$legacyActivity'").use {
                                 assertThat(it.next()).isTrue()
                                 assertThat(it.getLong(1)).isEqualTo(1)
                                 assertThat(it.getBoolean(2)).isTrue()
                                 assertThat(it.getObject(3,UUID::class.java)).isEqualTo(subject)
                                 assertThat(it.getObject(4)).isNull()
+                                assertThat(it.getString(5)).isEqualTo(subject.toString())
                             }
                         }
                         if (baseline >= 18) admin.createStatement().use { statement ->
-                            statement.executeQuery("select r.revision,p.present,h.actor_subject,c.present from forena.attendance_report r join forena.attendance_record p on p.activity_id=r.activity_id join forena.attendance_history h on h.activity_id=r.activity_id join forena.attendance_change c on c.history_id=h.id and c.person_id=p.person_id where r.activity_id='$legacyZeroActivity'").use {
+                            statement.executeQuery("select r.revision,p.present,h.actor_subject,c.present,h.actor_name from forena.attendance_report r join forena.attendance_record p on p.activity_id=r.activity_id join forena.attendance_history h on h.activity_id=r.activity_id join forena.attendance_change c on c.history_id=h.id and c.person_id=p.person_id where r.activity_id='$legacyZeroActivity'").use {
                                 assertThat(it.next()).isTrue()
                                 assertThat(it.getLong(1)).isEqualTo(1)
                                 assertThat(it.getBoolean(2)).isFalse()
                                 assertThat(it.getObject(3,UUID::class.java)).isEqualTo(subject)
                                 assertThat(it.getBoolean(4)).isFalse()
+                                assertThat(it.getString(5)).isEqualTo(subject.toString())
                             }
                         }
                         admin.prepareStatement("select enabled from forena.account where subject=?").use {

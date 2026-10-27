@@ -37,12 +37,40 @@ export function AttendanceModal({ activityId, onClose, onSaved, request = defaul
   const [retry, setRetry] = useState(0);
   const dialogRef = useRef<HTMLElement>(null);
   // Disabled or removed action buttons can otherwise leave focus on the document body.
-  const focusDialog = () => requestAnimationFrame(() => dialogRef.current?.focus());
+  const focusDialog = () => requestAnimationFrame(() => {
+    const dialog = dialogRef.current;
+    if (dialog && !dialog.contains(document.activeElement)) dialog.focus();
+  });
 
   useEffect(() => {
+    const dialog = dialogRef.current;
     const previous = document.activeElement;
-    dialogRef.current?.querySelector<HTMLElement>("button")?.focus();
-    return () => { if (previous instanceof HTMLElement && previous.isConnected) previous.focus(); };
+    dialog?.querySelector<HTMLElement>("button")?.focus();
+    const containFocus = (event: KeyboardEvent) => {
+      if (event.key !== "Tab" || !dialog) return;
+      const controls = [...dialog.querySelectorAll<HTMLElement>("button:not(:disabled), input:not(:disabled), summary, [href]")]
+        .filter(element => element.getClientRects().length > 0);
+      const first = controls[0];
+      const last = controls.at(-1);
+      const active = document.activeElement;
+      const atContainer = active === dialog || !dialog.contains(active);
+      if (!first || !last) {
+        event.preventDefault();
+        dialog.focus();
+      } else if (event.shiftKey && (atContainer || active === first)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (atContainer || active === last)) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    // Listen on the document so a disabled or removed control cannot strand focus outside the dialog.
+    document.addEventListener("keydown", containFocus);
+    return () => {
+      document.removeEventListener("keydown", containFocus);
+      if (previous instanceof HTMLElement && previous.isConnected) previous.focus();
+    };
   }, []);
 
   useEffect(() => {
@@ -132,11 +160,6 @@ export function AttendanceModal({ activityId, onClose, onSaved, request = defaul
     <section ref={dialogRef} className="modal attendance-modal" role="dialog" aria-modal="true" aria-labelledby="attendance-title" tabIndex={-1}
       onKeyDown={event => {
         if (event.key === "Escape" && !saving) { event.preventDefault(); onClose(); }
-        if (event.key !== "Tab") return;
-        const controls = [...event.currentTarget.querySelectorAll<HTMLElement>("button:not(:disabled), input:not(:disabled), summary, [href]")]
-          .filter(element => element.getClientRects().length > 0);
-        if (event.shiftKey && document.activeElement === controls[0]) { event.preventDefault(); controls.at(-1)?.focus(); }
-        if (!event.shiftKey && document.activeElement === controls.at(-1)) { event.preventDefault(); controls[0]?.focus(); }
       }}>
       <div className="card-heading"><div><p className="eyebrow">Aktivitet</p><h2 id="attendance-title">Rapportera närvaro</h2></div><button className="icon-button" onClick={onClose} aria-label="Stäng" disabled={saving} type="button">✕</button></div>
       {versioned && snapshot?.status === "cancelled" ? <p role="status">Inställd. Befintlig närvarorapport visas som historik och kan inte ändras.</p> : null}

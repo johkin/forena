@@ -932,6 +932,11 @@ behålls separat i grundurvalet. Godtyckliga klient-ID:n valideras på nytt;
 inget medlemskap eller kallelsesvar skapas/ändras genom närvarokommandot.
 Migration 019 bevarar privata schema-/runtimegränser och inför inga klientgrants.
 
+Historiken visar rapportörens aktiva personnamn inom organisationen, annars
+”Användare utan visningsnamn”. Varken nya historikposter eller migrationens
+baslinje hämtar kontots e-postadress som reservnamn. Rapportörens konto-ID
+bevaras för spårbarhet; importerade poster kan använda detta ID som reservnamn.
+
 Personligt kalenderunderlag lämnar bara närvarostatus för personer som kontot
 redan får företräda, utan ledarens personlista eller historik. Alla API-svar
 är `no-store`; React binder transporten till exakt API-rutt och aktuellt konto.
