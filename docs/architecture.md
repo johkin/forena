@@ -836,6 +836,9 @@ presenteras som fungerande Kotlin-funktioner.
 Den gemensamma aktivitetsdialogen jämförs visuellt mellan Next och Vite vid
 320, 390, 768 och 1280 px. CI sparar skärmbilder. Klockslag får inte radbrytas;
 de smalaste skärmarna staplar tidsmodulerna i båda apparna.
+Layoutkontrollen skiljer stängda panelers innehåll från synliga boxar, så
+webbläsarens layoutcache inte ger falska skillnader. Datumfältet jämförs
+även med panelen öppen; pixelgränserna är oförändrade.
 
 ## Kalenderns månadsurval
 

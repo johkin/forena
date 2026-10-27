@@ -680,7 +680,13 @@ Kataloger och minnen har ännu ingen Kotlin-hantering; deras informationssidor
 säger detta tydligt och innehåller inga skenbara redigeringsverktyg.
 
 `ui-parity-browser.mjs` jämför verkliga produktionskomponenter i båda apparna,
-med exakt CSS och relativ geometri för samtliga element. Bildjämförelsen tillåter
+med exakt CSS och relativ geometri för synliga element. Stängda `details`-panelers
+innehåll jämförs med panelstatus, synlighet och CSS; dess cachade, osynliga
+geometri normaliseras eftersom Chromium kan behålla boxar från en tidigare
+öppning. Datumalternativet jämförs dessutom öppet med både geometri och bild.
+Ett browserregressionstest kontrollerar att layoutminne inte påverkar resultatet
+och att verkliga ändringar i panelstatus, CSS och öppen layout fortfarande upptäcks.
+Bildjämförelsen tillåter
 endast avrundning med högst ett RGB-steg i högst 0,1 procent av pixlarna;
 opacitet och bildmått måste vara identiska. Även en ensam större färgskillnad
 eller en utbredd färgförskjutning stoppar kontrollen.
