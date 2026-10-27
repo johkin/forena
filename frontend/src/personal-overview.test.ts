@@ -1,11 +1,11 @@
 import { expect,it } from "vitest";
 import { confirmedAnswer, overviewItems, type Overview } from "./personal-overview";
-const data:Overview={reference_time:"2029-12-01T00:00:00Z",organizations:[],teams:[],activities:[{
- id:"a",can_manage_activities:false,title:"Träning",starts_at:"2030-01-01T10:00:00Z",ends_at:"2030-01-01T12:00:00Z",gathering_at:null,response_due_at:null,location:"Örvallen",description:"",status:"scheduled",
+const data:Overview={calendar_people:[],calendar_teams:[],reference_time:"2029-12-01T00:00:00Z",organizations:[],teams:[],activities:[{
+ id:"a",can_manage_activities:false,can_manage_attendance:false,title:"Träning",starts_at:"2030-01-01T10:00:00Z",ends_at:"2030-01-01T12:00:00Z",gathering_at:null,response_due_at:null,location:"Örvallen",description:"",status:"scheduled",
  organization:{id:"o",name:"Klubb",time_zone:"Europe/Stockholm",role:null},team:{id:"t",name:"F2016",organization_id:"o",roles:[]},
- people:[{id:"p1",name:"Johan",invitation:{id:"i1",person_id:"p1",name:"Johan",response:"pending",response_comment:null}},
- {id:"p2",name:"Tilda",invitation:{id:"i2",person_id:"p2",name:"Tilda",response:"declined",response_comment:"Hämtas senare"}},
- {id:"p3",name:"Robin",invitation:null}]
+ people:[{id:"p1",attendance:"unknown",name:"Johan",invitation:{id:"i1",person_id:"p1",name:"Johan",response:"pending",response_comment:null}},
+ {id:"p2",attendance:"unknown",name:"Tilda",invitation:{id:"i2",person_id:"p2",name:"Tilda",response:"declined",response_comment:"Hämtas senare"}},
+ {id:"p3",attendance:"unknown",name:"Robin",invitation:null}]
 }]};
 it("keeps named person rows independent of invitations and preserves club-local metadata",()=>{
  const rows=overviewItems(data.activities);

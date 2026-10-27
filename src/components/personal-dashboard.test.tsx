@@ -52,7 +52,7 @@ it("does not invent an organization role for a guardian-only organization link",
 });
 it("shows every family event even when more than four share a day, with contextual accessible labels", () => {
   const events = Array.from({ length: 6 }, (_, index) => ({ ...activity, id: `a${index}`, title: `Match ${index}` }));
-  const html = renderToStaticMarkup(<TeamCalendar activities={events} timeZone="Europe/Stockholm" heading="Familjens kalender" showAllEvents eventLabel={item => `${item.title} · AIK · Elsa`} onSelectActivity={() => {}} />);
+  const html = renderToStaticMarkup(<TeamCalendar referenceTime={activity.startsAt} activities={events} timeZone="Europe/Stockholm" heading="Familjens kalender" showAllEvents eventLabel={item => `${item.title} · AIK · Elsa`} onSelectActivity={() => {}} />);
   expect(html).toContain("Familjens kalender");
   expect(html).toContain("Match 5 · AIK · Elsa");
   expect(html).not.toContain("+2 till");

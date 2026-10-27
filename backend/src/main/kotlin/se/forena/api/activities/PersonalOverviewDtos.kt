@@ -1,5 +1,6 @@
 package se.forena.api.activities
 
+import com.fasterxml.jackson.annotation.JsonProperty
 import java.time.Instant
 import java.util.UUID
 import io.swagger.v3.oas.annotations.media.Schema
@@ -21,7 +22,8 @@ data class PersonalTeam(
 data class ActivityPerson(
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val id: UUID,
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val name: String,
-    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED, nullable = true) val invitation: AccessibleInvitation?
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED, nullable = true) val invitation: AccessibleInvitation?,
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val attendance: String = "unknown"
 )
 data class PersonalActivity(
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val id: UUID,
@@ -37,7 +39,8 @@ data class PersonalActivity(
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val team: PersonalTeam,
     @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC)
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val people: List<ActivityPerson>,
-    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val can_manage_activities: Boolean
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val can_manage_activities: Boolean,
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val can_manage_attendance: Boolean = false
 )
 data class PersonalOverview(
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val reference_time: Instant,
@@ -46,5 +49,31 @@ data class PersonalOverview(
     @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC)
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val organizations: List<PersonalOrganization>,
     @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC)
-    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val teams: List<PersonalTeam>
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val teams: List<PersonalTeam>,
+    @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC)
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val calendar_people: List<CalendarPerson>,
+    @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC)
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val calendar_teams: List<CalendarTeam>
+)
+
+
+data class CalendarPerson(
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val id: UUID,
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val displayName: String,
+    @get:JsonProperty("isSelf") @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val isSelf: Boolean,
+    @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC)
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val teamIds: List<UUID>
+)
+data class CalendarTeam(
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val id: UUID,
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val name: String
+)
+data class PersonalCalendar(
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val reference_time: Instant,
+    @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC)
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val activities: List<PersonalActivity>,
+    @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC)
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val people: List<CalendarPerson>,
+    @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC)
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val teams: List<CalendarTeam>
 )

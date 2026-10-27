@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { calendarResponseSchema } from "../lib/calendar-response";
 import { useRouter } from "next/navigation";
 import type { PersonalActivity, PersonalDashboardData } from "@/data/personal-dashboard";
 import type { FamilyActivity } from "@/domain/club";
@@ -11,9 +12,16 @@ import { ActivityDetailModal } from "./activity-detail-modal";
 export function PersonalDashboard({ data, administrationError }: { data: PersonalDashboardData; administrationError?: string }) {
   const router = useRouter();
   const [selected, setSelected] = useState<PersonalActivity>();
+  const loadCalendarMonth = useCallback(async (month: string, signal: AbortSignal) => {
+    const response = await fetch(`/api/me/calendar?month=${encodeURIComponent(month)}`, { signal, cache: "no-store" });
+    if (!response.ok) throw new Error("Aktiviteterna kunde inte hämtas.");
+    const result = calendarResponseSchema.parse(await response.json());
+    if (result.accountId !== data.accountId) throw new Error("Kontot har ändrats.");
+    return result;
+  }, [data.accountId]);
   const unique = [...new Map(data.activities.map(item => [item.activity.id, item])).values()];
   const byId = new Map(unique.map(item => [item.activity.id, item]));
-  function open(item: FamilyActivity) { setSelected(byId.get(item.activity.id)); }
+  function open(item: FamilyActivity) { setSelected(item.organization ? { ...item, organization: item.organization } : byId.get(item.activity.id)); }
   useEffect(() => {
     const refresh = () => router.refresh();
     const onVisible = () => { if (document.visibilityState === "visible") refresh(); };
@@ -31,6 +39,7 @@ export function PersonalDashboard({ data, administrationError }: { data: Persona
     <main className="content personal-dashboard">
       {administrationError ? <p role="alert" className="auth-error">{administrationError}</p> : null}
       <PersonalHome items={data.activities} activities={unique.map(item=>item.activity)} referenceTime={data.referenceTime}
+        accountId={data.accountId} calendarScope={data.calendarScope} loadCalendarMonth={loadCalendarMonth}
         onOpenActivity={open} onAnswered={()=>router.refresh()}
         organizations={data.organizations.map(organization=>({id:organization.id,name:organization.name,role:organization.role,href:`/o/${organization.slug}`}))}
         teams={data.teams.map(({team,organization,roles})=>({id:team.id,organizationId:organization.id,name:team.name,roles,href:`/o/${organization.slug}/t/${team.slug}`}))} />

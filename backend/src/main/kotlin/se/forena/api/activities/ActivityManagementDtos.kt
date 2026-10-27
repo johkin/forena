@@ -99,7 +99,10 @@ data class ActivityDisposition(
     val disposition: String = "cancelled"
 )
 
+data class ActivityDeletionOptions(val canDelete: Boolean)
+
 data class CancellationCommand(
+    val action: String = "cancel",
     val reason: String? = null,
     val revision: Long? = null
 )

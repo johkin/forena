@@ -14,6 +14,7 @@ data class ActivityEntity(
     @Id val id: UUID,
     val organizationId: UUID,
     val status: String,
+    val deletedAt: Instant?,
     val endsAt: Instant,
     val invitationSendAt: Instant?,
     val teamId: UUID,
@@ -91,7 +92,7 @@ data class PersonalActivityRow(
     val id: UUID, val organizationId: UUID, val teamId: UUID, val title: String,
     val startsAt: Instant, val endsAt: Instant, val invitationSendAt: Instant?,
     val gatheringAt: Instant?, val responseDueAt: Instant?, val location: String,
-    val description: String, val status: String
+    val description: String, val status: String, val leadersOnly: Boolean
 )
 
 @Table(value = "activity", schema = "forena")
@@ -113,6 +114,8 @@ data class ManagedActivityEntity(
     val cancelledAt: Instant? = null,
     val cancellationReason: String? = null,
     val seriesId: UUID? = null,
+    val leadersOnly: Boolean = false,
+    val deletedAt: Instant? = null,
     @Transient val newRecord: Boolean = false
 ) : Persistable<UUID> {
     override fun getId(): UUID = activityId
@@ -163,3 +166,5 @@ data class ActivityDefaultsEntity(@Id val id: UUID, val organizationId: UUID, va
 data class AudienceGroupEntity(@Id val id: UUID, val organizationId: UUID, val teamId: UUID, val name: String, val kind: String, val revision: Long = 0)
 @Table(value = "team_audience_member", schema = "forena")
 data class AudienceMemberEntity(@Id val id: UUID, val groupId: UUID, val organizationId: UUID, val personId: UUID, val active: Boolean)
+
+data class PersonalAttendanceRow(val activityId: UUID, val personId: UUID, val present: Boolean)

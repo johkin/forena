@@ -5,7 +5,7 @@ const state = vi.hoisted(() => ({ user: { id: "user", email: "parent@example.tes
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({
   auth: { getUser: async () => ({ data: { user: state.user } }) },
   from: (table: string) => query(table),
-  rpc: (_name: string, args: { target_organization_id: string }) => query("duties").eq("organization_id", args.target_organization_id),
+  rpc: (name: string, args: { target_organization_id?: string; target_activity_ids?: string[] }) => name === "calendar_activity_audiences" ? query("audiences").in("activity_id", args.target_activity_ids ?? []) : query("duties").eq("organization_id", args.target_organization_id),
 }) }));
 
 function query(table: string) {
@@ -15,6 +15,8 @@ function query(table: string) {
     eq: (field: string, value: unknown) => { state.calls.push({ table, field, value }); rows = rows.filter(row => row[field] === value); return builder; },
     in: (field: string, values: unknown[]) => { state.calls.push({ table, field, value: values }); rows = rows.filter(row => values.includes(row[field])); return builder; },
     gte: (field: string, value: string) => { rows = rows.filter(row => String(row[field]) >= value); return builder; },
+    gt: (field: string, value: string) => { rows = rows.filter(row => String(row[field]) > value); return builder; },
+    lt: (field: string, value: string) => { rows = rows.filter(row => String(row[field]) < value); return builder; },
     order: () => builder,
     range: async (from: number, to: number) => ({ data: rows.slice(from, to + 1), count: rows.length, error: null }),
   };
@@ -124,4 +126,28 @@ it("paginates even when the server returns fewer rows than requested", async () 
 it("fails closed on a failed or incomplete read instead of showing an empty family calendar", async () => {
   await expect(readPersonalPages(async () => ({ data: [], count: 1, error: null }))).rejects.toThrow("fullständigt");
   await expect(readPersonalPages(async () => ({ data: null, count: null, error: new Error() }))).rejects.toThrow("kunde inte hämtas");
+});
+
+
+it("reads one Stockholm month including previous teams and cancellations without changing agenda", async () => {
+  const past = { ...activity("past", "uik", "football"), starts_at: "2026-10-12T10:00:00Z", ends_at: "2026-10-12T12:00:00Z" };
+  state.tables.activities.push(past, { ...past, id: "cancelled-past", status: "cancelled" }, { ...past, id: "draft-past", status: "draft" });
+  state.tables.memberships = state.tables.memberships.map(m => m.person_id === "child1" ? { ...m, ends_on: "2026-10-13" } : m);
+  state.tables.activity_attendance_reports = [{ id: "report", activity_id: "past" }];
+  state.tables.activity_attendance_records = [{ report_id: "report", person_id: "parent" }];
+  const data = await getPersonalDashboard("2026-10");
+  expect(new Set(data?.activities.map(item => item.activity.id))).toEqual(new Set(["past", "cancelled-past"]));
+  expect(data?.activities.find(item => item.activity.id === "past" && item.member.id === "child1")?.attendance).toBe("absent");
+  expect(data?.activities.find(item => item.activity.id === "past" && item.member.id === "parent")?.attendance).toBe("present");
+  expect(data?.activities.find(item => item.activity.id === "cancelled-past")?.attendance).toBe("unknown");
+  expect((await getPersonalDashboard())?.activities.some(item => item.activity.id === "past")).toBe(false);
+});
+
+it("keeps unsent training for children and leaders, but excludes children from leader-only meetings", async () => {
+  state.tables.activities.push({ ...activity("meeting", "uik", "football"), invitation_audience_kind: "leaders", invitation_send_at: null });
+  const data = await getPersonalDashboard("2030-01");
+  expect(data?.activities.filter(item => item.activity.id === "uncalled").map(item => item.member.id).sort()).toEqual(["child1", "parent"]);
+  expect(data?.activities.filter(item => item.activity.id === "meeting").map(item => item.member.id)).toEqual(["parent"]);
+  expect(data?.calendarScope?.people.find(person => person.id === "parent")?.isSelf).toBe(true);
+  expect(data?.activities.some(item => item.member.id === "other")).toBe(false);
 });

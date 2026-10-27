@@ -5,6 +5,7 @@ import { PasswordLoginForm } from "./password-login-form";
 import { ActivityInvitationResponse, type ParticipationFetch } from "./activity-invitation-response";
 import { PersonalOverview } from "./personal-overview";
 import { OverviewBackLink } from "./overview-back-link";
+import { calendarMonth, type CalendarMonth, type CalendarScope } from "../lib/personal-calendar";
 import { PersonalHome } from "./personal-home";
 import type { OverviewItem } from "./personal-overview-types";
 import type { Activity } from "../domain/club";
@@ -90,6 +91,24 @@ function PersonalHomeExample({linkComponent}:{linkComponent?:NavigationLink}) {
   const first:Activity={id:"a1",organizationId:"o1",teamId:"t1",title:"Träning F2016",startsAt:"2030-10-26T15:45:00Z",endsAt:"2030-10-26T17:00:00Z",responseDueAt:"2030-10-19T10:00:00Z",location:"Örvallen"};
   const second:Activity={...first,id:"a2",teamId:"t2",title:"Spela mera",startsAt:"2030-10-23T14:00:00Z",endsAt:"2030-10-23T15:00:00Z",location:"Uip"};
   const [items,setItems]=useState<OverviewItem[]>(()=>[second,first].flatMap(activity=>["Johan Exempel","Johan Andersson","Tilda Exempel","Alex Exempel","Alex Ekblad"].map((name,index)=>({activity,organization:{name:"Exempelföreningen",timeZone:"Europe/Stockholm"},team:{name:activity.teamId === "t1" ? "F2016" : "Testlaget"},member:{id:`p${index}`,displayName:name},invitation:activity.id==="a1"?{id:`i${index}`,response:"pending" as const}:undefined}))));
+  const [calendarMode, setCalendarMode] = useState("success");
+  const scope: CalendarScope = {
+    people: items.filter(item => item.activity.id === "a1").map((item, index) => ({ id: item.member.id, displayName: item.member.displayName, isSelf: index === 0, teamIds: ["t1", "t2"] })),
+    teams: [{ id: "t1", name: "Exempelföreningen · F2016" }, { id: "t2", name: "Exempelföreningen · Testlaget" }],
+  };
+  const loadCalendarMonth = useCallback(async (month: string, signal: AbortSignal): Promise<CalendarMonth<OverviewItem>> => {
+    if (calendarMode === "error") throw new Error("Exempelfel");
+    if (calendarMode === "loading") return new Promise((_resolve, reject) => signal.addEventListener("abort", () => reject(new Error("Avbruten")), { once: true }));
+    const people = items.filter(item => item.activity.id === "a1");
+    const past = { ...people[0].activity, organizationId: "o1", teamId: "t1", id: "past", title: "Avslutad träning", startsAt: `${month}-12T15:00:00Z`, endsAt: `${month}-12T16:00:00Z` };
+    const cancelled = { ...past, id: "cancelled", title: "Inställd träning", startsAt: `${month}-13T15:00:00Z`, endsAt: `${month}-13T16:00:00Z`, status: "cancelled" as const };
+    const unknown = { ...past, id: "unknown", title: "Träning utan närvarorapport", startsAt: `${month}-14T15:00:00Z`, endsAt: `${month}-14T16:00:00Z` };
+    const monthItems: OverviewItem[] = calendarMode === "empty" ? [] : [...items.filter(item => calendarMonth(item.activity.startsAt) === month),
+      ...[past, cancelled, unknown].flatMap(activity => people.map((person, index) => ({ ...person, activity, attendance: activity.id === "unknown" ? "unknown" as const : index % 2 ? "absent" as const : "present" as const })))];
+    return { people: people.map((person, index) => ({ id: person.member.id, displayName: person.member.displayName, isSelf: index === 0, teamIds: ["t1", "t2"] })),
+      teams: [{ id: "t1", name: "Exempelföreningen · F2016" }, { id: "t2", name: "Exempelföreningen · Testlaget" }], items: monthItems,
+      activities: [...new Map(monthItems.map(item => [item.activity.id, { ...item.activity, organizationId: "o1", teamId: item.activity.id === "a2" ? "t2" : "t1" }])).values()] };
+  }, [items, calendarMode]);
   const [canManageActivity,setCanManageActivity]=useState(true);
   const [selected,setSelected]=useState<string>();
   const request:ParticipationFetch=async()=>Response.json({ok:true});
@@ -98,7 +117,8 @@ function PersonalHomeExample({linkComponent}:{linkComponent?:NavigationLink}) {
     <label>Behörighet i exemplet<select aria-label="Behörighet i exemplet" value={canManageActivity ? "manager" : "participant"} onChange={event=>setCanManageActivity(event.target.value === "manager")}>
       <option value="manager">Får redigera aktiviteter</option><option value="participant">Deltagare utan aktivitetsbehörighet</option>
     </select></label>
-    <PersonalHome items={items.map(item=>({...item,canManageActivity}))} activities={[second,first]} organizations={[{id:"o1",name:"Exempelföreningen",role:"owner",href:"/organizations/11111111-1111-4111-8111-111111111111"}]} teams={[{id:"t1",organizationId:"o1",name:"F2016",roles:["Målsman","Ledare","Lagåtkomst"],href:"/teams/22222222-2222-4222-8222-222222222222"}]} referenceTime="2030-10-20T00:00:00Z" request={request} linkComponent={linkComponent}
+    <label>Kalenderns tillstånd<select aria-label="Kalenderns tillstånd" value={calendarMode} onChange={event => setCalendarMode(event.target.value)}><option value="success">Aktiviteter och historik</option><option value="loading">Laddar</option><option value="error">Hämtningsfel</option><option value="empty">Tom månad</option></select></label>
+    <PersonalHome accountId="component-gallery-example" calendarScope={scope} loadCalendarMonth={loadCalendarMonth} items={items.map(item=>({...item,canManageActivity}))} activities={[second,first]} organizations={[{id:"o1",name:"Exempelföreningen",role:"owner",href:"/organizations/11111111-1111-4111-8111-111111111111"}]} teams={[{id:"t1",organizationId:"o1",name:"F2016",roles:["Målsman","Ledare","Lagåtkomst"],href:"/teams/22222222-2222-4222-8222-222222222222"}]} referenceTime="2030-10-20T00:00:00Z" request={request} linkComponent={linkComponent}
       onOpenActivity={item=>setSelected(item.activity.title)} onAnswered={(id,response)=>setItems(previous=>previous.map(item=>item.invitation?.id===id?{...item,invitation:{...item.invitation,response}}:item))} />
     {selected ? <p role="status">Öppnad exempelaktivitet: {selected}</p> : null}
     <h3>Ledarkort utan personlig deltagare</h3>

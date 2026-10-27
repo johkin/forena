@@ -30,11 +30,15 @@ export function ActivityManagementExample() {
     });
     if (state === "error") return Response.json({ error: "Exempel på serverfel" }, { status: 503 });
     if (state === "empty") return Response.json([]);
+    if (path.endsWith("/disposition")) return Response.json({ canDelete: state !== "sent" });
     if (path === "/api/me/managed-teams") return Response.json([team]);
     if (init?.method === "DELETE") {
-      activities.current = activities.current.map(activity => activity.id === path.split("/").at(-1)
-        ? { ...activity, status: "cancelled", revision: activity.revision + 1 } : activity);
-      return Response.json({ disposition: "cancelled" });
+      const command = z.object({ action: z.enum(["delete", "cancel"]).default("cancel") }).parse(JSON.parse(String(init.body)));
+      if (command.action === "delete" && state === "sent") return Response.json({ error: "Skickade kallelser måste bevaras." }, { status: 409 });
+      const id = path.split("/").at(-1);
+      activities.current = command.action === "delete" ? activities.current.filter(activity => activity.id !== id)
+        : activities.current.map(activity => activity.id === id ? { ...activity, status: "cancelled", revision: activity.revision + 1 } : activity);
+      return Response.json({ disposition: command.action === "delete" ? "deleted" : "cancelled" });
     }
     if (path === "/api/activity-series") {
       const command = z.object({ title: z.string(), description: z.string(), location: z.string(),
@@ -70,8 +74,9 @@ export function ActivityManagementExample() {
   }, [state]);
   return <section id="activity-management-example"><h2>Aktivitetshantering</h2>
     <p>Lokalt exempel: skapa, redigera och ställ in utan att skriva till verksamheten.</p>
-    <label>Exempeltillstånd<select value={state} onChange={event => { setState(event.target.value); setOpenFromTeam(false); }}>
+    <label>Exempeltillstånd<select value={state} onChange={event => { activities.current = [initial]; setState(event.target.value); setOpenFromTeam(false); }}>
       <option value="interactive">Skapa, redigera och ställ in</option>
+      <option value="sent">Kallelser skickade – bara inställning</option>
       <option value="loading">Laddning</option><option value="error">Serverfel</option>
       <option value="empty">Ingen lagbehörighet</option>
     </select></label>

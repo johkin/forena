@@ -23,7 +23,7 @@ try {
       description: '', location: 'Örvallen', starts_at: '2030-10-25T16:00:00Z', ends_at: '2030-10-25T17:00:00Z',
       gathering_at: null, status: 'scheduled', revision: 0,
     };
-    const personalActivity = () => ({ ...activity, response_due_at: null,
+    const personalActivity = () => ({ ...activity, can_manage_activities:canManage, can_manage_attendance:false, response_due_at: null,
       organization: { id: organizationId, name: team.organizationName, time_zone: team.timeZone, role: null },
       team: { id: teamId, organization_id: organizationId, name: team.name, roles: ['leader'] }, people: [],
     });
@@ -35,6 +35,7 @@ try {
         reference_time: new Date().toISOString(), activities: canManage ? [personalActivity()] : [],
         organizations: [{ id: organizationId, name: team.organizationName, role: null, time_zone: team.timeZone }],
         teams: [{ id: teamId, organization_id: organizationId, name: team.name, roles: ['leader'] }],
+        calendar_people: [], calendar_teams: [{ id: teamId, name: `${team.organizationName} · ${team.name}` }],
       };
       else if (path === '/api/admin/overview') json = { platformAdmin: false, canBootstrap: false, platformAdministrators: [], clubs: [] };
       else if (path === '/api/me/managed-teams') json = canManage ? [team] : [];
@@ -43,7 +44,8 @@ try {
         editorReads++;
         json = { team, disciplineKey: null, sectionId: null, defaults: [], groups: [], members: [{ id: personId, displayName: 'Alex', role: 'participant' }], activities: [activity],
           types: [{ id: '00000000-0000-4000-8000-000000000004', name: 'Övrigt', slug: 'ovrigt', system_category: 'other', organization_id: null }] };
-      } else if (path === `/api/activities/${activity.id}`) {
+      } else if (path === `/api/activities/${activity.id}/disposition`) json = { canDelete: true };
+      else if (path === `/api/activities/${activity.id}`) {
         if (route.request().method() === 'PUT') {
           const command = route.request().postDataJSON();
           assert.equal(command.invitationMode, 'now');

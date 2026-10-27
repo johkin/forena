@@ -1,12 +1,14 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Activity } from "../domain/club";
 import type { ParticipationFetch } from "./activity-invitation-response";
 import type { OverviewItem, OverviewAnswered } from "./personal-overview-types";
 import type { NavigationLink } from "./navigation-link";
 import { PersonalOverview, overviewNames } from "./personal-overview";
 import { TeamCalendar } from "./team-calendar";
+import { CalendarFiltersView, useCalendarFilters } from "./calendar-filters";
+import { attendanceLabel, calendarMonth, calendarSelection, overviewCalendarScope, type CalendarScope, type CalendarMonth, type LoadCalendarMonth } from "../lib/personal-calendar";
 import { needsInvitationResponse } from "../lib/pending-invitations";
 
 export type HomeOrganization = { id:string; name:string; role?:string; href:string };
@@ -15,7 +17,8 @@ export const organizationRoleLabels: Record<string,string> = { owner:"Ägare", a
 export const teamRoleLabels: Record<string,string> = { guardian:"Målsman", representative:"Ombud", leader:"Ledare", participant:"Spelare", member:"Medlem", team_access:"Lagåtkomst" };
 
 /** Complete personal page shared by Next and the Kotlin browser frontend. */
-export function PersonalHome<T extends OverviewItem>({ items, activities, organizations, teams, referenceTime, onOpenActivity, onAnswered, request, actions, teamContent, linkComponent:Link = "a", title="Min översikt", introduction="Din och barnens vardag – alla lag och föreningar på samma plats." }: {
+export function PersonalHome<T extends OverviewItem>({ items, activities, organizations, teams, referenceTime, onOpenActivity, onAnswered, request, actions, teamContent, linkComponent:Link = "a", title="Min översikt", introduction="Din och barnens vardag – alla lag och föreningar på samma plats.", accountId, calendarScope, loadCalendarMonth }: {
+  accountId?:string; calendarScope?:CalendarScope; loadCalendarMonth?:LoadCalendarMonth<T>;
   items:T[]; activities:Activity[]; organizations:HomeOrganization[]; teams:HomeTeam[]; referenceTime:string;
   onOpenActivity:(item:T)=>void; onAnswered?:OverviewAnswered; request?:ParticipationFetch; linkComponent?:NavigationLink;
   title?:string; introduction?:string; actions?:ReactNode; teamContent?:ReactNode;
@@ -33,28 +36,43 @@ export function PersonalHome<T extends OverviewItem>({ items, activities, organi
   }
   const [view,setView]=useState<"agenda"|"calendar">("agenda");
   const [needsReply, setNeedsReply] = useState(false);
-  const [selectedTeamId, setSelectedTeamId] = useState<string>();
-  const pendingIds = new Set(items.filter(item => needsInvitationResponse(item, referenceTime)).map(item => item.activity.id));
-  const activityById = new Map(activities.map(activity => [activity.id, activity]));
-  // Include guest invitations and managed activities even without a team shortcut.
-  const filterTeams = new Map<string, string>();
-  for (const item of items) {
-    const activity = activityById.get(item.activity.id);
-    if (activity) filterTeams.set(activity.teamId, [item.organization?.name, item.team.name].filter(Boolean).join(" · "));
-  }
-  const activeTeamId = selectedTeamId && filterTeams.has(selectedTeamId) ? selectedTeamId : undefined;
-  const teamItems = items.filter(item => !activeTeamId || activityById.get(item.activity.id)?.teamId === activeTeamId);
-  const pendingCount = new Set(teamItems.filter(item => pendingIds.has(item.activity.id)).map(item => item.activity.id)).size;
-  const filteredItems = teamItems.filter(item => !needsReply || pendingIds.has(item.activity.id))
+  const [month, setMonth] = useState(() => calendarMonth(referenceTime));
+  const [attempt, setAttempt] = useState(0);
+  const [calendar, setCalendar] = useState<{ month: string; loader: LoadCalendarMonth<T>; data?: CalendarMonth<T>; error?: boolean }>();
+  const [filters, saveFilters] = useCalendarFilters(accountId);
+  useEffect(() => {
+    if (view !== "calendar" || !loadCalendarMonth) return;
+    const controller = new AbortController();
+    loadCalendarMonth(month, controller.signal).then(data => {
+      if (!controller.signal.aborted) setCalendar({ month, loader: loadCalendarMonth, data });
+    }).catch(() => {
+      if (!controller.signal.aborted) setCalendar({ month, loader: loadCalendarMonth, error: true });
+    });
+    return () => controller.abort();
+  }, [view, month, attempt, loadCalendarMonth, referenceTime]);
+  const fallbackScope = calendarScope ?? overviewCalendarScope(items, activities);
+  const monthData = calendar?.month === month && calendar.loader === loadCalendarMonth ? calendar.data : undefined;
+  const sourceItems = view === "calendar" && loadCalendarMonth ? monthData?.items ?? [] : items;
+  const sourceActivities = view === "calendar" && loadCalendarMonth ? monthData?.activities ?? [] : activities;
+  const scope = monthData ?? calendarScope ?? fallbackScope;
+  const selection = calendarSelection(sourceItems, sourceActivities, scope, filters);
+  const pendingIds = new Set(sourceItems.filter(item => needsInvitationResponse(item, referenceTime)).map(item => item.activity.id));
+  const pendingCount = new Set(selection.items.filter(item => pendingIds.has(item.activity.id)).map(item => item.activity.id)).size;
+  const filteredItems = selection.items.filter(item => !needsReply || pendingIds.has(item.activity.id))
     .sort((left, right) => Date.parse(left.activity.startsAt) - Date.parse(right.activity.startsAt));
   const visibleIds = new Set(filteredItems.map(item => item.activity.id));
-  const filteredActivities = activities.filter(activity => visibleIds.has(activity.id));
-  const emptyMessage = needsReply ? "Inga kallelser i urvalet behöver svar just nu."
-    : activeTeamId ? "Inga kommande aktiviteter för det valda laget." : "Inga kommande aktiviteter i dina eller barnens lag.";
-  const personNames=overviewNames(items);
-  const byId=new Map(items.map(item=>[item.activity.id,item]));
-  const namesById=new Map<string,string[]>();
-  for(const item of items){const names=namesById.get(item.activity.id) ?? [];names.push(item.member.displayName);namesById.set(item.activity.id,names);}
+  const filteredActivities = sourceActivities.filter(activity => visibleIds.has(activity.id));
+  const personNames = overviewNames([...items, ...sourceItems]);
+  const byId = new Map(filteredItems.map(item => [item.activity.id, item]));
+  const peopleByActivity = new Map<string, T[]>();
+  for (const item of filteredItems) {
+    const group = peopleByActivity.get(item.activity.id) ?? [];
+    if (!group.some(person => person.member.id === item.member.id)) group.push(item);
+    peopleByActivity.set(item.activity.id, group);
+  }
+  const failed = Boolean(loadCalendarMonth && calendar?.month === month && calendar.loader === loadCalendarMonth && calendar.error);
+  const loading = Boolean(loadCalendarMonth && !monthData && !failed);
+  const emptyMessage = needsReply ? "Inga kallelser i urvalet behöver svar just nu." : "Inga kommande aktiviteter i dina eller barnens lag.";
   return <>
     <div className="welcome"><div><p className="eyebrow">Förena · Personligt</p><h1>{title}</h1><p>{introduction}</p></div>{actions}</div>
     {teamContent}
@@ -67,18 +85,19 @@ export function PersonalHome<T extends OverviewItem>({ items, activities, organi
         <div role="group" aria-label="Svarsfilter">
           <button className="personal-filter-chip" type="button" aria-pressed={needsReply} onClick={() => setNeedsReply(value => !value)}>Behöver svar ({pendingCount})</button>
         </div>
-        <div className="personal-team-filters" role="group" aria-label="Filtrera på lag">
-          <button className="personal-filter-chip" type="button" aria-pressed={!activeTeamId} onClick={() => setSelectedTeamId(undefined)}>Alla lag</button>
-          {[...filterTeams].map(([id, label]) => <button className="personal-filter-chip" key={id} type="button" aria-pressed={activeTeamId === id} onClick={() => setSelectedTeamId(id)}>{label}</button>)}
-        </div>
+        <CalendarFiltersView scope={scope} teams={selection.teams} value={selection.filters} onChange={saveFilters} />
       </div>
       <p className="sr-only" role="status">{visibleIds.size} aktiviteter visas{needsReply ? " som behöver svar" : ""}.</p>
       {view==="agenda" ? <PersonalOverview activities={filteredItems} timeZone="Europe/Stockholm" title="Kommande aktiviteter" id="upcoming-activities-title" emptyMessage={emptyMessage} referenceTime={referenceTime} onOpenActivity={onOpenActivity} onAnswered={onAnswered} request={request} onRespond={respond} pendingInvitations={pendingInvitations} personNames={personNames} /> : <>
-        <p className="personal-calendar-zone">Familjens kalender · tider i svensk tid. Samma filter som i agendan.</p>
-        <TeamCalendar activities={filteredActivities} timeZone="Europe/Stockholm" heading="Familjens kalender" showAllEvents
+        <p className="personal-calendar-zone">Familjens kalender · tider i svensk tid.</p>
+        <TeamCalendar activities={filteredActivities} timeZone="Europe/Stockholm" heading="Familjens kalender" showAllEvents focusToday referenceTime={referenceTime} month={month} onMonthChange={setMonth} busy={loading}
           onSelectActivity={activity=>{const item=byId.get(activity.id);if(item)onOpenActivity(item);}}
-          eventLabel={activity=>{const item=byId.get(activity.id);return `${activity.title} · ${item?.organization?.name ?? ""} · ${item?.team.name ?? ""} · ${(namesById.get(activity.id) ?? []).join(", ")}`;}} />
-        {!filteredActivities.length ? <p className="overview-empty">{emptyMessage}</p> : null}
+          eventLabel={activity => { const item = byId.get(activity.id); return `${activity.title} · ${item?.organization?.name ?? ""} · ${item?.team.name ?? ""}${activity.status === "cancelled" ? " · Inställd" : ""}`; }}
+          eventContent={activity => activity.status === "cancelled" ? null : <span className="calendar-attendance">{(peopleByActivity.get(activity.id) ?? []).filter(item => !item.activityOnly).map(item => {
+            const attendance = attendanceLabel(item, referenceTime);
+            return <span key={item.member.id} data-attendance={attendance?.status}>{personNames.get(item.member.id) ?? item.member.displayName}{attendance ? `: ${attendance.text}` : ""}</span>;
+          })}</span>} />
+        {loading ? <p role="status">Laddar aktiviteter för vald månad…</p> : failed ? <div role="alert"><p>Aktiviteterna kunde inte hämtas.</p><button className="secondary" type="button" onClick={() => { setCalendar(undefined); setAttempt(value => value + 1); }}>Försök igen</button></div> : !filteredActivities.length ? <p className="overview-empty">Inga aktiviteter för valt urval denna månad</p> : null}
       </>}
     </div>
     <section className="card" aria-labelledby="my-teams-title"><h2 id="my-teams-title">Mina lag och föreningar</h2>

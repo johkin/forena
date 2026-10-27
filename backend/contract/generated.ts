@@ -37,6 +37,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/activities/{activityId}/attendance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getActivityAttendance"];
+        put: operations["reportActivityAttendance"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/activities/{activityId}/disposition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getActivityDeletionOptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/activities/{activityId}/my-invitations": {
         parameters: {
             query?: never;
@@ -625,6 +657,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/me/calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description One half-open Stockholm calendar month, including cancelled and historical activities within authorized membership dates. Attendance only for currently accessible people. No-store. */
+        get: operations["getPersonalCalendar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/me/managed-teams": {
         parameters: {
             query?: never;
@@ -816,6 +865,9 @@ export interface components {
             valuesJson?: string;
             version?: string;
         };
+        ActivityDeletionOptions: {
+            canDelete?: boolean;
+        };
         ActivityDisposition: {
             disposition?: string;
         };
@@ -837,6 +889,7 @@ export interface components {
             role?: string;
         };
         ActivityPerson: {
+            attendance: string;
             /** Format: uuid */
             id: string;
             invitation: components["schemas"]["AccessibleInvitation"] | null;
@@ -948,6 +1001,30 @@ export interface components {
         ApiError: {
             error: string;
         };
+        AttendanceCommand: {
+            personIds?: string[];
+        };
+        AttendanceGroup: {
+            /** Format: uuid */
+            id?: string;
+            label?: string;
+            personIds?: string[];
+        };
+        AttendancePerson: {
+            displayName?: string;
+            /** Format: uuid */
+            personId?: string;
+            present?: boolean;
+            response?: string | null;
+            role?: string;
+        };
+        AttendanceSnapshot: {
+            groups?: components["schemas"]["AttendanceGroup"][];
+            /** Format: date-time */
+            reportedAt?: string | null;
+            roster?: components["schemas"]["AttendancePerson"][];
+            started?: boolean;
+        };
         AttestationConveyancePreference: string;
         AuthenticationExtensionsClientInput: {
             extensionId?: string;
@@ -1002,7 +1079,20 @@ export interface components {
         Bytes: string;
         /** Format: int32 */
         COSEAlgorithmIdentifier: number;
+        CalendarPerson: {
+            displayName: string;
+            /** Format: uuid */
+            id: string;
+            isSelf: boolean;
+            teamIds: string[];
+        };
+        CalendarTeam: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
         CancellationCommand: {
+            action?: string;
             reason?: string | null;
             /** Format: int64 */
             revision?: number | null;
@@ -1112,6 +1202,7 @@ export interface components {
         };
         PersonalActivity: {
             can_manage_activities: boolean;
+            can_manage_attendance: boolean;
             description: string;
             /** Format: date-time */
             ends_at: string;
@@ -1130,6 +1221,13 @@ export interface components {
             team: components["schemas"]["PersonalTeam"];
             title: string;
         };
+        PersonalCalendar: {
+            activities: components["schemas"]["PersonalActivity"][];
+            people: components["schemas"]["CalendarPerson"][];
+            /** Format: date-time */
+            reference_time: string;
+            teams: components["schemas"]["CalendarTeam"][];
+        };
         PersonalOrganization: {
             /** Format: uuid */
             id: string;
@@ -1139,6 +1237,8 @@ export interface components {
         };
         PersonalOverview: {
             activities: components["schemas"]["PersonalActivity"][];
+            calendar_people: components["schemas"]["CalendarPerson"][];
+            calendar_teams: components["schemas"]["CalendarTeam"][];
             organizations: components["schemas"]["PersonalOrganization"][];
             /** Format: date-time */
             reference_time: string;
@@ -1395,6 +1495,76 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ActivityDisposition"];
+                };
+            };
+        };
+    };
+    getActivityAttendance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                activityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AttendanceSnapshot"];
+                };
+            };
+        };
+    };
+    reportActivityAttendance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                activityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttendanceCommand"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AttendanceSnapshot"];
+                };
+            };
+        };
+    };
+    getActivityDeletionOptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                activityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ActivityDeletionOptions"];
                 };
             };
         };
@@ -3064,6 +3234,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getPersonalCalendar: {
+        parameters: {
+            query: {
+                month: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonalCalendar"];
                 };
             };
         };

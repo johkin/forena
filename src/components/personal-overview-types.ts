@@ -2,6 +2,7 @@ import type { Activity, Invitation } from "../domain/club";
 
 /** Shared presentation contract; it does not depend on database/provider models. */
 export type OverviewPersonItem = {
+  attendance?: "present" | "absent" | "unknown";
   member: { id: string; displayName: string };
   invitation?: Pick<Invitation, "id" | "response">;
   hasDutyAssignment?: boolean;

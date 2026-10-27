@@ -881,3 +881,31 @@ truppsnapshoten; barn i andra lag följer inte med. Alla svar är `no-store`.
 Migration 017 behåller befintliga separata owner-/runtime-roller och gör inga
 klientgrants eller nya RLS-policyer. Browsertransporten tillåter bara exakta
 API-rutter och binder varje skrivning till den inloggade kontots identitet.
+
+## Kalenderns historik och närvaro
+
+Månadsurvalet kräver samma aktuella session och personåtkomst som översikten.
+Ett tidigare medlemskap med giltiga datum får ge historiska aktiviteter, men
+återkallad personåtkomst stoppar även historikläsning. Backendens kalender får
+endast lämna närvaro för de personer kontot uttryckligen får företräda.
+Klientens person-/lagfilter och sparade ID:n är aldrig behörighetsunderlag.
+Supabase-läsningen använder användarens klient, RLS och personavgränsade
+närvarofrågor; ingen service-nyckel används. Målgruppshjälparen lämnar endast
+aktivitets-ID och ledarklassificering inom autentiserad föreningsåtkomst.
+
+Kotlin återanvänder närvarodialogen genom en kontobunden transport.
+`attendance.manage` kontrolleras separat från aktivitets-/kallelserätt;
+rapportering låser aktiviteten, kontrollerar session och behörighet igen,
+validerar personurvalet och sparar rapport och närvaro i en transaktion.
+Utan `invitation.manage` omfattar närvarolistan endast datumgiltiga, aktiva
+lagmedlemmar och lämnar inga kallelsesvar. Inbjudna gäster och kallelsesvar
+kräver den separata kallelsebehörigheten. Rapportering ändrar endast den
+behöriga listans personer och bevarar närvaroposter utanför den.
+
+Borttagning efter kallelseutskick stoppas under aktivitetslåset, oberoende av
+om någon svarat. Inställning bevarar kallelser, svar och historik.
+Raderade aktiviteter ger 404 även i personens kallelse-API, oberoende av
+den tidigare planerade utskickstiden. Tillåtna åtgärder från läs-API:t är
+endast UI-underlag; mutationen kontrollerar alltid
+aktuell utskicksstatus och behörighet på nytt. Kontoseparerade filter i
+localStorage innehåller endast person-/lag-ID:n och ger ingen dataåtkomst.

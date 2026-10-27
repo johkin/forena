@@ -19,10 +19,24 @@ const organization={id:'55555555-5555-4555-8555-555555555555',name:'Exempelföre
 const team={id:'66666666-6666-4666-8666-666666666666',organization_id:organization.id,name:'Ungdomslaget',roles:['guardian','leader','team_access']};
 const managedTeam={id:team.id,organizationId:organization.id,name:team.name,organizationName:organization.name,timeZone:organization.time_zone,canManageInvitations:true};
 let activityCreates=0;
-const activities=()=>[{id,can_manage_activities:true,title:'Träning med laget',starts_at:'2030-10-26T16:00:00Z',ends_at:'2030-10-26T17:30:00Z',gathering_at:null,response_due_at:'2030-10-19T10:00:00Z',location:'Örvallen',description:'Ta med vattenflaska.',status:'scheduled',organization,team,
- people:invitations.map(invitation=>({id:invitation.person_id,name:invitation.name,invitation}))},
- {id:users[1],can_manage_activities:true,title:'Nästa aktivitet',starts_at:'2030-10-27T16:00:00Z',ends_at:'2030-10-27T17:30:00Z',gathering_at:null,response_due_at:null,location:'Uip',description:'',status:'scheduled',organization,team,people:invitations.map(invitation=>({id:invitation.person_id,name:invitation.name,invitation:null}))}];
+const activities=()=>[{id,can_manage_activities:true,can_manage_attendance:false,title:'Träning med laget',starts_at:'2030-10-26T16:00:00Z',ends_at:'2030-10-26T17:30:00Z',gathering_at:null,response_due_at:'2030-10-19T10:00:00Z',location:'Örvallen',description:'Ta med vattenflaska.',status:'scheduled',organization,team,
+ people:invitations.map(invitation=>({id:invitation.person_id,name:invitation.name,attendance:"unknown",invitation}))},
+ {id:users[1],can_manage_activities:true,can_manage_attendance:false,title:'Nästa aktivitet',starts_at:'2030-10-27T16:00:00Z',ends_at:'2030-10-27T17:30:00Z',gathering_at:null,response_due_at:null,location:'Uip',description:'',status:'scheduled',organization,team,people:invitations.map(invitation=>({id:invitation.person_id,name:invitation.name,attendance:"unknown",invitation:null}))}];
+const calendarScope=()=>({
+ people:current===0?invitations.map((invitation,index)=>({id:invitation.person_id,displayName:invitation.name,isSelf:index===0,teamIds:[team.id]})):[],
+ teams:current===0?[{id:team.id,name:`${organization.name} · ${team.name}`}]:[],
+});
 const view=()=>({user:{id:users[current],email:current===0?'family@example.invalid':'other@example.invalid'}});
+async function assertOnlyCalendarPreferences(page){
+ const entries=await page.evaluate(()=>Object.entries(localStorage));
+ for(const [key,value] of entries){
+  assert.match(key,/^forena:calendar:v1:/);
+  const preference=JSON.parse(value);
+  assert.deepEqual(Object.keys(preference).sort(),['people','teams','version']);
+  assert.equal(preference.version,1);
+  for(const selected of [preference.people,preference.teams])assert.ok(selected===null || (Array.isArray(selected) && selected.every(id=>typeof id==='string')));
+ }
+}
 await context.route('**/config.json',r=>r.fulfill({json:{activityId:id,version:id}}));
 await context.route('https://*.supabase.co/**',r=>{directProviderRequests++;return r.abort();});
 await context.route('**/api/**',async route=>{
@@ -70,7 +84,11 @@ await context.route('**/api/**',async route=>{
  if(platformDenied)return route.fulfill({status:401,contentType:'text/html',body:'<html>Vercel Authentication</html>'});
  if(path==='/api/me/overview'){
   if(overviewUnavailable)return route.fulfill({status:503,json:{error:'Tillfälligt fel'}});
-  return route.fulfill({json:{reference_time:'2030-10-20T00:00:00Z',activities:current===0?activities():[],organizations:current===0?[organization]:[],teams:current===0?[team]:[]}});
+  return route.fulfill({json:{reference_time:'2030-10-20T00:00:00Z',activities:current===0?activities():[],organizations:current===0?[organization]:[],teams:current===0?[team]:[],calendar_people:calendarScope().people,calendar_teams:calendarScope().teams}});
+ }
+ if(path==='/api/me/calendar'){
+  assert.equal(new URL(req.url()).searchParams.get('month'),'2030-10');
+  return route.fulfill({json:{reference_time:'2030-10-20T00:00:00Z',activities:current===0?activities():[],...calendarScope()}});
  }
  if(path==='/api/admin/overview')return route.fulfill({json:{platformAdmin:false,canBootstrap:false,platformAdministrators:[],clubs:[]}});
  if(path==='/api/me/managed-teams')return route.fulfill({json:current===0?[managedTeam]:[]});
@@ -91,7 +109,7 @@ await context.route('**/api/**',async route=>{
  if(path.endsWith('/my-invitations'))detailReads++;
  return route.fulfill({json:{invitations:current===0?invitations:[]}});
 });
-const page=await context.newPage();const upcoming=page.locator('section[aria-labelledby="upcoming-activities-title"]');const errors=[];page.on('pageerror',()=>errors.push('pageerror'));
+const page=await context.newPage();const upcoming=page.locator('section[aria-labelledby="upcoming-activities-title"]');const errors=[];page.on('pageerror',error=>errors.push(error.message));
 try{
  await page.goto(base.href);
  await expect(page.getByRole('heading',{name:'Logga in',exact:true})).toBeVisible();assert.equal(privateRequests,0);
@@ -129,12 +147,14 @@ try{
  await expect(upcoming.getByRole('button',{name:/Nästa aktivitet/})).toHaveCount(0);
  await expect(upcoming.getByRole('button',{name:/Kommer: Alex/})).toHaveAttribute('aria-pressed','true');
  await expect(upcoming.getByRole('button',{name:'Kommer: Tilda Exempel',exact:true})).toHaveAttribute('aria-pressed','false');
- await page.getByRole('group',{name:'Filtrera på lag'}).getByRole('button',{name:`${organization.name} · ${team.name}`,exact:true}).click();
+ await expect(page.getByRole('group',{name:'Filtrera på lag'})).toHaveCount(0);
+ await page.getByRole('group',{name:'Filtrera på person'}).getByRole('button',{name:'Tilda Exempel',exact:true}).click();
  await page.getByRole('button',{name:'Kalender',exact:true}).click();await expect(page.getByRole('heading',{name:'oktober 2030'})).toBeVisible();
  await expect(page.getByRole('button',{name:/Träning med laget.*Exempelföreningen/})).toHaveCount(1);
  await page.getByRole('button',{name:'Agenda',exact:true}).click();
  await expect(replyFilter).toHaveAttribute('aria-pressed','true');
  await replyFilter.click();
+ await page.getByRole('group',{name:'Filtrera på person'}).getByRole('button',{name:'Alla personer',exact:true}).click();
  await page.getByRole('link',{name:'Visa kallelser som behöver svar'}).click();await expect(page.getByRole('heading',{name:'Dina kallelser'})).toBeVisible();
  await expect(page.getByRole('button',{name:/Träning med laget/})).toHaveCount(1);
  await page.getByRole('link',{name:'Till min översikt',exact:true}).click();
@@ -238,7 +258,7 @@ try{
  await page.getByRole('button',{name:'Logga in med passkey'}).click();await expect(page.getByRole('heading',{name:'Min översikt',exact:true})).toBeVisible();await expect(upcoming.getByRole('button',{name:/Träning med laget/})).toBeVisible();
  assert.equal(await page.evaluate(()=>window.documentInstance),'passkey-document');
  assert.ok(!await page.evaluate(()=>document.cookie.includes('forena-local-session')));
- assert.equal(await page.evaluate(()=>localStorage.length),0);
+ await assertOnlyCalendarPreferences(page);
  await page.goto(new URL('/components',base).href);await expect(page.getByRole('heading',{name:'Komponenter',exact:true})).toBeVisible();assert.deepEqual(errors,[]);assert.equal(directProviderRequests,0);
  const homeExample=page.getByRole('region',{name:'Min översikt – interaktivt exempel'});
  await expect(homeExample.locator('.overview-person-copy strong [aria-hidden]').filter({hasText:/^Johan E$/})).toHaveCount(2);
@@ -295,7 +315,11 @@ try{
  await expect(page.getByRole('heading',{name:'Min översikt',exact:true})).toBeVisible();
  assert.equal(magicRequested,false);
  assert.ok(!await page.evaluate(()=>document.cookie.includes('forena-local-session')));
- assert.equal(await page.evaluate(()=>localStorage.length),0);
+ await assertOnlyCalendarPreferences(page);
  assert.deepEqual(errors,[]);
- assert.ok(requests>0);console.log('PASS: overview invitations without per-activity reads; direct answers without navigation, isolated save failure, persisted answers and preserved comments; client navigation and persistent header without session refetch; back/forward, menu links and gallery-to-private session initialization; HttpOnly session, CSRF header, legacy cleanup, no browser/provider tokens, password and WebAuthn without reload, virtual WebAuthn registration, magic-link request and explicit clean-URL callback, save/reload, revocation, account switch, logout, public gallery, complete overview counters, independent participant rows without invitations, combined reply/team filters and write locks, calendar, workspace links, responsive overview, retry, private-data isolation and keyboard menu');
+ assert.ok(requests>0);console.log('PASS: overview invitations without per-activity reads; direct answers without navigation, isolated save failure, persisted answers and preserved comments; client navigation and persistent header without session refetch; back/forward, menu links and gallery-to-private session initialization; HttpOnly session, CSRF header, legacy cleanup, no browser/provider tokens, password and WebAuthn without reload, virtual WebAuthn registration, magic-link request and explicit clean-URL callback, save/reload, revocation, account switch, logout, public gallery, complete overview counters, independent participant rows without invitations, combined reply/person filters, hidden redundant team filter and write locks, calendar, workspace links, responsive overview, retry, private-data isolation and keyboard menu');
+}catch(error){
+ console.error('Browser errors:',errors);
+ console.error('Browser state:',await page.locator('main').innerText().catch(()=> 'unavailable'));
+ throw error;
 }finally{await browser.close();}

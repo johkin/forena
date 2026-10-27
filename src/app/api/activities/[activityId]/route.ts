@@ -63,20 +63,20 @@ export async function PUT(request: Request, { params }: Props) {
 
 export async function DELETE(request: Request, { params }: Props) {
   const { activityId } = await params;
-  const body = await request.json().catch(() => null) as { reason?: string } | null;
+  const body = await request.json().catch(() => null) as { reason?: string; action?: string } | null;
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getUser();
   if (!authData.user) return NextResponse.json({ error: "Du måste logga in" }, { status: 401 });
 
-  const { data: disposition, error } = await supabase.rpc("delete_or_cancel_activity", {
-    target_activity_id: activityId,
-    target_cancellation_reason: body?.reason?.trim() || null,
-  });
+  if (body?.action && !["delete", "cancel"].includes(body.action)) return NextResponse.json({ error: "Ogiltig åtgärd" }, { status: 400 });
+  const { data: disposition, error } = body?.action
+    ? await supabase.rpc("set_activity_disposition", { target_activity_id: activityId, target_action: body.action, target_cancellation_reason: body.reason?.trim() || null })
+    : await supabase.rpc("delete_or_cancel_activity", { target_activity_id: activityId, target_cancellation_reason: body?.reason?.trim() || null });
 
   if (error) {
     if (error.code === "P0002") return NextResponse.json({ error: "Aktiviteten kunde inte hittas" }, { status: 404 });
     if (error.code === "42501") return NextResponse.json({ error: "Du saknar behörighet för laget" }, { status: 403 });
-    if (error.code === "55000") return NextResponse.json({ error: "Importerade aktiviteter måste tas bort i källsystemet" }, { status: 409 });
+    if (error.code === "55000") return NextResponse.json({ error: "Aktiviteten kan inte tas bort. Skickade kallelser måste bevaras; importerade aktiviteter hanteras i källsystemet." }, { status: 409 });
     return NextResponse.json({ error: "Aktiviteten kunde inte tas bort eller ställas in" }, { status: 500 });
   }
 
