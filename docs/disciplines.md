@@ -1,5 +1,48 @@
 # Kodägda discipliner
 
+## Bekräftad specifikation för migrering och utökning
+
+[Disciplinernas featurespec](specs/discipliner.md) beskriver generell mekanik
+och bekräftad teknisk målbild. [Fotbollsspecen](specs/fotboll.md) beskriver konkreta
+egenskaper, åtkomstregler, Gröna kortet och matchuppföljning. Båda är Redo
+efter användarens bekräftelse 2026-10-27 och beskriver ännu inte implementerad
+funktionalitet. Migreringen ska bevara
+Next-appens beteende. Därefter planeras Gröna kortet som en valbar capability
+per lag, med eftermatchregistrering och rapport. Capabilityn ska kunna bidra
+med request-for-info vid match-avslutad till ett samlat eftermatchformulär.
+Synlighet ska definieras per fält i ägande disciplin/capability och ändras
+genom PR, utan administrativa överstyrningar. Aktivitetens sluttid utlöser
+flödet; saknad närvaro registreras först. Förfrågan och svar är gemensamma
+för aktivitetens behöriga ledare och avgränsas per aktivitet, så att olika
+matchgrupper kan följas upp separat även samma helg. Förfrågan ligger kvar
+tills efterfrågade uppgifter är besvarade, och lagöversikten länkar till
+aktivitetens samlade formulär. Disciplinen anger capabilityns grundläge och
+om lagadmin får ändra aktiveringen; Gröna kortet är initialt av och valbart.
+Avstängning avslutar dess obesvarade bidrag och stoppar nya förfrågningar
+medan sparade utfall/rapporter och andra bidrag bevaras. Första notifiering
+går enligt befintlig privat Telegram/push-policy med länk till formuläret;
+återkommande påminnelser ingår inte. Flyttad sluttid omplanerar inhämtningen
+med svar bevarade; inställd match avslutar förfrågan utan att radera utfall.
+Aktivering ger automatiska förfrågningar för kommande matcher och tillåter
+manuell uppföljning av äldre spelade matcher. Runtime-kontrakt och vissa
+detaljregler har konkretiserats i den tekniska målbilden. Återaktivering
+bevarar svar utan historiska dubbletter/utskick, rapporter visar saknad
+uppföljning och samordnade närvaro-/utfallsrättningar sparas atomärt.
+Specarnas bekräftade status innebär inte att funktionerna har implementerats.
+
+Fotbollens tröjnummer och position får enligt specen läsas av hela laget och dess målsmän.
+Det generella stödet för egenskaper och kodägda läsregler är separat från denna
+konkreta fältregel. Ett nytt önskemål om maxantal deltagare exklusive ledare
+specificeras som ett enda valfritt fält på aktiviteten, med regler i
+aktivitetskärnan. Tomt fält betyder obegränsat. Gränsen ska stoppa nya ja-svar
+när aktiviteten är full, med inaktiverad ja-knapp och progressbar i kort och
+detaljer. Återtaget ja frigör plats; sänkt gräns bevarar befintliga ja-svar
+och visar överbeläggning. Ingen reservkö ingår. Automatisk härledning från
+spelvariant och arv är parkerade utanför första versionen. En capability
+är en återanvändbar komponent som kan användas av flera discipliner.
+
+## Befintlig implementation
+
 Fotboll är det första kodägda disciplinpaketet, `football` version `1.0.0`,
 i `src/disciplines/football/definition.ts`. Paketet definierar spelformer 3v3, 5v5,
 7v7, 9v9 och 11v11 samt stabila positionsidentifierare. Dessa är planeringsval,
