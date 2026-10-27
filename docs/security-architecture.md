@@ -514,6 +514,15 @@ familjeidentiteter, verifierar rätt att boka för personen och låser aktivitet
 under varje ändring. Förslag gäller specifika platsrevisioner och kan inte
 återanvändas mot senare tilldelningar. Se [bemanningsschema](activity-duty-schedule.md).
 
+Den planerade namn- och kontaktvisningen i React/Kotlin preciseras i
+[Arbetspass och bemanning](specs/arbetspass-och-bemanning.md). Specen skiljer
+aktiva lagmedlemmar och deras registrerade målsmän/ombud samt behöriga ledare
+från personligt kallade gäster utan lagrelation. De senare ska fortsatt inte
+få andra familjers namn eller kontaktuppgifter. Den beslutade läsinsynen ger
+inte rätt att ändra andra familjers bokningar. Detta beskriver kravbilden;
+äldre appens anonymisering och faktisk migrationsstatus ändras inte genom
+specarbetet.
+
 Assistentens uppgiftsverktyg har bara läsning och förhandsgranskning. Masskapande
 bekräftas via autentiserat serveranrop; databasen verifierar `invitation.manage`,
 exakt lag/aktivitetsurval, framtida start och snapshot under aktivitetslås.

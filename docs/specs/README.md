@@ -48,6 +48,8 @@ Exempel på implementation:
 
 ## Sparade specar
 
+- [Arbetspass och bemanning](arbetspass-och-bemanning.md) – Redo, godkänd spec för bokning, tilldelning och rättvis fördelning av arbetspass.
+- [Skapa och redigera aktiviteter](hantera-aktiviteter.md) – Redo.
 - [Telegram-boten](telegram-bot.md) – Redo.
 - [Närvaroregistrering](narvaroregistrering.md) – Redo.
 - [AI-assistenten](ai-assistent.md) – Redo.

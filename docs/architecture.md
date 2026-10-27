@@ -798,6 +798,13 @@ Alla administrativa skrivningar serialiseras mot en gemensam låsrad och kontrol
 
 ### Aktivitetsserier och ledarens översikt i React/Kotlin
 
+Den samlade kravbilden för vidareutvecklingen finns i
+[Skapa och redigera aktiviteter](specs/hantera-aktiviteter.md). Specens status
+anger om kraven är godkända, inte att funktionerna nedan har utökats eller
+verifierats. Den omfattar bland annat framtida serieändringar, nya svarskrav,
+bemanningsval och samlade ändringsmeddelanden. Befintlig implementation
+beskrivs fortsatt här och i migreringsunderlaget.
+
 Aktivitetshanteringen skapar veckoserier i en transaktion via
 `POST /api/activity-series`. Kotlin beräknar lokala datum och tider, validerar
 hela urvalet och sparar tillfällen med gemensamt `series_id`. Individuell
