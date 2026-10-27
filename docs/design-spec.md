@@ -586,6 +586,11 @@ ingen extra åtkomst till klubbens data. Serverns behörighetskontroller gäller
 
 ## Gemensamma datum- och tidsväljare
 
+Den samlade vidareutvecklingen av aktivitetsformulär, serieåtgärder,
+förhandsgranskning och utkastskydd specificeras i
+[Skapa och redigera aktiviteter](specs/hantera-aktiviteter.md). Godkänd spec
+innebär inte att gränssnittet redan har implementerats eller verifierats.
+
 - `ActivityDatePicker`: enbart datum, med veckovy. Använd även för födelsedatum,
   seriens slutdatum och historikfilter. Direktinmatningen öppnas för tomma värden
   och bevarar obligatoriska fält och min-/maxgränser. Valfria datum kan tömmas;

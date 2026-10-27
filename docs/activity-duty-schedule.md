@@ -1,5 +1,12 @@
 # Arbetsuppgifter och bemanningsschema
 
+Detta dokument beskriver befintligt stöd i den äldre appen. Den samlade
+godkända kravspecen för React/Kotlin finns i
+[Arbetspass och bemanning](specs/arbetspass-och-bemanning.md). Där finns
+bland annat beslut om namn- och kontaktvisning inom laget, som skiljer sig
+från äldre appens anonymisering nedan. Specens status innebär inte att
+ändringarna redan är implementerade eller verifierade.
+
 En aktivitet är ramen. `activity_duty_series` lagrar ett gemensamt upplägg:
 uppgiftstyp och namn, period/deadline, passlängd, antal platser, instruktioner
 samt öppnings- och stängningsinstruktioner. Serien hör till en enda aktivitet.
