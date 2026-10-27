@@ -283,7 +283,9 @@ cupanmälan. Den skickar inte kallelser eller anmäler laget externt på egen ha
 Planerad riktning: Förena ska kunna utökas av både egna och externa plugins
 med data, funktionalitet och GUI. Börja med deklarativa utökningar och ett litet
 förstapartstillägg som använder samma kontrakt som framtida externa tillägg.
-Gröna kortet är en möjlig första kandidat; spelarutveckling är ett större exempel. Exekverbar tredjepartskod kräver separat isolering och ett
+Gröna kortet specificeras som en återanvändbar capability i
+[fotbollsspecen](specs/fotboll.md); spelarutveckling är ett större exempel.
+Exekverbar tredjepartskod kräver separat isolering och ett
 begränsat API; den ska inte få direkt databasåtkomst eller köras med Förena-
 applikationens fulla rättigheter.
 
@@ -357,9 +359,11 @@ av åtkomst när en installation inaktiveras.
 
 #### Första exempel
 
-Gröna kortet är en möjlig liten första plugin: val av spelare på en match,
-med separat aktivering och tydlig tilläggspanel. Den är uttryckligen uppskjuten
-och ingår inte i fotbollsdisciplinens native-fält. Disciplinfält integreras i
+Gröna kortet föreslogs tidigare som en möjlig liten första plugin. I den
+bekräftade [fotbollsspecen](specs/fotboll.md) specificeras det nu som valbar
+capability med eftermatchregistrering, rapport och bidrag till ett gemensamt
+request-for-info-flöde. Detta är inte implementerat och ingår inte i de
+befintliga fotbollsschemana. Disciplinfält integreras i
 ordinarie formulär; plugins visar namn och ursprung som tillägg.
 
 Spelarutveckling är ett större efterföljande exempel.

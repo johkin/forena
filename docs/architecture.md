@@ -581,6 +581,16 @@ Historiksvar formuleras från verifierade summeringar, inte modellens slutsatser
 
 ## Kodägda disciplinpaket
 
+Bekräftat kravunderlag är uppdelat i [generell disciplinspec](specs/discipliner.md)
+och [fotbollsspec](specs/fotboll.md). Den generella specens tekniska målbild har ett litet
+utökningskontrakt och separata disciplin-/capabilityimplementationer ovanpå
+befintliga verksamhetsmoduler. Aktivitetskärnan äger maxantal deltagare och
+transaktionen för ja-svar/kapacitetskontroll. En orkestrerande tjänst i
+utökningslagret äger atomär närvaro-/utfallsrättning genom publika kommandon.
+Synkrona kontroller skiljs från beständiga händelser och informationsförfrågningar.
+Det är en bekräftad målbild, inte redan implementerade modulgränser;
+befintliga regler mot cykler och korsvis intern repositoryåtkomst gäller fortsatt.
+
 Fotboll har ett versionshanterat paket med separata schemastrukturer för sektion,
 lag, lagmedlemskap, aktivitet och deltagande. Paketet kopplas via sektionens
 katalognyckel och exponeras i aktivitetskonfigurationen. Systemadministrationen
