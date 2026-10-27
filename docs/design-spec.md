@@ -722,3 +722,23 @@ närvaroregistrering återanvänds; kalendervyn har inga egna registreringskontr
 På smala skärmar visar familjekalendern månadens dagar som läsbara dagsrader
 med veckodag och aktivitetskort. På desktop används sjudagarsrutnätet.
 Personnamn och närvarotext ska kunna läsas utan att brytas till enstaka bokstäver.
+
+## Närvarodialogen i React/Kotlin
+
+Närvaro nås från aktiviteten från starttid. Behöriga ledare kan återöppna gamla
+rapporter; inställda aktiviteter visar befintlig rapport och historik i läsläge.
+`AttendanceModal` delar markup och CSS mellan apparna och visas med lokala
+exempel på `/components`: ny/sparad rapport, inställd, tom, laddning, konflikt,
+läsfel och sparfel.
+
+Orapporterat urval beskrivs som okänd närvaro. Sparandet bekräftar hela listan;
+0 närvarande kräver texten ”Du rapporterar 0 närvarande. Alla i listan
+registreras som frånvarande.” och en separat bekräftelse. Avbryt ändrar inget.
+Sökning, filter och snabbval behåller dolda markeringar. Befintlig medlem kan
+läggas till från samma klubb/sektion utan att skapa nytt medlemskap.
+
+Sparfel behåller egna val. Vid konflikt visas senaste rapportens personstatus
+för avstämning; först därefter kan ledaren använda dess version och spara sitt
+korrigerade urval. Historiken visar rapportör, tidpunkt och varje ändrad persons
+föregående/nya närvaro. Dialogen låser bakgrundsrullning, håller tangentbordsfokus,
+stöder Escape och återför fokus till öppningsknappen.

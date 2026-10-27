@@ -163,6 +163,178 @@ class ApiTest {
         admin.update("insert into forena.team_permission_assignment(organization_id,team_id,person_id,permission,starts_on) values(?,?,?,?,current_date)", organization, rosterTeam(), person, permission)
     }
 
+    private fun attendancePath() = "/api/activities/$activity/attendance"
+    private fun attendanceBody(revision: Int = 0, present: List<UUID> = listOf(own),
+                               people: List<UUID> = listOf(own, child1, child2, other), confirm: Boolean = false) =
+        json.writeValueAsString(mapOf("revision" to revision, "personIds" to present, "rosterIds" to people, "confirmEmpty" to confirm))
+    private fun startAttendance() {
+        rosterPermission(permission = "attendance.manage")
+        admin.update("update forena.activity set starts_at=now()-interval '1 hour' where id=?", activity)
+    }
+
+    @Test fun `attendance requires independent current permission for list history and writes`() {
+        rosterMember(own, "leader")
+        rosterPermission(permission = "activity.manage")
+        admin.update("update forena.invitation set activity_role='leader' where activity_id=? and person_id=?", activity, own)
+        assertThat(request(attendancePath()).statusCode()).isEqualTo(403)
+        assertThat(request(attendancePath(), attendanceBody()).statusCode()).isEqualTo(403)
+        startAttendance()
+        assertThat(request(attendancePath()).statusCode()).isEqualTo(200)
+        assertThat(request(attendancePath(), cookie = loginCookie(outsider)).statusCode()).isEqualTo(403)
+        assertThat(request(attendancePath(), attendanceBody(), loginCookie(outsider)).statusCode()).isEqualTo(403)
+        admin.update("update forena.team_permission_assignment set active=false where permission='attendance.manage' and team_id=?", rosterTeam())
+        assertThat(request(attendancePath(), attendanceBody()).statusCode()).isEqualTo(403)
+    }
+
+    @Test fun `attendance assesses all people preserves answers supports corrections and zero with history`() {
+        startAttendance()
+        val path = attendancePath()
+        val initial = json.readTree(request(path).body())
+        assertThat(initial.get("revision").asInt()).isZero()
+        assertThat(initial.get("roster").all { it.get("present").isNull }).isTrue()
+        val answers = admin.queryForList("select id,response,revision from forena.invitation where activity_id=? order by id", activity)
+        assertThat(request(path, attendanceBody()).statusCode()).isEqualTo(204)
+        assertThat(request(path, attendanceBody()).statusCode()).isEqualTo(409)
+        val first = json.readTree(request(path).body())
+        assertThat(first.get("roster").count { it.get("present").asBoolean() }).isEqualTo(1)
+        assertThat(first.get("history").size()).isEqualTo(1)
+        assertThat(first.get("history").get(0).get("changes").size()).isEqualTo(4)
+        assertThat(request(path, attendanceBody(1, emptyList())).statusCode()).isEqualTo(400)
+        assertThat(request(path, attendanceBody(1, emptyList(), confirm = true)).statusCode()).isEqualTo(204)
+        val zero = json.readTree(request(path).body())
+        assertThat(zero.get("revision").asInt()).isEqualTo(2)
+        assertThat(zero.get("roster").all { !it.get("present").asBoolean() }).isTrue()
+        assertThat(zero.get("history").size()).isEqualTo(2)
+        assertThat(zero.get("history").get(0).get("actorName").asString()).isEqualTo("Person 0")
+        assertThat(zero.get("history").get(0).get("changes").size()).isEqualTo(1)
+        assertThat(admin.queryForList("select id,response,revision from forena.invitation where activity_id=? order by id", activity)).isEqualTo(answers)
+        admin.update("update forena.activity set starts_at=now()-interval '10 years',ends_at=now()-interval '9 years' where id=?", activity)
+        assertThat(request(path, attendanceBody(2)).statusCode()).isEqualTo(204)
+        admin.update("update forena.activity set status='cancelled' where id=?", activity)
+        assertThat(request(path, attendanceBody(3)).statusCode()).isEqualTo(409)
+        val cancelled = json.readTree(request(path).body())
+        assertThat(cancelled.get("status").asString()).isEqualTo("cancelled")
+        assertThat(cancelled.get("writable").asBoolean()).isFalse()
+        assertThat(cancelled.get("revision").asInt()).isEqualTo(3)
+    }
+
+    @Test fun `attendance denies writes before start and for cancelled first reports`() {
+        rosterPermission(permission = "attendance.manage")
+        assertThat(request(attendancePath(), attendanceBody()).statusCode()).isEqualTo(409)
+        admin.update("update forena.activity set starts_at=now(),status='cancelled' where id=?", activity)
+        assertThat(request(attendancePath(), attendanceBody()).statusCode()).isEqualTo(409)
+        assertThat(admin.queryForObject("select count(*) from forena.attendance_report where activity_id=?", Long::class.java, activity)).isZero()
+        admin.update("update forena.activity set status='scheduled' where id=?", activity)
+        assertThat(request(attendancePath(), attendanceBody()).statusCode()).isEqualTo(204)
+    }
+
+    @Test fun `historical attendance includes ended memberships and declined guests once but not later starters`() {
+        startAttendance()
+        admin.update("delete from forena.invitation where activity_id=? and person_id in (?,?)", activity, own, child2)
+        admin.update("update forena.activity set starts_at=now()-interval '10 days',ends_at=now()-interval '9 days' where id=?", activity)
+        rosterMember(own, "leader", "current_date-20", "current_date-5")
+        admin.update("update forena.team_membership set active=false where team_id=? and person_id=?", rosterTeam(), own)
+        rosterMember(child1, start = "current_date-20")
+        rosterMember(child2, start = "current_date-2")
+        admin.update("update forena.invitation set response='declined',responded_at=now() where activity_id=? and person_id=?", activity, other)
+        val roster = json.readTree(request(attendancePath()).body()).get("roster")
+        assertThat(roster.toList().map { it.get("personId").asString() }).containsExactlyInAnyOrder(own.toString(), child1.toString(), other.toString())
+        assertThat(request(attendancePath(), attendanceBody(people = listOf(own, child1, other))).statusCode()).isEqualTo(204)
+        // The assessed list is a persistent snapshot, independent of later membership changes.
+        admin.update("delete from forena.team_membership where team_id=?", rosterTeam())
+        assertThat(json.readTree(request(attendancePath()).body()).get("roster").size()).isEqualTo(3)
+    }
+
+    @Test fun `additional attendance people require same organization and section without creating membership`() {
+        startAttendance()
+        val section = UUID.randomUUID(); val secondTeam = UUID.randomUUID(); val extra = UUID.randomUUID()
+        admin.update("insert into forena.section(id,organization_id,name) values(?,?,'Sektion')", section, organization)
+        admin.update("update forena.team set section_id=? where id=?", section, rosterTeam())
+        admin.update("insert into forena.team(id,organization_id,section_id,name) values(?,?,?,'Annat lag')", secondTeam, organization, section)
+        admin.update("insert into forena.person(id,organization_id,display_name) values(?,?,'Extra medlem')", extra, organization)
+        admin.update("insert into forena.team_membership(organization_id,team_id,person_id,role,starts_on) values(?,?,?,'participant',current_date)", organization, secondTeam, extra)
+        val all = listOf(own, child1, child2, other, extra)
+        assertThat(json.readTree(request(attendancePath()).body()).get("candidates").toList().map { it.get("personId").asString() }).contains(extra.toString())
+        assertThat(request(attendancePath(), attendanceBody(present = listOf(extra), people = all)).statusCode()).isEqualTo(204)
+        assertThat(admin.queryForObject("select count(*) from forena.team_membership where team_id=?", Long::class.java, rosterTeam())).isZero()
+        val foreignPerson = UUID.randomUUID(); val foreignOrg = UUID.randomUUID()
+        admin.update("insert into forena.organization(id,name) values(?,'Annan klubb')", foreignOrg)
+        admin.update("insert into forena.person(id,organization_id,display_name) values(?,?,'Främmande')", foreignPerson, foreignOrg)
+        assertThat(request(attendancePath(), attendanceBody(1, listOf(foreignPerson), all + foreignPerson)).statusCode()).isEqualTo(400)
+        val wrongSectionPerson = UUID.randomUUID()
+        admin.update("insert into forena.person(id,organization_id,display_name) values(?,?,'Annan sektion')", wrongSectionPerson, organization)
+        assertThat(request(attendancePath(), attendanceBody(1, listOf(wrongSectionPerson), all + wrongSectionPerson)).statusCode()).isEqualTo(400)
+    }
+
+    @Test fun `simultaneous first attendance reports and stale corrections cannot overwrite each other`() {
+        startAttendance()
+        for (revision in listOf(0, 1)) {
+            val futures = listOf(listOf(own), listOf(child1)).map { present -> CompletableFuture.supplyAsync {
+                request(attendancePath(), attendanceBody(revision, present)).statusCode()
+            } }
+            assertThat(futures.map { it.get(15, SECONDS) }).containsExactlyInAnyOrder(204, 409)
+        }
+        assertThat(json.readTree(request(attendancePath()).body()).get("history").size()).isEqualTo(2)
+    }
+
+    @Test fun `attendance rechecks permission and cancellation after waiting for the activity lock`() {
+        startAttendance()
+        for (cancel in listOf(false, true)) {
+            admin.update("update forena.team_permission_assignment set active=true where team_id=? and permission='attendance.manage'", rosterTeam())
+            DriverManager.getConnection(database.jdbcUrl, database.username, database.password).use { connection ->
+                connection.autoCommit = false
+                connection.prepareStatement("select id from forena.activity where id=? for update").use {
+                    it.setObject(1, activity); it.executeQuery().close()
+                }
+                val result = CompletableFuture.supplyAsync { request(attendancePath(), attendanceBody()) }
+                awaitRuntimeLocks(1)
+                if (cancel) connection.prepareStatement("update forena.activity set status='cancelled' where id=?").use {
+                    it.setObject(1, activity); it.executeUpdate()
+                } else admin.update("update forena.team_permission_assignment set active=false where team_id=? and permission='attendance.manage'", rosterTeam())
+                connection.commit()
+                assertThat(result.get(10, SECONDS).statusCode()).isEqualTo(if (cancel) 409 else 403)
+            }
+        }
+        assertThat(admin.queryForObject("select count(*) from forena.attendance_report where activity_id=?", Long::class.java, activity)).isZero()
+    }
+
+    @Test fun `personal attendance remains unknown without a report and only exposes accessible people`() {
+        startAttendance()
+        val path = "/api/activities/$activity"
+        val initial = json.readTree(request(path).body())
+        assertThat(initial.get("people").all { it.get("attendance").asString() == "unknown" }).isTrue()
+        assertThat(initial.get("can_manage_activities").asBoolean()).isFalse()
+        assertThat(request(attendancePath(), attendanceBody()).statusCode()).isEqualTo(204)
+        val people = json.readTree(request(path).body()).get("people").toList()
+        assertThat(people.single { it.get("id").asString() == own.toString() }.get("attendance").asString()).isEqualTo("present")
+        assertThat(people.single { it.get("id").asString() == child1.toString() }.get("attendance").asString()).isEqualTo("absent")
+        assertThat(people.none { it.get("id").asString() == other.toString() }).isTrue()
+        // Attendance-only rights allow opening an old activity even without a personal invitation.
+        admin.update("delete from forena.invitation where activity_id=? and person_id in (?,?,?)", activity, own, child1, child2)
+        assertThat(request(path).statusCode()).isEqualTo(200)
+    }
+
+    @Test fun `attendance transaction rolls back first and existing reports after a history failure`() {
+        startAttendance()
+        fun failHistory() = admin.execute("alter table forena.attendance_change add constraint synthetic_attendance_failure check (person_id <> '$own' and person_id <> '$child1') not valid")
+        fun restoreHistory() = admin.execute("alter table forena.attendance_change drop constraint synthetic_attendance_failure")
+        failHistory()
+        try {
+            assertThat(request(attendancePath(), attendanceBody()).statusCode()).isEqualTo(503)
+            assertThat(admin.queryForObject("select count(*) from forena.attendance_report where activity_id=?", Long::class.java, activity)).isZero()
+            assertThat(admin.queryForObject("select count(*) from forena.attendance_history where activity_id=?", Long::class.java, activity)).isZero()
+        } finally { restoreHistory() }
+        assertThat(request(attendancePath(), attendanceBody()).statusCode()).isEqualTo(204)
+        failHistory()
+        try {
+            assertThat(request(attendancePath(), attendanceBody(1, listOf(child1))).statusCode()).isEqualTo(503)
+            val saved = json.readTree(request(attendancePath()).body())
+            assertThat(saved.get("revision").asInt()).isEqualTo(1)
+            assertThat(saved.get("history").size()).isEqualTo(1)
+            assertThat(saved.get("roster").single { it.get("personId").asString() == own.toString() }.get("present").asBoolean()).isTrue()
+        } finally { restoreHistory() }
+    }
+
     @Test fun `roster permission is independent of membership activity rights and delegated identity`() {
         val path = "/api/teams/${rosterTeam()}/roster"
         rosterMember(own, "leader")
@@ -297,8 +469,9 @@ class ApiTest {
         admin.update("update forena.activity set starts_at='2026-10-12T15:00:00Z',ends_at='2026-10-12T16:00:00Z' where id=?", activity)
         val team = rosterTeam()
         for (person in listOf(child1, child2)) admin.update("insert into forena.team_membership(organization_id,team_id,person_id,role,starts_on,ends_on) values(?,?,?,'participant','2026-10-01','2026-10-20')", organization, team, person)
-        admin.update("insert into forena.attendance_report values(?,?,?,now())", activity, organization, parent)
-        admin.update("insert into forena.attendance_record values(?,?,?)", activity, organization, child1)
+        admin.update("insert into forena.attendance_report(activity_id,organization_id,reported_by,reported_at) values(?,?,?,now())", activity, organization, parent)
+        admin.update("insert into forena.attendance_record(activity_id,organization_id,person_id) values(?,?,?)", activity, organization, child1)
+        admin.update("insert into forena.attendance_record(activity_id,organization_id,person_id,present) values(?,?,?,false)", activity, organization, child2)
         val response = request("/api/me/calendar?month=2026-10")
         assertThat(response.statusCode()).isEqualTo(200)
         assertThat(response.headers().firstValue("cache-control").orElse("")).contains("no-store")
@@ -351,9 +524,9 @@ class ApiTest {
     @Test fun `attendance reporting uses its own team permission and rejects unrelated people`() {
         val team = managedTeam()
         admin.update("update forena.activity set starts_at=now()-interval '2 hours',ends_at=now()-interval '1 hour' where id=?", activity)
-        assertThat(request("/api/activities/$activity/attendance", """{"personIds":["$child1"]}""").statusCode()).isEqualTo(200)
-        assertThat(request("/api/activities/$activity/attendance", """{"personIds":["${UUID.randomUUID()}"]}""").statusCode()).isEqualTo(400)
-        assertThat(request("/api/activities/$activity/attendance", """{"personIds":[]}""", cookie=loginCookie(outsider)).statusCode()).isEqualTo(403)
+        assertThat(request(attendancePath(), attendanceBody(present = listOf(child1))).statusCode()).isEqualTo(204)
+        assertThat(request(attendancePath(), attendanceBody(1, listOf(UUID.randomUUID()))).statusCode()).isEqualTo(400)
+        assertThat(request(attendancePath(), attendanceBody(1, emptyList(), confirm = true), cookie=loginCookie(outsider)).statusCode()).isEqualTo(403)
         val month = java.time.YearMonth.now(java.time.ZoneId.of("Europe/Stockholm"))
         val people = json.readTree(request("/api/me/calendar?month=$month").body()).get("activities").get(0).get("people")
         assertThat(people.single { it.get("id").asString() == child1.toString() }.get("attendance").asString()).isEqualTo("present")
@@ -378,39 +551,24 @@ class ApiTest {
         assertThat(history()).isZero()
     }
 
-    @Test fun `attendance only managers cannot read invitation answers or guests and preserve hidden attendance`() {
+    @Test fun `attendance permission reads the complete assessed roster independently of invitation management`() {
         rosterMember(own, start = "current_date-2")
-        rosterMember(child1, start = "current_date-2")
-        rosterMember(child2, start = "current_date-4", end = "current_date-3")
         rosterPermission(permission = "attendance.manage")
         admin.update("update forena.activity set starts_at=now()-interval '2 hours',ends_at=now()-interval '1 hour' where id=?", activity)
         admin.update("update forena.invitation set response='accepted',responded_at=now() where activity_id=? and person_id=?", activity, child1)
         admin.update("update forena.invitation set response='declined',responded_at=now() where activity_id=? and person_id=?", activity, other)
-        val path = "/api/activities/$activity/attendance"
-        val limited = request(path)
-        assertThat(limited.statusCode()).isEqualTo(200)
-        val roster = json.readTree(limited.body()).get("roster").toList()
-        assertThat(roster.map { it.get("personId").asString() }).containsExactlyInAnyOrder(own.toString(), child1.toString())
-        assertThat(roster.all { it.get("response").isNull }).isTrue()
-
-        rosterPermission(permission = "invitation.manage")
-        val full = json.readTree(request(path).body()).get("roster").toList()
-        assertThat(full.single { it.get("personId").asString() == child1.toString() }.get("response").asString()).isEqualTo("accepted")
-        assertThat(full.single { it.get("personId").asString() == other.toString() }.get("response").asString()).isEqualTo("declined")
-        assertThat(request(path, """{"personIds":["$other"]}""").statusCode()).isEqualTo(200)
-        admin.update("update forena.team_permission_assignment set active=false where person_id=? and permission='invitation.manage'", own)
-
-        val reported = request(path, """{"personIds":["$child1"]}""")
-        assertThat(reported.statusCode()).isEqualTo(200)
-        val reportedRoster = json.readTree(reported.body()).get("roster").toList()
-        assertThat(reportedRoster.map { it.get("personId").asString() }).containsExactlyInAnyOrder(own.toString(), child1.toString())
-        assertThat(reportedRoster.all { it.get("response").isNull }).isTrue()
-        assertThat(admin.queryForList("select person_id from forena.attendance_record where activity_id=?", UUID::class.java, activity))
-            .containsExactlyInAnyOrder(child1, other)
-        assertThat(request(path, """{"personIds":["$other"]}""").statusCode()).isEqualTo(400)
+        val path = attendancePath()
+        val roster = json.readTree(request(path).body()).get("roster").toList()
+        assertThat(roster.map { it.get("personId").asString() }).containsExactlyInAnyOrder(own.toString(), child1.toString(), child2.toString(), other.toString())
+        assertThat(roster.single { it.get("personId").asString() == child1.toString() }.get("response").asString()).isEqualTo("accepted")
+        assertThat(roster.single { it.get("personId").asString() == other.toString() }.get("response").asString()).isEqualTo("declined")
+        assertThat(request(path, attendanceBody(present = listOf(other))).statusCode()).isEqualTo(204)
+        assertThat(request(path, attendanceBody(1, listOf(child1))).statusCode()).isEqualTo(204)
+        assertThat(admin.queryForList("select person_id from forena.attendance_record where activity_id=? and present", UUID::class.java, activity))
+            .containsExactly(child1)
         admin.update("update forena.team_permission_assignment set active=false where person_id=? and permission='attendance.manage'", own)
         assertThat(request(path).statusCode()).isEqualTo(403)
-        assertThat(request(path, """{"personIds":[]}""").statusCode()).isEqualTo(403)
+        assertThat(request(path, attendanceBody(2)).statusCode()).isEqualTo(403)
     }
 
     @Test fun `personal overview includes dated member rows without invitations using organization local date`() {

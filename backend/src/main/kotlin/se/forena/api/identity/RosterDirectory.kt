@@ -7,6 +7,8 @@ import se.forena.api.identity.internal.RosterIdentityRepository
 /** Identity facts for a roster already authorized by its calling service. */
 @Service
 class RosterDirectory(private val records: RosterIdentityRepository) {
+    fun actorName(organization: UUID, subject: UUID): String = records.actorName(organization, subject)
+
     fun guardians(organization: UUID, people: Collection<UUID>): List<RosterGuardian> =
         if (people.isEmpty()) emptyList() else records.guardians(organization, people)
 

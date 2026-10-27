@@ -19,4 +19,5 @@
  <changeSet id="api-016-invitation-delivery" author="forena"><sqlFile path="invitation-delivery.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
  <changeSet id="api-017-team-roster" author="forena"><sqlFile path="team-roster.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
  <changeSet id="api-018-calendar" author="forena"><sqlFile path="calendar.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
+ <changeSet id="api-019-attendance" author="forena"><sqlFile path="attendance.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
 </databaseChangeLog>

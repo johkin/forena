@@ -1,11 +1,11 @@
 # Närvaroregistrering
 
 - Status: Redo
-- Senast uppdaterad: 2026-10-26
+- Senast uppdaterad: 2026-10-27
 - Berörda dokument: [Designregler](../design-spec.md),
   [arkitektur](../architecture.md), [säkerhetsarkitektur](../security-architecture.md),
   [funktionell likvärdighet](../migration/feature-parity.md)
-- Implementation och verifiering: Ej påbörjad inom denna feature.
+- Implementation och verifiering: Implementerad i React/Kotlin. Se verifieringsmatrisen nedan.
 
 ## Problem och mål
 
@@ -26,7 +26,7 @@ beslutade närvaromarkeringar.
 
 Statistik över flera aktiviteter, export och rapportering till externa
 bidragssystem ingår inte. Självregistrering och skapande av helt nya personer
-ingår inte i det beslutade ledarflödet. Implementation har inte beställts.
+ingår inte i det beslutade ledarflödet.
 
 ## Användare, roller och flöden
 
@@ -161,7 +161,7 @@ Befintligt stöd använder aktivitet, lag, person, medlemskap, kallelse,
 närvarorapport med rapportör/tidpunkt och poster för närvarande personer.
 Datumgiltighet, läs-/skrivbehörighet, atomärt sparande och samtidiga ändringar
 ska följa K-006–K-013. Tekniska kontrakt inventeras vid implementation.
-Inga nya externa integrationer eller databasskrivningar har beställts.
+Implementation beställd 2026-10-27. Ingen ny extern integration ingår.
 
 ## Acceptanskriterier
 
@@ -254,9 +254,99 @@ Inga nya externa integrationer eller databasskrivningar har beställts.
   särskiljas från en rapport med registrerad närvaro/frånvaro i kalenderns
   närvarounderlag. Kallelsesvar får inte ersätta faktisk närvaro.
 
-Produktbeteendena har inte implementerats eller provats inom denna feature.
+## Implementation och verifiering
+
+Integrerad med kalendervyn på aktuell `main` inför PR 2026-10-27. Migration 019
+utökar befintliga `attendance_report`/`attendance_record` utan att ändra
+kalenderns migration 018. Befintlig närvaro, rapportör och rapporttid bevaras;
+en importerad baslinjehistorik visar de uppgifter som faktiskt är kända.
+Kalenderns statusord bevaras. Närvarospecens fullständiga ledarurval ersätter
+kalenderadapterns tidigare begränsning till endast lagmedlemmar utan
+`invitation.manage`; ingen rätt att ändra kallelsesvar införs.
+
+Implementation beställd 2026-10-27. Produktkravens status är fortsatt `Redo`.
+
+- [AttendanceService](../../backend/src/main/kotlin/se/forena/api/activities/AttendanceService.kt)
+  äger behörighet, aktivitetslås, versionskontroll och hela transaktionen.
+- [Migration 019](../../backend/src/main/resources/db/attendance.sql) lagrar
+  rapport, bedömt personurval, närvaro och ändringshistorik. Inga nya triggers,
+  databasfunktioner eller klientgrants införs. Befintliga installationer
+  uppgraderas med Liquibase; ingen återställning av extern databas behövs.
+- [AttendanceModal](../../src/components/attendance-modal.tsx) delas mellan
+  apparna. React använder kontobunden transport och versionshanterat API.
+  Next behåller sitt äldre serverkontrakt. De beslutade serverreglerna införs
+  i Kotlin; detta ändrar inte Next-serverns äldre databasflöde.
+- Historiskt grundurval använder medlemskapets start-/slutdatum, även när
+  medlemskapet senare har inaktiverats. En sparad rapports bedömda personurval
+  bevaras vid korrigering. Explicita tillägg verifieras på nytt vid sparande.
+  Sektionsmedlemskap härleds från ett aktuellt lagmedlemskap i samma sektion;
+  klubbgränsen följer personens och lagets organisation.
+- Den personliga översiktens `attendance` följer kalenderns befintliga kontrakt:
+  `unknown` för okänd närvaro, `present` för närvaro och `absent` för frånvaro. Uppgiften lämnas
+  bara för personer användaren redan får företräda; den lämnar inte ut
+  ledarens närvarolista eller historik.
+
+| Acceptanskriterier (krav) | Implementation och verifiering |
+| --- | --- |
+| AK-001 (K-001) | Implementerat. HTTP-prov sparar och läser faktisk närvaro. |
+| AK-002 (K-002) | Implementerat. Orapporterat personurval och personlig närvarostatus är okända, oberoende av kallelsesvar. |
+| AK-003 (K-003) | Implementerat. Gemensam dialog med sökning, filter, roll-/undergruppssnabbval, anmälda och summering; browserprov i båda apparna. |
+| AK-004 (K-002, K-004) | Implementerat. Hela urvalet bedöms; HTTP-prov verifierar närvarande/frånvarande och oförändrade kallelsesvar. |
+| AK-005 (K-005) | Implementerat. HTTP-prov korrigerar tio år gammal aktivitet och läser historiken. |
+| AK-006 (K-006) | Implementerat. HTTP-prov täcker avslutat/inaktiverat medlemskap, senare start och nekande gäst. |
+| AK-007 (K-006) | Implementerat. Samma person i medlemskap och kallelse dedupliceras i HTTP-provet. |
+| AK-008 (K-007) | Implementerat. HTTP-prov lägger till medlem från annat lag i samma sektion utan nytt medlemskap eller kallelsesvar. |
+| AK-009 (K-007) | Implementerat. HTTP-prov nekar främmande klubb och person utanför sektionen. |
+| AK-010 (K-008) | Implementerat. HTTP-prov nekar före start och tillåter vid/passerad start under pågående aktivitet. |
+| AK-011 (K-005, K-008) | Implementerat. HTTP-prov täcker gammal aktivitet samt återkallad rättighet, även efter väntan på aktivitetslås. |
+| AK-012 (K-009) | Implementerat. Konkurrerande korrigeringar ger en lyckad skrivning och en 409; dialogen behåller utkast för avstämning. |
+| AK-013 (K-009) | Implementerat. Samma konkurrensprov omfattar två första rapporter med revision 0. |
+| AK-014 (K-010) | Implementerat. HTTP-prov nekar inställd aktivitet, även när inställningen sker under väntan på lås. |
+| AK-015 (K-010) | Implementerat. Rapport/historik bevaras och inställd aktivitet visas i låst dialog. |
+| AK-016 (K-011) | Implementerat. HTTP-prov kontrollerar rapportör, ändrade personer och bevarade historikposter utan motivering. |
+| AK-017 (K-012) | Implementerat. HTTP-prov verifierar lagavgränsad läs-/skrivrätt och nekad åtkomst utan rättighet. |
+| AK-018 (K-012) | Implementerat. Kallad ledare utan separat rättighet nekas lista/historik och sparande. |
+| AK-019 (K-013) | Implementerat. Injicerat databasfel vid historikskrivning återställer befintlig rapport, personposter och historik. UI-prov bevarar utkast vid sparfel. |
+| AK-020 (K-013, K-002) | Implementerat. Samma felprov lämnar första rapport och historik helt oskapade. |
+| AK-021 (K-014, K-004) | Implementerat. Nollbekräftelsen och registrerad rapport med samtliga frånvarande kontrolleras i UI-/HTTP-prov. |
+| AK-022 (K-014) | Implementerat. UI-prov avbryter nollbekräftelsen utan skrivning och med oförändrade val. |
+| AK-023 (K-015, K-002, K-004) | Implementerat. Personligt HTTP-underlag och frontendadapter skiljer `unknown`, `present` och `absent` utan att ändra kallelsesvar. |
+
+Verifieringskällor:
+[API-integration](../../backend/src/test/kotlin/se/forena/api/ApiTest.kt),
+[migrationsprov](../../backend/src/test/kotlin/se/forena/api/MigrationTest.kt),
+[dialogprov](../../src/components/attendance-modal.test.tsx),
+[transportprov](../../frontend/src/api.test.ts),
+[kalenderunderlag](../../frontend/src/personal-overview.test.ts) och
+[browserprov](../../scripts/migration/attendance-browser.mjs).
+Browserprovet jämför riktiga produktionskomponenter i 320, 375, 390, 768 och
+1280 px och provar React-ingången med uttryckligen mockade HTTP-svar.
+API-proven använder verklig Spring-server och lokal PostgreSQL-testcontainer.
+Verifierat 2026-10-27:
+
+- `npm test`: 1 195 godkända tester i 140 testfiler efter integration med
+  kalendervyn på aktuell `main`.
+- `npm run typecheck`, `npm run lint` och `npm run frontend:build`: godkända.
+- `npm run build`: godkänt Next-produktionsbygge även efter den sista
+  kompatibilitetsrättningen.
+- `cd backend && ./mvnw verify`: 143 godkända tester, 3 befintliga browserprov
+  överhoppade eftersom deras uttryckliga browserinställning inte aktiverats.
+  Samtliga 19 migrationsbaslinjer är godkända. Alla närvarons API-prov kördes.
+- `cd backend/contract && npm run generate`: OpenAPI exporterat från den verkliga
+  Spring-servern och TypeScript genererat från exporten.
+- `node scripts/migration/attendance-browser.mjs` (med lokala browser-/appadresser):
+  godkänt i samtliga fem bredder, med strikt bildjämförelse, tangentbord,
+  rullbredd, konflikter, historik och fel. Separat browserprov av Reacts
+  aktivitetsingång/HTTP-transport med mockade svar är godkänt. Även befintliga
+  navigations-/sessionsprov och `ui-parity-browser.mjs` är godkända. Närvaroprovet
+  körs nu i CI och dess skärmbilder sparas som artefakt.
+- `python3 -m unittest discover -s scripts/deploy -p 'test_*.py'`: 39 godkända tester.
+- Databasverifieringen använder lokala PostgreSQL-testcontainrar och Liquibase.
+  Next/Supabase-schemat ändras inte och ingen extern databas återställs.
 
 ## Bekräftade beslut och motiv
+
+- 2026-10-27: Användaren beställde implementation av den sparade närvarospecen.
 
 - 2026-10-26, svar 13: Användaren bekräftade slutlig sammanfattning och
   avgränsningar med ”ja”. Specen är Redo; implementation har inte beställts.
@@ -315,9 +405,16 @@ Inga blockerande produktfrågor återstår från intervjun.
 
 Svar 1–13 är sparade. Användaren bekräftade slutlig sammanfattning och
 avgränsningar 2026-10-26 med ”ja” i svar 13. Status är Redo.
-Implementation har inte beställts eller påbörjats inom denna feature.
+Implementation beställd och genomförd 2026-10-27; se verifieringsmatrisen ovan.
 
 ## Ändringshistorik
+
+- 2026-10-27: Integrerat med kalenderns migration 018 och bevarat befintliga
+  rapporter via migration 019; verifierat uppgradering och aktiverat närvarons
+  browserprov i CI inför PR mot aktuell `main`.
+
+- 2026-10-27: Implementerat React/Kotlin-flödet, migration 019, gemensam dialog,
+  personligt kalenderunderlag och verifieringsmatris.
 
 - 2026-10-26: Slutlig sammanfattning och avgränsningar bekräftade i svar 13.
   Markerat specen Redo. Implementation är fortsatt ej påbörjad.

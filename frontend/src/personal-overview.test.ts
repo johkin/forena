@@ -33,3 +33,11 @@ it("uses verified activity permission rather than leader labels for the deadline
  expect(overviewItems([{...activity,team:{...activity.team,roles:["leader"]},can_manage_activities:false}])[0].canManageActivity).toBe(false);
  expect(overviewItems([{...activity,can_manage_activities:true}])[0].canManageActivity).toBe(true);
 });
+
+it("keeps actual attendance separate from invitation answers and preserves false versus unknown", () => {
+ const activity = data.activities[0];
+ const rows = overviewItems([{...activity,people:activity.people.map((person,index)=>({...person,attendance:index===0 ? "present" : index===1 ? "absent" : "unknown"}))}]);
+ expect(rows.map(row=>row.attendance)).toEqual(["present","absent","unknown"]);
+ expect(rows[0].invitation?.response).toBe("pending");
+ expect(overviewItems(data.activities).every(row=>row.attendance==="unknown")).toBe(true);
+});

@@ -15,7 +15,7 @@ import org.junit.jupiter.params.provider.ValueSource
 import org.testcontainers.postgresql.PostgreSQLContainer
 
 class MigrationTest {
-    @ParameterizedTest @ValueSource(ints = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17])
+    @ParameterizedTest @ValueSource(ints = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18])
     fun `empty install or previous baseline upgrade validates and is repeatable without data loss`(baseline: Int) {
         PostgreSQLContainer("postgres:17.6-alpine").withInitScript("init.sql").use { pg ->
             pg.start()
@@ -30,6 +30,7 @@ class MigrationTest {
                     val subject = UUID.randomUUID()
                     val legacyInvitation = UUID.randomUUID()
                     val legacyActivity = UUID.randomUUID()
+                    val legacyZeroActivity = UUID.randomUUID()
                     DriverManager.getConnection(pg.jdbcUrl, pg.username, pg.password).use { admin ->
                         // Simulate accidental client grants on an old installation; upgrade must revoke them.
                         if (baseline == 2) admin.createStatement().use {
@@ -55,6 +56,13 @@ class MigrationTest {
                                 val sessionValue = if (baseline < 5) ",'${UUID.randomUUID()}'" else ""
                                 it.execute("insert into forena.invitation_history(invitation_id,organization_id,actor_subject$sessionColumn,channel,previous_response,response,revision) values('$legacyInvitation','$organization','$subject'$sessionValue,'web','pending','accepted',7)")
                                 it.execute("insert into forena.activity_signal_state(activity_id,dirty_revision) values('$legacyActivity',9)")
+                                if (baseline >= 18) {
+                                    it.execute("insert into forena.attendance_report(activity_id,organization_id,reported_by,reported_at) values('$legacyActivity','$organization','$subject',now())")
+                                    it.execute("insert into forena.attendance_record(activity_id,organization_id,person_id) values('$legacyActivity','$organization','$person')")
+                                    it.execute("insert into forena.activity(id,organization_id,team_id,title,starts_at,ends_at) values('$legacyZeroActivity','$organization','$team','Zero',now(),now()+interval '1 hour')")
+                                    it.execute("insert into forena.invitation(id,organization_id,activity_id,person_id) values(gen_random_uuid(),'$organization','$legacyZeroActivity','$person')")
+                                    it.execute("insert into forena.attendance_report(activity_id,organization_id,reported_by,reported_at) values('$legacyZeroActivity','$organization','$subject',now())")
+                                }
                             }
                         }
                     }
@@ -63,7 +71,7 @@ class MigrationTest {
                     migrations.validate()
                     connection.createStatement().use { statement ->
                         statement.executeQuery("select count(*) from forena.databasechangelog").use {
-                            it.next(); assertThat(it.getInt(1)).isEqualTo(18)
+                            it.next(); assertThat(it.getInt(1)).isEqualTo(19)
                         }
                         statement.executeQuery("select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='forena' and c.relkind='r' and c.relname not like 'databasechangelog%' and (c.relrowsecurity or c.relforcerowsecurity)").use {
                             it.next(); assertThat(it.getInt(1)).isZero()
@@ -109,6 +117,24 @@ class MigrationTest {
                                 assertThat(it.getLong(2)).isEqualTo(7)
                                 assertThat(it.getObject(3,UUID::class.java)).isEqualTo(subject)
                                 assertThat(it.getLong(4)).isEqualTo(9)
+                            }
+                        }
+                        if (baseline >= 18) admin.createStatement().use { statement ->
+                            statement.executeQuery("select r.revision,p.present,h.actor_subject,c.previous_present from forena.attendance_report r join forena.attendance_record p on p.activity_id=r.activity_id join forena.attendance_history h on h.activity_id=r.activity_id join forena.attendance_change c on c.history_id=h.id and c.person_id=p.person_id where r.activity_id='$legacyActivity'").use {
+                                assertThat(it.next()).isTrue()
+                                assertThat(it.getLong(1)).isEqualTo(1)
+                                assertThat(it.getBoolean(2)).isTrue()
+                                assertThat(it.getObject(3,UUID::class.java)).isEqualTo(subject)
+                                assertThat(it.getObject(4)).isNull()
+                            }
+                        }
+                        if (baseline >= 18) admin.createStatement().use { statement ->
+                            statement.executeQuery("select r.revision,p.present,h.actor_subject,c.present from forena.attendance_report r join forena.attendance_record p on p.activity_id=r.activity_id join forena.attendance_history h on h.activity_id=r.activity_id join forena.attendance_change c on c.history_id=h.id and c.person_id=p.person_id where r.activity_id='$legacyZeroActivity'").use {
+                                assertThat(it.next()).isTrue()
+                                assertThat(it.getLong(1)).isEqualTo(1)
+                                assertThat(it.getBoolean(2)).isFalse()
+                                assertThat(it.getObject(3,UUID::class.java)).isEqualTo(subject)
+                                assertThat(it.getBoolean(4)).isFalse()
                             }
                         }
                         admin.prepareStatement("select enabled from forena.account where subject=?").use {

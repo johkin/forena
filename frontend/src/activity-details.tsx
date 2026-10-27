@@ -1,8 +1,8 @@
-import { AttendanceModal } from "../../src/components/attendance-modal";
 import { invitationResponseOpen } from "../../src/lib/pending-invitations";
 import { calendarActivity } from "./personal-overview";
 import { useEffect, useState } from "react";
 import { ActivityManagement } from "../../src/components/activity-management";
+import { ActivityAttendance } from "../../src/components/activity-attendance";
 import { ActivityInvitationResponse, type ParticipationFetch } from "../../src/components/activity-invitation-response";
 import type { PersonalActivity } from "./personal-overview";
 
@@ -10,7 +10,6 @@ export function ActivityDetails({ activityId,request }: { activityId:string; req
   const [now,setNow]=useState(()=>Date.now());
   useEffect(()=>{const timer=window.setInterval(()=>setNow(Date.now()),30_000);return ()=>clearInterval(timer);},[]);
   const [activity,setActivity]=useState<PersonalActivity>();
-  const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [error,setError]=useState<string>();
   const [attempt,setAttempt]=useState(0);
   useEffect(()=>{
@@ -47,6 +46,6 @@ export function ActivityDetails({ activityId,request }: { activityId:string; req
       {cancelled ? <p role="status">Aktiviteten är inställd.</p> : null}
       <div className="personal-activity-people">{activity.people.map(person=><p key={person.id}><strong>{person.name}</strong> · Ingen kallelse ännu.</p>)}</div>
     </>}
-    {activity.can_manage_attendance && !cancelled && Date.parse(activity.starts_at) <= now ? <button className="secondary" type="button" onClick={() => setAttendanceOpen(true)}>{ended ? "Justera närvaro" : "Rapportera närvaro"}</button> : null}
-  </section>{attendanceOpen ? <AttendanceModal activityId={activity.id} request={request} onClose={() => setAttendanceOpen(false)} onSaved={() => setAttempt(value => value + 1)} /> : null}</>;
+    <ActivityAttendance activityId={activityId} request={request} canManage={activity.can_manage_attendance} started={Date.parse(activity.starts_at) <= now} ended={ended} cancelled={cancelled} onSaved={() => setAttempt(value => value + 1)} />
+  </section></>;
 }

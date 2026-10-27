@@ -168,3 +168,9 @@ data class AudienceGroupEntity(@Id val id: UUID, val organizationId: UUID, val t
 data class AudienceMemberEntity(@Id val id: UUID, val groupId: UUID, val organizationId: UUID, val personId: UUID, val active: Boolean)
 
 data class PersonalAttendanceRow(val activityId: UUID, val personId: UUID, val present: Boolean)
+
+data class AttendanceReportRow(val revision: Long, val reportedAt: Instant)
+data class AttendanceHistoryRow(val id: UUID, val revision: Long, val actorName: String, val changedAt: Instant)
+data class AttendanceChangeRow(
+    val historyId: UUID, val personId: UUID, val displayName: String, val previousPresent: Boolean?, val present: Boolean
+)

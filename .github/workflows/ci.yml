@@ -169,13 +169,16 @@ jobs:
           FORENA_NAVIGATION_FRONTEND=http://127.0.0.1:3000 node scripts/migration/team-activity-navigation-browser.mjs
           FORENA_NAVIGATION_FRONTEND=http://127.0.0.1:3000 node scripts/migration/administration-navigation-browser.mjs
           FORENA_PARITY_NEXT=http://127.0.0.1:3004 FORENA_PARITY_VITE=http://127.0.0.1:3000 node scripts/migration/ui-parity-browser.mjs
+          FORENA_PARITY_NEXT=http://127.0.0.1:3004 FORENA_PARITY_VITE=http://127.0.0.1:3000 node scripts/migration/attendance-browser.mjs
 
       - name: Retain Next and Kotlin UI comparison screenshots
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: next-kotlin-ui-parity-${{ github.sha }}
-          path: frontend/.evidence/parity/
+          path: |
+            frontend/.evidence/parity/
+            frontend/.evidence/attendance/
           retention-days: 7
           if-no-files-found: ignore
 

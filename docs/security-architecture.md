@@ -897,10 +897,11 @@ Kotlin återanvänder närvarodialogen genom en kontobunden transport.
 `attendance.manage` kontrolleras separat från aktivitets-/kallelserätt;
 rapportering låser aktiviteten, kontrollerar session och behörighet igen,
 validerar personurvalet och sparar rapport och närvaro i en transaktion.
-Utan `invitation.manage` omfattar närvarolistan endast datumgiltiga, aktiva
-lagmedlemmar och lämnar inga kallelsesvar. Inbjudna gäster och kallelsesvar
-kräver den separata kallelsebehörigheten. Rapportering ändrar endast den
-behöriga listans personer och bevarar närvaroposter utanför den.
+Närvarospecens K-003, K-006 och K-012 utökar detta tidigare begränsade urval:
+`attendance.manage` ger den fullständiga närvarolistan med kallade gäster och
+separata kallelsesvar, utan krav på `invitation.manage`. Den ger ingen rätt att
+skapa kallelser eller ändra svar. Hela det bedömda urvalet sparas tillsammans
+med revisionshistoriken enligt K-004 och K-013.
 
 Borttagning efter kallelseutskick stoppas under aktivitetslåset, oberoende av
 om någon svarat. Inställning bevarar kallelser, svar och historik.
@@ -909,3 +910,28 @@ den tidigare planerade utskickstiden. Tillåtna åtgärder från läs-API:t är
 endast UI-underlag; mutationen kontrollerar alltid
 aktuell utskicksstatus och behörighet på nytt. Kontoseparerade filter i
 localStorage innehåller endast person-/lag-ID:n och ger ingen dataåtkomst.
+
+## Kotlin: närvaroregistrering
+
+Närvarolista, medlemskandidater, korrigering och historik kräver aktuell
+`attendance.manage` för aktivitetens faktiska lag, både vid GET och PUT.
+Kallelsens aktivitetsroll och egen/delegerad personåtkomst ger ingen sådan
+rättighet. Klubb-, sektions- och lagadministration följer samma behörighetskälla
+som övriga verksamhetskommandon; systemrollen ger ingen automatisk åtkomst.
+
+Skrivningar kontrollerar session och rättighet före och efter aktivitetslåset.
+Starttid, inställningsstatus, personurval och rapportrevision kontrolleras på
+servern. Revision 0 betyder att ingen rapport har lästs; den kan inte skriva
+över en redan skapad rapport. Tom närvaro kräver uttrycklig bekräftelse.
+Hela sparandet inklusive historik återställs vid databasfel. Fel lämnar inte
+ut SQL eller interna undantagsmeddelanden.
+
+Tillägg tillåts bara för befintlig person i samma organisation och med aktivt,
+datumgiltigt medlemskap i ett lag i aktivitetens sektion. Redan kallade gäster
+behålls separat i grundurvalet. Godtyckliga klient-ID:n valideras på nytt;
+inget medlemskap eller kallelsesvar skapas/ändras genom närvarokommandot.
+Migration 019 bevarar privata schema-/runtimegränser och inför inga klientgrants.
+
+Personligt kalenderunderlag lämnar bara närvarostatus för personer som kontot
+redan får företräda, utan ledarens personlista eller historik. Alla API-svar
+är `no-store`; React binder transporten till exakt API-rutt och aktuellt konto.
