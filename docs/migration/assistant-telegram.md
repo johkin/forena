@@ -35,6 +35,36 @@ jämförelse mot granskat underlag. Ändrat underlag ger ny granskning. En redan
 bekräftad åtgärd skrivs inte igen. Närvaropatchar ändrar bara uttryckligen
 bedömda personer; andra personers okända närvaro och kallelsesvar bevaras.
 
+## Metodskydd och lagbehörigheter
+
+Implementationens säkerhetsmönster följer Spring Securitys
+[method security med en egen behörighetskomponent](https://docs.spring.io/spring-security/reference/servlet/authorization/method-security.html).
+`@EnableMethodSecurity` aktiverar metodskyddet. Lagbundna operationer använder
+exempelvis `@PreAuthorize("@teamAccess.canManageInvitations(#actor, #team)")`.
+`TeamAccessService` och `TeamPermission` samlar de namngivna reglerna och deras
+databasnycklar. Konto, egen personkoppling, organisation, lag, giltighetsdatum
+och lagets tidszon kontrolleras mot aktuella data. Aktivitetsbundna kontroller
+hämtar laget från den lagrade aktiviteten.
+
+`Actor` skapas av backendens identitetsadaptrar och tas aldrig från klientens
+JSON. En verifierad webb-session, ett MCP-grant eller en aktiv Telegram-koppling
+verifieras genom samma `SessionService`. Telegram-webhookens kanalidentitet
+ersätter inte den kopplade användarens behörighet. Metodskyddet använder därför
+den uttryckliga, serverhärledda aktören. Inga lagrättigheter cachas som globala
+roller i en session eller token.
+
+Spring AOP skyddar anrop genom tjänstens proxy. Interna anrop inom samma instans
+går inte genom proxyn; tjänsternas explicita kontroller finns därför kvar.
+Skrivningar kontrollerar session och behörighet igen efter låsväntan, inom den
+ägande transaktionen. Läslistor filtreras genom samma behörighetskomponent.
+Systemadministration och målsmansåtkomst innebär inte automatiskt lagets
+skrivrättigheter.
+
+SQL-frågorna finns i modulernas `internal/Repositories.kt`, med typade
+Spring Data JDBC-interface och `@Query`/`@Modifying`. Tjänsterna äger
+transaktioner, förhandsgranskning, validering och extern leverans.
+Arkitekturtestet hindrar att `JdbcClient` återinförs i `@Service`-klasser.
+
 ## Konfiguration
 
 Allt är avstängt från början. Hemligheter hör till serverns säkra miljö,

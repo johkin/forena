@@ -11,27 +11,12 @@ import java.util.UUID
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.annotation.Order
-import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 import se.forena.api.identity.Actor
 import se.forena.api.identity.SessionService
+import se.forena.api.notifications.internal.PushRepository
 import tools.jackson.databind.json.JsonMapper
-
-// Subscription secrets are private transport data, never returned by a settings endpoint.
-class PushSubscription(
-    val id: UUID,
-    val subject: UUID,
-    val endpoint: String,
-    val p256dh: String,
-    val auth: String,
-)
-
-data class PushKeys(val p256dh: String, val auth: String)
-
-data class PushCommand(val endpoint: String, val keys: PushKeys? = null)
-
-data class PushSettings(val available: Boolean, val publicKey: String)
 
 interface PushTransport {
     fun send(subscription: PushSubscription, payload: String): Int
@@ -77,7 +62,7 @@ class WebPushTransport(
 @Service
 @Order(1)
 class PushService(
-    private val jdbc: JdbcClient,
+    private val repository: PushRepository,
     private val sessions: SessionService,
     private val transaction: TransactionTemplate,
     private val transport: PushTransport,
@@ -98,58 +83,21 @@ class PushService(
             Base64.getUrlDecoder().decode(keys.p256dh).size == 65 &&
                 Base64.getUrlDecoder().decode(keys.auth).size == 16
         )
-        val existing =
-            jdbc
-                .sql(
-                    "select subject from forena.push_subscription where endpoint=:endpoint for update"
-                )
-                .param("endpoint", command.endpoint)
-                .query(UUID::class.java)
-                .optional()
-                .orElse(null)
+        val existing = repository.findLockedEndpointOwner(command.endpoint).orElse(null)
         // A new logged-in account cannot claim a previous account's device endpoint.
         require(existing == null || existing == actor.subject)
-        jdbc
-            .sql(
-                """insert into forena.push_subscription(subject,endpoint,p256dh,auth) values(:subject,:endpoint,:p256dh,:auth)
-            on conflict(endpoint) do update set p256dh=:p256dh,auth=:auth,active=true,updated_at=clock_timestamp()
-            where forena.push_subscription.subject=:subject"""
-            )
-            .param("subject", actor.subject)
-            .param("endpoint", command.endpoint)
-            .param("p256dh", keys.p256dh)
-            .param("auth", keys.auth)
-            .update()
+        repository.saveSubscription(actor.subject, command.endpoint, keys.p256dh, keys.auth)
     }
 
     fun disable(actor: Actor, command: PushCommand) {
         sessions.requireActive(actor)
-        jdbc
-            .sql(
-                "update forena.push_subscription set active=false where subject=:subject and endpoint=:endpoint"
-            )
-            .param("subject", actor.subject)
-            .param("endpoint", command.endpoint)
-            .update()
+        repository.disableEndpoint(actor.subject, command.endpoint)
     }
 
     override fun deliver(notificationId: UUID): Boolean {
         if (!settings().available) return false
-        val recipient =
-            jdbc
-                .sql("select recipient_subject from forena.invitation_notification where id=:id")
-                .param("id", notificationId)
-                .query(UUID::class.java)
-                .single()
-        val subscriptions =
-            jdbc
-                .sql(
-                    "select id,subject,endpoint,p256dh,auth from forena.push_subscription where subject=:subject and active order by id limit 21"
-                )
-                .param("subject", recipient)
-                .query(PushSubscription::class.java)
-                .list()
-                .map { requireNotNull(it) }
+        val recipient = repository.notificationRecipient(notificationId)
+        val subscriptions = repository.findActiveSubscriptions(recipient)
         if (subscriptions.size > 20) return false
         var accepted = false
         val payload =
@@ -164,25 +112,10 @@ class PushService(
         for (subscription in subscriptions) {
             val claimed =
                 transaction.execute {
-                    jdbc
-                        .sql(
-                            "insert into forena.push_delivery(notification_id,subscription_id,state) values(:id,:subscription,'uncertain') on conflict do nothing"
-                        )
-                        .param("id", notificationId)
-                        .param("subscription", subscription.id)
-                        .update() == 1
+                    repository.claimDelivery(notificationId, subscription.id) == 1
                 } == true
             if (!claimed) {
-                accepted =
-                    accepted ||
-                        jdbc
-                            .sql(
-                                "select state='accepted' from forena.push_delivery where notification_id=:id and subscription_id=:subscription"
-                            )
-                            .param("id", notificationId)
-                            .param("subscription", subscription.id)
-                            .query(Boolean::class.java)
-                            .single()
+                accepted = accepted || repository.wasAccepted(notificationId, subscription.id)
                 continue
             }
             val status =
@@ -197,19 +130,12 @@ class PushService(
                 }
             if (status in 200..299) accepted = true
             transaction.executeWithoutResult {
-                jdbc
-                    .sql(
-                        "update forena.push_delivery set state=:state where notification_id=:id and subscription_id=:subscription"
-                    )
-                    .param("state", if (status in 200..299) "accepted" else "failed")
-                    .param("id", notificationId)
-                    .param("subscription", subscription.id)
-                    .update()
-                if (status in listOf(404, 410))
-                    jdbc
-                        .sql("update forena.push_subscription set active=false where id=:id")
-                        .param("id", subscription.id)
-                        .update()
+                repository.finishDelivery(
+                    if (status in 200..299) "accepted" else "failed",
+                    notificationId,
+                    subscription.id,
+                )
+                if (status in listOf(404, 410)) repository.disableSubscription(subscription.id)
             }
         }
         return accepted

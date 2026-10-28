@@ -62,6 +62,17 @@ interface i `Repositories.kt`. DTO:er ligger i separata filer från tjänstelogi
 modulen `activities` äger aktiviteter/kallelser och `identity` konto/session och
 personåtkomst. Modulith verifierar beroendet `activities` → `identity` (ADR-015).
 
+Assistentens och Telegrams SQL ligger i modulernas interna repositories. Statiska
+frågor använder Spring Data JDBC med `@Query` och skrivningar med `@Modifying`.
+Samtalsrepositoryt använder `JdbcClient` för sammanhållna persistensoperationer.
+Tjänsterna äger verksamhetsregler och transaktionsgränser.
+
+`TeamAccessService` är den gemensamma behörighetskomponenten för lag. Den använder
+`TeamPermission` och aktuell kontokoppling, tilldelning och giltighetsdatum i
+lagets tidszon. Spring Securitys metodskydd anropar komponenten genom
+`@PreAuthorize`. Samma regler används vid filtrering och vid omprövning efter
+låsning. Se [mönstret och dess säkerhetsgränser](migration/assistant-telegram.md#metodskydd-och-lagbehörigheter).
+
 Kotlin-modulen `email` har ett leverantörsoberoende `EmailSender`-gränssnitt.
 Resends REST-adapter och hemlighetskonfiguration är samlade i `email.internal`.
 `identity` äger auth-mallar och krypterad mejlkö och beror bara på mejlmodulens

@@ -1,82 +1,19 @@
 package se.forena.api.activities
 
-import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.UUID
-import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import se.forena.api.activities.internal.*
+import se.forena.api.activities.internal.AssistantActivityRepository
 import se.forena.api.identity.*
-
-data class AssistantInvitation(
-    val id: UUID,
-    val personId: UUID,
-    val name: String,
-    val response: String,
-    val responseComment: String?,
-    val revision: Long,
-)
-
-data class AssistantRosterPerson(val id: UUID, val displayName: String, val role: String)
-
-data class AssistantTeamData(
-    val teamId: UUID,
-    val organizationId: UUID,
-    val teamName: String,
-    val organizationName: String,
-    val sectionId: UUID?,
-    val discipline: String?,
-    val timeZone: String,
-    val editor: ActivityEditorContext?,
-    val invitationAccess: Boolean,
-    val attendanceAccess: Boolean,
-    val roster: List<AssistantRosterPerson>,
-)
-
-data class HistoryPerson(
-    val activityId: UUID,
-    val title: String,
-    val startsAt: Instant,
-    val personId: UUID,
-    val name: String,
-    val present: Boolean?,
-    val category: String,
-)
-
-data class AssistantHistory(
-    val from: LocalDate,
-    val through: LocalDate,
-    val uniquePeople: Long?,
-    val participationCount: Long?,
-    val truncated: Boolean,
-    val records: List<HistoryPerson>,
-    val summaries: List<HistorySummary> = emptyList(),
-    val duties: List<DutyHistory> = emptyList(),
-    val attendanceAvailable: Boolean = true,
-)
-
-data class HistorySummary(
-    val category: String,
-    val uniquePeople: Long,
-    val participationCount: Long,
-)
-
-data class DutyHistory(
-    val activityId: UUID,
-    val title: String,
-    val startsAt: Instant,
-    val personId: UUID,
-    val name: String,
-    val duty: String,
-    val completed: Boolean,
-)
 
 @Service
 class AssistantActivityService(
     private val sessions: SessionService,
+    private val teamAccess: TeamAccessService,
     private val clock: DatabaseClockService,
     private val management: ActivityManagementService,
     private val overview: PersonalOverviewService,
@@ -84,7 +21,7 @@ class AssistantActivityService(
     private val activities: ManagedActivityRepository,
     private val invitations: InvitationRepository,
     private val access: PersonAccessService,
-    private val jdbc: JdbcClient,
+    private val repository: AssistantActivityRepository,
 ) {
     @Transactional(readOnly = true)
     fun catalogActivities(actor: Actor): List<PersonalActivity> {
@@ -110,7 +47,9 @@ class AssistantActivityService(
     @Transactional(readOnly = true)
     fun activity(actor: Actor, id: UUID): PersonalActivity {
         sessions.requireActive(actor)
-        overview.optionalActivity(actor, id)?.let { return it }
+        overview.optionalActivity(actor, id)?.let {
+            return it
+        }
         val row = activities.findById(id).orElseThrow { NoSuchElementException() }
         if (row.deletedAt != null || !management.canManageInvitations(actor, row.teamId))
             throw NoSuchElementException()
@@ -154,17 +93,7 @@ class AssistantActivityService(
         sessions.requireActive(actor)
         return teams
             .teams(actor.subject)
-            .filter { team ->
-                val today = clock.now().atZone(ZoneId.of(team.timeZone)).toLocalDate()
-                listOf(
-                        "activity.manage",
-                        "invitation.manage",
-                        "attendance.manage",
-                        "roster.manage",
-                        "assistant.memory.manage",
-                    )
-                    .any { teams.allowed(actor.subject, team.organizationId, team.id, it, today) }
-            }
+            .filter { teamAccess.hasAssistantManagementAccess(actor, it.id) }
             .map { AssistantTeam(it.id, it.organizationId, it.name) }
     }
 
@@ -172,20 +101,11 @@ class AssistantActivityService(
     fun team(actor: Actor, id: UUID): AssistantTeamData {
         sessions.requireActive(actor)
         val team = teams.team(id) ?: throw NoSuchElementException()
-        val today = clock.now().atZone(ZoneId.of(team.timeZone)).toLocalDate()
-        val authorized =
-            listOf(
-                    "activity.manage",
-                    "invitation.manage",
-                    "attendance.manage",
-                    "roster.manage",
-                    "assistant.memory.manage",
-                )
-                .any { teams.allowed(actor.subject, team.organizationId, id, it, today) }
+        val authorized = teamAccess.hasAssistantManagementAccess(actor, id)
         if (!authorized && overview.overview(actor).teams.none { it.id == id })
             throw AccessDeniedException("Team access required")
-        val canRoster =
-            teams.allowed(actor.subject, team.organizationId, id, "roster.manage", today)
+        val canRoster = teamAccess.canManageRoster(actor, id)
+        val today = clock.now().atZone(ZoneId.of(team.timeZone)).toLocalDate()
         return AssistantTeamData(
             id,
             team.organizationId,
@@ -215,17 +135,7 @@ class AssistantActivityService(
         val own = access.people(actor, activity.organizationId).map { it.id }.toSet()
         // No actor-controlled SQL identifiers. The explicit scope applies before rows reach a
         // model.
-        return jdbc
-            .sql(
-                """select i.id,i.person_id,p.display_name as name,i.response,i.response_comment,i.revision
-            from forena.invitation i join forena.person p on p.id=i.person_id and p.organization_id=i.organization_id
-            where i.activity_id=:activity order by p.display_name,i.id"""
-            )
-            .param("activity", id)
-            .query(AssistantInvitation::class.java)
-            .list()
-            .map { requireNotNull(it) }
-            .filter { all || it.personId in own }
+        return repository.findInvitations(id).filter { all || it.personId in own }
     }
 
     @Transactional(readOnly = true)
@@ -242,22 +152,7 @@ class AssistantActivityService(
         val end = through.plusDays(1).atStartOfDay(zone).toInstant()
         val work =
             if (!data.invitationAccess) emptyList()
-            else
-                jdbc
-                    .sql(
-                        """select a.id as activity_id,a.title,a.starts_at,
-            p.id as person_id,p.display_name as name,d.name as duty,dp.completed from forena.activity a
-            join forena.activity_duty d on d.activity_id=a.id join forena.activity_duty_place dp on dp.duty_id=d.id
-            join forena.person p on p.id=dp.person_id and p.organization_id=a.organization_id
-            where a.team_id=:team and a.deleted_at is null and a.starts_at>=:start and a.starts_at<:end
-            order by a.starts_at,a.id,p.id limit 201"""
-                    )
-                    .param("team", team)
-                    .param("start", java.sql.Timestamp.from(start))
-                    .param("end", java.sql.Timestamp.from(end))
-                    .query(DutyHistory::class.java)
-                    .list()
-                    .map { requireNotNull(it) }
+            else repository.findDutyHistory(team, start, end)
         if (!data.attendanceAccess)
             return AssistantHistory(
                 from,
@@ -269,58 +164,10 @@ class AssistantActivityService(
                 duties = work.take(200),
                 attendanceAvailable = false,
             )
-        val rows =
-            jdbc
-                .sql(
-                    """select a.id as activity_id,a.title,a.starts_at,p.id as person_id,p.display_name as name,ap.present,coalesce(t.system_category,'other') as category
-            from forena.activity a left join forena.activity_type t on t.id=a.activity_type_id join forena.attendance_record ap on ap.activity_id=a.id
-            join forena.person p on p.id=ap.person_id and p.organization_id=a.organization_id
-            where a.team_id=:team and a.deleted_at is null and a.starts_at>=:start and a.starts_at<:end
-            order by a.starts_at,a.id,p.id limit 201"""
-                )
-                .param("team", team)
-                .param("start", java.sql.Timestamp.from(start))
-                .param("end", java.sql.Timestamp.from(end))
-                .query(HistoryPerson::class.java)
-                .list()
-                .map { requireNotNull(it) }
-        val count =
-            jdbc
-                .sql(
-                    """select count(*) from forena.activity a join forena.attendance_record ap on ap.activity_id=a.id
-            where a.team_id=:team and a.deleted_at is null and a.starts_at>=:start and a.starts_at<:end and ap.present"""
-                )
-                .param("team", team)
-                .param("start", java.sql.Timestamp.from(start))
-                .param("end", java.sql.Timestamp.from(end))
-                .query(Long::class.java)
-                .single()
-        val people =
-            jdbc
-                .sql(
-                    """select count(distinct ap.person_id) from forena.activity a join forena.attendance_record ap on ap.activity_id=a.id
-            where a.team_id=:team and a.deleted_at is null and a.starts_at>=:start and a.starts_at<:end and ap.present"""
-                )
-                .param("team", team)
-                .param("start", java.sql.Timestamp.from(start))
-                .param("end", java.sql.Timestamp.from(end))
-                .query(Long::class.java)
-                .single()
-        val summaries =
-            jdbc
-                .sql(
-                    """select coalesce(t.system_category,'other') as category,
-            count(distinct ap.person_id) as unique_people,count(*) as participation_count from forena.activity a
-            left join forena.activity_type t on t.id=a.activity_type_id join forena.attendance_record ap on ap.activity_id=a.id
-            where a.team_id=:team and a.deleted_at is null and a.starts_at>=:start and a.starts_at<:end and ap.present
-            group by t.system_category order by category"""
-                )
-                .param("team", team)
-                .param("start", java.sql.Timestamp.from(start))
-                .param("end", java.sql.Timestamp.from(end))
-                .query(HistorySummary::class.java)
-                .list()
-                .map { requireNotNull(it) }
+        val rows = repository.findAttendanceHistory(team, start, end)
+        val count = repository.countParticipations(team, start, end)
+        val people = repository.countUniqueParticipants(team, start, end)
+        val summaries = repository.summarizeAttendance(team, start, end)
         return AssistantHistory(
             from,
             through,
@@ -380,26 +227,14 @@ class AssistantActivityService(
         )
         val pending = invitations(actor, id).filter { it.response == "pending" }
         check(pending.isNotEmpty())
-        check(
-            !jdbc
-                .sql(
-                    "select exists(select 1 from forena.activity_schedule where activity_id=:id and kind='reminder' and state='pending')"
-                )
-                .param("id", id)
-                .query(Boolean::class.java)
-                .single()
+        check(!repository.hasPendingReminder(id))
+        repository.scheduleReminder(
+            UUID.randomUUID(),
+            id,
+            current.organizationId,
+            now,
+            pending.joinToString(",") { it.personId.toString() },
         )
-        jdbc
-            .sql(
-                """insert into forena.activity_schedule(id,activity_id,organization_id,kind,due_at,audience_roles,person_ids)
-            values(:id,:activity,:org,'reminder',:now,'',:people)"""
-            )
-            .param("id", UUID.randomUUID())
-            .param("activity", id)
-            .param("org", current.organizationId)
-            .param("now", java.sql.Timestamp.from(now))
-            .param("people", pending.joinToString(",") { it.personId.toString() })
-            .update()
     }
 
     @Transactional
@@ -432,15 +267,3 @@ class AssistantActivityService(
         )
     }
 }
-
-data class InvitationChannelState(
-    val invitationId: UUID,
-    val personId: UUID,
-    val personName: String,
-    val activityId: UUID,
-    val activityRevision: Long,
-    val invitationRevision: Long,
-    val response: String,
-    val organizationId: UUID,
-    val teamId: UUID,
-)

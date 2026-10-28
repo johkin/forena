@@ -1,5 +1,8 @@
 package se.forena.api
 
+import org.springframework.aop.support.AopUtils
+import org.springframework.security.authorization.AuthorizationDeniedException
+import org.springframework.security.authentication.BadCredentialsException
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -61,8 +64,79 @@ class ApiTest {
     @Autowired lateinit var assistantProposals: se.forena.api.assistant.AssistantProposalService
     @Autowired lateinit var telegramIdentities: se.forena.api.identity.TelegramIdentityService
     @Autowired lateinit var attendanceService: se.forena.api.activities.AttendanceService
+    @Autowired lateinit var assistantIdentity: se.forena.api.identity.AssistantIdentityService
+    @Autowired lateinit var dutyService: se.forena.api.activities.ActivityDutyService
+    @Autowired lateinit var rosterService: se.forena.api.activities.TeamRosterService
 
     private fun assistantActor() = se.forena.api.identity.Actor(parent, session, "")
+
+    @Test
+    fun `method security scopes live team permissions for web and Telegram actors`() {
+        admin.update("update forena.organization set time_zone='UTC' where id=?", organization)
+        val actor = assistantActor()
+        val team = rosterTeam()
+        val otherTeam = UUID.randomUUID()
+        admin.update(
+            "insert into forena.team(id,organization_id,name) values(?,?,'Annat lag')",
+            otherTeam,
+            organization,
+        )
+        assertThat(AopUtils.isAopProxy(dutyService)).isTrue()
+        assertThatThrownBy { dutyService.targets(actor, team) }
+            .isInstanceOf(AuthorizationDeniedException::class.java)
+
+        // A guardian cannot inherit a child's independent team permission.
+        rosterPermission(person = child1, permission = "invitation.manage")
+        assertThatThrownBy { dutyService.targets(actor, team) }
+            .isInstanceOf(AuthorizationDeniedException::class.java)
+        rosterPermission(permission = "invitation.manage")
+        assertThatCode { dutyService.targets(actor, team) }.doesNotThrowAnyException()
+        assertThatThrownBy { dutyService.targets(actor, otherTeam) }
+            .isInstanceOf(AuthorizationDeniedException::class.java)
+        assertThatThrownBy { rosterService.snapshot(actor, team) }
+            .isInstanceOf(AuthorizationDeniedException::class.java)
+        val missingTeam = UUID.randomUUID()
+        assertThatThrownBy { rosterService.snapshot(actor, missingTeam) }
+            .isInstanceOf(NoSuchElementException::class.java)
+        assertThat(request("/api/teams/$missingTeam/activity-editor").statusCode()).isEqualTo(404)
+
+        admin.update(
+            "update forena.team_permission_assignment set starts_on=current_date+1 where person_id=?",
+            own,
+        )
+        assertThatThrownBy { dutyService.targets(actor, team) }
+            .isInstanceOf(AuthorizationDeniedException::class.java)
+        admin.update(
+            "update forena.team_permission_assignment set starts_on=current_date-2,ends_on=current_date-1 where person_id=?",
+            own,
+        )
+        assertThatThrownBy { dutyService.targets(actor, team) }
+            .isInstanceOf(AuthorizationDeniedException::class.java)
+        admin.update(
+            "update forena.team_permission_assignment set starts_on=current_date,ends_on=current_date where person_id=?",
+            own,
+        )
+
+        val proof =
+            requireNotNull(telegramIdentities.start(parent, true).pairingUrl)
+                .substringAfter("?start=")
+        val user = 921_000_000L + (parent.leastSignificantBits and 0xFFFFFF)
+        val link = telegramIdentities.connect(proof, user, user, 1)
+        val telegramActor = telegramIdentities.actor(link)
+        assertThatCode { dutyService.targets(telegramActor, team) }.doesNotThrowAnyException()
+        assertThatThrownBy { dutyService.targets(telegramActor, otherTeam) }
+            .isInstanceOf(AuthorizationDeniedException::class.java)
+
+        admin.update(
+            "update forena.team_permission_assignment set active=false where person_id=?",
+            own,
+        )
+        assertThatThrownBy { dutyService.targets(telegramActor, team) }
+            .isInstanceOf(AuthorizationDeniedException::class.java)
+        telegramIdentities.disconnect(parent)
+        assertThatThrownBy { dutyService.targets(telegramActor, team) }
+            .isInstanceOf(BadCredentialsException::class.java)
+    }
 
     @Test
     fun `personal club replies keep profiles private stream partial results and persist selected context`() {
@@ -472,8 +546,7 @@ class ApiTest {
 
     @Test
     fun `own age groups use only the linked self profile and keep child ages out of adult tone`() {
-        val identity = org.springframework.jdbc.core.simple.JdbcClient.create(jdbc)
-        val service = se.forena.api.identity.AssistantIdentityService(identity, contextSessions)
+        val service = assistantIdentity
         for ((age, expected) in
             listOf(12 to "under13", 13 to "13to17", 17 to "13to17", 18 to "adult")) {
             admin.update(

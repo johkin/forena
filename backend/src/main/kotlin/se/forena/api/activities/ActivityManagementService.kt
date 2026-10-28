@@ -3,8 +3,8 @@ package se.forena.api.activities
 import java.time.Instant
 import java.time.ZoneId
 import java.util.UUID
-import tools.jackson.databind.json.JsonMapper
 import org.springframework.security.access.AccessDeniedException
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Isolation
 import org.springframework.transaction.annotation.Transactional
@@ -12,10 +12,12 @@ import se.forena.api.activities.internal.*
 import se.forena.api.identity.Actor
 import se.forena.api.identity.DatabaseClockService
 import se.forena.api.identity.SessionService
+import tools.jackson.databind.json.JsonMapper
 
 @Service
 class ActivityManagementService(
     private val sessions: SessionService,
+    private val teamAccess: TeamAccessService,
     private val clock: DatabaseClockService,
     private val management: ManagementRepository,
     private val activities: ManagedActivityRepository,
@@ -31,63 +33,50 @@ class ActivityManagementService(
     private val dutyLifecycle: ActivityDutyLifecycleService
 ) {
     @Transactional(readOnly = true)
-    fun canManageMemory(actor: Actor, teamId: UUID): Boolean {
-        sessions.requireActive(actor)
-        val team = management.team(teamId) ?: return false
-        return allowed(actor,team,"assistant.memory.manage")
-    }
+    fun canManageMemory(actor: Actor, teamId: UUID): Boolean =
+        teamAccess.canManageMemory(actor, teamId)
 
     @Transactional(readOnly = true)
-    fun canManageRoster(actor: Actor, teamId: UUID): Boolean {
-        sessions.requireActive(actor)
-        val team = management.team(teamId) ?: return false
-        return allowed(actor,team,"roster.manage")
-    }
+    fun canManageRoster(actor: Actor, teamId: UUID): Boolean =
+        teamAccess.canManageRoster(actor, teamId)
 
     @Transactional(readOnly = true)
-    fun canManageInvitations(actor: Actor, teamId: UUID): Boolean {
-        sessions.requireActive(actor)
-        val team = management.team(teamId) ?: return false
-        return allowed(actor, team, "invitation.manage")
-    }
+    fun canManageInvitations(actor: Actor, teamId: UUID): Boolean =
+        teamAccess.canManageInvitations(actor, teamId)
 
     @Transactional(readOnly = true)
-    fun canManageAttendance(actor: Actor, teamId: UUID): Boolean {
-        sessions.requireActive(actor)
-        val team = management.team(teamId) ?: return false
-        return allowed(actor, team, "attendance.manage")
-    }
+    fun canManageAttendance(actor: Actor, teamId: UUID): Boolean =
+        teamAccess.canManageAttendance(actor, teamId)
 
     @Transactional(readOnly = true)
-    fun canManageActivity(actor: Actor, teamId: UUID): Boolean {
-        sessions.requireActive(actor)
-        val team = management.team(teamId) ?: return false
-        return allowed(actor, team, "activity.manage")
-    }
+    fun canManageActivity(actor: Actor, teamId: UUID): Boolean =
+        teamAccess.canManageActivities(actor, teamId)
 
     @Transactional(readOnly = true)
     fun teams(actor: Actor): List<ManagedTeam> {
         sessions.requireActive(actor)
-        return management.teams(actor.subject).filter { allowed(actor, it, "activity.manage") }.map { teamDto(actor, it) }
+        return management.teams(actor.subject).filter { allowed(actor, it, TeamPermission.MANAGE_ACTIVITIES) }.map { teamDto(actor, it) }
     }
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    @PreAuthorize("@teamAccess.canOpenActivityEditor(#actor, #teamId)")
     fun context(actor: Actor, teamId: UUID): ActivityEditorContext {
         sessions.requireActive(actor)
         val team = requireTeam(actor, teamId)
         val catalogue = types.catalogue(team.organizationId).filter { it.active && applicable(it, team) }
-        val members = if (allowed(actor, team, "invitation.manage")) participants(team) else emptyList()
+        val members = if (allowed(actor, team, TeamPermission.MANAGE_INVITATIONS)) participants(team) else emptyList()
         return ActivityEditorContext(teamDto(actor, team), catalogue.map {
             ManagedActivityType(it.id, it.name, it.slug, it.systemCategory, it.organizationId)
         }, members.map { ActivityParticipant(it.id, it.displayName, it.role) }, team.disciplineKey, team.sectionId,
             defaultRows(team).map { ActivityDefaultsRow(it.id, it.activityTypeId,
                 if (it.teamId == null) "section" else "team", it.teamId ?: requireNotNull(it.sectionId),
                 it.disciplineKey, it.version, it.revision, it.valuesJson) },
-            if (allowed(actor, team, "invitation.manage")) audienceGroups(team) else emptyList(),
+            if (allowed(actor, team, TeamPermission.MANAGE_INVITATIONS)) audienceGroups(team) else emptyList(),
             activities.findByTeamIdOrderByStartsAtAsc(teamId).filter { it.deletedAt == null }.map(::activityDto))
     }
 
     @Transactional
+    @PreAuthorize("@teamAccess.canCreateActivities(#actor, #command.teamId)")
     fun create(actor: Actor, command: ActivityCommand): ActivityResult {
         sessions.requireActive(actor)
         return createOccurrence(actor, command)
@@ -118,6 +107,7 @@ class ActivityManagementService(
     }
 
     @Transactional
+    @PreAuthorize("@teamAccess.canCreateActivities(#actor, #command.teamId)")
     fun createSeries(actor: Actor, command: ActivitySeriesCommand): ActivitySeriesResult {
         sessions.requireActive(actor)
         val team = requireTeam(actor, command.teamId)
@@ -143,7 +133,7 @@ class ActivityManagementService(
         val selectedResponsibilities = command.invitationSelection?.responsibilityTypeIds.orEmpty().distinct()
         val personIds = command.personIds.distinct()
         if (command.invitationMode != "none") {
-            if (!allowed(actor, team, "invitation.manage")) throw AccessDeniedException("Invitation permission required")
+            if (!allowed(actor, team, TeamPermission.MANAGE_INVITATIONS)) throw AccessDeniedException("Invitation permission required")
             val availableGroups = groups.findByTeamId(team.id)
             require(selectedGroups.all { id -> availableGroups.any { it.id == id && it.kind == "group" } })
             require(selectedResponsibilities.all { id -> availableGroups.any { it.id == id && it.kind == "responsibility" } })
@@ -186,6 +176,7 @@ class ActivityManagementService(
     }
 
     @Transactional
+    @PreAuthorize("@teamAccess.canManageActivity(#actor, #id)")
     fun update(actor: Actor, id: UUID, command: ActivityCommand): ActivityResult {
         val current = lock(actor, id)
         require(command.teamId == null || command.teamId == current.teamId)
@@ -221,6 +212,7 @@ class ActivityManagementService(
     }
 
     @Transactional
+    @PreAuthorize("@teamAccess.canManageActivity(#actor, #id)")
     fun cancel(actor: Actor, id: UUID, command: CancellationCommand): ActivityDisposition {
         val current = lock(actor, id)
         command.revision?.let { check(it == current.revision) }
@@ -250,6 +242,7 @@ class ActivityManagementService(
     }
 
     @Transactional(readOnly = true)
+    @PreAuthorize("@teamAccess.canManageActivity(#actor, #id)")
     fun disposition(actor: Actor, id: UUID): ActivityDeletionOptions {
         val row = activities.findById(id).orElseThrow { NoSuchElementException() }
         sessions.requireActive(actor)
@@ -275,13 +268,12 @@ class ActivityManagementService(
 
     private fun requireTeam(actor: Actor, id: UUID): ManagementTeamRow {
         val team = management.team(id) ?: throw NoSuchElementException()
-        if (!allowed(actor, team, "activity.manage")) throw AccessDeniedException("Activity permission required")
+        if (!allowed(actor, team, TeamPermission.MANAGE_ACTIVITIES)) throw AccessDeniedException("Activity permission required")
         return team
     }
 
-    private fun allowed(actor: Actor, team: ManagementTeamRow, permission: String): Boolean =
-        management.allowed(actor.subject, team.organizationId, team.id, permission,
-            clock.now().atZone(ZoneId.of(team.timeZone)).toLocalDate())
+    private fun allowed(actor: Actor, team: ManagementTeamRow, permission: TeamPermission): Boolean =
+        teamAccess.allowed(actor, team, permission)
 
     private fun participants(team: ManagementTeamRow) =
         management.participants(team.id, clock.now().atZone(ZoneId.of(team.timeZone)).toLocalDate())
@@ -319,7 +311,7 @@ class ActivityManagementService(
         } ?: throw IllegalArgumentException("Activity type unavailable")
 
     private fun teamDto(actor: Actor, row: ManagementTeamRow) = ManagedTeam(row.id, row.organizationId,
-        row.name, row.organizationName, row.timeZone, allowed(actor, row, "invitation.manage"))
+        row.name, row.organizationName, row.timeZone, allowed(actor, row, TeamPermission.MANAGE_INVITATIONS))
 
     private fun activityDto(row: ManagedActivityEntity) = ManagedActivity(row.activityId, row.organizationId,
         row.teamId, row.activityTypeId, row.title, row.description, row.location,

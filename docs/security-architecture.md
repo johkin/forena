@@ -857,6 +857,13 @@ M09:s bootstrap kräver en aktiv, verifierad Spring-identitet vars e-postadress 
 
 Systemrollen ger strukturadministration och plattforms-/klubbrollhantering, inte automatiska verksamhetsrättigheter. Klubb-, sektions- och lagbehörighet är skilda, kontrolleras mot aktuell databas och är avgränsade till rätt mål. Lagrollen har egna giltighetsdatum och egen personkoppling; målsmansåtkomst och vanlig läsning ger inte skrivrätt. Rollens egen lästilldelning kan återkallas utan att oberoende läsåtkomst påverkas.
 
+Lagets metodskydd använder `@PreAuthorize` och den gemensamma komponenten
+`TeamAccessService`, med typade `TeamPermission`-värden. Kontrollerna görs för
+den serverhärledda aktören och den verkliga lag-/aktivitetskopplingen. Samma
+komponent används för webb, MCP och Telegram samt för förnyad kontroll efter
+låsning. Proxygränser och kanalidentitet beskrivs i
+[implementationsguiden](migration/assistant-telegram.md#metodskydd-och-lagbehörigheter).
+
 Rolländringar sparar aktör, operation, mål, berört konto, kanal, tid och korrelations-ID utan lösenord, token eller privata kommentarer. Sista administratören skyddas och beroenden hindrar strukturradering. Befintliga verifierade konton kan tilldelas roller efter uttrycklig bekräftelse; e-post används för att identifiera det valda kontot, aldrig för automatisk sammanslagning med befintliga personer. [Körguide](migration/activity-management.md).
 
 ## Svarstid och ledarundantag i Kotlin

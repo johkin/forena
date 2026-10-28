@@ -2,26 +2,17 @@ package se.forena.api.telegram
 
 import java.util.UUID
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 import se.forena.api.activities.AssistantActivityService
 import se.forena.api.identity.*
 import se.forena.api.notifications.InvitationChannel
-
-data class TelegramNotification(
-    val id: UUID,
-    val invitationId: UUID,
-    val recipientSubject: UUID,
-    val body: String,
-    val activityRevision: Long?,
-    val invitationRevision: Long?,
-)
+import se.forena.api.telegram.internal.TelegramDeliveryRepository
 
 @Service
 @org.springframework.core.annotation.Order(0)
 class TelegramDelivery(
-    private val jdbc: JdbcClient,
+    private val repository: TelegramDeliveryRepository,
     private val transactions: TransactionTemplate,
     private val identities: TelegramIdentityService,
     private val activity: AssistantActivityService,
@@ -33,15 +24,7 @@ class TelegramDelivery(
 
     override fun deliver(notificationId: UUID): Boolean {
         if (!enabled || !identities.available()) return false
-        if (
-            jdbc
-                .sql(
-                    "select paused_until>clock_timestamp() from forena.telegram_transport_state where id=true"
-                )
-                .query(Boolean::class.java)
-                .single()
-        )
-            return false
+        if (repository.isPaused()) return false
         return try {
             attempt(notificationId)
         } catch (_: Exception) {
@@ -50,15 +33,7 @@ class TelegramDelivery(
     }
 
     private fun attempt(notificationId: UUID): Boolean {
-        val notification =
-            jdbc
-                .sql(
-                    "select id,invitation_id,recipient_subject,body,activity_revision,invitation_revision from forena.invitation_notification where id=:id"
-                )
-                .param("id", notificationId)
-                .query(TelegramNotification::class.java)
-                .optional()
-                .orElse(null) ?: return false
+        val notification = repository.findNotification(notificationId).orElse(null) ?: return false
         val connection =
             identities.connectionForSubject(notification.recipientSubject) ?: return false
         val actor = identities.actor(connection)
@@ -70,38 +45,22 @@ class TelegramDelivery(
             return false
         val claim =
             transactions.execute {
-                val existing =
-                    jdbc
-                        .sql(
-                            "select * from forena.telegram_invitation where notification_id=:id for update"
-                        )
-                        .param("id", notificationId)
-                        .query(TelegramInvitation::class.java)
-                        .optional()
-                        .orElse(null)
+                val existing = repository.findLockedNotification(notificationId).orElse(null)
                 if (existing != null) return@execute existing.id to false
                 val id = UUID.randomUUID()
                 // Claim before I/O. A killed request is uncertain and uses fallback, never a second
                 // Telegram send.
-                jdbc
-                    .sql(
-                        "insert into forena.telegram_invitation(id,notification_id,link_id,invitation_id,invitation_revision,activity_revision,state) values(:id,:notification,:link,:invitation,:revision,:activityRevision,'uncertain')"
-                    )
-                    .param("id", id)
-                    .param("notification", notificationId)
-                    .param("link", connection.id)
-                    .param("invitation", notification.invitationId)
-                    .param("revision", current.invitationRevision)
-                    .param("activityRevision", current.activityRevision)
-                    .update()
+                repository.claimDelivery(
+                    id,
+                    notificationId,
+                    connection.id,
+                    notification.invitationId,
+                    current.invitationRevision,
+                    current.activityRevision,
+                )
                 id to true
             } ?: return false
-        val entry =
-            jdbc
-                .sql("select * from forena.telegram_invitation where id=:id")
-                .param("id", claim.first)
-                .query(TelegramInvitation::class.java)
-                .single()
+        val entry = repository.findDelivery(claim.first)
         if (entry.state == "sent") return true
         if (!claim.second) return false
         identities.actor(connection)
@@ -144,24 +103,12 @@ class TelegramDelivery(
                     val retry =
                         error.headers.getFirst("Retry-After")?.toLongOrNull()?.coerceIn(1, 86400)
                             ?: 30
-                    jdbc
-                        .sql(
-                            "update forena.telegram_transport_state set paused_until=greatest(paused_until,clock_timestamp()+:retry*interval '1 second') where id=true"
-                        )
-                        .param("retry", retry)
-                        .update()
+                    repository.pause(retry)
                 }
                 return false
             }
         transactions.executeWithoutResult {
-            jdbc
-                .sql(
-                    "update forena.telegram_invitation set state='sent',message_id=:message where id=:id and link_id=:link"
-                )
-                .param("message", result.path("message_id").asLong())
-                .param("id", claim.first)
-                .param("link", connection.id)
-                .update()
+            repository.markSent(result.path("message_id").asLong(), claim.first, connection.id)
         }
         return true
     }

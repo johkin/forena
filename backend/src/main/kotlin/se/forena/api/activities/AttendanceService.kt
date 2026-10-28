@@ -3,18 +3,20 @@ package se.forena.api.activities
 import java.time.ZoneId
 import java.util.UUID
 import org.springframework.security.access.AccessDeniedException
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Isolation
 import org.springframework.transaction.annotation.Transactional
 import se.forena.api.activities.internal.*
 import se.forena.api.identity.Actor
 import se.forena.api.identity.DatabaseClockService
-import se.forena.api.identity.SessionService
 import se.forena.api.identity.RosterDirectory
+import se.forena.api.identity.SessionService
 
 @Service
 class AttendanceService(
     private val sessions: SessionService,
+    private val teamAccess: TeamAccessService,
     private val clock: DatabaseClockService,
     private val activities: ManagedActivityRepository,
     private val management: ManagementRepository,
@@ -38,6 +40,7 @@ class AttendanceService(
     }
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    @PreAuthorize("@teamAccess.canReportAttendance(#actor, #id)")
     fun snapshot(actor: Actor, id: UUID): AttendanceSnapshot {
         val (activity, team) = authorize(actor, id)
         val report = attendance.report(id)
@@ -56,6 +59,7 @@ class AttendanceService(
     }
 
     @Transactional
+    @PreAuthorize("@teamAccess.canReportAttendance(#actor, #id)")
     fun save(actor: Actor, id: UUID, command: AttendanceCommand) {
         authorize(actor, id)
         // The activity lock also serializes the first report and cancellation/activity edits.
@@ -92,6 +96,7 @@ class AttendanceService(
 
     /** A channel proposal changes only explicitly assessed people; unknown others stay unknown. */
     @Transactional
+    @PreAuthorize("@teamAccess.canReportAttendance(#actor, #id)")
     fun patch(actor: Actor, id: UUID, revision: Long, changes: Map<UUID,Boolean>) {
         authorize(actor,id)
         check(activities.findLockedByActivityId(id)!=null)
@@ -135,6 +140,6 @@ class AttendanceService(
         return activity to team
     }
 
-    private fun allowed(actor: Actor, team: ManagementTeamRow) = management.allowed(actor.subject,
-        team.organizationId, team.id, "attendance.manage", clock.now().atZone(ZoneId.of(team.timeZone)).toLocalDate())
+    private fun allowed(actor: Actor, team: ManagementTeamRow) =
+        teamAccess.allowed(actor, team, TeamPermission.MANAGE_ATTENDANCE)
 }

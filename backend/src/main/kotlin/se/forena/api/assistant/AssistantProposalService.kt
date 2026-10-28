@@ -9,14 +9,6 @@ import se.forena.api.assistant.internal.ConversationRepository
 import se.forena.api.identity.*
 import tools.jackson.databind.json.JsonMapper
 
-data class ConfirmationResult(
-    val confirmed: Boolean,
-    val message: String,
-    val proposal: AssistantProposal? = null,
-)
-
-data class ReminderDraft(val activityId: UUID)
-
 @Service
 class AssistantProposalService(
     private val conversations: ConversationRepository,

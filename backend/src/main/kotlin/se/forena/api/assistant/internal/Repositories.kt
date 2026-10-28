@@ -1,11 +1,15 @@
 package se.forena.api.assistant.internal
 
+import java.util.Optional
 import java.util.UUID
+import org.springframework.data.jdbc.repository.query.Modifying
+import org.springframework.data.jdbc.repository.query.Query
+import org.springframework.data.repository.Repository as DataRepository
 import org.springframework.jdbc.core.simple.JdbcClient
-import org.springframework.stereotype.Repository
+import org.springframework.stereotype.Repository as JdbcRepository
 import se.forena.api.assistant.*
 
-@Repository
+@JdbcRepository
 class ConversationRepository(private val jdbc: JdbcClient) {
     fun lockAccount(subject: UUID) {
         jdbc
@@ -337,4 +341,147 @@ class ConversationRepository(private val jdbc: JdbcClient) {
             .param("subject", subject)
             .update()
     }
+}
+
+interface AssistantDocumentRepository : DataRepository<AssistantDocumentEntity, UUID> {
+    @Query(
+        """select id,title,content,audience from forena.assistant_document
+            where organization_id=:org and (section_id is null or section_id=:section) and (team_id is null or team_id=:team)
+            and (audience='all' or (audience='players' and :player) or (audience='guardians' and :guardian) or (audience='leaders' and :leader))
+            order by title,id limit 11"""
+    )
+    fun findVisibleDocuments(
+        org: UUID,
+        team: UUID?,
+        section: UUID?,
+        player: Boolean,
+        guardian: Boolean,
+        leader: Boolean,
+    ): List<AssistantDocument>
+}
+
+interface AssistantMemoryRepository : DataRepository<AssistantMemoryEntity, UUID> {
+    @Query(
+        """select * from forena.assistant_memory where
+            subject is not distinct from cast(:subject as uuid) and organization_id is not distinct from cast(:org as uuid)
+            and section_id is not distinct from cast(:section as uuid) and team_id is not distinct from cast(:team as uuid)
+            order by created_at,id"""
+    )
+    fun findInScope(subject: UUID?, org: UUID?, section: UUID?, team: UUID?): List<AssistantMemory>
+
+    @Modifying
+    @Query("update forena.assistant_memory set content=:content,revision=revision+1 where id=:id")
+    fun updateContent(content: String, id: UUID): Int
+
+    @Modifying @Query("delete from forena.assistant_memory where id=:id") fun delete(id: UUID): Int
+
+    @Query("select * from forena.assistant_memory where id=:id for update")
+    fun findLocked(id: UUID): Optional<AssistantMemory>
+
+    @Modifying
+    @Query(
+        "insert into forena.assistant_memory_audit(memory_id,actor_subject,operation) values(:id,:actor,:operation)"
+    )
+    fun auditChange(id: UUID, actor: UUID, operation: String): Int
+}
+
+interface AssistantProfileRepository : DataRepository<AssistantProfileEntity, UUID> {
+    @Query(
+        "select exists(select 1 from forena.organization_member where subject=:subject and organization_id=:org and active and role in ('owner','admin'))"
+    )
+    fun isClubAdministrator(subject: UUID, org: UUID): Boolean
+
+    @Query(
+        "select exists(select 1 from forena.section_administrator where subject=:subject and section_id=:section and organization_id=:org and active)"
+    )
+    fun isSectionAdministrator(subject: UUID, section: UUID, org: UUID): Boolean
+
+    @Query("select exists(select 1 from forena.section where id=:section and organization_id=:org)")
+    fun sectionBelongsToOrganization(section: UUID, org: UUID): Boolean
+
+    @Query(
+        "select name,personality,instructions,revision from forena.assistant_profile where organization_id=:org"
+    )
+    fun findProfile(org: UUID): Optional<AssistantProfile>
+
+    @Query("select id from forena.organization where id=:org for update")
+    fun lockOrganization(org: UUID): UUID
+
+    @Query("select revision from forena.assistant_profile where organization_id=:org")
+    fun profileRevision(org: UUID): Optional<Long>
+
+    @Modifying
+    @Query(
+        "insert into forena.assistant_profile(organization_id,name,personality,instructions,revision) values(:org,:name,:personality,:instructions,:revision) on conflict(organization_id) do update set name=:name,personality=:personality,instructions=:instructions,revision=:revision"
+    )
+    fun saveProfile(
+        org: UUID,
+        name: String,
+        personality: String,
+        instructions: String,
+        revision: Long,
+    ): Int
+
+    @Modifying
+    @Query(
+        "insert into forena.assistant_profile_audit(subject,organization_id,revision) values(:subject,:org,:revision)"
+    )
+    fun auditProfile(subject: UUID, org: UUID, revision: Long): Int
+
+    @Query(
+        "select instructions,revision from forena.assistant_section_profile where section_id=:section"
+    )
+    fun findSectionProfile(section: UUID): Optional<SectionProfile>
+
+    @Query("select id from forena.section where id=:section for update")
+    fun lockSection(section: UUID): UUID
+
+    @Query("select revision from forena.assistant_section_profile where section_id=:section")
+    fun sectionRevision(section: UUID): Optional<Long>
+
+    @Modifying
+    @Query(
+        "insert into forena.assistant_section_profile(section_id,instructions,revision) values(:section,:instructions,:revision) on conflict(section_id) do update set instructions=:instructions,revision=:revision"
+    )
+    fun saveSectionProfile(section: UUID, instructions: String, revision: Long): Int
+
+    @Modifying
+    @Query(
+        "insert into forena.assistant_profile_audit(subject,organization_id,section_id,revision) values(:subject,:org,:section,:revision)"
+    )
+    fun auditSectionProfile(subject: UUID, org: UUID, section: UUID, revision: Long): Int
+
+    @Query(
+        "select exists(select 1 from forena.team where id=:team and organization_id=:org and (:noSection or section_id=:section))"
+    )
+    fun teamMatchesScope(team: UUID?, org: UUID?, noSection: Boolean, section: UUID?): Boolean
+
+    @Modifying
+    @Query(
+        "insert into forena.assistant_memory(id,subject,organization_id,section_id,team_id,discipline_key,content,created_by) values(:id,:subject,:org,:section,:team,:discipline,:content,:actor)"
+    )
+    fun insertMemory(
+        id: UUID,
+        subject: UUID?,
+        org: UUID?,
+        section: UUID?,
+        team: UUID?,
+        discipline: String?,
+        content: String,
+        actor: UUID,
+    ): Int
+
+    @Query(
+        """select * from forena.assistant_memory where subject=:subject or
+            (subject is null and organization_id=:org and (section_id is null or section_id=:section)
+            and (team_id is null or team_id=:team) and (discipline_key is null or discipline_key=:discipline))
+            order by (team_id is not null),(section_id is not null),created_at,id"""
+    )
+    fun findApplicableMemories(
+        subject: UUID,
+        org: UUID?,
+        section: UUID?,
+        team: UUID?,
+        discipline: String?,
+    ): List<AssistantMemory>
 }

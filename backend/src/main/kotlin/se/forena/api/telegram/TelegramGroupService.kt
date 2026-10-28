@@ -2,40 +2,18 @@ package se.forena.api.telegram
 
 import java.util.UUID
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.security.access.AccessDeniedException
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 import se.forena.api.activities.ActivityManagementService
 import se.forena.api.activities.PersonalOverviewService
 import se.forena.api.identity.*
-
-data class TelegramGroup(
-    val id: UUID,
-    val teamId: UUID,
-    val kind: String,
-    val chatId: Long,
-    val linkId: UUID,
-    val inviteUrl: String,
-)
-
-data class GroupPairing(
-    val fingerprint: String,
-    val teamId: UUID,
-    val kind: String,
-    val linkId: UUID,
-    val expiresAt: java.time.Instant,
-)
-
-data class GroupCommand(val kind: String)
-
-data class GroupLink(val kind: String, val url: String)
-
-data class GroupStart(val pairingUrl: String)
+import se.forena.api.telegram.internal.TelegramGroupRepository
 
 @Service
 class TelegramGroupService(
-    private val jdbc: JdbcClient,
+    private val repository: TelegramGroupRepository,
     private val identities: TelegramIdentityService,
     private val management: ActivityManagementService,
     private val overview: PersonalOverviewService,
@@ -52,16 +30,13 @@ class TelegramGroupService(
             overview.overview(actor).teams.singleOrNull { it.id == team }
                 ?: throw AccessDeniedException("Team access required")
         val leader = "leader" in entry.roles || management.canManageRoster(actor, team)
-        return jdbc
-            .sql("select * from forena.telegram_group where team_id=:team")
-            .param("team", team)
-            .query(TelegramGroup::class.java)
-            .list()
-            .map { requireNotNull(it) }
+        return repository
+            .findForTeam(team)
             .filter { group -> (group.kind == "team" || leader) && validOwner(group) }
             .map { GroupLink(it.kind, it.inviteUrl) }
     }
 
+    @PreAuthorize("@teamAccess.canManageRoster(#actor, #team)")
     fun start(actor: Actor, team: UUID, kind: String): GroupStart =
         requireNotNull(
             transactions.execute {
@@ -74,35 +49,25 @@ class TelegramGroupService(
                         ?: throw IllegalStateException("Connect Telegram first")
                 identities.actor(link)
                 val proof = identities.proof()
-                jdbc
-                    .sql(
-                        "insert into forena.telegram_group_pairing(fingerprint,team_id,kind,link_id,expires_at) values(:hash,:team,:kind,:link,:expiry)"
-                    )
-                    .param("hash", identities.fingerprint(proof))
-                    .param("team", team)
-                    .param("kind", kind)
-                    .param("link", link.id)
-                    .param("expiry", java.sql.Timestamp.from(clock.now().plusSeconds(600)))
-                    .update()
+                repository.createPairing(
+                    identities.fingerprint(proof),
+                    team,
+                    kind,
+                    link.id,
+                    clock.now().plusSeconds(600),
+                )
                 GroupStart("https://t.me/$username?startgroup=g_$proof&admin=invite_users")
             }
         )
 
+    @PreAuthorize("@teamAccess.canManageRoster(#actor, #team)")
     fun disconnect(actor: Actor, team: UUID, kind: String) = transactions.executeWithoutResult {
         sessions.requireActive(actor)
         require(kind in listOf("team", "leaders"))
         if (!management.canManageRoster(actor, team))
             throw AccessDeniedException("Roster permission required")
-        jdbc
-            .sql("delete from forena.telegram_group where team_id=:team and kind=:kind")
-            .param("team", team)
-            .param("kind", kind)
-            .update()
-        jdbc
-            .sql("delete from forena.telegram_group_pairing where team_id=:team and kind=:kind")
-            .param("team", team)
-            .param("kind", kind)
-            .update()
+        repository.deleteForTeam(team, kind)
+        repository.deletePairingsForTeam(team, kind)
     }
 
     fun message(user: Long, chat: Long, text: String) {
@@ -113,13 +78,7 @@ class TelegramGroupService(
             return
         }
         if (text != "/forena" && text != "/forena@$username") return
-        val group =
-            jdbc
-                .sql("select * from forena.telegram_group where chat_id=:chat")
-                .param("chat", chat)
-                .query(TelegramGroup::class.java)
-                .optional()
-                .orElse(null) ?: return
+        val group = repository.findByChat(chat).orElse(null) ?: return
         if (!validOwner(group)) return
         client.call(
             "sendMessage",
@@ -148,15 +107,8 @@ class TelegramGroupService(
                 ?: throw AccessDeniedException("Verified identity required")
         val actor = identities.actor(link)
         val pairing =
-            jdbc
-                .sql(
-                    "select * from forena.telegram_group_pairing where fingerprint=:hash and link_id=:link and expires_at>:now"
-                )
-                .param("hash", identities.fingerprint(proof))
-                .param("link", link.id)
-                .param("now", java.sql.Timestamp.from(clock.now()))
-                .query(GroupPairing::class.java)
-                .optional()
+            repository
+                .findPairing(identities.fingerprint(proof), link.id, clock.now())
                 .orElseThrow { AccessDeniedException("Invalid proof") }
         if (!management.canManageRoster(actor, pairing.teamId))
             throw AccessDeniedException("Roster permission required")
@@ -184,26 +136,16 @@ class TelegramGroupService(
             identities.actor(link)
             check(management.canManageRoster(actor, pairing.teamId))
             check(
-                jdbc
-                    .sql(
-                        "delete from forena.telegram_group_pairing where fingerprint=:hash and link_id=:link and expires_at>:now"
-                    )
-                    .param("hash", identities.fingerprint(proof))
-                    .param("link", link.id)
-                    .param("now", java.sql.Timestamp.from(clock.now()))
-                    .update() == 1
+                repository.consumePairing(identities.fingerprint(proof), link.id, clock.now()) == 1
             )
-            jdbc
-                .sql(
-                    "insert into forena.telegram_group(id,team_id,kind,chat_id,link_id,invite_url) values(:id,:team,:kind,:chat,:link,:url)"
-                )
-                .param("id", UUID.randomUUID())
-                .param("team", pairing.teamId)
-                .param("kind", pairing.kind)
-                .param("chat", chat)
-                .param("link", link.id)
-                .param("url", url)
-                .update()
+            repository.insertGroup(
+                UUID.randomUUID(),
+                pairing.teamId,
+                pairing.kind,
+                chat,
+                link.id,
+                url,
+            )
         }
         client.call(
             "sendMessage",
@@ -217,15 +159,7 @@ class TelegramGroupService(
 
     private fun validOwner(group: TelegramGroup): Boolean =
         try {
-            val connection =
-                jdbc
-                    .sql(
-                        "select id,subject,telegram_user_id,chat_id,auth_version from forena.telegram_link where id=:id"
-                    )
-                    .param("id", group.linkId)
-                    .query(TelegramConnection::class.java)
-                    .optional()
-                    .orElse(null)
+            val connection = repository.findOwnerConnection(group.linkId).orElse(null)
             connection != null &&
                 management.canManageRoster(identities.actor(connection), group.teamId)
         } catch (_: Exception) {
@@ -233,9 +167,6 @@ class TelegramGroupService(
         }
 
     fun removeChat(chat: Long) {
-        jdbc
-            .sql("delete from forena.telegram_group where chat_id=:chat")
-            .param("chat", chat)
-            .update()
+        repository.deleteByChat(chat)
     }
 }

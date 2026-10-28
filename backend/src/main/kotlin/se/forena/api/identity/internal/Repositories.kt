@@ -1,15 +1,15 @@
 package se.forena.api.identity.internal
 
-import se.forena.api.identity.NotificationRecipient
-import se.forena.api.identity.RosterGuardian
-import se.forena.api.identity.RosterSelf
-
 import java.time.Instant
 import java.util.Optional
 import java.util.UUID
 import org.springframework.data.jdbc.repository.query.Modifying
 import org.springframework.data.jdbc.repository.query.Query
 import org.springframework.data.repository.Repository
+import se.forena.api.identity.*
+import se.forena.api.identity.NotificationRecipient
+import se.forena.api.identity.RosterGuardian
+import se.forena.api.identity.RosterSelf
 
 interface AccountRepository : Repository<AccountEntity, UUID> {
     fun existsBySubjectAndEnabledTrue(subject: UUID): Boolean
@@ -103,4 +103,120 @@ interface RosterIdentityRepository : Repository<PersonEntity, UUID> {
     @Modifying
     @Query("update forena.person set display_name=:name where id=:person and organization_id=:organization")
     fun rename(organization: UUID, person: UUID, name: String): Int
+}
+
+interface AssistantIdentityRepository : Repository<PersonEntity, UUID> {
+    @Query(
+        """select o.id,o.name,o.time_zone from forena.organization o where
+            exists(select 1 from forena.person_access a where a.organization_id=o.id and a.subject=:subject and a.active)
+            or exists(select 1 from forena.organization_member m where m.organization_id=o.id and m.subject=:subject and m.active)
+            or exists(select 1 from forena.section_administrator s where s.organization_id=o.id and s.subject=:subject and s.active)
+            or exists(select 1 from forena.team_permission_assignment p join forena.person_access a
+            on a.person_id=p.person_id and a.organization_id=p.organization_id and a.kind='self' and a.active
+            where a.subject=:subject and p.organization_id=o.id and p.active
+            and p.starts_on<=(clock_timestamp() at time zone o.time_zone)::date
+            and (p.ends_on is null or p.ends_on>=(clock_timestamp() at time zone o.time_zone)::date))
+            order by o.name,o.id"""
+    )
+    fun findOrganizations(subject: UUID): List<AssistantOrganization>
+
+    @Query(
+        """select distinct extract(year from age((clock_timestamp() at time zone o.time_zone)::date,p.birth_date))::int
+            from forena.person p join forena.person_access a on a.person_id=p.id and a.organization_id=p.organization_id
+            join forena.organization o on o.id=p.organization_id
+            where a.subject=:subject and a.kind='self' and a.active and p.birth_date is not null
+            and (:allOrganizations or p.organization_id=:org)"""
+    )
+    fun findOwnAges(subject: UUID, allOrganizations: Boolean, org: UUID?): List<Int>
+
+    @Query(
+        """select distinct m.role from forena.team_membership m join forena.person_access a
+            on a.person_id=m.person_id and a.organization_id=m.organization_id and a.active and a.kind='self'
+            join forena.organization o on o.id=m.organization_id
+            where a.subject=:subject and m.active and (:allTeams or m.team_id=:team)
+            and (:allOrganizations or m.organization_id=:org)
+            and m.starts_on<=(clock_timestamp() at time zone o.time_zone)::date
+            and (m.ends_on is null or m.ends_on>=(clock_timestamp() at time zone o.time_zone)::date)"""
+    )
+    fun findOwnTeamRoles(
+        subject: UUID,
+        team: UUID?,
+        allTeams: Boolean,
+        org: UUID?,
+        allOrganizations: Boolean,
+    ): List<String>
+
+    @Query(
+        "select exists(select 1 from forena.person_access where subject=:subject and active and kind='guardian' and (:allOrganizations or organization_id=:org))"
+    )
+    fun hasGuardianAccess(subject: UUID, allOrganizations: Boolean, org: UUID?): Boolean
+}
+
+interface TelegramIdentityRepository : Repository<TelegramConnectionEntity, UUID> {
+    @Query("select subject from forena.account where subject=:subject for update")
+    fun lockAccount(subject: UUID): UUID
+
+    @Modifying
+    @Query("delete from forena.telegram_pairing where subject=:subject or expires_at<=:now")
+    fun deleteExpiredPairings(subject: UUID, now: Instant): Int
+
+    @Modifying
+    @Query(
+        "insert into forena.telegram_pairing(fingerprint,subject,expires_at) values(:hash,:subject,:expiry)"
+    )
+    fun createPairing(hash: String, subject: UUID, expiry: Instant): Int
+
+    @Query(
+        "delete from forena.telegram_pairing where fingerprint=:hash and expires_at>:now returning subject"
+    )
+    fun consumePairing(hash: String, now: Instant): Optional<UUID>
+
+    @Modifying
+    @Query(
+        "insert into forena.telegram_link(id,subject,telegram_user_id,chat_id,auth_version,last_update) values(:id,:subject,:user,:chat,:version,:update)"
+    )
+    fun createConnection(
+        id: UUID,
+        subject: UUID,
+        user: Long,
+        chat: Long,
+        version: Long,
+        update: Long,
+    ): Int
+
+    @Modifying
+    @Query("delete from forena.telegram_pairing where subject=:subject")
+    fun deletePairings(subject: UUID): Int
+
+    @Modifying
+    @Query("delete from forena.telegram_link where subject=:subject")
+    fun deleteConnection(subject: UUID): Int
+
+    @Modifying
+    @Query(
+        "update forena.assistant_proposal set state='invalid' where subject=:subject and state='pending' and conversation_id in (select id from forena.assistant_conversation where subject=:subject and channel='telegram')"
+    )
+    fun invalidateProposals(subject: UUID): Int
+
+    @Modifying
+    @Query(
+        "update forena.assistant_conversation set active=false where subject=:subject and channel='telegram'"
+    )
+    fun archiveConversations(subject: UUID): Int
+
+    @Query(
+        "select id,subject,telegram_user_id,chat_id,auth_version from forena.telegram_link where telegram_user_id=:user and chat_id=:chat"
+    )
+    fun findConnection(user: Long, chat: Long): Optional<TelegramConnection>
+
+    @Query(
+        "select id,subject,telegram_user_id,chat_id,auth_version from forena.telegram_link where subject=:subject"
+    )
+    fun findConnectionForSubject(subject: UUID): Optional<TelegramConnection>
+
+    @Modifying
+    @Query(
+        "update forena.telegram_link set last_update=:update where id=:id and last_update<:update"
+    )
+    fun advanceUpdate(update: Long, id: UUID): Int
 }

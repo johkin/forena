@@ -4,19 +4,19 @@ import jakarta.servlet.http.HttpServletRequest
 import java.util.UUID
 import org.springframework.http.CacheControl
 import org.springframework.http.ResponseEntity
-import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RestController
 import se.forena.api.assistant.*
 import se.forena.api.identity.*
+import se.forena.api.telegram.internal.TelegramWebhookRepository
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
 
 @Service
 class TelegramWebhookService(
-    private val jdbc: JdbcClient,
+    private val repository: TelegramWebhookRepository,
     private val transactions: TransactionTemplate,
     private val identities: TelegramIdentityService,
     private val assistant: AssistantService,
@@ -32,12 +32,7 @@ class TelegramWebhookService(
         require(id >= 0)
         val admitted =
             transactions.execute {
-                jdbc
-                    .sql(
-                        "insert into forena.telegram_update(id,state) values(:id,'processing') on conflict(id) do nothing"
-                    )
-                    .param("id", id)
-                    .update() == 1
+                repository.claimUpdate(id) == 1
             } == true
         if (!admitted) return
         try {
@@ -328,11 +323,7 @@ class TelegramWebhookService(
 
     private fun finish(id: Long, state: String) {
         transactions.executeWithoutResult {
-            jdbc
-                .sql("update forena.telegram_update set state=:state where id=:id")
-                .param("state", state)
-                .param("id", id)
-                .update()
+            repository.finishUpdate(state, id)
         }
     }
 }

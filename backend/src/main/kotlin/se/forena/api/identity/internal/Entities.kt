@@ -26,3 +26,6 @@ data class PersonEntity(@Id val id: UUID, val organizationId: UUID, val displayN
 
 @Table(value = "native_user", schema = "forena")
 data class UserEntity(@Id val subject: UUID, val email: String, val passwordHash: String, val verified: Boolean, val authVersion: Long)
+
+@Table(value = "telegram_link", schema = "forena")
+data class TelegramConnectionEntity(@Id val id: UUID)

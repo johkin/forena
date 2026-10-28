@@ -174,3 +174,5 @@ data class AttendanceHistoryRow(val id: UUID, val revision: Long, val actorName:
 data class AttendanceChangeRow(
     val historyId: UUID, val personId: UUID, val displayName: String, val previousPresent: Boolean?, val present: Boolean
 )
+
+@Table(value = "activity_duty", schema = "forena") data class ActivityDutyEntity(@Id val id: UUID)

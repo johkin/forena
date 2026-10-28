@@ -4,6 +4,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.util.UUID
 import org.springframework.security.access.AccessDeniedException
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Isolation
 import org.springframework.transaction.annotation.Transactional
@@ -16,6 +17,7 @@ import se.forena.api.identity.SessionService
 @Service
 class TeamRosterService(
     private val sessions: SessionService,
+    private val teamAccess: TeamAccessService,
     private val clock: DatabaseClockService,
     private val management: ManagementRepository,
     private val roster: RosterRepository,
@@ -31,6 +33,7 @@ class TeamRosterService(
     }
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    @PreAuthorize("@teamAccess.canAdministerRoster(#actor, #teamId)")
     fun snapshot(actor: Actor, teamId: UUID): TeamRosterSnapshot {
         val team = authorize(actor, teamId)
         val members = roster.members(teamId, today(team)).groupBy { it.id }
@@ -63,6 +66,7 @@ class TeamRosterService(
     }
 
     @Transactional
+    @PreAuthorize("@teamAccess.canAdministerRoster(#actor, #teamId)")
     fun rename(actor: Actor, teamId: UUID, personId: UUID, command: RosterNameCommand) {
         val team = lock(actor, teamId)
         if (roster.members(teamId, today(team)).none { it.id == personId }) throw NoSuchElementException()
@@ -71,6 +75,7 @@ class TeamRosterService(
     }
 
     @Transactional
+    @PreAuthorize("@teamAccess.canAdministerRoster(#actor, #teamId)")
     fun createGroup(actor: Actor, teamId: UUID, command: RosterGroupCommand): RosterSubgroup {
         val team = lock(actor, teamId)
         validate(team, command)
@@ -82,6 +87,7 @@ class TeamRosterService(
     }
 
     @Transactional
+    @PreAuthorize("@teamAccess.canAdministerRoster(#actor, #teamId)")
     fun updateGroup(actor: Actor, teamId: UUID, id: UUID, command: RosterGroupCommand) {
         val team = lock(actor, teamId)
         validate(team, command)
@@ -94,6 +100,7 @@ class TeamRosterService(
     }
 
     @Transactional
+    @PreAuthorize("@teamAccess.canAdministerRoster(#actor, #teamId)")
     fun deleteGroup(actor: Actor, teamId: UUID, id: UUID, revision: Long) {
         val team = lock(actor, teamId)
         val group = groups.findByTeamId(teamId).singleOrNull { it.id == id && it.kind == "group" }
@@ -125,7 +132,7 @@ class TeamRosterService(
     }
 
     private fun allowed(actor: Actor, team: ManagementTeamRow) =
-        management.allowed(actor.subject, team.organizationId, team.id, "roster.manage", today(team))
+        teamAccess.allowed(actor, team, TeamPermission.MANAGE_ROSTER)
 
     private fun today(team: ManagementTeamRow): LocalDate = clock.now().atZone(ZoneId.of(team.timeZone)).toLocalDate()
 }
