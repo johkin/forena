@@ -6,6 +6,21 @@ funktionalitet som den befintliga Next-appen. En fungerande pilot för ett flöd
 befintlig kod/tester är referens; nya upptäckta funktioner läggs till här.
 Backendens personåtkomst förblir generell enligt ADR-020.
 
+Uttryckligt undantag 2026-10-28: endast systemadministratörer ska få skapa
+klubbar i målappen. Next-appens självregistrering av klubbar ska inte migreras
+till första versionen. Klubbadministratör tilldelas eller bjuds in separat.
+Beslutet är specificerat, inte implementerat genom specarbetet; se
+[administrationsspecen, K-007](../specs/administration.md#krav).
+
+Ytterligare uttryckligt undantag i samma intervju, K-020: målappen ska ha
+en gemensam klubbadminroll med samma mandat för alla klubbadministratörer.
+Nexts separata klubbägarroll ska inte införas. Även detta är ett specbeslut,
+inte en kodändring inom intervjun.
+
+Beslut i administrationsintervjun, K-034: målappens lag ska inte ha någon
+säsongsuppgift. Nexts säsongsfält på lag ska därför inte migreras som ett
+administrationsfält. Historik och datumgiltiga medlemskap ska fortsatt bevaras.
+
 Användarens mobilbilder fastställer [startsidemålet](personal-homepage-target.md):
 Min översikt, Behöver svar, Agenda/Kalender, Kommande aktiviteter samt Mina lag
 och föreningar. Samma aktivitet kan visas i båda aktivitetssektionerna, med

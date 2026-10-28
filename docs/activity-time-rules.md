@@ -49,6 +49,14 @@ referera till `deadline`. Cirkulära regler kan inte uttryckas.
 
 ## Tidszon och sommartid
 
+Målbeslut för React/Kotlin 2026-10-28: alla klubbar ska använda
+`Europe/Stockholm` utan tidszonsval i administrationen. Aktiviteters klockslag
+ska visas i svensk tid oavsett enhetens tidszon, med automatisk sommar-/vintertid.
+Se [administrationsspecen, K-029](specs/administration.md#krav). Beslutet är
+specificerat men inte implementerat inom specintervjun. Den äldre appens
+konfigurerbara föreningstidszon beskrivs nedan; reglerna för kalenderaritmetik
+och faktisk tid gäller fortsatt med den uttryckliga zonen i målappen.
+
 Alla kalenderoperationer använder den uttryckligt angivna IANA-tidszonen för
 föreningen. Serverns eller webbläsarens tidszon ska aldrig användas implicit.
 `d` flyttar kalenderdatum; `h` och `m` flyttar faktisk tid. Därför kan
