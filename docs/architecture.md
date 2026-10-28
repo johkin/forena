@@ -70,8 +70,8 @@ Tjänsterna äger verksamhetsregler och transaktionsgränser.
 `TeamAccessService` är den gemensamma behörighetskomponenten för lag. Den använder
 `TeamPermission` och aktuell kontokoppling, tilldelning och giltighetsdatum i
 lagets tidszon. Spring Securitys metodskydd anropar komponenten genom
-`@PreAuthorize`. Samma regler används vid filtrering och vid omprövning efter
-låsning. Se [mönstret och dess säkerhetsgränser](migration/assistant-telegram.md#metodskydd-och-lagbehörigheter).
+`@PreAuthorize`. Samma regler används vid filtrering och när ett nytt
+verksamhetskommando godkänns före låsväntan (ADR-026). Se [mönstret och dess säkerhetsgränser](migration/assistant-telegram.md#metodskydd-och-lagbehörigheter).
 
 Kotlin-modulen `email` har ett leverantörsoberoende `EmailSender`-gränssnitt.
 Resends REST-adapter och hemlighetskonfiguration är samlade i `email.internal`.
@@ -127,7 +127,7 @@ Svarsräknaren räknar aktiviteter inom valt lag, inte personer.
 `invitationResponseOpen` styr svarsknapparna. Sista svarstid stänger vanliga
 svar; verifierad `activity.manage` för just laget ger undantag fram till slutet.
 Snapshotens `can_manage_activities` kommer från samma behörighetskälla som
-redigeraren. `InvitationService` kontrollerar aktuella rättigheter efter radlås;
+redigeraren. `InvitationService` godkänner rättigheterna före radlås;
 personåtkomst krävs separat och inställda/avslutade aktiviteter förblir låsta.
 Lag identifieras
 med ID från aktivitetsunderlaget, även för gästkallelser utan laggenväg.
@@ -181,7 +181,8 @@ för discipliner och inloggningsinbjudningar som en profilutökning; dessa flöd
 `activity.manage` och delegerad personåtkomst. Klubb-, sektions- och lagadmin
 följer samma befintliga verksamhetsgränser som aktivitetsadministrationen;
 systemadmin ger ingen automatisk åtkomst. Lagets datum beräknas i föreningens
-tidszon. Skrivningar låser laget och kontrollerar session och behörighet igen.
+tidszon. Skrivningar godkänner session och behörighet före laglåset och
+återläser därefter aktuell verksamhetsdata.
 
 Undergrupper återanvänder `team_audience_group` med `kind=group` och
 `team_audience_member`, så schemalagda kallelser använder samma sparade urval.
@@ -826,7 +827,7 @@ Konfiguration, begränsningar och granskningsflöde finns i [Telegram](telegram.
 
 Den nya appen har nu modulen `administration` för bootstrap, klubb-/sektions-/lagstruktur och administrativa roller. Den använder identitetsmodulens publika katalog för verifierade konton och uttryckliga egna personkopplingar. `activities` äger aktivitetens kommandon, typer, förval, schemaposter, audit och signalversion. Inga interna repositories anropas över modulgränser och inga modulcykler införs.
 
-Alla administrativa skrivningar serialiseras mot en gemensam låsrad och kontrollerar session/rättigheter efter låsväntan. Aktivitetsskrivningar använder samma livscykellås som kallelsesvar. Struktur och rollfakta lagras i det privata Liquibase-schemat; äldre Next-appens databas och auth är separata. [Flöden och gränser](migration/activity-management.md).
+Alla administrativa skrivningar godkänner session och rättigheter före låsväntan och serialiseras sedan mot en gemensam låsrad. Strukturens invariantskontroller görs efter låset. Aktivitetsskrivningar använder samma livscykellås som kallelsesvar. Struktur och rollfakta lagras i det privata Liquibase-schemat; äldre Next-appens databas och auth är separata. [Flöden och gränser](migration/activity-management.md).
 
 ### Aktivitetsserier och ledarens översikt i React/Kotlin
 
@@ -901,7 +902,7 @@ Ett misslyckat anrop ger fel och återförsök, inte en tom kalender.
 Faktisk närvaro kommer från närvarorapporten och personposterna. I Kotlin finns
 motsvarande beständiga `attendance_report`/`attendance_record` samt en adapter
 till samma befintliga `AttendanceModal` som Next använder. Rapportering kräver
-`attendance.manage`, kontrolleras efter aktivitetslås och sparas atomärt.
+`attendance.manage` före aktivitetslåset och sparas atomärt efter kontroll av aktuell data.
 En saknad rapport betyder okänt. Kalenderläsningen lämnar endast närvaro för
 kontots aktuellt tillgängliga personer. Supabase-hjälparen för målgrupp lämnar
 endast aktivitets-ID och klassificering inom aktuell föreningsåtkomst, aldrig
@@ -930,7 +931,8 @@ Tillägget skapar ingen medlems-/kallelserelation.
 
 Aktivitetslås och rapportrevision 0 före första rapporten serialiserar både
 första registrering, korrigering och inställning. Session och `attendance.manage`
-för det faktiska laget kontrolleras igen efter låset. Rapport, personposter och
+för det faktiska laget kontrolleras innan kommandot väntar på låset. Aktuell
+revision, livscykel och personurval kontrolleras efter låset. Rapport, personposter och
 historik skrivs i samma Spring-transaktion. Historikens namn är snapshots;
 `identity` lämnar rapportörens visningsnamn genom `RosterDirectory`.
 Saknas en aktiv egen person används ”Användare utan visningsnamn”; kontots

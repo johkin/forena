@@ -27,6 +27,21 @@ class TelegramIdentityService(
     fun available() = enabled && username.matches(Regex("[A-Za-z0-9_]{5,32}"))
 
     @Transactional(readOnly = true)
+    fun acceptsPairing(proof: String): Boolean {
+        if (!available() || !proof.matches(Regex("[A-Za-z0-9_-]{43}"))) return false
+        val subject = repository.pairingSubject(fingerprint(proof), clock.now()).orElse(null)
+            ?: return false
+        accounts.requireUser(subject)
+        return connectionForSubject(subject) == null
+    }
+
+    fun acceptsSender(user: Long): Boolean {
+        val connection = connection(user, user) ?: return false
+        actor(connection)
+        return true
+    }
+
+    @Transactional(readOnly = true)
     fun settings(subject: UUID) =
         TelegramSettings(connectionForSubject(subject) != null, available())
 

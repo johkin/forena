@@ -153,6 +153,9 @@ interface AssistantIdentityRepository : Repository<PersonEntity, UUID> {
 }
 
 interface TelegramIdentityRepository : Repository<TelegramConnectionEntity, UUID> {
+    @Query("select subject from forena.telegram_pairing where fingerprint=:hash and expires_at>:now")
+    fun pairingSubject(hash: String, now: Instant): Optional<UUID>
+
     @Query("select subject from forena.account where subject=:subject for update")
     fun lockAccount(subject: UUID): UUID
 

@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionTemplate
 import se.forena.api.activities.ActivityManagementService
 import se.forena.api.activities.PersonalOverviewService
@@ -24,6 +25,25 @@ class TelegramGroupService(
     private val web: BrowserSessionSettings,
     @Value("\${FORENA_TELEGRAM_BOT_USERNAME:}") private val username: String,
 ) {
+    fun knownChat(chat: Long): Boolean = repository.findByChat(chat).isPresent
+
+    @Transactional(readOnly = true)
+    fun acceptsMessage(user: Long, chat: Long, text: String): Boolean {
+        if (chat >= 0) return false
+        val link = identities.connection(user, user) ?: return false
+        val actor = identities.actor(link)
+        val start = Regex("^/start(?:@[A-Za-z0-9_]+)? g_([A-Za-z0-9_-]{43})$").matchEntire(text)
+        if (start != null) {
+            val pairing =
+                repository
+                    .findPairing(identities.fingerprint(start.groupValues[1]), link.id, clock.now())
+                    .orElse(null) ?: return false
+            return management.canManageRoster(actor, pairing.teamId)
+        }
+        if (text != "/forena" && text != "/forena@$username") return false
+        return repository.findByChat(chat).orElse(null)?.let { validOwner(it) } == true
+    }
+
     fun links(actor: Actor, team: UUID): List<GroupLink> {
         sessions.requireActive(actor)
         val entry =
@@ -107,9 +127,13 @@ class TelegramGroupService(
                 ?: throw AccessDeniedException("Verified identity required")
         val actor = identities.actor(link)
         val pairing =
-            repository
-                .findPairing(identities.fingerprint(proof), link.id, clock.now())
-                .orElseThrow { AccessDeniedException("Invalid proof") }
+            requireNotNull(
+                transactions.execute {
+                    repository
+                        .findPairing(identities.fingerprint(proof), link.id, clock.now())
+                        .orElseThrow { AccessDeniedException("Invalid proof") }
+                }
+            )
         if (!management.canManageRoster(actor, pairing.teamId))
             throw AccessDeniedException("Roster permission required")
         val status =

@@ -119,9 +119,11 @@ class TeamRosterService(
     }
 
     private fun lock(actor: Actor, teamId: UUID): ManagementTeamRow {
-        authorize(actor, teamId)
+        val admittedTeam = authorize(actor, teamId)
         check(management.lockTeam(teamId) != null)
-        return authorize(actor, teamId)
+        val team = management.team(teamId) ?: throw NoSuchElementException()
+        check(team.organizationId == admittedTeam.organizationId)
+        return team
     }
 
     private fun authorize(actor: Actor, teamId: UUID): ManagementTeamRow {

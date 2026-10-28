@@ -860,8 +860,8 @@ Systemrollen ger strukturadministration och plattforms-/klubbrollhantering, inte
 Lagets metodskydd använder `@PreAuthorize` och den gemensamma komponenten
 `TeamAccessService`, med typade `TeamPermission`-värden. Kontrollerna görs för
 den serverhärledda aktören och den verkliga lag-/aktivitetskopplingen. Samma
-komponent används för webb, MCP och Telegram samt för förnyad kontroll efter
-låsning. Proxygränser och kanalidentitet beskrivs i
+komponent används för webb, MCP och Telegram när respektive nytt kommando
+godkänns före låsväntan (ADR-026). Proxygränser och kanalidentitet beskrivs i
 [implementationsguiden](migration/assistant-telegram.md#metodskydd-och-lagbehörigheter).
 
 Rolländringar sparar aktör, operation, mål, berört konto, kanal, tid och korrelations-ID utan lösenord, token eller privata kommentarer. Sista administratören skyddas och beroenden hindrar strukturradering. Befintliga verifierade konton kan tilldelas roller efter uttrycklig bekräftelse; e-post används för att identifiera det valda kontot, aldrig för automatisk sammanslagning med befintliga personer. [Körguide](migration/activity-management.md).
@@ -870,7 +870,7 @@ Rolländringar sparar aktör, operation, mål, berört konto, kanal, tid och kor
 
 `InvitationService` stoppar svar och kommentarsändringar vid sista svarstid.
 Aktuell `activity.manage` för aktivitetens lag ger ett undantag. Behörigheten
-kontrolleras genom `ActivityManagementService` efter väntan på aktivitetslåset,
+kontrolleras genom `ActivityManagementService` före väntan på aktivitetslåset,
 med samma person-/lag-/datumregler som redigeraren. En guardianship-koppling
 eller en visad Ledare-etikett är inte en behörighetskälla.
 
@@ -886,7 +886,7 @@ API:t för `/api/teams/{id}/roster` kräver aktiv session och serverkontrollerad
 `activity.manage` ger inte i sig rättigheten. Personbundna tilldelningar kräver
 aktuell egen personkoppling; delegation är ingen administrativ fullmakt.
 Systemadmin ger ingen automatisk verksamhetsåtkomst. Skrivningar kontrollerar
-session och rättighet före och efter lagets radlås.
+session och rättighet före lagets radlås. Därefter återläses gruppens data och revision.
 
 Alla personval verifieras mot lagets datumgiltiga aktiva trupp. Grupp-ID,
 organisation och `kind=group` kontrolleras på servern. Grupprevision och ett
@@ -911,7 +911,7 @@ aktivitets-ID och ledarklassificering inom autentiserad föreningsåtkomst.
 
 Kotlin återanvänder närvarodialogen genom en kontobunden transport.
 `attendance.manage` kontrolleras separat från aktivitets-/kallelserätt;
-rapportering låser aktiviteten, kontrollerar session och behörighet igen,
+rapportering godkänner session och behörighet före låsväntan, låser aktiviteten,
 validerar personurvalet och sparar rapport och närvaro i en transaktion.
 Närvarospecens K-003, K-006 och K-012 utökar detta tidigare begränsade urval:
 `attendance.manage` ger den fullständiga närvarolistan med kallade gäster och
@@ -935,7 +935,9 @@ Kallelsens aktivitetsroll och egen/delegerad personåtkomst ger ingen sådan
 rättighet. Klubb-, sektions- och lagadministration följer samma behörighetskälla
 som övriga verksamhetskommandon; systemrollen ger ingen automatisk åtkomst.
 
-Skrivningar kontrollerar session och rättighet före och efter aktivitetslåset.
+Skrivningar godkänner session och rättighet före aktivitetslåset. Ett godkänt
+kommando får slutföras även om åtkomsten återkallas under väntan; nästa
+kommando kräver ny kontroll enligt ADR-026.
 Starttid, inställningsstatus, personurval och rapportrevision kontrolleras på
 servern. Revision 0 betyder att ingen rapport har lästs; den kan inte skriva
 över en redan skapad rapport. Tom närvaro kräver uttrycklig bekräftelse.

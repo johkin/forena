@@ -26,6 +26,7 @@ const calendarScope=()=>({
  people:current===0?invitations.map((invitation,index)=>({id:invitation.person_id,displayName:invitation.name,isSelf:index===0,teamIds:[team.id]})):[],
  teams:current===0?[{id:team.id,name:`${organization.name} · ${team.name}`}]:[],
 });
+const conversation={id,organizationId:null,channel:"web",active:true,updatedAt:"2030-10-20T00:00:00Z"};
 const view=()=>({user:{id:users[current],email:current===0?'family@example.invalid':'other@example.invalid'}});
 async function assertOnlyCalendarPreferences(page){
  const entries=await page.evaluate(()=>Object.entries(localStorage));
@@ -93,6 +94,8 @@ await context.route('**/api/**',async route=>{
   assert.equal(new URL(req.url()).searchParams.get('month'),'2030-10');
   return route.fulfill({json:{reference_time:'2030-10-20T00:00:00Z',activities:current===0?activities():[],...calendarScope()}});
  }
+ if(path==='/api/assistant/conversations')return route.fulfill({json:current===0?[conversation]:[]});
+ if(path===`/api/assistant/conversations/${id}`)return route.fulfill(current===0?{json:{conversation,messages:[{id:users[0],role:'assistant',sender:'Förena',organizationId:null,content:'Ett sparat samtal.'}],proposals:[]}}:{status:404,json:{error:'Samtalet saknas.'}});
  if(path==='/api/admin/overview')return route.fulfill({json:{platformAdmin:false,canBootstrap:false,platformAdministrators:[],clubs:[]}});
  if(path==='/api/me/managed-teams')return route.fulfill({json:current===0?[managedTeam]:[]});
  if(path===`/api/teams/${team.id}/roster/access`)return route.fulfill({json:false});
@@ -293,6 +296,18 @@ try{
  await page.getByRole('button',{name:'Logga in',exact:true}).click();
  await expect(page).toHaveURL(new URL(`/activities/${id}`,base).href);await expect(row).toHaveCount(1);
  assert.equal(await page.evaluate(()=>window.documentInstance),'redirect-document');
+ // A deep-linked conversation must leave the personal overview visible when closed.
+ for(const width of [390,1280]){
+  await page.setViewportSize({width,height:900});
+  await page.goto(new URL(`/assistant?conversation=${id}`,base).href);
+  const assistantDialog=page.getByRole('dialog');
+  await expect(assistantDialog.getByText('Ett sparat samtal.',{exact:true})).toBeVisible();
+  await assistantDialog.getByRole('button',{name:'Stäng assistenten',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Min översikt',exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Kallelser',exact:true})).toHaveCount(0);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ }
+ await page.setViewportSize({width:390,height:844});
  // The settings page uses a real browser creation ceremony with the virtual authenticator.
  await page.goto(new URL('/account/security',base).href);
  await expect(page.getByRole('heading',{name:'Inloggning',exact:true})).toBeVisible();

@@ -58,6 +58,8 @@ länkar ligger på varsin rad med minst 44 px hög tryckyta, även i mobilpanele
 ## Beständig assistent i React/Kotlin
 
 Min översikt har en personlig assistent och klubbvyer separata klubbsamtal.
+En direktlänk till `/assistant?conversation=…` visar Min översikt bakom dialogen,
+så att samma personliga sida finns kvar när samtalet stängs.
 Sparade samtal, namngivna avsändare, progressiva svar, förslagsgranskning och
 separata bekräftelseknappar använder samma produktionskomponenter på
 `/components`. Next och Vite delar launcher, assistentheader och CSS.

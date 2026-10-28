@@ -47,7 +47,6 @@ class AssistantProfileService(
                 profile.instructions.length <= 6000
         )
         repository.lockOrganization(org)
-        requireAdmin(actor, org)
         val old = repository.profileRevision(org).orElse(0L)
         check(old == profile.revision)
         repository.saveProfile(
@@ -72,7 +71,6 @@ class AssistantProfileService(
         requireAdmin(actor, org, section)
         require(profile.instructions.length <= 6000)
         repository.lockSection(section)
-        requireAdmin(actor, org, section)
         val old = repository.sectionRevision(section).orElse(0L)
         check(old == profile.revision)
         repository.saveSectionProfile(section, profile.instructions, old + 1)

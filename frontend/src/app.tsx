@@ -173,7 +173,7 @@ export function App({ config }: { config: PublicConfig }) {
   const workspaceMatch = /^\/(organizations|teams)\/([^/]+)$/.exec(path);
   const workspaceId=z.uuid().safeParse(workspaceMatch?.[2]);
   const workspace=workspaceMatch && workspaceId.success ? {kind:workspaceMatch[1]==="teams" ? "team" as const : "organization" as const,id:workspaceId.data} : undefined;
-  const homePath=path==="/" || path==="/login" || Boolean(workspace) || path==="/notifications";
+  const homePath=path==="/" || path==="/login" || path==="/assistant" || Boolean(workspace) || path==="/notifications";
   const match = /^\/activities\/([^/]+)$/.exec(path);
   const activityId = match?.[1] ?? (path === "/migration/participation" ? config.activityId : undefined);
   const validActivity = z.uuid().safeParse(activityId);
@@ -185,7 +185,7 @@ export function App({ config }: { config: PublicConfig }) {
   const rosterMatch = /^\/teams\/([^/]+)\/members$/.exec(path);
   const rosterTeam = z.uuid().safeParse(rosterMatch?.[1]);
   const rosterPage = Boolean(rosterMatch && rosterTeam.success);
-  const knownPath = rosterPage || administrationPage || managementPage || securityPage || path === "/assistant" || homePath || path === "/migration/participation" || Boolean(match);
+  const knownPath = rosterPage || administrationPage || managementPage || securityPage || homePath || path === "/migration/participation" || Boolean(match);
   async function logout() {
     setPending(true); setError(undefined);
     try {

@@ -30,6 +30,10 @@ class ActivityDutyService(
     @PreAuthorize("@teamAccess.canManageInvitations(#actor, #command.teamId)")
     fun preview(actor: Actor, command: ActivityDutyCommand): List<DutyTarget> {
         authorize(actor, command.teamId)
+        return previewTargets(command)
+    }
+
+    private fun previewTargets(command: ActivityDutyCommand): List<DutyTarget> {
         require(
             command.activityIds.size in 1..100 &&
                 command.activityIds.distinct().size == command.activityIds.size
@@ -59,11 +63,12 @@ class ActivityDutyService(
     @Transactional
     @PreAuthorize("@teamAccess.canManageInvitations(#actor, #command.teamId)")
     fun save(actor: Actor, command: ActivityDutyCommand) {
-        preview(actor, command)
+        authorize(actor, command.teamId)
+        previewTargets(command)
         command.activityIds.sorted().forEach {
             check(activities.findLockedByActivityId(it) != null)
         }
-        val rows = preview(actor, command)
+        val rows = previewTargets(command)
         rows
             .filter { !it.exists }
             .forEach { activity ->

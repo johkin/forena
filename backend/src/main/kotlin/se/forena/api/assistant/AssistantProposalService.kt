@@ -164,7 +164,6 @@ class AssistantProposalService(
             }
             else -> throw IllegalArgumentException()
         }
-        sessions.requireActive(actor)
         conversations.finish(actor.subject, id)
         return ConfirmationResult(
             true,

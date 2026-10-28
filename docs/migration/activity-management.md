@@ -70,10 +70,12 @@ oregistrerade konton är fortsatt ett separat paritetsområde.
 - Rollens läsbehörighet har en egen tilldelningsrad; återkallning påverkar inte
   andra, oberoende läsrättigheter. Återkallad egen personkoppling nekar lagadmin.
 - Alla adminändringar kontrollerar aktiv session och behörighet före det globala
-  låset och igen efter låsväntan. Övriga adminändringar har egna beständiga
+  låset. Ett godkänt kommando får slutföras även om åtkomsten återkallas under
+  väntan (ADR-026). Övriga adminändringar har egna beständiga
   globala, klient- och kontobudgetar, separat från bootstrap och inloggning.
   En skrivskyddad behörighetskontroll sker före budgetuttag.
-- Backend kontrollerar aktiv session och aktuella rättigheter igen efter låsväntan.
+- Backend återläser verksamhetsdata och kontrollerar strukturens skyddsregler
+  efter låsväntan. Nya kommandon kräver ny sessions- och behörighetskontroll.
   Webben binder anrop till aktuellt konto och behåller Origin-/CSRF-skydden.
 - Sista systemadmin och sista klubbadmin kan inte återkallas. Sista sektionen,
   sektioner med beroenden och lag med medlemmar eller sparat underlag skyddas.

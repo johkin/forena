@@ -361,6 +361,9 @@ interface AssistantDocumentRepository : DataRepository<AssistantDocumentEntity, 
 }
 
 interface AssistantMemoryRepository : DataRepository<AssistantMemoryEntity, UUID> {
+    @Query("select * from forena.assistant_memory where id=:id")
+    fun find(id: UUID): Optional<AssistantMemory>
+
     @Query(
         """select * from forena.assistant_memory where
             subject is not distinct from cast(:subject as uuid) and organization_id is not distinct from cast(:org as uuid)

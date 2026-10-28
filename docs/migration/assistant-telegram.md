@@ -55,8 +55,11 @@ roller i en session eller token.
 
 Spring AOP skyddar anrop genom tjänstens proxy. Interna anrop inom samma instans
 går inte genom proxyn; tjänsternas explicita kontroller finns därför kvar.
-Skrivningar kontrollerar session och behörighet igen efter låsväntan, inom den
-ägande transaktionen. Läslistor filtreras genom samma behörighetskomponent.
+Session och behörighet avgörs när respektive verksamhetskommando godkänns före
+låsväntan. Ett godkänt kommando får slutföras även om åtkomsten återkallas under
+väntan. Nästa kommando kontrolleras på nytt. Efter låset kontrolleras aktuell
+revision, målidentitet och verksamhetsvillkor inom den ägande transaktionen.
+Läslistor filtreras genom samma behörighetskomponent. Se [ADR-026](decisions.md#adr-026-behörighet-gäller-när-verksamhetskommandot-godkänns).
 Systemadministration och målsmansåtkomst innebär inte automatiskt lagets
 skrivrättigheter.
 
@@ -64,6 +67,26 @@ SQL-frågorna finns i modulernas `internal/Repositories.kt`, med typade
 Spring Data JDBC-interface och `@Query`/`@Modifying`. Tjänsterna äger
 transaktioner, förhandsgranskning, validering och extern leverans.
 Arkitekturtestet hindrar att `JdbcClient` återinförs i `@Service`-klasser.
+
+## Inkommande Telegram-uppdateringar och gallring
+
+Webhookens hemliga header verifieras av Spring Security. Därefter kontrolleras
+avsändaren före lagring och hantering: en aktiv Telegram-koppling till ett
+aktivt konto, eller en giltig, oanvänd och ännu inte utgången privat kopplingslänk.
+Gruppkoppling kräver dessutom att engångslänken hör till avsändarens koppling
+och att avsändaren får administrera det aktuella lagets roster. Okänd avsändare,
+ogiltig länk, botmeddelande och irrelevant grupptext ignoreras utan lagring,
+modellanrop eller Telegram-svar. Medlems-/migreringshändelser för en redan
+registrerad chatt får städa bort dess koppling även när Telegram-administratören
+som utlöste händelsen saknar Förena-konto.
+
+En godkänd uppdatering dedupliceras som tidigare genom sitt Telegram-ID före
+sidoeffekter. Slutförda, misslyckade och avbrutna uppdateringar behålls i sju
+dygn. `TelegramUpdateRetentionService` gallrar därefter högst 1 000 poster per
+körning, normalt varje minut, med index och `SKIP LOCKED`. Intervallet kan
+ställas med `forena.telegram.retention-delay-ms`. Det är endast Förenas
+dedupliceringsposter som gallras; sparade samtal, meddelanden och Telegrams
+egna kopior berörs inte. Migration 021 lägger till gallringsindexet.
 
 ## Konfiguration
 

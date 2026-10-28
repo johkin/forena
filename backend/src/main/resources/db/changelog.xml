@@ -21,4 +21,5 @@
  <changeSet id="api-018-calendar" author="forena"><sqlFile path="calendar.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
  <changeSet id="api-019-attendance" author="forena"><sqlFile path="attendance.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
  <changeSet id="api-020-assistant-telegram" author="forena"><sqlFile path="assistant-telegram.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
+ <changeSet id="api-021-telegram-update-retention" author="forena"><sqlFile path="telegram-update-retention.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
 </databaseChangeLog>

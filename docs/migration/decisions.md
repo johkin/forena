@@ -3,6 +3,20 @@
 Status anger målbeslut för kommande implementation, inte redan införd teknik.
 Källkodsverifierat nuläge finns i [inventeringen](inventory.md).
 
+## ADR-026: Behörighet gäller när verksamhetskommandot godkänns
+
+Beslut 2026-10-28 på användarens instruktion: kontrollera session, personkoppling
+och ändamålets rättighet innan verksamhetskommandot väntar på sitt skrivlås.
+Ett godkänt kommando får slutföras även om sessionen eller rättigheten återkallas
+under väntan. Nästa kommando kräver ny kontroll. Detta ersätter tidigare krav på
+omkontroll av dessa rättigheter efter låsväntan i Kotlin-flödena.
+
+Efter låset återläses verksamhetsdata. Revision, oförändrad målidentitet,
+inställning, sluttid, svarstid, deltagarurval och strukturens beroenden
+kontrolleras fortfarande när de är relevanta. Låsning och transaktioner bevaras.
+Ett nytt knapptryck på ett sparat assistentförslag är ett nytt kommando och
+ärver aldrig behörigheten från när förslaget skapades.
+
 ## ADR-025: Springs standardkomponenter som förstahandsval
 
 Beslut 2026-10-23 på användarens instruktion: använd så mycket som möjligt av

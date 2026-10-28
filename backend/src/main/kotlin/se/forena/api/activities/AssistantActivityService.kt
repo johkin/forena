@@ -187,25 +187,7 @@ class AssistantActivityService(
         expected: Map<UUID, Long>,
         responder: InvitationService,
     ) {
-        // Every actor/target is authorized by the same application command used on the web.
-        for ((id, _) in changes.sortedBy { it.first.toString() }) {
-            val row =
-                invitations.findById(id).orElseThrow {
-                    AccessDeniedException("Invitation unavailable")
-                }
-            if (!access.canActFor(actor, row.personId, row.organizationId))
-                throw AccessDeniedException("Invitation unavailable")
-            check(activities.findLockedByActivityId(row.activityId) != null)
-            val current =
-                invitations.findLockedByIdAndOrganizationIdAndActivityIdAndPersonId(
-                    id,
-                    row.organizationId,
-                    row.activityId,
-                    row.personId,
-                ) ?: throw AccessDeniedException("Invitation unavailable")
-            check(current.revision == expected[id])
-        }
-        changes.forEach { (id, change) -> responder.respond(actor, id, change) }
+        responder.respondBatch(actor, changes, expected)
     }
 
     @Transactional
@@ -214,10 +196,11 @@ class AssistantActivityService(
         if (!management.canManageInvitations(actor, activity.teamId))
             throw AccessDeniedException("Invitation permission required")
         check(activities.findLockedByActivityId(id) != null)
-        sessions.requireActive(actor)
-        check(management.canManageInvitations(actor, activity.teamId))
         val now = clock.now()
         val current = activities.findById(id).orElseThrow { NoSuchElementException() }
+        check(
+            current.teamId == activity.teamId && current.organizationId == activity.organizationId
+        )
         check(
             current.deletedAt == null &&
                 current.status == "scheduled" &&
@@ -225,7 +208,7 @@ class AssistantActivityService(
                 (current.responseDueAt == null || current.responseDueAt > now) &&
                 (current.invitationSendAt == null || current.invitationSendAt <= now)
         )
-        val pending = invitations(actor, id).filter { it.response == "pending" }
+        val pending = repository.findInvitations(id).filter { it.response == "pending" }
         check(pending.isNotEmpty())
         check(!repository.hasPendingReminder(id))
         repository.scheduleReminder(
@@ -240,8 +223,8 @@ class AssistantActivityService(
     @Transactional
     fun lockActivity(actor: Actor, id: UUID) {
         activity(actor, id)
-        check(activities.findLockedByActivityId(id) != null)
-        sessions.requireActive(actor)
+        val current = activities.findLockedByActivityId(id) ?: throw NoSuchElementException()
+        if (current.deletedAt != null) throw NoSuchElementException()
     }
 
     @Transactional(readOnly = true)

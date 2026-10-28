@@ -354,8 +354,12 @@ verifieras för relevanta spelar-, vårdnadshavar- och ledarroller.
   aktiva Telegram-kontexten.
 - AK-029 (K-030): Utgånget eller återanvänt kopplingsbevis, fel
   webhookhemlighet eller främmande avsändare ska inte ge koppling eller
-  verksamhetsändring. Borttagen målsmansrelation, bortkopplat konto och
-  äldre update får inte ändra ett svar. Återkoppling återupplivar inte
+  verksamhetsändring. Främmande avsändare och ogiltiga kopplingsbevis ska
+  avvisas före beständig deduplicering och extern hantering. Giltiga
+  uppdateringars dedupliceringsposter gallras efter sju dygn i begränsade
+  batcher enligt användarens komplettering 2026-10-28. Borttagen målsmansrelation eller bortkopplat konto stoppar ett nytt
+  verksamhetskommando; äldre update får inte ändra ett svar. Behörighet för
+  ett redan godkänt kommando gäller enligt ADR-026. Återkoppling återupplivar inte
   gamla knappar. Två kallade barn ska ge två separata privata kallelser.
 - AK-030 (K-030): Gruppkoppling utan nödvändig Förena-behörighet eller
   Telegram-administratörsstatus ska nekas. Gruppmedlemskap eller
@@ -382,7 +386,7 @@ verifieras för relevanta spelar-, vårdnadshavar- och ledarroller.
 | AK-025 | Beständig Telegram-kontext och ny fråga vid gammalt/otydligt aktivitetsval. Servern godtar inte modellens tidigare aktivitetsval som ett nytt uttryckligt val efter datumbyte. |
 | AK-026–AK-027 | Låsning, underlagsjämförelse och delad närvaropatch. Partiellt närvaroprov verifierar att okända personer och kallelsesvar lämnas oförändrade samt att gammal revision nekas. |
 | AK-028 | En aktiv Telegram-dialog; tidigare dialoger visas/raderas i Förena utan att återupptas i Telegram. |
-| AK-029–AK-031 | Hashat tidsbegränsat engångsbevis, verifierad avsändare/kopplingsgeneration, deduplicering, uppdateringsordning och aktuella domänbehörigheter. Automatiska prov täcker utgångna/återanvända bevis, fel privat chatt, återkoppling och dubblett-update. Fullt liveprotokoll återstår. |
+| AK-029–AK-031 | Hashat tidsbegränsat engångsbevis, verifierad avsändare/kopplingsgeneration, deduplicering, uppdateringsordning och aktuella domänbehörigheter. Automatiska prov täcker utgångna/återanvända bevis, fel privat chatt, återkoppling och dubblett-update. `ApiTest` verifierar även att okända/bot-/inaktiva avsändare och ogiltiga länkar inte lagras eller når externa adaptrar, samt att gallring tar högst 1 000 äldre poster åt gången och bevarar färska poster. Fullt liveprotokoll återstår. |
 
 Notifieringsordningen Telegram → push → e-post och faktisk leveranskanal
 provas i `NotificationTest`. `WebPushEncryptionTest` verifierar AES128GCM/VAPID

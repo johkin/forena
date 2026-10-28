@@ -61,10 +61,7 @@ class AttendanceService(
     @Transactional
     @PreAuthorize("@teamAccess.canReportAttendance(#actor, #id)")
     fun save(actor: Actor, id: UUID, command: AttendanceCommand) {
-        authorize(actor, id)
-        // The activity lock also serializes the first report and cancellation/activity edits.
-        check(activities.findLockedByActivityId(id) != null)
-        val (activity, team) = authorize(actor, id)
+        val (activity, team) = lock(actor, id)
         check(activity.status != "cancelled" && !clock.now().isBefore(activity.startsAt))
         val report = attendance.report(id)
         check(command.revision == (report?.revision ?: 0L))
@@ -98,9 +95,7 @@ class AttendanceService(
     @Transactional
     @PreAuthorize("@teamAccess.canReportAttendance(#actor, #id)")
     fun patch(actor: Actor, id: UUID, revision: Long, changes: Map<UUID,Boolean>) {
-        authorize(actor,id)
-        check(activities.findLockedByActivityId(id)!=null)
-        val (activity,team) = authorize(actor,id)
+        val (activity,team) = lock(actor,id)
         check(activity.status!="cancelled" && !clock.now().isBefore(activity.startsAt))
         val report = attendance.report(id)
         check(revision==(report?.revision ?: 0L))
@@ -130,6 +125,18 @@ class AttendanceService(
     private fun candidates(team: ManagementTeamRow): List<AttendancePerson> =
         team.sectionId?.let { attendance.candidates(team.organizationId, it,
             clock.now().atZone(ZoneId.of(team.timeZone)).toLocalDate()) }.orEmpty()
+
+    private fun lock(actor: Actor, id: UUID): Pair<ManagedActivityEntity, ManagementTeamRow> {
+        val (_, admittedTeam) = authorize(actor, id)
+        val activity = activities.findLockedByActivityId(id) ?: throw NoSuchElementException()
+        if (activity.deletedAt != null) throw NoSuchElementException()
+        check(
+            activity.teamId == admittedTeam.id &&
+                activity.organizationId == admittedTeam.organizationId
+        )
+        val team = management.team(activity.teamId) ?: throw NoSuchElementException()
+        return activity to team
+    }
 
     private fun authorize(actor: Actor, id: UUID): Pair<ManagedActivityEntity, ManagementTeamRow> {
         sessions.requireActive(actor)

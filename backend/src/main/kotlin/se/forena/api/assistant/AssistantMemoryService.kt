@@ -51,7 +51,7 @@ class AssistantMemoryService(
 
     private fun authorize(actor: Actor, id: UUID): AssistantMemory {
         sessions.requireActive(actor)
-        val memory = repository.findLocked(id).orElseThrow { NoSuchElementException() }
+        val memory = repository.find(id).orElseThrow { NoSuchElementException() }
         if (memory.subject != null && memory.subject != actor.subject)
             throw AccessDeniedException("Private memory")
         val scope =
@@ -72,7 +72,15 @@ class AssistantMemoryService(
                 memory.content,
             ),
         )
-        return memory
+        val current = repository.findLocked(id).orElseThrow { NoSuchElementException() }
+        check(
+            current.subject == memory.subject &&
+                current.organizationId == memory.organizationId &&
+                current.sectionId == memory.sectionId &&
+                current.teamId == memory.teamId &&
+                current.disciplineKey == memory.disciplineKey
+        )
+        return current
     }
 
     private fun audit(actor: Actor, id: UUID, operation: String) {

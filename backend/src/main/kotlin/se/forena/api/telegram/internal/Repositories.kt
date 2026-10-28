@@ -129,6 +129,12 @@ interface TelegramDeliveryRepository : Repository<TelegramInvitationEntity, UUID
 
 interface TelegramWebhookRepository : Repository<TelegramUpdateEntity, Long> {
     @Modifying
+    @Query("""delete from forena.telegram_update where id in (
+        select id from forena.telegram_update where received_at < :cutoff
+        order by received_at,id limit 1000 for update skip locked)""")
+    fun purgeExpired(cutoff: Instant): Int
+
+    @Modifying
     @Query(
         "insert into forena.telegram_update(id,state) values(:id,'processing') on conflict(id) do nothing"
     )

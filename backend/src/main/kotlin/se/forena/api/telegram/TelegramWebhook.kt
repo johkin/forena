@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest
 import java.util.UUID
 import org.springframework.http.CacheControl
 import org.springframework.http.ResponseEntity
+import org.springframework.security.authentication.BadCredentialsException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 import org.springframework.web.bind.annotation.PostMapping
@@ -30,6 +31,7 @@ class TelegramWebhookService(
     fun handle(update: JsonNode) {
         val id = update.path("update_id").asLong(-1)
         require(id >= 0)
+        if (!accepts(update)) return
         val admitted =
             transactions.execute {
                 repository.claimUpdate(id) == 1
@@ -51,17 +53,63 @@ class TelegramWebhookService(
         }
     }
 
+    private fun accepts(update: JsonNode): Boolean =
+        try {
+            when {
+                update.has("callback_query") -> {
+                    val callback = update.path("callback_query")
+                    val user = callback.path("from").path("id").asLong(-1)
+                    val chat = callback.path("message").path("chat")
+                    !callback.path("from").path("is_bot").asBoolean() &&
+                        chat.path("type").asText("") == "private" &&
+                        user > 0 &&
+                        user == chat.path("id").asLong() &&
+                        identities.acceptsSender(user)
+                }
+                update.has("message") -> acceptsMessage(update.path("message"))
+                update.has("my_chat_member") -> {
+                    val chat = update.path("my_chat_member").path("chat")
+                    val id = chat.path("id").asLong()
+                    if (chat.path("type").asText("") == "private")
+                        id > 0 && identities.acceptsSender(id)
+                    else groups.knownChat(id)
+                }
+                else -> false
+            }
+        } catch (_: BadCredentialsException) {
+            false
+        }
+
+    private fun acceptsMessage(message: JsonNode): Boolean {
+        val chat = message.path("chat")
+        val id = chat.path("id").asLong()
+        if (message.has("migrate_to_chat_id") || message.has("migrate_from_chat_id"))
+            return groups.knownChat(id)
+        val sender = message.path("from")
+        val user = sender.path("id").asLong(-1)
+        if (user <= 0 || sender.path("is_bot").asBoolean()) return false
+        val text = message.path("text").asText("")
+        if (chat.path("type").asText("") != "private") {
+            if (chat.path("type").asText("") !in setOf("group", "supergroup")) return false
+            return groups.acceptsMessage(user, id, text)
+        }
+        if (id != user) return false
+        if (text.startsWith("/start "))
+            return identities.acceptsPairing(text.removePrefix("/start ").trim())
+        return identities.acceptsSender(user)
+    }
+
     private fun message(update: Long, message: JsonNode) {
         val chat = message.path("chat")
         val sender = message.path("from")
         val text = message.path("text").asText("")
         val user = sender.path("id").asLong()
         val chatId = chat.path("id").asLong()
-        if (sender.path("is_bot").asBoolean()) return
         if (message.has("migrate_to_chat_id") || message.has("migrate_from_chat_id")) {
             groups.removeChat(chatId)
             return
         }
+        if (sender.path("is_bot").asBoolean()) return
         if (chat.path("type").asText() != "private") {
             // Group free text/voice never reaches the assistant or a private account resolver.
             groups.message(user, chatId, text)
