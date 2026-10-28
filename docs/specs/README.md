@@ -48,6 +48,7 @@ Exempel på implementation:
 
 ## Sparade specar
 
+- [Publik klubbsida – information, nyheter och ansökningsformulär](publik-klubbsida.md) – Redo, godkänd spec för klubbidentitet, domäner, nyheter och ansökningar till lag, fotbollsskola och läger.
 - [Administration – klubbstruktur, roller och inbjudningar](administration.md) – Redo, godkänd spec för struktur, administratörsroller, behörighetsprofiler och inbjudningar.
 - [Arbetspass och bemanning](arbetspass-och-bemanning.md) – Redo, godkänd spec för bokning, tilldelning och rättvis fördelning av arbetspass.
 - [Skapa och redigera aktiviteter](hantera-aktiviteter.md) – Redo.
