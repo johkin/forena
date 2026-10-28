@@ -657,6 +657,169 @@
           "error"
         ]
       },
+      "AssistantMemory": {
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdBy": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "disciplineKey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "organizationId": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "sectionId": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subject": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "teamId": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "AssistantMessage": {
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "conversationId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "organizationId": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "role": {
+            "type": "string"
+          },
+          "sender": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "AssistantProfile": {
+        "properties": {
+          "instructions": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "personality": {
+            "type": "string"
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "AssistantProposal": {
+        "properties": {
+          "conversationId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "fingerprint": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "organizationId": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "payload": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "subject": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "teamId": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
       "AttendanceChange": {
         "properties": {
           "displayName": {
@@ -1094,6 +1257,27 @@
         },
         "type": "object"
       },
+      "ConfirmationResult": {
+        "properties": {
+          "confirmed": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "proposal": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AssistantProposal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object"
+      },
       "ConsentView": {
         "properties": {
           "clientId": {
@@ -1116,6 +1300,97 @@
           },
           "state": {
             "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "Conversation": {
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "activityId": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "channel": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "organizationId": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "subject": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "teamId": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ConversationCommand": {
+        "properties": {
+          "organizationId": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "teamId": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "ConversationView": {
+        "properties": {
+          "conversation": {
+            "$ref": "#/components/schemas/Conversation"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/AssistantMessage"
+            },
+            "type": "array"
+          },
+          "proposals": {
+            "items": {
+              "$ref": "#/components/schemas/AssistantProposal"
+            },
+            "type": "array"
           }
         },
         "type": "object"
@@ -1164,6 +1439,33 @@
             "$ref": "#/components/schemas/RelyingPartyPublicKey"
           }
         }
+      },
+      "GroupCommand": {
+        "properties": {
+          "kind": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "GroupLink": {
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "GroupStart": {
+        "properties": {
+          "pairingUrl": {
+            "type": "string"
+          }
+        },
+        "type": "object"
       },
       "InvitationResponseResult": {
         "properties": {
@@ -1290,6 +1592,40 @@
             "type": "string"
           },
           "timeZone": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "MemoryEdit": {
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "MessageCommand": {
+        "properties": {
+          "activityId": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "teamId": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text": {
             "type": "string"
           }
         },
@@ -1948,6 +2284,18 @@
         },
         "type": "object"
       },
+      "SectionProfile": {
+        "properties": {
+          "instructions": {
+            "type": "string"
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
       "SlugAvailability": {
         "properties": {
           "status": {
@@ -1956,6 +2304,7 @@
         },
         "type": "object"
       },
+      "StreamingResponseBody": {},
       "SuccessfulUserRegistrationResponse": {
         "properties": {
           "success": {
@@ -1996,6 +2345,55 @@
           },
           "team": {
             "$ref": "#/components/schemas/RosterTeam"
+          }
+        },
+        "type": "object"
+      },
+      "TelegramGroupOverview": {
+        "properties": {
+          "canManage": {
+            "type": "boolean"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/GroupLink"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "TelegramSettings": {
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "pairingExpiresAt": {
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "pairingUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "TelegramSettingsChange": {
+        "properties": {
+          "consent": {
+            "type": "boolean"
+          },
+          "operation": {
+            "type": "string"
           }
         },
         "type": "object"
@@ -2947,9 +3345,536 @@
         ]
       }
     },
+    "/api/assistant/conversations": {
+      "get": {
+        "operationId": "list",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Conversation"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "assistant-controller"
+        ]
+      },
+      "post": {
+        "operationId": "create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Conversation"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "assistant-controller"
+        ]
+      }
+    },
+    "/api/assistant/conversations/{id}": {
+      "delete": {
+        "operationId": "delete_1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "assistant-controller"
+        ]
+      },
+      "get": {
+        "operationId": "view",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationView"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "assistant-controller"
+        ]
+      }
+    },
+    "/api/assistant/conversations/{id}/messages": {
+      "post": {
+        "operationId": "send",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/x-ndjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamingResponseBody"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "assistant-controller"
+        ]
+      }
+    },
+    "/api/assistant/conversations/{id}/resume": {
+      "post": {
+        "operationId": "resume",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Conversation"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "assistant-controller"
+        ]
+      }
+    },
+    "/api/assistant/memories": {
+      "get": {
+        "operationId": "list_1",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "scope",
+            "required": false,
+            "schema": {
+              "default": "personal",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "organizationId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sectionId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "teamId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AssistantMemory"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "assistant-memory-controller"
+        ]
+      }
+    },
+    "/api/assistant/memories/{id}": {
+      "delete": {
+        "operationId": "delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "revision",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "assistant-memory-controller"
+        ]
+      },
+      "put": {
+        "operationId": "update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemoryEdit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "assistant-memory-controller"
+        ]
+      }
+    },
+    "/api/assistant/profiles/{org}": {
+      "get": {
+        "operationId": "profile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssistantProfile"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "assistant-controller"
+        ]
+      },
+      "put": {
+        "operationId": "save",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssistantProfile"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "assistant-controller"
+        ]
+      }
+    },
+    "/api/assistant/profiles/{org}/sections/{section}": {
+      "get": {
+        "operationId": "section",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "section",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SectionProfile"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "assistant-controller"
+        ]
+      },
+      "put": {
+        "operationId": "saveSection",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "section",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SectionProfile"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "assistant-controller"
+        ]
+      }
+    },
+    "/api/assistant/proposals/{id}/confirm": {
+      "post": {
+        "operationId": "confirm",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmationResult"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "assistant-controller"
+        ]
+      }
+    },
     "/api/auth/continue": {
       "get": {
-        "operationId": "resume",
+        "operationId": "resume_1",
         "responses": {
           "200": {
             "content": {
@@ -4715,6 +5640,189 @@
         },
         "tags": [
           "team-roster-controller"
+        ]
+      }
+    },
+    "/api/teams/{team}/telegram/groups": {
+      "get": {
+        "operationId": "links",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelegramGroupOverview"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "telegram-group-controller"
+        ]
+      },
+      "post": {
+        "operationId": "start",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupStart"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "telegram-group-controller"
+        ]
+      }
+    },
+    "/api/teams/{team}/telegram/groups/{kind}": {
+      "delete": {
+        "operationId": "remove",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "telegram-group-controller"
+        ]
+      }
+    },
+    "/api/telegram/settings": {
+      "get": {
+        "operationId": "settings",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelegramSettings"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "telegram-settings-controller"
+        ]
+      },
+      "post": {
+        "operationId": "change",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TelegramSettingsChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelegramSettings"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "telegram-settings-controller"
+        ]
+      }
+    },
+    "/api/telegram/webhook": {
+      "post": {
+        "operationId": "handle",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "telegram-webhook-controller"
         ]
       }
     }

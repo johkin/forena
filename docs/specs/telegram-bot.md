@@ -1,11 +1,11 @@
 # Telegram-boten
 
 - Status: Redo
-- Senast uppdaterad: 2026-10-27
+- Senast uppdaterad: 2026-10-28
 - Berörda dokument: [Telegram](../telegram.md), [arkitektur](../architecture.md),
   [säkerhetsarkitektur](../security-architecture.md),
   [AI-assistenten](ai-assistent.md), [M14](../migration/tasks/m14-telegram.md)
-- Implementation och verifiering: Ej påbörjad inom denna feature.
+- Implementation och verifiering: Implementerad Kotlin-adapter med syntetiska automatiska prov. Liveprov med testbot och röstleverantör återstår; se matrisen nedan.
 
 ## Problem och mål
 
@@ -354,8 +354,12 @@ verifieras för relevanta spelar-, vårdnadshavar- och ledarroller.
   aktiva Telegram-kontexten.
 - AK-029 (K-030): Utgånget eller återanvänt kopplingsbevis, fel
   webhookhemlighet eller främmande avsändare ska inte ge koppling eller
-  verksamhetsändring. Borttagen målsmansrelation, bortkopplat konto och
-  äldre update får inte ändra ett svar. Återkoppling återupplivar inte
+  verksamhetsändring. Främmande avsändare och ogiltiga kopplingsbevis ska
+  avvisas före beständig deduplicering och extern hantering. Giltiga
+  uppdateringars dedupliceringsposter gallras efter sju dygn i begränsade
+  batcher enligt användarens komplettering 2026-10-28. Borttagen målsmansrelation eller bortkopplat konto stoppar ett nytt
+  verksamhetskommando; äldre update får inte ändra ett svar. Behörighet för
+  ett redan godkänt kommando gäller enligt ADR-026. Återkoppling återupplivar inte
   gamla knappar. Två kallade barn ska ge två separata privata kallelser.
 - AK-030 (K-030): Gruppkoppling utan nödvändig Förena-behörighet eller
   Telegram-administratörsstatus ska nekas. Gruppmedlemskap eller
@@ -363,6 +367,31 @@ verifieras för relevanta spelar-, vårdnadshavar- och ledarroller.
 - AK-031 (K-017, K-018, K-027): Ett annat konto ska nekas åtkomst till
   samtal och förslag även vid direkta serveranrop. Återkallad behörighet
   före bekräftelse ska neka ändringen utan privilegierad reservväg.
+
+## Implementation och verifieringsmatris
+
+| Acceptanskriterier | Implementation och evidens |
+| --- | --- |
+| AK-001 | Befintlig bot är förlaga; ny adapter i `backend/.../telegram`, delade identitets-/assistent-/aktivitetskommandon och separat aktivering. |
+| AK-002–AK-003 | Privat text ger förslag med namngivna ändringar; endast knapp anropar svar-/närvarokommandot. `ApiTest` verifierar delad assistent, privata dialoger och att chattext inte bekräftar skrivningar. |
+| AK-004–AK-005 | Rollstyrda chattlänkar och inga automatiska närvarokvittenser i grupp. Gruppadapter behandlar enbart koppling och navigation. |
+| AK-006–AK-008 | Svensk transkription, synlig tolkning och samma granskning som text. Ljud över 60 sekunder avvisas före transkribering. Positivt liveprov vid/exakt under gränsen kräver testbot och verifierad leverantör. |
+| AK-009–AK-013 | Kallelse-/samtalskontext kontrolleras; personval lämnas för granskning, tvetydighet kräver följdfråga och rättning visar före/efter. Faktisk språktolkning är inte live-verifierad. |
+| AK-014–AK-018 | Gemensamma kontominnen och separata kanal-/klubbsamtal. Ny dialog påverkar bara kanalen; radering i Förena lämnar Telegrams kopior separat. Kontobindning, nystart och återkoppling provas i `ApiTest`. |
+| AK-019 | Serverkontrollerad lag-/ledarchattsynlighet, roster-behörighet, Telegram-administratör och länkar med inträdesansökan. Riktig gruppkontroll är ej live-verifierad. |
+| AK-020 | Nystart, radering och bortkoppling ogiltigförklarar väntande förslag. Kopplingens nya generations-ID återupplivar inte gamla knappar. Automatiska prov täcker nystart, bortkoppling och återkoppling. |
+| AK-021 | Kommentar ingår i granskat svar och utelämnad kommentar bevaras av ordinarie `InvitationService`. Befintliga API-prov omfattar kommentarsbevarande. |
+| AK-022 | Ljud finns endast i begränsad tillfällig buffert; bara transkriptionen blir samtalstext. Fel leder inte till verksamhetsskrivning. Leverantörens retention måste verifieras före aktivering. |
+| AK-023–AK-024 | Telegram bekräftar bara svar/närvaro; andra förslag hänvisas till webb. Gruppfritext och gruppröst når inte modellen; negativt prov i `ApiTest`. |
+| AK-025 | Beständig Telegram-kontext och ny fråga vid gammalt/otydligt aktivitetsval. Servern godtar inte modellens tidigare aktivitetsval som ett nytt uttryckligt val efter datumbyte. |
+| AK-026–AK-027 | Låsning, underlagsjämförelse och delad närvaropatch. Partiellt närvaroprov verifierar att okända personer och kallelsesvar lämnas oförändrade samt att gammal revision nekas. |
+| AK-028 | En aktiv Telegram-dialog; tidigare dialoger visas/raderas i Förena utan att återupptas i Telegram. |
+| AK-029–AK-031 | Hashat tidsbegränsat engångsbevis, verifierad avsändare/kopplingsgeneration, deduplicering, uppdateringsordning och aktuella domänbehörigheter. Automatiska prov täcker utgångna/återanvända bevis, fel privat chatt, återkoppling och dubblett-update. `ApiTest` verifierar även att okända/bot-/inaktiva avsändare och ogiltiga länkar inte lagras eller når externa adaptrar, samt att gallring tar högst 1 000 äldre poster åt gången och bevarar färska poster. Fullt liveprotokoll återstår. |
+
+Notifieringsordningen Telegram → push → e-post och faktisk leveranskanal
+provas i `NotificationTest`. `WebPushEncryptionTest` verifierar AES128GCM/VAPID
+utan nätutskick. Migrering från samtliga tidigare Liquibase-baslinjer provas
+separat. Liveaktivering följer [leveransprotokollet](../migration/assistant-telegram.md).
 
 ## Bekräftade beslut och motiv
 
@@ -485,9 +514,11 @@ leveranskontroller hanteras vid implementation:
 Användaren bekräftade den slutliga sammanfattningen och nuvarande omfattning
 2026-10-27: ”vi börjar med nuvarande spec, allt ser bra ut i specen”.
 Den tillkommande gruppidén är uttryckligen uppskjuten. Status är Redo.
-Ingen implementation eller live-verifiering är genomförd inom denna feature.
+Implementation beställd 2026-10-27 tillsammans med AI-assistenten. Lokal implementation och automatiska prov redovisas ovan; live-verifiering återstår.
 
 ## Ändringshistorik
+
+- 2026-10-28: Kotlin-adapter, delade assistent-/domänkommandon, koppling, grupper, kallelser, röstadapter och notifieringsreservvägar. Lagt till verifieringsmatris och separat liveprotokoll.
 
 - 2026-10-26: Skapat utkast efter uppdatering till `origin/main` (`a76a711`).
   Inventerat Next-botens flöden och kopplingen till den godkända assistentspecen.

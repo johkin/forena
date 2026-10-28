@@ -28,6 +28,9 @@ try {
         }] : [],
       };
       else if (path === '/api/admin/slug') json = { status: 'available' };
+      else if (path === '/api/assistant/memories') json = [];
+      else if (path === `/api/assistant/profiles/${clubId}`) json = { name: 'Klubbassistenten', personality: '', instructions: '', revision: 0 };
+      else if (path === `/api/assistant/profiles/${clubId}/sections/${sectionId}`) json = { instructions: '', revision: 0 };
       else if (path === `/api/admin/clubs/${clubId}` && request.method() === 'PUT') {
         assert.equal(request.headers()['x-forena-account'], accountId);
         assert.equal(request.headers()['x-forena-request'], '1');

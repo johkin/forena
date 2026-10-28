@@ -1,16 +1,16 @@
 package se.forena.api.activities.internal
 
-import se.forena.api.activities.AttendancePerson
-import se.forena.api.activities.InvitationNotificationSnapshot
-
 import java.time.Instant
-import org.springframework.data.jdbc.repository.query.Query
-import org.springframework.data.jdbc.repository.query.Modifying
 import java.util.Optional
 import java.util.UUID
+import org.springframework.data.jdbc.repository.query.Modifying
+import org.springframework.data.jdbc.repository.query.Query
 import org.springframework.data.relational.core.sql.LockMode
 import org.springframework.data.relational.repository.Lock
 import org.springframework.data.repository.Repository
+import se.forena.api.activities.*
+import se.forena.api.activities.AttendancePerson
+import se.forena.api.activities.InvitationNotificationSnapshot
 
 interface ActivityRepository : Repository<ActivityEntity, UUID> {
     fun findById(id: UUID): Optional<ActivityEntity>
@@ -151,7 +151,7 @@ interface ManagementRepository : Repository<TeamEntity, UUID> {
             select organization_id from forena.organization_member where subject=:subject and active and role in ('owner','admin')
             union select p.organization_id from forena.team_permission_assignment p
                 join forena.person_access a on a.person_id=p.person_id and a.organization_id=p.organization_id
-                where a.subject=:subject and a.active and a.kind='self' and p.active and p.permission in ('activity.manage','attendance.manage')
+                where a.subject=:subject and a.active and a.kind='self' and p.active and p.permission in ('activity.manage','attendance.manage','invitation.manage','roster.manage','assistant.memory.manage')
             union select organization_id from forena.team_administrator where subject=:subject and active
             union select organization_id from forena.section_administrator where subject=:subject and active)
         order by t.name""")
@@ -312,8 +312,9 @@ interface ScheduledInvitationRepository : Repository<ActivityScheduleEntity, UUI
 
     @Query(
         """
-        insert into forena.invitation_notification(id, schedule_id, invitation_id, recipient_subject, decided_at, recipient, subject, body)
-        values (:id, :schedule, :invitation, :recipient, :now, :email, :subject, :body)
+        insert into forena.invitation_notification(id, schedule_id, invitation_id, recipient_subject, decided_at, recipient, subject, body, activity_revision, invitation_revision)
+        select :id, :schedule, :invitation, :recipient, :now, :email, :subject, :body, a.revision, i.revision
+        from forena.invitation i join forena.activity a on a.id=i.activity_id where i.id=:invitation
         on conflict (schedule_id, invitation_id, recipient_subject) do nothing
         returning id
     """
@@ -426,4 +427,168 @@ interface AttendanceRepository : Repository<ActivityEntity, UUID> {
     @Query("""insert into forena.attendance_change(history_id,person_id,display_name,previous_present,present)
         values(:history,:person,:name,:previous,:present)""")
     fun writeChange(history: UUID, person: UUID, name: String, previous: Boolean?, present: Boolean): Int
+}
+
+interface AssistantActivityRepository : Repository<ActivityEntity, UUID> {
+    @Query(
+        """select i.id,i.person_id,p.display_name as name,i.response,i.response_comment,i.revision
+            from forena.invitation i join forena.person p on p.id=i.person_id and p.organization_id=i.organization_id
+            where i.activity_id=:activity order by p.display_name,i.id"""
+    )
+    fun findInvitations(activity: UUID): List<AssistantInvitation>
+
+    @Query(
+        """select a.id as activity_id,a.title,a.starts_at,
+            p.id as person_id,p.display_name as name,d.name as duty,dp.completed from forena.activity a
+            join forena.activity_duty d on d.activity_id=a.id join forena.activity_duty_place dp on dp.duty_id=d.id
+            join forena.person p on p.id=dp.person_id and p.organization_id=a.organization_id
+            where a.team_id=:team and a.deleted_at is null and a.starts_at>=:start and a.starts_at<:end
+            order by a.starts_at,a.id,p.id limit 201"""
+    )
+    fun findDutyHistory(team: UUID, start: Instant, end: Instant): List<DutyHistory>
+
+    @Query(
+        """select a.id as activity_id,a.title,a.starts_at,p.id as person_id,p.display_name as name,ap.present,coalesce(t.system_category,'other') as category
+            from forena.activity a left join forena.activity_type t on t.id=a.activity_type_id join forena.attendance_record ap on ap.activity_id=a.id
+            join forena.person p on p.id=ap.person_id and p.organization_id=a.organization_id
+            where a.team_id=:team and a.deleted_at is null and a.starts_at>=:start and a.starts_at<:end
+            order by a.starts_at,a.id,p.id limit 201"""
+    )
+    fun findAttendanceHistory(team: UUID, start: Instant, end: Instant): List<HistoryPerson>
+
+    @Query(
+        """select count(*) from forena.activity a join forena.attendance_record ap on ap.activity_id=a.id
+            where a.team_id=:team and a.deleted_at is null and a.starts_at>=:start and a.starts_at<:end and ap.present"""
+    )
+    fun countParticipations(team: UUID, start: Instant, end: Instant): Long
+
+    @Query(
+        """select count(distinct ap.person_id) from forena.activity a join forena.attendance_record ap on ap.activity_id=a.id
+            where a.team_id=:team and a.deleted_at is null and a.starts_at>=:start and a.starts_at<:end and ap.present"""
+    )
+    fun countUniqueParticipants(team: UUID, start: Instant, end: Instant): Long
+
+    @Query(
+        """select coalesce(t.system_category,'other') as category,
+            count(distinct ap.person_id) as unique_people,count(*) as participation_count from forena.activity a
+            left join forena.activity_type t on t.id=a.activity_type_id join forena.attendance_record ap on ap.activity_id=a.id
+            where a.team_id=:team and a.deleted_at is null and a.starts_at>=:start and a.starts_at<:end and ap.present
+            group by t.system_category order by category"""
+    )
+    fun summarizeAttendance(team: UUID, start: Instant, end: Instant): List<HistorySummary>
+
+    @Query(
+        "select exists(select 1 from forena.activity_schedule where activity_id=:id and kind='reminder' and state='pending')"
+    )
+    fun hasPendingReminder(id: UUID): Boolean
+
+    @Modifying
+    @Query(
+        """insert into forena.activity_schedule(id,activity_id,organization_id,kind,due_at,audience_roles,person_ids)
+            values(:id,:activity,:org,'reminder',:now,'',:people)"""
+    )
+    fun scheduleReminder(id: UUID, activity: UUID, org: UUID, now: Instant, people: String): Int
+}
+
+interface AssistantMemberRepository : Repository<TeamEntity, UUID> {
+    @Query(
+        "select exists(select 1 from forena.organization_member where organization_id=:org and subject=:actor and active and role in ('owner','admin'))"
+    )
+    fun isClubAdministrator(org: UUID, actor: UUID): Boolean
+
+    @Query(
+        "select exists(select 1 from forena.section_administrator where organization_id=:org and section_id=:section and subject=:actor and active)"
+    )
+    fun isSectionAdministrator(org: UUID, section: UUID?, actor: UUID): Boolean
+
+    @Query(
+        """select p.id as person_id,p.display_name as name,t.id as team_id,t.name as team_name,m.role,g.name as responsibility
+            from forena.team_membership m join forena.team t on t.id=m.team_id and t.organization_id=m.organization_id
+            join forena.person p on p.id=m.person_id and p.organization_id=m.organization_id
+            join forena.organization o on o.id=m.organization_id
+            left join forena.team_audience_member am on am.person_id=m.person_id and am.organization_id=m.organization_id and am.active
+            left join forena.team_audience_group g on g.id=am.group_id and g.team_id=t.id and g.kind='responsibility'
+            where m.organization_id=:org and m.active and (:allTeams or m.team_id=:team) and (:allSections or t.section_id=:section)
+            and m.starts_on<=(clock_timestamp() at time zone o.time_zone)::date
+            and (m.ends_on is null or m.ends_on>=(clock_timestamp() at time zone o.time_zone)::date)
+            order by p.display_name,p.id,t.id,g.id limit 201"""
+    )
+    fun findAssignments(
+        org: UUID,
+        team: UUID?,
+        allTeams: Boolean,
+        section: UUID?,
+        allSections: Boolean,
+    ): List<AssistantMember>
+
+    @Query(
+        """select count(distinct m.person_id) from forena.team_membership m
+            join forena.team t on t.id=m.team_id and t.organization_id=m.organization_id
+            join forena.organization o on o.id=m.organization_id
+            where m.organization_id=:org and m.active and (:allTeams or m.team_id=:team) and (:allSections or t.section_id=:section)
+            and m.starts_on<=(clock_timestamp() at time zone o.time_zone)::date
+            and (m.ends_on is null or m.ends_on>=(clock_timestamp() at time zone o.time_zone)::date)"""
+    )
+    fun countPeople(
+        org: UUID,
+        team: UUID?,
+        allTeams: Boolean,
+        section: UUID?,
+        allSections: Boolean,
+    ): Long
+}
+
+interface ActivityDutyLifecycleRepository : Repository<ActivityDutyEntity, UUID> {
+    @Modifying
+    @Query(
+        """update forena.activity_duty set starts_at=:start,ends_at=:end,
+            state=case when :cancelled then 'cancelled' else state end,revision=revision+1
+            where activity_id=:activity and state<>'completed'"""
+    )
+    fun followActivity(start: Instant, end: Instant, cancelled: Boolean, activity: UUID): Int
+}
+
+interface ActivityDutyRepository : Repository<ActivityDutyEntity, UUID> {
+    @Query(
+        """select a.id,a.title,a.starts_at,a.ends_at,a.revision,coalesce(t.system_category,'other') as category,
+            a.source_kind,a.series_id,a.external_source,a.venue,
+            exists(select 1 from forena.activity_duty d where d.activity_id=a.id and lower(d.name)=lower(:name)) as exists
+            from forena.activity a left join forena.activity_type t on t.id=a.activity_type_id where a.id=:id"""
+    )
+    fun findTarget(name: String, id: UUID): DutyTarget
+
+    @Modifying
+    @Query(
+        "insert into forena.activity_duty(id,activity_id,organization_id,name,instructions,starts_at,ends_at,created_by) values(:id,:activity,:org,:name,:instructions,:start,:end,:actor)"
+    )
+    fun insertDuty(
+        id: UUID,
+        activity: UUID,
+        org: UUID,
+        name: String,
+        instructions: String,
+        start: Instant,
+        end: Instant,
+        actor: UUID,
+    ): Int
+
+    @Modifying
+    @Query("insert into forena.activity_duty_place(id,duty_id,number) values(:id,:duty,:number)")
+    fun insertPlace(id: UUID, duty: UUID, number: Int): Int
+
+    @Modifying
+    @Query(
+        "insert into forena.activity_duty_audit(duty_id,actor_subject,operation) values(:id,:actor,'created')"
+    )
+    fun auditCreation(id: UUID, actor: UUID): Int
+
+    @Query(
+        """select a.id,a.title,a.starts_at,a.ends_at,a.revision,
+            coalesce(t.system_category,'other') as category,a.source_kind,a.series_id,a.external_source,a.venue,
+            exists(select 1 from forena.activity_duty d where d.activity_id=a.id and lower(d.name)=lower(:name)) as exists
+            from forena.activity a left join forena.activity_type t on t.id=a.activity_type_id
+            where a.team_id=:team and a.deleted_at is null and a.status='scheduled' and a.starts_at>clock_timestamp()
+            order by a.starts_at,a.id limit 201"""
+    )
+    fun findTargets(team: UUID, name: String): List<DutyTarget>
 }

@@ -170,6 +170,7 @@ jobs:
           FORENA_NAVIGATION_FRONTEND=http://127.0.0.1:3000 node scripts/migration/administration-navigation-browser.mjs
           FORENA_PARITY_NEXT=http://127.0.0.1:3004 FORENA_PARITY_VITE=http://127.0.0.1:3000 node scripts/migration/ui-parity-browser.mjs
           FORENA_PARITY_NEXT=http://127.0.0.1:3004 FORENA_PARITY_VITE=http://127.0.0.1:3000 node scripts/migration/attendance-browser.mjs
+          FORENA_PARITY_NEXT=http://127.0.0.1:3004 FORENA_PARITY_VITE=http://127.0.0.1:3000 node scripts/migration/assistant-browser.mjs
 
       - name: Retain Next and Kotlin UI comparison screenshots
         if: always()
@@ -179,6 +180,7 @@ jobs:
           path: |
             frontend/.evidence/parity/
             frontend/.evidence/attendance/
+            frontend/.evidence/assistant/
           retention-days: 7
           if-no-files-found: ignore
 

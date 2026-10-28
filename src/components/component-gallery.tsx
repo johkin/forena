@@ -18,6 +18,7 @@ import { DateTimeRangeFields } from "./date-time-range-fields";
 import { ActivityEditorModal } from "@/components/activity-editor-modal";
 import { ActivityDetailModal } from "@/components/activity-detail-modal";
 import { ActivityStaffingList } from "@/components/activity-staffing-list";
+import { AssistantExamples, AssistantSettingsExamples } from "./assistant-examples";
 import { AssistantReminderDraftCard } from "@/components/assistant-reminder-draft-card";
 import type { ReminderDraft } from "@/lib/ai/reminder-draft";
 import type { Activity, Organization, Team } from "@/domain/club";
@@ -101,7 +102,7 @@ export function ComponentGallery() {
       </div>
     </section>
     <section><h2>Bemanning</h2><ActivityStaffingList invitees={[...invitees]} /></section>
-    <section><h2>Assistentens påminnelseförslag</h2><p>Exempel med syntetiska minnen. Knapparna skickar ingenting.</p><div className="card assistant-card team-chat-card"><div className="assistant-message"><AssistantReminderDraftCard draft={reminderDraft} demo /></div></div></section>
+    <AssistantExamples /><AssistantSettingsExamples /><section><h2>Assistentens påminnelseförslag</h2><p>Exempel med syntetiska minnen. Knapparna skickar ingenting.</p><div className="card assistant-card team-chat-card"><div className="assistant-message"><AssistantReminderDraftCard draft={reminderDraft} demo /></div></div></section>
     <section><h2>Aktivitetsdialoger</h2><p>Den riktiga aktivitetsredigeraren körs i demoläge. Inga aktiviteter eller kallelser sparas.</p><div className="component-example-actions">
       <button className="secondary" onClick={() => setDialog("detail")}>Visa aktivitet</button>
       <button className="primary" onClick={() => setDialog("create")}>Ny aktivitet</button>

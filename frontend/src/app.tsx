@@ -1,3 +1,8 @@
+import { AssistantMemorySettings } from "../../src/components/assistant-memory-settings";
+import { PushNotificationSettings } from "../../src/components/push-notification-settings";
+import { TelegramGroups } from "../../src/components/telegram-groups";
+import { AssistantEntry, TelegramProfileSettings } from "./assistant";
+import { AssistantExamples, AssistantSettingsExamples } from "../../src/components/assistant-examples";
 import { OverviewBackLink } from "../../src/components/overview-back-link";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router";
@@ -115,7 +120,7 @@ export function App({ config }: { config: PublicConfig }) {
     setError("Logga in igen för att fortsätta.");
   })(path, init), [accountId, applySession]);
   const path = location.pathname;
-  if (path === "/components") return <Frame><main tabIndex={-1} className="content component-gallery"><h1>Komponenter</h1><BrowserFrontendExamples linkComponent={AppLink} /><AttendanceExamples /></main></Frame>;
+  if (path === "/components") return <Frame><main tabIndex={-1} className="content component-gallery"><h1>Komponenter</h1><BrowserFrontendExamples linkComponent={AppLink} /><AttendanceExamples /><AssistantExamples /><AssistantSettingsExamples /></main></Frame>;
   if ((accountCallback || ["/register", "/password/forgot"].includes(path))) return <Frame><main tabIndex={-1} className="auth-page"><AccountPage key={path} action={path === "/register" ? "register" : path === "/password/forgot" ? "forgot" : path === "/auth/reset" ? "reset" : "verify"} code={callbackCode} /></main></Frame>;
   if (callback) return <Frame><main tabIndex={-1} className="auth-page"><MagicLinkConfirmation pending={pending} error={error} onConfirm={() => void (async () => {
     if (pending) return;
@@ -168,11 +173,11 @@ export function App({ config }: { config: PublicConfig }) {
   const workspaceMatch = /^\/(organizations|teams)\/([^/]+)$/.exec(path);
   const workspaceId=z.uuid().safeParse(workspaceMatch?.[2]);
   const workspace=workspaceMatch && workspaceId.success ? {kind:workspaceMatch[1]==="teams" ? "team" as const : "organization" as const,id:workspaceId.data} : undefined;
-  const homePath=path==="/" || path==="/login" || Boolean(workspace) || path==="/notifications";
+  const homePath=path==="/" || path==="/login" || path==="/assistant" || Boolean(workspace) || path==="/notifications";
   const match = /^\/activities\/([^/]+)$/.exec(path);
   const activityId = match?.[1] ?? (path === "/migration/participation" ? config.activityId : undefined);
   const validActivity = z.uuid().safeParse(activityId);
-  const securityPage = path === "/account/security";
+  const securityPage = path === "/account/security" || path === "/account";
   const managementPage = path === "/activities/manage";
   const managementQuery = new URLSearchParams(location.search);
   const managementTeam = z.uuid().safeParse(managementQuery.get("team"));
@@ -205,9 +210,11 @@ export function App({ config }: { config: PublicConfig }) {
         try { await registerPasskey(expectedAccount); if (activeAccount.current === expectedAccount) setPasskeyCreatedFor(expectedAccount); }
         catch (error) { if (activeAccount.current === expectedAccount) setError(error instanceof DOMException && error.name === "NotAllowedError" ? "Registreringen avbröts. Du kan försöka igen." : "Passkey kunde inte skapas. Försök igen senare."); }
         finally { setPending(false); }
-      })()} /><PasskeyList key={auth.session.user.id} accountId={auth.session.user.id} revision={passkeyCreatedFor === accountId} /></> : !knownPath ? <AppLink href="/">Till startsidan</AppLink> : homePath ? <MyActivitiesPage accountId={auth.session.user.id} request={request} workspace={workspace} notifications={path==="/notifications"} /> : validActivity.success ? <>
+      })()} /><PasskeyList key={auth.session.user.id} accountId={auth.session.user.id} revision={passkeyCreatedFor === accountId} /><TelegramProfileSettings key={`telegram:${auth.session.user.id}`} request={request} /><PushNotificationSettings request={request} /><AssistantMemorySettings request={request} /></> : !knownPath ? <AppLink href="/">Till startsidan</AppLink> : homePath ? <MyActivitiesPage accountId={auth.session.user.id} request={request} workspace={workspace} notifications={path==="/notifications"} /> : validActivity.success ? <>
         <ActivityDetails key={validActivity.data} activityId={validActivity.data} request={request} />
       </> : <p>Inga kallelser att visa här ännu. Öppna länken till en aktivitet för att se dina kallelser.</p>}
+      {workspace?.kind === "team" ? <TelegramGroups request={request} teamId={workspace.id} /> : null}
     </main>
+    {!administrationPage && !path.startsWith("/system") ? <AssistantEntry key={auth.session.user.id} accountId={auth.session.user.id} request={request} path={path} search={location.search} /> : null}
   </Frame></AdministrationProvider>;
 }

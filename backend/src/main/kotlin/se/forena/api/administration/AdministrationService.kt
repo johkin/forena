@@ -101,7 +101,6 @@ class AdministrationService(
         requireBootstrap(actor)
         val state = lock(actor)
         check(!state.initialized && platforms.findAll().isEmpty())
-        requireBootstrapIdentity(actor)
         platforms.add(actor.subject)
         administration.initialize()
         audit(actor, "platform.bootstrap", actor.subject)
@@ -189,11 +188,11 @@ class AdministrationService(
 
     @Transactional
     fun deleteSection(actor: Actor, id: UUID): AdministrationOk {
-        val section = authorizeAndLock(actor) {
+        authorizeAndLock(actor) {
             val candidate = sections.findById(id) ?: throw NoSuchElementException()
             requireClub(actor, candidate.organizationId)
-            candidate
         }
+        val section = sections.findById(id) ?: throw NoSuchElementException()
         check(sections.findByOrganizationId(section.organizationId).size > 1 && teams.findBySectionId(id).isEmpty())
         sections.delete(section)
         audit(actor, "section.delete", id)
@@ -202,11 +201,11 @@ class AdministrationService(
 
     @Transactional
     fun sectionAdministrator(actor: Actor, id: UUID, change: AdministratorChange): AdministrationOk {
-        val section = authorizeAndLock(actor) {
+        authorizeAndLock(actor) {
             val candidate = sections.findById(id) ?: throw NoSuchElementException()
             requireClub(actor, candidate.organizationId)
-            candidate
         }
+        val section = sections.findById(id) ?: throw NoSuchElementException()
         val target = directory.verifiedAccount(change.email)
         val existing = sectionAdmins.findBySectionIdAndSubject(id, target)
         if (existing == null && !change.active) return AdministrationOk()
@@ -218,11 +217,11 @@ class AdministrationService(
 
     @Transactional
     fun saveTeam(actor: Actor, sectionId: UUID, id: UUID?, change: TeamChange): AdministrationResult {
-        val section = authorizeAndLock(actor) {
+        authorizeAndLock(actor) {
             val candidate = sections.findById(sectionId) ?: throw NoSuchElementException()
             if (id == null) requireSection(actor, candidate) else requireTeam(actor, teams.findById(id) ?: throw NoSuchElementException())
-            candidate
         }
+        val section = sections.findById(sectionId) ?: throw NoSuchElementException()
         validName(change.name); require(change.season.length <= 40)
         val existing = id?.let { teams.findById(it) ?: throw NoSuchElementException() }
         require(existing == null || existing.sectionId == sectionId)
@@ -235,11 +234,11 @@ class AdministrationService(
 
     @Transactional
     fun deleteTeam(actor: Actor, id: UUID): AdministrationOk {
-        val team = authorizeAndLock(actor) {
+        authorizeAndLock(actor) {
             val candidate = teams.findById(id) ?: throw NoSuchElementException()
             requireTeam(actor, candidate)
-            candidate
         }
+        val team = teams.findById(id) ?: throw NoSuchElementException()
         check(administration.teamEmpty(id))
         teams.delete(team); audit(actor, "team.delete", id)
         return AdministrationOk()
@@ -247,11 +246,11 @@ class AdministrationService(
 
     @Transactional
     fun teamAdministrator(actor: Actor, id: UUID, change: AdministratorChange): AdministrationOk {
-        val team = authorizeAndLock(actor) {
+        authorizeAndLock(actor) {
             val candidate = teams.findById(id) ?: throw NoSuchElementException()
             requireBusinessTeam(actor, candidate)
-            candidate
         }
+        val team = teams.findById(id) ?: throw NoSuchElementException()
         val target = directory.verifiedAccount(change.email)
         val club = clubs.findById(team.organizationId) ?: throw NoSuchElementException()
         val starts = change.startsOn ?: today(club)
@@ -267,12 +266,11 @@ class AdministrationService(
         return AdministrationOk()
     }
 
-    /** Reject unrelated callers before serialization; reload authority after any lock wait. */
-    private fun <T> authorizeAndLock(actor: Actor, authorize: () -> T): T {
+    /** Authorize at admission; the global lock still protects all structural invariants. */
+    private fun authorizeAndLock(actor: Actor, authorize: () -> Unit) {
         sessions.requireActive(actor)
         authorize()
         lock(actor)
-        return authorize()
     }
 
     private fun requireBusinessTeam(actor: Actor, team: AdministrationTeamEntity) {
@@ -288,9 +286,7 @@ class AdministrationService(
 
     private fun lock(actor: Actor): AdministrationStateEntity {
         sessions.requireActive(actor)
-        val state = administration.lock()
-        sessions.requireActive(actor)
-        return state
+        return administration.lock()
     }
     private fun requirePlatform(actor: Actor) { if (!platforms.existsById(actor.subject)) denied() }
     private fun clubRole(actor: Actor, organization: UUID) = clubAdmins.findByOrganizationIdAndSubject(organization, actor.subject)

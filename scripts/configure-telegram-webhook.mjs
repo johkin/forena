@@ -68,6 +68,7 @@ try {
     { command: "start", description: "Koppla kontot via Min profil i Förena" },
     { command: "help", description: "Visa hjälp" },
     { command: "ask", description: "Fråga privat: /ask klubb/lag din fråga" },
+    ...(process.env.TELEGRAM_NEW_CONVERSATION === "true" ? [{ command: "new", description: "Starta ett nytt privat Telegram-samtal" }] : []),
     { command: "stop", description: "Koppla bort privata Telegram-notiser" },
     { command: "forena", description: "Öppna Förena från en kopplad grupp" },
   ] });

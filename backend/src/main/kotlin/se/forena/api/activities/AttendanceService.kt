@@ -3,18 +3,20 @@ package se.forena.api.activities
 import java.time.ZoneId
 import java.util.UUID
 import org.springframework.security.access.AccessDeniedException
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Isolation
 import org.springframework.transaction.annotation.Transactional
 import se.forena.api.activities.internal.*
 import se.forena.api.identity.Actor
 import se.forena.api.identity.DatabaseClockService
-import se.forena.api.identity.SessionService
 import se.forena.api.identity.RosterDirectory
+import se.forena.api.identity.SessionService
 
 @Service
 class AttendanceService(
     private val sessions: SessionService,
+    private val teamAccess: TeamAccessService,
     private val clock: DatabaseClockService,
     private val activities: ManagedActivityRepository,
     private val management: ManagementRepository,
@@ -38,6 +40,7 @@ class AttendanceService(
     }
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    @PreAuthorize("@teamAccess.canReportAttendance(#actor, #id)")
     fun snapshot(actor: Actor, id: UUID): AttendanceSnapshot {
         val (activity, team) = authorize(actor, id)
         val report = attendance.report(id)
@@ -56,11 +59,9 @@ class AttendanceService(
     }
 
     @Transactional
+    @PreAuthorize("@teamAccess.canReportAttendance(#actor, #id)")
     fun save(actor: Actor, id: UUID, command: AttendanceCommand) {
-        authorize(actor, id)
-        // The activity lock also serializes the first report and cancellation/activity edits.
-        check(activities.findLockedByActivityId(id) != null)
-        val (activity, team) = authorize(actor, id)
+        val (activity, team) = lock(actor, id)
         check(activity.status != "cancelled" && !clock.now().isBefore(activity.startsAt))
         val report = attendance.report(id)
         check(command.revision == (report?.revision ?: 0L))
@@ -90,14 +91,52 @@ class AttendanceService(
         }
     }
 
+    /** A channel proposal changes only explicitly assessed people; unknown others stay unknown. */
+    @Transactional
+    @PreAuthorize("@teamAccess.canReportAttendance(#actor, #id)")
+    fun patch(actor: Actor, id: UUID, revision: Long, changes: Map<UUID,Boolean>) {
+        val (activity,team) = lock(actor,id)
+        check(activity.status!="cancelled" && !clock.now().isBefore(activity.startsAt))
+        val report = attendance.report(id)
+        check(revision==(report?.revision ?: 0L))
+        require(changes.isNotEmpty() && changes.size<=20000)
+        val before = roster(activity,team,report!=null).associateBy { it.personId }
+        require(changes.keys.all { it in before })
+        val now = clock.now(); val next = revision+1; val history = UUID.randomUUID()
+        attendance.writeReport(id,activity.organizationId,next,now,actor.subject)
+        attendance.writeHistory(history,id,activity.organizationId,next,actor.subject,directory.actorName(activity.organizationId,actor.subject),now)
+        changes.forEach { (personId,present) ->
+            val previous = before.getValue(personId)
+            attendance.writePerson(id,activity.organizationId,personId,previous.role,present)
+            if (previous.present!=present) attendance.writeChange(history,personId,previous.displayName,previous.present,present)
+        }
+    }
+
     private fun roster(activity: ManagedActivityEntity, team: ManagementTeamRow, reported: Boolean): List<AttendancePerson> =
-        if (reported) attendance.people(activity.activityId)
-        else attendance.initialPeople(activity.activityId, team.id,
-            activity.startsAt.atZone(ZoneId.of(team.timeZone)).toLocalDate())
+        attendance.initialPeople(activity.activityId, team.id,
+            activity.startsAt.atZone(ZoneId.of(team.timeZone)).toLocalDate()).let { initial ->
+            if (!reported) initial else {
+                val recorded = attendance.people(activity.activityId)
+                val recordedIds = recorded.map { it.personId }.toSet()
+                recorded + initial.filter { it.personId !in recordedIds }
+            }
+        }
 
     private fun candidates(team: ManagementTeamRow): List<AttendancePerson> =
         team.sectionId?.let { attendance.candidates(team.organizationId, it,
             clock.now().atZone(ZoneId.of(team.timeZone)).toLocalDate()) }.orEmpty()
+
+    private fun lock(actor: Actor, id: UUID): Pair<ManagedActivityEntity, ManagementTeamRow> {
+        val (_, admittedTeam) = authorize(actor, id)
+        val activity = activities.findLockedByActivityId(id) ?: throw NoSuchElementException()
+        if (activity.deletedAt != null) throw NoSuchElementException()
+        check(
+            activity.teamId == admittedTeam.id &&
+                activity.organizationId == admittedTeam.organizationId
+        )
+        val team = management.team(activity.teamId) ?: throw NoSuchElementException()
+        return activity to team
+    }
 
     private fun authorize(actor: Actor, id: UUID): Pair<ManagedActivityEntity, ManagementTeamRow> {
         sessions.requireActive(actor)
@@ -108,6 +147,6 @@ class AttendanceService(
         return activity to team
     }
 
-    private fun allowed(actor: Actor, team: ManagementTeamRow) = management.allowed(actor.subject,
-        team.organizationId, team.id, "attendance.manage", clock.now().atZone(ZoneId.of(team.timeZone)).toLocalDate())
+    private fun allowed(actor: Actor, team: ManagementTeamRow) =
+        teamAccess.allowed(actor, team, TeamPermission.MANAGE_ATTENDANCE)
 }

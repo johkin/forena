@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 
 export type TelegramState = { active: boolean; available: boolean; accountSuffix?: string; pairingUrl?: string; pairingExpiresAt?: number };
-type ViewProps = { state: TelegramState | null; pending: boolean; error: string; onStart: () => void; onDisable: () => void; onRefresh: () => void };
+type ViewProps = { assistantEnabled?: boolean; state: TelegramState | null; pending: boolean; error: string; onStart: () => void; onDisable: () => void; onRefresh: () => void };
 
-export function TelegramSettingsView({ state, pending, error, onStart, onDisable, onRefresh }: ViewProps) {
+export function TelegramSettingsView({ state, pending, error, onStart, onDisable, onRefresh, assistantEnabled = false }: ViewProps) {
   return <section id="telegram" className="form-section" aria-label="Telegram-notifieringar">
     <h2>Telegram</h2>
     <p>Få privata kallelser och påminnelser i Telegram. Svara Kommer eller Kan inte direkt med knapparna. Varje barn får en egen kallelse. Om Telegram inte kan skickas försöker vi med push eller e-post.</p>
@@ -20,7 +20,7 @@ export function TelegramSettingsView({ state, pending, error, onStart, onDisable
         <a className="secondary" href={state.pairingUrl} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">Öppna Telegram igen</a>
         <button type="button" className="secondary" disabled={pending} onClick={onDisable}>Avbryt koppling</button>
       </div> : state?.available ? <TelegramConsent pending={pending} onStart={onStart} /> : null}
-    {state?.active || state?.pairingUrl ? <p className="form-help">Du kan stänga av här eller skicka /stop till boten. Kommentarer skriver du i Förena. Andra privata meddelanden visar kopplingshjälp och tolkas inte som instruktioner.</p> : null}
+    {state?.active || state?.pairingUrl ? <p className="form-help">{assistantEnabled ? "Skriv privata frågor eller skicka ett svenskt röstmeddelande på högst 60 sekunder. Text- och röstsvar granskas före bekräftelse. /new börjar ett nytt samtal; /stop kopplar bort Telegram." : "Du kan stänga av här eller skicka /stop till boten. Kommentarer skriver du i Förena. Andra privata meddelanden visar kopplingshjälp och tolkas inte som instruktioner."}</p> : null}
     {error && !state ? <button type="button" className="secondary" disabled={pending} onClick={onRefresh}>Försök igen</button> : null}
   </section>;
 }

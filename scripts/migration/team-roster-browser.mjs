@@ -90,6 +90,9 @@ try {
     const req = route.request(); const url = new URL(req.url());
     if (url.pathname === '/api/auth/session') return route.fulfill({ json: { user: { id: account, email: 'test@example.invalid' } } });
     if (url.pathname === '/api/admin/overview') return route.fulfill({ json: { platformAdmin: false, canBootstrap: false, platformAdministrators: [], clubs: [] } });
+    if (url.pathname === '/api/me/overview') return route.fulfill({ json: {
+      reference_time: new Date().toISOString(), activities: [], organizations: [], teams: [], calendar_people: [], calendar_teams: [],
+    } });
     if (url.pathname === `${base}/access`) return route.fulfill({ json: true });
     if (url.pathname === base && req.method() === 'GET') return route.fulfill({ json: snapshot });
     if (url.pathname === `${base}/groups/${group}` && req.method() === 'PUT') {

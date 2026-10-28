@@ -45,7 +45,10 @@ class PersonalOverviewService(
         return PersonalCalendar(overview.reference_time, overview.activities, overview.calendar_people, overview.calendar_teams)
     }
 
-    private fun read(actor: Actor, id: UUID?, month: YearMonth?): PersonalOverview {
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    fun optionalActivity(actor: Actor, id: UUID): PersonalActivity? = read(actor, id, null, allowMissing = true).activities.singleOrNull()
+
+    private fun read(actor: Actor, id: UUID?, month: YearMonth?, allowMissing: Boolean = false): PersonalOverview {
         sessions.requireActive(actor)
         val now = clock.now()
         val people = access.people(actor)
@@ -76,7 +79,7 @@ class PersonalOverviewService(
         } else if (id == null)
             activities.findUpcoming(personIds, ownIds, ownPeople.isNotEmpty(), people.isNotEmpty(), managerIds, readableTeamIds.isNotEmpty(), now)
         else listOfNotNull(activities.findAccessible(id, personIds, ownIds, ownPeople.isNotEmpty(), people.isNotEmpty(), managerIds, readableTeamIds.isNotEmpty()))
-        if (id != null && rows.isEmpty()) throw NoSuchElementException("Aktiviteten kunde inte hittas.")
+        if (id != null && rows.isEmpty() && !allowMissing) throw NoSuchElementException("Aktiviteten kunde inte hittas.")
         // Match the legacy completeness guard: fail explicitly, never publish partial counts/calendar.
         if (rows.size > 20_000) throw ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE)
         val teamIds = (rows.map { it.teamId } + relations.map { it.teamId } +

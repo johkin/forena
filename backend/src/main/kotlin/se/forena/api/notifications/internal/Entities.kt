@@ -19,3 +19,6 @@ data class InvitationEmailEntity(
     val acceptedAt: Instant?,
     val lastError: String?,
 )
+
+@Table(value = "push_subscription", schema = "forena")
+data class PushSubscriptionEntity(@Id val id: UUID)

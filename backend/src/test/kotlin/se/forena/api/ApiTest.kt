@@ -1,5 +1,15 @@
 package se.forena.api
 
+import org.springframework.aop.support.AopUtils
+import org.springframework.security.authorization.AuthorizationDeniedException
+import org.springframework.security.authentication.BadCredentialsException
+import org.mockito.Mockito
+import org.mockito.Mockito.times
+import org.mockito.ArgumentMatchers.anyString
+import org.mockito.ArgumentMatchers.anyMap
+import se.forena.api.activities.ActivityDutyCommand
+import se.forena.api.telegram.TelegramUpdateRetentionService
+import se.forena.api.telegram.TelegramGroupService
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -33,6 +43,7 @@ import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.datasource.DriverManagerDataSource
 import org.springframework.security.crypto.password.PasswordEncoder
+import org.springframework.security.access.AccessDeniedException
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
@@ -49,6 +60,921 @@ import tools.jackson.databind.json.JsonMapper
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class ApiTest {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    lateinit var assistantModel: se.forena.api.assistant.AssistantModel
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    lateinit var telegramClient: se.forena.api.telegram.TelegramClient
+    @Autowired lateinit var assistantProfiles: se.forena.api.assistant.AssistantProfileService
+    @Autowired lateinit var telegramWebhook: se.forena.api.telegram.TelegramWebhookService
+    @Autowired lateinit var assistantActivities: se.forena.api.activities.AssistantActivityService
+    @Autowired lateinit var assistant: se.forena.api.assistant.AssistantService
+    @Autowired lateinit var assistantProposals: se.forena.api.assistant.AssistantProposalService
+    @Autowired lateinit var telegramIdentities: se.forena.api.identity.TelegramIdentityService
+    @Autowired lateinit var attendanceService: se.forena.api.activities.AttendanceService
+    @Autowired lateinit var assistantIdentity: se.forena.api.identity.AssistantIdentityService
+    @Autowired lateinit var telegramRetention: TelegramUpdateRetentionService
+    @Autowired lateinit var telegramGroups: TelegramGroupService
+    @Autowired lateinit var dutyService: se.forena.api.activities.ActivityDutyService
+    @Autowired lateinit var rosterService: se.forena.api.activities.TeamRosterService
+
+    private fun assistantActor() = se.forena.api.identity.Actor(parent, session, "")
+
+    @Test
+    fun `activity update admits all required permissions before waiting and rejects the next command`() {
+        admin.update("update forena.organization set time_zone='UTC' where id=?", organization)
+        val team = rosterTeam()
+        rosterMember(own)
+        rosterPermission(permission = "activity.manage")
+        rosterPermission(permission = "invitation.manage")
+        admin.update("delete from forena.invitation where activity_id=?", activity)
+        DriverManager.getConnection(database.jdbcUrl, database.username, database.password).use {
+            connection ->
+            connection.autoCommit = false
+            connection
+                .prepareStatement("select id from forena.activity where id=? for update")
+                .use {
+                    it.setObject(1, activity)
+                    it.executeQuery().close()
+                }
+            val command =
+                activityBody(team, ""","revision":0,"invitationMode":"now","personIds":["$own"]""")
+            val result = CompletableFuture.supplyAsync {
+                request("/api/activities/$activity", command)
+            }
+            try {
+                awaitRuntimeLocks(1)
+                admin.update(
+                    "update forena.team_permission_assignment set active=false where person_id=?",
+                    own,
+                )
+            } finally {
+                connection.rollback()
+            }
+            assertThat(result.get(10, SECONDS).statusCode()).isEqualTo(200)
+            assertThat(
+                    admin.queryForObject(
+                        "select revision from forena.activity where id=?",
+                        Long::class.java,
+                        activity,
+                    )
+                )
+                .isEqualTo(1L)
+            assertThat(
+                    admin.queryForObject(
+                        "select count(*) from forena.invitation where activity_id=? and person_id=?",
+                        Long::class.java,
+                        activity,
+                        own,
+                    )
+                )
+                .isEqualTo(1)
+            assertThat(
+                    request("/api/activities/$activity", activityBody(team, ""","revision":1"""))
+                        .statusCode()
+                )
+                .isEqualTo(403)
+        }
+    }
+
+    @Test
+    fun `Telegram group admission requires the linked sender and matching proof before persistence`() {
+        val user = (UUID.randomUUID().leastSignificantBits and Long.MAX_VALUE) ushr 2
+        val base = user + 100
+        val chat = -user
+        val bot = 777L
+        val proof =
+            requireNotNull(telegramIdentities.start(parent, true).pairingUrl)
+                .substringAfter("?start=")
+        telegramIdentities.connect(proof, user, user, 0)
+        val otherProof =
+            requireNotNull(telegramIdentities.start(outsider, true).pairingUrl)
+                .substringAfter("?start=")
+        telegramIdentities.connect(otherProof, user + 1, user + 1, 0)
+        rosterPermission()
+        val groupProof =
+            telegramGroups
+                .start(assistantActor(), rosterTeam(), "team")
+                .pairingUrl
+                .substringAfter("?startgroup=g_")
+                .substringBefore('&')
+        Mockito.`when`(telegramClient.call(anyString(), anyMap())).thenAnswer { invocation ->
+            when (invocation.getArgument<String>(0)) {
+                "getMe" -> json.createObjectNode().put("id", bot)
+                "getChatMember" ->
+                    json
+                        .createObjectNode()
+                        .put("status", "administrator")
+                        .put("can_invite_users", true)
+                "createChatInviteLink" ->
+                    json
+                        .createObjectNode()
+                        .put("creates_join_request", true)
+                        .put("invite_link", "https://t.me/+synthetic")
+                else -> json.createObjectNode().put("message_id", 1)
+            }
+        }
+        fun message(id: Long, sender: Long, text: String) =
+            json.readTree(
+                """{"update_id":$id,"message":{"from":{"id":$sender},"chat":{"id":$chat,"type":"supergroup"},"text":"$text"}}"""
+            )
+        telegramWebhook.handle(message(base, user + 1, "/start g_$groupProof"))
+        telegramWebhook.handle(message(base + 1, user, "/start g_${"a".repeat(43)}"))
+        verifyNoInteractions(telegramClient)
+        telegramWebhook.handle(message(base + 2, user, "/start g_$groupProof"))
+        assertThat(
+                admin.queryForObject(
+                    "select team_id from forena.telegram_group where chat_id=?",
+                    UUID::class.java,
+                    chat,
+                )
+            )
+            .isEqualTo(rosterTeam())
+        telegramWebhook.handle(message(base + 3, user, "fri grupptext"))
+        telegramWebhook.handle(message(base + 4, user + 2, "/forena"))
+        telegramWebhook.handle(message(base + 5, user, "/forena"))
+        assertThat(
+                admin.queryForObject(
+                    "select count(*) from forena.telegram_update where id between ? and ?",
+                    Long::class.java,
+                    base,
+                    base + 5,
+                )
+            )
+            .isEqualTo(2)
+        telegramWebhook.handle(
+            json.readTree(
+                """{"update_id":${base+6},"my_chat_member":{"from":{"id":${user+1}},"chat":{"id":$chat,"type":"supergroup"},"new_chat_member":{"status":"left"}}}"""
+            )
+        )
+        assertThat(
+                admin.queryForObject(
+                    "select count(*) from forena.telegram_group where chat_id=?",
+                    Long::class.java,
+                    chat,
+                )
+            )
+            .isZero()
+        verifyNoInteractions(assistantModel)
+    }
+
+    @Test
+    fun `Telegram checks senders and pairing proofs before persisting updates`() {
+        val user = (UUID.randomUUID().leastSignificantBits and Long.MAX_VALUE) ushr 2
+        val base = user + 1000
+        fun message(id: Long, text: String, bot: Boolean = false) =
+            json.readTree(
+                """{"update_id":$id,"message":{"from":{"id":$user,"is_bot":$bot},"chat":{"id":$user,"type":"private"},"text":"$text"}}"""
+            )
+        Mockito.`when`(telegramClient.call(anyString(), anyMap()))
+            .thenReturn(json.createObjectNode().put("message_id", 1))
+        telegramWebhook.handle(message(base, "hej"))
+        telegramWebhook.handle(message(base + 1, "/start ${"a".repeat(43)}"))
+        telegramWebhook.handle(
+            json.readTree(
+                """{"update_id":${base+2},"callback_query":{"from":{"id":$user},"message":{"chat":{"id":$user,"type":"private"}},"data":"p:${UUID.randomUUID()}"}}"""
+            )
+        )
+        val expired =
+            requireNotNull(telegramIdentities.start(outsider, true).pairingUrl)
+                .substringAfter("?start=")
+        admin.update(
+            "update forena.telegram_pairing set expires_at=now()-interval '1 minute' where subject=?",
+            outsider,
+        )
+        telegramWebhook.handle(message(base + 3, "/start $expired"))
+        assertThat(
+                admin.queryForObject(
+                    "select count(*) from forena.telegram_update where id between ? and ?",
+                    Long::class.java,
+                    base,
+                    base + 10,
+                )
+            )
+            .isZero()
+        verifyNoInteractions(telegramClient, assistantModel)
+
+        val proof =
+            requireNotNull(telegramIdentities.start(parent, true).pairingUrl)
+                .substringAfter("?start=")
+        telegramWebhook.handle(message(base + 4, "/start $proof"))
+        assertThat(telegramIdentities.connection(user, user)).isNotNull()
+        telegramWebhook.handle(message(base + 4, "/start $proof"))
+        telegramWebhook.handle(message(base + 5, "/help"))
+        telegramWebhook.handle(message(base + 5, "/help"))
+        telegramWebhook.handle(message(base + 6, "/help", bot = true))
+        admin.update("update forena.account set enabled=false where subject=?", parent)
+        telegramWebhook.handle(message(base + 7, "/help"))
+        assertThat(
+                admin.queryForObject(
+                    "select count(*) from forena.telegram_update where id between ? and ?",
+                    Long::class.java,
+                    base,
+                    base + 10,
+                )
+            )
+            .isEqualTo(2)
+        verify(telegramClient, times(2)).call(anyString(), anyMap())
+        verifyNoInteractions(assistantModel)
+    }
+
+    @Test
+    fun `Telegram retention prunes all expired states in bounded batches and keeps recent deduplication`() {
+        val base = (UUID.randomUUID().leastSignificantBits and Long.MAX_VALUE) ushr 2
+        admin.update(
+            """insert into forena.telegram_update(id,state,received_at)
+            select ?+n,case n%3 when 0 then 'completed' when 1 then 'failed' else 'processing' end,
+            now()-interval '8 days' from generate_series(0,1004) n""",
+            base,
+        )
+        admin.update(
+            "insert into forena.telegram_update(id,state,received_at) values(?,'completed',now()-interval '6 days')",
+            base + 1005,
+        )
+        assertThat(telegramRetention.purgeExpired()).isEqualTo(1000)
+        assertThat(telegramRetention.purgeExpired()).isEqualTo(5)
+        assertThat(telegramRetention.purgeExpired()).isZero()
+        assertThat(
+                admin.queryForObject(
+                    "select count(*) from forena.telegram_update where id between ? and ?",
+                    Long::class.java,
+                    base,
+                    base + 1005,
+                )
+            )
+            .isEqualTo(1)
+        assertThat(
+                admin.queryForObject(
+                    "select id from forena.telegram_update where id=?",
+                    Long::class.java,
+                    base + 1005,
+                )
+            )
+            .isEqualTo(base + 1005)
+    }
+
+    @Test
+    fun `activity time edits and soft deletion update open duties while completed duties retain history`() {
+        val team = managedTeam()
+        admin.update("delete from forena.invitation where activity_id=?", activity)
+        for (name in listOf("Sekretariat", "Avslutad uppgift")) dutyService.save(
+            assistantActor(),
+            ActivityDutyCommand(team, listOf(activity), name, 1),
+        )
+        admin.update(
+            "update forena.activity_duty set state='completed' where activity_id=? and name='Avslutad uppgift'",
+            activity,
+        )
+        val completed =
+            admin.queryForMap(
+                "select starts_at,ends_at,revision from forena.activity_duty where activity_id=? and state='completed'",
+                activity,
+            )
+        assertThat(
+                request("/api/activities/$activity", activityBody(team, ""","revision":0"""))
+                    .statusCode()
+            )
+            .isEqualTo(200)
+        val open =
+            admin.queryForMap(
+                "select starts_at,ends_at,revision from forena.activity_duty where activity_id=? and state='open'",
+                activity,
+            )
+        val updated =
+            admin.queryForMap("select starts_at,ends_at from forena.activity where id=?", activity)
+        assertThat(open["starts_at"]).isEqualTo(updated["starts_at"])
+        assertThat(open["ends_at"]).isEqualTo(updated["ends_at"])
+        assertThat(open["revision"]).isEqualTo(2L)
+        assertThat(
+                request(
+                        "/api/activities/$activity",
+                        """{"action":"delete","revision":1}""",
+                        method = "DELETE",
+                    )
+                    .statusCode()
+            )
+            .isEqualTo(200)
+        assertThat(
+                admin.queryForObject(
+                    "select state from forena.activity_duty where activity_id=? and name='Sekretariat'",
+                    String::class.java,
+                    activity,
+                )
+            )
+            .isEqualTo("cancelled")
+        assertThat(
+                admin.queryForMap(
+                    "select starts_at,ends_at,revision from forena.activity_duty where activity_id=? and state='completed'",
+                    activity,
+                )
+            )
+            .isEqualTo(completed)
+    }
+
+    @Test
+    fun `method security scopes live team permissions for web and Telegram actors`() {
+        admin.update("update forena.organization set time_zone='UTC' where id=?", organization)
+        val actor = assistantActor()
+        val team = rosterTeam()
+        val otherTeam = UUID.randomUUID()
+        admin.update(
+            "insert into forena.team(id,organization_id,name) values(?,?,'Annat lag')",
+            otherTeam,
+            organization,
+        )
+        assertThat(AopUtils.isAopProxy(dutyService)).isTrue()
+        assertThatThrownBy { dutyService.targets(actor, team) }
+            .isInstanceOf(AuthorizationDeniedException::class.java)
+
+        // A guardian cannot inherit a child's independent team permission.
+        rosterPermission(person = child1, permission = "invitation.manage")
+        assertThatThrownBy { dutyService.targets(actor, team) }
+            .isInstanceOf(AuthorizationDeniedException::class.java)
+        rosterPermission(permission = "invitation.manage")
+        assertThatCode { dutyService.targets(actor, team) }.doesNotThrowAnyException()
+        assertThatThrownBy { dutyService.targets(actor, otherTeam) }
+            .isInstanceOf(AuthorizationDeniedException::class.java)
+        assertThatThrownBy { rosterService.snapshot(actor, team) }
+            .isInstanceOf(AuthorizationDeniedException::class.java)
+        val missingTeam = UUID.randomUUID()
+        assertThatThrownBy { rosterService.snapshot(actor, missingTeam) }
+            .isInstanceOf(NoSuchElementException::class.java)
+        assertThat(request("/api/teams/$missingTeam/activity-editor").statusCode()).isEqualTo(404)
+
+        admin.update(
+            "update forena.team_permission_assignment set starts_on=current_date+1 where person_id=?",
+            own,
+        )
+        assertThatThrownBy { dutyService.targets(actor, team) }
+            .isInstanceOf(AuthorizationDeniedException::class.java)
+        admin.update(
+            "update forena.team_permission_assignment set starts_on=current_date-2,ends_on=current_date-1 where person_id=?",
+            own,
+        )
+        assertThatThrownBy { dutyService.targets(actor, team) }
+            .isInstanceOf(AuthorizationDeniedException::class.java)
+        admin.update(
+            "update forena.team_permission_assignment set starts_on=current_date,ends_on=current_date where person_id=?",
+            own,
+        )
+
+        val proof =
+            requireNotNull(telegramIdentities.start(parent, true).pairingUrl)
+                .substringAfter("?start=")
+        val user = 921_000_000L + (parent.leastSignificantBits and 0xFFFFFF)
+        val link = telegramIdentities.connect(proof, user, user, 1)
+        val telegramActor = telegramIdentities.actor(link)
+        assertThatCode { dutyService.targets(telegramActor, team) }.doesNotThrowAnyException()
+        assertThatThrownBy { dutyService.targets(telegramActor, otherTeam) }
+            .isInstanceOf(AuthorizationDeniedException::class.java)
+
+        admin.update(
+            "update forena.team_permission_assignment set active=false where person_id=?",
+            own,
+        )
+        assertThatThrownBy { dutyService.targets(telegramActor, team) }
+            .isInstanceOf(AuthorizationDeniedException::class.java)
+        telegramIdentities.disconnect(parent)
+        assertThatThrownBy { dutyService.targets(telegramActor, team) }
+            .isInstanceOf(BadCredentialsException::class.java)
+    }
+
+    @Test
+    fun `personal club replies keep profiles private stream partial results and persist selected context`() {
+        val actor = assistantActor()
+        val second = UUID.randomUUID()
+        admin.update("insert into forena.organization(id,name) values(?,'AIK')", second)
+        for (org in listOf(organization, second)) admin.update(
+            "insert into forena.organization_member(organization_id,subject,role) values(?,?,'admin')",
+            org,
+            parent,
+        )
+        assistantProfiles.save(
+            actor,
+            organization,
+            se.forena.api.assistant.AssistantProfile(
+                "UIK-boten",
+                instructions = "UIK:s privata caférutin",
+            ),
+        )
+        assistantProfiles.save(
+            actor,
+            second,
+            se.forena.api.assistant.AssistantProfile(
+                "AIK-boten",
+                instructions = "AIK:s privata planbokning",
+            ),
+        )
+        val conversation = assistant.new(actor)
+        org.mockito.Mockito.`when`(assistantModel.route(org.mockito.ArgumentMatchers.anyString()))
+            .thenReturn(
+                se.forena.api.assistant.RoutingPlan(
+                    listOf(
+                        se.forena.api.assistant.AssistantTarget(
+                            organization,
+                            question = "Hur fungerar caféet?",
+                        ),
+                        se.forena.api.assistant.AssistantTarget(
+                            second,
+                            question = "Hur bokar jag planen?",
+                        ),
+                    )
+                )
+            )
+        val contexts = java.util.concurrent.ConcurrentLinkedQueue<String>()
+        org.mockito.Mockito.`when`(
+                assistantModel.answer(
+                    org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.anyString(),
+                )
+            )
+            .thenAnswer { invocation ->
+                val context = invocation.getArgument<String>(1)
+                contexts.add(context)
+                if (context.contains("AIK:s privata planbokning")) {
+                    assertThat(context)
+                        .doesNotContain("UIK:s privata caférutin", "Hur fungerar caféet?")
+                    throw IllegalStateException("Synthetic unavailable provider")
+                }
+                assertThat(context)
+                    .doesNotContain("AIK:s privata planbokning", "Hur bokar jag planen?")
+                se.forena.api.assistant.ModelAnswer("UIK:s café är öppet.")
+            }
+        val replies = mutableListOf<se.forena.api.assistant.AssistantReply>()
+        assistant.send(
+            actor,
+            conversation.id,
+            se.forena.api.assistant.MessageCommand(
+                "Hur fungerar caféet i UIK och planbokningen i AIK?"
+            ),
+        ) {
+            replies.add(it)
+        }
+        assertThat(contexts).hasSize(2)
+        assertThat(replies.count { it.pending }).isEqualTo(2)
+        assertThat(replies.any { it.sender == "UIK-boten" && !it.failed && !it.pending }).isTrue()
+        assertThat(
+                replies.any {
+                    it.organizationId == second && it.failed && it.text.contains("ofullständig")
+                }
+            )
+            .isTrue()
+        assertThat(assistant.view(actor, conversation.id).messages.count { it.role == "assistant" })
+            .isEqualTo(3)
+    }
+
+    @Test
+    fun `authenticated browser streams a model reply and persists the same private conversation`() {
+        org.mockito.Mockito.`when`(assistantModel.route(org.mockito.ArgumentMatchers.anyString()))
+            .thenReturn(se.forena.api.assistant.RoutingPlan())
+        org.mockito.Mockito.`when`(
+                assistantModel.answer(
+                    org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.anyString(),
+                )
+            )
+            .thenReturn(se.forena.api.assistant.ModelAnswer("Verifierat syntetiskt svar"))
+        val created = request("/api/assistant/conversations", "{}", method = "POST")
+        val id = json.readTree(created.body()).get("id").asString()
+        val result =
+            request(
+                "/api/assistant/conversations/$id/messages",
+                """{"text":"Hjälp mig förstå översikten"}""",
+                method = "POST",
+            )
+        assertThat(result.statusCode()).isEqualTo(200)
+        assertThat(result.headers().firstValue("content-type").orElse(""))
+            .contains("application/x-ndjson")
+        assertThat(result.body()).contains("Verifierat syntetiskt svar")
+        assertThat(
+                json
+                    .readTree(request("/api/assistant/conversations/$id").body())
+                    .get("messages")
+                    .size()
+            )
+            .isEqualTo(2)
+    }
+
+    @Test
+    fun `private Telegram text reuses the shared assistant and duplicate updates never run a second model call`() {
+        val user =
+            java.util.concurrent.ThreadLocalRandom.current().nextLong(100, Long.MAX_VALUE - 10)
+        val proof =
+            requireNotNull(telegramIdentities.start(parent, true).pairingUrl)
+                .substringAfter("?start=")
+        telegramIdentities.connect(proof, user, user, 1)
+        org.mockito.Mockito.`when`(assistantModel.route(org.mockito.ArgumentMatchers.anyString()))
+            .thenReturn(se.forena.api.assistant.RoutingPlan())
+        org.mockito.Mockito.`when`(
+                assistantModel.answer(
+                    org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.anyString(),
+                )
+            )
+            .thenReturn(se.forena.api.assistant.ModelAnswer("Verifierat Telegram-svar"))
+        org.mockito.Mockito.`when`(
+                telegramClient.call(
+                    org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.anyMap<String, Any?>(),
+                )
+            )
+            .thenReturn(json.createObjectNode().put("message_id", 1))
+        val update =
+            json.readTree(
+                """{"update_id":$user,"message":{"from":{"id":$user},"chat":{"id":$user,"type":"private"},"text":"Hjälp mig"}}"""
+            )
+        telegramWebhook.handle(update)
+        telegramWebhook.handle(update)
+        org.mockito.Mockito.verify(assistantModel, org.mockito.Mockito.times(1))
+            .answer(
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+            )
+        val conversation = assistant.list(assistantActor()).single { it.channel == "telegram" }
+        assertThat(assistant.view(assistantActor(), conversation.id).messages.last().content)
+            .isEqualTo("Verifierat Telegram-svar")
+    }
+
+    @Test
+    fun `chat yes never confirms a memory and a separate button is still necessary`() {
+        val actor = assistantActor()
+        val conversation = assistant.new(actor)
+        org.mockito.Mockito.`when`(assistantModel.route(org.mockito.ArgumentMatchers.anyString()))
+            .thenReturn(se.forena.api.assistant.RoutingPlan())
+        org.mockito.Mockito.`when`(
+                assistantModel.answer(
+                    org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.anyString(),
+                )
+            )
+            .thenReturn(
+                se.forena.api.assistant.ModelAnswer(
+                    "Granska minnet.",
+                    memory = se.forena.api.assistant.MemoryDraft(content = "Korta svar."),
+                )
+            )
+        assistant.send(
+            actor,
+            conversation.id,
+            se.forena.api.assistant.MessageCommand("Kom ihåg att jag vill ha korta svar"),
+        ) {}
+        assistant.send(actor, conversation.id, se.forena.api.assistant.MessageCommand("ja")) {}
+        assertThat(
+                admin.queryForObject(
+                    "select count(*) from forena.assistant_memory where subject=?",
+                    Long::class.java,
+                    parent,
+                )
+            )
+            .isZero()
+        val state = assistant.view(actor, conversation.id)
+        assertThat(state.proposals.count { it.state == "invalid" }).isEqualTo(1)
+        assertThat(state.proposals.count { it.state == "pending" }).isEqualTo(1)
+    }
+
+    @Test
+    fun `Telegram group text and voice never reach the model and overlong private voice is rejected`() {
+        val user = java.util.concurrent.ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE)
+        val proof =
+            requireNotNull(telegramIdentities.start(parent, true).pairingUrl)
+                .substringAfter("?start=")
+        telegramIdentities.connect(proof, user, user, 1)
+        org.mockito.Mockito.`when`(
+                telegramClient.call(
+                    org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.anyMap<String, Any?>(),
+                )
+            )
+            .thenReturn(json.createObjectNode().put("message_id", 1))
+        for (index in 0..1) {
+            val update =
+                json.readTree(
+                    """{"update_id":${user-index},"message":{"from":{"id":$user},"chat":{"id":-55,"type":"supergroup"},"text":"alla är här","voice":{"duration":10}}}"""
+                )
+            telegramWebhook.handle(update)
+        }
+        telegramWebhook.handle(
+            json.readTree(
+                """{"update_id":${user+1},"message":{"from":{"id":$user},"chat":{"id":$user,"type":"private"},"voice":{"duration":61,"file_id":"synthetic","file_size":10}}}"""
+            )
+        )
+        org.mockito.Mockito.verifyNoInteractions(assistantModel)
+        assertThat(
+                admin.queryForObject(
+                    "select count(*) from forena.attendance_report where activity_id=?",
+                    Long::class.java,
+                    activity,
+                )
+            )
+            .isZero()
+    }
+
+    @Test
+    fun `memory administration rejects other accounts and stale edits`() {
+        val actor = assistantActor()
+        val conversation = assistant.new(actor)
+        val draft =
+            assistantProposals
+                .preview(
+                    actor,
+                    conversation,
+                    null,
+                    se.forena.api.assistant.ModelAnswer(
+                        "Förslag",
+                        memory = se.forena.api.assistant.MemoryDraft(content = "Korta svar"),
+                    ),
+                )
+                .single()
+        assistantProposals.confirm(actor, draft.id)
+        val memory =
+            admin.queryForObject(
+                "select id from forena.assistant_memory where subject=?",
+                UUID::class.java,
+                parent,
+            )
+        assertThat(
+                request(
+                        "/api/assistant/memories/$memory",
+                        """{"revision":1,"content":"Annan text"}""",
+                        cookie = loginCookie(outsider),
+                    )
+                    .statusCode()
+            )
+            .isEqualTo(403)
+        assertThat(
+                request(
+                        "/api/assistant/memories/$memory",
+                        """{"revision":1,"content":"Ändrad text"}""",
+                    )
+                    .statusCode()
+            )
+            .isEqualTo(200)
+        assertThat(
+                request(
+                        "/api/assistant/memories/$memory",
+                        """{"revision":1,"content":"Gammal version"}""",
+                    )
+                    .statusCode()
+            )
+            .isEqualTo(409)
+        assertThat(
+                request("/api/assistant/memories/$memory?revision=2", method = "DELETE")
+                    .statusCode()
+            )
+            .isEqualTo(200)
+    }
+
+    @Test
+    fun `assistant conversations are private across direct HTTP reads deletion and new channels`() {
+        val response = request("/api/assistant/conversations", "{}", method = "POST")
+        assertThat(response.statusCode()).isEqualTo(200)
+        val id = json.readTree(response.body()).get("id").asString()
+        assertThat(
+                request("/api/assistant/conversations/$id", cookie = loginCookie(outsider))
+                    .statusCode()
+            )
+            .isEqualTo(404)
+        assertThat(
+                request(
+                        "/api/assistant/conversations/$id",
+                        method = "DELETE",
+                        cookie = loginCookie(outsider),
+                    )
+                    .statusCode()
+            )
+            .isEqualTo(404)
+        assertThat(request("/api/assistant/conversations/$id").statusCode()).isEqualTo(200)
+        assertThat(request("/api/assistant/conversations/$id", method = "DELETE").statusCode())
+            .isEqualTo(200)
+        assertThat(request("/api/assistant/conversations/$id").statusCode()).isEqualTo(404)
+    }
+
+    @Test
+    fun `a memory draft requires separate confirmation is account bound and is applied at most once`() {
+        val actor = assistantActor()
+        val conversation = assistant.new(actor)
+        val answer =
+            se.forena.api.assistant.ModelAnswer(
+                "Granska minnesförslaget",
+                memory = se.forena.api.assistant.MemoryDraft(content = "Jag föredrar korta svar."),
+            )
+        val draft = assistantProposals.preview(actor, conversation, null, answer).single()
+        assertThat(
+                admin.queryForObject(
+                    "select count(*) from forena.assistant_memory where created_by=?",
+                    Long::class.java,
+                    parent,
+                )
+            )
+            .isZero()
+        assertThat(
+                request(
+                        "/api/assistant/proposals/${draft.id}/confirm",
+                        method = "POST",
+                        cookie = loginCookie(outsider),
+                    )
+                    .statusCode()
+            )
+            .isEqualTo(404)
+        assertThat(
+                request("/api/assistant/proposals/${draft.id}/confirm", method = "POST")
+                    .statusCode()
+            )
+            .isEqualTo(200)
+        assertThat(
+                request("/api/assistant/proposals/${draft.id}/confirm", method = "POST")
+                    .statusCode()
+            )
+            .isEqualTo(200)
+        assertThat(
+                admin.queryForObject(
+                    "select count(*) from forena.assistant_memory where created_by=?",
+                    Long::class.java,
+                    parent,
+                )
+            )
+            .isEqualTo(1)
+        assistant.new(actor)
+        assertThat(
+                request("/api/assistant/proposals/${draft.id}/confirm", method = "POST")
+                    .statusCode()
+            )
+            .isEqualTo(409)
+    }
+
+    @Test
+    fun `Telegram pairing uses a hashed expiring one time proof and reconnect never revives old actors`() {
+        val state = telegramIdentities.start(parent, true)
+        val url = requireNotNull(state.pairingUrl)
+        val proof = url.substringAfter("?start=")
+        assertThat(proof.length).isEqualTo(43)
+        assertThat(
+                admin.queryForList(
+                    "select fingerprint from forena.telegram_pairing where subject=?",
+                    String::class.java,
+                    parent,
+                )
+            )
+            .doesNotContain(proof)
+        val user = java.util.concurrent.ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE)
+        val link = telegramIdentities.connect(proof, user, user, 1)
+        val actor = telegramIdentities.actor(link)
+        assertThatThrownBy { telegramIdentities.connect(proof, user, user, 2) }
+            .isInstanceOf(
+                org.springframework.security.authentication.BadCredentialsException::class.java
+            )
+        val conversation = assistant.activeTelegram(actor)
+        val webConversation = assistant.new(assistantActor())
+        assertThat(assistant.activeTelegram(actor).id).isEqualTo(conversation.id)
+        assertThat(webConversation.id).isNotEqualTo(conversation.id)
+        telegramIdentities.disconnect(parent)
+        assertThatThrownBy { telegramIdentities.actor(link) }
+            .isInstanceOf(
+                org.springframework.security.authentication.BadCredentialsException::class.java
+            )
+        val newProof =
+            requireNotNull(telegramIdentities.start(parent, true).pairingUrl)
+                .substringAfter("?start=")
+        val reconnected = telegramIdentities.connect(newProof, user, user, 3)
+        assertThat(reconnected.id).isNotEqualTo(link.id)
+        assertThatThrownBy { telegramIdentities.actor(link) }
+            .isInstanceOf(
+                org.springframework.security.authentication.BadCredentialsException::class.java
+            )
+        assertThat(assistant.activeTelegram(telegramIdentities.actor(reconnected)).id)
+            .isNotEqualTo(conversation.id)
+    }
+
+    @Test
+    fun `own age groups use only the linked self profile and keep child ages out of adult tone`() {
+        val service = assistantIdentity
+        for ((age, expected) in
+            listOf(12 to "under13", 13 to "13to17", 17 to "13to17", 18 to "adult")) {
+            admin.update(
+                "update forena.person set birth_date=current_date-make_interval(years=>?) where id=?",
+                age,
+                own,
+            )
+            assertThat(service.viewer(assistantActor(), organization, null).ageGroup)
+                .isEqualTo(expected)
+        }
+        admin.update("update forena.person set birth_date=null where id=?", own)
+        admin.update(
+            "update forena.person set birth_date=current_date-interval '12 years' where id=?",
+            child1,
+        )
+        assertThat(service.viewer(assistantActor(), organization, null).ageGroup)
+            .isEqualTo("unknown")
+    }
+
+    @Autowired lateinit var contextSessions: se.forena.api.identity.SessionService
+
+    @Test
+    fun `expired pairing and foreign private chat cannot create a Telegram link`() {
+        val proof =
+            requireNotNull(telegramIdentities.start(parent, true).pairingUrl)
+                .substringAfter("?start=")
+        val user = java.util.concurrent.ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE - 1)
+        assertThatThrownBy { telegramIdentities.connect(proof, user, user + 1, 1) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+        admin.update(
+            "update forena.telegram_pairing set expires_at=now()-interval '1 second' where subject=?",
+            parent,
+        )
+        assertThatThrownBy { telegramIdentities.connect(proof, user, user, 2) }
+            .isInstanceOf(
+                org.springframework.security.authentication.BadCredentialsException::class.java
+            )
+        assertThat(telegramIdentities.connectionForSubject(parent)).isNull()
+    }
+
+    @Test
+    fun `a partial attendance proposal preserves unknown people and invitation responses and rejects stale revisions`() {
+        rosterPermission(permission = "attendance.manage")
+        admin.update(
+            "update forena.activity set starts_at=now()-interval '1 hour',ends_at=now()+interval '1 hour' where id=?",
+            activity,
+        )
+        val actor = assistantActor()
+        attendanceService.patch(actor, activity, 0, mapOf(child1 to true))
+        val state = attendanceService.snapshot(actor, activity)
+        assertThat(state.roster.single { it.personId == child1 }.present).isTrue()
+        assertThat(state.roster.single { it.personId == child2 }.present).isNull()
+        assertThat(
+                admin.queryForObject(
+                    "select response from forena.invitation where id=?",
+                    String::class.java,
+                    invitation,
+                )
+            )
+            .isEqualTo("pending")
+        assertThatThrownBy { attendanceService.patch(actor, activity, 0, mapOf(child1 to false)) }
+            .isInstanceOf(IllegalStateException::class.java)
+        assertThat(attendanceService.snapshot(actor, activity).revision).isEqualTo(1)
+    }
+    @Test fun `assistant reads invitation-purpose activities without inheriting activity management`() {
+        val team = rosterTeam()
+        rosterPermission(permission="invitation.manage")
+        admin.update("delete from forena.invitation where activity_id=? and person_id<>?",activity,other)
+        val actor = assistantActor()
+        assertThat(request("/api/activities/$activity").statusCode()).isEqualTo(404)
+        val visible = assistantActivities.catalogActivities(actor)
+        assertThat(visible.map { it.id }).contains(activity)
+        assertThat(assistantActivities.activity(actor,activity).can_manage_activities).isFalse()
+        assertThat(request("/api/teams/$team/activity-editor").statusCode()).isEqualTo(403)
+    }
+
+    @Test
+    fun `team purpose permissions never disclose another team in the same club`() {
+        val otherTeam = UUID.randomUUID()
+        val otherActivity = UUID.randomUUID()
+        admin.update(
+            "insert into forena.team(id,organization_id,name) values(?,?,'Skyddat lag')",
+            otherTeam,
+            organization,
+        )
+        admin.update(
+            "insert into forena.activity(id,organization_id,team_id,title,starts_at,ends_at) values(?,?,?,'Skyddad lagaktivitet',now()+interval '1 hour',now()+interval '2 hours')",
+            otherActivity,
+            organization,
+            otherTeam,
+        )
+        val month =
+            admin.queryForObject(
+                "select to_char(now() at time zone 'Europe/Stockholm','YYYY-MM')",
+                String::class.java,
+            )
+        val actor = assistantActor()
+        for (permission in
+            listOf("invitation.manage", "roster.manage", "assistant.memory.manage")) {
+            rosterPermission(permission = permission)
+            for (path in listOf("/api/me/overview", "/api/me/calendar?month=$month")) {
+                val response = request(path)
+                assertThat(response.statusCode()).isEqualTo(200)
+                assertThat(response.body())
+                    .doesNotContain(
+                        otherTeam.toString(),
+                        otherActivity.toString(),
+                        "Skyddad lagaktivitet",
+                    )
+            }
+            assertThat(request("/api/activities/$otherActivity").statusCode()).isEqualTo(404)
+            assertThat(assistantActivities.catalogTeams(actor).map { it.id })
+                .contains(rosterTeam())
+                .doesNotContain(otherTeam)
+            assertThat(assistantActivities.catalogActivities(actor).map { it.id })
+                .doesNotContain(otherActivity)
+            assertThatThrownBy { assistantActivities.team(actor, otherTeam) }
+                .isInstanceOf(AccessDeniedException::class.java)
+            assertThatThrownBy { assistantActivities.activity(actor, otherActivity) }
+                .isInstanceOf(NoSuchElementException::class.java)
+            admin.update(
+                "delete from forena.team_permission_assignment where team_id=? and permission=?",
+                rosterTeam(),
+                permission,
+            )
+        }
+    }
+
     @Test fun `disabled notification worker rejects even an authenticated browser session`() {
         val base = "http://127.0.0.1:${environment.getRequiredProperty("local.server.port")}/internal/notifications"
         for (path in listOf("status", "run")) {
@@ -73,6 +999,9 @@ class ApiTest {
             registry.add("forena.email.resend-api-key") { "synthetic-unused-key" }
             registry.add("forena.administration.initial-system-admin-email") { "bootstrap@example.invalid" }
             registry.add("forena.email.from") { "auth@example.invalid" }
+            registry.add("FORENA_TELEGRAM_ENABLED") { true }
+            registry.add("forena.telegram.retention-delay-ms") { 3_600_000 }
+            registry.add("FORENA_TELEGRAM_BOT_USERNAME") { "ForenaTestBot" }
             registry.add("forena.web-session.enabled") { true }
             registry.add("forena.web-session.origin") { "https://app.example.invalid" }
             registry.add("forena.web-session.key") { Base64.getEncoder().encodeToString(ByteArray(32) { 7 }) }
@@ -301,25 +1230,56 @@ class ApiTest {
         assertThat(json.readTree(request(attendancePath()).body()).get("history").size()).isEqualTo(2)
     }
 
-    @Test fun `attendance rechecks permission and cancellation after waiting for the activity lock`() {
+    @Test
+    fun `attendance keeps admitted permission but checks cancellation after lock wait`() {
         startAttendance()
         for (cancel in listOf(false, true)) {
-            admin.update("update forena.team_permission_assignment set active=true where team_id=? and permission='attendance.manage'", rosterTeam())
-            DriverManager.getConnection(database.jdbcUrl, database.username, database.password).use { connection ->
-                connection.autoCommit = false
-                connection.prepareStatement("select id from forena.activity where id=? for update").use {
-                    it.setObject(1, activity); it.executeQuery().close()
+            admin.update(
+                "update forena.team_permission_assignment set active=true where team_id=? and permission='attendance.manage'",
+                rosterTeam(),
+            )
+            DriverManager.getConnection(database.jdbcUrl, database.username, database.password)
+                .use { connection ->
+                    connection.autoCommit = false
+                    connection
+                        .prepareStatement("select id from forena.activity where id=? for update")
+                        .use {
+                            it.setObject(1, activity)
+                            it.executeQuery().close()
+                        }
+                    val result = CompletableFuture.supplyAsync {
+                        request(attendancePath(), attendanceBody())
+                    }
+                    awaitRuntimeLocks(1)
+                    if (cancel)
+                        connection
+                            .prepareStatement(
+                                "update forena.activity set status='cancelled' where id=?"
+                            )
+                            .use {
+                                it.setObject(1, activity)
+                                it.executeUpdate()
+                            }
+                    else
+                        admin.update(
+                            "update forena.team_permission_assignment set active=false where team_id=? and permission='attendance.manage'",
+                            rosterTeam(),
+                        )
+                    connection.commit()
+                    assertThat(result.get(10, SECONDS).statusCode())
+                        .isEqualTo(if (cancel) 409 else 204)
                 }
-                val result = CompletableFuture.supplyAsync { request(attendancePath(), attendanceBody()) }
-                awaitRuntimeLocks(1)
-                if (cancel) connection.prepareStatement("update forena.activity set status='cancelled' where id=?").use {
-                    it.setObject(1, activity); it.executeUpdate()
-                } else admin.update("update forena.team_permission_assignment set active=false where team_id=? and permission='attendance.manage'", rosterTeam())
-                connection.commit()
-                assertThat(result.get(10, SECONDS).statusCode()).isEqualTo(if (cancel) 409 else 403)
-            }
+            if (!cancel)
+                assertThat(request(attendancePath(), attendanceBody(1)).statusCode()).isEqualTo(403)
         }
-        assertThat(admin.queryForObject("select count(*) from forena.attendance_report where activity_id=?", Long::class.java, activity)).isZero()
+        assertThat(
+                admin.queryForObject(
+                    "select count(*) from forena.attendance_report where activity_id=?",
+                    Long::class.java,
+                    activity,
+                )
+            )
+            .isEqualTo(1)
     }
 
     @Test fun `personal attendance remains unknown without a report and only exposes accessible people`() {
@@ -443,22 +1403,38 @@ class ApiTest {
         assertThat(admin.queryForObject("select count(*) from forena.roster_audit where team_id=?", Long::class.java, rosterTeam())).isEqualTo(3)
     }
 
-    @Test fun `logout committed during activity lock wait rejects the pending write`() {
-        DriverManager.getConnection(database.jdbcUrl, database.username, database.password).use { connection ->
+    @Test
+    fun `logout during lock wait does not revoke an admitted write but blocks the next request`() {
+        DriverManager.getConnection(database.jdbcUrl, database.username, database.password).use {
+            connection ->
             connection.autoCommit = false
-            connection.prepareStatement("select id from forena.activity where id=? for update").use {
-                it.setObject(1,activity); it.executeQuery().close()
-            }
+            connection
+                .prepareStatement("select id from forena.activity where id=? for update")
+                .use {
+                    it.setObject(1, activity)
+                    it.executeQuery().close()
+                }
             val result = CompletableFuture.supplyAsync { respond("""{"response":"accepted"}""") }
             try {
                 await().atMost(Duration.ofSeconds(10)).until {
-                    admin.queryForObject("select count(*) from pg_stat_activity where usename='forena_api_runtime' and wait_event_type='Lock'",Long::class.java)!! > 0
+                    admin.queryForObject(
+                        "select count(*) from pg_stat_activity where usename='forena_api_runtime' and wait_event_type='Lock'",
+                        Long::class.java,
+                    )!! > 0
                 }
-                admin.update("insert into forena.revoked_session(id,subject) values(?,?)", session, parent)
-            } finally { connection.rollback() }
-            assertThat(result.get(10,SECONDS).statusCode()).isEqualTo(401)
-            assertThat(row()["revision"]).isEqualTo(0L)
-            assertThat(history()).isZero(); assertThat(dirty()).isZero()
+                admin.update(
+                    "insert into forena.revoked_session(id,subject) values(?,?)",
+                    session,
+                    parent,
+                )
+            } finally {
+                connection.rollback()
+            }
+            assertThat(result.get(10, SECONDS).statusCode()).isEqualTo(200)
+            assertThat(row()["revision"]).isEqualTo(1L)
+            assertThat(history()).isEqualTo(1)
+            assertThat(dirty()).isEqualTo(1)
+            assertThat(respond("""{"response":"declined"}""").statusCode()).isEqualTo(401)
         }
     }
 
@@ -1122,23 +2098,45 @@ class ApiTest {
         assertThat(json.readTree(request("/api/activities/$activity").body()).get("can_manage_activities").asBoolean()).isFalse()
     }
 
-    @Test fun `deadline exception rechecks permission after waiting for the activity lock`() {
-        val team = admin.queryForObject("select team_id from forena.activity where id=?", UUID::class.java, activity)!!
-        admin.update("insert into forena.team_permission_assignment(organization_id,team_id,person_id,permission,starts_on) values(?,?,?,'activity.manage',current_date)", organization, team, own)
-        admin.update("update forena.activity set response_due_at=now()-interval '1 minute' where id=?", activity)
-        DriverManager.getConnection(database.jdbcUrl, database.username, database.password).use { connection ->
+    @Test
+    fun `deadline exception uses admitted permission and rejects subsequent requests after revocation`() {
+        val team =
+            admin.queryForObject(
+                "select team_id from forena.activity where id=?",
+                UUID::class.java,
+                activity,
+            )!!
+        admin.update(
+            "insert into forena.team_permission_assignment(organization_id,team_id,person_id,permission,starts_on) values(?,?,?,'activity.manage',current_date)",
+            organization,
+            team,
+            own,
+        )
+        admin.update(
+            "update forena.activity set response_due_at=now()-interval '1 minute' where id=?",
+            activity,
+        )
+        DriverManager.getConnection(database.jdbcUrl, database.username, database.password).use {
+            connection ->
             connection.autoCommit = false
-            connection.prepareStatement("select id from forena.activity where id=? for update").use {
-                it.setObject(1, activity); it.executeQuery().close()
-            }
+            connection
+                .prepareStatement("select id from forena.activity where id=? for update")
+                .use {
+                    it.setObject(1, activity)
+                    it.executeQuery().close()
+                }
             val result = CompletableFuture.supplyAsync { respond("""{"response":"accepted"}""") }
             awaitRuntimeLocks(1)
-            admin.update("update forena.team_permission_assignment set active=false where person_id=?", own)
+            admin.update(
+                "update forena.team_permission_assignment set active=false where person_id=?",
+                own,
+            )
             connection.commit()
-            assertThat(result.get(5, SECONDS).statusCode()).isEqualTo(409)
+            assertThat(result.get(5, SECONDS).statusCode()).isEqualTo(200)
         }
-        assertThat(history()).isZero()
-        assertThat(dirty()).isZero()
+        assertThat(history()).isEqualTo(1)
+        assertThat(dirty()).isEqualTo(1)
+        assertThat(respond("""{"response":"declined"}""").statusCode()).isEqualTo(409)
     }
 
     @Test fun `management never bypasses cancellation or activity end`() {
@@ -1669,24 +2667,69 @@ class ApiTest {
         assertThat(request("/api/admin/bootstrap", "{}", method="POST").statusCode()).isEqualTo(409)
     }
 
-    @Test fun `administration rechecks a revoked role after waiting for the global lock`() {
+    @Test
+    fun `administration completes an admitted command and denies new commands after revocation`() {
         bootstrapAdministrator()
         val club = createAdminClub()
-        val section = admin.queryForObject("select id from forena.section where organization_id=?", UUID::class.java, club)!!
-        request("/api/admin/sections/$section/administrators", """{"email":"$outsider@example.invalid"}""", method="POST")
+        val section =
+            admin.queryForObject(
+                "select id from forena.section where organization_id=?",
+                UUID::class.java,
+                club,
+            )!!
+        request(
+            "/api/admin/sections/$section/administrators",
+            """{"email":"$outsider@example.invalid"}""",
+            method = "POST",
+        )
         val outsiderCookie = loginCookie(outsider)
-        DriverManager.getConnection(database.jdbcUrl, database.username, database.password).use { connection ->
+        DriverManager.getConnection(database.jdbcUrl, database.username, database.password).use {
+            connection ->
             connection.autoCommit = false
-            connection.createStatement().use { it.executeQuery("select * from forena.administration_state for update").close() }
-            val result = CompletableFuture.supplyAsync { request("/api/admin/sections/$section/teams", """{"name":"Nekat efter väntan"}""", cookie=outsiderCookie, method="POST") }
+            connection.createStatement().use {
+                it.executeQuery("select * from forena.administration_state for update").close()
+            }
+            val result = CompletableFuture.supplyAsync {
+                request(
+                    "/api/admin/sections/$section/teams",
+                    """{"name":"Godkänt före väntan"}""",
+                    cookie = outsiderCookie,
+                    method = "POST",
+                )
+            }
             try {
                 await().atMost(Duration.ofSeconds(10)).until {
-                    admin.queryForObject("select count(*) from pg_stat_activity where usename='forena_api_runtime' and wait_event_type='Lock'", Long::class.java)!! > 0
+                    admin.queryForObject(
+                        "select count(*) from pg_stat_activity where usename='forena_api_runtime' and wait_event_type='Lock'",
+                        Long::class.java,
+                    )!! > 0
                 }
-                admin.update("update forena.section_administrator set active=false where subject=?", outsider)
-            } finally { connection.rollback() }
-            assertThat(result.get(10, SECONDS).statusCode()).isEqualTo(403)
-            assertThat(admin.queryForObject("select count(*) from forena.team where section_id=?", Long::class.java, section)).isZero()
+                admin.update(
+                    "update forena.section_administrator set active=false where subject=?",
+                    outsider,
+                )
+            } finally {
+                connection.rollback()
+            }
+            assertThat(result.get(10, SECONDS).statusCode()).isEqualTo(200)
+            assertThat(
+                    admin.queryForObject(
+                        "select count(*) from forena.team where section_id=?",
+                        Long::class.java,
+                        section,
+                    )
+                )
+                .isEqualTo(1)
+            assertThat(
+                    request(
+                            "/api/admin/sections/$section/teams",
+                            """{"name":"Nytt anrop nekas"}""",
+                            cookie = outsiderCookie,
+                            method = "POST",
+                        )
+                        .statusCode()
+                )
+                .isEqualTo(403)
         }
     }
 

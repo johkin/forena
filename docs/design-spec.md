@@ -55,6 +55,18 @@ exempel som inte loggar ut den som granskar komponenterna.
 Kontomenyn använder samma navigationsklass som övriga menyer. Personliga
 länkar ligger på varsin rad med minst 44 px hög tryckyta, även i mobilpanelen.
 
+## Beständig assistent i React/Kotlin
+
+Min översikt har en personlig assistent och klubbvyer separata klubbsamtal.
+En direktlänk till `/assistant?conversation=…` visar Min översikt bakom dialogen,
+så att samma personliga sida finns kvar när samtalet stängs.
+Sparade samtal, namngivna avsändare, progressiva svar, förslagsgranskning och
+separata bekräftelseknappar använder samma produktionskomponenter på
+`/components`. Next och Vite delar launcher, assistentheader och CSS.
+Konto/säkerhet har Telegram-, push- och personliga minnesinställningar;
+klubb- och sektionsadministration återanvänder profil-/minneskomponenterna.
+Systemadministrationen visar ingen verksamhetsassistent.
+
 ## Kotlin-webbens Min översikt
 
 Vite och Next delar `PersonalHome`, `PersonalOverview`, `TeamCalendar`,

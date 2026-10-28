@@ -39,6 +39,8 @@ try {
       };
       else if (path === '/api/admin/overview') json = { platformAdmin: false, canBootstrap: false, platformAdministrators: [], clubs: [] };
       else if (path === '/api/me/managed-teams') json = canManage ? [team] : [];
+      else if (path === `/api/teams/${teamId}/telegram/groups`) json = { canManage: false, links: [] };
+      else if (path === '/api/assistant/memories') json = [];
       else if (path === `/api/teams/${teamId}/roster/access`) json = false;
       else if (path === `/api/teams/${teamId}/activity-editor`) {
         editorReads++;

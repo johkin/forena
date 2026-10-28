@@ -3,8 +3,8 @@ package se.forena.api.activities
 import java.time.Instant
 import java.time.ZoneId
 import java.util.UUID
-import tools.jackson.databind.json.JsonMapper
 import org.springframework.security.access.AccessDeniedException
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Isolation
 import org.springframework.transaction.annotation.Transactional
@@ -12,10 +12,12 @@ import se.forena.api.activities.internal.*
 import se.forena.api.identity.Actor
 import se.forena.api.identity.DatabaseClockService
 import se.forena.api.identity.SessionService
+import tools.jackson.databind.json.JsonMapper
 
 @Service
 class ActivityManagementService(
     private val sessions: SessionService,
+    private val teamAccess: TeamAccessService,
     private val clock: DatabaseClockService,
     private val management: ManagementRepository,
     private val activities: ManagedActivityRepository,
@@ -27,89 +29,119 @@ class ActivityManagementService(
     private val defaults: ActivityDefaultsRepository,
     private val groups: AudienceGroupRepository,
     private val groupMembers: AudienceMemberRepository,
-    private val json: JsonMapper
+    private val json: JsonMapper,
+    private val dutyLifecycle: ActivityDutyLifecycleService
 ) {
     @Transactional(readOnly = true)
-    fun canManageInvitations(actor: Actor, teamId: UUID): Boolean {
-        sessions.requireActive(actor)
-        val team = management.team(teamId) ?: return false
-        return allowed(actor, team, "invitation.manage")
-    }
+    fun canManageMemory(actor: Actor, teamId: UUID): Boolean =
+        teamAccess.canManageMemory(actor, teamId)
 
     @Transactional(readOnly = true)
-    fun canManageAttendance(actor: Actor, teamId: UUID): Boolean {
-        sessions.requireActive(actor)
-        val team = management.team(teamId) ?: return false
-        return allowed(actor, team, "attendance.manage")
-    }
+    fun canManageRoster(actor: Actor, teamId: UUID): Boolean =
+        teamAccess.canManageRoster(actor, teamId)
 
     @Transactional(readOnly = true)
-    fun canManageActivity(actor: Actor, teamId: UUID): Boolean {
-        sessions.requireActive(actor)
-        val team = management.team(teamId) ?: return false
-        return allowed(actor, team, "activity.manage")
-    }
+    fun canManageInvitations(actor: Actor, teamId: UUID): Boolean =
+        teamAccess.canManageInvitations(actor, teamId)
+
+    @Transactional(readOnly = true)
+    fun canManageAttendance(actor: Actor, teamId: UUID): Boolean =
+        teamAccess.canManageAttendance(actor, teamId)
+
+    @Transactional(readOnly = true)
+    fun canManageActivity(actor: Actor, teamId: UUID): Boolean =
+        teamAccess.canManageActivities(actor, teamId)
 
     @Transactional(readOnly = true)
     fun teams(actor: Actor): List<ManagedTeam> {
         sessions.requireActive(actor)
-        return management.teams(actor.subject).filter { allowed(actor, it, "activity.manage") }.map { teamDto(actor, it) }
+        return management.teams(actor.subject).filter { allowed(actor, it, TeamPermission.MANAGE_ACTIVITIES) }.map { teamDto(actor, it) }
     }
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    @PreAuthorize("@teamAccess.canOpenActivityEditor(#actor, #teamId)")
     fun context(actor: Actor, teamId: UUID): ActivityEditorContext {
         sessions.requireActive(actor)
         val team = requireTeam(actor, teamId)
         val catalogue = types.catalogue(team.organizationId).filter { it.active && applicable(it, team) }
-        val members = if (allowed(actor, team, "invitation.manage")) participants(team) else emptyList()
+        val members = if (allowed(actor, team, TeamPermission.MANAGE_INVITATIONS)) participants(team) else emptyList()
         return ActivityEditorContext(teamDto(actor, team), catalogue.map {
             ManagedActivityType(it.id, it.name, it.slug, it.systemCategory, it.organizationId)
         }, members.map { ActivityParticipant(it.id, it.displayName, it.role) }, team.disciplineKey, team.sectionId,
             defaultRows(team).map { ActivityDefaultsRow(it.id, it.activityTypeId,
                 if (it.teamId == null) "section" else "team", it.teamId ?: requireNotNull(it.sectionId),
                 it.disciplineKey, it.version, it.revision, it.valuesJson) },
-            if (allowed(actor, team, "invitation.manage")) audienceGroups(team) else emptyList(),
+            if (allowed(actor, team, TeamPermission.MANAGE_INVITATIONS)) audienceGroups(team) else emptyList(),
             activities.findByTeamIdOrderByStartsAtAsc(teamId).filter { it.deletedAt == null }.map(::activityDto))
     }
 
     @Transactional
+    @PreAuthorize("@teamAccess.canCreateActivities(#actor, #command.teamId)")
     fun create(actor: Actor, command: ActivityCommand): ActivityResult {
         sessions.requireActive(actor)
-        return createOccurrence(actor, command)
+        return createOccurrence(
+            actor,
+            command,
+            authorizeCommand(actor, requireNotNull(command.teamId), command.invitationMode),
+        )
     }
 
-    private fun createOccurrence(actor: Actor, command: ActivityCommand, seriesId: UUID? = null): ActivityResult {
+    private fun createOccurrence(
+        actor: Actor,
+        command: ActivityCommand,
+        admittedTeam: ManagementTeamRow,
+        seriesId: UUID? = null,
+    ): ActivityResult {
         val teamId = requireNotNull(command.teamId)
-        requireTeam(actor, teamId)
+        check(teamId == admittedTeam.id)
         check(management.lockTeam(teamId) != null)
-        sessions.requireActive(actor)
-        val team = requireTeam(actor, teamId)
+        val team = management.team(teamId) ?: throw NoSuchElementException()
+        check(team.organizationId == admittedTeam.organizationId)
         val zone = ZoneId.of(team.timeZone)
         ActivityTimes.validate(command, zone, creating = true)
         val type = requireType(team, command.activityTypeId)
         require(command.invitationMode in listOf("none", "now", "schedule"))
         val now = clock.now()
         val id = UUID.randomUUID()
-        val schedulingCommand = if (command.timingRules == null) command.copy(timingRules = inheritedRules(team, type.id)) else command
-        val schedule = if (command.invitationMode == "schedule") ActivityTimes.schedule(schedulingCommand, zone, now) else null
-        val row = ManagedActivityEntity(id, team.organizationId, teamId, type.id,
-            command.title.trim(), command.description.trim(), command.location.trim(),
-            command.startsAt, command.endsAt, command.gatheringAt,
-            if (command.invitationMode == "now") now else schedule?.second?.first(), schedule?.first,
-            seriesId = seriesId, newRecord = true)
+        val schedulingCommand =
+            if (command.timingRules == null)
+                command.copy(timingRules = inheritedRules(team, type.id))
+            else command
+        val schedule =
+            if (command.invitationMode == "schedule")
+                ActivityTimes.schedule(schedulingCommand, zone, now)
+            else null
+        val row =
+            ManagedActivityEntity(
+                id,
+                team.organizationId,
+                teamId,
+                type.id,
+                command.title.trim(),
+                command.description.trim(),
+                command.location.trim(),
+                command.startsAt,
+                command.endsAt,
+                command.gatheringAt,
+                if (command.invitationMode == "now") now else schedule?.second?.first(),
+                schedule?.first,
+                seriesId = seriesId,
+                newRecord = true,
+            )
         applyInvitations(actor, team, row, command, schedule)
         record(actor, row, "created")
         return ActivityResult(activityDto(row))
     }
 
     @Transactional
+    @PreAuthorize("@teamAccess.canCreateActivities(#actor, #command.teamId)")
     fun createSeries(actor: Actor, command: ActivitySeriesCommand): ActivitySeriesResult {
         sessions.requireActive(actor)
-        val team = requireTeam(actor, command.teamId)
+        val team = authorizeCommand(actor, command.teamId, command.invitationMode)
         require(command.timeZone == team.timeZone)
         val occurrences = ActivityTimes.weekly(command, ZoneId.of(team.timeZone))
         val seriesId = UUID.randomUUID()
-        val created = occurrences.map { createOccurrence(actor, it, seriesId).activity }
+        val created = occurrences.map { createOccurrence(actor, it, team, seriesId).activity }
         return ActivitySeriesResult(seriesId, created.size, created)
     }
 
@@ -128,7 +160,6 @@ class ActivityManagementService(
         val selectedResponsibilities = command.invitationSelection?.responsibilityTypeIds.orEmpty().distinct()
         val personIds = command.personIds.distinct()
         if (command.invitationMode != "none") {
-            if (!allowed(actor, team, "invitation.manage")) throw AccessDeniedException("Invitation permission required")
             val availableGroups = groups.findByTeamId(team.id)
             require(selectedGroups.all { id -> availableGroups.any { it.id == id && it.kind == "group" } })
             require(selectedResponsibilities.all { id -> availableGroups.any { it.id == id && it.kind == "responsibility" } })
@@ -171,61 +202,104 @@ class ActivityManagementService(
     }
 
     @Transactional
+    @PreAuthorize("@teamAccess.canManageActivity(#actor, #id)")
     fun update(actor: Actor, id: UUID, command: ActivityCommand): ActivityResult {
-        val current = lock(actor, id)
+        val (current, team) = lock(actor, id, command.invitationMode != "none")
         require(command.teamId == null || command.teamId == current.teamId)
         check(current.status == "scheduled" && current.endsAt > clock.now())
         command.revision?.let { check(it == current.revision) }
-        val team = requireTeam(actor, current.teamId)
         ActivityTimes.validate(command, ZoneId.of(team.timeZone), creating = false)
-        if (command.invitationMode != "schedule") require(current.responseDueAt == null || current.responseDueAt <= command.startsAt)
+        if (command.invitationMode != "schedule")
+            require(current.responseDueAt == null || current.responseDueAt <= command.startsAt)
         val typeId = command.activityTypeId ?: current.activityTypeId
         if (typeId != current.activityTypeId) requireType(team, typeId)
-        val changed = current.copy(activityTypeId = typeId, title = command.title.trim(),
-            description = command.description.trim(), location = command.location.trim(),
-            startsAt = command.startsAt, endsAt = command.endsAt, gatheringAt = command.gatheringAt,
-            revision = current.revision + 1)
+        val changed =
+            current.copy(
+                activityTypeId = typeId,
+                title = command.title.trim(),
+                description = command.description.trim(),
+                location = command.location.trim(),
+                startsAt = command.startsAt,
+                endsAt = command.endsAt,
+                gatheringAt = command.gatheringAt,
+                revision = current.revision + 1,
+            )
         val now = clock.now()
-        val schedulingCommand = if (command.invitationMode == "schedule" && command.timingRules == null)
-            command.copy(timingRules = inheritedRules(team, requireType(team, typeId).id)) else command
-        val schedule = if (command.invitationMode == "schedule")
-            ActivityTimes.schedule(schedulingCommand, ZoneId.of(team.timeZone), now) else null
-        val withInvitations = when (command.invitationMode) {
-            "none" -> changed
-            "now" -> changed.copy(invitationSendAt = now)
-            "schedule" -> changed.copy(
-                // Previously sent invitations and their answers remain visible.
-                invitationSendAt = if ((current.invitationSendAt == null || current.invitationSendAt <= now) &&
-                    invitations.existsByActivityId(id)) current.invitationSendAt ?: now else schedule?.second?.first(),
-                responseDueAt = schedule?.first)
-            else -> throw IllegalArgumentException("Unknown invitation mode")
-        }
+        val schedulingCommand =
+            if (command.invitationMode == "schedule" && command.timingRules == null)
+                command.copy(timingRules = inheritedRules(team, requireType(team, typeId).id))
+            else command
+        val schedule =
+            if (command.invitationMode == "schedule")
+                ActivityTimes.schedule(schedulingCommand, ZoneId.of(team.timeZone), now)
+            else null
+        val withInvitations =
+            when (command.invitationMode) {
+                "none" -> changed
+                "now" -> changed.copy(invitationSendAt = now)
+                "schedule" ->
+                    changed.copy(
+                        // Previously sent invitations and their answers remain visible.
+                        invitationSendAt =
+                            if (
+                                (current.invitationSendAt == null ||
+                                    current.invitationSendAt <= now) &&
+                                    invitations.existsByActivityId(id)
+                            )
+                                current.invitationSendAt ?: now
+                            else schedule?.second?.first(),
+                        responseDueAt = schedule?.first,
+                    )
+                else -> throw IllegalArgumentException("Unknown invitation mode")
+            }
         applyInvitations(actor, team, withInvitations, command, schedule)
+        dutyLifecycle.follow(
+            withInvitations.activityId,
+            withInvitations.startsAt,
+            withInvitations.endsAt,
+            false,
+        )
         record(actor, withInvitations, "updated")
         return ActivityResult(activityDto(withInvitations))
     }
 
     @Transactional
+    @PreAuthorize("@teamAccess.canManageActivity(#actor, #id)")
     fun cancel(actor: Actor, id: UUID, command: CancellationCommand): ActivityDisposition {
-        val current = lock(actor, id)
+        val (current, _) = lock(actor, id)
         command.revision?.let { check(it == current.revision) }
         if (current.deletedAt != null) throw NoSuchElementException()
         require(command.action in listOf("cancel", "delete"))
         if (command.action == "delete") {
             check(!hasSentInvitations(current)) { "Skickade kallelser hindrar borttagning." }
-            val deleted = current.copy(status = "cancelled", deletedAt = clock.now(), revision = current.revision + 1)
+            val deleted =
+                current.copy(
+                    status = "cancelled",
+                    deletedAt = clock.now(),
+                    revision = current.revision + 1,
+                )
             activities.save(deleted)
-            schedules.findByActivityId(id).filter { it.state == "pending" }.forEach { schedules.save(it.copy(state = "cancelled")) }
+            schedules
+                .findByActivityId(id)
+                .filter { it.state == "pending" }
+                .forEach { schedules.save(it.copy(state = "cancelled")) }
+            dutyLifecycle.follow(deleted.activityId, deleted.startsAt, deleted.endsAt, true)
             record(actor, deleted, "deleted")
             return ActivityDisposition("deleted")
         }
         if (current.status == "cancelled") return ActivityDisposition()
         check(current.endsAt > clock.now())
         require(command.reason == null || command.reason.length <= 500)
-        val cancelled = current.copy(status = "cancelled", cancelledAt = clock.now(),
-            cancellationReason = command.reason?.trim()?.ifEmpty { null } ?: "Inställd av ledare",
-            revision = current.revision + 1)
+        val cancelled =
+            current.copy(
+                status = "cancelled",
+                cancelledAt = clock.now(),
+                cancellationReason =
+                    command.reason?.trim()?.ifEmpty { null } ?: "Inställd av ledare",
+                revision = current.revision + 1,
+            )
         activities.save(cancelled)
+        dutyLifecycle.follow(cancelled.activityId, cancelled.startsAt, cancelled.endsAt, true)
         for (schedule in schedules.findByActivityId(id).filter { it.state == "pending" }) {
             schedules.save(schedule.copy(state = "cancelled"))
         }
@@ -234,6 +308,7 @@ class ActivityManagementService(
     }
 
     @Transactional(readOnly = true)
+    @PreAuthorize("@teamAccess.canManageActivity(#actor, #id)")
     fun disposition(actor: Actor, id: UUID): ActivityDeletionOptions {
         val row = activities.findById(id).orElseThrow { NoSuchElementException() }
         sessions.requireActive(actor)
@@ -245,27 +320,48 @@ class ActivityManagementService(
     private fun hasSentInvitations(row: ManagedActivityEntity): Boolean =
         invitations.existsByActivityId(row.activityId) && (row.invitationSendAt == null || row.invitationSendAt <= clock.now())
 
-    private fun lock(actor: Actor, id: UUID): ManagedActivityEntity {
+    private fun lock(
+        actor: Actor,
+        id: UUID,
+        invitationsRequired: Boolean = false,
+    ): Pair<ManagedActivityEntity, ManagementTeamRow> {
         sessions.requireActive(actor)
         val identity = activities.findById(id).orElseThrow { NoSuchElementException() }
-        requireTeam(actor, identity.teamId)
+        val admittedTeam = requireTeam(actor, identity.teamId)
+        if (invitationsRequired) requireInvitationPermission(actor, admittedTeam)
         val current = activities.findLockedByActivityId(id) ?: throw NoSuchElementException()
         if (current.deletedAt != null) throw NoSuchElementException()
-        // Same lifecycle lock/order as InvitationService; recheck after any lock wait.
-        sessions.requireActive(actor)
-        requireTeam(actor, current.teamId)
-        return current
+        check(
+            current.teamId == admittedTeam.id &&
+                current.organizationId == admittedTeam.organizationId
+        )
+        val team = management.team(current.teamId) ?: throw NoSuchElementException()
+        return current to team
+    }
+
+    private fun authorizeCommand(
+        actor: Actor,
+        teamId: UUID,
+        invitationMode: String,
+    ): ManagementTeamRow {
+        val team = requireTeam(actor, teamId)
+        if (invitationMode != "none") requireInvitationPermission(actor, team)
+        return team
+    }
+
+    private fun requireInvitationPermission(actor: Actor, team: ManagementTeamRow) {
+        if (!allowed(actor, team, TeamPermission.MANAGE_INVITATIONS))
+            throw AccessDeniedException("Invitation permission required")
     }
 
     private fun requireTeam(actor: Actor, id: UUID): ManagementTeamRow {
         val team = management.team(id) ?: throw NoSuchElementException()
-        if (!allowed(actor, team, "activity.manage")) throw AccessDeniedException("Activity permission required")
+        if (!allowed(actor, team, TeamPermission.MANAGE_ACTIVITIES)) throw AccessDeniedException("Activity permission required")
         return team
     }
 
-    private fun allowed(actor: Actor, team: ManagementTeamRow, permission: String): Boolean =
-        management.allowed(actor.subject, team.organizationId, team.id, permission,
-            clock.now().atZone(ZoneId.of(team.timeZone)).toLocalDate())
+    private fun allowed(actor: Actor, team: ManagementTeamRow, permission: TeamPermission): Boolean =
+        teamAccess.allowed(actor, team, permission)
 
     private fun participants(team: ManagementTeamRow) =
         management.participants(team.id, clock.now().atZone(ZoneId.of(team.timeZone)).toLocalDate())
@@ -303,7 +399,7 @@ class ActivityManagementService(
         } ?: throw IllegalArgumentException("Activity type unavailable")
 
     private fun teamDto(actor: Actor, row: ManagementTeamRow) = ManagedTeam(row.id, row.organizationId,
-        row.name, row.organizationName, row.timeZone, allowed(actor, row, "invitation.manage"))
+        row.name, row.organizationName, row.timeZone, allowed(actor, row, TeamPermission.MANAGE_INVITATIONS))
 
     private fun activityDto(row: ManagedActivityEntity) = ManagedActivity(row.activityId, row.organizationId,
         row.teamId, row.activityTypeId, row.title, row.description, row.location,

@@ -29,3 +29,8 @@ scripts/deploy/__pycache__/
 /frontend/public/config.json
 /frontend/public/app-version.json
 /frontend/.evidence/
+
+# Shared service worker assets copied by the frontend build
+/frontend/public/sw.js
+/frontend/public/offline.html
+/frontend/public/icon.svg

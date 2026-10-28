@@ -140,6 +140,9 @@ try {
     if (path === '/api/auth/session') return route.fulfill({ json: { user: { id: account, email: 'test@example.invalid' } } });
     if (path === '/api/admin/overview') return route.fulfill({ json: { platformAdmin: false, canBootstrap: false, platformAdministrators: [], clubs: [] } });
     if (path === '/api/me/managed-teams') return route.fulfill({ json: [] });
+    if (path === '/api/me/overview') return route.fulfill({ json: {
+      reference_time: new Date().toISOString(), activities: [], organizations: [], teams: [], calendar_people: [], calendar_teams: [],
+    } });
     if (path === `/api/activities/${id}`) return route.fulfill({ json: {
       id, can_manage_activities: false, can_manage_attendance: true, title: 'Historisk träning', starts_at: '2020-01-01T10:00:00Z', ends_at: '2020-01-01T12:00:00Z',
       gathering_at: null, response_due_at: null, location: '', description: '', status: 'scheduled',

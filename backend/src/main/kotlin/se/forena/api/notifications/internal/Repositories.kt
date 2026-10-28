@@ -1,10 +1,12 @@
 package se.forena.api.notifications.internal
 
 import java.time.Instant
+import java.util.Optional
 import java.util.UUID
 import org.springframework.data.jdbc.repository.query.Modifying
 import org.springframework.data.jdbc.repository.query.Query
 import org.springframework.data.repository.Repository
+import se.forena.api.notifications.*
 import se.forena.api.notifications.NotificationStatus
 
 interface InvitationEmailRepository : Repository<InvitationEmailEntity, UUID> {
@@ -57,6 +59,10 @@ interface InvitationEmailRepository : Repository<InvitationEmailEntity, UUID> {
     )
     fun lockDue(now: Instant): InvitationEmailEntity?
 
+    @Modifying
+    @Query("update forena.invitation_email set delivered_via=:channel where id=:id")
+    fun deliveryChannel(id: UUID, channel: String)
+
     fun save(entity: InvitationEmailEntity): InvitationEmailEntity
 
     @Modifying
@@ -77,4 +83,52 @@ interface InvitationEmailRepository : Repository<InvitationEmailEntity, UUID> {
         accepted: Instant?,
         error: String?,
     )
+}
+
+interface PushRepository : Repository<PushSubscriptionEntity, UUID> {
+    @Query("select subject from forena.push_subscription where endpoint=:endpoint for update")
+    fun findLockedEndpointOwner(endpoint: String): Optional<UUID>
+
+    @Modifying
+    @Query(
+        """insert into forena.push_subscription(subject,endpoint,p256dh,auth) values(:subject,:endpoint,:p256dh,:auth)
+            on conflict(endpoint) do update set p256dh=:p256dh,auth=:auth,active=true,updated_at=clock_timestamp()
+            where forena.push_subscription.subject=:subject"""
+    )
+    fun saveSubscription(subject: UUID, endpoint: String, p256dh: String, auth: String): Int
+
+    @Modifying
+    @Query(
+        "update forena.push_subscription set active=false where subject=:subject and endpoint=:endpoint"
+    )
+    fun disableEndpoint(subject: UUID, endpoint: String): Int
+
+    @Query("select recipient_subject from forena.invitation_notification where id=:id")
+    fun notificationRecipient(id: UUID): UUID
+
+    @Query(
+        "select id,subject,endpoint,p256dh,auth from forena.push_subscription where subject=:subject and active order by id limit 21"
+    )
+    fun findActiveSubscriptions(subject: UUID): List<PushSubscription>
+
+    @Modifying
+    @Query(
+        "insert into forena.push_delivery(notification_id,subscription_id,state) values(:id,:subscription,'uncertain') on conflict do nothing"
+    )
+    fun claimDelivery(id: UUID, subscription: UUID): Int
+
+    @Query(
+        "select state='accepted' from forena.push_delivery where notification_id=:id and subscription_id=:subscription"
+    )
+    fun wasAccepted(id: UUID, subscription: UUID): Boolean
+
+    @Modifying
+    @Query(
+        "update forena.push_delivery set state=:state where notification_id=:id and subscription_id=:subscription"
+    )
+    fun finishDelivery(state: String, id: UUID, subscription: UUID): Int
+
+    @Modifying
+    @Query("update forena.push_subscription set active=false where id=:id")
+    fun disableSubscription(id: UUID): Int
 }

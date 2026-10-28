@@ -79,7 +79,7 @@ management:
       show-details: never
 
 springdoc:
-  packages-to-scan: se.forena.api.activities,se.forena.api.identity,se.forena.api.administration
+  packages-to-scan: se.forena.api.activities,se.forena.api.identity,se.forena.api.administration,se.forena.api.assistant,se.forena.api.telegram
   paths-to-match: /api/**
   writer-with-order-by-keys: true
   override-with-generic-response: false

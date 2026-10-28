@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.any
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito.doThrow
+import org.mockito.Mockito.never
 import org.mockito.Mockito.reset
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
@@ -47,6 +48,54 @@ import se.forena.api.notifications.internal.PublicationRecovery
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class NotificationTest {
+    @MockitoSpyBean lateinit var telegramChannel: se.forena.api.telegram.TelegramDelivery
+    @MockitoSpyBean lateinit var pushChannel: se.forena.api.notifications.PushService
+
+    @Test
+    fun `Telegram acceptance stops fallback and records the actual delivery channel`() {
+        schedules.materialize(deadline())
+        val notification =
+            requireNotNull(
+                jdbc.queryForObject(
+                    "select id from forena.invitation_email order by next_attempt,id limit 1",
+                    UUID::class.java,
+                )
+            )
+        org.mockito.Mockito.doReturn(true).`when`(telegramChannel).deliver(notification)
+        assertThat(delivery.deliverOne()).isTrue()
+        verifyNoInteractions(sender)
+        verify(pushChannel, never()).deliver(notification)
+        assertThat(
+                jdbc.queryForList(
+                    "select delivered_via from forena.invitation_email where state='accepted'",
+                    String::class.java,
+                )
+            )
+            .containsExactly("telegram")
+    }
+
+    @Test
+    fun `push acceptance after unavailable Telegram stops email fallback`() {
+        schedules.materialize(deadline())
+        val notification =
+            requireNotNull(
+                jdbc.queryForObject(
+                    "select id from forena.invitation_email order by next_attempt,id limit 1",
+                    UUID::class.java,
+                )
+            )
+        org.mockito.Mockito.doReturn(false).`when`(telegramChannel).deliver(notification)
+        org.mockito.Mockito.doReturn(true).`when`(pushChannel).deliver(notification)
+        assertThat(delivery.deliverOne()).isTrue()
+        verifyNoInteractions(sender)
+        assertThat(
+                jdbc.queryForList(
+                    "select delivered_via from forena.invitation_email where state='accepted'",
+                    String::class.java,
+                )
+            )
+            .containsExactly("push")
+    }
     companion object {
         private const val WORKER_TOKEN = "synthetic-notification-worker-token-0001"
         val database =
@@ -103,7 +152,7 @@ class NotificationTest {
     fun seed() {
         reset(sender, scheduleRecords, emailRecords)
         admin.execute(
-            "truncate forena.invitation_email, forena.invitation_notification, forena.event_publication, forena.activity_schedule"
+            "truncate forena.push_delivery, forena.telegram_invitation, forena.invitation_email, forena.invitation_notification, forena.event_publication, forena.activity_schedule"
         )
         organization = UUID.randomUUID()
         team = UUID.randomUUID()

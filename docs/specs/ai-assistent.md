@@ -1,13 +1,13 @@
 # AI-assistenten
 
-- Status: Utkast – komplettering om roll- och åldersanpassat bemötande pågår.
-- Senast uppdaterad: 2026-10-27
+- Status: Redo
+- Senast uppdaterad: 2026-10-28
 - Berörda dokument: [Designregler](../design-spec.md),
   [arkitektur](../architecture.md), [säkerhetsarkitektur](../security-architecture.md),
   [assistentminne](../assistant-memory.md), [MCP](../mcp.md),
   [funktionell likvärdighet](../migration/feature-parity.md),
   [M16](../migration/tasks/m16-assistant-mcp.md)
-- Implementation och verifiering: Ej påbörjad inom denna feature.
+- Implementation och verifiering: React/Kotlin-implementation med lokala automatiska prov. Verklig modell och målmiljö är ännu inte live-verifierade; se matrisen nedan och [leveransdokumentet](../migration/assistant-telegram.md).
 
 ## Problem och mål
 
@@ -239,8 +239,10 @@ nuläge, inte ett beslutat krav på den nya assistenten.
 - K-022: För spelare ska ton och uttryck anpassas efter spelarens ålder:
   under 13 år enkelt och konkret, 13–17 år direkt och respektfullt utan
   påtvingad slang, och från 18 år ett vuxet bemötande. Åldersanpassning får
-  inte bli nedlåtande. Hantering av flera roller och okänd ålder samt
-  underlag för åldersval preciseras i den pågående kompletteringen.
+  inte bli nedlåtande. Vid flera roller styr den aktuella uppgiften tonen.
+  Ålder hämtas enbart från användarens egen kopplade personprofil; okänd
+  ålder ger neutralt och tydligt bemötande utan gissning. Klubbens och
+  sektionens instruktioner får anpassa tonen inom de gemensamma reglerna.
 
 ## Bevarad funktionsomfattning från Next
 
@@ -453,9 +455,36 @@ Browserprov ska omfatta mobil och desktop, samtal → fråga → botrespons →
 förslag → granskning → bekräftelse → återläst ändring. Redovisa lokal
 verifiering och faktisk målmiljöverifiering separat enligt AGENTS.md.
 
-Den tidigare kravbilden är bekräftad; kompletteringen om bemötande har
-fortfarande öppna frågor. Ingen
-assistentimplementation eller driftverifiering har gjorts inom denna feature.
+## Implementation och verifieringsmatris
+
+Implementation beställd tillsammans med Telegram 2026-10-27. Kompletteringen
+om rollval, eget åldersunderlag och instruktionshierarki är bekräftad i samtalet.
+Kraven är fortsatt `Redo`; verifieringsstatus ska läsas separat.
+
+| Acceptanskriterier | Implementation och evidens |
+| --- | --- |
+| AK-001 | Omfattning och uttryckliga undantag dokumenterade ovan. |
+| AK-002–AK-003 | Gemensamma `AssistantService`/`AssistantProposalService` för webb och Telegram; HTTP-/databasprov i `ApiTest` och separat kanaladapter. Verklig modell återstår. |
+| AK-004–AK-005 | Aktuellt rättighetsstyrt klubb-/lagurval, separata datauppslag och domänkommandon. `personal club replies keep profiles private…` samt befintliga API-behörighetsprov. |
+| AK-006–AK-007 | Sidans lag/aktivitet och beständig uttrycklig kontext; oklart val kräver följdfråga, även när modellen väljer ett lag utan entydigt underlag. Faktisk språkförståelse behöver modellprov. |
+| AK-008 | `chat yes never confirms a memory…`: texten ja skriver inget. Separat förslagsbekräftelse krävs. |
+| AK-009 | Låsning och ny jämförelse mot granskat underlag; ändrad revision ger uppdaterad granskning. Närvarons versionsgräns och domänkommandonas atomaritet provas i `ApiTest`. |
+| AK-010–AK-011 | Kontobundna samtal, återupptagande och radering. Direkt HTTP-prov nekar andra konton läsning/radering. Browserprov täcker samma produktionsvy i båda apparna. |
+| AK-012–AK-013 | Klubb och kanal är oföränderliga samtalsidentiteter; frontend väljer separat klubbsamtal. Behörighet och entydigt kontextval kontrolleras på nytt. |
+| AK-014–AK-020 | Klubbprofil, separata sektionsinstruktioner, revisionskontroll och administratörsgränser i `AssistantProfileService`; gemensamma inställningskomponenter. Profilskrivning och UI provas med syntetiska data; samtliga rollkombinationer har inte egna riktade prov. |
+| AK-021–AK-023 | Historik läses enbart genom kontots samtal. Nya svar och gamla förslag använder aktuell behörighet och nästa svar hämtar profilen på nytt. Inga gamla svar skrivs om. |
+| AK-024–AK-028 | Avgränsade klubbfrågor, tydliga avsändare, parallella svar och ofullständig överblick vid delfel. `personal club replies keep profiles private…` verifierar separation och tillgängligt svar vid fel i andra klubben. |
+| AK-029–AK-030 | Modelladaptern saknar webb-/researchverktyg och skrivverktyg; endast plattformsunderlag kan lämnas till modellen. |
+| AK-031–AK-032 | Kontobundna personliga minnen, behöriga gemensamma mål och exakt text före knapp. Prov täcker separat bekräftelse, dubblettbekräftelse, andra konton och gamla redigeringsrevisioner. |
+| AK-033 | Progressiva NDJSON-svar och separat svarar-indikering. Browserprov vid 320/390/768/1280 px i Next och Vite; backend har HTTP-prov med modellstub. |
+| AK-034 | Behöriga aktiviteter, medlemsuppdrag, kallelser, dokument och historik. Historiken skiljer faktisk närvaro från svar och genomfört arbete, har gränsmarkering och separata summeringar. Datakällorna återanvänder målappens behörigheter. |
+| AK-035 | Typade aktivitets-/serie-, påminnelse-, uppgifts- och minnesförslag; separata domänkommandon vid knapp. Datum/serier, notifieringar och behörighetsgränser omfattas av backendsviten. Fullt flöde med verklig modell är ej verifierat. |
+| AK-036–AK-038 | Gemensamma bemötanderegler och verifierat eget åldersunderlag. Gränserna 12/13/17/18 och okänd ålder provas i `ApiTest`; faktisk svarston kräver modellprov. |
+
+Källor: `backend/src/main/kotlin/se/forena/api/assistant/`, publika tjänster i
+`activities` och `identity`, `src/components/persistent-assistant.tsx`,
+`scripts/migration/assistant-browser.mjs` och `backend/src/test/kotlin/se/forena/api/ApiTest.kt`.
+Inga liveprov, produktionsutskick eller driftsättningar har gjorts.
 
 ## Bekräftade beslut och motiv
 
@@ -561,11 +590,9 @@ Följande är implementationsval inom den tidigare bekräftade kravbilden:
 
 ## Öppna frågor
 
-Kompletteringen 2026-10-27 har följande blockerande frågor:
-
-- Vilken roll ska styra när användaren exempelvis är både ledare och målsman?
-- Vilket åldersunderlag får användas, och hur ska okänd ålder hanteras?
-- Hur förhåller sig tonreglerna till klubbens och sektionens egna instruktioner?
+Inga blockerande produktfrågor återstår. Användaren godkände 2026-10-27
+kompletteringen om aktuell uppgift, eget åldersunderlag och instruktionernas
+förhållande till de gemensamma bemötandereglerna.
 
 ## Bekräftelse
 
@@ -574,10 +601,14 @@ webbsökning. Användaren bekräftade slutlig sammanfattning och avgränsningar
 2026-10-26 med ”ja” i svar 20. Den tidigare kravbilden är fortsatt bekräftad.
 Specen återöppnades som Utkast 2026-10-27 för kompletteringen om bemötande;
 tonlägen och åldersgrupper bekräftades i kompletteringens svar 1–3.
-Återstående gränsfall och slutlig sammanfattning är ännu inte bekräftade.
-Implementation har inte beställts eller påbörjats inom denna feature.
+Användaren godkände 2026-10-27 den föreslagna kompletteringen och beställde
+implementation av både AI-assistenten och Telegram enligt specarna.
 
 ## Ändringshistorik
+
+- 2026-10-28: React/Kotlin-implementation, privat samtalslagring, klubb-/sektionsprofiler, delade tjänster och verifieringsmatris. Liveprov är separat kvarvarande aktiveringskontroll.
+
+- 2026-10-27: Användaren godkänner kompletteringen av K-021/K-022; status Redo. Implementation beställd tillsammans med Telegram.
 
 - 2026-10-27: Sparat kompletteringens svar 1–3. Preciserat K-021,
   lagt till K-022 och uppdaterat AK-036–AK-038 med bekräftade tonlägen,
