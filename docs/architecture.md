@@ -670,6 +670,98 @@ Kontrollen avser appens schemalagda kallelsetid, inte leveranskvittens från mej
 
 ### Klubbstruktur och onboarding
 
+Målbeslut i [klubbsidesspecen](specs/publik-klubbsida.md), K-036–K-037:
+klubben kan anpassa logotyp, klubbnamn, profilfärger och omslagsbild i gemensamma
+sidmallar och navigation. Samma identitet gäller för sektioner/grupper.
+Egen CSS, fria sidlayouter och full återskapning av befintlig webbplats ingår inte.
+Enligt K-038–K-040 har klubben alltid en Förena-adress och kan ansluta en
+egen domän/subdomän med samma innehåll och identitet. Systemadmin ansluter
+efter verifierat ägarskap. Klubbadmin förvaltar logotyp/färger/omslagsbild;
+sektions-/lagadmin får inte ändra klubbprofilen. Vid användning av sökvägar på
+befintlig webbplats krävs vidarebefordran där; DNS styr endast domännamnet.
+Enligt K-041–K-042 används samma Förena-konto på klubbadresser och i neutral
+app. Central inloggning får användas men ska bevara skyddad direktlänk och
+återföra till samma klubb/sida. Samlad personlig översikt öppnas genom tydligt
+val, inte automatiskt efter inloggning. Returadresser måste vara godkända;
+gemensamt konto ändrar inte klubbarnas åtkomstgränser.
+
+Målbeslut i [klubbsidesspecen](specs/publik-klubbsida.md), K-024–K-026:
+ansökan till lag, fotbollsskola och läger ska dela medlemsansökans bas för
+person-, kontakt-/vårdnadshavaruppgifter och verifiering. Klubben får lägga
+till obligatoriska eller valfria frågor för skola/läger. Hälsouppgifter ingår
+inte och får inte införas genom kompletterande frågor i första versionen.
+Enligt K-027–K-028 bedömer ansvarig ledare platstillgång manuellt och
+godkänner/avslår ansökningar. Automatisk platsgaranti och väntelista ingår inte.
+Fotbollsskola/läger får visa pris och instruktioner för betalning utanför
+Förena; ansökan eller godkännande är inte en betalningsbekräftelse.
+Enligt K-031–K-034 anpassar gruppadmin formuläret, liksom klubb-/sektionsadmin
+inom sina områden. Egna frågor stöder kort/längre text och enval/flerval.
+Formulär kan öppnas/stängas manuellt eller med datum; inskickade ansökningar
+behåller frågornas och svarens version från inskickningstillfället.
+Enligt K-044–K-045 börjar nya formulär stängda och har antingen manuellt
+öppet/stängt-läge eller datumstyrt läge från startdatum kl. 00.00 till hela
+slutdatumets slut i svensk tid. Admin kan byta läge. Stängning hindrar nya
+ansökningar men ändrar inte inskickade ansökningar eller deras granskning.
+
+Målbeslut i [klubbsidesspecen](specs/publik-klubbsida.md), K-009: nyheter
+ska kunna publiceras på klubb-, sektions- och lagnivå, med egna nyheter på
+lagets sida. Enligt K-010–K-011 ska publiceringsrätt kunna tilldelas separat
+till redaktörer utan administratörsroll. Administratörer får publicera inom
+sitt område; tränaransvar ger ingen automatisk rätt. Enligt K-020 utser och
+återkallar klubbadmin redaktörer inom klubben och sektions-/lagadmin inom sitt
+område. Publiceringsrätt kan ingå i klubbens lagprofiler eller tilldelas direkt.
+Systemadmin behöver först bli klubbadmin för att publicera klubbens innehåll.
+Enligt K-012 väljer redaktören publik eller medlemssynlighet per nyhet. Medlemsnyheters
+rubrik, ingress och innehåll visas endast för behöriga inom valt område.
+Enligt K-013 visas klubbnyheter även på klubbens sektions-/lagsidor och
+sektionsnyheter även på sektionens lagsidor. Lagnyheter visas på egna lagets
+sida. Originalets avsändare och åtkomstgräns behålls; visningen ger inga nya
+läsrättigheter och inga nyheter ärvs mellan klubbar.
+Enligt K-014–K-016 har nyheter rubrik, ingress, formaterad text och valfri
+huvudbild, med utkast/förhandsgranskning, direkt eller schemalagd publicering
+i svensk tid samt redigering/avpublicering med ändringshistorik. Enligt
+K-021–K-023 samarbetar områdets redaktörer/administratörer med åtkomst till
+varandras utkast och historik; övriga saknar utkast-/förhandsgranskningsåtkomst.
+Schemalagd publicering stoppas om schemaläggarens aktuella rätt saknas vid
+publicering. Annan behörig kan granska och aktivera publiceringen igen.
+Enligt K-046–K-047 gäller revisionsskydd med bevarat utkast och atomärt
+sparande för nyheter och formulär. Avpublicering/synlighetsbyte gäller alla
+berörda sidor och personlig översikt; nya hämtningar och direktlänkar ska
+kontrollera aktuell publiceringsstatus och läsbehörighet.
+Enligt K-017 samlar den neutrala personliga översikten relevanta nyheter från
+personens och barnens klubbar, sektioner och grupper. Avsändaren framgår,
+nyheter dedupliceras och medlemsnyheternas åtkomstkrav gäller fortsatt.
+Denna samling ska inte visas i den klubbavgränsade upplevelsen.
+Enligt K-043 ger nyhetspublicering inga automatiska mejl eller pushutskick i
+första versionen. Nyheter visas i relevanta flöden; framtida utskick specificeras
+separat. Medlemsansökningars befintliga bekräftelse-/beslutsflöden ändras inte.
+Enligt K-018–K-019 får aktiva medlemmar och behöriga vårdnadshavare läsa
+medlemsnyheter, liksom områdets administratörer/redaktörer utan eget medlemskap.
+En lagkoppling ger lagets, sektionens och klubbens nyheter, inte syskonområdens
+egna medlemsnyheter. Medlemsbaserad åtkomst upphör vid medlemskapets slut;
+oberoende aktiva rättigheter behålls. Systemroll ensam ger ingen verksamhetsåtkomst.
+
+Målbild i [klubbsidesspecen](specs/publik-klubbsida.md), K-007–K-008:
+klubbens domän och gruppsökväg ska visa klubbens identitet och innehåll utan
+andra klubbars aktiviteter eller navigeringslänkar. En separat neutral
+Förena-app kan samla personens klubbar; byte dit sker genom ett uttryckligt val.
+Teknisk domänanslutning och integration med befintlig webbplats återstår.
+
+Målbeslut i den godkända [klubbsidesspecen](specs/publik-klubbsida.md),
+K-004–K-006: lag, fotbollsskola och läger ska dela grundmodell för deltagare,
+ledare, aktiviteter, behörigheter och ansökningar, med olika verksamhetstyper.
+Alla anmälningar kräver ansvarig ledares godkännande. Godkännande kopplar till
+den sökta gruppen och ger inte automatiskt medlemskap i ett annat lag.
+Detta gäller verksamhetsgrupper, inte lagens undergrupper. Livscykeln följer
+K-029–K-035 nedan; beslutet är inte implementerat genom specarbetet.
+Enligt K-029–K-030 ligger även fotbollsskola/läger under en sektion och ärver
+dess disciplin med samma områdesavgränsade administration som lag. De kan ha
+arrangemangets start-/slutdatum; deltagare och historik behålls efter perioden.
+Datumen inför ingen säsongsuppgift på ordinarie lag.
+Enligt K-035 avslutar arrangemangets slutdatum inte automatiskt deltagarnas
+gruppkopplingar eller åtkomst. Kopplingarna avslutas separat av behörig admin
+enligt medlemsreglerna, så att efterinformation kan vara tillgänglig efter lägret.
+
 Målbeslut i administrationsspecen, K-053–K-055: befintlig engångsaktivering
 av första systemadmin behålls för en i förväg utpekad verifierad adress.
 Inbjudningsacceptans kräver registrerat skickat utskick; vid leveransfel eller

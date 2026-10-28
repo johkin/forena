@@ -222,7 +222,10 @@ inte finnas som roll i målappen, enligt K-020.
   ska inte ta bort rättigheter som personen fortfarande får från en annan
   aktiv tilldelning. Överlapp ska inte skapa dubbla effektiva behörigheter.
 - K-039: Klubbadmin ska kunna skapa och ändra klubbens behörighetsprofiler
-  med de fem lagbehörigheterna i K-035. Profiler får inte ge administratörsroller
+  med de fem lagbehörigheterna i K-035 samt den separat beslutade
+  publiceringsrätten enligt [klubbsidesspecens K-020](publik-klubbsida.md#krav).
+  Den utökningen godkändes 2026-10-28 i klubbsidesintervjuns svar 13.
+  Profiler får inte ge administratörsroller
   eller rätt att förvalta profiler. En klubbs profiler tillhör endast den klubben.
 - K-040: Lagadmin ska kunna tilldela och ta bort profiler inom sitt eget lag.
   Detta ger inte rätt att ändra profildefinitionen eller tilldela i andra lag.
@@ -435,6 +438,8 @@ e-postleverans; en sparad inbjudan och en levererad inbjudan är olika tillstån
   Lagadmin ska kunna tilldela/ta bort dem i sitt lag men nekas ändring av
   profildefinitioner och tilldelning i andra lag, även via API. Försök att
   lägga administratörsroller i en profil ska nekas.
+  Profiler ska även kunna innehålla publiceringsrätt enligt klubbsidans K-020,
+  med samma områdes- och kombinationsregler.
 - AK-040 (K-041): Före en profiländring ska administratören se berörda personer
   och förändrade rättigheter. Efter bekräftelse ska ändringen gälla befintliga
   tilldelningar; vid avbrott ska tidigare profil och tilldelningar behållas.
@@ -644,6 +649,9 @@ Godkännandet gäller specen och innebär ingen beställning av implementation.
 
 ## Ändringshistorik
 
+- 2026-10-28: Efter slutligt godkännande utökade användaren profilkatalogen
+  med publiceringsrätt i klubbsidesintervjuns svar 13. Uppdaterat K-039/AK-039
+  med hänvisning dit; övriga administrationsbeslut och status Redo behålls.
 - 2026-10-28: Skapat utkast med kartlagt nuläge, förslag till omfattning och
   öppna beslutsgrenar inför första intervjuomgången.
 - 2026-10-28: Sparat svar 1 med bekräftad omfattning och krav K-001–K-006.
