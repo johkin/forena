@@ -90,10 +90,37 @@ class AttendanceService(
         }
     }
 
+    /** A channel proposal changes only explicitly assessed people; unknown others stay unknown. */
+    @Transactional
+    fun patch(actor: Actor, id: UUID, revision: Long, changes: Map<UUID,Boolean>) {
+        authorize(actor,id)
+        check(activities.findLockedByActivityId(id)!=null)
+        val (activity,team) = authorize(actor,id)
+        check(activity.status!="cancelled" && !clock.now().isBefore(activity.startsAt))
+        val report = attendance.report(id)
+        check(revision==(report?.revision ?: 0L))
+        require(changes.isNotEmpty() && changes.size<=20000)
+        val before = roster(activity,team,report!=null).associateBy { it.personId }
+        require(changes.keys.all { it in before })
+        val now = clock.now(); val next = revision+1; val history = UUID.randomUUID()
+        attendance.writeReport(id,activity.organizationId,next,now,actor.subject)
+        attendance.writeHistory(history,id,activity.organizationId,next,actor.subject,directory.actorName(activity.organizationId,actor.subject),now)
+        changes.forEach { (personId,present) ->
+            val previous = before.getValue(personId)
+            attendance.writePerson(id,activity.organizationId,personId,previous.role,present)
+            if (previous.present!=present) attendance.writeChange(history,personId,previous.displayName,previous.present,present)
+        }
+    }
+
     private fun roster(activity: ManagedActivityEntity, team: ManagementTeamRow, reported: Boolean): List<AttendancePerson> =
-        if (reported) attendance.people(activity.activityId)
-        else attendance.initialPeople(activity.activityId, team.id,
-            activity.startsAt.atZone(ZoneId.of(team.timeZone)).toLocalDate())
+        attendance.initialPeople(activity.activityId, team.id,
+            activity.startsAt.atZone(ZoneId.of(team.timeZone)).toLocalDate()).let { initial ->
+            if (!reported) initial else {
+                val recorded = attendance.people(activity.activityId)
+                val recordedIds = recorded.map { it.personId }.toSet()
+                recorded + initial.filter { it.personId !in recordedIds }
+            }
+        }
 
     private fun candidates(team: ManagementTeamRow): List<AttendancePerson> =
         team.sectionId?.let { attendance.candidates(team.organizationId, it,

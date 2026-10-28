@@ -49,10 +49,11 @@ export function MyActivitiesPage({ request, workspace, notifications=false, acco
     const onNotification=(event:MessageEvent)=>{if(event.data?.type==="activity-notification")load();};
     load();
     window.addEventListener("focus",load);
+    window.addEventListener("forena:assistant-change",load);
     document.addEventListener("visibilitychange",onVisible);
     navigator.serviceWorker?.addEventListener("message",onNotification);
     const timer=window.setInterval(onVisible,60_000);
-    return ()=>{controller?.abort();clearInterval(timer);window.removeEventListener("focus",load);document.removeEventListener("visibilitychange",onVisible);navigator.serviceWorker?.removeEventListener("message",onNotification);};
+    return ()=>{controller?.abort();clearInterval(timer);window.removeEventListener("focus",load);window.removeEventListener("forena:assistant-change",load);document.removeEventListener("visibilitychange",onVisible);navigator.serviceWorker?.removeEventListener("message",onNotification);};
   },[request,attempt]);
   const header=<div className="welcome"><div><p className="eyebrow">Förena · Personligt</p><h1>Min översikt</h1></div></div>;
   if(!data)return <>{header}{error ? <div role="alert"><p>{error}</p><button type="button" onClick={()=>setAttempt(value=>value+1)}>Försök igen</button></div> : <p role="status">Laddar din översikt…</p>}</>;

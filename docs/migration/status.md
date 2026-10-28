@@ -1,5 +1,17 @@
 # Migreringsstatus
 
+## AI-assistent och Telegram, 2026-10-28
+
+Webb och Telegram delar nu kontobundna samtal, separata klubbprofiler,
+behörighetsstyrda läsningar och förslag med separat bekräftelse i Kotlin.
+Telegram-koppling, grupper, privat svar/närvaro, röstadapter samt
+Telegram → push → e-post är implementerade med testmottagargrindarna kvar.
+Se [omfattning, konfiguration och verifiering](assistant-telegram.md).
+Aktivering med verklig modell/testbot och positiva röstprov återstår; detta är
+inte en produktionsomkoppling eller en utökning av extern MCP:s befogenheter.
+Äldre statusavsnitt nedan beskriver de tidigare avgränsade leveranserna.
+
+
 ## Truppen: medlemsprofiler och undergrupper, 2026-10-26
 
 Lokalt implementerat enligt [Truppen-specen](../design-spec.md#truppen).

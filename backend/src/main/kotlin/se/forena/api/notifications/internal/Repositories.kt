@@ -57,6 +57,10 @@ interface InvitationEmailRepository : Repository<InvitationEmailEntity, UUID> {
     )
     fun lockDue(now: Instant): InvitationEmailEntity?
 
+    @Modifying
+    @Query("update forena.invitation_email set delivered_via=:channel where id=:id")
+    fun deliveryChannel(id: UUID, channel: String)
+
     fun save(entity: InvitationEmailEntity): InvitationEmailEntity
 
     @Modifying

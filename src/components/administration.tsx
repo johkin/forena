@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { z } from "zod";
 import { ActivityDatePicker } from "./activity-date-picker";
+import { AssistantProfileEditor } from "./assistant-profile-editor";
 import { ClubOnboarding } from "./club-onboarding";
 import { ClubSlugInput } from "./club-slug-input";
 import { ClubStructureAdministration } from "./club-structure-administration";
@@ -110,10 +111,12 @@ export function Administration({ request, path = "/administration", onNavigate, 
       return <section className="application-card" aria-label="Administration"><p className="eyebrow">{club.name} · {section.name}</p><h1>Hantera lag</h1>{messages}
         <Link href={data.platformAdmin ? `/system/organizations/${club.id}` : `/organizations/${club.id}/administration`}>Till klubbens administration</Link>
         <SectionAdministration club={club} section={section} mutate={mutate} pending={pending} />
+        <AssistantProfileEditor request={request} organizationId={club.id} sectionId={section.id} />
       </section>;
     }
     return <section className="application-card" aria-label="Administration"><p className="eyebrow">{data.platformAdmin ? "System · Klubb" : "Förening"}</p><h1>{club.name}</h1>{messages}
       <ClubAdministration club={club} linkComponent={Link} platformAdmin={data.platformAdmin} mutate={mutate} pending={pending} checkSlug={checkSlug} />
+      {club.canManage && !data.platformAdmin ? <AssistantProfileEditor request={request} organizationId={club.id} /> : null}
     </section>;
   }
   if (pathname !== "/system/organizations" && pathname !== "/administration")

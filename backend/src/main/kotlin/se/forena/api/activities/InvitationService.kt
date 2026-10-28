@@ -92,7 +92,7 @@ class InvitationService(
                     }, revision = current.revision + 1)
                 invitations.save(updated)
                 history.save(InvitationHistoryEntity(invitationId = current.id, organizationId = current.organizationId,
-                    actorSubject = actor.subject, channel = "web", changedAt = now,
+                    actorSubject = actor.subject, channel = actor.channel, changedAt = now,
                     previousResponse = current.response, response = updated.response, revision = updated.revision))
                 if (responseChanged) {
                     val signal = signals.findById(current.activityId).orElse(null)

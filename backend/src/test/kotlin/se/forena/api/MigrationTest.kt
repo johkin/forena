@@ -15,7 +15,7 @@ import org.junit.jupiter.params.provider.ValueSource
 import org.testcontainers.postgresql.PostgreSQLContainer
 
 class MigrationTest {
-    @ParameterizedTest @ValueSource(ints = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18])
+    @ParameterizedTest @ValueSource(ints = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19])
     fun `empty install or previous baseline upgrade validates and is repeatable without data loss`(baseline: Int) {
         PostgreSQLContainer("postgres:17.6-alpine").withInitScript("init.sql").use { pg ->
             pg.start()
@@ -63,6 +63,14 @@ class MigrationTest {
                                     it.execute("insert into forena.activity(id,organization_id,team_id,title,starts_at,ends_at) values('$legacyZeroActivity','$organization','$team','Zero',now(),now()+interval '1 hour')")
                                     it.execute("insert into forena.invitation(id,organization_id,activity_id,person_id) values(gen_random_uuid(),'$organization','$legacyZeroActivity','$person')")
                                     it.execute("insert into forena.attendance_report(activity_id,organization_id,reported_by,reported_at) values('$legacyZeroActivity','$organization','$subject',now())")
+                                    if (baseline >= 19) {
+                                        it.execute("insert into forena.attendance_record(activity_id,organization_id,person_id,present) values('$legacyZeroActivity','$organization','$person',false)")
+                                        for (entry in listOf(legacyActivity to true, legacyZeroActivity to false)) {
+                                            val history = UUID.randomUUID()
+                                            it.execute("insert into forena.attendance_history(id,activity_id,organization_id,revision,actor_subject,actor_name,changed_at) values('$history','${entry.first}','$organization',1,'$subject','$subject',now())")
+                                            it.execute("insert into forena.attendance_change(history_id,person_id,display_name,previous_present,present) values('$history','$person','Testperson',null,${entry.second})")
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -72,7 +80,7 @@ class MigrationTest {
                     migrations.validate()
                     connection.createStatement().use { statement ->
                         statement.executeQuery("select count(*) from forena.databasechangelog").use {
-                            it.next(); assertThat(it.getInt(1)).isEqualTo(19)
+                            it.next(); assertThat(it.getInt(1)).isEqualTo(20)
                         }
                         statement.executeQuery("select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='forena' and c.relkind='r' and c.relname not like 'databasechangelog%' and (c.relrowsecurity or c.relforcerowsecurity)").use {
                             it.next(); assertThat(it.getInt(1)).isZero()

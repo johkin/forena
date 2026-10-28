@@ -1,5 +1,16 @@
 # Arkitektur
 
+## AI-assistent och Telegram i React/Kotlin
+
+Den nya appen delar kontobundna samtal, behörighetskontrollerade läsningar och
+separat bekräftade förslag mellan webb och Telegram. Klubbprofiler och
+sektionsinstruktioner hålls åtskilda från personliga minnen och andra klubbars
+kontext. Kanaladaptrarna återanvänder aktiviteter/närvaro/kallelsesvar; modellen
+har inga skriv- eller webbverktyg. Telegram använder verifierad kontokoppling
+utan Supabase-signering eller browser-sessioner. Se
+[implementation, konfiguration och aktiveringsprov](migration/assistant-telegram.md).
+
+
 ## Kotlin: schemalagda kallelser och e-post
 
 M06/M10 använder Spring Data JDBC, Spring-transaktioner och Moduliths JDBC

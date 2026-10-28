@@ -8,6 +8,7 @@ import type { Organization, Team, Member, Section } from "@/domain/club";
 import type { ActivityDraft } from "@/lib/ai/activity-draft";
 import { assistantPageContext } from "@/lib/assistant-page-context";
 import { useModalScrollLock } from "@/lib/use-modal-scroll-lock";
+import { AssistantHeading, AssistantLauncher } from "./assistant-frame";
 import { TeamAssistantCard } from "./team-assistant-card";
 const ActivityEditorModal = dynamic(() => import("./activity-editor-modal").then(module => module.ActivityEditorModal));
 
@@ -64,11 +65,11 @@ export function FloatingAssistant({ organization, team, section, options = {} }:
   }
 
   return <>
-    <button ref={trigger} type="button" className="assistant-launcher" aria-label={`Öppna ${organization.assistantName || "föreningsassistenten"} för ${scopeName}${unread ? ", nytt svar" : ""}`} aria-haspopup="dialog" aria-expanded={open} onClick={() => { setMounted(true); setOpen(true); setUnread(false); }}><svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-6 4V6a2 2 0 0 1 2-2Z" /></svg>{unread ? <span className="assistant-unread" aria-hidden="true">1</span> : null}</button>
+    <AssistantLauncher trigger={trigger} label={`Öppna ${organization.assistantName || "föreningsassistenten"} för ${scopeName}${unread ? ", nytt svar" : ""}`} open={open} unread={unread} onOpen={() => { setMounted(true); setOpen(true); setUnread(false); }} />
     {notice ? <p className="assistant-notice" role="status">{notice}<button type="button" onClick={() => setNotice(undefined)} aria-label="Stäng meddelande">×</button></p> : null}
     {mounted ? createPortal(<dialog ref={dialog} className="floating-assistant-dialog" aria-labelledby="floating-assistant-title" onCancel={event => { event.preventDefault(); minimize(); }} onClick={event => { if (event.target === event.currentTarget) minimize(); }}>
       {open ? <ScrollLock /> : null}
-      <div className="floating-assistant-heading"><div><h2 id="floating-assistant-title">{organization.assistantName || "Föreningsassistenten"}</h2><p>{organization.name}{scopeName !== organization.name ? ` · ${scopeName}` : ""} · {options.pageTitle ?? pageContext?.page.title}</p></div><button type="button" aria-label="Minimera assistenten" onClick={minimize}>−</button><button type="button" aria-label="Stäng assistenten" onClick={minimize}>×</button></div>
+      <AssistantHeading id="floating-assistant-title" name={organization.assistantName || "Föreningsassistenten"} context={`${organization.name}${scopeName !== organization.name ? ` · ${scopeName}` : ""} · ${options.pageTitle ?? pageContext?.page.title ?? ""}`} onMinimize={minimize} />
       <TeamAssistantCard key={scopeKey} teamId={team?.id} teamName={scopeName} assistantName={organization.assistantName || "Föreningsassistenten"} organizationId={organization.id} sectionSlug={section?.slug ?? pageContext?.sectionSlug} page={pageContext ? { ...pageContext.page, title: options.pageTitle ?? pageContext.page.title } : undefined} demo={options.demo ?? false} canCreateActivity={options.canCreateActivity ?? false} onActivityDraft={draftReady} onOpenActivity={minimize} onReply={() => { if (!openRef.current) setUnread(true); }} floating />
     </dialog>, document.body) : null}
     {editor ? createPortal(<ActivityEditorModal mode="create" organization={editor.context.organization} team={editor.context.team} members={editor.context.members} draft={editor.draft} source="database" canManageInvitations={editor.context.canManageInvitations} onClose={() => { setEditor(undefined); router.refresh(); }} onNotice={setNotice} />, document.body) : null}

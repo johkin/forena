@@ -15,6 +15,9 @@ const systemDestination = new RegExp(`^/system/(?:organizations(?:/${uuid})?|adm
 const clubAdministrationDestination = new RegExp(`^/organizations/${uuid}/(?:administration|sections/${uuid}/teams)$`, "i");
 const attendanceReads = new RegExp(`^/api/activities/${uuid}/attendance(?:/access)?$`, "i");
 const attendanceWrites = new RegExp(`^/api/activities/${uuid}/attendance$`, "i");
+const assistantRead = new RegExp(`^/api/assistant/(?:conversations(?:/${uuid})?|profiles/${uuid}(?:/sections/${uuid})?)$`, "i");
+const assistantWrite = new RegExp(`^/api/assistant/(?:conversations(?:/${uuid}(?:/messages|/resume)?)?|proposals/${uuid}/confirm|profiles/${uuid}(?:/sections/${uuid})?)$`, "i");
+const groupResource = new RegExp(`^/api/teams/${uuid}/telegram/groups(?:/(?:team|leaders))?$`, "i");
 const writes = new RegExp(`^/api/invitations/${uuid}/respond$`, "i");
 
 /** Only allowlisted, same-origin API calls receive the HttpOnly session cookie. */
@@ -22,10 +25,10 @@ export function createApiFetch(readAccount: () => Promise<string | null>, unauth
   return async (path, init = {}) => {
     const method = init.method ?? "GET";
     const allowedRead = method === "GET" && (
-      path === "/api/admin/overview" || attendanceReads.test(path) || adminSlug.test(path) || reads.test(path) || editorReads.test(path) || rosterReads.test(path) || path === "/api/me/managed-teams" ||
+      path === "/api/push-subscriptions" || path === "/api/telegram/settings" || /^\/api\/assistant\/memories\?scope=(?:personal|organization|section|team)(?:&(?:organizationId|sectionId|teamId)=[0-9a-f-]{36}){0,3}$/i.test(path) || assistantRead.test(path) || groupResource.test(path) || path === "/api/admin/overview" || attendanceReads.test(path) || adminSlug.test(path) || reads.test(path) || editorReads.test(path) || rosterReads.test(path) || path === "/api/me/managed-teams" ||
       path === "/api/me/overview" || /^\/api\/me\/calendar\?month=\d{4}-(?:0[1-9]|1[0-2])$/.test(path) || /^\/api\/me\/activities(?:\?offset=\d{1,6})?$/.test(path)
     );
-    const allowedWrite = (["POST", "PUT", "DELETE"].includes(method) && adminResource.test(path)) || (method === "PUT" && writes.test(path)) ||
+    const allowedWrite = (["POST", "DELETE"].includes(method) && path === "/api/push-subscriptions") || (["PUT", "DELETE"].includes(method) && new RegExp(`^/api/assistant/memories/${uuid}(?:\\?revision=\\d{1,16})?$`, "i").test(path)) || (method === "POST" && path === "/api/telegram/settings") || (["POST", "PUT", "DELETE"].includes(method) && (assistantWrite.test(path) || groupResource.test(path))) || (["POST", "PUT", "DELETE"].includes(method) && adminResource.test(path)) || (method === "PUT" && writes.test(path)) ||
       (method === "POST" && (path === "/api/activities" || path === "/api/activity-series")) ||
       (["PUT", "DELETE"].includes(method) && activityWrites.test(path)) ||
       (method === "PUT" && (attendanceWrites.test(path) || rosterMembers.test(path) || rosterGroup.test(path))) ||
@@ -42,7 +45,7 @@ export function createApiFetch(readAccount: () => Promise<string | null>, unauth
     const abort = () => controller.abort();
     if (init.signal?.aborted) abort();
     init.signal?.addEventListener("abort", abort, { once: true });
-    const deadline = setTimeout(abort, 10_000);
+    const deadline = setTimeout(abort, path.endsWith("/messages") ? 120_000 : 10_000);
     try {
       const response = await transport(path, { ...init, method, headers, credentials: "same-origin", cache: "no-store", redirect: "error", signal: controller.signal });
       // A platform login page must not revoke a valid app session. Only
@@ -61,10 +64,11 @@ export function createApiFetch(readAccount: () => Promise<string | null>, unauth
 
 export function safeDestination(value: string | null) {
   if (value === null) return "/";
-  const knownRoute = ["/", "/activities/manage", "/administration", "/system", "/components", "/notifications"].includes(value);
+  const knownRoute = ["/", "/activities/manage", "/administration", "/system", "/components", "/notifications", "/assistant", "/account", "/account/security"].includes(value);
   const workspace = new RegExp(`^/(?:activities|organizations|teams)/${uuid}$`, "i").test(value);
   const roster = new RegExp(`^/teams/${uuid}/members$`, "i").test(value);
-  return knownRoute || workspace || roster || systemDestination.test(value) || clubAdministrationDestination.test(value) ? value : "/";
+  const assistantConversation = new RegExp(`^/assistant\\?conversation=${uuid}$`, "i").test(value);
+  return assistantConversation || knownRoute || workspace || roster || systemDestination.test(value) || clubAdministrationDestination.test(value) ? value : "/";
 }
 
 /** OAuth resumes through the server, preserving the query without allowing arbitrary redirects. */

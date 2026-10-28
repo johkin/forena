@@ -151,7 +151,7 @@ interface ManagementRepository : Repository<TeamEntity, UUID> {
             select organization_id from forena.organization_member where subject=:subject and active and role in ('owner','admin')
             union select p.organization_id from forena.team_permission_assignment p
                 join forena.person_access a on a.person_id=p.person_id and a.organization_id=p.organization_id
-                where a.subject=:subject and a.active and a.kind='self' and p.active and p.permission in ('activity.manage','attendance.manage')
+                where a.subject=:subject and a.active and a.kind='self' and p.active and p.permission in ('activity.manage','attendance.manage','invitation.manage','roster.manage','assistant.memory.manage')
             union select organization_id from forena.team_administrator where subject=:subject and active
             union select organization_id from forena.section_administrator where subject=:subject and active)
         order by t.name""")
@@ -312,8 +312,9 @@ interface ScheduledInvitationRepository : Repository<ActivityScheduleEntity, UUI
 
     @Query(
         """
-        insert into forena.invitation_notification(id, schedule_id, invitation_id, recipient_subject, decided_at, recipient, subject, body)
-        values (:id, :schedule, :invitation, :recipient, :now, :email, :subject, :body)
+        insert into forena.invitation_notification(id, schedule_id, invitation_id, recipient_subject, decided_at, recipient, subject, body, activity_revision, invitation_revision)
+        select :id, :schedule, :invitation, :recipient, :now, :email, :subject, :body, a.revision, i.revision
+        from forena.invitation i join forena.activity a on a.id=i.activity_id where i.id=:invitation
         on conflict (schedule_id, invitation_id, recipient_subject) do nothing
         returning id
     """

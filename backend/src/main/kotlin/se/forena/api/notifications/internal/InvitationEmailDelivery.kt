@@ -18,12 +18,14 @@ class InvitationEmailDelivery(
     private val sender: EmailSender,
     private val clock: DatabaseClockService,
     private val settings: NotificationSettings,
+    private val channels: List<se.forena.api.notifications.InvitationChannel>,
 ) {
     fun deliverOne(): Boolean {
         if (!settings.enabled) return false
         val claim = transaction.execute { claim() } ?: return false
         if (claim.state != "pending") return true
-        val result =
+        val alternative = channels.firstOrNull { it.deliver(claim.id) }
+        val result = if (alternative != null) EmailDeliveryResult.Accepted("${alternative.name}/${claim.id}") else
             sender.send(
                 EmailMessage(
                     claim.recipient,
@@ -35,7 +37,8 @@ class InvitationEmailDelivery(
         transaction.executeWithoutResult {
             val now = clock.now()
             when (result) {
-                is EmailDeliveryResult.Accepted ->
+                is EmailDeliveryResult.Accepted -> {
+                    emails.deliveryChannel(claim.id, alternative?.name ?: "email")
                     emails.conclude(
                         claim.id,
                         claim.attempts,
@@ -45,6 +48,7 @@ class InvitationEmailDelivery(
                         now,
                         null,
                     )
+                }
                 EmailDeliveryResult.Rejected ->
                     emails.conclude(
                         claim.id,

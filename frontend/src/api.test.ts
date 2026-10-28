@@ -189,3 +189,24 @@ it("restricts attendance transport to exact account-bound read and write paths",
   expect(new Headers(transport.mock.calls[2][1].headers).get("X-Forena-Account")).toBe(id);
   expect(new Headers(transport.mock.calls[2][1].headers).get("X-Forena-Request")).toBe("1");
 });
+
+it("keeps assistant, memory and Telegram writes account-bound and rejects endpoint or account injection", async () => {
+  const transport = vi.fn().mockResolvedValue(Response.json({ ok: true }));
+  const request = createApiFetch(async () => id, vi.fn(), transport);
+  for (const [url, method] of [
+    ["/api/assistant/conversations", "POST"],
+    [`/api/assistant/conversations/${id}/messages`, "POST"],
+    [`/api/assistant/proposals/${id}/confirm`, "POST"],
+    [`/api/assistant/memories/${id}?revision=2`, "DELETE"],
+    ["/api/telegram/settings", "POST"],
+    ["/api/push-subscriptions", "POST"],
+  ]) await request(url, { method });
+  for (const [, init] of transport.mock.calls) {
+    expect(new Headers(init.headers).get("X-Forena-Account")).toBe(id);
+    expect(new Headers(init.headers).get("X-Forena-Request")).toBe("1");
+  }
+  await request(`/api/assistant/memories?scope=team&organizationId=${id}&teamId=${id}`);
+  for (const url of ["/api/telegram/webhook", "/api/assistant/memories?scope=personal&subject=someone", "/api/push-subscriptions?endpoint=https://other.test"]) {
+    await expect(request(url, { method: "POST" })).rejects.toThrow("Unsupported API request");
+  }
+});

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, writeFileSync } from "node:fs";
 
 const activityId = process.env.FORENA_KOTLIN_TEST_ACTIVITY_ID || undefined;
 if (activityId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(activityId)) {
@@ -10,3 +10,5 @@ mkdirSync("public", { recursive: true });
 // Construct an allowlist, never serialize process.env or a pulled .env file.
 writeFileSync("public/config.json", JSON.stringify({ activityId, version }) + "\n");
 writeFileSync("public/app-version.json", JSON.stringify({ version }) + "\n");
+
+for (const asset of ["sw.js", "offline.html", "icon.svg"]) copyFileSync(`../public/${asset}`, `public/${asset}`);

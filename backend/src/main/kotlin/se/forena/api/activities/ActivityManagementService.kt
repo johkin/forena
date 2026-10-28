@@ -27,8 +27,23 @@ class ActivityManagementService(
     private val defaults: ActivityDefaultsRepository,
     private val groups: AudienceGroupRepository,
     private val groupMembers: AudienceMemberRepository,
-    private val json: JsonMapper
+    private val json: JsonMapper,
+    private val dutyLifecycle: ActivityDutyLifecycleService
 ) {
+    @Transactional(readOnly = true)
+    fun canManageMemory(actor: Actor, teamId: UUID): Boolean {
+        sessions.requireActive(actor)
+        val team = management.team(teamId) ?: return false
+        return allowed(actor,team,"assistant.memory.manage")
+    }
+
+    @Transactional(readOnly = true)
+    fun canManageRoster(actor: Actor, teamId: UUID): Boolean {
+        sessions.requireActive(actor)
+        val team = management.team(teamId) ?: return false
+        return allowed(actor,team,"roster.manage")
+    }
+
     @Transactional(readOnly = true)
     fun canManageInvitations(actor: Actor, teamId: UUID): Boolean {
         sessions.requireActive(actor)
@@ -226,6 +241,7 @@ class ActivityManagementService(
             cancellationReason = command.reason?.trim()?.ifEmpty { null } ?: "Inställd av ledare",
             revision = current.revision + 1)
         activities.save(cancelled)
+        dutyLifecycle.follow(cancelled.activityId,cancelled.startsAt,cancelled.endsAt,true)
         for (schedule in schedules.findByActivityId(id).filter { it.state == "pending" }) {
             schedules.save(schedule.copy(state = "cancelled"))
         }
