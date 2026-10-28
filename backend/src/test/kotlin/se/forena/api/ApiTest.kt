@@ -33,6 +33,7 @@ import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.datasource.DriverManagerDataSource
 import org.springframework.security.crypto.password.PasswordEncoder
+import org.springframework.security.access.AccessDeniedException
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
@@ -547,6 +548,58 @@ class ApiTest {
         assertThat(visible.map { it.id }).contains(activity)
         assertThat(assistantActivities.activity(actor,activity).can_manage_activities).isFalse()
         assertThat(request("/api/teams/$team/activity-editor").statusCode()).isEqualTo(403)
+    }
+
+    @Test
+    fun `team purpose permissions never disclose another team in the same club`() {
+        val otherTeam = UUID.randomUUID()
+        val otherActivity = UUID.randomUUID()
+        admin.update(
+            "insert into forena.team(id,organization_id,name) values(?,?,'Skyddat lag')",
+            otherTeam,
+            organization,
+        )
+        admin.update(
+            "insert into forena.activity(id,organization_id,team_id,title,starts_at,ends_at) values(?,?,?,'Skyddad lagaktivitet',now()+interval '1 hour',now()+interval '2 hours')",
+            otherActivity,
+            organization,
+            otherTeam,
+        )
+        val month =
+            admin.queryForObject(
+                "select to_char(now() at time zone 'Europe/Stockholm','YYYY-MM')",
+                String::class.java,
+            )
+        val actor = assistantActor()
+        for (permission in
+            listOf("invitation.manage", "roster.manage", "assistant.memory.manage")) {
+            rosterPermission(permission = permission)
+            for (path in listOf("/api/me/overview", "/api/me/calendar?month=$month")) {
+                val response = request(path)
+                assertThat(response.statusCode()).isEqualTo(200)
+                assertThat(response.body())
+                    .doesNotContain(
+                        otherTeam.toString(),
+                        otherActivity.toString(),
+                        "Skyddad lagaktivitet",
+                    )
+            }
+            assertThat(request("/api/activities/$otherActivity").statusCode()).isEqualTo(404)
+            assertThat(assistantActivities.catalogTeams(actor).map { it.id })
+                .contains(rosterTeam())
+                .doesNotContain(otherTeam)
+            assertThat(assistantActivities.catalogActivities(actor).map { it.id })
+                .doesNotContain(otherActivity)
+            assertThatThrownBy { assistantActivities.team(actor, otherTeam) }
+                .isInstanceOf(AccessDeniedException::class.java)
+            assertThatThrownBy { assistantActivities.activity(actor, otherActivity) }
+                .isInstanceOf(NoSuchElementException::class.java)
+            admin.update(
+                "delete from forena.team_permission_assignment where team_id=? and permission=?",
+                rosterTeam(),
+                permission,
+            )
+        }
     }
 
     @Test fun `disabled notification worker rejects even an authenticated browser session`() {
