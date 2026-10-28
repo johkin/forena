@@ -647,6 +647,139 @@ Kontrollen avser appens schemalagda kallelsetid, inte leveranskvittens från mej
 
 ### Klubbstruktur och onboarding
 
+Målbeslut i administrationsspecen, K-053–K-055: befintlig engångsaktivering
+av första systemadmin behålls för en i förväg utpekad verifierad adress.
+Inbjudningsacceptans kräver registrerat skickat utskick; vid leveransfel eller
+oklar status behövs ny inbjudan. Samtidig acceptans/återkallning får inte lämna
+en aktiv roll från den återkallade inbjudan.
+
+Målbeslut i administrationsspecen, K-051–K-052: arkiverade behörighetsprofiler
+är låsta för innehållsändring tills klubbadmin återaktiverar dem. Befintliga
+tilldelningar gäller och kan återkallas. Profiler arkiveras i stället för att
+raderas; arkivering och återaktivering loggas och historiken bevaras.
+
+Målavgränsning i administrationsspecen, K-050: arkivering av lag och sektioner
+kräver en separat spec och ingår inte i första målversionen. Objekt med historik
+behålls; endast tomma objekt får raderas enligt borttagningsskydden.
+
+Målbeslut i administrationsspecen, K-048–K-049: samtidiga ändringar skyddas
+med revisionskontroll; konflikter stoppar sparandet och bevarar utkastet.
+Administrativa skrivningar är atomära och kräver aktuell behörighet även från
+redan öppnade sidor. En förbrukad accepterad inbjudan får enligt K-018 aldrig
+återaktivera en roll som senare återkallats.
+
+Målbeslut i administrationsspecen, K-047: systemadmin hanterar klubbuppgifter,
+sektioner och lag i alla klubbar; klubbadmin hanterar motsvarande i sin klubb;
+sektionsadmin får ändra sektionens namn och skapa/ändra/ta bort dess lag;
+lagadmin får ändra egna lagets namn. Klubbskapande är enbart för systemadmin.
+Borttagningsskydd gäller alltid och disciplinval/-byte följer disciplinspecen.
+
+Målbeslut i administrationsspecen, K-045–K-046: roller, separata behörigheter
+och profiltilldelningar gäller tills vidare som standard, med valfria start-/
+slutdatum och automatisk aktivering/upphörande. Tidsgränser får inte lämna
+systemet eller klubben utan administratör. Start gäller från kl. 00.00 och
+slutdatum hela dagen i svensk tid. Systemet och klubbar med tillsatt första
+admin måste ha minst en aktiv admin utan slutdatum. Den sista sådana rollen
+får lämnas, återkallas eller tidsbegränsas först när en annan aktiv roll utan
+slutdatum finns på samma nivå. Detta är inte implementerat genom specarbetet.
+
+Målbeslut i administrationsspecen, K-043–K-044: administrationen ska visa
+skrivskyddad historik med aktör, ändring och tidpunkt för struktur, tilldelningar,
+återkallningar, inbjudningar/acceptanser och profiländringar/arkivering.
+Systemadmin ser struktur och administratörsroller; klubbadmin ser klubbens
+historik; sektions-/lagadmin ser relevanta ändringar inom sitt område.
+Historik får inte kringgå kravet på separat klubbroll för verksamhetsåtkomst.
+
+Målbeslut i administrationsspecen, K-035–K-036: fem separata lagbehörigheter
+ska stödjas för aktiviteter, kallelser/bemanning, närvaro, lagmedlemmar och
+ansökningsgranskning. Lagadmin får tilldela/återkalla inom sitt lag utan krav
+på att mottagaren är målsman. Ansvar ger ingen automatisk behörighet.
+Klubbar ska kunna anpassa behörighetsprofiler som samlar flera behörigheter
+för tilldelning i en operation. Enligt K-037–K-038 får en person kombinera
+direkta behörigheter och flera profiler. Effektiv åtkomst är summan inom
+respektive lag; vyn visar varje källa. Återkallning av en källa bevarar
+rättigheter från andra aktiva källor. Enligt K-039–K-042 förvaltar klubbadmin
+profiler av de fem lagbehörigheterna; profiler får inte ge administratörsroller.
+Lagadmin tilldelar/tar bort profiler inom sitt lag. Profiländringar gäller
+befintliga tilldelningar efter visning och bekräftelse av berörda personer och
+rättigheter. Arkivering stoppar nya tilldelningar men bevarar befintlig åtkomst
+tills tilldelningarna återkallas.
+
+Målbeslut i administrationsspecen, K-033–K-034: namnbyte på klubb/sektion/lag
+ändrar inte adressnamn automatiskt. Klubbadress får ändras separat med
+ledighetskontroll och varning om att gamla länkar slutar fungera. Sektioners
+och lags egna adressnamn behålls. Lag ska inte ha någon säsongsuppgift i målappen;
+äldre beskrivningar av säsongsredigering nedan gäller Next-nuläget. Rapporters
+periodfilter är en separat fråga och får inte kräva en säsongsuppgift på laget.
+
+Målbeslut i administrationsspecen, K-030–K-032: endast tomma sektioner/lag
+utan kopplade medlemmar, aktiviteter eller annat sparat underlag får raderas.
+Sista sektionen skyddas. Borttagning kräver bekräftelse och blockering förklaras;
+backend kontrollerar aktuella beroenden vid skrivningen. Flytt av lag mellan
+sektioner och radering av hela klubbar ingår inte i första målversionen.
+
+Målbeslut 2026-10-28, K-026–K-028 i administrationsspecen: klubbskapandeguiden
+ska inte ha något tidszonsfält. Enligt K-029 ska alla klubbar i målappen använda
+`Europe/Stockholm`, inklusive automatisk sommar-/vintertid; aktivitetsklockslag
+visas i svensk tid oavsett enhetens tidszon. Detta är ett specbeslut och ändrar
+ännu inte befintliga tidsberäkningar. Första sektion med disciplin
+krävs, första lag är valfritt och hela strukturen granskas och sparas atomärt.
+Första klubbadmin tillsätts separat; initial avsaknad av klubbadmin tillåts och
+ska framgå tydligt i systemvyn. Skyddet mot återkallning av sista klubbadmin kvarstår.
+
+Målbeslut 2026-10-28 för React/Kotlin: endast systemadministratörer får skapa
+klubbar; klubbadministratör tilldelas eller bjuds in separat. Självregistreringen
+i Next-beskrivningen nedan ska inte migreras till första versionen. Detta är
+ett specbeslut, inte en genomförd kodändring. Se
+[administrationsspecen, K-007](specs/administration.md#krav).
+
+Målbeslut i samma intervju, K-008: systemadmin får hantera klubbuppgifter,
+sektioner, lag och klubbadministratörer utan klubbroll. Systemrollen ger ingen
+automatisk åtkomst till medlemsuppgifter, kallelser eller närvaro; det kräver
+en separat, uttrycklig och loggad klubbroll. Klubbskapande ger ingen automatisk
+klubbroll. Enligt K-019 får systemadmin tilldela sig själv klubbadminrollen i
+en vald klubb via **Bli klubbadministratör**, med uttrycklig bekräftelse och
+loggning. Ingen inbjudan från befintlig klubbadmin krävs.
+
+Målbeslut K-020: React/Kotlin ska ha en gemensam klubbadminroll utan separat
+klubbägare. Alla klubbadministratörer har samma mandat; skaparen eller den
+först utsedda får inga särskilda rättigheter. Nexts ägarroll i beskrivningen
+nedan är nuläge i den äldre appen och ska inte införas i målappen.
+
+Målbeslut K-009: klubbadministratörer får inom sin klubb bjuda in och återkalla
+andra klubbadministratörer samt utse sektions- och lagadministratörer. Sista
+klubbadministratören får inte återkallas. Detta mål ersätter vid migreringen
+Next-regeln nedan som tillåter systemadmin att ta bort sista klubbadministratören.
+
+Målbeslut K-010–K-011: sektionsadmin får utse och återkalla lagadmin inom sin
+sektion; klubbadmin hanterar sektionsadmin. Lagadmin får tilldela avgränsade
+behörigheter inom sitt lag, exempelvis närvaro och kallelser. Lagadmin får inte
+hantera lagadministratörsroller; det gör sektions- eller klubbadmin.
+
+Målbeslut K-021–K-023: klubbadmin får återkalla sektions- och lagadmin inom
+klubben. Sektioner och lag får sakna egen admin eftersom överordnad admin kan
+hantera området. Återkallning tar omedelbart bort rollens behörigheter men
+bevarar medlemskap, historik och oberoende tilldelade roller; en öppen sida
+eller fortsatt inloggning får inte bevara den återkallade behörigheten.
+
+Målbeslut K-024–K-025: endast systemadmin får bjuda in och återkalla andra
+systemadministratörer. Sista systemadmin skyddas även vid samtidiga ändringar.
+Administratörer får lämna sin egen roll; sista system- eller klubbadmin måste
+först ha en ersättare som accepterat rollen. En väntande inbjudan räcker inte.
+Sektions- och lagadmin får lämna även om området därefter saknar egen admin.
+
+Målbeslut K-012–K-015: administratörsinbjudningar på alla nivåer anger roll och
+omfattning och kräver uttrycklig acceptans från rätt verifierade e-postadress.
+Konto får skapas vid behov. Länkar gäller i sju dagar och kan återkallas; ny
+inbjudan för samma adress, roll och område ersätter den gamla. Vid acceptans
+måste inbjudaren fortfarande få tilldela rollen. Giltigheten är 168 timmar från
+skapandet och förlängs inte av automatiska leveransförsök. Vyn skiljer väntande
+leverans, skickad, leveransfel, accepterad, utgången och återkallad. **Skicka ny
+inbjudan** ersätter den gamla länken och startar ny giltighet. Upprepad acceptans
+ger inga dubbla roller och visar om rollen redan aktiverats. Samtidighet och
+acceptans vid leveransfel regleras i K-054–K-055 ovan. Besluten är godkända
+i specen men inte implementerade genom specarbetet.
+
 `/system/organizations` ger plattformsadministratörer metadataadministration av
 klubbar och sektioner. Klubbägare och klubbadministratörer använder samma
 komponent via `/o/[slug]/admin/sections`. Dessa rättigheter ger inga extra

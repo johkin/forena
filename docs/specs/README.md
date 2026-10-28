@@ -48,6 +48,7 @@ Exempel på implementation:
 
 ## Sparade specar
 
+- [Administration – klubbstruktur, roller och inbjudningar](administration.md) – Redo, godkänd spec för struktur, administratörsroller, behörighetsprofiler och inbjudningar.
 - [Arbetspass och bemanning](arbetspass-och-bemanning.md) – Redo, godkänd spec för bokning, tilldelning och rättvis fördelning av arbetspass.
 - [Skapa och redigera aktiviteter](hantera-aktiviteter.md) – Redo.
 - [Discipliner – gemensam modell och utökningsarkitektur](discipliner.md) – Redo.
