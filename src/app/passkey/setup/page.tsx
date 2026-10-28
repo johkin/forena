@@ -7,7 +7,7 @@ type Props = { searchParams: Promise<{ next?: string }> };
 
 export default async function PasskeySetupPage({ searchParams }: Props) {
   const { next } = await searchParams;
-  const safeNext = next?.startsWith("/") && !next.startsWith("//") ? next : "/";
+  const safeNext = next?.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : "/";
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
 
