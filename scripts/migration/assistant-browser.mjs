@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 
 const origins = [process.env.FORENA_PARITY_NEXT ?? 'http://127.0.0.1:3004', process.env.FORENA_PARITY_VITE ?? 'http://localhost:3005'];
-const browser = await chromium.launch({ headless: true, executablePath: '/usr/bin/chromium' });
+for (const origin of origins) assert.ok(['127.0.0.1', 'localhost'].includes(new URL(origin).hostname));
+const browser = await chromium.launch({ headless: true, ...(process.env.FORENA_BROWSER_EXECUTABLE ? { executablePath: process.env.FORENA_BROWSER_EXECUTABLE } : {}) });
 await mkdir('frontend/.evidence/assistant', { recursive: true });
 try {
   for (const width of [320, 390, 768, 1280]) {

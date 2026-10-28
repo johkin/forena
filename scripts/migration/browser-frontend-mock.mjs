@@ -82,6 +82,9 @@ await context.route('**/api/**',async route=>{
  privateRequests++;
  assert.ok(headers.cookie?.includes('forena-local-session='));
  if(platformDenied)return route.fulfill({status:401,contentType:'text/html',body:'<html>Vercel Authentication</html>'});
+ if(path==='/api/telegram/settings')return route.fulfill({json:{active:false,available:false}});
+ if(path==='/api/push-subscriptions')return route.fulfill({json:{available:false,publicKey:''}});
+ if(path==='/api/assistant/memories')return route.fulfill({json:[]});
  if(path==='/api/me/overview'){
   if(overviewUnavailable)return route.fulfill({status:503,json:{error:'Tillfälligt fel'}});
   return route.fulfill({json:{reference_time:'2030-10-20T00:00:00Z',activities:current===0?activities():[],organizations:current===0?[organization]:[],teams:current===0?[team]:[],calendar_people:calendarScope().people,calendar_teams:calendarScope().teams}});
@@ -294,7 +297,7 @@ try{
  await page.goto(new URL('/account/security',base).href);
  await expect(page.getByRole('heading',{name:'Inloggning',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Skapa passkey',exact:true}).click();
- await expect(page.getByRole('status')).toHaveText('Din passkey har skapats. Du kan använda den nästa gång du loggar in.');
+ await expect(page.getByRole('status').filter({hasText:'Din passkey har skapats'})).toHaveText('Din passkey har skapats. Du kan använda den nästa gång du loggar in.');
  assert.ok(registrationVerified);
  await page.screenshot({path:'frontend/.evidence/passkey-registered.png',fullPage:true});
  for(const width of [320,1280]){await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}

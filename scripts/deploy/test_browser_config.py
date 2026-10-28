@@ -60,3 +60,6 @@ class BrowserConfig(unittest.TestCase):
             self.assertNotIn("poison", json.dumps(config))
             version = json.loads((Path(directory) / "public/app-version.json").read_text())
             self.assertEqual(config["version"], version["version"])
+            for asset in ["sw.js", "offline.html", "icon.svg"]:
+                self.assertEqual((Path(directory) / "public" / asset).read_bytes(),
+                                 (ROOT / "public" / asset).read_bytes())

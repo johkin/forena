@@ -11,4 +11,6 @@ mkdirSync("public", { recursive: true });
 writeFileSync("public/config.json", JSON.stringify({ activityId, version }) + "\n");
 writeFileSync("public/app-version.json", JSON.stringify({ version }) + "\n");
 
-for (const asset of ["sw.js", "offline.html", "icon.svg"]) copyFileSync(`../public/${asset}`, `public/${asset}`);
+for (const asset of ["sw.js", "offline.html", "icon.svg"]) {
+  copyFileSync(new URL(`../../public/${asset}`, import.meta.url), `public/${asset}`);
+}
