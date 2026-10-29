@@ -99,8 +99,8 @@ Ordinarie start kör Liquibase som owner före HTTP och verifierar runtime-grant
 auth- eller mejlcredentials. `FORENA_VERIFY_DATABASE_ACCESS=true` verifierar
 runtime-grants utan HTTP eller migration. Använd endast en av dessa engångsåtgärder.
 
-Ordinarie webbstart kräver `FORENA_WEB_ORIGIN`, en separat base64-kodad
-32-byte-nyckel i `FORENA_WEB_SESSION_KEY`, `RESEND_API_KEY` och
+Ordinarie webbstart kräver `SITE_URL` (eller `FORENA_WEB_ORIGIN` som överstyrning),
+en separat base64-kodad 32-byte-nyckel i `FORENA_WEB_SESSION_KEY`, `RESEND_API_KEY` och
 `RESEND_FROM_EMAIL`. Inga auth-lägen väljs. Valfritt RP-ID sätts med
 `FORENA_PASSKEY_RP_ID`; standard är originens host. OAuth-klient provisioneras
 med `FORENA_OAUTH_CLIENT_ID`, `FORENA_OAUTH_CLIENT_REDIRECT` och valfri
