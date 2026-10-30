@@ -278,6 +278,24 @@ menyer, header och footer.
 
 ## Persistens
 
+### Mitt konto: godkänd målbild
+
+[Mitt konto-specen](specs/mitt-konto.md) är godkänd 2026-10-30; detta
+beskriver beslutade krav, inte levererad funktionalitet. Kontot är gemensamt
+över klubbar, medan personposter och rättigheter förblir klubbavgränsade.
+Egna namn-/telefonändringar och behöriga barnändringar ska uppdateras
+atomärt över berörda klubbar, med explicit bekräftade barnkopplingar,
+revisionskontroll och klubbavgränsad historik. Sammankoppling är inte
+personsammanslagning eller ny åtkomst. Personnummerinsamling ingår inte.
+
+Vårdnadshavaråtkomst upphör vid 18 år. Den myndiga kan därefter godkänna
+separat begränsad följaråtkomst per klubb. Efter förlust av sista
+klubbkopplingen behålls kontot i 30 × 24 timmar med enbart kontohantering
+och möjlighet till ny godkänd koppling. Därefter tas kontot och dess
+privata data enligt specen bort; klubbarnas personposter och
+verksamhetshistorik bevaras enligt separata regler. Systemadministratörer
+är undantagna från kravet på klubbkoppling.
+
 ### Personlig arbetsyta över föreningar
 
 Rotrutten `/` använder `getPersonalDashboard` och det centrala `AppShell` utan

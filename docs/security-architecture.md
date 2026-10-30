@@ -68,6 +68,16 @@ credentials får aldrig exponeras i frontend eller byggartefakter.
 
 ## Personåtkomst i Kotlin
 
+Godkänd målbild 2026-10-30, ännu inte implementerad genom specarbetet:
+[Mitt konto](specs/mitt-konto.md) reglerar självservice för godkända
+vårdnadshavare före 18 år och separat, återkallelig följaråtkomst efter
+den myndigas godkännande per klubb. Följaråtkomst ger endast läsning av
+publicerade lagmatchers tid, plats och resultat, inte personens kallelser,
+svar, kommentarer, närvarohistorik eller skrivåtgärder. Förlorad
+vårdnadshavaråtkomst tillåter inga fortsatta ändringar av barnuppgifter.
+Sammankoppling av klubbarnas barnposter ger inte nya rättigheter och
+ska inte härledas automatiskt från namn, födelsedatum eller e-post.
+
 `PersonAccessService` använder aktiva `person_access`-tilldelningar för det
 verifierade kontot, överensstämmande person och organisation. Egen åtkomst och
 delegation kontrolleras på samma sätt vid läsning och skrivning. Sociala
