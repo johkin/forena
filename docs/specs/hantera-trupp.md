@@ -63,7 +63,9 @@ Permanent radering av personuppgifter, väntelista och automatisk
 kapacitetskontroll ingår inte.
 Insamling och visning av allergier eller andra hälsouppgifter ingår inte;
 befintliga sådana fält från Next-formuläret ska inte kopieras till leveransen.
-Fortsatt företrädaråtkomst efter 18-årsdagen ingår inte.
+Fortsatt företrädaråtkomst efter 18-årsdagen ingår inte. Separat,
+samtyckt läsåtkomst för föräldrar specificeras i [Mitt konto](mitt-konto.md#krav),
+K-009–K-010; den förlänger inte vårdnadshavarens svarsrätt.
 
 ## Användare, roller och flöden
 
@@ -129,6 +131,9 @@ läsåtkomst ger aldrig rätt att ändra personuppgifter eller relationer.
 - K-014: Den som har behörighet att hantera lagmedlemmar får lägga till och
   ändra vårdnadshavarkopplingar. En vårdnadshavare får ange ytterligare
   vårdnadshavare i ansökan, men inte själv ge nya personer åtkomst efteråt.
+  Förslag från vårdnadshavare om senare tillägg eller borttagning hanteras
+  enligt [Mitt konto, K-016](mitt-konto.md#krav) och kräver klubbens godkännande
+  innan åtkomsten ändras.
 - K-015: Vårdnadshavarens åtkomst kräver både godkänd koppling och verifiering
   av personens egen e-postadress. Godkännande av ansökan godkänner dess angivna
   kopplingar; senare tillägg godkänns av administratören. Borttagning av kopplingen
@@ -177,6 +182,14 @@ läsåtkomst ger aldrig rätt att ändra personuppgifter eller relationer.
   personens 18-årsdag. Relationen får därefter inte ge rätt att läsa personens
   uppgifter eller svara åt personen. Historik behålls. Oberoende behörigheter
   påverkas inte. Fortsatt företrädaråtkomst är en framtida feature.
+  Separat följaråtkomst med den myndigas godkännande specificeras i
+  [Mitt konto, K-009–K-010](mitt-konto.md#krav) och ger endast begränsad
+  läsåtkomst, utan rätt att svara eller ändra åt personen. Detta är ett
+  godkänt specbeslut, inte implementerad funktionalitet.
+
+Vårdnadshavares självservice för barnets person- och kontaktuppgifter före
+18-årsdagen specificeras i [Mitt konto, K-014–K-015](mitt-konto.md#krav).
+Den ger inga nya rättigheter att ändra lag-/medlemsuppgifter eller närvaro.
 
 ## Data, integrationer och kvalitetskrav
 
@@ -411,6 +424,10 @@ Svaren 1–28 är sparade. Användaren bekräftade den slutliga sammanfattningen
 
 ## Ändringshistorik
 
+- 2026-10-30: Samordnat med den godkända Mitt konto-specen: föräldrar
+  får självservice för barnets person-/kontaktuppgifter före 18 år,
+  relationsförslag kräver klubbgodkännande och följaråtkomst efter 18 år
+  ger separat begränsad läsrätt. Ingen implementation ingår i specändringen.
 - 2026-10-26: Skapat intervjuutkast med granskat nuläge och första öppna frågor.
 - 2026-10-26: Sparat svar 1–3, avgränsat till befintlig Next-funktionalitet och
   noterat skillnaden mellan målbilden och den granskade truppvyn.
