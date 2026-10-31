@@ -32,6 +32,39 @@ Origin samt `X-Forena-Request: 1` vid API-skrivningar. Använd inte en annan hos
 eller port för det ordinarie local-flödet. IDE kan starta `ForenaApplicationKt`
 med aktiv Spring-profil `local` och arbetskatalog `backend/`.
 
+### Privata lokala inställningar och IntelliJ
+
+Gemensamma utvecklingsförval ligger i `src/main/resources/application-local.yaml`.
+För egna värden och hemligheter kan du, från `backend/`, skapa en privat fil:
+
+```sh
+cp .env.local.example .env.local
+```
+
+Profilen `local` importerar automatiskt `.env.local` från arbetskatalogen med
+Spring Boots `spring.config.import`. Filen är valfri och ignoreras av Git.
+Den ligger utanför `src/main/resources` och följer inte med i applikationens jar.
+Ingen extra dotenv-integration behövs.
+
+Skriv en inställning per rad som `NYCKEL=värde`, utan `export` eller omgivande
+citattecken. Formatet är Java properties, inte ett shellskript. Mallen innehåller
+bland annat första systemadministratör, AI Gateway och en separat Telegram-testbot.
+För vanliga Spring-inställningar används propertynamnet, exempelvis
+`server.port=8081`. Värden i filen överstyr profilens förval; riktiga
+miljövariabler och kommandoradsargument har högre prioritet.
+
+I IntelliJ, skapa en Spring Boot-konfiguration med:
+
+- **Main class:** `se.forena.api.ForenaApplicationKt`.
+- **JRE:** Java 25 och backendmodulens classpath.
+- **Active profiles:** `local` (eller programargumentet `--spring.profiles.active=local`).
+- **Working directory:** repots `backend/`-katalog.
+
+Inga hemligheter behöver läggas i IntelliJ-konfigurationen. Starta om backend
+efter att filen ändrats. Importen gäller bara `local`-profilen. Telegrams
+separata Node-konfigurationsskript läser inte Spring-filen; dess variabler
+behöver tillföras separat när webhooken registreras.
+
 Registrera ett nytt konto, öppna den loggade verifieringslänken i samma
 browserprofil och bekräfta länken. Därefter fungerar lösenord, passkeys och
 magic links. Återställningslänkar loggas på samma sätt. Nya konton saknar

@@ -83,6 +83,10 @@ Spring-profilen `local` startar PostgreSQL via Spring Boots Docker Compose-stöd
 med samma schema-bootstrap, separata owner-/runtime-roller och Liquibase som
 övrig Kotlin-runtime. Spring-autentisering och en loggande `EmailSender` gör det möjligt
 att utveckla utan Supabase Auth eller Resend. Data ligger kvar i en lokal volym.
+Gemensamma förval ligger i `application-local.yaml`. Profilen importerar valfritt
+en Git-ignorerad `.env.local` i arbetskatalogen (`backend/`) som Spring properties;
+privata värden hålls utanför classpath och applikationens jar. Miljövariabler och
+kommandoradsargument har fortsatt högre prioritet.
 Se [körinstruktioner](../backend/README.md#lokal-utveckling).
 
 Ett avskilt [browserflöde](migration/browser-participation.md) återanvänder

@@ -1,5 +1,7 @@
 # Development fixtures only. Start from backend/ with --spring.profiles.active=local.
 spring:
+  config:
+    import: "optional:file:.env.local[.properties]"
   docker:
     compose:
       enabled: true
