@@ -9,7 +9,8 @@ import { kotlinParticipationSelected } from "@/lib/kotlin-participation";
 export async function requestMagicLink(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const requestedNext = String(formData.get("next") ?? "");
-  const next = requestedNext.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : "/passkey/setup";
+  // SECURITY: Prevent open redirect via /\example.com (handled by new URL())
+  const next = requestedNext.startsWith("/") && !requestedNext.startsWith("//") && !requestedNext.startsWith("/\\") ? requestedNext : "/passkey/setup";
 
   if (!email || !email.includes("@")) {
     redirect(`/login?error=Ange+en+giltig+e-postadress&next=${encodeURIComponent(next)}`);
@@ -37,7 +38,8 @@ export async function requestMagicLink(formData: FormData) {
 
 function getSafeNext(formData: FormData) {
   const requestedNext = String(formData.get("next") ?? "");
-  return requestedNext.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : "/";
+  // SECURITY: Prevent open redirect via /\example.com (handled by new URL())
+  return requestedNext.startsWith("/") && !requestedNext.startsWith("//") && !requestedNext.startsWith("/\\") ? requestedNext : "/";
 }
 
 export async function signInWithPassword(formData: FormData) {
