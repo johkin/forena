@@ -21,7 +21,7 @@ it("groups leader and children under one activity with separate response statuse
   expect(html.match(/class="personal-activity-row"/g)).toHaveLength(1);
   expect(html.match(/<button/g)).toHaveLength(5);
   expect(html).toContain('class="badge">1</span>');
-  expect(html).toContain('aria-label="Kommer: Johan" aria-pressed="true"');
+  expect(html).toContain('aria-pressed="true" disabled=""><span aria-hidden="true">✓</span> Kommer<span class="sr-only">: Johan</span>');
   expect(html).toContain("Tilda</strong><span>Ej svarat");
 });
 it("keeps different activities with the same title separate and avoids repeating a person", () => {

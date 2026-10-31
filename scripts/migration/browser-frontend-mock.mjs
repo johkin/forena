@@ -135,13 +135,13 @@ try{
  assert.equal(detailReads,0);
  await expect(upcoming.getByText('Ingen kallelse ännu',{exact:true})).toHaveCount(2);
  const overviewAnswer=upcoming.getByRole('group',{name:'Kallelsesvar för Alex Exempel med ett längre familjenamn'});
- answerUnavailable=true;await overviewAnswer.getByRole('button',{name:/Kommer:/}).click();
+ answerUnavailable=true;await overviewAnswer.getByRole('button',{name:/Kommer/}).click();
  await expect(page.getByRole('alert')).toHaveText('Svaret kunde inte sparas. Försök igen.');
- await expect(overviewAnswer.getByRole('button',{name:/Kommer:/})).toHaveAttribute('aria-pressed','false');
- answerUnavailable=false;holdAnswer=true;await overviewAnswer.getByRole('button',{name:/Kommer:/}).click();
- for(const button of await page.getByRole('button',{name:/Kommer: Alex/}).all())await expect(button).toBeDisabled();
+ await expect(overviewAnswer.getByRole('button',{name:/Kommer/})).toHaveAttribute('aria-pressed','false');
+ answerUnavailable=false;holdAnswer=true;await overviewAnswer.getByRole('button',{name:/Kommer/}).click();
+ for(const button of await page.getByRole('button',{name: /Kommer : Alex/}).all())await expect(button).toBeDisabled();
  await expect.poll(()=>typeof releaseAnswer).toBe('function');holdAnswer=false;releaseAnswer();
- await expect(overviewAnswer.getByRole('button',{name:/Kommer:/})).toHaveAttribute('aria-pressed','true');
+ await expect(overviewAnswer.getByRole('button',{name:/Kommer/})).toHaveAttribute('aria-pressed','true');
  assert.equal(invitations[0].response,'accepted');assert.equal(invitations[1].response,'pending');assert.equal(page.url(),base.href);
  // A same-tab self-notification must not erase the accepted login.
  await page.waitForTimeout(200);assert.equal(sessionReads,beforeLoginReads);
@@ -151,8 +151,8 @@ try{
  await replyFilter.click();
  await expect(upcoming.locator('.badge')).toHaveText('1');
  await expect(upcoming.getByRole('button',{name:/Nästa aktivitet/})).toHaveCount(0);
- await expect(upcoming.getByRole('button',{name:/Kommer: Alex/})).toHaveAttribute('aria-pressed','true');
- await expect(upcoming.getByRole('button',{name:'Kommer: Tilda Exempel',exact:true})).toHaveAttribute('aria-pressed','false');
+ await expect(upcoming.getByRole('button',{name: /Kommer : Alex/})).toHaveAttribute('aria-pressed','true');
+ await expect(upcoming.getByRole('button',{name: /Kommer : Tilda Exempel/,exact:true})).toHaveAttribute('aria-pressed','false');
  await expect(page.getByRole('group',{name:'Filtrera på lag'})).toHaveCount(0);
  await page.getByRole('group',{name:'Filtrera på person'}).getByRole('button',{name:'Tilda Exempel',exact:true}).click();
  await page.getByRole('button',{name:'Kalender',exact:true}).click();await expect(page.getByRole('heading',{name:'oktober 2030'})).toBeVisible();
@@ -225,10 +225,10 @@ try{
  await expect(page.getByRole('status').filter({hasText:'har sparats'})).toBeVisible();assert.equal(invitations[0].response,'accepted');
  await page.reload();await expect(row.getByLabel('Kommentar')).toHaveValue('Hämtas senare');
  await page.goto(base.href);await expect(upcoming.getByRole('button',{name:/Träning med laget/})).toBeVisible();
- await overviewAnswer.getByRole('button',{name:/Kan ej:/}).click();
- await expect(overviewAnswer.getByRole('button',{name:/Kan ej:/})).toHaveAttribute('aria-pressed','true');
+ await overviewAnswer.getByRole('button',{name:/Kan ej/}).click();
+ await expect(overviewAnswer.getByRole('button',{name:/Kan ej/})).toHaveAttribute('aria-pressed','true');
  assert.equal(invitations[0].response_comment,'Hämtas senare');
- await page.reload();await expect(overviewAnswer.getByRole('button',{name:/Kan ej:/})).toHaveAttribute('aria-pressed','true');
+ await page.reload();await expect(overviewAnswer.getByRole('button',{name:/Kan ej/})).toHaveAttribute('aria-pressed','true');
  overviewUnavailable=true;await page.reload();await expect(page.getByRole('alert')).toBeVisible();
  overviewUnavailable=false;await page.getByRole('button',{name:'Försök igen',exact:true}).click();await expect(upcoming.getByRole('button',{name:/Träning med laget/})).toBeVisible();
  for(const width of [320,375,390,768,1440]){
@@ -242,7 +242,7 @@ try{
  }
  await page.screenshot({path:'frontend/.evidence/desktop.png',fullPage:true});await page.setViewportSize({width:390,height:844});await page.screenshot({path:'frontend/.evidence/mobile.png',fullPage:true});
  await page.getByRole('button',{name:'Öppna meny',exact:true}).click();await expect(page.getByRole('dialog',{name:'Huvudmeny'})).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);
- await upcoming.getByRole('button',{name:'Kommer: Tilda Exempel',exact:true}).click();
+ await upcoming.getByRole('button',{name: /Kommer : Tilda Exempel/,exact:true}).click();
  await expect(page.getByRole('button',{name:'Behöver svar (0)',exact:true})).toBeVisible();
  await expect(upcoming.getByRole('button',{name:/Träning med laget/})).toHaveCount(1);await expect(upcoming.locator('.badge')).toHaveText('2');
  await page.reload();await page.getByRole('button',{name:'Behöver svar (0)',exact:true}).click();

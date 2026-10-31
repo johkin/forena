@@ -43,6 +43,6 @@ it("uses unambiguous short names across the complete dataset",()=>{
  expect(html.match(/>Johan Kindgren<\/strong>/g)).toHaveLength(1);
  expect(html).toContain('title="Johan Svensson"><span aria-hidden="true">Johan S</span><span class="sr-only">Johan Svensson</span></strong>');
  expect(html).toContain('title="Tilda Kindgren"><span aria-hidden="true">Tilda</span><span class="sr-only">Tilda Kindgren</span></strong>');
- expect(html).toContain('aria-label="Kommer: Johan Kindgren"');
+  expect(html).toContain('Kommer<span class="sr-only">: Johan Kindgren</span>');
  expect(html).not.toContain('>Tilda K</strong>');
 });
