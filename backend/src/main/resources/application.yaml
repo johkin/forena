@@ -52,7 +52,7 @@ forena:
     initial-system-admin-email: "${FORENA_INITIAL_SYSTEM_ADMIN_EMAIL:}"
   web-session:
     enabled: "${FORENA_WEB_SESSION_ENABLED:true}"
-    origin: "${FORENA_WEB_ORIGIN:}"
+    origin: "${FORENA_WEB_ORIGIN:${SITE_URL:}}"
     key: "${FORENA_WEB_SESSION_KEY:}"
     secure: "${FORENA_WEB_SESSION_SECURE:true}"
     trust-vercel-proxy: "${FORENA_TRUST_VERCEL_PROXY:false}"
