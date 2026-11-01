@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { z } from "zod";
 import { createPortal } from "react-dom";
 import { ActivityEditButton } from "./activity-edit-button";
+import { getFormatter } from "@/lib/date-time";
 import { ActivityEditorModal } from "./activity-editor-modal";
 import type { Activity, Member, Organization, Team } from "../domain/club";
 import { normalizeDefaultsPatch, resolveDisciplineDefaults } from "../lib/discipline-defaults";
@@ -158,7 +159,8 @@ export function ActivityManagement({ request, teamId, activityId, onSaved, initi
       {activityId ? canEditActivity ? <ActivityEditButton onClick={() => setEditing(selectedActivity)} /> : null
         : <button type="button" className="primary" aria-label="Ny aktivitet" onClick={() => setEditing("create")}>Ny aktivitet</button>}
       {!teamId && !activityId ? context.activities.length === 0 ? <p>Inga aktiviteter ännu.</p> : <ul>{context.activities.map(activity => <li key={activity.id}>
-        <strong>{activity.title}</strong> · {new Intl.DateTimeFormat("sv-SE", { timeZone: context.team.timeZone, dateStyle: "medium", timeStyle: "short" }).format(new Date(activity.starts_at))}
+        {/* ⚡ Bolt: Using cached getFormatter to prevent expensive Intl.DateTimeFormat instantiations within the list mapping. */}
+        <strong>{activity.title}</strong> · {getFormatter(context.team.timeZone, { dateStyle: "medium", timeStyle: "short" }).format(new Date(activity.starts_at))}
         {activity.status === "cancelled" ? <span> · Inställd</span> : Date.parse(activity.ends_at) > now ? <button type="button" className="secondary" onClick={() => setEditing(activity)}>Redigera {activity.title}</button> : <span> · Avslutad</span>}
       </li>)}</ul> : null}
     </> : null}
