@@ -108,7 +108,8 @@ aldrig frontend-config, källkod, chatten eller loggarna.
 | `FORENA_TRANSCRIPTION_RETENTION_VERIFIED` | Sätt först efter verifiering av vald leverantörs retention. |
 | `FORENA_PUSH_ENABLED` | Push som nästa kanal efter Telegram. |
 | `FORENA_VAPID_PUBLIC_KEY`, `FORENA_VAPID_PRIVATE_KEY`, `FORENA_VAPID_SUBJECT` | VAPID-konfiguration; bara publik nyckel lämnas till klienten. |
-| `FORENA_WEB_ORIGIN` | Den nya appens kanoniska HTTPS-origin. |
+| `SITE_URL` | Appens kanoniska HTTPS-origin, även för Spring och Telegrams konfigurationsskript. |
+| `FORENA_WEB_ORIGIN` | Valfri överstyrning av `SITE_URL` för Spring och Telegrams konfigurationsskript. |
 
 Notifieringsarbetarens befintliga aktiveringsflagga, separata autentisering och
 uttryckliga lista med testmottagare gäller fortfarande. Ordningen är Telegram,
