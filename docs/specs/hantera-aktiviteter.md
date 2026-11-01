@@ -1,9 +1,9 @@
 # Skapa och redigera aktiviteter
 
 - Status: Redo
-- Senast uppdaterad: 2026-10-27
+- Senast uppdaterad: 2026-11-01
 - Berörda dokument: [Aktivitetshantering i React/Kotlin](../migration/activity-management.md), [Arkitektur](../architecture.md#redigering-av-befintlig-serie), [Designregler](../design-spec.md), [Tidsregler](../activity-time-rules.md), [Bemanningsschema](../activity-duty-schedule.md), [Kalender](kalender-vy.md), [Närvaro](narvaroregistrering.md), [AI-assistent](ai-assistent.md)
-- Implementation och verifiering: Kravspecen är godkänd. Ingen implementation beställd för denna spec. Befintlig funktion och tidigare lokal iOS-anpassning är separata från nya krav.
+- Implementation och verifiering: K-001–K-047 och AK-001–AK-050 godkändes 2026-10-27. Kompletteringen enligt issue #141 och preciseringarna av tidigare krav slutbekräftades 2026-11-01. Hela specen K-001–K-055 och AK-001–AK-061 är godkänd. Ingen implementation beställd för denna spec. Befintlig funktion och tidigare lokal iOS-anpassning är separata från nya krav.
 
 ## Problem och mål
 
@@ -20,6 +20,8 @@ appens befintliga funktion som underlag och uttryckligt granskade begränsningar
 - Skapa och redigera enstaka aktiviteter och serier i den nya appen.
 - Förlänga eller förkorta en befintlig serie och ändra dess veckodagar.
 - Ställa in och ta bort enstaka tillfällen eller serier.
+- Spara aktiviteter som Utkast, fastställa dem och hantera livscykelstatus
+  enligt issue #141 och kompletteringens intervjubeslut.
 - Regler för hur ändringar påverkar kallelser, svar och påminnelser.
 - Kopplingarna till kalender, närvaro och AI-assistent.
 
@@ -30,6 +32,8 @@ appens befintliga funktion som underlag och uttryckligt granskade begränsningar
   behåller sina separata specar. Endast kopplingarna till aktivitetshanteringen
   ingår här.
 - Återaktivering av inställda aktiviteter ingår inte.
+- Statusarna Preliminär och Genomförd ingår inte; passerad sluttid härleds
+  från aktivitetens tider.
 
 ## Användare, roller och flöden
 
@@ -42,6 +46,8 @@ appens befintliga funktion som underlag och uttryckligt granskade begränsningar
    och kommande. Enskild efterregistrering följer K-045.
 3. Användaren anger eller ändrar uppgifter, serieupplägg och vid behov
    kallelseinställningar. För bokad bemanning görs uttryckliga val per aktivitet.
+   Vid skapande väljs **Spara som utkast** eller **Fastställ** utan att först
+   behöva välja status i ett separat fält. Sparade utkast kan fastställas senare.
 4. Förhandsgranskningen visar tillfällen, följder för svar och utskick,
    bemanningsval och överhoppningar. Ogiltiga datum, scheman eller konflikter
    måste rättas före sparande.
@@ -129,6 +135,56 @@ appens befintliga funktion som underlag och uttryckligt granskade begränsningar
 
 ### Serieomfattning, undantag och livscykel
 
+- K-052: Aktivitetens sparade livscykel ska representeras av ett statusfält
+  med exakt `DRAFT` (Utkast), `CONFIRMED` (Fastställd) och `CANCELLED`
+  (Inställd), separat från kallelsestatus och närvaro. Befintliga aktiva
+  aktiviteter ska migreras till Fastställd och inställda till Inställd.
+  Fastställda och inställda aktiviteter följer ordinarie synlighetsregler.
+  Utkast och inställda aktiviteter ska markeras tydligt i relevanta listor,
+  kalender och detaljvy. Utkast visas endast för behöriga enligt K-048/K-051.
+  Preliminär och Genomförd införs inte och återaktivering av Inställd ingår inte.
+- K-048: Sparade aktivitetsutkast ska kunna hanteras av lagets ledare och
+  administratörer med aktivitetsbehörighet för det aktuella laget enligt
+  befintlig klubb-/sektions-/lagavgränsning. En administratörsroll utan sådan
+  behörighet ska inte ge utkaståtkomst. Utkaståtkomst ska inte ge ytterligare
+  kallelsebehörighet; uppdelningen enligt K-027 kvarstår.
+- K-049: En fastställd aktivitet får återgå till Utkast endast innan någon
+  kallelse har skapats eller köats och innan någon bemanningsbokning finns.
+  Om något av dessa villkor inte är uppfyllt ska statusändringen nekas utan
+  ändrad aktivitet, synlighet, kallelser, svar eller bokningar. Villkoren ska
+  kontrolleras på servern vid sparande, även om åtgärden förhandsgranskats.
+- K-051: Ett sparat aktivitetsutkast ska följa samma formulär-, uppgifts-,
+  validerings- och redigeringsregler som en vanlig aktivitet. Utkast ska
+  inte vara ett särskilt flöde för ofullständiga uppgifter eller undantag
+  från tidsvalidering. Spelare och målsmän ska inte se eller komma åt utkast;
+  ledare och behöriga administratörer omfattas av K-048. Samma åtkomstgräns
+  ska gälla i listor, kalender, detaljer, direktlänkar, API och andra
+  integrationer. En person som även är spelare eller målsman får fortfarande
+  använda sin behöriga ledar-/administratörsåtkomst.
+  Tidigare beslut om spärrade kallelseutskick för utkast och villkor för
+  återgång till Utkast kvarstår. Inga andra särskilda utkastflöden införs.
+- K-053: Vid skapande ska formuläret erbjuda **Spara som utkast** och
+  **Fastställ**, utan ett föregående separat statusval. Båda valen och senare
+  statusändringar ska följa K-027/K-037/K-038: behörighetskontroll,
+  förhandsgranskning, uttrycklig bekräftelse, atomärt sparande och separat
+  spar-/leveransstatus. Fastställande ska återställa ordinarie synlighet och
+  aktivera kallelsehantering enligt K-019/K-055.
+- K-054: Statusändringar i en serie ska använda **Endast detta tillfälle**
+  eller **Detta och kommande tillfällen** och samma tids-, urvals- och
+  undantagsregler som övriga serieändringar enligt K-003–K-005/K-014.
+  Nya tillfällen vid förlängning eller tillagd veckodag ska få seriens
+  gemensamma status enligt dess giltighetsdatum, inte automatiskt ett
+  individuellt undantags status. Status och överhoppningar ska visas i
+  förhandsgranskningen. K-049 och atomärt sparande gäller även statusändring
+  av flera tillfällen; ett otillåtet statusbyte får inte sparas delvis.
+- K-055: Endast fastställda aktiviteter får orsaka att kallelseutskick
+  skapas eller köas. Utkast får spara kallelseinställningar och mottagarval
+  men får inte skicka kallelser. För **Skicka nu** i ett enstaka utkast ska
+  mottagarvalet sparas och kallelsen skickas först efter förhandsgranskat och
+  bekräftat fastställande. Serier behåller schemaläggning enligt K-030.
+  Schemaläggaren ska kontrollera status innan utskick skapas eller köas;
+  redan köade utskick hanteras enligt K-050. Fastställande ska följa ordinarie
+  regler för personurval och dubblettskydd enligt K-028/K-041.
 - K-003: Vid redigering, inställning och borttagning i en serie ska användaren
   välja **Endast detta tillfälle** eller **Detta och kommande tillfällen**.
   Omfattningen utgår från det öppnade tillfället; tidigare tillfällen lämnas
@@ -269,13 +325,15 @@ appens befintliga funktion som underlag och uttryckligt granskade begränsningar
   När endast titel eller beskrivning ändras ska uppgifterna uppdateras utan
   nytt utskick och aktuella svar behållas. Detta ska undvika extra notiser för
   exempelvis rättad stavning. Enbart ändrad aktivitetstyp följer K-047.
-- K-019: Vid skapande och flytt ska en passerad kallelsetid innebära att
+- K-019: Vid skapande, flytt och fastställande ska en passerad kallelsetid innebära att
   kallelsen skickas direkt efter bekräftat sparande. Passerade påminnelsetider
   ska hoppas över. Om sista svarstid har passerat ska sparandet stoppas och
   användaren få välja en framtida svarstid som infaller senast vid aktivitetens
   start. Förhandsgranskningen ska visa vilka kallelser som skickas direkt och
   vilka påminnelser som hoppas över. Regeln gäller när ett kallelseschema ska
   skapas eller räknas om; den kräver inte kallelse för aktiviteter utan kallelse.
+  Utkast ska inte orsaka kallelseutskick. Vid fastställande ska tiderna
+  kontrolleras på nytt och direktutskick framgå av förhandsgranskningen.
 - K-028: Schemalagda kallelser ska använda valda målgrupper, exempelvis
   spelare, ledare och undergrupper, men personurvalet ska bestämmas vid
   utskickstillfället utifrån aktuellt medlemskap. Nytillkomna medlemmar i de
@@ -354,11 +412,19 @@ appens befintliga funktion som underlag och uttryckligt granskade begränsningar
   ändringsmeddelanden. Ordinarie kallelser till nya tillfällen ska följa
   tillfällenas kallelseinställningar enligt K-011, K-028 och K-030.
 - K-026: När en aktivitet ställs in eller tas bort ska alla redan kallade
-  och alla med bokade bemanningspass informeras. Väntande kallelser och
-  påminnelser ska stoppas. Bemanningsbokningar ska upphöra att gälla med
+  och alla med bokade bemanningspass informeras. Framtida schemalagda
+  kallelser och påminnelser ska stoppas. Redan köade kallelser och
+  påminnelser undantas enligt K-050.
+  Bemanningsbokningar ska upphöra att gälla med
   tidigare bokningar bevarade i historiken. Information om flera tillfällen
   i samma serieändring ska samlas per mottagare enligt K-018. Personer som
   varken fått en kallelse eller bokat ett pass ska inte få utskick om åtgärden.
+- K-050: Vid inställning ska framtida schemalagda kallelser och påminnelser
+  stoppas, men redan köade kallelser och påminnelser ska skickas utan ny
+  statuskontroll i leveranskön. Köundantaget i issue #141 gäller därmed även
+  påminnelser enligt det bekräftade tillägget. Inställning får inte återkalla
+  dessa köade utskick. Information om inställningen hanteras separat från
+  kallelsen.
 - K-029: Samlade ändringsmeddelanden ska grupperas per mottagarkonto och
   använda befintliga e-post-/pushkanaler enligt befintliga notisinställningar.
   Högst ett samlat meddelande per kanal och sparad serieändring ska skickas
@@ -547,8 +613,10 @@ kallelser, nekad behörighet, samtidiga ändringar och mobilinteraktion.
   inte automatiskt ersätta det gemensamma upplägget.
 - AK-027 (K-026): Givet en aktivitet med redan kallade personer, bokade
   bemanningspass och väntande utskick, när aktiviteten ställs in eller tas
-  bort, ska redan kallade och bokade informeras, väntande kallelser och
-  påminnelser inte skickas och bokningarna inte längre gälla. Tidigare
+  bort, ska redan kallade och bokade informeras, framtida schemalagda
+  kallelser och påminnelser stoppas och bokningarna inte längre
+  gälla. Redan köade kallelser och påminnelser ska dock skickas enligt
+  K-050/AK-054. Tidigare
   bokningar ska finnas i historiken. En person utan skickad kallelse och
   utan bokat pass ska inte få utskick om åtgärden.
 - AK-028 (K-027): Givet en användare med aktivitetsbehörighet men utan
@@ -672,7 +740,88 @@ kallelser, nekad behörighet, samtidiga ändringar och mobilinteraktion.
   skickas och svaren behållas. Om starttiden samtidigt ändras ska K-016
   ändå kräva nytt svar och ändringsmeddelande.
 
+- AK-051 (K-048): Givet en ledare i laget respektive en klubb-/sektionsadministratör
+  med aktivitetsbehörighet för laget, ska båda kunna hantera lagets sparade
+  aktivitetsutkast. En administratör utan behörighet för laget ska nekas.
+  Utkaståtkomst får inte ge rätt att hantera kallelser utan kallelsebehörighet.
+- AK-052 (K-049): Givet en fastställd aktivitet där ingen kallelse har
+  skapats eller köats och ingen bemanningsbokning finns, ska en i övrigt
+  behörig användare kunna ändra status till Utkast.
+- AK-053 (K-049): Givet att en kallelse har skapats eller köats, eller att
+  en bemanningsbokning finns, ska återgång till Utkast nekas utan följdändringar.
+  Detta ska även gälla om hindret uppstår efter förhandsgranskningen men
+  före sparandet.
+- AK-054 (K-026, K-050): Givet en aktivitet med framtida schemalagda
+  kallelser/påminnelser och redan köade kallelser/påminnelser, när aktiviteten
+  ställs in, ska framtida scheman stoppas medan de redan köade utskicken
+  skickas utan ny statuskontroll.
+  Inställningsinformationen får inte behandlas som en vanlig kallelse.
+- AK-055 (K-019): Givet ett utkast med passerad kallelsetid men giltig
+  framtida sista svarstid, när det fastställs, ska förhandsgranskningen visa
+  direkt kallelse och överhoppade passerade påminnelser. Utskicket får ske
+  först efter bekräftat fastställande. Om sista svarstid har passerat ska
+  fastställandet nekas tills en framtida svarstid senast vid start valts;
+  aktiviteten ska då behålla status Utkast utan utskick.
+- AK-056 (K-048, K-051): Samma obligatoriska uppgifter och validering ska
+  gälla vid sparande som Utkast och Fastställd. Spelare och målsmän utan
+  behörig ledar-/administratörsåtkomst ska varken kunna se utkast i listor
+  eller kalender eller läsa dem via direktlänk, API eller andra integrationer.
+  Behöriga ledare och administratörer ska kunna hantera dem enligt ordinarie
+  regler, med de uttryckliga undantagen för utkastens utskick och statusbyte.
+- AK-057 (K-052): Efter migrering ska befintliga aktiva respektive inställda
+  aktiviteter ha status CONFIRMED respektive CANCELLED. Endast DRAFT,
+  CONFIRMED och CANCELLED får lagras som livscykelstatus; kallelsestatus
+  och närvaro ska förbli separata. Behöriga ska se tydliga markeringar för
+  Utkast och Inställd i listor, kalender och detaljvy.
+- AK-058 (K-053, K-055): Vid skapande ska båda sparvalen finnas utan separat
+  statusval. Sparande som Utkast får inte skapa eller köa kallelseutskick.
+  Efter bekräftat fastställande ska ordinarie synlighet och kallelsehantering
+  gälla. Nekat eller misslyckat fastställande ska lämna utkastet och dess
+  mottagarval kvar utan utskick.
+- AK-059 (K-054): Vid fastställande av **Detta och kommande tillfällen**
+  ska tidigare tillfällen lämnas orörda och senare individuella undantag
+  hoppas över, medan det öppnade tillfället följer K-005. Vid förlängning
+  eller tillagd veckodag ska nya tillfällen få seriens gemensamma status
+  för respektive datum, även om ändringen öppnas från ett statusundantag.
+  Status och överhoppningar ska framgå före sparandet.
+- AK-060 (K-049, K-054): Givet en förhandsgranskad återgång till Utkast för
+  flera tillfällen, när en kallelse eller bokning därefter tillkommer för
+  ett av dem, ska hela sparandet nekas utan partiella statusändringar.
+- AK-061 (K-055): Givet ett enstaka utkast med **Skicka nu** och sparade
+  mottagare, ska inget kallelseutskick skapas, köas eller skickas medan
+  aktiviteten är Utkast. Förhandsgranskningen vid fastställande ska visa
+  utskicket och först efter bekräftelse får det skickas enligt ordinarie regler.
+  Schemaläggaren ska även neka nya kallelseutskick för Inställd och tillåta
+  dem för Fastställd enligt gällande schema.
+
 ## Bekräftade beslut och motiv
+
+- 2026-11-01: Bekräftade sparvalen Spara som utkast och Fastställ utan ett
+  separat föregående statusval.
+- 2026-11-01: Bekräftade samma serieomfattningar och undantagsskydd för
+  statusändringar samt seriens gemensamma status för nya tillfällen.
+- 2026-11-01: Bekräftade att Skicka nu kan förberedas med mottagarval i
+  utkastet men skickas först efter förhandsgranskning och fastställande.
+- 2026-11-01: Bekräftade K-019:s regler även vid fastställande: passerad
+  kallelsetid ger direktutskick efter granskning/bekräftelse, passerade
+  påminnelser hoppas över och passerad sista svarstid måste rättas.
+- 2026-11-01: Användaren preciserade att utkast endast ska döljas för
+  spelare och målsmän och i övrigt fungera som vanliga aktiviteter. Sparade
+  utkast får samma formulär och validering; förslaget att tillåta passerade
+  kallelsetider/svarstider genom en särskild valideringslättnad för utkast
+  antogs inte. Tidigare beslut om utkastens utskick och statusbyte kvarstår.
+- 2026-11-01: Bekräftade att även redan köade påminnelser skickas efter
+  inställning, medan framtida schemalagda påminnelser stoppas.
+- 2026-11-01: Bekräftade issuets köundantag: framtida schemalagda kallelser
+  stoppas vid inställning, medan redan köade kallelser skickas. Preciserade
+  K-026/AK-027 och lade till K-050/AK-054. Påminnelseundantaget bekräftades
+  i nästa omgång enligt ovan.
+- 2026-11-01: Även lämpliga administratörer får hantera utkast, enligt
+  befintlig aktivitetsbehörighet för laget (K-048/AK-051). Detta preciserar
+  issuets snävare formulering om endast lagets ledare.
+- 2026-11-01: Bekräftade återgång från Fastställd till Utkast endast innan
+  kallelser har skapats eller köats och innan bemanningsbokningar finns
+  (K-049/AK-052–AK-053).
 
 - 2026-10-27: Genomför en grill-session om aktiviteter med befintlig funktion
   som utgångspunkt. Återanvänd denna spec under intervjun.
@@ -827,25 +976,95 @@ kallelser, nekad behörighet, samtidiga ändringar och mobilinteraktion.
 
 ## Obekräftade antaganden och förslag
 
-Inga kvarvarande produktförslag väntar på ett separat vägval. Kartlagt nuläge
-är bakgrund, medan krav K-001–K-047 beskriver målbilden. Specen ställer inte
-krav på beständig utkastlagring efter omladdning; det beslutade utkastskyddet
-gäller pågående redigering. Implementation och dess faktiska verifiering ska
-fortsatt skiljas från godkända krav.
+Kartlagt nuläge är bakgrund. Krav K-001–K-047 beskriver den tidigare godkända
+målbilden, med preciseringar enligt intervjun. K-048–K-055 och
+AK-051–AK-061 beskriver kompletteringen, som slutbekräftades 2026-11-01.
+Sparade aktivitetsutkast enligt K-052 ska skiljas från osparade
+formulärändringar enligt K-044. Sparade aktiviteter återläses efter omladdning;
+automatisk beständig lagring av osparade formulärändringar är inte beslutad.
+Implementation och dess faktiska verifiering ska fortsatt skiljas från kraven.
+
+### Granskningsunderlag från issue #141, 2026-11-01
+
+Källa: [Aktiviteter: statusfält med Draft, Fastställd och Inställd](https://github.com/johkin/forena/issues/141).
+Issuet har inga kommentarer vid granskningen. Följande är dokumenterade krav
+i issuet, inte nya beslut från denna intervju:
+
+- Sparad livscykelstatus `DRAFT` (Utkast), `CONFIRMED` (Fastställd) och
+  `CANCELLED` (Inställd). Kallelsestatus och närvaro är separata.
+- Utkast ska kunna sparas, redigeras och fastställas och vara synliga och
+  åtkomliga endast för lagets ledare, även vid direktlänk, API och eventuella
+  kalenderflöden. Utkast markeras i ledarnas listor, kalender och detaljvy.
+- Fastställda och inställda aktiviteter följer ordinarie synlighetsregler;
+  inställda aktiviteter behålls och markeras tydligt.
+- Schemaläggaren skapar eller köar kallelseutskick endast för fastställda
+  aktiviteter. Redan köade kallelser skickas även efter statusändring till
+  Utkast eller Inställd, utan ny statuskontroll i leveranskön.
+- Inställningsinformation är en separat notifiering. Befintliga aktiva
+  aktiviteter migreras till Fastställd och inställda till Inställd.
+- Preliminär och Genomförd ingår inte; passerad sluttid härleds från tiderna.
+  Passerad kallelsetid vid fastställande lämnas uttryckligen öppen i issuet.
+
+Granskningen visar att sparade aktivitetsutkast och fastställande saknas i
+K-001–K-047 och AK-001–AK-050. Formulärets osparade utkast enligt K-044
+är ett annat begrepp än en sparad aktivitet med status Utkast.
+
+Följande brister identifierades före intervjun och hanteras nu av
+kompletteringen ovan. Listan bevarar granskningsunderlaget:
+
+- K-026/AK-027 säger att väntande kallelser stoppas vid inställning. Begreppet
+  väntande behöver skilja mellan framtida schema och redan köad leverans för
+  att stämma med issuets uttryckliga undantag.
+- K-027 använder avgränsad `activity.manage` inom klubb, sektion eller lag,
+  medan issuet anger endast lagets ledare för utkaståtkomst.
+- K-019/AK-019–AK-020 reglerar passerade tider vid skapande/flytt, men saknar
+  fastställande och behöver avgränsas för sparande av interna utkast.
+- K-003–K-005, K-011 och K-039 behöver kompletteras med statusövergångar
+  och status för nya serietillfällen.
+- K-030, K-037 och K-038 behöver omfatta sparande som Utkast respektive
+  fastställande och deras förhandsgranskade följder.
+- Kalender-, bemannings-, närvaro- och AI-kopplingarna behöver samma
+  åtkomstgräns för utkast utan att exponera dem via alternativa läsvägar.
 
 ## Öppna frågor
 
-Inga blockerande produktfrågor återstår.
+Inga blockerande produktfrågor återstår. Kompletteringen och dess
+preciseringar slutbekräftades 2026-11-01 enligt grill-me-flödet.
+
+Ordinarie bemannings-, närvaro- och AI-regler kvarstår enligt K-051, med
+samma åtkomstgräns för utkast. Inga särskilda alternativa flöden behövs.
+
+Ingen återaktivering av Inställd föreslås; befintlig avgränsning kvarstår.
 
 ## Bekräftelse
 
 Användaren bekräftade den samlade kravsammanfattningen 2026-10-27 efter
 intervjun. Bekräftelsen omfattar krav K-001–K-047, acceptanskriterier
-AK-001–AK-050 och dokumenterade avgränsningar. Status är Redo.
+AK-001–AK-050 och dokumenterade avgränsningar. Specen återöppnades som
+Utkast 2026-11-01 för avstämning mot issue #141. Användaren godkände därefter
+den samlade kompletteringen, inklusive preciseringarna av tidigare beslut,
+2026-11-01. Godkännandet omfattar hela specens K-001–K-055,
+AK-001–AK-061 och dokumenterade avgränsningar. Status är Redo.
 Ingen implementation har beställts.
 
 ## Ändringshistorik
 
+- 2026-11-01: Användaren godkände den samlade kompletteringen enligt #141.
+  Markerade specen Redo och uppdaterade specförteckningen. Ingen
+  implementation beställd.
+- 2026-11-01: Sparade tredje omgångens beslut om sparval, seriestatus och
+  uppskjutet Skicka nu för utkast. Samlade livscykelkraven från #141 med
+  intervjuernas preciseringar i K-052–K-055 och AK-057–AK-061 inför
+  slutbekräftelse. Ingen implementation beställd eller genomförd.
+- 2026-11-01: Sparade andra omgångens beslut om tider vid fastställande,
+  ordinarie funktion/validering för utkast och köundantag även för påminnelser.
+  Lade till K-051 och AK-055–AK-056 och uppdaterade K-019/K-026/K-050.
+- 2026-11-01: Sparade första intervjuomgångens tre bekräftade beslut om
+  köade kallelser, administratörers utkaståtkomst och återgång till Utkast.
+  Lade till K-048–K-050 och AK-051–AK-054 och preciserade K-026/AK-027.
+- 2026-11-01: Granskade issue #141 mot hela aktivitetsspecen. Återöppnade
+  samma spec som Utkast och sparade källkrav, berörda krav och öppna
+  beslutsgrenar utan att ändra tidigare bekräftade produktbeslut.
 - 2026-10-27: Skapade utkast med kartlagt nuläge och öppna beslutsgrenar.
 - 2026-10-27: Bekräftade omfattning och avgränsning mot befintliga specar.
 - 2026-10-27: Bekräftade två serieomfattningar och skydd för tidigare tillfällen.
