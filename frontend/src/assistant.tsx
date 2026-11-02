@@ -123,6 +123,7 @@ export function TelegramProfileSettings({
       setError("");
       if (operation === "start" && next.pairingUrl)
         window.location.assign(next.pairingUrl);
+      return next.active;
     } catch {
       if (!signal?.aborted)
         setError(
@@ -144,30 +145,48 @@ export function TelegramProfileSettings({
     };
   }, [request]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!state?.pairingUrl || state.active) return;
     const controller = new AbortController();
     let busy = false;
-    const timer = window.setInterval(() => {
-      if (state.pairingExpiresAt && Date.now() >= state.pairingExpiresAt) {
-        setState((current) =>
-          current
-            ? { ...current, pairingUrl: undefined, pairingExpiresAt: undefined }
-            : current,
-        );
-        setError("Kopplingslänken har gått ut. Aktivera Telegram igen.");
-        return;
-      }
-      if (document.visibilityState === "hidden" || busy) return;
+    async function refresh() {
+      if (document.visibilityState === "hidden" || busy || pending) return;
       busy = true;
-      void update(undefined, controller.signal).finally(() => {
+      try {
+        const active = await update(undefined, controller.signal);
+        // Telegram may have completed the connection while this page was hidden.
+        if (
+          !controller.signal.aborted &&
+          active === false &&
+          state?.pairingExpiresAt &&
+          Date.now() >= state.pairingExpiresAt
+        ) {
+          setState((current) =>
+            current?.active
+              ? current
+              : current
+                ? { ...current, pairingUrl: undefined, pairingExpiresAt: undefined }
+                : current,
+          );
+          setError("Kopplingslänken har gått ut. Aktivera Telegram igen.");
+        }
+      } finally {
         busy = false;
-      });
-    }, 3000);
+      }
+    }
+    const timer =
+      state?.pairingUrl && !state.active
+        ? window.setInterval(() => void refresh(), 3000)
+        : undefined;
+    window.addEventListener("focus", refresh);
+    window.addEventListener("pageshow", refresh);
+    document.addEventListener("visibilitychange", refresh);
     return () => {
       controller.abort();
       clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("pageshow", refresh);
+      document.removeEventListener("visibilitychange", refresh);
     };
-  }, [request, state?.pairingUrl, state?.active, state?.pairingExpiresAt]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [request, state?.pairingUrl, state?.active, state?.pairingExpiresAt, pending]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <TelegramSettingsView
       state={state}

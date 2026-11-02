@@ -19,6 +19,7 @@ const organization={id:'55555555-5555-4555-8555-555555555555',name:'Exempelföre
 const team={id:'66666666-6666-4666-8666-666666666666',organization_id:organization.id,name:'Ungdomslaget',roles:['guardian','leader','team_access']};
 const managedTeam={id:team.id,organizationId:organization.id,name:team.name,organizationName:organization.name,timeZone:organization.time_zone,canManageInvitations:true};
 let activityCreates=0;
+let telegramActive=false;
 const activities=()=>[{id,can_manage_activities:true,can_manage_attendance:false,title:'Träning med laget',starts_at:'2030-10-26T16:00:00Z',ends_at:'2030-10-26T17:30:00Z',gathering_at:null,response_due_at:'2030-10-19T10:00:00Z',location:'Örvallen',description:'Ta med vattenflaska.',status:'scheduled',organization,team,
  people:invitations.map(invitation=>({id:invitation.person_id,name:invitation.name,attendance:"unknown",invitation}))},
  {id:users[1],can_manage_activities:true,can_manage_attendance:false,title:'Nästa aktivitet',starts_at:'2030-10-27T16:00:00Z',ends_at:'2030-10-27T17:30:00Z',gathering_at:null,response_due_at:null,location:'Uip',description:'',status:'scheduled',organization,team,people:invitations.map(invitation=>({id:invitation.person_id,name:invitation.name,attendance:"unknown",invitation:null}))}];
@@ -83,7 +84,7 @@ await context.route('**/api/**',async route=>{
  privateRequests++;
  assert.ok(headers.cookie?.includes('forena-local-session='));
  if(platformDenied)return route.fulfill({status:401,contentType:'text/html',body:'<html>Vercel Authentication</html>'});
- if(path==='/api/telegram/settings')return route.fulfill({json:{active:false,available:false}});
+ if(path==='/api/telegram/settings')return route.fulfill({json:{active:telegramActive,available:true}});
  if(path==='/api/push-subscriptions')return route.fulfill({json:{available:false,publicKey:''}});
  if(path==='/api/assistant/memories')return route.fulfill({json:[]});
  if(path==='/api/me/overview'){
@@ -308,6 +309,27 @@ try{
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
  }
  await page.setViewportSize({width:390,height:844});
+ // Returning from Telegram must refresh the saved connection without a reload or pending link.
+ for(const width of [390,1280]){
+  await page.setViewportSize({width,height:844});
+  await page.goto(new URL('/account',base).href);
+  const telegram=page.getByRole('region',{name:'Telegram-notifieringar'});
+  await expect(telegram.getByText('Telegram är inte aktiverat.',{exact:true})).toBeVisible();
+  const documentInstance=await page.evaluate(()=>window.documentInstance='telegram-profile');
+  for(const event of ['focus','pageshow','visibilitychange']){
+   telegramActive=true;
+   await page.evaluate(event=>{const target=event==='visibilitychange'?document:window;target.dispatchEvent(new Event(event));},event);
+   await expect(telegram.getByText('Telegram är aktiverat för ditt konto.',{exact:true})).toBeVisible();
+   assert.equal(await page.evaluate(()=>window.documentInstance),documentInstance);
+   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+   telegramActive=false;
+   await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+   await expect(telegram.getByText('Telegram är inte aktiverat.',{exact:true})).toBeVisible();
+  }
+ }
+ await page.setViewportSize({width:390,height:844});
+ await page.goto(base.href);
+ await expect(page.getByRole('heading',{name:'Min översikt',exact:true})).toBeVisible();
  // The settings page uses a real browser creation ceremony with the virtual authenticator.
  await page.goto(new URL('/account/security',base).href);
  await expect(page.getByRole('heading',{name:'Inloggning',exact:true})).toBeVisible();

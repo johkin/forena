@@ -84,3 +84,30 @@ it("refreshes the saved connection when returning to the profile and cleans up l
   expect(window.removeEventListener).toHaveBeenCalledWith("pageshow", listener);
   expect(document.removeEventListener).toHaveBeenCalledWith("visibilitychange", listener);
 });
+
+it.each(["focus", "pageshow", "visibilitychange"])("refreshes on %s even without a pending link", async event => {
+  hooks.values = [{ active: false, available: true }, false, ""];
+  const transport = vi.fn(async () => Response.json({ active: true, available: true }));
+  vi.stubGlobal("fetch", transport);
+  render();
+  const cleanup = hooks.effects[1]();
+  const target = event === "visibilitychange" ? document : window;
+  const listener = vi.mocked(target.addEventListener).mock.calls.find(([name]) => name === event)?.[1] as () => Promise<void>;
+  await listener();
+  expect((hooks.values[0] as TelegramState).active).toBe(true);
+  expect(transport).toHaveBeenCalledTimes(1);
+  cleanup?.();
+});
+
+it("shows a completed connection when returning after the local link expired", async () => {
+  hooks.values = [{ active: false, available: true, pairingUrl: "https://t.me/ForenaBot?start=old", pairingExpiresAt: Date.now() - 1 }, false, "Kopplingslänken har gått ut"];
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({ active: true, available: true })));
+  render();
+  const cleanup = hooks.effects[1]();
+  const listener = vi.mocked(window.addEventListener).mock.calls.find(([name]) => name === "pageshow")?.[1] as () => Promise<void>;
+  await listener();
+  expect((hooks.values[0] as TelegramState).active).toBe(true);
+  expect((hooks.values[0] as TelegramState).pairingUrl).toBeUndefined();
+  expect(hooks.values[2]).toBe("");
+  cleanup?.();
+});

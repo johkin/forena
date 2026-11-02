@@ -65,6 +65,9 @@ separata bekräftelseknappar använder samma produktionskomponenter på
 `/components`. Next och Vite delar launcher, assistentheader och CSS.
 Konto/säkerhet har Telegram-, push- och personliga minnesinställningar;
 klubb- och sektionsadministration återanvänder profil-/minneskomponenterna.
+Telegrams kopplingsstatus hämtas på nytt när profilsidan återfår fokus, blir synlig
+eller återställs från browserns historik. En sparad koppling visas även om den
+lokala kopplingslänkens tio minuter har passerat medan sidan varit dold.
 Systemadministrationen visar ingen verksamhetsassistent.
 
 ## Kotlin-webbens Min översikt

@@ -48,31 +48,32 @@ export function TelegramSettings() {
   }, []);
 
   useEffect(() => {
-    if (!state?.pairingUrl || state.active) return;
     const controller = new AbortController();
-    const deadline = state.pairingExpiresAt ?? Date.now() + 600_000;
     let inFlight = false;
     async function refresh() {
-      if (Date.now() >= deadline) {
-        window.clearInterval(timer);
-        setState(current => current?.active ? current : current ? { ...current, pairingUrl: undefined, pairingExpiresAt: undefined } : current);
-        setError("Kopplingslänken har gått ut. Välj Aktivera Telegram för att skapa en ny länk.");
-        return;
-      }
-      if (document.visibilityState === "hidden" || inFlight) return;
+      if (document.visibilityState === "hidden" || inFlight || pending) return;
       inFlight = true;
       try {
         const response = await fetch("/api/telegram/settings", { cache: "no-store", signal: controller.signal });
         if (response.ok) {
           const next = await response.json() as TelegramState;
-          if (!controller.signal.aborted && next.active) {
-            setState(next);
+          if (!controller.signal.aborted) {
+            // A completed connection takes precedence over an expired local link.
+            if (next.active) {
+              setState(next);
+              setError("");
+            } else if (state?.pairingExpiresAt && Date.now() >= state.pairingExpiresAt) {
+              setState(current => current?.active ? current : current ? { ...current, pairingUrl: undefined, pairingExpiresAt: undefined } : current);
+              setError("Kopplingslänken har gått ut. Välj Aktivera Telegram för att skapa en ny länk.");
+            } else {
+              setState(current => ({ ...next, pairingUrl: current?.pairingUrl, pairingExpiresAt: current?.pairingExpiresAt }));
+            }
           }
         }
       } catch { /* Keep the link and manual retry if the network is unavailable. */ }
       finally { inFlight = false; }
     }
-    const timer = window.setInterval(() => void refresh(), 3000);
+    const timer = state?.pairingUrl && !state.active ? window.setInterval(() => void refresh(), 3000) : undefined;
     window.addEventListener("focus", refresh);
     window.addEventListener("pageshow", refresh);
     document.addEventListener("visibilitychange", refresh);
@@ -81,7 +82,7 @@ export function TelegramSettings() {
       window.removeEventListener("focus", refresh); window.removeEventListener("pageshow", refresh);
       document.removeEventListener("visibilitychange", refresh);
     };
-  }, [state?.pairingUrl, state?.active, state?.pairingExpiresAt]);
+  }, [state?.pairingUrl, state?.active, state?.pairingExpiresAt, pending]);
 
   async function update(operation?: "start" | "disable") {
     setPending(true);
