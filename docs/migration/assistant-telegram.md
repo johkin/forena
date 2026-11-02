@@ -29,6 +29,20 @@ behörigt underlag. En klubb får inte den andra klubbens privata samtal eller
 verksamhetsdata. Svar visas fortlöpande med tydlig avsändare; en misslyckad
 klubbfråga märks som ofullständig, inte som ett tomt resultat.
 
+Fördelningen får högst tolv meddelanden ur samma samtal och kanal, högst 4 000
+tecken per meddelande. Klubbavsändare utan aktuell klubbåtkomst filtreras bort.
+Ett svar på en följdfråga, exempelvis bara `F2016`, får komplettera den ursprungliga
+frågan och behålla ett entydigt lagval. Klubbassistenterna får fortfarande bara
+den egna klubbens avgränsade fråga och historik. Nytt samtal börjar utan dialogkontext.
+Standardavsändaren är klubbnamnet när klubben inte har valt ett assistentnamn.
+
+Frågor om hur många som kommer använder beräknade antal från behörigt
+kallelseunderlag och en kort tabell över Kommer, Kan inte och Ej svarat. Om
+underlaget bara gäller egna personer ska det framgå. Anmälan är inte faktisk
+närvaro. Telegram visar Markdown-tabeller som justerad monospace-text genom
+`pre`-entiteter; modelltext tolkas inte som HTML. Långa meddelanden delas utan
+att bryta UTF-16-surrogatpar och entiteterna anpassas till varje del.
+
 Modellen får inga skrivverktyg eller webbsökning. Typade förslag lagras för
 separat knappbekräftelse med ny behörighetskontroll, tidsgräns, låsning och
 jämförelse mot granskat underlag. Ändrat underlag ger ny granskning. En redan

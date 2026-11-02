@@ -317,6 +317,8 @@ insert into forena.invitation(id,organization_id,activity_id,person_id) values('
             options = call("/api/auth/passkey/registration/options", {})
             assert "rp" in options, f"Native WebAuthn creation option fields: {sorted(options)}"
             assert options["rp"]["id"] == "app.example.invalid"
+            assert options["user"]["name"] == credentials["email"]
+            assert options["user"]["displayName"] == "Förena · " + credentials["email"]
             assert options["authenticatorSelection"]["userVerification"] == "required"
             assert call("/api/auth/passkeys") == []
             call("/api/auth/logout", {}, form=True)

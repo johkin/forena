@@ -154,6 +154,17 @@ class ConversationRepository(private val jdbc: JdbcClient) {
             .update()
     }
 
+    fun recentMessages(id: UUID): List<AssistantMessage> =
+        jdbc
+            .sql(
+                "select * from forena.assistant_message where conversation_id=:id order by created_at desc,id desc limit 12"
+            )
+            .param("id", id)
+            .query(AssistantMessage::class.java)
+            .list()
+            .map { requireNotNull(it) }
+            .reversed()
+
     fun clubContext(conversation: UUID, organization: UUID): List<Map<String, String>> =
         jdbc
             .sql(

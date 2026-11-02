@@ -36,6 +36,10 @@ HttpOnly/Secure/SameSite=Lax följer tidigare sessionskonfiguration.
   återställningar använder villkorad uppdatering av sessionsversionen.
 - `/account/security`: registrera, lista och ta bort egna passkeys.
   User verification krävs vid både registrering och inloggning.
+  Nya passkeys får kontots verifierade e-post som `user.name` och
+  `Förena · <e-post>` som `displayName` i lösenordshanteraren. Ogenomskinligt
+  user handle och Springs interna kontokoppling ändras inte. Redan sparade
+  nycklars namn kan behöva ändras i lösenordshanteraren eller vid nyregistrering.
 - `/oauth/consent`: samma inloggade konto godkänner en MCP-klients läsåtkomst.
 
 Registrering och länkbegäran lämnar neutrala bekräftelser. API-skrivningar kräver

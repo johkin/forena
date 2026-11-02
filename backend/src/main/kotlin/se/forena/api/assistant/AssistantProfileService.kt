@@ -35,7 +35,9 @@ class AssistantProfileService(
     @Transactional(readOnly = true)
     fun profile(actor: Actor, org: UUID): AssistantProfile {
         requireOrganization(actor, org)
-        return repository.findProfile(org).orElse(AssistantProfile("Föreningsassistenten"))
+        return repository.findProfile(org).orElseGet {
+            AssistantProfile(identities.organizations(actor).single { it.id == org }.name)
+        }
     }
 
     @Transactional

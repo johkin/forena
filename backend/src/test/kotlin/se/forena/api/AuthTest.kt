@@ -114,6 +114,33 @@ class AuthTest {
         val row = admin.queryForList("select id,encrypted_link from forena.auth_mail_outbox where recipient=? and kind=? order by expires_at desc limit 1", email, kind).single()
         return URI(settings.decrypt(row["encrypted_link"].toString(), row["id"].toString())).query.substringAfter('=')
     }
+    @Test
+    fun `passkey creation uses a readable account name without changing its internal user handle`() {
+        val session = register()
+        val subject =
+            json
+                .readTree(request("/api/auth/session", cookie = session).body())
+                .path("user")
+                .path("id")
+                .asText()
+        val first = request("/api/auth/passkey/registration/options", "{}", session)
+        assertThat(first.statusCode()).isEqualTo(200)
+        val options = json.readTree(first.body())
+        assertThat(options.path("user").path("name").asText()).isEqualTo(email)
+        assertThat(options.path("user").path("displayName").asText()).isEqualTo("Förena · $email")
+        assertThat(
+                admin.queryForObject(
+                    "select name from forena.user_entities where id=?",
+                    String::class.java,
+                    options.path("user").path("id").asText(),
+                )
+            )
+            .isEqualTo(subject)
+        val again = request("/api/auth/passkey/registration/options", "{}", session)
+        assertThat(json.readTree(again.body()).path("user").path("id").asText())
+            .isEqualTo(options.path("user").path("id").asText())
+    }
+
     private fun register(): String {
         val body = """{"email":"$email","password":"$password"}"""
         assertThat(request("/api/auth/register", body, csrf=false).statusCode()).isEqualTo(403)
