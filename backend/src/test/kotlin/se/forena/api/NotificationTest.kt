@@ -41,6 +41,7 @@ import se.forena.api.activities.internal.ScheduledInvitationRepository
 import se.forena.api.email.EmailDeliveryResult
 import se.forena.api.email.EmailMessage
 import se.forena.api.email.EmailSender
+import se.forena.api.extensionapi.PrivateExtensionMessage
 import se.forena.api.notifications.NotificationWorker
 import se.forena.api.notifications.internal.InvitationEmailDelivery
 import se.forena.api.notifications.internal.InvitationEmailRepository
@@ -72,6 +73,46 @@ class NotificationTest {
         assertThat(extensionNotifications.deliverOne()).isTrue()
         verify(telegramChannel,never()).deliverPrivate(message)
         assertThat(admin.queryForObject("select state from forena.extension_notification where id=?",String::class.java,id)).isEqualTo("sent")
+    }
+
+    private fun anyPrivateMessage() = any(PrivateExtensionMessage::class.java)
+        ?: PrivateExtensionMessage(UUID(0,0),UUID(0,0),"","","")
+
+    @Test
+    fun `scheduler request creates and delivers followup in the same invocation without a timer`() {
+        val section=UUID.randomUUID()
+        admin.update("insert into forena.section(id,organization_id,name,discipline_key) values(?,?,'Fotboll','football')",section,organization)
+        admin.update("update forena.team set section_id=? where id=?",section,team)
+        admin.update("update forena.team_membership set role='leader' where team_id=?",team)
+        admin.update("update forena.activity set activity_type_id='00000000-0000-4000-8000-000000000002',starts_at=now()-interval '2 hours',ends_at=now()-interval '1 hour' where id=?",activity)
+        admin.update("insert into forena.discipline_activity_job(activity_id,team_id,due_at) values(?,?,now()-interval '1 hour')",activity,team)
+        org.mockito.Mockito.doReturn(true).`when`(telegramChannel).deliverPrivate(anyPrivateMessage())
+        val request=HttpRequest.newBuilder(URI("http://127.0.0.1:${environment.getRequiredProperty("local.server.port")}/internal/notifications/run"))
+            .header("Authorization","Bearer $WORKER_TOKEN").POST(HttpRequest.BodyPublishers.noBody()).build()
+        val response=HttpClient.newHttpClient().send(request,HttpResponse.BodyHandlers.ofString())
+        assertThat(response.statusCode()).isEqualTo(200)
+        assertThat(response.body()).contains("\"processedExtensions\":1")
+        assertThat(admin.queryForObject("select state from forena.extension_notification where activity_id=?",String::class.java,activity)).isEqualTo("sent")
+        assertThat(admin.queryForObject("select count(*) from forena.discipline_information where activity_id=?",Long::class.java,activity)).isEqualTo(1)
+        assertThat(worker.run().processedExtensions).isZero()
+        assertThat(admin.queryForObject("select count(*) from forena.extension_notification where activity_id=?",Long::class.java,activity)).isEqualTo(1)
+        verify(telegramChannel,times(1)).deliverPrivate(anyPrivateMessage())
+        verifyNoInteractions(sender)
+    }
+
+    @Test
+    fun `scheduler request shares its delivery bound fairly between email and extension queues`() {
+        repeat(60) { index -> extensionNotifications.enqueue(activity,"followup:$index",listOf(self),"Uppföljning","Öppna matchen.") }
+        org.mockito.Mockito.doReturn(true).`when`(telegramChannel).deliverPrivate(anyPrivateMessage())
+        val first=worker.run()
+        assertThat(first.processedEmails).isEqualTo(2)
+        assertThat(first.processedExtensions).isEqualTo(48)
+        assertThat(first.processedEmails+first.processedExtensions).isEqualTo(50)
+        assertThat(admin.queryForObject("select count(*) from forena.extension_notification where activity_id=? and state='pending'",Long::class.java,activity)).isEqualTo(12)
+        val second=worker.run()
+        assertThat(second.processedEmails).isZero()
+        assertThat(second.processedExtensions).isEqualTo(12)
+        assertThat(admin.queryForObject("select count(*) from forena.extension_notification where activity_id=? and state='sent'",Long::class.java,activity)).isEqualTo(60)
     }
 
     @MockitoSpyBean lateinit var telegramChannel: se.forena.api.telegram.TelegramDelivery

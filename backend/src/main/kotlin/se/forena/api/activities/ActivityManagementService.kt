@@ -225,6 +225,12 @@ class ActivityManagementService(
             require(current.responseDueAt == null || current.responseDueAt <= command.startsAt)
         val typeId = command.activityTypeId ?: current.activityTypeId
         if (typeId != current.activityTypeId) requireType(team, typeId)
+        val catalogue = types.catalogue(team.organizationId)
+        fun kind(id: UUID?) =
+            catalogue.singleOrNull { it.id == id }
+                ?.let { ActivityKind(it.slug, it.systemCategory) } ?: ActivityKind("", "")
+        val previousKind = kind(current.activityTypeId)
+        val updatedKind = kind(typeId)
         val changed =
             current.copy(
                 activityTypeId = typeId,
@@ -273,7 +279,21 @@ class ActivityManagementService(
             false,
         )
         record(actor, withInvitations, "updated")
-        disciplineLifecycle.changed(id)
+        disciplineLifecycle.updated(
+            DisciplineActivity(
+                id,
+                team.organizationId,
+                team.id,
+                team.sectionId,
+                team.disciplineKey ?: "common",
+                updatedKind,
+                withInvitations.startsAt,
+                withInvitations.endsAt,
+                withInvitations.revision,
+                false,
+            ),
+            previousKind,
+        )
         return ActivityResult(activityDto(withInvitations))
     }
 

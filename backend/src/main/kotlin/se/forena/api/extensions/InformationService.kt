@@ -35,7 +35,9 @@ class InformationService(
         val pkg = packageFor(facts.activity)
         val rows = repository.activity(id)
         val enabled = enabledContributors(pkg, facts.activity.teamId)
-        val definitions = (enabled + rows.map(::contributor)).distinctBy { it.information.key }
+        val definitions =
+            ((if (facts.activity.cancelled) emptyList() else enabled) + rows.map(::contributor))
+                .distinctBy { it.information.key }
         val contributions = definitions.map { definition ->
             val row = rows.singleOrNull { it.ownerKey == definition.information.key }
             InformationItem(
@@ -231,6 +233,8 @@ class InformationService(
             repository.finish(id)
         } else if (catalog.find(activity.disciplineKey)?.appliesTo(activity.kind) == true) {
             repository.schedule(id, activity.teamId, activity.endsAt)
+        } else {
+            repository.finish(id)
         }
     }
 

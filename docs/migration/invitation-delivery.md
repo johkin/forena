@@ -109,11 +109,15 @@ Schemaläggaren skickar `POST /internal/notifications/run` med
 `Authorization: Bearer <worker-token>`, utan query-token eller browsercookies.
 Spring Security har en separat stateless filterkedja för dessa endpoints;
 webbens och MCP:s autentisering gäller inte där. Svaret är `no-store` och
-innehåller bara antal scheman, återtagskandidater och behandlade mejlposter.
+innehåller bara antal scheman, återtagskandidater, behandlade mejlposter och
+behandlade tilläggsnotifieringar (`processedExtensions`).
 Behandlade poster kan vara accepterade, misslyckade, uppskjutna eller spärrade.
 Vercels befintliga Build Output-routing vidarebefordrar dessa paths till backend.
 
-En körning behandlar högst 20 scheman, 20 återtagskandidater och 50 mejlposter.
+En körning behandlar högst 20 scheman, 20 återtagskandidater och sammanlagt
+50 leveransförsök för mejl- och tilläggsköerna. Köerna behandlas växelvis inom
+samma requestbundna tidsbudget; redan väntande tilläggsposter kan levereras
+även när körningen inte skapar några nya informationsförfrågningar.
 Varje schema är begränsat till 1 000 personer och 1 000 mottagarbeslut; större
 urval får ett beständigt fel i stället för ett delvis lyckat utskick. Körningen
 har en mjuk budget på 45 sekunder och lämnar 16 sekunder före nästa mejlanrop

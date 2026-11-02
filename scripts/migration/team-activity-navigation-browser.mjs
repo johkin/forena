@@ -41,6 +41,23 @@ try {
       else if (path === '/api/me/managed-teams') json = canManage ? [team] : [];
       else if (path === `/api/teams/${teamId}/telegram/groups`) json = { canManage: false, links: [] };
       else if (path === '/api/assistant/memories') json = [];
+      else if ([
+        `/api/teams/${teamId}/signals`, `/api/teams/${teamId}/follow-up`,
+        `/api/teams/${teamId}/discipline-players`, `/api/teams/${teamId}/capabilities`,
+      ].includes(path)) json = [];
+      else if (path === `/api/teams/${teamId}/information-report`) json = {
+        timeZone: team.timeZone, season: '2030', fromDate: '2030-01-01', untilDate: '2031-01-01',
+        report: { teamId, from: '2029-12-31T23:00:00Z', until: '2030-12-31T23:00:00Z', players: [], entries: [] },
+      };
+      else if (path === '/api/discipline-fields') json = {
+        disciplineKey: 'common', version: '1.0.0', enabled: false, editable: false,
+        canManageInvitations: false, title: 'Disciplinuppgifter', fields: [], values: {},
+        revision: 0, teamPlayers: [], acceptedPlayers: [], participants: [],
+      };
+      else if (path === '/api/activity-defaults') json = {
+        organizationId, scope: 'team', scopeId: teamId, sectionId: null, disciplineKey: 'common',
+        version: '1.0.0', types: [], rows: [],
+      };
       else if (path === `/api/teams/${teamId}/roster/access`) json = false;
       else if (path === `/api/teams/${teamId}/activity-editor`) {
         editorReads++;

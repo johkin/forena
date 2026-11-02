@@ -60,7 +60,11 @@ kontrolltiderna 72 och 24 förflutna timmar före start. Högst fem olika heltal
 mellan 1 och 720 timmar tillåts.
 
 Vid skapande sparas matchens egna planeringsvärden och aktiverade
-notifieringsregler i samma transaktion. Senare ändrade förval skriver inte om
+notifieringsregler i samma transaktion. En framtida aktivitet som uttryckligen
+byter från exempelvis träning till match initialiseras första gången den blir
+tillämplig. Livscykelanropet innehåller både tidigare och ny aktivitetstyp.
+Vid senare typbyten bevaras matchens sparade värden, revisioner, regler och
+beständiga notifieringskontroller; ändrade lagförval ersätter dem inte. Senare ändrade förval skriver inte om
 befintliga matcher. Flyttade matcher använder sina sparade kontrolltider.
 Importerade, inställda och avslutade aktiviteter har skrivskyddad planering.
 
@@ -96,7 +100,11 @@ spelarreferenser. Importerade spelade matcher kan följas upp och rättas.
 Beständiga jobb utlöses vid sluttiden och omplaneras vid ändringar. Förfrågningar
 är unika per aktivitet och bidragsägare. Första privata notifieringen länkar till
 rätt aktivitet och följer befintlig aktiverings-/mottagarpolicy, Telegram först,
-push därefter. Delvis besvarad uppföljning ger inga återkommande påminnelser.
+push därefter. Köerna behandlas under `POST /internal/notifications/run`, inom
+samma tidsbudget och en gemensam gräns på 50 leveransförsök för mejl och
+tilläggsnotifieringar. Körningen växlar mellan köerna och redovisar
+`processedExtensions` separat; leveransen kräver ingen bakgrundstimer efter
+HTTP-svaret. Delvis besvarad uppföljning ger inga återkommande påminnelser.
 Osäker Telegram-leverans återförsöks via nästa kanal utan att skicka om Telegram.
 
 Gröna kortet är av som förval och justerbart för lagadmin. Avstängning stänger
@@ -104,6 +112,8 @@ endast öppna Gröna kortet-bidrag med orsak, även vid samtidig bakgrundskörni
 Kapten, sparade utfall och historik bevaras. Återaktivering gäller kommande
 matcher och skapar inga historiska massutskick eller dubbletter. Manuell
 historisk komplettering är möjlig. Inställning av matchen avslutar öppna bidrag.
+Läsningen av en inställd match visar endast redan sparade bidrag och skapar
+inga virtuella öppna förfrågningar.
 
 Lagöversikten visar ofullständiga matcher som separata länkar. Rapporten visar
 registrerade utfall per spelare, matcher/datum och täckning: besvarat, saknat
@@ -172,7 +182,7 @@ Gemensamma kort och detaljer visar platsantal, progressbar och spärrad ja-knapp
 - `npm test`: 1 237 tester godkända i 143 testfiler.
 - `npm run typecheck` och `npm run lint`: godkända.
 - `npm run build` och `npm run frontend:build`: godkända.
-- Samlad `backend/mvnw -f backend/pom.xml verify`: 229 tester, inga fel,
+- Samlad `backend/mvnw -f backend/pom.xml verify`: 233 tester, inga fel,
   ett miljöstyrt WebAuthn-browserprov överhoppat (`FORENA_AUTH_BROWSER_TEST`).
   Alla 25 migrationsbaslinjer godkända i isolerad PostgreSQL, inklusive
   upprepad migrering, bevarade data och databasrättigheter.
@@ -190,13 +200,14 @@ Gemensamma kort och detaljer visar platsantal, progressbar och spärrad ja-knapp
   Även befintliga browserprov för aktiviteter/serier och administrationskedjan
   genom separata konton är godkända.
 
-PR-branchen har därefter uppdaterats mot senaste `main` och verifierats med
-samma 1 237 frontendtester, typkontroll, lint och båda byggena. Backendkoden
-är identisk med den verifierade implementationen. `ui-parity-browser.mjs`
-och `attendance-browser.mjs` är godkända, inklusive pixeljämförelse, fokus och
-närvarotillstånd vid 320, 375, 390, 768 och 1280 px. Närvarons bildprov använder
-en ny sida per tillstånd för att återställa även compositorlager; gränsvärdena
-för pixeljämförelsen är oförändrade.
+PR-rättningarna verifierar även att scheduler-anropet både skapar och levererar
+uppföljning utan timer, att mejl- och notifieringsköerna delar leveransbudgeten,
+att typbyte till match initialiserar förval en gång och bevarar sparade värden,
+samt att en inställd match inte får virtuella öppna informationskrav.
+Navigationsproven är kompletterade med disciplinernas API-svar och godkända
+vid 320, 375, 390, 768 och 1280 px. Lokal UI-paritet är godkänd; det separata
+närvarobildprovet visar en liten skuggavvikelse i systemets Chromium och
+kontrolleras även i CI:s Playwright-webbläsare. Pixelgränsvärdena är oförändrade.
 
 Skärmbilder från komponentproven finns i `/tmp/forena-information-evidence`
 och `/tmp/forena-discipline-evidence`; fullflödesprovens evidens sparas i

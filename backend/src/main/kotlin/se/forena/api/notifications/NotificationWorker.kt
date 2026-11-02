@@ -9,14 +9,15 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RestController
 import se.forena.api.activities.ScheduledInvitationService
+import se.forena.api.extensionapi.DisciplineBackgroundWork
 import se.forena.api.notifications.internal.InvitationEmailDelivery
 import se.forena.api.notifications.internal.PublicationRecovery
-import se.forena.api.extensionapi.DisciplineBackgroundWork
 
 data class NotificationWorkerResult(
     val schedules: Int,
     val recoveryCandidates: Int,
     val processedEmails: Int,
+    val processedExtensions: Int,
 )
 
 /** Request-bound scheduler entry point. No delivery depends on an in-memory timer after HTTP. */
@@ -28,6 +29,7 @@ class NotificationWorker(
     private val delivery: InvitationEmailDelivery,
     private val operations: NotificationOperations,
     private val disciplineWork: List<DisciplineBackgroundWork>,
+    private val extensions: ExtensionNotifications,
 ) {
     private val logger = LoggerFactory.getLogger(NotificationWorker::class.java)
 
@@ -38,25 +40,36 @@ class NotificationWorker(
         val materialized = schedules.materialize(deadline)
         disciplineWork.forEach { it.runDue(100) }
         val recovered = recovery.recover(deadline)
+        extensions.cleanup()
         var delivered = 0
-        // Leave room for the existing Resend connect/read timeouts before starting another HTTP
-        // call.
-        while (
-            delivered < 50 &&
+        var deliveredExtensions = 0
+        fun canDeliver() =
+            delivered + deliveredExtensions < 50 &&
                 System.nanoTime() + Duration.ofSeconds(16).toNanos() < deadline &&
-                !Thread.currentThread().isInterrupted &&
-                delivery.deliverOne()
-        ) {
-            delivered++
+                !Thread.currentThread().isInterrupted
+        // Alternate queues within one shared request budget so neither transport can starve the
+        // other.
+        while (canDeliver()) {
+            var progressed = false
+            if (delivery.deliverOne()) {
+                delivered++
+                progressed = true
+            }
+            if (canDeliver() && extensions.deliverOne()) {
+                deliveredExtensions++
+                progressed = true
+            }
+            if (!progressed) break
         }
         logger.info(
-            "notification_worker schedules={} recovery_candidates={} processed_emails={}",
+            "notification_worker schedules={} recovery_candidates={} processed_emails={} processed_extensions={}",
             materialized,
             recovered,
             delivered,
+            deliveredExtensions,
         )
         operations.completed()
-        return NotificationWorkerResult(materialized, recovered, delivered)
+        return NotificationWorkerResult(materialized, recovered, delivered, deliveredExtensions)
     }
 }
 

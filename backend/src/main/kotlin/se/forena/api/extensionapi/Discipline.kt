@@ -114,5 +114,9 @@ interface DisciplineActivityLifecycle {
 
     fun changed(activityId: UUID) {}
 
+    fun updated(activity: DisciplineActivity, previousKind: ActivityKind) {
+        changed(activity.id)
+    }
+
     fun invited(activityId: UUID, actorId: UUID, added: Int) {}
 }

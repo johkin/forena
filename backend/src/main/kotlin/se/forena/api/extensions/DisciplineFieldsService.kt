@@ -92,9 +92,25 @@ class DisciplineFieldsService(
     }
 
     override fun created(activity: DisciplineActivity) {
+        initialize(activity)
         information.schedule(activity.id)
+    }
+
+    override fun updated(activity: DisciplineActivity, previousKind: ActivityKind) {
+        val pkg = catalog.find(activity.disciplineKey)
+        val entering = pkg?.appliesTo(activity.kind) == true && !pkg.appliesTo(previousKind)
+        if (entering) initialize(activity)
+        changed(activity.id)
+    }
+
+    private fun initialize(activity: DisciplineActivity) {
         val pkg = catalog.find(activity.disciplineKey) ?: return
         if (!pkg.appliesTo(activity.kind)) return
+        // The first applicable state owns the snapshot. Leaving/re-entering must not replace
+        // user edits, saved rules or durable notification checkpoints with newer team defaults.
+        val existing =
+            repository.value(activity.teamId, activity.disciplineKey, "activity", activity.id, null)
+        if (existing != null) return
         capabilities.created(activity)
         val team =
             repository.value(activity.teamId, activity.disciplineKey, "team", activity.teamId, null)
