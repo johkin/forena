@@ -57,6 +57,18 @@ try {
         const dialog = page.getByRole('dialog', { name: 'Rapportera närvaro' });
         if (mode !== 'Laddar') await expect(dialog.getByText('Laddar närvaron…', { exact: true })).toHaveCount(0);
         else await expect(dialog.getByText('Laddar närvaron…', { exact: true })).toBeVisible();
+        const layout = await dialog.evaluate(element => ({
+          summaryHeight: element.querySelector('.attendance-summary').getBoundingClientRect().height,
+          copyWidths: [...element.querySelectorAll('.person-selection-copy')].map(copy => copy.getBoundingClientRect().width),
+          rowHeights: [...element.querySelectorAll('.person-selection-row')].map(row => row.getBoundingClientRect().height),
+          avatarWidths: [...element.querySelectorAll('.person-selection-avatar')].map(avatar => avatar.getBoundingClientRect().width),
+          shortcutLabelHeight: element.querySelector('.person-selection-shortcuts > span')?.getBoundingClientRect().height ?? 0,
+        }));
+        assert.ok(layout.summaryHeight < 160, `${mode}: summary too tall at ${width}px`);
+        assert.ok(layout.copyWidths.every(size => size >= 100), `${mode}: participant text squeezed at ${width}px`);
+        assert.ok(layout.rowHeights.every(size => size < 140), `${mode}: participant rows too tall at ${width}px`);
+        assert.ok(layout.avatarWidths.every(size => size === 36), `${mode}: avatars squeezed at ${width}px`);
+        assert.ok(layout.shortcutLabelHeight < 60, `${mode}: shortcut text squeezed at ${width}px`);
         if (mode === 'Sparad rapport' || mode === 'Inställd') await dialog.getByText(/Ändringshistorik/).click();
         if (mode === 'Sparfel' || mode === 'Konflikt') {
           if (mode === 'Sparfel') await dialog.getByRole('checkbox').first().check();

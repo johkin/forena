@@ -117,8 +117,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .card-heading { display: flex; justify-content: space-between; align-items: start; gap: 16px; }
 .icon-button { border: 0; background: transparent; color: var(--ink-soft); cursor: pointer; }
 .activity-details { display: grid; gap: 8px; margin: 24px 0; padding: 18px; border-radius: 12px; background: var(--cream); }
-.activity-details p { display: flex; gap: 10px; margin: 0; font-size: 14px; }
-.activity-details span { width: 20px; color: var(--ink-soft); }
+.activity-details > p { display: flex; gap: 10px; margin: 0; font-size: 14px; }
+.activity-details > p > span { width: 20px; color: var(--ink-soft); }
 .summary { display: grid; grid-template-columns: repeat(4, 1fr); margin-bottom: 18px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
 .summary div { display: grid; gap: 3px; padding: 13px; text-align: center; border-right: 1px solid var(--line); }
 .summary div:last-child { border-right: 0; }

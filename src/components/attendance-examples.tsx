@@ -8,7 +8,7 @@ const example: AttendanceSnapshot = {
   roster: [
     { personId: "coach", displayName: "Alex Andersson", role: "leader", response: "accepted", present: null },
     { personId: "player", displayName: "Alva Lind", role: "participant", response: "declined", present: null },
-    { personId: "guest", displayName: "Kim Berg", role: "participant", response: "pending", present: null },
+    { personId: "guest", displayName: "Kim Alexandra Berg Andersson", role: "participant", response: "pending", present: null },
   ],
   candidates: [{ personId: "extra", displayName: "Ella Holm", role: "participant", response: null, present: null }],
   groups: [{ id: "green", label: "Grupp Grön", personIds: ["coach", "player"] }], history: [],
@@ -46,8 +46,10 @@ export function AttendanceExamples() {
       const value = modes.find(value => value === event.target.value);
       if (value) setMode(value);
     }}>{modes.map(value => <option key={value}>{value}</option>)}</select></label>
-    <button type="button" className="primary" onClick={() => { setSaved(false); setOpen(true); }}>Öppna närvaro</button>
-    {saved ? <p role="status">Närvaron sparades i exemplet.</p> : null}
-    {open ? <AttendanceModal activityId="example" request={request} versioned onClose={() => setOpen(false)} onSaved={() => setSaved(true)} /> : null}
+    <div className="activity-details">
+      <button type="button" className="primary" onClick={() => { setSaved(false); setOpen(true); }}>Öppna närvaro</button>
+      {saved ? <p role="status">Närvaron sparades i exemplet.</p> : null}
+      {open ? <AttendanceModal activityId="example" request={request} versioned onClose={() => setOpen(false)} onSaved={() => setSaved(true)} /> : null}
+    </div>
   </section>;
 }
