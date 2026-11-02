@@ -756,6 +756,9 @@ rapporter; inställda aktiviteter visar befintlig rapport och historik i läslä
 `AttendanceModal` delar markup och CSS mellan apparna och visas med lokala
 exempel på `/components`: ny/sparad rapport, inställd, tom, laddning, konflikt,
 läsfel och sparfel.
+Exemplet ligger i aktivitetsvyns CSS-kontext och innehåller ett långt personnamn.
+Aktivitetskortets text- och ikonregler ska bara träffa dess egna detaljrader;
+de får inte begränsa textbredd eller ändra styckelayout i underliggande dialoger.
 
 Orapporterat urval beskrivs som okänd närvaro. Sparandet bekräftar hela listan;
 0 närvarande kräver texten ”Du rapporterar 0 närvarande. Alla i listan
