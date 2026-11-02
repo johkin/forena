@@ -176,6 +176,8 @@ class AssistantService(
                     mapOf(
                         "question" to resolvedQuestion,
                         "latestMessage" to command.text,
+                        "viewer" to
+                            identities.viewer(actor, conversation.organizationId, selectedTeam),
                         "conversationHistory" to history,
                         "organizations" to organizations,
                         "teams" to catalogue,

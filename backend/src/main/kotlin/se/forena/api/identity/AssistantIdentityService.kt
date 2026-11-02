@@ -21,20 +21,17 @@ class AssistantIdentityService(
         sessions.requireActive(actor)
         val ages = repository.findOwnAges(actor.subject, org == null, org).distinct()
         val age = ages.singleOrNull()
-        val roles =
-            repository
-                .findOwnTeamRoles(actor.subject, team, team == null, org, org == null)
-                .toMutableList()
-        val guardian = repository.hasGuardianAccess(actor.subject, org == null, org)
-        if (guardian) roles.add("guardian")
+        val assignments =
+            repository.findRoleAssignments(actor.subject, team, team == null, org, org == null)
         return AssistantViewer(
-            roles.distinct(),
+            assignments.map { it.role }.distinct(),
             when {
                 age == null || age < 0 -> "unknown"
                 age < 13 -> "under13"
                 age < 18 -> "13to17"
                 else -> "adult"
             },
+            assignments,
         )
     }
 }

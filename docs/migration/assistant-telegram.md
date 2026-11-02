@@ -36,6 +36,17 @@ frågan och behålla ett entydigt lagval. Klubbassistenterna får fortfarande ba
 den egna klubbens avgränsade fråga och historik. Nytt samtal börjar utan dialogkontext.
 Standardavsändaren är klubbnamnet när klubben inte har valt ett assistentnamn.
 
+Telegrams koppling identifierar kontot, inte en viss personrelation eller roll.
+Fördelningen och klubbsvaret får aktuella `viewer.roleAssignments` med klubb-,
+sektions- och lagkoppling. Egna medlemsroller, målsmansrelationer och administrativa
+roller kan gälla samtidigt. Barnets medlemsroller är inte förälderns roller;
+målsmansrollen för ett visst lag kräver barnets aktuella medlemskap i det laget.
+Datumgränser och avaktivering respekteras även efter att Telegram kopplats.
+Gamla chattpåståenden om roller är historik och får inte ersätta detta underlag.
+Rollbeskrivningen ger inga behörigheter; verksamhetskommandon använder fortsatt
+Spring Security och `TeamAccessService`. Systemadministration ger ingen
+automatisk verksamhetsroll.
+
 Frågor om hur många som kommer använder beräknade antal från behörigt
 kallelseunderlag och en kort tabell över Kommer, Kan inte och Ej svarat. Om
 underlaget bara gäller egna personer ska det framgå. Anmälan är inte faktisk
