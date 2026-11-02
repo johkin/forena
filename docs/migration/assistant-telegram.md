@@ -36,6 +36,12 @@ frågan och behålla ett entydigt lagval. Klubbassistenterna får fortfarande ba
 den egna klubbens avgränsade fråga och historik. Nytt samtal börjar utan dialogkontext.
 Standardavsändaren är klubbnamnet när klubben inte har valt ett assistentnamn.
 
+Systemreglerna finns i `backend/src/main/resources/prompts/assistant.md` och
+fördelningsprompten i `prompts/routing.md` under samma resurskatalog.
+Spring läser dem en gång vid start, som UTF-8 från klassvägen. Tomma eller saknade
+resurser stoppar starten. Native-resurshints inkluderar Markdown-filerna.
+Klubbprofiler och användardata behandlas fortsatt som separat, underordnat underlag.
+
 Telegrams koppling identifierar kontot, inte en viss personrelation eller roll.
 Fördelningen och klubbsvaret får aktuella `viewer.roleAssignments` med klubb-,
 sektions- och lagkoppling. Egna medlemsroller, målsmansrelationer och administrativa
@@ -50,6 +56,10 @@ Gamla chattpåståenden om roller är historik och får inte ersätta detta unde
 Rollbeskrivningen ger inga behörigheter; verksamhetskommandon använder fortsatt
 Spring Security och `TeamAccessService`. Systemadministration ger ingen
 automatisk verksamhetsroll.
+
+Repositoryts rolläsning använder namngivna CTE:er för medlemskap,
+målsmansrelationer samt lag-, klubb- och sektionsadministration. De kombineras
+och avgränsas i en enda SQL-fråga med samma datum-, käll- och lagvillkor.
 
 Frågor om hur många som kommer använder beräknade antal från behörigt
 kallelseunderlag och en kort tabell över Kommer, Kan inte och Ej svarat. Om

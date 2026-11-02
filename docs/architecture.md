@@ -12,6 +12,13 @@ redigerarens ordinarie granskning och sparkommando gäller. Telegram använder v
 utan Supabase-signering eller browser-sessioner. Se
 [implementation, konfiguration och aktiveringsprov](migration/assistant-telegram.md).
 
+Gemensamma systempromptar ligger i `backend/src/main/resources/prompts/` som
+versionshanterade Markdown-resurser. `AssistantPrompts` läser dem en gång via
+Springs klassvägsresurser med UTF-8. Resurserna ingår i både JAR och native image.
+Rollunderlag hämtas genom en typad Spring Data JDBC-projektion: namngivna CTE:er
+beskriver de olika tilldelningarna och en gemensam fråga avgränsar resultatet.
+Det är ett databasanrop; ingen SQL eller rollauktorisering flyttas till tjänsterna.
+
 
 ## Kotlin: schemalagda kallelser och e-post
 
