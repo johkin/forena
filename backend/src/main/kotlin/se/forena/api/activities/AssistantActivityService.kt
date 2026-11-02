@@ -24,6 +24,14 @@ class AssistantActivityService(
     private val repository: AssistantActivityRepository,
 ) {
     @Transactional(readOnly = true)
+    fun catalog(actor: Actor): AssistantActivityCatalog {
+        val visible = catalogActivities(actor)
+        val categories = if (visible.isEmpty()) emptyMap() else
+            repository.findCategories(visible.map { it.id }).associate { it.id to it.category }
+        return AssistantActivityCatalog(visible, categories)
+    }
+
+    @Transactional(readOnly = true)
     fun catalogActivities(actor: Actor): List<PersonalActivity> {
         val personal = overview.overview(actor).activities
         val extraTeams =

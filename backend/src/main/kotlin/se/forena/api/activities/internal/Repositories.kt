@@ -430,6 +430,11 @@ interface AttendanceRepository : Repository<ActivityEntity, UUID> {
 }
 
 interface AssistantActivityRepository : Repository<ActivityEntity, UUID> {
+    @Query("""select a.id,coalesce(t.system_category,'other') as category
+        from forena.activity a left join forena.activity_type t on t.id=a.activity_type_id
+        where a.id in (:ids) and a.deleted_at is null""")
+    fun findCategories(ids: List<UUID>): List<AssistantActivityCategory>
+
     @Query(
         """select i.id,i.person_id,p.display_name as name,i.response,i.response_comment,i.revision
             from forena.invitation i join forena.person p on p.id=i.person_id and p.organization_id=i.organization_id

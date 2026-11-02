@@ -22,3 +22,23 @@ describe("assistant activity editor", () => {
     expect(assistantActivityEditorSchema.safeParse({ ...editor, weekdays: [0, 8] }).success).toBe(false);
   });
 });
+
+it("leaves omitted timings available for activity-type defaults", () => {
+  const draft = assistantActivityDraft(editor, "UTC");
+  expect(draft.durationMinutes).toBeUndefined();
+  expect(draft.gatheringMinutesBefore).toBeUndefined();
+});
+it("preserves a requested duration and gathering offset without restricting them to preset buttons", () => {
+  const draft = assistantActivityDraft({ ...editor, durationMinutes: 55, gatheringMinutesBefore: 10 }, "UTC");
+  expect(draft).toMatchObject({ durationMinutes: 55, gatheringMinutesBefore: 10 });
+});
+it("preserves explicit single-activity endpoints across a time-zone change", () => {
+  const draft = assistantActivityDraft({ ...editor, recurring: false, startsOn: "2027-03-27", startTime: "23:00:00",
+    endsOn: "2027-03-28", endTime: "04:00:00", gatheringMinutesBefore: 0 }, "Europe/Stockholm");
+  expect(draft).toMatchObject({ startsOn: "2027-03-27", startTime: "23:00", endsOn: "2027-03-28", endTime: "04:00", gatheringMinutesBefore: 0 });
+});
+it("turns recurring 16:15–17:15 into an hour while preserving the series end date", () => {
+  const draft = assistantActivityDraft({ ...editor, startTime: "16:15", endTime: "17:15", endsOn: "2027-06-01" }, "UTC");
+  expect(draft).toMatchObject({ durationMinutes: 60, recurrence: { endsOn: "2027-06-01" } });
+  expect(draft.endTime).toBeUndefined();
+});

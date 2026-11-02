@@ -7,3 +7,19 @@ export function applyUntouchedDefaults(current: ActivityTimingRules, defaults: R
   }
   return next;
 }
+
+export function initialActivityType<T extends { id: string; name: string; slug: string; system_category: string; organization_id: string | null }>(
+  types: T[], requestedId?: string | null,
+): T | undefined {
+  if (requestedId) return types.find(type => type.id === requestedId);
+  return types.find(type => type.system_category === "session" && type.name.toLocaleLowerCase("sv-SE") === "träning")
+    ?? types.find(type => type.system_category === "session")
+    ?? types.find(type => type.slug === "ovrigt" && !type.organization_id);
+}
+
+export function draftTimingFields(draft?: { durationMinutes?: number; gatheringMinutesBefore?: number; endTime?: string }): Set<keyof ActivityTimingRules> {
+  const fields = new Set<keyof ActivityTimingRules>();
+  if (draft?.durationMinutes != null || draft?.endTime != null) fields.add("duration");
+  if (draft?.gatheringMinutesBefore != null) fields.add("gatheringRule");
+  return fields;
+}

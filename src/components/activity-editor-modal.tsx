@@ -4,7 +4,7 @@ import { z } from "zod";
 import { FormEvent, useEffect, useMemo, useState, useRef } from "react";
 import type { Activity, Member, Organization, Team } from "@/domain/club";
 import { previewWeeklySeries, previewRuleSingleActivity, previewRuleWeeklySeries, type ActivityOccurrence } from "@/lib/activity-series";
-import type { ActivityDraft } from "@/lib/ai/activity-draft";
+import type { ActivityEditorDraft } from "@/lib/ai/activity-draft";
 import { PersonSelectionList } from "./person-selection-list";
 import type { AudienceRole } from "@/lib/invitation-audience";
 import { DateTimeRangeFields } from "./date-time-range-fields";
@@ -14,7 +14,7 @@ import { FALLBACK_TIMING_OPTIONS, timingChoices } from "@/lib/activity-timing-op
 import { ActivityTimingFields } from "./activity-timing-fields";
 import type { ActivityConfiguration } from "@/lib/activity-configuration";
 import { BASE_DISCIPLINE_DEFAULTS } from "@/lib/discipline-defaults";
-import { applyUntouchedDefaults } from "@/lib/activity-editor-defaults";
+import { applyUntouchedDefaults, draftTimingFields, initialActivityType } from "@/lib/activity-editor-defaults";
 import { durationToMinutes, localActivityTime, normalizeActivityTimingRules, type ActivityTimingRules } from "@/lib/activity-time-rules";
 import { prepareInvitationSchedule, requireFutureSchedule } from "@/lib/activity-schedule";
 import { activityRangeDuration } from "@/lib/activity-range";
@@ -27,7 +27,7 @@ export type ActivityEditorAdapter = {
   singleOnly?: boolean;
 };
 
-type Props = { adapter?: ActivityEditorAdapter; mode: "create" | "edit"; organization: Organization; team: Team; members: Member[]; activity?: Activity; draft?: ActivityDraft; source: "database" | "demo"; canManageInvitations: boolean; onClose: () => void; onNotice: (notice: string) => void; };
+type Props = { adapter?: ActivityEditorAdapter; mode: "create" | "edit"; organization: Organization; team: Team; members: Member[]; activity?: Activity; draft?: ActivityEditorDraft; source: "database" | "demo"; canManageInvitations: boolean; onClose: () => void; onNotice: (notice: string) => void; };
 const weekdayOptions = [[1,"Mån"],[2,"Tis"],[3,"Ons"],[4,"Tor"],[5,"Fre"],[6,"Lör"],[7,"Sön"]] as const;
 const roleLabels: Record<AudienceRole,string> = { participant:"Spelare",leader:"Ledare" };
 const recipientGroups = [{role:"participant",label:"Spelare"},{role:"leader",label:"Ledare"}];
@@ -90,10 +90,10 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
   const [configuration,setConfiguration] = useState<ActivityConfiguration>();
   const [configurationError,setConfigurationError] = useState<string>();
   const [activityTypeId,setActivityTypeId] = useState(activity?.activityTypeId ?? draft?.activityTypeId ?? "");
-  const touched = useRef(new Set<keyof ActivityTimingRules>(mode === "edit" || draft ? ["duration","gatheringRule"] : []));
-  const [touchedKeys,setTouchedKeys] = useState(new Set<keyof ActivityTimingRules>(mode === "edit" || draft ? ["duration","gatheringRule"] : []));
+  const touched = useRef(new Set<keyof ActivityTimingRules>(mode === "edit" ? ["duration","gatheringRule"] : draftTimingFields(draft)));
+  const [touchedKeys,setTouchedKeys] = useState(new Set<keyof ActivityTimingRules>(mode === "edit" ? ["duration","gatheringRule"] : draftTimingFields(draft)));
   const [rules,setRules] = useState<ActivityTimingRules>({ ...BASE_DISCIPLINE_DEFAULTS, duration:`PT${initialDuration}M`,gatheringRule:initialGathering ? `start-${initialGathering}m` : "start",reminderRules:[...BASE_DISCIPLINE_DEFAULTS.reminderRules] });
-  const [explicitEnd, setExplicitEnd] = useState<{ date: string; time: string } | null>(activity ? localParts(activity.endsAt, timeZone) : null);
+  const [explicitEnd, setExplicitEnd] = useState<{ date: string; time: string } | null>(activity ? localParts(activity.endsAt, timeZone) : draft?.endTime && !draft.recurrence ? { date: draft.endsOn ?? draft.startsOn, time: draft.endTime } : null);
   const end = explicitEnd ?? (() => {
     try { return localParts(new Date(localActivityTime(scheduleDates.startsOn, scheduleDates.startTime, timeZone).getTime() + durationToMinutes(rules.duration) * 60000).toISOString(), timeZone); }
     catch { return { date: scheduleDates.startsOn, time: scheduleDates.startTime }; }
@@ -112,7 +112,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
     const controller = new AbortController();
     request(`/api/activity-configuration?teamId=${encodeURIComponent(team.id)}`,{signal:controller.signal})
       .then(async response=> { const result = await response.json(); if (!response.ok) throw new Error(result.error); return result as ActivityConfiguration; })
-      .then(config=> { setConfiguration(config); const requestedTypeId = activity?.activityTypeId ?? draft?.activityTypeId; const type = config.types.find(t=>requestedTypeId ? t.id===requestedTypeId : t.slug==="ovrigt" && !t.organization_id); setActivityTypeId(activity?.activityTypeId ?? type?.id ?? ""); if(mode==="create" && type) setRules(current=>applyUntouchedDefaults(current,type.defaults,touched.current)); })
+      .then(config=> { setConfiguration(config); const requestedTypeId = activity?.activityTypeId ?? draft?.activityTypeId; const type = initialActivityType(config.types, requestedTypeId); setActivityTypeId(activity?.activityTypeId ?? type?.id ?? ""); if(mode==="create" && type) setRules(current=>applyUntouchedDefaults(current,type.defaults,touched.current)); })
       .catch(error=>{if(!controller.signal.aborted)setConfigurationError(error instanceof Error ? error.message : "Inställningarna kunde inte hämtas.");});
     return ()=>controller.abort();
   },[source,team.id,activity?.activityTypeId,draft?.activityTypeId,mode,request]);

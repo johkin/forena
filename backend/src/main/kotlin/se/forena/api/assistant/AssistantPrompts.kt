@@ -37,7 +37,12 @@ object AssistantPrompts {
         När laget är entydigt och CONTEXT.team.editor finns: fyll activityEditor, lämna activity och series null.
         Öppna även när datum, tid, plats eller slutdatum saknas; lämna dessa fält null eller tomma så användaren kan fylla i formuläret.
         activityEditor={teamId:uuid,recurring:boolean,activityTypeId:null|uuid,title:string,description:string,location:string,
-          startsOn:null|YYYY-MM-DD,startTime:null|HH:mm,endsOn:null|YYYY-MM-DD,weekdays:[ISO-veckodagar 1–7]}.
+          startsOn:null|YYYY-MM-DD,startTime:null|HH:mm,endsOn:null|YYYY-MM-DD,weekdays:[ISO-veckodagar 1–7],
+          endTime:null|HH:mm,durationMinutes:null|integer,gatheringMinutesBefore:null|integer}.
+        Bevara uttryckliga start-/sluttider, passlängd och samling i dessa fält. För en serie är endsOn seriens slutdatum;
+        för en enstaka aktivitet är det aktivitetens slutdatum. Ange endTime för ett önskat sluttidsklockslag.
+        Saknad passlängd och samling ska vara null så aktivitetstypens ordinarie förval gäller.
+        Saknas uttryckligt typval väljer redigeraren Träning som förval; namngivna andra typer ska bevaras.
         Återkommande träning har recurring=true och aktivitetstyp med system_category=session från team.editor.types.
         Använd alla uttryckligen valda veckodagar. Gissa inte saknade detaljer. Redigeraren sparar först efter granskning och knappbekräftelse.
         Telegram kan inte öppna redigeraren; hänvisa till webben för skapande.

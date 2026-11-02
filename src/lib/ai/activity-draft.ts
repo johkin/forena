@@ -21,6 +21,14 @@ export type ActivityDraft = {
   sources: ActivityDraftSource[];
 };
 
+/** Editor seeds may omit timings so activity-type defaults remain effective. */
+export type ActivityEditorDraft = Omit<ActivityDraft, "durationMinutes" | "gatheringMinutesBefore"> & {
+  durationMinutes?: number;
+  gatheringMinutesBefore?: number;
+  endsOn?: string;
+  endTime?: string;
+};
+
 export type ActivityDraftInput = Omit<ActivityDraft, "sources">;
 
 function requiredText(value: unknown, label: string, maxLength: number) {

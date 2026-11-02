@@ -93,7 +93,7 @@ class ApiTest {
         val team = rosterTeam()
         admin.update("update forena.team set name='F2016' where id=?", team)
         admin.update("update forena.organization set time_zone='Europe/Stockholm' where id=?", organization)
-        admin.update("update forena.activity set title='Fotbollsträning F2016', starts_at=((current_timestamp at time zone 'Europe/Stockholm')::date + time '19:00') at time zone 'Europe/Stockholm', ends_at=((current_timestamp at time zone 'Europe/Stockholm')::date + time '23:59') at time zone 'Europe/Stockholm' where id=?", activity)
+        admin.update("update forena.activity set title='Fyspass F2016', activity_type_id='00000000-0000-4000-8000-000000000001', starts_at=((current_timestamp at time zone 'Europe/Stockholm')::date + time '19:00') at time zone 'Europe/Stockholm', ends_at=((current_timestamp at time zone 'Europe/Stockholm')::date + time '23:59') at time zone 'Europe/Stockholm' where id=?", activity)
         rosterMember(own)
         rosterPermission(permission = "invitation.manage")
         val web = assistant.new(assistantActor())
@@ -160,8 +160,9 @@ class ApiTest {
         assistant.send(actor, fresh.id, MessageCommand("Nytt ämne")) {}
     }
 
-    @Test
-    fun `web activity creation opens an authorized recurring editor without requiring missing details`() {
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
+    fun `web activity creation preserves requested timing for both editor modes`(recurring: Boolean) {
         val team = rosterTeam()
         rosterMember(own)
         rosterPermission(permission = "activity.manage")
@@ -171,13 +172,16 @@ class ApiTest {
             .thenReturn(RoutingPlan(listOf(AssistantTarget(organization, team))))
         Mockito.`when`(assistantModel.answer(anyString(), anyString()))
             .thenReturn(ModelAnswer("Granska träningen i formuläret.",
-                activityEditor = se.forena.api.assistant.ActivityEditorDraft(team, recurring = true, title = "Träning")))
+                activityEditor = se.forena.api.assistant.ActivityEditorDraft(team, recurring = recurring, title = "Träning",
+                    startTime = java.time.LocalTime.of(16, 15), endTime = java.time.LocalTime.of(17, 15), gatheringMinutesBefore = 15)))
         val replies = mutableListOf<se.forena.api.assistant.AssistantReply>()
         assistant.send(actor, conversation.id, MessageCommand("Skapa en återkommande träning", team)) { replies.add(it) }
         val reply = replies.single { !it.pending }
         assertThat(reply.failed).isFalse()
         assertThat(reply.activityEditor?.teamId).isEqualTo(team)
-        assertThat(reply.activityEditor?.recurring).isTrue()
+        assertThat(reply.activityEditor?.recurring).isEqualTo(recurring)
+        assertThat(reply.activityEditor?.endTime).isEqualTo(java.time.LocalTime.of(17, 15))
+        assertThat(reply.activityEditor?.gatheringMinutesBefore).isEqualTo(15)
         assertThat(reply.proposals).isEmpty()
         assertThat(assistant.view(actor, conversation.id).proposals).isEmpty()
     }
@@ -189,9 +193,9 @@ class ApiTest {
         rosterMember(own)
         rosterPermission(permission = "invitation.manage")
         admin.update("update forena.organization set time_zone='Europe/Stockholm' where id=?", organization)
-        admin.update("update forena.activity set title='Träning', starts_at=((current_timestamp at time zone 'Europe/Stockholm')::date + time '19:00') at time zone 'Europe/Stockholm', ends_at=((current_timestamp at time zone 'Europe/Stockholm')::date + time '23:59') at time zone 'Europe/Stockholm' where id=?", activity)
+        admin.update("update forena.activity set title='Fyspass F2016', activity_type_id='00000000-0000-4000-8000-000000000001', starts_at=((current_timestamp at time zone 'Europe/Stockholm')::date + time '19:00') at time zone 'Europe/Stockholm', ends_at=((current_timestamp at time zone 'Europe/Stockholm')::date + time '23:59') at time zone 'Europe/Stockholm' where id=?", activity)
         if (ambiguous) {
-            admin.update("insert into forena.activity(id,organization_id,team_id,title,starts_at,ends_at) select ?,organization_id,team_id,'Träning 2',starts_at,ends_at from forena.activity where id=?", UUID.randomUUID(), activity)
+            admin.update("insert into forena.activity(id,organization_id,team_id,title,starts_at,ends_at,activity_type_id) select ?,organization_id,team_id,'Annat pass',starts_at,ends_at,activity_type_id from forena.activity where id=?", UUID.randomUUID(), activity)
         } else {
             admin.update("update forena.activity set starts_at=starts_at+interval '1 day',ends_at=ends_at+interval '1 day' where id=?", activity)
         }
@@ -200,9 +204,50 @@ class ApiTest {
         Mockito.`when`(assistantModel.route(anyString()))
             .thenReturn(RoutingPlan(listOf(AssistantTarget(organization, team, activity))))
         val replies = mutableListOf<se.forena.api.assistant.AssistantReply>()
-        assistant.send(actor, conversation.id, MessageCommand("Vilka kommer på kvällens träning?", team)) { replies.add(it) }
+        assistant.send(actor, conversation.id, MessageCommand("Vilka kommer på kvällens träning?", team, activity)) { replies.add(it) }
         assertThat(replies.single().text).contains("Vilket lag och vilken aktivitet")
         verify(assistantModel, never()).answer(anyString(), anyString())
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
+    fun `relative training does not inherit a page activity from tomorrow`(routePageActivity: Boolean) {
+        val team = rosterTeam()
+        rosterMember(own)
+        rosterPermission(permission = "invitation.manage")
+        admin.update("update forena.activity set activity_type_id='00000000-0000-4000-8000-000000000001',starts_at=now()+interval '1 day',ends_at=now()+interval '1 day 1 hour' where id=?", activity)
+        val actor = assistantActor()
+        val conversation = assistant.new(actor)
+        Mockito.`when`(assistantModel.route(anyString()))
+            .thenReturn(RoutingPlan(listOf(AssistantTarget(organization, team, if (routePageActivity) activity else null))))
+        val replies = mutableListOf<se.forena.api.assistant.AssistantReply>()
+        assistant.send(actor, conversation.id, MessageCommand("Vilka kommer på kvällens träning?", team, activity)) { replies.add(it) }
+        assertThat(replies.single().text).contains("Vilket lag och vilken aktivitet")
+        verify(assistantModel, never()).answer(anyString(), anyString())
+    }
+
+    @Test
+    fun `relative training uses the validated routed activity instead of a different open page`() {
+        val team = rosterTeam()
+        rosterMember(own)
+        rosterPermission(permission = "invitation.manage")
+        admin.update("update forena.activity set title='Fyspass',activity_type_id='00000000-0000-4000-8000-000000000001',starts_at=((now() at time zone 'Europe/Stockholm')::date+time '19:00') at time zone 'Europe/Stockholm',ends_at=((now() at time zone 'Europe/Stockholm')::date+time '23:59') at time zone 'Europe/Stockholm' where id=?", activity)
+        val tomorrow = UUID.randomUUID()
+        admin.update("insert into forena.activity(id,organization_id,team_id,title,starts_at,ends_at) select ?,organization_id,team_id,'Morgondagens pass',starts_at+interval '1 day',ends_at+interval '1 day' from forena.activity where id=?", tomorrow, activity)
+        val actor = assistantActor()
+        val conversation = assistant.new(actor)
+        Mockito.`when`(assistantModel.route(anyString()))
+            .thenReturn(RoutingPlan(listOf(AssistantTarget(organization, team, activity))))
+        Mockito.`when`(assistantModel.answer(anyString(), anyString())).thenAnswer { invocation ->
+            val context = json.readTree(invocation.getArgument<String>(1))
+            assertThat(context.path("selectedActivity").path("id").asString()).isEqualTo(activity.toString())
+            assertThat(context.path("activityCategories").path(activity.toString()).asString()).isEqualTo("session")
+            ModelAnswer("Kvällens fyspass.")
+        }
+        val replies = mutableListOf<se.forena.api.assistant.AssistantReply>()
+        assistant.send(actor, conversation.id, MessageCommand("Vilka kommer på kvällens träning?", team, tomorrow)) { replies.add(it) }
+        assertThat(replies.last().failed).isFalse()
+        assertThat(replies.last().text).isEqualTo("Kvällens fyspass.")
     }
 
     @Test

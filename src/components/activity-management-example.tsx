@@ -30,10 +30,15 @@ export function ActivityManagementExample() {
   const request = useCallback<ParticipationFetch>(async (path, init) => {
     const conversation = { id: "11111111-1111-4111-8111-111111111119", organizationId: null,
       channel: "web", active: true, updatedAt: "2026-11-02T12:00:00Z" };
-    if (path.endsWith("/messages")) return new Response(JSON.stringify({ sender: "Förena", organizationId: team.organizationId,
-      text: "Granska den återkommande träningen i formuläret.", proposals: [], failed: false,
-      activityEditor: { teamId: team.id, recurring: true, activityTypeId: trainingTypeId, title: "Träning", description: "", location: "", weekdays: [2, 4] },
-    }) + "\n", { headers: { "Content-Type": "application/x-ndjson" } });
+    if (path.endsWith("/messages")) {
+      const command = z.object({ text: z.string() }).parse(JSON.parse(String(init?.body)));
+      const recurring = command.text.includes("återkommande");
+      return new Response(JSON.stringify({ sender: "Förena", organizationId: team.organizationId,
+        text: "Granska träningen i formuläret.", proposals: [], failed: false,
+        activityEditor: { teamId: team.id, recurring, title: "Träning", description: "", location: "",
+          startTime: "16:15", endTime: "17:15", gatheringMinutesBefore: 10, weekdays: recurring ? [2, 4] : [] },
+      }) + "\n", { headers: { "Content-Type": "application/x-ndjson" } });
+    }
     if (path === "/api/assistant/conversations") return Response.json(init?.method === "POST" ? conversation : [conversation]);
     if (path.startsWith("/api/assistant/conversations/")) return Response.json({ conversation, messages: [], proposals: [] });
     if (state === "loading") return new Promise<Response>(resolve => {
@@ -94,7 +99,8 @@ export function ActivityManagementExample() {
     </select></label>
     <ActivityManagement key={state} request={request} teamId={team.id} />
     <PersistentAssistant request={request} name="Träningsassistenten (exempel)" />
-    <h3>Återkommande träning från assistenten</h3>
+    <h3>Enstaka och återkommande träning från assistenten</h3>
+    <p>Assistentexemplet bevarar 16:15–17:15 och tio minuters samling. Skriv ”återkommande” för att prova serieläget. Utan uttrycklig typ väljs Träning.</p>
     <button type="button" onClick={() => setAssistantDraftOpen(true)}>Granska assistentens serieutkast</button>
     {assistantDraftOpen ? <ActivityManagement request={request} initialTeamId={team.id} createOnLoad
       assistantDraft={{ teamId: team.id, recurring: true, activityTypeId: trainingTypeId, title: "Träning", description: "", location: "", weekdays: [2, 4] }}

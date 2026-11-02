@@ -126,7 +126,8 @@ class AssistantService(
                 }
             )
         val current = overview.overview(actor)
-        val catalogActivities = activityData.catalogActivities(actor)
+        val catalog = activityData.catalog(actor)
+        val catalogActivities = catalog.activities
         val organizations =
             identities.organizations(actor).filter {
                 conversation.organizationId == null || it.id == conversation.organizationId
@@ -192,6 +193,7 @@ class AssistantService(
                                         "startsAt" to it.starts_at,
                                         "timeZone" to it.organization.time_zone,
                                         "status" to it.status,
+                                        "category" to catalog.categories[it.id],
                                     )
                                 },
                         "clock" to current.reference_time,
@@ -238,8 +240,9 @@ class AssistantService(
                         target.teamId != selectedTeam &&
                         target.teamId != activityTeam &&
                         namedTeams.singleOrNull()?.id != target.teamId
+                val selectedActivityId = target.activityId ?: command.activityId ?: conversation.activityId
                 val routedActivity =
-                    target.activityId?.let { activityId ->
+                    selectedActivityId?.let { activityId ->
                         try {
                             activityData.activity(actor, activityId)
                         } catch (_: NoSuchElementException) {
@@ -273,15 +276,18 @@ class AssistantService(
                         .containsMatchIn(selectionText)
                 val activityMatches = routedActivity != null &&
                     if (relativeTraining) {
-                        matchesRelativeTraining(selectionText, routedActivity, catalogActivities, current.reference_time)
+                        matchesRelativeTraining(selectionText, routedActivity, catalog, current.reference_time)
                     } else {
                         selectionText.contains(routedActivity.title.lowercase(java.util.Locale.ROOT))
                     }
-                val activityUnselected =
+                val activityUnselected = if (relativeTraining) {
+                    selectedActivityId != null && !activityMatches
+                } else {
                     target.activityId != null &&
                         target.activityId != command.activityId &&
-                        !(target.activityId == conversation.activityId && currentDay && !relativeTraining) &&
+                        !(target.activityId == conversation.activityId && currentDay) &&
                         !activityMatches
+                }
                 teamAmbiguous || activityUnselected
             }
         if (unresolved) {
@@ -430,13 +436,14 @@ class AssistantService(
         val profile = profiles.profile(actor, target.organizationId)
         val team = target.teamId?.let { activityData.team(actor, it) }
         require(team == null || team.organizationId == target.organizationId)
+        val catalog = activityData.catalog(actor)
         val visible =
-            activityData.catalogActivities(actor).filter {
+            catalog.activities.filter {
                 it.organization.id == target.organizationId &&
                     (team == null || it.team.id == team.teamId)
             }
         val explicit =
-            (command.activityId ?: target.activityId)?.let { activityData.activity(actor, it) }
+            (target.activityId ?: command.activityId)?.let { activityData.activity(actor, it) }
         val oldActivity =
             conversation.activityId?.let { id ->
                 try {
@@ -504,6 +511,7 @@ class AssistantService(
                     team?.takeIf { it.invitationAccess }?.let { duties.targets(actor, it.teamId) },
                 "teams" to snapshot.teams.filter { it.organization_id == target.organizationId },
                 "activities" to visible,
+                "activityCategories" to visible.associate { it.id to catalog.categories[it.id] },
                 "selectedActivity" to selected,
                 "invitations" to invitations,
                 "invitationSummary" to invitations?.groupingBy { it.response }?.eachCount(),
@@ -538,6 +546,8 @@ class AssistantService(
             val configuration = requireNotNull(editorTeam.editor)
             require(actor.channel == "web" && editorTeam.teamId == draft.teamId)
             require(draft.weekdays.all { it in 1..7 })
+            require(draft.durationMinutes == null || draft.durationMinutes in 1..10080)
+            require(draft.gatheringMinutesBefore == null || draft.gatheringMinutesBefore in 0..10080)
             require(draft.activityTypeId == null || configuration.types.any { it.id == draft.activityTypeId })
         }
         val drafts = proposals.preview(actor, conversation, target, answer)
@@ -547,7 +557,7 @@ class AssistantService(
     private fun matchesRelativeTraining(
         text: String,
         activity: PersonalActivity,
-        catalogue: List<PersonalActivity>,
+        catalogue: AssistantActivityCatalog,
         now: java.time.Instant,
     ): Boolean {
         if (!text.contains("träning")) return false
@@ -559,10 +569,10 @@ class AssistantService(
         val evening = Regex("\\b(ikväll|i kväll|kvällens)\\b").containsMatchIn(text)
         val zone = java.time.ZoneId.of(activity.organization.time_zone)
         val date = now.atZone(zone).toLocalDate().plusDays(dayOffset)
-        val candidates = catalogue.filter {
+        val candidates = catalogue.activities.filter {
             val start = it.starts_at.atZone(zone)
             it.organization.id == activity.organization.id && it.team.id == activity.team.id &&
-                it.status == "scheduled" && it.title.contains("träning", ignoreCase = true) &&
+                it.status == "scheduled" && catalogue.categories[it.id] == "session" &&
                 start.toLocalDate() == date && (!evening || start.hour >= 17)
         }
         return candidates.singleOrNull()?.id == activity.id

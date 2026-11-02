@@ -1,6 +1,8 @@
 package se.forena.api.assistant
 
 import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalTime
 import java.util.UUID
 import se.forena.api.activities.ActivityCommand
 import se.forena.api.activities.ActivitySeriesCommand
@@ -116,10 +118,13 @@ data class ActivityEditorDraft(
     val title: String = "",
     val description: String = "",
     val location: String = "",
-    val startsOn: java.time.LocalDate? = null,
-    val startTime: java.time.LocalTime? = null,
-    val endsOn: java.time.LocalDate? = null,
+    val startsOn: LocalDate? = null,
+    val startTime: LocalTime? = null,
+    val endsOn: LocalDate? = null,
     val weekdays: List<Int> = emptyList(),
+    val endTime: LocalTime? = null,
+    val durationMinutes: Int? = null,
+    val gatheringMinutesBefore: Int? = null,
 )
 
 data class ModelAnswer(

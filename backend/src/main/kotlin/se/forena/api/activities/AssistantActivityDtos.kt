@@ -78,3 +78,11 @@ data class InvitationChannelState(
     val organizationId: UUID,
     val teamId: UUID,
 )
+
+/** Categories for the same authorized snapshot, independent of display titles. */
+data class AssistantActivityCatalog(
+    val activities: List<PersonalActivity>,
+    val categories: Map<UUID, String>,
+)
+
+data class AssistantActivityCategory(val id: UUID, val category: String)
