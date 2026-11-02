@@ -57,6 +57,7 @@ Exempel på implementation:
 - [Discipliner – gemensam modell och utökningsarkitektur](discipliner.md) – Redo.
 - [Fotboll – migrering, spelaregenskaper och matchuppföljning](fotboll.md) – Redo.
 - [Telegram-boten](telegram-bot.md) – Redo.
+- [Närvaropåminnelse via Telegram](telegram-narvaropaminnelse.md) – Utkast, bekräftade mottagar- och påminnelseregler med återstående avgränsningar.
 - [Närvaroregistrering](narvaroregistrering.md) – Redo.
 - [AI-assistenten](ai-assistent.md) – Redo.
 - [Lagmedlemmar – hantera trupp och medlemsansökningar](hantera-trupp.md) – Redo.

@@ -1,7 +1,7 @@
 # Telegram-boten
 
 - Status: Redo
-- Senast uppdaterad: 2026-10-28
+- Senast uppdaterad: 2026-11-02
 - Berörda dokument: [Telegram](../telegram.md), [arkitektur](../architecture.md),
   [säkerhetsarkitektur](../security-architecture.md),
   [AI-assistenten](ai-assistent.md), [M14](../migration/tasks/m14-telegram.md)
@@ -68,6 +68,10 @@ Privat huvudflöde:
 
 Närvaroflödet följer samma granskning men kräver närvarobehörighet och
 knappen Registrera närvaro. Kallelsesvar och faktisk närvaro är skilda data.
+
+Automatisk privat påminnelse efter avslutad aktivitet beskrivs i
+[närvaropåminnelse via Telegram](telegram-narvaropaminnelse.md).
+Den separata specen är ett utkast; påminnelsen är ännu inte implementerad.
 
 ## Befintligt underlag
 
