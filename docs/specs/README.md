@@ -48,6 +48,7 @@ Exempel på implementation:
 
 ## Sparade specar
 
+- [MCP-koppling](mcp-koppling.md) – Redo, godkänd spec för ChatGPT-anslutning, läsåtkomst och aktivitetsskapande med bekräftelse.
 - [Mitt konto](mitt-konto.md) – Redo, godkänd spec för profil, barnkopplingar, följaråtkomst, kontosäkerhet och kontolivscykel.
 - [Publik klubbsida – information, nyheter och ansökningsformulär](publik-klubbsida.md) – Redo, godkänd spec för klubbidentitet, domäner, nyheter och ansökningar till lag, fotbollsskola och läger.
 - [Administration – klubbstruktur, roller och inbjudningar](administration.md) – Redo, godkänd spec för struktur, administratörsroller, behörighetsprofiler och inbjudningar.
