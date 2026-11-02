@@ -136,11 +136,46 @@ class AssistantService(
                     activityData.catalogTeams(actor))
                 .distinctBy { it.id }
                 .filter { team -> organizations.any { it.id == team.organizationId } }
-        val plan =
+        val recentMessages = conversations.recentMessages(id)
+        val history =
+            recentMessages
+                .filter { message ->
+                    message.organizationId == null ||
+                        organizations.any { it.id == message.organizationId }
+                }
+                .map {
+                    mapOf(
+                        "role" to it.role,
+                        "content" to it.content.take(4000),
+                        "createdAt" to it.createdAt.toString(),
+                    )
+                }
+        val namedTeam = catalogue.singleOrNull {
+            it.name.equals(command.text.trim(), ignoreCase = true)
+        }
+        val preceding = recentMessages.dropLast(1).takeLast(2)
+        val clarifiedQuestion =
+            preceding.firstOrNull()?.takeIf {
+                namedTeam != null &&
+                    preceding.size == 2 &&
+                    it.role == "user" &&
+                    preceding.last().role == "assistant" &&
+                    preceding.last().content.contains('?') &&
+                    (preceding.last().organizationId == null ||
+                        preceding.last().organizationId == namedTeam.organizationId)
+            }
+        val selectedTeam = namedTeam?.id ?: conversation.teamId
+        val resolvedQuestion =
+            if (clarifiedQuestion != null && namedTeam != null)
+                "${clarifiedQuestion.content}\nLag: ${namedTeam.name}"
+            else command.text
+        val routedPlan =
             model.route(
                 json.writeValueAsString(
                     mapOf(
-                        "question" to command.text,
+                        "question" to resolvedQuestion,
+                        "latestMessage" to command.text,
+                        "conversationHistory" to history,
                         "organizations" to organizations,
                         "teams" to catalogue,
                         "activities" to
@@ -158,11 +193,26 @@ class AssistantService(
                                     )
                                 },
                         "clock" to current.reference_time,
-                        "explicitTeamId" to conversation.teamId,
+                        "explicitTeamId" to selectedTeam,
                         "explicitActivityId" to command.activityId,
                         "previousActivityId" to conversation.activityId,
                     )
                 )
+            )
+        val plan =
+            routedPlan.copy(
+                targets =
+                    routedPlan.targets.map { target ->
+                        if (
+                            target.teamId == null &&
+                                catalogue.any {
+                                    it.id == selectedTeam &&
+                                        it.organizationId == target.organizationId
+                                }
+                        )
+                            target.copy(teamId = selectedTeam)
+                        else target
+                    }
             )
         if (plan.clarification != null) {
             saveReply(actor, conversation, AssistantReply("Förena", null, plan.clarification), emit)
@@ -183,7 +233,7 @@ class AssistantService(
                     target.teamId != null &&
                         clubTeams.size > 1 &&
                         target.teamId != command.teamId &&
-                        target.teamId != conversation.teamId &&
+                        target.teamId != selectedTeam &&
                         target.teamId != activityTeam &&
                         namedTeams.singleOrNull()?.id != target.teamId
                 val routedActivity =
@@ -200,12 +250,28 @@ class AssistantService(
                         activity.starts_at.atZone(zone).toLocalDate() ==
                             current.reference_time.atZone(zone).toLocalDate()
                     } == true
+                val selectionText =
+                    if (
+                        routedActivity != null &&
+                            clarifiedQuestion != null &&
+                            clarifiedQuestion.createdAt
+                                .atZone(java.time.ZoneId.of(routedActivity.organization.time_zone))
+                                .toLocalDate() ==
+                                current.reference_time
+                                    .atZone(
+                                        java.time.ZoneId.of(routedActivity.organization.time_zone)
+                                    )
+                                    .toLocalDate()
+                    )
+                        "${clarifiedQuestion.content} ${command.text}"
+                            .lowercase(java.util.Locale.ROOT)
+                    else questionText
                 val activityUnselected =
                     target.activityId != null &&
                         target.activityId != command.activityId &&
                         !(target.activityId == conversation.activityId && currentDay) &&
                         (routedActivity == null ||
-                            !questionText.contains(
+                            !selectionText.contains(
                                 routedActivity.title.lowercase(java.util.Locale.ROOT)
                             ))
                 teamAmbiguous || activityUnselected
@@ -235,7 +301,8 @@ class AssistantService(
                     AssistantPrompts.rules,
                     json.writeValueAsString(
                         mapOf(
-                            "question" to command.text,
+                            "question" to resolvedQuestion,
+                            "conversationHistory" to history,
                             "memories" to memories,
                             "viewer" to identities.viewer(actor, null, null),
                             "profile" to "Neutral personlig Förena-assistent",
@@ -279,7 +346,13 @@ class AssistantService(
                     {
                         val reply =
                             try {
-                                clubReply(actor, conversation, target, command, targets.size == 1)
+                                clubReply(
+                                    actor,
+                                    conversation,
+                                    target,
+                                    command.copy(text = resolvedQuestion),
+                                    targets.size == 1,
+                                )
                             } catch (_: Exception) {
                                 AssistantReply(
                                     organizations.single { it.id == target.organizationId }.name,
@@ -402,6 +475,7 @@ class AssistantService(
             conversations.routedQuestion(conversation, target.organizationId, clubQuestion)
         }
         val thread = conversations.clubContext(conversation.id, target.organizationId)
+        val invitations = selected?.let { activityData.invitations(actor, it.id) }
         val context =
             mapOf(
                 "question" to (target.question ?: command.text),
@@ -422,7 +496,10 @@ class AssistantService(
                 "teams" to snapshot.teams.filter { it.organization_id == target.organizationId },
                 "activities" to visible,
                 "selectedActivity" to selected,
-                "invitations" to selected?.let { activityData.invitations(actor, it.id) },
+                "invitations" to invitations,
+                "invitationSummary" to invitations?.groupingBy { it.response }?.eachCount(),
+                "invitationSummaryScope" to
+                    if (team?.invitationAccess == true) "whole_activity" else "visible_people_only",
                 "attendance" to
                     selected
                         ?.takeIf { it.can_manage_attendance }

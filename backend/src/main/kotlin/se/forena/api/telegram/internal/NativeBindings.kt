@@ -3,6 +3,7 @@ package se.forena.api.telegram.internal
 import org.springframework.aot.hint.annotation.RegisterReflectionForBinding
 import org.springframework.context.annotation.Configuration
 import se.forena.api.telegram.TelegramButton
+import se.forena.api.telegram.TelegramTextEntity
 import se.forena.api.telegram.TelegramGroup
 import se.forena.api.telegram.GroupPairing
 import se.forena.api.telegram.GroupLink
@@ -16,6 +17,7 @@ import se.forena.api.telegram.TelegramNotification
 @Configuration(proxyBeanMethods = false)
 @RegisterReflectionForBinding(
     TelegramButton::class,
+    TelegramTextEntity::class,
     TelegramGroup::class,
     GroupPairing::class,
     GroupLink::class,

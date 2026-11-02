@@ -332,7 +332,7 @@ class TelegramWebhookService(
 
     private fun sendReply(chat: Long, reply: AssistantReply) {
         if (reply.pending) return
-        send(chat, "${reply.sender}: ${reply.text}")
+        send(chat, "${reply.sender}\n\n${reply.text}")
         reply.proposals.forEach { proposal ->
             val button =
                 if (proposal.kind in listOf("response", "attendance"))
@@ -351,13 +351,14 @@ class TelegramWebhookService(
     }
 
     private fun send(chat: Long, text: String, buttons: List<List<TelegramButton>> = emptyList()) {
-        val parts = text.chunked(3800)
+        val parts = TelegramTextFormatter.chunks(text)
         parts.forEachIndexed { index, part ->
             telegram.call(
                 "sendMessage",
                 mapOf(
                     "chat_id" to chat,
-                    "text" to part,
+                    "text" to part.text,
+                    "entities" to part.entities,
                     "protect_content" to true,
                     "reply_markup" to
                         mapOf(

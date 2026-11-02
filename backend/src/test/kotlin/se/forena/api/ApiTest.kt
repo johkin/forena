@@ -10,6 +10,10 @@ import org.mockito.ArgumentMatchers.anyMap
 import se.forena.api.activities.ActivityDutyCommand
 import se.forena.api.telegram.TelegramUpdateRetentionService
 import se.forena.api.telegram.TelegramGroupService
+import se.forena.api.assistant.AssistantTarget
+import se.forena.api.assistant.RoutingPlan
+import se.forena.api.assistant.MessageCommand
+import se.forena.api.assistant.ModelAnswer
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -30,6 +34,8 @@ import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable
 import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
@@ -78,6 +84,135 @@ class ApiTest {
     @Autowired lateinit var rosterService: se.forena.api.activities.TeamRosterService
 
     private fun assistantActor() = se.forena.api.identity.Actor(parent, session, "")
+
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
+    fun `Telegram clarification keeps the question and selected team without using the web conversation`(
+        clubClarification: Boolean
+    ) {
+        val team = rosterTeam()
+        admin.update("update forena.team set name='F2016' where id=?", team)
+        rosterMember(own)
+        rosterPermission(permission = "invitation.manage")
+        val web = assistant.new(assistantActor())
+        admin.update(
+            "insert into forena.assistant_message(id,conversation_id,role,sender,content) values(?,?,'user','Du','Separat hemlig webbfråga')",
+            UUID.randomUUID(),
+            web.id,
+        )
+        val proof =
+            requireNotNull(telegramIdentities.start(parent, true).pairingUrl)
+                .substringAfter("?start=")
+        val user =
+            java.util.concurrent.ThreadLocalRandom.current().nextLong(100, Long.MAX_VALUE - 10)
+        val actor = telegramIdentities.actor(telegramIdentities.connect(proof, user, user, 1))
+        val conversation = assistant.activeTelegram(actor)
+        var turns = 0
+        Mockito.`when`(assistantModel.route(anyString())).thenAnswer { invocation ->
+            val context = invocation.getArgument<String>(0)
+            assertThat(context).doesNotContain("Separat hemlig webbfråga")
+            turns++
+            if (turns == 1) {
+                if (clubClarification) RoutingPlan(listOf(AssistantTarget(organization)))
+                else RoutingPlan(clarification = "Vilket lag gäller träningen?")
+            } else {
+                assertThat(context)
+                    .contains(
+                        "Hur många kommer till Träning?",
+                        "Vilket lag gäller träningen?",
+                        "F2016",
+                    )
+                assertThat(json.readTree(context).path("explicitTeamId").asText())
+                    .isEqualTo(team.toString())
+                RoutingPlan(listOf(AssistantTarget(organization, activityId = activity)))
+            }
+        }
+        Mockito.`when`(assistantModel.answer(anyString(), anyString())).thenAnswer { invocation ->
+            if (turns == 1) return@thenAnswer ModelAnswer("Vilket lag gäller träningen?")
+            val context = json.readTree(invocation.getArgument<String>(1))
+            assertThat(context.path("question").asText())
+                .isEqualTo("Hur många kommer till Träning?\nLag: F2016")
+            assertThat(context.path("team").path("teamId").asText()).isEqualTo(team.toString())
+            assertThat(context.path("invitationSummary").path("pending").asInt()).isEqualTo(4)
+            assertThat(context.path("invitationSummaryScope").asText()).isEqualTo("whole_activity")
+            ModelAnswer("| Svar | Antal |\n| --- | --- |\n| Ej svarat | 4 |")
+        }
+        assistant.send(actor, conversation.id, MessageCommand("Hur många kommer till Träning?")) {}
+        val replies = mutableListOf<se.forena.api.assistant.AssistantReply>()
+        assistant.send(actor, conversation.id, MessageCommand("F2016")) { replies.add(it) }
+        assertThat(replies.filterNot { it.pending }.single().sender).isEqualTo("Klubb")
+        assertThat(assistant.view(actor, conversation.id).conversation.teamId).isEqualTo(team)
+        verify(assistantModel, times(if (clubClarification) 2 else 1))
+            .answer(anyString(), anyString())
+        val fresh = assistant.new(actor)
+        Mockito.doAnswer { invocation ->
+                val context = json.readTree(invocation.getArgument<String>(0))
+                assertThat(context.path("conversationHistory").size()).isEqualTo(1)
+                assertThat(context.toString())
+                    .doesNotContain("Hur många kommer", "Vilket lag gäller")
+                assertThat(context.path("explicitTeamId").isNull).isTrue()
+                RoutingPlan(clarification = "Vad vill du veta?")
+            }
+            .`when`(assistantModel)
+            .route(anyString())
+        assistant.send(actor, fresh.id, MessageCommand("Nytt ämne")) {}
+    }
+
+    @Test
+    fun `assistant router history is bounded and excludes clubs without current access`() {
+        val actor = assistantActor()
+        val conversation = assistant.new(actor)
+        val foreign = UUID.randomUUID()
+        admin.update("insert into forena.organization(id,name) values(?,'Annan klubb')", foreign)
+        for (index in 1..20) {
+            admin.update(
+                "insert into forena.assistant_message(id,conversation_id,role,sender,content,created_at) values(?,?,'user','Du',?,clock_timestamp()-?*interval '1 second')",
+                UUID.randomUUID(),
+                conversation.id,
+                "Äldre fråga $index",
+                30 - index,
+            )
+        }
+        admin.update(
+            "insert into forena.assistant_message(id,conversation_id,role,sender,organization_id,content) values(?,?,'assistant','Annan klubb',?,'Historik utan aktuell klubbåtkomst')",
+            UUID.randomUUID(),
+            conversation.id,
+            foreign,
+        )
+        Mockito.`when`(assistantModel.route(anyString())).thenAnswer { invocation ->
+            val context = invocation.getArgument<String>(0)
+            assertThat(json.readTree(context).path("conversationHistory").size())
+                .isLessThanOrEqualTo(12)
+            assertThat(context)
+                .doesNotContain("Äldre fråga 1\"", "Historik utan aktuell klubbåtkomst")
+            RoutingPlan(clarification = "Vilket lag?")
+        }
+        assistant.send(actor, conversation.id, MessageCommand("Nästa fråga")) {}
+        verify(assistantModel).route(anyString())
+    }
+
+    @Test
+    fun `naming a team after a completed answer does not repeat the previous question`() {
+        admin.update("update forena.team set name='F2016' where id=?", rosterTeam())
+        val actor = assistantActor()
+        val conversation = assistant.new(actor)
+        admin.update(
+            "insert into forena.assistant_message(id,conversation_id,role,sender,content,created_at) values(?,?,'user','Du','Förra ämnet',clock_timestamp()-interval '2 seconds')",
+            UUID.randomUUID(),
+            conversation.id,
+        )
+        admin.update(
+            "insert into forena.assistant_message(id,conversation_id,role,sender,content) values(?,?,'assistant','Förena','Det här är ett avslutat svar.')",
+            UUID.randomUUID(),
+            conversation.id,
+        )
+        Mockito.`when`(assistantModel.route(anyString())).thenAnswer { invocation ->
+            val context = json.readTree(invocation.getArgument<String>(0))
+            assertThat(context.path("question").asString()).isEqualTo("F2016")
+            RoutingPlan(clarification = "Vad vill du veta om F2016?")
+        }
+        assistant.send(actor, conversation.id, MessageCommand("F2016")) {}
+    }
 
     @Test
     fun `activity update admits all required permissions before waiting and rejects the next command`() {
@@ -556,6 +691,7 @@ class ApiTest {
 
     @Test
     fun `private Telegram text reuses the shared assistant and duplicate updates never run a second model call`() {
+        val answer = "Verifierat Telegram-svar\n| Svar | Antal |\n| --- | --- |\n| Kommer | 12 |"
         val user =
             java.util.concurrent.ThreadLocalRandom.current().nextLong(100, Long.MAX_VALUE - 10)
         val proof =
@@ -570,14 +706,20 @@ class ApiTest {
                     org.mockito.ArgumentMatchers.anyString(),
                 )
             )
-            .thenReturn(se.forena.api.assistant.ModelAnswer("Verifierat Telegram-svar"))
+            .thenReturn(se.forena.api.assistant.ModelAnswer(answer))
         org.mockito.Mockito.`when`(
                 telegramClient.call(
                     org.mockito.ArgumentMatchers.anyString(),
                     org.mockito.ArgumentMatchers.anyMap<String, Any?>(),
                 )
             )
-            .thenReturn(json.createObjectNode().put("message_id", 1))
+            .thenAnswer { invocation ->
+                val arguments = invocation.getArgument<Map<String, Any?>>(1)
+                val body = json.readTree(json.writeValueAsString(arguments))
+                assertThat(body.path("text").asString()).startsWith("Förena\n\nVerifierat Telegram-svar")
+                assertThat(body.path("entities").path(0).path("type").asString()).isEqualTo("pre")
+                json.createObjectNode().put("message_id", 1)
+            }
         val update =
             json.readTree(
                 """{"update_id":$user,"message":{"from":{"id":$user},"chat":{"id":$user,"type":"private"},"text":"Hjälp mig"}}"""
@@ -591,7 +733,7 @@ class ApiTest {
             )
         val conversation = assistant.list(assistantActor()).single { it.channel == "telegram" }
         assertThat(assistant.view(assistantActor(), conversation.id).messages.last().content)
-            .isEqualTo("Verifierat Telegram-svar")
+            .isEqualTo(answer)
     }
 
     @Test
