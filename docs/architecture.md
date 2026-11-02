@@ -6,7 +6,9 @@ Den nya appen delar kontobundna samtal, behörighetskontrollerade läsningar och
 separat bekräftade förslag mellan webb och Telegram. Klubbprofiler och
 sektionsinstruktioner hålls åtskilda från personliga minnen och andra klubbars
 kontext. Kanaladaptrarna återanvänder aktiviteter/närvaro/kallelsesvar; modellen
-har inga skriv- eller webbverktyg. Telegram använder verifierad kontokoppling
+har inga skriv- eller webbverktyg. Webbens skapandefrågor kan lämna ett typat,
+behörighetskontrollerat redigeringsutkast som öppnar den gemensamma aktivitetsredigeraren;
+redigerarens ordinarie granskning och sparkommando gäller. Telegram använder verifierad kontokoppling
 utan Supabase-signering eller browser-sessioner. Se
 [implementation, konfiguration och aktiveringsprov](migration/assistant-telegram.md).
 

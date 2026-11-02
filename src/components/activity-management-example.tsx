@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { z } from "zod";
 import { previewRuleWeeklySeries } from "../lib/activity-series";
 import { normalizeActivityTimingRules } from "../lib/activity-time-rules";
+import { PersistentAssistant } from "./persistent-assistant";
 import { ActivityManagement } from "./activity-management";
 import { TeamActivityActions } from "./team-activity-actions";
 import type { ParticipationFetch } from "./activity-invitation-response";
@@ -12,6 +13,7 @@ const team = {
   id: "11111111-1111-4111-8111-111111111111", organizationId: "22222222-2222-4222-8222-222222222222",
   name: "Exempellaget", organizationName: "Exempelföreningen", timeZone: "Europe/Stockholm", canManageInvitations: true,
 };
+const trainingTypeId = "00000000-0000-4000-8000-000000000005";
 const initial = {
   id: "33333333-3333-4333-8333-333333333333", organization_id: team.organizationId, team_id: team.id,
   activity_type_id: "00000000-0000-4000-8000-000000000004", title: "Exempelaktivitet", description: "Ta med vattenflaska.",
@@ -23,8 +25,17 @@ const initial = {
 export function ActivityManagementExample() {
   const activities = useRef([initial]);
   const [state, setState] = useState("interactive");
+  const [assistantDraftOpen, setAssistantDraftOpen] = useState(false);
   const [openFromTeam, setOpenFromTeam] = useState(false);
   const request = useCallback<ParticipationFetch>(async (path, init) => {
+    const conversation = { id: "11111111-1111-4111-8111-111111111119", organizationId: null,
+      channel: "web", active: true, updatedAt: "2026-11-02T12:00:00Z" };
+    if (path.endsWith("/messages")) return new Response(JSON.stringify({ sender: "Förena", organizationId: team.organizationId,
+      text: "Granska den återkommande träningen i formuläret.", proposals: [], failed: false,
+      activityEditor: { teamId: team.id, recurring: true, activityTypeId: trainingTypeId, title: "Träning", description: "", location: "", weekdays: [2, 4] },
+    }) + "\n", { headers: { "Content-Type": "application/x-ndjson" } });
+    if (path === "/api/assistant/conversations") return Response.json(init?.method === "POST" ? conversation : [conversation]);
+    if (path.startsWith("/api/assistant/conversations/")) return Response.json({ conversation, messages: [], proposals: [] });
     if (state === "loading") return new Promise<Response>(resolve => {
       init?.signal?.addEventListener("abort", () => resolve(Response.json([])), { once: true });
     });
@@ -67,7 +78,8 @@ export function ActivityManagementExample() {
       return Response.json({ activity: saved }, { status: init.method === "POST" ? 201 : 200 });
     }
     return Response.json({ team, disciplineKey: null, sectionId: null, defaults: [], groups: [],
-      types: [{ id: initial.activity_type_id, name: "Övrigt", slug: "ovrigt", system_category: "other", organization_id: null }],
+      types: [{ id: initial.activity_type_id, name: "Övrigt", slug: "ovrigt", system_category: "other", organization_id: null },
+        { id: trainingTypeId, name: "Träning", slug: "traning", system_category: "session", organization_id: null }],
       members: [{ id: "44444444-4444-4444-8444-444444444444", displayName: "Alex Exempel", role: "participant" }],
       activities: activities.current,
     });
@@ -81,6 +93,12 @@ export function ActivityManagementExample() {
       <option value="empty">Ingen lagbehörighet</option>
     </select></label>
     <ActivityManagement key={state} request={request} teamId={team.id} />
+    <PersistentAssistant request={request} name="Träningsassistenten (exempel)" />
+    <h3>Återkommande träning från assistenten</h3>
+    <button type="button" onClick={() => setAssistantDraftOpen(true)}>Granska assistentens serieutkast</button>
+    {assistantDraftOpen ? <ActivityManagement request={request} initialTeamId={team.id} createOnLoad
+      assistantDraft={{ teamId: team.id, recurring: true, activityTypeId: trainingTypeId, title: "Träning", description: "", location: "", weekdays: [2, 4] }}
+      onEditorClose={() => setAssistantDraftOpen(false)} /> : null}
     <h3>Redigera från en öppnad aktivitet</h3>
     <p>Öppna Redigera för att prova dialogens åtgärdsrad. Knappar och fokusramar ska rymmas med luft till kanterna även på mobil och när formuläret scrollas.</p>
     <div className="card activity-details">

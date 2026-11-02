@@ -190,6 +190,8 @@ class AssistantService(
                                         "organizationId" to it.organization.id,
                                         "teamId" to it.team.id,
                                         "startsAt" to it.starts_at,
+                                        "timeZone" to it.organization.time_zone,
+                                        "status" to it.status,
                                     )
                                 },
                         "clock" to current.reference_time,
@@ -266,14 +268,20 @@ class AssistantService(
                         "${clarifiedQuestion.content} ${command.text}"
                             .lowercase(java.util.Locale.ROOT)
                     else questionText
+                val relativeTraining = selectionText.contains("träning") &&
+                    Regex("\\b(idag|i dag|dagens|ikväll|i kväll|kvällens|imorgon|i morgon|morgondagens)\\b")
+                        .containsMatchIn(selectionText)
+                val activityMatches = routedActivity != null &&
+                    if (relativeTraining) {
+                        matchesRelativeTraining(selectionText, routedActivity, catalogActivities, current.reference_time)
+                    } else {
+                        selectionText.contains(routedActivity.title.lowercase(java.util.Locale.ROOT))
+                    }
                 val activityUnselected =
                     target.activityId != null &&
                         target.activityId != command.activityId &&
-                        !(target.activityId == conversation.activityId && currentDay) &&
-                        (routedActivity == null ||
-                            !selectionText.contains(
-                                routedActivity.title.lowercase(java.util.Locale.ROOT)
-                            ))
+                        !(target.activityId == conversation.activityId && currentDay && !relativeTraining) &&
+                        !activityMatches
                 teamAmbiguous || activityUnselected
             }
         if (unresolved) {
@@ -310,7 +318,8 @@ class AssistantService(
                     ),
                 )
             require(
-                answer.activity == null &&
+                answer.activityEditor == null &&
+                    answer.activity == null &&
                     answer.series == null &&
                     answer.response == null &&
                     answer.attendance == null &&
@@ -524,8 +533,39 @@ class AssistantService(
                     else null,
             )
         val answer = model.answer(AssistantPrompts.rules, json.writeValueAsString(context))
+        val editor = answer.activityEditor?.also { draft ->
+            val editorTeam = requireNotNull(team)
+            val configuration = requireNotNull(editorTeam.editor)
+            require(actor.channel == "web" && editorTeam.teamId == draft.teamId)
+            require(draft.weekdays.all { it in 1..7 })
+            require(draft.activityTypeId == null || configuration.types.any { it.id == draft.activityTypeId })
+        }
         val drafts = proposals.preview(actor, conversation, target, answer)
-        return AssistantReply(profile.name, target.organizationId, answer.answer, drafts)
+        return AssistantReply(profile.name, target.organizationId, answer.answer, drafts, activityEditor = editor)
+    }
+
+    private fun matchesRelativeTraining(
+        text: String,
+        activity: PersonalActivity,
+        catalogue: List<PersonalActivity>,
+        now: java.time.Instant,
+    ): Boolean {
+        if (!text.contains("träning")) return false
+        val dayOffset = when {
+            Regex("\\b(imorgon|i morgon|morgondagens)\\b").containsMatchIn(text) -> 1L
+            Regex("\\b(idag|i dag|dagens|ikväll|i kväll|kvällens)\\b").containsMatchIn(text) -> 0L
+            else -> return false
+        }
+        val evening = Regex("\\b(ikväll|i kväll|kvällens)\\b").containsMatchIn(text)
+        val zone = java.time.ZoneId.of(activity.organization.time_zone)
+        val date = now.atZone(zone).toLocalDate().plusDays(dayOffset)
+        val candidates = catalogue.filter {
+            val start = it.starts_at.atZone(zone)
+            it.organization.id == activity.organization.id && it.team.id == activity.team.id &&
+                it.status == "scheduled" && it.title.contains("träning", ignoreCase = true) &&
+                start.toLocalDate() == date && (!evening || start.hour >= 17)
+        }
+        return candidates.singleOrNull()?.id == activity.id
     }
 
     private fun saveReply(

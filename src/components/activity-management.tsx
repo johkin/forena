@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { z } from "zod";
 import { createPortal } from "react-dom";
+import { assistantActivityDraft, type AssistantActivityEditor } from "../lib/ai/assistant-activity-editor";
 import { ActivityEditButton } from "./activity-edit-button";
 import { ActivityEditorModal } from "./activity-editor-modal";
 import type { Activity, Member, Organization, Team } from "../domain/club";
@@ -64,8 +65,9 @@ function configuration(context: EditorContext): ActivityConfiguration {
 }
 
 /** The existing editor uses the account-bound Kotlin transport, without page reloads. */
-export function ActivityManagement({ request, teamId, activityId, onSaved, initialTeamId = "", createOnLoad = false, onEditorClose }: {
+export function ActivityManagement({ request, teamId, activityId, onSaved, initialTeamId = "", createOnLoad = false, onEditorClose, assistantDraft }: {
   request: ParticipationFetch; teamId?: string; activityId?: string; onSaved?: () => void;
+  assistantDraft?: AssistantActivityEditor;
   initialTeamId?: string; createOnLoad?: boolean; onEditorClose?: () => void;
 }) {
   const [now, setNow] = useState(() => Date.now());
@@ -134,6 +136,7 @@ export function ActivityManagement({ request, teamId, activityId, onSaved, initi
       gatheringAt: current.gathering_at ?? undefined, status: current.status === "scheduled" ? "published" : "cancelled" } : undefined;
     editor = <ActivityEditorModal key={current?.id ?? "create"} mode={current ? "edit" : "create"}
       organization={organization} team={team} activity={activity} members={members} source="database"
+      draft={!current && assistantDraft?.teamId === context.team.id ? assistantActivityDraft(assistantDraft, context.team.timeZone) : undefined}
       canManageInvitations={context.team.canManageInvitations}
       onClose={() => { setEditing(undefined); onEditorClose?.(); }} onNotice={setNotice}
       adapter={{ request: editorRequest, revision: current?.revision,

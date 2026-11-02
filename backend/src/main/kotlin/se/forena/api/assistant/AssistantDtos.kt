@@ -60,6 +60,7 @@ data class AssistantReply(
     val proposals: List<AssistantProposal> = emptyList(),
     val failed: Boolean = false,
     val pending: Boolean = false,
+    val activityEditor: ActivityEditorDraft? = null,
 )
 
 data class AssistantProfile(
@@ -108,8 +109,22 @@ data class PersonAttendance(val personId: UUID, val present: Boolean)
  * Provider output has no execution path. Every draft is separately authorized, normalized and
  * stored.
  */
+data class ActivityEditorDraft(
+    val teamId: UUID,
+    val recurring: Boolean = false,
+    val activityTypeId: UUID? = null,
+    val title: String = "",
+    val description: String = "",
+    val location: String = "",
+    val startsOn: java.time.LocalDate? = null,
+    val startTime: java.time.LocalTime? = null,
+    val endsOn: java.time.LocalDate? = null,
+    val weekdays: List<Int> = emptyList(),
+)
+
 data class ModelAnswer(
     val answer: String,
+    val activityEditor: ActivityEditorDraft? = null,
     val memory: MemoryDraft? = null,
     val activity: ActivityCommand? = null,
     val series: ActivitySeriesCommand? = null,

@@ -92,6 +92,8 @@ class ApiTest {
     ) {
         val team = rosterTeam()
         admin.update("update forena.team set name='F2016' where id=?", team)
+        admin.update("update forena.organization set time_zone='Europe/Stockholm' where id=?", organization)
+        admin.update("update forena.activity set title='Fotbollsträning F2016', starts_at=((current_timestamp at time zone 'Europe/Stockholm')::date + time '19:00') at time zone 'Europe/Stockholm', ends_at=((current_timestamp at time zone 'Europe/Stockholm')::date + time '23:59') at time zone 'Europe/Stockholm' where id=?", activity)
         rosterMember(own)
         rosterPermission(permission = "invitation.manage")
         val web = assistant.new(assistantActor())
@@ -118,7 +120,7 @@ class ApiTest {
             } else {
                 assertThat(context)
                     .contains(
-                        "Hur många kommer till Träning?",
+                        "Vilka kommer på kvällens träning?",
                         "Vilket lag gäller träningen?",
                         "F2016",
                     )
@@ -131,13 +133,13 @@ class ApiTest {
             if (turns == 1) return@thenAnswer ModelAnswer("Vilket lag gäller träningen?")
             val context = json.readTree(invocation.getArgument<String>(1))
             assertThat(context.path("question").asText())
-                .isEqualTo("Hur många kommer till Träning?\nLag: F2016")
+                .isEqualTo("Vilka kommer på kvällens träning?\nLag: F2016")
             assertThat(context.path("team").path("teamId").asText()).isEqualTo(team.toString())
             assertThat(context.path("invitationSummary").path("pending").asInt()).isEqualTo(4)
             assertThat(context.path("invitationSummaryScope").asText()).isEqualTo("whole_activity")
             ModelAnswer("| Svar | Antal |\n| --- | --- |\n| Ej svarat | 4 |")
         }
-        assistant.send(actor, conversation.id, MessageCommand("Hur många kommer till Träning?")) {}
+        assistant.send(actor, conversation.id, MessageCommand("Vilka kommer på kvällens träning?")) {}
         val replies = mutableListOf<se.forena.api.assistant.AssistantReply>()
         assistant.send(actor, conversation.id, MessageCommand("F2016")) { replies.add(it) }
         assertThat(replies.filterNot { it.pending }.single().sender).isEqualTo("Klubb")
@@ -149,13 +151,58 @@ class ApiTest {
                 val context = json.readTree(invocation.getArgument<String>(0))
                 assertThat(context.path("conversationHistory").size()).isEqualTo(1)
                 assertThat(context.toString())
-                    .doesNotContain("Hur många kommer", "Vilket lag gäller")
+                    .doesNotContain("Vilka kommer", "Vilket lag gäller")
                 assertThat(context.path("explicitTeamId").isNull).isTrue()
                 RoutingPlan(clarification = "Vad vill du veta?")
             }
             .`when`(assistantModel)
             .route(anyString())
         assistant.send(actor, fresh.id, MessageCommand("Nytt ämne")) {}
+    }
+
+    @Test
+    fun `web activity creation opens an authorized recurring editor without requiring missing details`() {
+        val team = rosterTeam()
+        rosterMember(own)
+        rosterPermission(permission = "activity.manage")
+        val actor = assistantActor()
+        val conversation = assistant.new(actor)
+        Mockito.`when`(assistantModel.route(anyString()))
+            .thenReturn(RoutingPlan(listOf(AssistantTarget(organization, team))))
+        Mockito.`when`(assistantModel.answer(anyString(), anyString()))
+            .thenReturn(ModelAnswer("Granska träningen i formuläret.",
+                activityEditor = se.forena.api.assistant.ActivityEditorDraft(team, recurring = true, title = "Träning")))
+        val replies = mutableListOf<se.forena.api.assistant.AssistantReply>()
+        assistant.send(actor, conversation.id, MessageCommand("Skapa en återkommande träning", team)) { replies.add(it) }
+        val reply = replies.single { !it.pending }
+        assertThat(reply.failed).isFalse()
+        assertThat(reply.activityEditor?.teamId).isEqualTo(team)
+        assertThat(reply.activityEditor?.recurring).isTrue()
+        assertThat(reply.proposals).isEmpty()
+        assertThat(assistant.view(actor, conversation.id).proposals).isEmpty()
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
+    fun `relative training selection rejects a wrong day and ambiguous evening`(ambiguous: Boolean) {
+        val team = rosterTeam()
+        rosterMember(own)
+        rosterPermission(permission = "invitation.manage")
+        admin.update("update forena.organization set time_zone='Europe/Stockholm' where id=?", organization)
+        admin.update("update forena.activity set title='Träning', starts_at=((current_timestamp at time zone 'Europe/Stockholm')::date + time '19:00') at time zone 'Europe/Stockholm', ends_at=((current_timestamp at time zone 'Europe/Stockholm')::date + time '23:59') at time zone 'Europe/Stockholm' where id=?", activity)
+        if (ambiguous) {
+            admin.update("insert into forena.activity(id,organization_id,team_id,title,starts_at,ends_at) select ?,organization_id,team_id,'Träning 2',starts_at,ends_at from forena.activity where id=?", UUID.randomUUID(), activity)
+        } else {
+            admin.update("update forena.activity set starts_at=starts_at+interval '1 day',ends_at=ends_at+interval '1 day' where id=?", activity)
+        }
+        val actor = assistantActor()
+        val conversation = assistant.new(actor)
+        Mockito.`when`(assistantModel.route(anyString()))
+            .thenReturn(RoutingPlan(listOf(AssistantTarget(organization, team, activity))))
+        val replies = mutableListOf<se.forena.api.assistant.AssistantReply>()
+        assistant.send(actor, conversation.id, MessageCommand("Vilka kommer på kvällens träning?", team)) { replies.add(it) }
+        assertThat(replies.single().text).contains("Vilket lag och vilken aktivitet")
+        verify(assistantModel, never()).answer(anyString(), anyString())
     }
 
     @Test

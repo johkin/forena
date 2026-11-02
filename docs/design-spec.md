@@ -771,3 +771,8 @@ element lämnar fokus på sidan fångas nästa Tab-tryck och förs tillbaka till
 dialogens första eller sista aktiva kontroll.
 En fördröjd fokusåterställning flyttar inte fokus från en kontroll som
 användaren redan har valt i dialogen.
+
+Lagöversikten använder lagmenyn för navigering till Truppen; ingen separat
+Truppen-knapp ska duplicera menyvalet i översiktens åtgärder.
+Assistentens aktivitetsutkast öppnar samma aktivitetsredigerare som Ny aktivitet.
+Assistentdialogen minimeras när formuläret öppnas så att ett enda modalflöde är aktivt.
