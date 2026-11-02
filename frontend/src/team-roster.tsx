@@ -96,12 +96,6 @@ export function TeamRosterPage({ request, teamId }: { request: ParticipationFetc
   </>;
 }
 
-/** Discoverability comes from server-verified roster access, independently of activity rights. */
-export function TeamRosterLink({ request, teamId }: { request: ParticipationFetch; teamId: string }) {
-  const allowed = useRosterAccess(request, teamId);
-  return allowed ? <AppLink className="secondary" href={`/teams/${teamId}/members`}>Truppen</AppLink> : null;
-}
-
 export function TeamRosterNavigation({ request, teamId, pathname }: { request: ParticipationFetch; teamId: string; pathname: string }) {
   const allowed = useRosterAccess(request, teamId);
   const base = `/teams/${teamId}`;

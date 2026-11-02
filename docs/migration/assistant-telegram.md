@@ -160,3 +160,25 @@ en beständig botgemensam transportpaus innan reservkanaler används.
 
 Liveproven ovan kräver riktiga testuppgifter och är separata från automatiska
 prov med syntetiska data. Ingen produktionsbot kopplas om av denna kodändring.
+
+Webbens skapandefrågor använder `activityEditor` för att öppna den gemensamma
+aktivitetsredigeraren med verifierat lag och eventuell serie, aktivitetstyp,
+veckodagar och andra uttryckliga detaljer. Saknad plats och slutdatum lämnas
+öppna i formuläret. Åtgärden är ett redigeringsutkast och skapar ingen aktivitet
+eller separat sparbar chattåtgärd; ordinarie förhandsgranskning och sparande gäller.
+Telegram hänvisar skapande till webben. Klubbens och lagets aktuella åtkomst
+kontrolleras både när redigeringsutkastet lämnas ut och när redigeraren öppnas.
+
+Relativa träningsval som ”kvällens träning” prövas mot behörig katalog i klubbens
+tidszon och kräver en enda matchande, schemalagd träning för det valda laget.
+Träning identifieras med aktivitetstypens `session`-kategori, oberoende av titel.
+Även aktivitet från sidkontext måste uppfylla frågans relativa datum; ett
+verifierat routat aktivitetsval har företräde framför den öppnade sidans aktivitet.
+Kväll avser start från kl. 17. Ett kort lagnamn efter följdfrågan kompletterar
+ursprungsfrågan även när aktivitetens fullständiga titel är längre än ”Träning”.
+
+Redigeringsutkastet bevarar uttryckliga sluttider, passlängder och samlingsavstånd.
+För en serie avser `endsOn` seriens slutdatum, medan `endTime` bestämmer passlängden
+från startklockslaget. För en enstaka aktivitet bevaras båda lokala ändpunkterna.
+Utelämnad passlängd och samling markeras inte som ändrade i redigeraren, så
+aktivitetstypens förval gäller. Uttrycklig nollminuterssamling bevaras.

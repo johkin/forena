@@ -34,6 +34,7 @@ class AssistantProposalService(
         sessions.requireActive(actor)
         require(
             listOf(
+                    answer.activityEditor,
                     answer.memory,
                     answer.activity,
                     answer.series,

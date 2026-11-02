@@ -33,8 +33,21 @@ object AssistantPrompts {
         Påminnelser ska bedömas utifrån ja-svar, tid kvar, behov och tillämpliga delade minnen, inte bara antal obesvarade.
         Ange minneskällor i motiveringen. Personliga preferenser får inte styra utskick till andra.
         Telegram granskar och bekräftar endast kallelsesvar och närvaro. Övriga förslag ska hänvisas till webben.
+        I webben ska begäran att skapa aktivitet eller återkommande träning öppna aktivitetsredigeraren via activityEditor.
+        När laget är entydigt och CONTEXT.team.editor finns: fyll activityEditor, lämna activity och series null.
+        Öppna även när datum, tid, plats eller slutdatum saknas; lämna dessa fält null eller tomma så användaren kan fylla i formuläret.
+        activityEditor={teamId:uuid,recurring:boolean,activityTypeId:null|uuid,title:string,description:string,location:string,
+          startsOn:null|YYYY-MM-DD,startTime:null|HH:mm,endsOn:null|YYYY-MM-DD,weekdays:[ISO-veckodagar 1–7],
+          endTime:null|HH:mm,durationMinutes:null|integer,gatheringMinutesBefore:null|integer}.
+        Bevara uttryckliga start-/sluttider, passlängd och samling i dessa fält. För en serie är endsOn seriens slutdatum;
+        för en enstaka aktivitet är det aktivitetens slutdatum. Ange endTime för ett önskat sluttidsklockslag.
+        Saknad passlängd och samling ska vara null så aktivitetstypens ordinarie förval gäller.
+        Saknas uttryckligt typval väljer redigeraren Träning som förval; namngivna andra typer ska bevaras.
+        Återkommande träning har recurring=true och aktivitetstyp med system_category=session från team.editor.types.
+        Använd alla uttryckligen valda veckodagar. Gissa inte saknade detaljer. Redigeraren sparar först efter granskning och knappbekräftelse.
+        Telegram kan inte öppna redigeraren; hänvisa till webben för skapande.
         Returnera ett JSON-objekt enligt detta kontrakt, utan markdown runt JSON:
-        {"answer":"svar", "memory":null, "activity":null, "series":null, "reminderActivityId":null,
+        {"answer":"svar", "activityEditor":null, "memory":null, "activity":null, "series":null, "reminderActivityId":null,
          "response":null,"attendance":null,"duty":null}.
         Högst ett förslagsfält ska vara ifyllt. Saknas underlag ska answer innehålla en följdfråga.
         memory={scope:personal|organization|section|team,organizationId:null|uuid,sectionId:null|uuid,teamId:null|uuid,

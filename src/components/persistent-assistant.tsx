@@ -1,5 +1,7 @@
 "use client";
 
+import { ActivityManagement } from "./activity-management";
+import { assistantActivityEditorSchema, type AssistantActivityEditor } from "../lib/ai/assistant-activity-editor";
 import { AssistantHeading, AssistantLauncher } from "./assistant-frame";
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -41,6 +43,7 @@ const replySchema = z.object({
   proposals: z.array(proposalSchema).default([]),
   failed: z.boolean(),
   pending: z.boolean().default(false),
+  activityEditor: assistantActivityEditorSchema.nullable().optional(),
 });
 type Conversation = z.infer<typeof conversationSchema>;
 type Message = z.infer<typeof messageSchema>;
@@ -53,12 +56,14 @@ export function AssistantWorkspace({
   teamId,
   activityId,
   initialConversationId,
+  onOpenActivity,
 }: {
   request: ParticipationFetch;
   organizationId?: string;
   teamId?: string;
   activityId?: string;
   initialConversationId?: string;
+  onOpenActivity?: (draft: AssistantActivityEditor) => void;
 }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [conversation, setConversation] = useState<Conversation>();
@@ -197,6 +202,7 @@ export function AssistantWorkspace({
           item.state === "pending" ? { ...item, state: "invalid" } : item,
         ),
       );
+      let editor: AssistantActivityEditor | undefined;
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffered = "";
@@ -235,12 +241,14 @@ export function AssistantWorkspace({
               },
             ]);
             setProposals((current) => [...current, ...reply.proposals]);
+            if (reply.activityEditor) editor = reply.activityEditor;
           }
           if (result.done) break;
         }
       } finally {
         reader.releaseLock();
       }
+      if (editor && mounted.current) onOpenActivity?.(editor);
     });
   }
   async function confirm(proposal: Proposal) {
@@ -502,6 +510,7 @@ export function PersistentAssistant({
   name?: string;
   initialConversationId?: string;
 }) {
+  const [editor, setEditor] = useState<AssistantActivityEditor>();
   const [open, setOpen] = useState(Boolean(initialConversationId));
   const [mounted, setMounted] = useState(Boolean(initialConversationId));
   const dialog = useRef<HTMLDialogElement>(null);
@@ -551,11 +560,20 @@ export function PersistentAssistant({
                 teamId={teamId}
                 activityId={activityId}
                 initialConversationId={initialConversationId}
+                onOpenActivity={(draft) => {
+                  dialog.current?.close();
+                  setOpen(false);
+                  setEditor(draft);
+                }}
               />
             </dialog>,
             document.body,
           )
         : null}
+      {editor ? <ActivityManagement key={JSON.stringify(editor)} request={request}
+        initialTeamId={editor.teamId} createOnLoad assistantDraft={editor}
+        onEditorClose={() => setEditor(undefined)}
+        onSaved={() => window.dispatchEvent(new Event("forena:assistant-change"))} /> : null}
     </>
   );
 }
