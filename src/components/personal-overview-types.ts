@@ -4,11 +4,11 @@ import type { Activity, Invitation } from "../domain/club";
 export type OverviewPersonItem = {
   attendance?: "present" | "absent" | "unknown";
   member: { id: string; displayName: string };
-  invitation?: Pick<Invitation, "id" | "response">;
+  invitation?: Pick<Invitation, "id" | "response"> & { consumes_capacity?: boolean };
   hasDutyAssignment?: boolean;
 };
 export type OverviewItem = OverviewPersonItem & {
-  activity: Pick<Activity, "id" | "title" | "startsAt" | "endsAt" | "location" | "gatheringAt" | "status" | "responseDueAt">;
+  activity: Pick<Activity, "id" | "title" | "startsAt" | "endsAt" | "location" | "gatheringAt" | "status" | "responseDueAt" | "maxParticipants" | "acceptedParticipants">;
   activityOnly?: boolean;
   canManageActivity?: boolean;
   team: { name: string };

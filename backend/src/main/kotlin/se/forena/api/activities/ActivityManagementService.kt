@@ -13,6 +13,9 @@ import se.forena.api.identity.Actor
 import se.forena.api.identity.DatabaseClockService
 import se.forena.api.identity.SessionService
 import tools.jackson.databind.json.JsonMapper
+import se.forena.api.extensionapi.ActivityKind
+import se.forena.api.extensionapi.DisciplineActivity
+import se.forena.api.extensionapi.DisciplineActivityLifecycle
 
 @Service
 class ActivityManagementService(
@@ -30,7 +33,8 @@ class ActivityManagementService(
     private val groups: AudienceGroupRepository,
     private val groupMembers: AudienceMemberRepository,
     private val json: JsonMapper,
-    private val dutyLifecycle: ActivityDutyLifecycleService
+    private val dutyLifecycle: ActivityDutyLifecycleService,
+    private val disciplineLifecycle: DisciplineActivityLifecycle
 ) {
     @Transactional(readOnly = true)
     fun canManageMemory(actor: Actor, teamId: UUID): Boolean =
@@ -99,6 +103,7 @@ class ActivityManagementService(
         check(team.organizationId == admittedTeam.organizationId)
         val zone = ZoneId.of(team.timeZone)
         ActivityTimes.validate(command, zone, creating = true)
+        require(command.maxParticipants == null || command.maxParticipants > 0)
         val type = requireType(team, command.activityTypeId)
         require(command.invitationMode in listOf("none", "now", "schedule"))
         val now = clock.now()
@@ -126,9 +131,13 @@ class ActivityManagementService(
                 if (command.invitationMode == "now") now else schedule?.second?.first(),
                 schedule?.first,
                 seriesId = seriesId,
+                maxParticipants = command.maxParticipants,
                 newRecord = true,
             )
         applyInvitations(actor, team, row, command, schedule)
+        disciplineLifecycle.created(DisciplineActivity(id, team.organizationId, teamId, team.sectionId,
+            team.disciplineKey ?: "common", ActivityKind(type.slug, type.systemCategory),
+            row.startsAt, row.endsAt, row.revision, false))
         record(actor, row, "created")
         return ActivityResult(activityDto(row))
     }
@@ -183,7 +192,8 @@ class ActivityManagementService(
         val existing = schedules.findByActivityId(row.activityId)
         for (entry in existing.filter { it.state == "pending" }) schedules.save(entry.copy(state = "cancelled"))
         if (command.invitationMode == "now") {
-            for (person in personIds) invitations.create(UUID.randomUUID(), team.organizationId, row.activityId, person)
+            val added = personIds.sumOf { person -> invitations.create(UUID.randomUUID(), team.organizationId, row.activityId, person) }
+            if (added > 0) disciplineLifecycle.invited(row.activityId, actor.subject, added)
         }
         val times = schedule?.second ?: listOf(now)
         for ((index, due) in times.withIndex()) {
@@ -205,10 +215,12 @@ class ActivityManagementService(
     @PreAuthorize("@teamAccess.canManageActivity(#actor, #id)")
     fun update(actor: Actor, id: UUID, command: ActivityCommand): ActivityResult {
         val (current, team) = lock(actor, id, command.invitationMode != "none")
+        check(!current.imported)
         require(command.teamId == null || command.teamId == current.teamId)
         check(current.status == "scheduled" && current.endsAt > clock.now())
         command.revision?.let { check(it == current.revision) }
         ActivityTimes.validate(command, ZoneId.of(team.timeZone), creating = false)
+        require(command.maxParticipants == null || command.maxParticipants > 0)
         if (command.invitationMode != "schedule")
             require(current.responseDueAt == null || current.responseDueAt <= command.startsAt)
         val typeId = command.activityTypeId ?: current.activityTypeId
@@ -223,6 +235,7 @@ class ActivityManagementService(
                 endsAt = command.endsAt,
                 gatheringAt = command.gatheringAt,
                 revision = current.revision + 1,
+                maxParticipants = command.maxParticipants,
             )
         val now = clock.now()
         val schedulingCommand =
@@ -260,6 +273,7 @@ class ActivityManagementService(
             false,
         )
         record(actor, withInvitations, "updated")
+        disciplineLifecycle.changed(id)
         return ActivityResult(activityDto(withInvitations))
     }
 
@@ -267,6 +281,7 @@ class ActivityManagementService(
     @PreAuthorize("@teamAccess.canManageActivity(#actor, #id)")
     fun cancel(actor: Actor, id: UUID, command: CancellationCommand): ActivityDisposition {
         val (current, _) = lock(actor, id)
+        check(!current.imported)
         command.revision?.let { check(it == current.revision) }
         if (current.deletedAt != null) throw NoSuchElementException()
         require(command.action in listOf("cancel", "delete"))
@@ -285,6 +300,7 @@ class ActivityManagementService(
                 .forEach { schedules.save(it.copy(state = "cancelled")) }
             dutyLifecycle.follow(deleted.activityId, deleted.startsAt, deleted.endsAt, true)
             record(actor, deleted, "deleted")
+            disciplineLifecycle.changed(id)
             return ActivityDisposition("deleted")
         }
         if (current.status == "cancelled") return ActivityDisposition()
@@ -304,6 +320,7 @@ class ActivityManagementService(
             schedules.save(schedule.copy(state = "cancelled"))
         }
         record(actor, cancelled, "cancelled")
+        disciplineLifecycle.changed(id)
         return ActivityDisposition()
     }
 
@@ -403,7 +420,7 @@ class ActivityManagementService(
 
     private fun activityDto(row: ManagedActivityEntity) = ManagedActivity(row.activityId, row.organizationId,
         row.teamId, row.activityTypeId, row.title, row.description, row.location,
-        row.startsAt, row.endsAt, row.gatheringAt, row.status, row.revision)
+        row.startsAt, row.endsAt, row.gatheringAt, row.status, row.revision, row.maxParticipants, row.imported)
 
     private fun record(actor: Actor, row: ManagedActivityEntity, operation: String) {
         val now = clock.now()

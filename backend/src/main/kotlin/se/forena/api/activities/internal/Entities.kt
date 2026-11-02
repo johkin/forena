@@ -31,7 +31,8 @@ data class InvitationEntity(
     val response: String,
     val responseComment: String?,
     val respondedAt: Instant?,
-    val revision: Long
+    val revision: Long,
+    @ReadOnlyProperty val activityRole: String? = null
 )
 
 @Table(value = "invitation_history", schema = "forena")
@@ -116,6 +117,8 @@ data class ManagedActivityEntity(
     val seriesId: UUID? = null,
     val leadersOnly: Boolean = false,
     val deletedAt: Instant? = null,
+    val maxParticipants: Int? = null,
+    val imported: Boolean = false,
     @Transient val newRecord: Boolean = false
 ) : Persistable<UUID> {
     override fun getId(): UUID = activityId

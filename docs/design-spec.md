@@ -13,6 +13,13 @@ Funktioner som ännu inte har flyttats ska redovisas som återstående. En
 layoutjämförelse eller en informationssida innebär inte att funktionen är färdig.
 Verifiera berörda produktionsvyer i båda apparna på mobil och desktop.
 
+Disciplinfält i React/Kotlin visas med `ExtensionFields`, som använder serverns
+behöriga fältdefinitioner. Komponentsidan visar redigering, medlemsläsning,
+läsfel och revisionskonflikt med bevarat utkast. Samma exempel finns i Next.
+Deltagargränsen visas med `ActivityCapacity`: numeriskt antal och en progressbar
+med gemensamma färg-/formregler för kapacitet. Överbeläggning behåller faktiskt
+antal i text medan baren stannar vid full. Obegränsade aktiviteter saknar bar.
+
 ## Komponentsidan är den gemensamma UI-referensen
 
 Alla UI-element som används i systemet ska finnas representerade på `/components`.
@@ -488,6 +495,15 @@ uttryckligt val. Spelarväljare visar bara serverns tillåtna urval.
 
 
 Disciplinformulär ägs av respektive paketkatalog och bäddas in via den gemensamma `DisciplineFields`-komponenten. De använder samma native formulärutseende och responsiva `discipline-*`-klasser; ingen extra pluginpanel införs.
+
+I React/Kotlin återanvänds `ExtensionFields`, `ActivityDefaultsAdministration`
+och det gemensamma uppföljningsformuläret. Utfallets spelarväljare använder
+sparad faktisk närvaro. Närvaro-/utfallsrättning förbereds som ett gemensamt
+utkast och sparas atomärt; utkastet får aldrig presenteras som sparad närvaro.
+Lagets interna signaler och uppföljningspunkter länkar till rätt aktivitet.
+Rapporten visar täckning, registrerade delutfall och datum i klubbens tidszon,
+med val av årssäsong eller datumintervall. Nya tillstånd visas med samma
+produktionskomponenter på `/components` i båda apparna.
 
 ## Sidskisser: befintliga arbetsflöden
 

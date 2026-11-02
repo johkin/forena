@@ -28,6 +28,8 @@ export function ActivityManagementExample() {
   const [assistantDraftOpen, setAssistantDraftOpen] = useState(false);
   const [openFromTeam, setOpenFromTeam] = useState(false);
   const request = useCallback<ParticipationFetch>(async (path, init) => {
+    if (path.includes("/activity-defaults")) return Response.json({organizationId:team.organizationId,scope:"team",scopeId:team.id,sectionId:null,disciplineKey:"common",version:"1.0.0",types:[{id:trainingTypeId,name:"Träning",slug:"traning",system_category:"session",organization_id:null}],rows:[]});
+    if (path.includes("/capabilities")) return Response.json([]);
     const conversation = { id: "11111111-1111-4111-8111-111111111119", organizationId: null,
       channel: "web", active: true, updatedAt: "2026-11-02T12:00:00Z" };
     if (path.endsWith("/messages")) {

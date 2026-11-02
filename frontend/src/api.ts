@@ -1,3 +1,4 @@
+import { extensionRequestAllowed } from "./extension-api";
 import type { ParticipationFetch } from "../../src/components/activity-invitation-response";
 
 const uuid = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
@@ -33,7 +34,7 @@ export function createApiFetch(readAccount: () => Promise<string | null>, unauth
       (["PUT", "DELETE"].includes(method) && activityWrites.test(path)) ||
       (method === "PUT" && (attendanceWrites.test(path) || rosterMembers.test(path) || rosterGroup.test(path))) ||
       (method === "POST" && rosterGroups.test(path)) || (method === "DELETE" && rosterDeletion.test(path));
-    if (!allowedRead && !allowedWrite) throw new Error("Unsupported API request");
+    if (!allowedRead && !allowedWrite && !extensionRequestAllowed(path, method)) throw new Error("Unsupported API request");
     const account = await readAccount();
     if (!account) { unauthorized(); return Response.json({ error: "Inloggning krävs." }, { status: 401 }); }
     const headers = new Headers(init.headers);

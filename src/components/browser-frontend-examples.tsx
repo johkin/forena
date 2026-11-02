@@ -1,4 +1,7 @@
 "use client";
+import { ExtensionFieldsExamples } from "./extension-fields-examples";
+import {DisciplineAdministrationExamples} from "./discipline-administration-examples";
+import { InformationExamples } from "./information-examples";
 import type { NavigationLink } from "./navigation-link";
 import { useCallback, useRef, useState } from "react";
 import { PasswordLoginForm } from "./password-login-form";
@@ -38,6 +41,8 @@ export function BrowserFrontendExamples({ linkComponent }: { linkComponent?: Nav
   ] }];
   return <>
     <AdministrationExample />
+    <ExtensionFieldsExamples />
+    <InformationExamples /><DisciplineAdministrationExamples />
     <ActivityManagementExample />
     <TeamRosterExample />
     <OverviewBackLink linkComponent={linkComponent} />

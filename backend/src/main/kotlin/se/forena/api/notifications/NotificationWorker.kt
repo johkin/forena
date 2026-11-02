@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController
 import se.forena.api.activities.ScheduledInvitationService
 import se.forena.api.notifications.internal.InvitationEmailDelivery
 import se.forena.api.notifications.internal.PublicationRecovery
+import se.forena.api.extensionapi.DisciplineBackgroundWork
 
 data class NotificationWorkerResult(
     val schedules: Int,
@@ -26,6 +27,7 @@ class NotificationWorker(
     private val recovery: PublicationRecovery,
     private val delivery: InvitationEmailDelivery,
     private val operations: NotificationOperations,
+    private val disciplineWork: List<DisciplineBackgroundWork>,
 ) {
     private val logger = LoggerFactory.getLogger(NotificationWorker::class.java)
 
@@ -34,6 +36,7 @@ class NotificationWorker(
         operations.started()
         val deadline = System.nanoTime() + Duration.ofSeconds(45).toNanos()
         val materialized = schedules.materialize(deadline)
+        disciplineWork.forEach { it.runDue(100) }
         val recovered = recovery.recover(deadline)
         var delivered = 0
         // Leave room for the existing Resend connect/read timeouts before starting another HTTP

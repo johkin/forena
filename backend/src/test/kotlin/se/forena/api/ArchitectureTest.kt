@@ -1,6 +1,7 @@
 package se.forena.api
 
 import com.tngtech.archunit.core.importer.ClassFileImporter
+import com.tngtech.archunit.core.importer.ImportOption
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses
 import org.assertj.core.api.Assertions.assertThat
@@ -12,6 +13,16 @@ import org.springframework.modulith.docs.Documenter
 import org.springframework.stereotype.Service
 
 class ArchitectureTest {
+    @Test
+    fun `core and extension runtime depend on contracts rather than concrete disciplines`() {
+        val code = ClassFileImporter().withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS).importPackages("se.forena.api")
+        noClasses().that().resideInAnyPackage("se.forena.api.activities..", "se.forena.api.administration..", "se.forena.api.extensions..")
+            .should().dependOnClassesThat().resideInAPackage("se.forena.api.disciplines..")
+            .check(code)
+        noClasses().that().resideInAPackage("se.forena.api.disciplines..")
+            .should().dependOnClassesThat().resideInAnyPackage("se.forena.api.activities..", "se.forena.api.extensions..")
+            .check(code)
+    }
     @Test
     fun `services use repositories instead of issuing SQL through JdbcClient`() {
         val code = ClassFileImporter().importPackages("se.forena.api")

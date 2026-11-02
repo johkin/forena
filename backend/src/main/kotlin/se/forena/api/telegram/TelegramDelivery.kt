@@ -7,6 +7,8 @@ import org.springframework.transaction.support.TransactionTemplate
 import se.forena.api.activities.AssistantActivityService
 import se.forena.api.identity.*
 import se.forena.api.notifications.InvitationChannel
+import se.forena.api.notifications.PrivateNotificationChannel
+import se.forena.api.extensionapi.PrivateExtensionMessage
 import se.forena.api.telegram.internal.TelegramDeliveryRepository
 
 @Service
@@ -19,8 +21,18 @@ class TelegramDelivery(
     private val client: TelegramClient,
     private val web: BrowserSessionSettings,
     @Value("\${FORENA_TELEGRAM_DELIVERY_ENABLED:false}") private val enabled: Boolean,
-) : InvitationChannel {
+) : InvitationChannel, PrivateNotificationChannel {
     override val name = "telegram"
+    override fun deliverPrivate(message: PrivateExtensionMessage): Boolean {
+        if (!enabled || !identities.available() || repository.isPaused()) return false
+        val connection = identities.connectionForSubject(message.subject) ?: return false
+        identities.actor(connection)
+        client.call("sendMessage", mapOf("chat_id" to connection.chatId,
+            "text" to "${message.title}\n${message.body}", "protect_content" to true,
+            "reply_markup" to mapOf("inline_keyboard" to listOf(listOf(
+                TelegramButton("Öppna uppföljningen", url="${web.origin}${message.path}"))))))
+        return true
+    }
 
     override fun deliver(notificationId: UUID): Boolean {
         if (!enabled || !identities.available()) return false

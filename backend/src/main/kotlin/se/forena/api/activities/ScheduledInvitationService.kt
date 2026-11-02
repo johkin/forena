@@ -11,6 +11,7 @@ import se.forena.api.activities.internal.InvitationRepository
 import se.forena.api.activities.internal.ManagedActivityRepository
 import se.forena.api.activities.internal.ScheduledInvitationRepository
 import se.forena.api.identity.BrowserSessionSettings
+import se.forena.api.extensionapi.DisciplineInputsChanged
 import se.forena.api.identity.DatabaseClockService
 import se.forena.api.identity.NotificationDirectory
 
@@ -89,12 +90,13 @@ class ScheduledInvitationService(
         var decisions = 0
         for (person in audience) {
             if (schedule.kind == "invitation") {
-                invitations.create(
+                val added = invitations.create(
                     UUID.randomUUID(),
                     activity.organizationId,
                     activityId,
                     person.id,
                 )
+                if (added > 0) events.publishEvent(DisciplineInputsChanged(activityId=activityId))
             }
             val invitation =
                 invitations

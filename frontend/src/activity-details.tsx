@@ -5,6 +5,9 @@ import { ActivityManagement } from "../../src/components/activity-management";
 import { ActivityAttendance } from "../../src/components/activity-attendance";
 import { ActivityInvitationResponse, type ParticipationFetch } from "../../src/components/activity-invitation-response";
 import type { PersonalActivity } from "./personal-overview";
+import { ExtensionFields } from "../../src/components/extension-fields";
+import { ActivityCapacity } from "../../src/components/activity-capacity";
+import { ActivityFollowUp } from "../../src/components/activity-follow-up";
 
 export function ActivityDetails({ activityId,request }: { activityId:string; request:ParticipationFetch }) {
   const [now,setNow]=useState(()=>Date.now());
@@ -40,12 +43,15 @@ export function ActivityDetails({ activityId,request }: { activityId:string; req
     {activity.gathering_at ? <p>Samling: <time dateTime={activity.gathering_at}>{when(activity.gathering_at)}</time></p> : null}
     {activity.location ? <p>Plats: {activity.location}</p> : null}
     {activity.description ? <p className="activity-description">{activity.description}</p> : null}
+    {activity.can_manage_activities ? <ExtensionFields request={request} teamId={activity.team.id} scope="activity" activityId={activity.id} /> : null}
     {activity.response_due_at ? <p>Svara senast: <time dateTime={activity.response_due_at}>{when(activity.response_due_at)}</time></p> : null}
     {ended ? <p role="status">Aktiviteten är avslutad. Svaren kan inte ändras.</p> : null}
-    {invitations ? <ActivityInvitationResponse activityId={activityId} cancelled={cancelled} readOnly={ended} responseClosed={responseClosed} request={request} /> : <>
+    <ActivityCapacity maximum={activity.max_participants} accepted={activity.accepted_participants} />
+    {invitations ? <ActivityInvitationResponse activityId={activityId} cancelled={cancelled} readOnly={ended} responseClosed={responseClosed} full={activity.max_participants != null && (activity.accepted_participants ?? 0) >= activity.max_participants} onAnswered={() => setAttempt(value => value + 1)} request={request} /> : <>
       {cancelled ? <p role="status">Aktiviteten är inställd.</p> : null}
       <div className="personal-activity-people">{activity.people.map(person=><p key={person.id}><strong>{person.name}</strong> · Ingen kallelse ännu.</p>)}</div>
     </>}
     <ActivityAttendance activityId={activityId} request={request} canManage={activity.can_manage_attendance} started={Date.parse(activity.starts_at) <= now} ended={ended} cancelled={cancelled} onSaved={() => setAttempt(value => value + 1)} />
+    {ended ? <ActivityFollowUp key={`${activityId}:${attempt}`} activityId={activityId} request={request}/> : null}
   </section></>;
 }

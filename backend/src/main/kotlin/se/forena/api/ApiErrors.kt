@@ -30,8 +30,9 @@ class ApiErrors {
         .cacheControl(CacheControl.noStore()).body(ApiError("Kallelsen är inte tillgänglig."))
 
     @ExceptionHandler(IllegalStateException::class)
-    fun conflict(): ResponseEntity<ApiError> = ResponseEntity.status(409)
-        .cacheControl(CacheControl.noStore()).body(ApiError("Åtgärden kan inte genomföras i aktuellt tillstånd."))
+    fun conflict(error: IllegalStateException): ResponseEntity<ApiError> = ResponseEntity.status(409)
+        .cacheControl(CacheControl.noStore()).body(ApiError(if (error.message == "activity.capacity.full")
+            "Aktiviteten är full. Inget nytt ja-svar har sparats." else "Åtgärden kan inte genomföras i aktuellt tillstånd."))
 
     @ExceptionHandler(BadCredentialsException::class)
     fun session(): ResponseEntity<ApiError> = ResponseEntity.status(401)

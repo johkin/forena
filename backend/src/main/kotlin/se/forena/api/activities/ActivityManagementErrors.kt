@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 import se.forena.api.http.ApiError
 
 @Order(0)
-@RestControllerAdvice(assignableTypes = [ActivityManagementController::class])
+@RestControllerAdvice(assignableTypes = [ActivityManagementController::class, ActivityDefaultsController::class])
 class ActivityManagementErrors {
     @ExceptionHandler(IllegalArgumentException::class, HttpMessageNotReadableException::class)
     fun invalid(): ResponseEntity<ApiError> = ResponseEntity.badRequest().cacheControl(CacheControl.noStore())

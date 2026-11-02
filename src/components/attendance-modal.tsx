@@ -9,14 +9,16 @@ import type { components } from "../../backend/contract/generated";
 export type AttendanceRow = components["schemas"]["AttendancePerson"];
 export type AttendanceSnapshot = components["schemas"]["AttendanceSnapshot"];
 type Row = AttendanceRow;
+export type AttendanceDraft = { revision: number; personIds: string[]; rosterIds: string[]; confirmEmpty: boolean };
 type Props = { activityId: string; onClose: () => void; onSaved?: () => void;
-  request?: (path: string, init?: RequestInit) => Promise<Response>; versioned?: boolean };
+  request?: (path: string, init?: RequestInit) => Promise<Response>; versioned?: boolean;
+  onPrepared?: (draft: AttendanceDraft, rows: AttendanceRow[]) => void };
 const defaultRequest = (path: string, init?: RequestInit) => fetch(path, init);
 const roleLabels = { leader: "Ledare", participant: "Spelare", volunteer: "Funktionärer", guardian: "Målsmän" } as const;
 const roles = ["participant", "leader", "guardian", "volunteer"] as const;
 
 /** Load permitted attendance rows and edit a controlled selection before saving. */
-export function AttendanceModal({ activityId, onClose, onSaved, request = defaultRequest, versioned = false }: Props) {
+export function AttendanceModal({ activityId, onClose, onSaved, request = defaultRequest, versioned = false, onPrepared }: Props) {
   useModalScrollLock();
   const [rows, setRows] = useState<Row[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -139,6 +141,10 @@ export function AttendanceModal({ activityId, onClose, onSaved, request = defaul
 
   /** Persist the full selection, including people hidden by active filters. */
   async function save(emptyConfirmed = false) {
+    if (onPrepared && snapshot && (selected.size > 0 || emptyConfirmed)) {
+      onPrepared({ revision: snapshot.revision, personIds: [...selected], rosterIds: rows.map(row => row.personId), confirmEmpty: emptyConfirmed }, rows);
+      onClose(); return;
+    }
     if (!selected.size && !emptyConfirmed) { setConfirmEmpty(true); return; }
     setConfirmEmpty(false);
     setSaving(true); setError("");
@@ -165,6 +171,7 @@ export function AttendanceModal({ activityId, onClose, onSaved, request = defaul
       {versioned && snapshot?.status === "cancelled" ? <p role="status">Inställd. Befintlig närvarorapport visas som historik och kan inte ändras.</p> : null}
       {versioned && readOnly && snapshot?.status !== "cancelled" ? <p role="status">Närvaro kan rapporteras från aktivitetens starttid.</p> : null}
       {loading ? <p role="status">Laddar närvaron…</p> : null}
+      {onPrepared ? <p>Närvaroutkastet sparas tillsammans med matchuppföljningen i nästa steg.</p> : null}
       <p className="overview-empty">{reportedAt ? (readOnly ? "Närvaron är rapporterad och visas i läsläge." : "Närvaron är redan rapporterad. Du kan justera den nedan.") : "Närvaron är okänd tills rapporten sparas. Markera närvarande personer. Spara bekräftar att hela listan är genomgången; övriga registreras som frånvarande."}</p>
       {error ? <div className="auth-error" role="alert">{error}</div> : null}
       {!loading && !snapshot ? <button type="button" className="secondary" onClick={() => { setLoading(true); setRetry(value => value + 1); }}>Försök igen</button> : null}
@@ -194,7 +201,7 @@ export function AttendanceModal({ activityId, onClose, onSaved, request = defaul
         <button type="button" className="secondary" onClick={() => { setConfirmEmpty(false); focusDialog(); }}>Avbryt bekräftelse</button>
         <button type="button" className="primary" disabled={disabled || conflict} onClick={() => save(true)}>Bekräfta 0 närvarande</button>
       </div> : null}
-      <div className="modal-actions"><button className="secondary" disabled={saving} onClick={onClose} type="button">{readOnly ? "Stäng" : "Avbryt"}</button>{!readOnly ? <button className="primary" disabled={disabled || conflict || !snapshot} onClick={() => save()} type="button">{saving ? "Sparar…" : "Spara närvaro"}</button> : null}</div>
+      <div className="modal-actions"><button className="secondary" disabled={saving} onClick={onClose} type="button">{readOnly ? "Stäng" : "Avbryt"}</button>{!readOnly ? <button className="primary" disabled={disabled || conflict || !snapshot} onClick={() => save()} type="button">{saving ? "Sparar…" : onPrepared ? "Använd närvaroutkast" : "Spara närvaro"}</button> : null}</div>
     </section>
   </div>;
 }

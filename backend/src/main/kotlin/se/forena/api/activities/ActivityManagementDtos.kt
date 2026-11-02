@@ -6,6 +6,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
 import tools.jackson.databind.annotation.JsonSerialize
+import tools.jackson.databind.annotation.JsonDeserialize
 
 data class ActivityTimingRules(
     val duration: String = "PT1H30M",
@@ -35,7 +36,8 @@ data class ActivityCommand(
     val invitationAudience: String? = null,
     val invitationSelection: ActivityAudience? = null,
     @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC) val personIds: List<UUID> = emptyList(),
-    val revision: Long? = null
+    val revision: Long? = null,
+    @field:JsonDeserialize(using = StrictIntegerDeserializer::class) val maxParticipants: Int? = null
 )
 
 data class ActivitySeriesCommand(
@@ -52,7 +54,8 @@ data class ActivitySeriesCommand(
     val timingRules: ActivityTimingRules,
     val invitationMode: String = "none",
     val invitationAudience: String? = null,
-    val invitationSelection: ActivityAudience? = null
+    val invitationSelection: ActivityAudience? = null,
+    @field:JsonDeserialize(using = StrictIntegerDeserializer::class) val maxParticipants: Int? = null
 )
 
 data class ActivitySeriesResult(
@@ -88,7 +91,9 @@ data class ManagedActivity(
     val ends_at: Instant,
     val gathering_at: Instant?,
     val status: String,
-    val revision: Long
+    val revision: Long,
+    val max_participants: Int? = null,
+    val imported: Boolean = false
 )
 
 data class ActivityResult(

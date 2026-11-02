@@ -1,12 +1,13 @@
 # Fotboll – migrering, spelaregenskaper och matchuppföljning
 
 - Status: Redo
-- Senast uppdaterad: 2026-10-27
+- Senast uppdaterad: 2026-11-02
 - Berörda dokument: [Generell disciplinspec](discipliner.md),
   [Discipliner](../disciplines.md), [Närvarospec](narvaroregistrering.md),
   [Arkitektur](../architecture.md)
-- Implementation och verifiering: Ej påbörjad. Ingen kod har implementerats
-  eller funktionstestats inom specarbetet.
+- Implementation och verifiering: Implementerad 2026-11-02 i React/Kotlin,
+  med separata disciplin-/capabilitypaket, matchuppföljning och rapport.
+  [Kravspårning, avgränsningar och verifiering](../migration/disciplines.md).
 
 ## Problem och mål
 
@@ -378,6 +379,10 @@ sektions-/lagarv är inte valt. Parkeringen blockerar inte denna leverans.
 fortsatt ej påbörjad och beställs separat.
 
 ## Ändringshistorik
+
+- 2026-11-02: Infört `disciplines.football` som implementation av gemensamma
+  kontrakt i Kotlin. Grundfält kopplade till Reacts produktionsvyer.
+  Gröna kortet och eftermatchuppföljning är inte levererade genom denna del.
 
 - 2026-10-27, slutlig bekräftelse: Användaren godkände båda specarna.
   Markerat Redo; implementation och verifiering är fortsatt ej påbörjade.

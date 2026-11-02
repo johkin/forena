@@ -48,6 +48,32 @@ import se.forena.api.notifications.internal.PublicationRecovery
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class NotificationTest {
+    @Autowired lateinit var extensionNotifications: se.forena.api.notifications.ExtensionNotifications
+
+    @Test fun `extension notification deduplicates requests and private Telegram acceptance stops fallback`() {
+        extensionNotifications.enqueue(activity,"followup",listOf(self,self),"Uppföljning","Öppna matchen.")
+        extensionNotifications.enqueue(activity,"followup",listOf(self),"Uppföljning","Öppna matchen.")
+        val id=admin.queryForObject("select id from forena.extension_notification where activity_id=?",UUID::class.java,activity)!!
+        val message=se.forena.api.extensionapi.PrivateExtensionMessage(id,self,"Uppföljning","Öppna matchen.","/activities/$activity")
+        org.mockito.Mockito.doReturn(true).`when`(telegramChannel).deliverPrivate(message)
+        assertThat(extensionNotifications.deliverOne()).isTrue()
+        verify(pushChannel,never()).deliverPrivate(message)
+        verifyNoInteractions(sender)
+        assertThat(admin.queryForObject("select state from forena.extension_notification where id=?",String::class.java,id)).isEqualTo("sent")
+        assertThat(admin.queryForObject("select count(*) from forena.extension_notification where activity_id=?",Long::class.java,activity)).isEqualTo(1)
+    }
+
+    @Test fun `extension notification recovers uncertain Telegram through push without resending Telegram`() {
+        extensionNotifications.enqueue(activity,"followup",listOf(self),"Uppföljning","Öppna matchen.")
+        val id=admin.queryForObject("select id from forena.extension_notification where activity_id=?",UUID::class.java,activity)!!
+        val message=se.forena.api.extensionapi.PrivateExtensionMessage(id,self,"Uppföljning","Öppna matchen.","/activities/$activity")
+        admin.update("update forena.extension_notification set state='processing',attempted_at=now()-interval '3 minutes' where id=?",id)
+        org.mockito.Mockito.doReturn(true).`when`(pushChannel).deliverPrivate(message)
+        assertThat(extensionNotifications.deliverOne()).isTrue()
+        verify(telegramChannel,never()).deliverPrivate(message)
+        assertThat(admin.queryForObject("select state from forena.extension_notification where id=?",String::class.java,id)).isEqualTo("sent")
+    }
+
     @MockitoSpyBean lateinit var telegramChannel: se.forena.api.telegram.TelegramDelivery
     @MockitoSpyBean lateinit var pushChannel: se.forena.api.notifications.PushService
 
@@ -118,6 +144,7 @@ class NotificationTest {
                 Base64.getEncoder().encodeToString(ByteArray(32) { 7 })
             }
             registry.add("forena.notifications.enabled") { true }
+            registry.add("forena.disciplines.poll-ms") { 3_600_000 }
             registry.add("forena.notifications.worker-token") { WORKER_TOKEN }
             registry.add("forena.notifications.test-recipients") {
                 "self@example.invalid,guardian@example.invalid"
@@ -151,6 +178,7 @@ class NotificationTest {
     @BeforeEach
     fun seed() {
         reset(sender, scheduleRecords, emailRecords)
+        admin.execute("truncate forena.extension_notification")
         admin.execute(
             "truncate forena.push_delivery, forena.telegram_invitation, forena.invitation_email, forena.invitation_notification, forena.event_publication, forena.activity_schedule"
         )

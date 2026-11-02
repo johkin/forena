@@ -37,6 +37,15 @@ it("prevents a second write while one is in flight",async()=>{
 it.each([{readOnly:true},{demo:true}])("does not write in read-only or demo mode",props=>{
  const fetch=vi.fn();vi.stubGlobal("fetch",fetch);const buttons=render(props).filter(e=>e.type==="button");expect(buttons.every(b=>b.props.disabled)).toBe(true);(buttons[0].props.onClick as ()=>void)();expect(fetch).not.toHaveBeenCalled();
 });
+it("blocks new participant acceptances at capacity but keeps withdrawals and leader answers available", () => {
+  hooks.index=0;
+  const full=elements(OverviewInvitationResponse({item,readOnly:false,full:true}));
+  expect(full.find(e=>e.props["data-response"]==="accepted")!.props.disabled).toBe(true);
+  expect(full.find(e=>e.props["data-response"]==="declined")!.props.disabled).toBe(false);
+  hooks.index=0;
+  const leader=elements(OverviewInvitationResponse({item:{...item,invitation:{...item.invitation!,consumes_capacity:false}},readOnly:false,full:true}));
+  expect(leader.find(e=>e.props["data-response"]==="accepted")!.props.disabled).toBe(false);
+});
 it("shows a duty-only person without response buttons or invented invitation",()=>{
  expect(render({item:{...item,invitation:undefined,hasDutyAssignment:true}}).filter(e=>e.type==="button")).toHaveLength(0);
 });

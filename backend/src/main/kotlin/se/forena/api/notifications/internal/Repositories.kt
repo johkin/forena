@@ -132,3 +132,23 @@ interface PushRepository : Repository<PushSubscriptionEntity, UUID> {
     @Query("update forena.push_subscription set active=false where id=:id")
     fun disableSubscription(id: UUID): Int
 }
+
+interface ExtensionNotificationRepository : Repository<ExtensionNotificationEntity, UUID> {
+    @Modifying @Query("""delete from forena.extension_notification where id in
+        (select id from forena.extension_notification where state in ('sent','failed')
+        and created_at<clock_timestamp()-interval '7 days' order by created_at,id limit 500)""")
+    fun cleanup(): Int
+    @Modifying @Query("""insert into forena.extension_notification(id,activity_id,purpose,recipient_subject,title,body,path)
+        values(:id,:activity,:purpose,:recipient,:title,:body,:path) on conflict(activity_id,purpose,recipient_subject) do nothing""")
+    fun enqueue(id: UUID, activity: UUID, purpose: String, recipient: UUID, title: String, body: String, path: String)
+    @Query("select * from forena.extension_notification where state='pending' order by id limit 1 for update skip locked")
+    fun claim(): ExtensionNotificationEntity?
+    @Modifying @Query("update forena.extension_notification set state='processing',attempted_at=clock_timestamp() where id=:id")
+    fun started(id: UUID)
+    @Modifying @Query("update forena.extension_notification set state=:state,channel_index=:next where id=:id")
+    fun finished(id: UUID, state: String, next: Int)
+    @Modifying @Query("""update forena.extension_notification set state='pending',channel_index=channel_index+1
+        where id in (select id from forena.extension_notification where state='processing'
+        and attempted_at<clock_timestamp()-interval '2 minutes' order by attempted_at,id limit 100)""")
+    fun recover()
+}

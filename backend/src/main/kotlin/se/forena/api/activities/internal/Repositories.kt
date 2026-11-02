@@ -1,6 +1,7 @@
 package se.forena.api.activities.internal
 
 import java.time.Instant
+import java.time.LocalDate
 import java.util.Optional
 import java.util.UUID
 import org.springframework.data.jdbc.repository.query.Modifying
@@ -9,8 +10,13 @@ import org.springframework.data.relational.core.sql.LockMode
 import org.springframework.data.relational.repository.Lock
 import org.springframework.data.repository.Repository
 import se.forena.api.activities.*
+import se.forena.api.activities.ActivityCapacity
 import se.forena.api.activities.AttendancePerson
+import se.forena.api.activities.CapabilityPlayerCounts
+import se.forena.api.activities.DisciplinePlayer
+import se.forena.api.activities.FollowUpActivity
 import se.forena.api.activities.InvitationNotificationSnapshot
+import se.forena.api.activities.TeamReportPeriod
 
 interface ActivityRepository : Repository<ActivityEntity, UUID> {
     fun findById(id: UUID): Optional<ActivityEntity>
@@ -80,6 +86,7 @@ interface TeamRepository : Repository<TeamEntity, UUID> {
     fun findByIdInOrderByNameAsc(ids: Collection<UUID>): List<TeamEntity>
 }
 interface TeamMembershipRepository : Repository<TeamMembershipEntity, UUID> {
+    fun findByPersonIdIn(people: Collection<UUID>): List<TeamMembershipEntity>
     fun findByPersonIdInAndActiveTrue(people: Collection<UUID>): List<TeamMembershipEntity>
 }
 interface TeamAccessAssignmentRepository : Repository<TeamAccessAssignmentEntity, UUID> {
@@ -98,6 +105,10 @@ private const val PERSONAL_SCOPE = """
         and m.organization_id = a.organization_id and m.person_id in (:people) and m.active
         and m.starts_on <= (a.starts_at at time zone o.time_zone)::date
         and (m.ends_on is null or m.ends_on >= (a.starts_at at time zone o.time_zone)::date))
+    or exists (select 1 from forena.team_membership m where :hasOwnPeople and m.team_id=a.team_id
+        and m.organization_id=a.organization_id and m.person_id in (:ownPeople) and m.active and m.role='leader'
+        and m.starts_on<=(current_timestamp at time zone o.time_zone)::date
+        and (m.ends_on is null or m.ends_on>=(current_timestamp at time zone o.time_zone)::date))
     or exists (select 1 from forena.team_access_assignment x where x.team_id = a.team_id
         and x.organization_id = a.organization_id and :hasOwnPeople and x.person_id in (:ownPeople) and x.active
         and x.starts_on <= (a.starts_at at time zone o.time_zone)::date
@@ -192,6 +203,13 @@ interface ManagementRepository : Repository<TeamEntity, UUID> {
 }
 
 interface ActivityDefaultsRepository : Repository<ActivityDefaultsEntity, UUID> {
+    @Modifying @Query("""insert into forena.activity_defaults(id,organization_id,section_id,team_id,activity_type_id,discipline_key,version,values_json)
+        values(:id,:organization,:section,:team,:type,:discipline,:version,:values)""")
+    fun insert(id: UUID,organization: UUID,section: UUID?,team: UUID?,type: UUID,discipline: String,version: String,values: String)
+    @Modifying @Query("update forena.activity_defaults set values_json=:values,revision=revision+1 where id=:id and revision=:revision")
+    fun update(id: UUID,revision: Long,values: String): Int
+    @Modifying @Query("insert into forena.activity_defaults_audit(id,defaults_id,actor_subject,revision) values(:id,:defaults,:actor,:revision)")
+    fun audit(id: UUID,defaults: UUID,actor: UUID,revision: Long)
     @Query("""select * from forena.activity_defaults where organization_id=:organization
         and (team_id=:team or section_id=:section) and discipline_key=:discipline""")
     fun defaults(organization: UUID, team: UUID, section: UUID?, discipline: String): List<ActivityDefaultsEntity>
@@ -596,4 +614,125 @@ interface ActivityDutyRepository : Repository<ActivityDutyEntity, UUID> {
             order by a.starts_at,a.id limit 201"""
     )
     fun findTargets(team: UUID, name: String): List<DutyTarget>
+}
+
+data class CapacityRow(val id: UUID, val maxParticipants: Int?, val acceptedParticipants: Int)
+
+interface CapacityRepository : Repository<ActivityEntity, UUID> {
+    @Query("""select a.max_participants,(select count(*) from forena.invitation i
+      where i.activity_id=a.id and i.response='accepted' and coalesce(i.activity_role,
+        (select case when bool_or(m.role='leader') then 'leader' else 'participant' end
+         from forena.team_membership m join forena.organization o on o.id=m.organization_id
+         where m.team_id=a.team_id and m.person_id=i.person_id and m.role in ('participant','leader')
+           and m.starts_on<=(a.starts_at at time zone o.time_zone)::date
+           and (m.ends_on is null or m.ends_on>=(a.starts_at at time zone o.time_zone)::date)), 'participant')='participant')::integer as accepted_participants
+      from forena.activity a where a.id=:activity""")
+    fun capacity(activity: UUID): ActivityCapacity
+
+    @Query("""select a.id,a.max_participants,(select count(*) from forena.invitation i
+      where i.activity_id=a.id and i.response='accepted' and coalesce(i.activity_role,
+        (select case when bool_or(m.role='leader') then 'leader' else 'participant' end
+         from forena.team_membership m join forena.organization o on o.id=m.organization_id
+         where m.team_id=a.team_id and m.person_id=i.person_id and m.role in ('participant','leader')
+           and m.starts_on<=(a.starts_at at time zone o.time_zone)::date
+           and (m.ends_on is null or m.ends_on>=(a.starts_at at time zone o.time_zone)::date)), 'participant')='participant')::integer as accepted_participants
+      from forena.activity a where a.id in (:ids)""")
+    fun capacities(ids: Collection<UUID>): List<CapacityRow>
+
+    @Query("""select coalesce(i.activity_role,
+        (select case when bool_or(m.role='leader') then 'leader' else 'participant' end
+         from forena.team_membership m join forena.organization o on o.id=m.organization_id
+         where m.team_id=a.team_id and m.person_id=i.person_id and m.role in ('participant','leader')
+           and m.starts_on<=(a.starts_at at time zone o.time_zone)::date
+           and (m.ends_on is null or m.ends_on>=(a.starts_at at time zone o.time_zone)::date)), 'participant')='participant'
+      from forena.invitation i join forena.activity a on a.id=i.activity_id
+      where i.activity_id=:activity and i.person_id=:person""")
+    fun participant(activity: UUID, person: UUID): Boolean
+}
+
+interface DisciplineObjectRepository : Repository<TeamEntity, UUID> {
+    @Query("""select exists(select 1 from forena.team_membership where team_id=:team and person_id=:person
+        and active and starts_on<=:date and (ends_on is null or ends_on>=:date))""")
+    fun member(team: UUID, person: UUID, date: LocalDate): Boolean
+
+    @Query("""select p.id,p.display_name as name from forena.invitation i
+        join forena.person p on p.id=i.person_id and p.organization_id=i.organization_id
+        where i.activity_id=:activity and coalesce(i.activity_role,
+          (select case when bool_or(m.role='leader') then 'leader' when bool_or(m.role='participant') then 'participant' end
+           from forena.team_membership m where m.team_id=:team and m.person_id=i.person_id
+           and m.starts_on<=:date and (m.ends_on is null or m.ends_on>=:date)), '')='participant'
+        order by p.display_name,p.id""")
+    fun players(activity: UUID, team: UUID, date: LocalDate): List<DisciplinePlayer>
+
+    @Query("""select p.id,p.display_name as name from forena.invitation i
+        join forena.person p on p.id=i.person_id and p.organization_id=i.organization_id
+        where i.activity_id=:activity and i.response='accepted' and coalesce(i.activity_role,
+          (select case when bool_or(m.role='leader') then 'leader' when bool_or(m.role='participant') then 'participant' end
+           from forena.team_membership m where m.team_id=:team and m.person_id=i.person_id
+           and m.starts_on<=:date and (m.ends_on is null or m.ends_on>=:date)), '')='participant'
+        order by p.display_name,p.id""")
+    fun acceptedPlayers(activity: UUID, team: UUID, date: LocalDate): List<DisciplinePlayer>
+}
+
+private const val FOLLOW_UP_ACTIVITY = """select a.id,a.organization_id,a.team_id,coalesce(s.discipline_key,'common') as discipline_key,
+    coalesce(y.slug,'') as slug,coalesce(y.system_category,'') as category,a.title,a.starts_at,a.ends_at,
+    a.revision,a.status,o.time_zone,a.deleted_at,a.imported,a.response_due_at from forena.activity a
+    join forena.organization o on o.id=a.organization_id
+    join forena.team t on t.id=a.team_id and t.organization_id=a.organization_id
+    left join forena.section s on s.id=t.section_id and s.organization_id=t.organization_id
+    left join forena.activity_type y on y.id=a.activity_type_id """
+interface FollowUpActivityRepository : Repository<ManagedActivityEntity, UUID> {
+    @Query("select id from forena.activity where team_id=:team and starts_at>clock_timestamp() and deleted_at is null order by id")
+    fun futureActivityIds(team: UUID): List<UUID>
+    @Query("""select count(*)::integer as invited,
+        count(*) filter(where i.response='accepted')::integer as accepted,
+        count(*) filter(where i.response='pending')::integer as pending
+        from forena.invitation i join forena.activity a on a.id=i.activity_id
+        join forena.organization o on o.id=a.organization_id
+        where a.id=:activity and coalesce(i.activity_role,
+            (select case when bool_or(m.role='leader') then 'leader' when bool_or(m.role='participant') then 'participant' end
+             from forena.team_membership m where m.team_id=a.team_id and m.person_id=i.person_id
+             and m.starts_on<=(a.starts_at at time zone o.time_zone)::date
+             and (m.ends_on is null or m.ends_on>=(a.starts_at at time zone o.time_zone)::date)), '')='participant'""")
+    fun capabilityCounts(activity: UUID): CapabilityPlayerCounts
+
+    @Query("""select distinct p.subject from forena.person_access p
+        join forena.account a on a.subject=p.subject and a.enabled
+        join forena.team_membership m on m.person_id=p.person_id and m.organization_id=p.organization_id
+        join forena.organization o on o.id=m.organization_id
+        where m.team_id=:team and m.active and p.active and p.kind='self'
+        and m.starts_on<=(:now at time zone o.time_zone)::date
+        and (m.ends_on is null or m.ends_on>=(:now at time zone o.time_zone)::date)""")
+    fun associatedSubjects(team: UUID, now: Instant): List<UUID>
+
+    @Query("""select o.time_zone,t.season from forena.team t join forena.organization o on o.id=t.organization_id where t.id=:team""")
+    fun period(team: UUID): TeamReportPeriod?
+    @Query("select coalesce(s.discipline_key,'common') from forena.team t left join forena.section s on s.id=t.section_id where t.id=:team")
+    fun teamDiscipline(team: UUID): String?
+    @Query(FOLLOW_UP_ACTIVITY + " where a.id=:id")
+    fun activity(id: UUID): FollowUpActivity?
+    @Query(FOLLOW_UP_ACTIVITY + " where a.team_id=:team and a.deleted_at is null and a.starts_at>=:from and a.starts_at<:until order by a.starts_at,a.id limit 20001")
+    fun teamActivities(team: UUID, from: Instant, until: Instant): List<FollowUpActivity>
+
+    @Query("""select exists(select 1 from forena.team_membership m
+        join forena.person_access p on p.person_id=m.person_id and p.organization_id=m.organization_id
+        join forena.organization o on o.id=m.organization_id
+        where m.team_id=:team and m.role='leader' and m.active and p.subject=:subject and p.kind='self' and p.active
+        and m.starts_on<=(:now at time zone o.time_zone)::date
+        and (m.ends_on is null or m.ends_on>=(:now at time zone o.time_zone)::date))""")
+    fun leader(subject: UUID, team: UUID, now: Instant): Boolean
+
+    @Query("""select distinct p.subject from forena.team_membership m
+        join forena.person_access p on p.person_id=m.person_id and p.organization_id=m.organization_id
+        join forena.organization o on o.id=m.organization_id
+        join forena.account c on c.subject=p.subject and c.enabled
+        where m.team_id=:team and m.role='leader' and m.active and p.kind='self' and p.active
+        and m.starts_on<=(:now at time zone o.time_zone)::date
+        and (m.ends_on is null or m.ends_on>=(:now at time zone o.time_zone)::date)""")
+    fun leaderRecipients(team: UUID, now: Instant): List<UUID>
+    @Query("""select distinct p.id,p.display_name as name from forena.attendance_record r
+        join forena.activity a on a.id=r.activity_id and a.organization_id=r.organization_id
+        join forena.person p on p.id=r.person_id and p.organization_id=r.organization_id
+        where a.team_id=:team and a.id in (:activities) and r.role='participant' and r.present order by p.display_name,p.id""")
+    fun players(team: UUID, activities: Collection<UUID>): List<DisciplinePlayer>
 }

@@ -35,18 +35,16 @@ try {
     const images = new Map();
     for (const [app, origin] of origins.entries()) {
       console.log(`Checking ${origin} at ${width}px`);
-      const page = await browser.newPage({ viewport: { width, height: 900 } });
-      page.setDefaultTimeout(15_000);
-      const errors = [];
-      page.on('pageerror', error => errors.push(error.message));
-      await page.goto(`${origin}/components`);
-      if (app === 0) await page.addStyleTag({ content: 'nextjs-portal { display:none !important; }' });
-      await page.evaluate(() => document.fonts.ready);
-      const example = page.locator('#attendance-example');
       for (const mode of ['Ny rapport', 'Sparad rapport', 'Inställd', 'Tom lista', 'Sparfel', 'Konflikt', 'Laddar', 'Läsfel']) {
-        // Start every state from a fresh document, without cached focus or compositor layers from another case.
-        await page.reload();
+        // A fresh page also resets compositor layers; reload alone can retain rounded-edge pixels.
+        const page = await browser.newPage({ viewport: { width, height: 900 } });
+        page.setDefaultTimeout(15_000);
+        const errors = [];
+        page.on('pageerror', error => errors.push(error.message));
+        await page.goto(`${origin}/components`);
+        if (app === 0) await page.addStyleTag({ content: 'nextjs-portal { display:none !important; }' });
         await page.evaluate(() => document.fonts.ready);
+        const example = page.locator('#attendance-example');
         await example.getByLabel('Närvaroläge').selectOption(mode);
         // Keep the fixed body's origin identical; distant gallery scroll offsets change curve rasterization.
         await page.evaluate(() => window.scrollTo(0, 0));
@@ -108,9 +106,9 @@ try {
         await page.keyboard.press('Escape');
         await expect(dialog).toHaveCount(0);
         await expect(example.getByRole('button', { name: 'Öppna närvaro' })).toBeFocused();
+        assert.deepEqual(errors, []);
+        await page.close();
       }
-      assert.deepEqual(errors, []);
-      await page.close();
     }
     console.log(`PASS ${width}px: Next/React attendance parity, history, cancellation, additions, zero confirmation, conflicts, errors, keyboard and overflow`);
   }
@@ -161,6 +159,7 @@ try {
       organization: { id, name: 'Klubb', time_zone: 'Europe/Stockholm', role: null },
       team: { id, organization_id: id, name: 'Lag', roles: ['leader'] }, people: [],
     } });
+    if (path === `/api/activities/${id}/follow-up` && req.method() === 'GET') return route.fulfill({ status: 400, json: { error: 'Aktivitetstypen saknar matchuppföljning.' } });
     if (path === `${base}/access`) return route.fulfill({ json: true });
     if (path === base && req.method() === 'GET') return route.fulfill({ json: { revision, reportedAt: null, status: 'scheduled', writable: true, roster, candidates: [], groups: [], history: [] } });
     if (path === base && req.method() === 'PUT') {
