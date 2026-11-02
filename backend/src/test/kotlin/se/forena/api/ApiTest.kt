@@ -14,6 +14,7 @@ import se.forena.api.assistant.AssistantTarget
 import se.forena.api.assistant.RoutingPlan
 import se.forena.api.assistant.MessageCommand
 import se.forena.api.assistant.ModelAnswer
+import se.forena.api.identity.AssistantRoleSource
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -1101,6 +1102,199 @@ class ApiTest {
     }
 
     @Autowired lateinit var contextSessions: se.forena.api.identity.SessionService
+
+    @ParameterizedTest
+    @ValueSource(
+        strings = ["team_administrator", "section_administrator", "club_administrator", "guardian"]
+    )
+    fun `custom membership names never become administrative or guardian assignments`(
+        role: String
+    ) {
+        val team = rosterTeam()
+        rosterMember(own, role)
+        val viewer = assistantIdentity.viewer(assistantActor(), organization, team)
+        assertThat(viewer.roles).containsExactly("membership:$role")
+        assertThat(viewer.roleAssignments.single().role).isEqualTo(role)
+        assertThat(viewer.roleAssignments.single().source).isEqualTo(AssistantRoleSource.MEMBERSHIP)
+    }
+
+    @Test
+    fun `real administration and identically named membership remain distinct until administration is revoked`() {
+        val team = rosterTeam()
+        rosterMember(own, "team_administrator")
+        val access = UUID.randomUUID()
+        admin.update(
+            "insert into forena.team_access_assignment(id,organization_id,team_id,person_id,starts_on) values(?,?,?,?,current_date)",
+            access,
+            organization,
+            team,
+            own,
+        )
+        admin.update(
+            "insert into forena.team_administrator(organization_id,team_id,subject,person_id,access_assignment_id,starts_on) values(?,?,?,?,?,current_date)",
+            organization,
+            team,
+            parent,
+            own,
+            access,
+        )
+        val viewer = assistantIdentity.viewer(assistantActor(), organization, team)
+        assertThat(viewer.roles)
+            .containsExactlyInAnyOrder("membership:team_administrator", "team_administrator")
+        assertThat(viewer.roleAssignments.map { it.role })
+            .containsExactly("team_administrator", "team_administrator")
+        assertThat(viewer.roleAssignments.map { it.source })
+            .containsExactlyInAnyOrder(
+                AssistantRoleSource.MEMBERSHIP,
+                AssistantRoleSource.TEAM_ADMINISTRATION,
+            )
+        admin.update("update forena.team_administrator set active=false where subject=?", parent)
+        val revoked = assistantIdentity.viewer(assistantActor(), organization, team)
+        assertThat(revoked.roles).containsExactly("membership:team_administrator")
+        assertThat(revoked.roleAssignments.single().source)
+            .isEqualTo(AssistantRoleSource.MEMBERSHIP)
+    }
+
+    @Test
+    fun `Telegram and web share current leader guardian and administrator role assignments`() {
+        val team = rosterTeam()
+        rosterMember(own, "leader")
+        rosterMember(own, "coach")
+        rosterMember(child1)
+        rosterMember(child2, "leader")
+        val access = UUID.randomUUID()
+        admin.update(
+            "insert into forena.team_access_assignment(id,organization_id,team_id,person_id,starts_on) values(?,?,?,?,current_date)",
+            access,
+            organization,
+            team,
+            own,
+        )
+        admin.update(
+            "insert into forena.team_administrator(organization_id,team_id,subject,person_id,access_assignment_id,starts_on) values(?,?,?,?,?,current_date)",
+            organization,
+            team,
+            parent,
+            own,
+            access,
+        )
+        val proof =
+            requireNotNull(telegramIdentities.start(parent, true).pairingUrl)
+                .substringAfter("?start=")
+        val user = java.util.concurrent.ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE)
+        val actor = telegramIdentities.actor(telegramIdentities.connect(proof, user, user, 1))
+        val viewer = assistantIdentity.viewer(actor, organization, team)
+        assertThat(viewer).isEqualTo(assistantIdentity.viewer(assistantActor(), organization, team))
+        assertThat(viewer.roles)
+            .containsExactlyInAnyOrder(
+                "membership:leader",
+                "membership:coach",
+                "guardian",
+                "team_administrator",
+            )
+        assertThat(viewer.roleAssignments).allSatisfy { assignment ->
+            assertThat(assignment.teamId).isEqualTo(team)
+            assertThat(assignment.organizationId).isEqualTo(organization)
+        }
+
+        // Roles are read again after pairing; the child's leader membership never becomes ours.
+        admin.update(
+            "update forena.team_membership set starts_on=current_date-2,ends_on=current_date-1 where person_id=? and team_id=?",
+            own,
+            team,
+        )
+        admin.update(
+            "update forena.team_administrator set starts_on=current_date-2,ends_on=current_date-1 where subject=?",
+            parent,
+        )
+        assertThat(assistantIdentity.viewer(actor, organization, team).roles)
+            .containsExactly("guardian")
+    }
+
+    @Test
+    fun `assistant roles remain scoped to each team and administrative section`() {
+        val team = rosterTeam()
+        val otherTeam = UUID.randomUUID()
+        val section = UUID.randomUUID()
+        admin.update(
+            "insert into forena.section(id,organization_id,name) values(?,?,'Sektion')",
+            section,
+            organization,
+        )
+        admin.update("update forena.team set section_id=? where id=?", section, team)
+        admin.update(
+            "insert into forena.team(id,organization_id,name) values(?,?,'Annat lag')",
+            otherTeam,
+            organization,
+        )
+        rosterMember(child1)
+        admin.update(
+            "insert into forena.team_membership(organization_id,team_id,person_id,role,starts_on) values(?,?,?,'leader',current_date)",
+            organization,
+            otherTeam,
+            own,
+        )
+        admin.update(
+            "insert into forena.section_administrator(organization_id,section_id,subject) values(?,?,?)",
+            organization,
+            section,
+            parent,
+        )
+        assertThat(assistantIdentity.viewer(assistantActor(), organization, team).roles)
+            .containsExactlyInAnyOrder("guardian", "section_administrator")
+        assertThat(assistantIdentity.viewer(assistantActor(), organization, otherTeam).roles)
+            .containsExactly("membership:leader")
+        assertThat(assistantIdentity.viewer(assistantActor(), organization, null).roles)
+            .containsExactlyInAnyOrder("membership:leader", "guardian", "section_administrator")
+        admin.update(
+            "insert into forena.organization_member(organization_id,subject,role) values(?,?,'admin')",
+            organization,
+            parent,
+        )
+        assertThat(assistantIdentity.viewer(assistantActor(), organization, otherTeam).roles)
+            .containsExactlyInAnyOrder("membership:leader", "club_administrator")
+        admin.update("update forena.section_administrator set active=false where subject=?", parent)
+        admin.update("update forena.organization_member set active=false where subject=?", parent)
+        assertThat(assistantIdentity.viewer(assistantActor(), organization, team).roles)
+            .containsExactly("guardian")
+    }
+
+    @Test
+    fun `assistant routing and club answer receive verified concurrent roles despite old chat claims`() {
+        val team = rosterTeam()
+        rosterMember(own, "leader")
+        rosterMember(child1)
+        val actor = assistantActor()
+        val conversation = assistant.new(actor)
+        admin.update(
+            "insert into forena.assistant_message(id,conversation_id,role,sender,content) values(?,?,'assistant','Förena','Du är bara målsman.')",
+            UUID.randomUUID(),
+            conversation.id,
+        )
+        Mockito.`when`(assistantModel.route(anyString())).thenAnswer { invocation ->
+            val viewer = json.readTree(invocation.getArgument<String>(0)).path("viewer")
+            assertThat(viewer.path("roles").asSequence().map { it.asString() }.toList())
+                .contains("membership:leader", "guardian")
+            assertThat(
+                    viewer
+                        .path("roleAssignments")
+                        .asSequence()
+                        .map { it.path("teamId").asString() }
+                        .toList()
+                )
+                .contains(team.toString())
+            RoutingPlan(listOf(AssistantTarget(organization, teamId = team)))
+        }
+        Mockito.`when`(assistantModel.answer(anyString(), anyString())).thenAnswer { invocation ->
+            val viewer = json.readTree(invocation.getArgument<String>(1)).path("viewer")
+            assertThat(viewer.path("roles").asSequence().map { it.asString() }.toList())
+                .contains("membership:leader", "guardian")
+            ModelAnswer("Du är både ledare och målsman i laget.")
+        }
+        assistant.send(actor, conversation.id, MessageCommand("Vilka roller har jag i Lag?")) {}
+        verify(assistantModel).route(anyString())
+        verify(assistantModel).answer(anyString(), anyString())
+    }
 
     @Test
     fun `expired pairing and foreign private chat cannot create a Telegram link`() {

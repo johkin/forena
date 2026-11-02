@@ -8,6 +8,8 @@ import se.forena.api.identity.TelegramSettingsChange
 import se.forena.api.identity.AssistantOrganization
 import se.forena.api.identity.AssistantTeam
 import se.forena.api.identity.AssistantViewer
+import se.forena.api.identity.AssistantRoleAssignment
+import se.forena.api.identity.AssistantRoleSource
 
 /** Typed JDBC projections and provider payloads are also reachable in the native runtime. */
 @Configuration(proxyBeanMethods = false)
@@ -18,5 +20,7 @@ import se.forena.api.identity.AssistantViewer
     AssistantOrganization::class,
     AssistantTeam::class,
     AssistantViewer::class,
+    AssistantRoleAssignment::class,
+    AssistantRoleSource::class,
 )
 class IdentityNativeBindings

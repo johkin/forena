@@ -1,7 +1,10 @@
 package se.forena.api.assistant.internal
 
 import org.springframework.aot.hint.annotation.RegisterReflectionForBinding
+import org.springframework.aot.hint.RuntimeHints
+import org.springframework.aot.hint.RuntimeHintsRegistrar
 import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.ImportRuntimeHints
 import se.forena.api.assistant.Conversation
 import se.forena.api.assistant.ConversationView
 import se.forena.api.assistant.AssistantMessage
@@ -25,6 +28,7 @@ import se.forena.api.assistant.ReminderDraft
 
 /** Typed JDBC projections and provider payloads are also reachable in the native runtime. */
 @Configuration(proxyBeanMethods = false)
+@ImportRuntimeHints(AssistantPromptResourceHints::class)
 @RegisterReflectionForBinding(
     Conversation::class,
     ConversationView::class,
@@ -48,3 +52,9 @@ import se.forena.api.assistant.ReminderDraft
     ReminderDraft::class,
 )
 class AssistantNativeBindings
+
+class AssistantPromptResourceHints : RuntimeHintsRegistrar {
+    override fun registerHints(hints: RuntimeHints, classLoader: ClassLoader?) {
+        hints.resources().registerPattern("prompts/*.md")
+    }
+}

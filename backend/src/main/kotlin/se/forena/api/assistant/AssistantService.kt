@@ -20,6 +20,7 @@ class AssistantService(
     private val conversations: ConversationRepository,
     private val sessions: SessionService,
     private val profiles: AssistantProfileService,
+    private val prompts: AssistantPrompts,
     private val overview: PersonalOverviewService,
     private val activityData: AssistantActivityService,
     private val attendance: AttendanceService,
@@ -176,6 +177,8 @@ class AssistantService(
                     mapOf(
                         "question" to resolvedQuestion,
                         "latestMessage" to command.text,
+                        "viewer" to
+                            identities.viewer(actor, conversation.organizationId, selectedTeam),
                         "conversationHistory" to history,
                         "organizations" to organizations,
                         "teams" to catalogue,
@@ -312,7 +315,7 @@ class AssistantService(
             val memories = profiles.memories(actor, null, null, null, null)
             val answer =
                 model.answer(
-                    AssistantPrompts.rules,
+                    prompts.rules,
                     json.writeValueAsString(
                         mapOf(
                             "question" to resolvedQuestion,
@@ -393,7 +396,7 @@ class AssistantService(
                     try {
                         model
                             .answer(
-                                AssistantPrompts.rules,
+                                prompts.rules,
                                 json.writeValueAsString(
                                     mapOf(
                                         "profile" to "Neutral personlig Förena-assistent",
@@ -540,7 +543,7 @@ class AssistantService(
                         )
                     else null,
             )
-        val answer = model.answer(AssistantPrompts.rules, json.writeValueAsString(context))
+        val answer = model.answer(prompts.rules, json.writeValueAsString(context))
         val editor = answer.activityEditor?.also { draft ->
             val editorTeam = requireNotNull(team)
             val configuration = requireNotNull(editorTeam.editor)

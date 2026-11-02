@@ -130,26 +130,80 @@ interface AssistantIdentityRepository : Repository<PersonEntity, UUID> {
     fun findOwnAges(subject: UUID, allOrganizations: Boolean, org: UUID?): List<Int>
 
     @Query(
-        """select distinct m.role from forena.team_membership m join forena.person_access a
-            on a.person_id=m.person_id and a.organization_id=m.organization_id and a.active and a.kind='self'
+        """with membership_roles as (
+            select o.id organization_id,o.name organization_name,t.id team_id,t.name team_name,
+                null::uuid section_id,null::text section_name,'MEMBERSHIP'::text source,m.role
+            from forena.team_membership m join forena.person_access a
+                on a.person_id=m.person_id and a.organization_id=m.organization_id and a.active and a.kind='self'
             join forena.organization o on o.id=m.organization_id
-            where a.subject=:subject and m.active and (:allTeams or m.team_id=:team)
-            and (:allOrganizations or m.organization_id=:org)
-            and m.starts_on<=(clock_timestamp() at time zone o.time_zone)::date
-            and (m.ends_on is null or m.ends_on>=(clock_timestamp() at time zone o.time_zone)::date)"""
+            join forena.team t on t.id=m.team_id and t.organization_id=o.id
+            where a.subject=:subject and m.active
+                and m.starts_on<=(clock_timestamp() at time zone o.time_zone)::date
+                and (m.ends_on is null or m.ends_on>=(clock_timestamp() at time zone o.time_zone)::date)
+        ),
+        guardian_roles as (
+            select o.id organization_id,o.name organization_name,t.id team_id,t.name team_name,
+                null::uuid section_id,null::text section_name,'GUARDIAN_RELATION' source,'guardian' role
+            from forena.person_access a join forena.organization o on o.id=a.organization_id
+            left join forena.team_membership m on m.person_id=a.person_id and m.organization_id=o.id and m.active
+                and m.starts_on<=(clock_timestamp() at time zone o.time_zone)::date
+                and (m.ends_on is null or m.ends_on>=(clock_timestamp() at time zone o.time_zone)::date)
+            left join forena.team t on t.id=m.team_id and t.organization_id=o.id
+            where a.subject=:subject and a.active and a.kind='guardian'
+        ),
+        team_administration_roles as (
+            select o.id organization_id,o.name organization_name,t.id team_id,t.name team_name,
+                null::uuid section_id,null::text section_name,'TEAM_ADMINISTRATION' source,'team_administrator' role
+            from forena.team_administrator d join forena.organization o on o.id=d.organization_id
+            join forena.team t on t.id=d.team_id and t.organization_id=o.id
+            join forena.person_access a on a.person_id=d.person_id and a.organization_id=o.id
+                and a.subject=d.subject and a.active and a.kind='self'
+            where d.subject=:subject and d.active
+                and d.starts_on<=(clock_timestamp() at time zone o.time_zone)::date
+                and (d.ends_on is null or d.ends_on>=(clock_timestamp() at time zone o.time_zone)::date)
+        ),
+        club_roles as (
+            select o.id organization_id,o.name organization_name,null::uuid team_id,null::text team_name,
+                null::uuid section_id,null::text section_name,'CLUB_MEMBERSHIP' source,
+                case when m.role in ('owner','admin') then 'club_administrator'
+                    when m.role='leader' then 'club_leader' else 'club_member' end role
+            from forena.organization_member m join forena.organization o on o.id=m.organization_id
+            where m.subject=:subject and m.active
+        ),
+        section_administration_roles as (
+            select o.id organization_id,o.name organization_name,null::uuid team_id,null::text team_name,
+                s.id section_id,s.name section_name,'SECTION_ADMINISTRATION' source,'section_administrator' role
+            from forena.section_administrator d join forena.organization o on o.id=d.organization_id
+            join forena.section s on s.id=d.section_id and s.organization_id=o.id
+            where d.subject=:subject and d.active
+        ),
+        role_assignments as (
+            select * from membership_roles
+            union all
+            select * from guardian_roles
+            union all
+            select * from team_administration_roles
+            union all
+            select * from club_roles
+            union all
+            select * from section_administration_roles
+        )
+        select distinct r.*
+        from role_assignments r
+        where (:allOrganizations or r.organization_id=:org)
+            and (:allTeams or r.team_id=:team or
+                (r.team_id is null and r.source in ('CLUB_MEMBERSHIP','SECTION_ADMINISTRATION') and exists(
+                    select 1 from forena.team t where t.id=:team and t.organization_id=r.organization_id
+                    and (r.section_id is null or t.section_id=r.section_id))))
+        order by r.organization_name,r.team_name,r.section_name,r.source,r.role"""
     )
-    fun findOwnTeamRoles(
+    fun findRoleAssignments(
         subject: UUID,
         team: UUID?,
         allTeams: Boolean,
         org: UUID?,
         allOrganizations: Boolean,
-    ): List<String>
-
-    @Query(
-        "select exists(select 1 from forena.person_access where subject=:subject and active and kind='guardian' and (:allOrganizations or organization_id=:org))"
-    )
-    fun hasGuardianAccess(subject: UUID, allOrganizations: Boolean, org: UUID?): Boolean
+    ): List<AssistantRoleAssignment>
 }
 
 interface TelegramIdentityRepository : Repository<TelegramConnectionEntity, UUID> {
