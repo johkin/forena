@@ -24,7 +24,12 @@ class AssistantIdentityService(
         val assignments =
             repository.findRoleAssignments(actor.subject, team, team == null, org, org == null)
         return AssistantViewer(
-            assignments.map { it.role }.distinct(),
+            assignments
+                .map {
+                    if (it.source == AssistantRoleSource.MEMBERSHIP) "membership:${it.role}"
+                    else it.role
+                }
+                .distinct(),
             when {
                 age == null || age < 0 -> "unknown"
                 age < 13 -> "under13"

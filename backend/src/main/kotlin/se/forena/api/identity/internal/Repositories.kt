@@ -132,7 +132,7 @@ interface AssistantIdentityRepository : Repository<PersonEntity, UUID> {
     @Query(
         """select distinct r.* from (
             select o.id organization_id,o.name organization_name,t.id team_id,t.name team_name,
-                null::uuid section_id,null::text section_name,m.role
+                null::uuid section_id,null::text section_name,'MEMBERSHIP'::text source,m.role
             from forena.team_membership m join forena.person_access a
                 on a.person_id=m.person_id and a.organization_id=m.organization_id and a.active and a.kind='self'
             join forena.organization o on o.id=m.organization_id
@@ -141,7 +141,7 @@ interface AssistantIdentityRepository : Repository<PersonEntity, UUID> {
                 and m.starts_on<=(clock_timestamp() at time zone o.time_zone)::date
                 and (m.ends_on is null or m.ends_on>=(clock_timestamp() at time zone o.time_zone)::date)
             union all
-            select o.id,o.name,t.id,t.name,null::uuid,null::text,'guardian'
+            select o.id,o.name,t.id,t.name,null::uuid,null::text,'GUARDIAN_RELATION','guardian'
             from forena.person_access a join forena.organization o on o.id=a.organization_id
             left join forena.team_membership m on m.person_id=a.person_id and m.organization_id=o.id and m.active
                 and m.starts_on<=(clock_timestamp() at time zone o.time_zone)::date
@@ -149,7 +149,7 @@ interface AssistantIdentityRepository : Repository<PersonEntity, UUID> {
             left join forena.team t on t.id=m.team_id and t.organization_id=o.id
             where a.subject=:subject and a.active and a.kind='guardian'
             union all
-            select o.id,o.name,t.id,t.name,null::uuid,null::text,'team_administrator'
+            select o.id,o.name,t.id,t.name,null::uuid,null::text,'TEAM_ADMINISTRATION','team_administrator'
             from forena.team_administrator d join forena.organization o on o.id=d.organization_id
             join forena.team t on t.id=d.team_id and t.organization_id=o.id
             join forena.person_access a on a.person_id=d.person_id and a.organization_id=o.id
@@ -158,22 +158,22 @@ interface AssistantIdentityRepository : Repository<PersonEntity, UUID> {
                 and d.starts_on<=(clock_timestamp() at time zone o.time_zone)::date
                 and (d.ends_on is null or d.ends_on>=(clock_timestamp() at time zone o.time_zone)::date)
             union all
-            select o.id,o.name,null::uuid,null::text,null::uuid,null::text,
+            select o.id,o.name,null::uuid,null::text,null::uuid,null::text,'CLUB_MEMBERSHIP',
                 case when m.role in ('owner','admin') then 'club_administrator'
                     when m.role='leader' then 'club_leader' else 'club_member' end
             from forena.organization_member m join forena.organization o on o.id=m.organization_id
             where m.subject=:subject and m.active
             union all
-            select o.id,o.name,null::uuid,null::text,s.id,s.name,'section_administrator'
+            select o.id,o.name,null::uuid,null::text,s.id,s.name,'SECTION_ADMINISTRATION','section_administrator'
             from forena.section_administrator d join forena.organization o on o.id=d.organization_id
             join forena.section s on s.id=d.section_id and s.organization_id=o.id
             where d.subject=:subject and d.active
         ) r where (:allOrganizations or r.organization_id=:org)
             and (:allTeams or r.team_id=:team or
-                (r.team_id is null and r.role<>'guardian' and exists(
+                (r.team_id is null and r.source in ('CLUB_MEMBERSHIP','SECTION_ADMINISTRATION') and exists(
                     select 1 from forena.team t where t.id=:team and t.organization_id=r.organization_id
                     and (r.section_id is null or t.section_id=r.section_id))))
-        order by r.organization_name,r.team_name,r.section_name,r.role"""
+        order by r.organization_name,r.team_name,r.section_name,r.source,r.role"""
     )
     fun findRoleAssignments(
         subject: UUID,

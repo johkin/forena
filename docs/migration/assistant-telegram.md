@@ -39,8 +39,12 @@ Standardavsändaren är klubbnamnet när klubben inte har valt ett assistentnamn
 Telegrams koppling identifierar kontot, inte en viss personrelation eller roll.
 Fördelningen och klubbsvaret får aktuella `viewer.roleAssignments` med klubb-,
 sektions- och lagkoppling. Egna medlemsroller, målsmansrelationer och administrativa
-roller kan gälla samtidigt. Barnets medlemsroller är inte förälderns roller;
-målsmansrollen för ett visst lag kräver barnets aktuella medlemskap i det laget.
+roller kan gälla samtidigt. Barnets medlemsroller är inte förälderns roller.
+Varje rolltilldelning har en typad `source`. Fria medlemsrollnamn kan aldrig
+bevisa administrativa uppdrag, även om en roll heter `team_administrator`.
+Medlemsroller prefixas med `membership:` i sammanfattningen `viewer.roles`;
+det ursprungliga namnet och dess källa bevaras i `roleAssignments`.
+Målsmansrollen för ett visst lag kräver barnets aktuella medlemskap i det laget.
 Datumgränser och avaktivering respekteras även efter att Telegram kopplats.
 Gamla chattpåståenden om roller är historik och får inte ersätta detta underlag.
 Rollbeskrivningen ger inga behörigheter; verksamhetskommandon använder fortsatt
