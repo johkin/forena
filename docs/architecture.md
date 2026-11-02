@@ -75,6 +75,9 @@ Assistentens och Telegrams SQL ligger i modulernas interna repositories. Statisk
 frågor använder Spring Data JDBC med `@Query` och skrivningar med `@Modifying`.
 Samtalsrepositoryt använder `JdbcClient` för sammanhållna persistensoperationer.
 Tjänsterna äger verksamhetsregler och transaktionsgränser.
+Profilens Telegram-status återläses från konto-API:t när användaren återvänder
+från Telegram. Next och Vite delar statusvyn och dess interaktiva exempel på
+`/components`; en lokal utgångstid får inte dölja en redan sparad koppling.
 
 `TeamAccessService` är den gemensamma behörighetskomponenten för lag. Den använder
 `TeamPermission` och aktuell kontokoppling, tilldelning och giltighetsdatum i

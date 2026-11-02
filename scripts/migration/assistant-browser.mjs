@@ -37,6 +37,10 @@ try {
       await settings.getByLabel('Assistentens namn').fill('Ett långt namn för klubbens assistent');
       await settings.getByRole('button', { name: 'Spara assistentprofil', exact: true }).click();
       await expect(settings.getByText('Assistentprofilen är sparad.')).toBeVisible();
+      const telegram = page.locator('#telegram-example');
+      await telegram.getByLabel('Exempeltillstånd').selectOption('active');
+      await expect(telegram.getByText('Telegram är aktiverat för ditt konto.', { exact: true })).toBeVisible();
+      await telegram.screenshot({ path: `frontend/.evidence/assistant/telegram-${index}-${width}.png` });
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
       assert.deepEqual(errors, []);
       await page.close();
