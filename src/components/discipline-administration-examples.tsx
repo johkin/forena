@@ -3,7 +3,7 @@
 import { useCallback, useRef } from "react";
 import { z } from "zod";
 import { DisciplineCatalogue } from "./discipline-catalogue";
-import { ActivityDefaultsAdministration } from "./activity-defaults-administration";
+import { TeamActivitySettings } from "./team-activity-settings";
 import {
   TeamCapabilitySignals,
   TeamDisciplinePlayers,
@@ -140,6 +140,14 @@ export function DisciplineAdministrationExamples() {
       ]);
     if (path.endsWith("/discipline-players"))
       return Response.json([{ id: team, name: "Alex Exempel" }]);
+    if (path.endsWith("/capabilities")) return Response.json([]);
+    if (path.includes("discipline-fields") && new URL(path, "https://example.invalid").searchParams.get("scope") === "team")
+      return Response.json({
+        disciplineKey: "football", version: "1.0.0", enabled: true, editable: false,
+        canManageInvitations: false, title: "Matchförval", revision: 1,
+        fields: [{ key: "desiredSquad", title: "Önskad matchtrupp", type: "integer", minimum: 1, maximum: 99, options: [] }],
+        values: { desiredSquad: 12 }, teamPlayers: [], acceptedPlayers: [], participants: [],
+      });
     if (path.includes("discipline-fields"))
       return Response.json({
         disciplineKey: "football",
@@ -196,11 +204,7 @@ export function DisciplineAdministrationExamples() {
       <h2>Disciplinadministration och laguppföljning</h2>
       <p>Gemensamma produktionskomponenter med isolerade exempeldata.</p>
       <DisciplineCatalogue request={request} />
-      <ActivityDefaultsAdministration
-        request={request}
-        scope="team"
-        scopeId={team}
-      />
+      <TeamActivitySettings request={request} teamId={team} />
       <TeamCapabilitySignals request={request} teamId={team} />
       <TeamFollowUp request={request} teamId={team} />
       <TeamDisciplinePlayers request={request} teamId={team} />

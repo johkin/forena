@@ -10,9 +10,6 @@ import type { Activity, Member, Organization, Team } from "../domain/club";
 import { normalizeDefaultsPatch, resolveDisciplineDefaults } from "../lib/discipline-defaults";
 import type { ActivityConfiguration } from "../lib/activity-configuration";
 import type { ParticipationFetch } from "./activity-invitation-response";
-import { ExtensionFields } from "./extension-fields";
-import { DisciplineFollowUpTools } from "./discipline-follow-up-tools";
-import { ActivityDefaultsAdministration } from "./activity-defaults-administration";
 
 const teamSchema = z.object({
   id: z.uuid(), organizationId: z.uuid(), name: z.string(), organizationName: z.string(),
@@ -162,7 +159,6 @@ export function ActivityManagement({ request, teamId, activityId, onSaved, initi
     {selectedTeam && teams && !canManageTeam ? <p>Du saknar behörighet att hantera aktiviteter i det valda laget. Välj ett annat lag.</p>
       : selectedTeam && !context && !error ? <p role="status">Laddar aktiviteter…</p> : null}
     {context ? <>
-      {!activityId ? <details className="settings-item"><summary>Aktivitetsinställningar</summary><ActivityDefaultsAdministration key={`defaults:${context.team.id}`} request={request} scope="team" scopeId={context.team.id} onChanged={()=>setAttempt(value=>value+1)}/><ExtensionFields request={request} teamId={context.team.id} scope="team" /><DisciplineFollowUpTools key={context.team.id} request={request} teamId={context.team.id}/></details> : null}
       {activityId ? canEditActivity ? <ActivityEditButton onClick={() => setEditing(selectedActivity)} /> : null
         : <button type="button" className="primary" aria-label="Ny aktivitet" onClick={() => setEditing("create")}>Ny aktivitet</button>}
       {!teamId && !activityId ? context.activities.length === 0 ? <p>Inga aktiviteter ännu.</p> : <ul>{context.activities.map(activity => <li key={activity.id}>

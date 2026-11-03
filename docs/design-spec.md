@@ -319,6 +319,13 @@ disciplinfält eller e-postinbjudningar i profilen.
 
 ## Aktivitetsinställningar
 
+Lagets aktivitets- och disciplininställningar öppnas via **Aktivitetsinställningar**
+i den gemensamma lagmenyn. React/Kotlin använder `/teams/:id/settings`; Next
+använder sin befintliga inställningssida. Samma menydefinition används på mobil
+som på desktop. Valet visas för lag som servern anger att kontot får hantera.
+Lagöversikten visar **Ny aktivitet**, utan inbäddad inställningspanel. Direktlänkar
+till inställningssidan kräver samma behörighet och bevaras vid inloggning.
+
 System, klubb, sektion och lag använder samma formulär för standardvärden.
 Visa ärvt värde och källa per fält. Listvalet ”Ärv från överordnad nivå”
 innebär arv och en tom påminnelselista är ett avstängningsval. Redigera typer i hopfällbara
