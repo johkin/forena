@@ -1,5 +1,6 @@
 "use client";
 import { ExtensionFieldsExamples } from "./extension-fields-examples";
+import { PlayerEvaluationExamples } from "./player-evaluation-examples";
 import {DisciplineAdministrationExamples} from "./discipline-administration-examples";
 import { InformationExamples } from "./information-examples";
 import type { NavigationLink } from "./navigation-link";
@@ -58,6 +59,7 @@ export function BrowserFrontendExamples({ linkComponent }: { linkComponent?: Nav
     { id: "44444444-4444-4444-8444-444444444444", person_id: "55555555-5555-4555-8555-555555555555", name: "Robin Exempel", response: "declined", response_comment: "Bevaras vid snabbsvar" },
   ] }];
   return <>
+    <PlayerEvaluationExamples />
     <section><h2>Mobilnavigation</h2><p>På mobil: Min översikt, Mina lag och Meny i nederkant. Mina lag öppnar en panel ovanför menyn. Exempellänkarna byter inte arbetsyta.</p>
       <label>Lagpanelens tillstånd<select value={teamsExample} onChange={event => setTeamsExample(event.target.value)}>
         <option value="ready">Lag med roller</option><option value="empty">Inga lag</option><option value="loading">Laddar</option><option value="error">Hämtfel</option>

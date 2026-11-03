@@ -1027,6 +1027,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/teams/{teamId}/player-evaluation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getPlayerEvaluation"];
+        put: operations["configurePlayerEvaluation"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{teamId}/player-evaluation/scores": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["savePlayerScores"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{teamId}/read-views": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getExtensionReadViews"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/teams/{teamId}/roster": {
         parameters: {
             query?: never;
@@ -1898,6 +1946,50 @@ export interface components {
             id?: string;
             name?: string;
         };
+        EvaluationConfiguration: {
+            confirmDeletion?: boolean;
+            /** Format: double */
+            defaultGroups?: number;
+            enabled?: boolean;
+            metrics?: components["schemas"]["EvaluationMetric"][];
+            /** Format: uuid */
+            revision?: string | null;
+            /** Format: double */
+            threshold?: number;
+        };
+        EvaluationMetric: {
+            /** Format: uuid */
+            id?: string;
+            /** @enum {string} */
+            kind?: "ability" | "development";
+            name?: string;
+        };
+        EvaluationScore: {
+            /** Format: uuid */
+            metricId?: string;
+            /** Format: uuid */
+            personId?: string;
+            /** Format: double */
+            value?: number;
+        };
+        EvaluationScoreCommand: {
+            /** Format: uuid */
+            revision?: string;
+            scores?: components["schemas"]["EvaluationScore"][];
+        };
+        EvaluationSnapshot: {
+            canConfigure?: boolean;
+            /** Format: int32 */
+            defaultGroups?: number;
+            enabled?: boolean;
+            metrics?: components["schemas"]["EvaluationMetric"][];
+            players?: components["schemas"]["DisciplinePlayer"][];
+            /** Format: uuid */
+            revision?: string | null;
+            scores?: components["schemas"]["EvaluationScore"][];
+            /** Format: double */
+            threshold?: number;
+        };
         FieldCondition: {
             field?: string;
             value?: string;
@@ -2229,6 +2321,28 @@ export interface components {
             id?: components["schemas"]["Bytes"];
             name?: string;
         };
+        ReadContribution: {
+            capabilityKey?: string;
+            filters?: components["schemas"]["ViewFilter"][];
+            id?: string;
+            /** Format: int32 */
+            order?: number;
+            /** @enum {string} */
+            placement?: "activity" | "teamReport";
+            /** Format: int32 */
+            schemaVersion?: number;
+            title?: string;
+            views?: components["schemas"]["ReadView"][];
+        };
+        ReadView: {
+            columns?: components["schemas"]["ViewColumn"][];
+            groups?: components["schemas"]["ViewGroup"][];
+            message?: string | null;
+            rows?: components["schemas"]["ViewRow"][];
+            title?: string;
+            /** @enum {string} */
+            type?: "list" | "groupedList" | "table" | "information";
+        };
         RegisterRequest: {
             email?: string;
             password?: string;
@@ -2407,6 +2521,43 @@ export interface components {
             token?: string;
         };
         UserVerificationRequirement: string;
+        ViewCell: {
+            /** Format: double */
+            number?: number | null;
+            text?: string | null;
+            /** @enum {string} */
+            type?: "text" | "number" | "missing";
+        };
+        ViewColumn: {
+            id?: string;
+            title?: string;
+        };
+        ViewFilter: {
+            id?: string;
+            /** Format: int32 */
+            maximum?: number | null;
+            /** Format: int32 */
+            minimum?: number | null;
+            options?: components["schemas"]["FieldOption"][];
+            selected?: string[];
+            title?: string;
+            /** @enum {string} */
+            type?: "integer" | "choice" | "people";
+            value?: string | null;
+        };
+        ViewGroup: {
+            id?: string;
+            rows?: components["schemas"]["ViewRow"][];
+            summary?: string;
+            title?: string;
+        };
+        ViewRow: {
+            cells?: {
+                [key: string]: components["schemas"]["ViewCell"];
+            };
+            id?: string;
+            markers?: string[];
+        };
     };
     responses: never;
     parameters: never;
@@ -5094,6 +5245,111 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ActivityEditorContext"];
+                };
+            };
+        };
+    };
+    getPlayerEvaluation: {
+        parameters: {
+            query?: {
+                activityId?: string;
+            };
+            header?: never;
+            path: {
+                teamId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EvaluationSnapshot"];
+                };
+            };
+        };
+    };
+    configurePlayerEvaluation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvaluationConfiguration"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EvaluationSnapshot"];
+                };
+            };
+        };
+    };
+    savePlayerScores: {
+        parameters: {
+            query?: {
+                activityId?: string;
+            };
+            header?: never;
+            path: {
+                teamId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvaluationScoreCommand"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EvaluationSnapshot"];
+                };
+            };
+        };
+    };
+    getExtensionReadViews: {
+        parameters: {
+            query?: {
+                activityId?: string;
+                groupCount?: number;
+                mode?: string;
+                personIds?: string[];
+            };
+            header?: never;
+            path: {
+                teamId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ReadContribution"][];
                 };
             };
         };

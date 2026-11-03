@@ -18,6 +18,15 @@ export function extensionRequestAllowed(path: string, method: string): boolean {
   const only = (keys: string[]) => [...params.keys()].every(key => keys.includes(key));
   const hasId = (key: string) => uuid.test(params.get(key) ?? "");
   const absent = params.size === 0;
+  const evaluation = new RegExp(`^/api/teams/${id}/player-evaluation(?:/scores)?$`, "i");
+  if (evaluation.test(resource)) return ["GET", "PUT"].includes(method)
+    && only(["activityId"]) && (!params.has("activityId") || hasId("activityId"));
+  if (new RegExp(`^/api/teams/${id}/read-views$`, "i").test(resource)) return method === "GET"
+    && only(["activityId", "groupCount", "mode", "personIds"])
+    && (!params.has("activityId") || hasId("activityId"))
+    && (!params.has("groupCount") || /^\d+$/.test(params.get("groupCount") ?? ""))
+    && (!params.has("mode") || ["ability", "balanced"].includes(params.get("mode") ?? ""))
+    && (!params.has("personIds") || params.get("personIds") === "" || (params.get("personIds") ?? "").split(",").every(value => uuid.test(value)));
   if (method === "GET") {
     if (absent && (["/api/disciplines", "/api/discipline-catalogue"].includes(resource)
       || activity.test(resource) || capability.test(resource) || teamRead.test(resource))) return true;

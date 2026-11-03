@@ -67,7 +67,7 @@ export function safeDestination(value: string | null) {
   if (value === null) return "/";
   const knownRoute = ["/", "/activities/manage", "/administration", "/system", "/components", "/notifications", "/assistant", "/account", "/account/security"].includes(value);
   const workspace = new RegExp(`^/(?:activities|organizations|teams)/${uuid}$`, "i").test(value);
-  const teamPage = new RegExp(`^/teams/${uuid}/(?:members|settings)$`, "i").test(value);
+  const teamPage = new RegExp(`^/teams/${uuid}/(?:members|settings|evaluation)$`, "i").test(value);
   const assistantConversation = new RegExp(`^/assistant\\?conversation=${uuid}$`, "i").test(value);
   return assistantConversation || knownRoute || workspace || teamPage || systemDestination.test(value) || clubAdministrationDestination.test(value) ? value : "/";
 }

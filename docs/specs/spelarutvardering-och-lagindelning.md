@@ -6,7 +6,8 @@
   [Aktiviteter](hantera-aktiviteter.md), [Lagmedlemmar](hantera-trupp.md),
   [Roadmap](../roadmap.md), [Arkitektur](../architecture.md),
   [Säkerhetsarkitektur](../security-architecture.md)
-- Implementation och verifiering: Ej påbörjad. Specen godkänd 2026-11-03.
+- Implementation och verifiering: Implementerad lokalt i React/Kotlin 2026-11-03.
+  Se kravspårning och verifieringsomfattning nedan. Specen är fortsatt Redo.
 
 ## Problem och mål
 
@@ -39,8 +40,8 @@ träningar. Funktionen ska vara återanvändbar mellan discipliner.
 
 ### Ingår inte
 
-- Den aktuella beställningen gäller intervju och spec. Ingen implementation
-  görs inom detta arbete.
+- Specintervjun beställde ingen implementation. Implementation beställdes
+  separat 2026-11-03 och omfattar kraven i denna spec.
 - Individuella vikter och fria formler i första versionen.
 - Sparade gruppindelningar, godkännandeflöden och indelningshistorik.
 - Manuella gruppflyttar i förslagsvyn; ledaren beslutar faktisk indelning på plats.
@@ -289,8 +290,10 @@ lagets ID eller en synlig flik ger ingen behörighet i sig. Framtida
 implementation ska följa projektets befintliga konflikthantering och
 revisionskontroller, utan att införa betygshistorik genom detta krav.
 Gränsfall och samtidiga ändringar regleras i K-021–K-026.
-Serverbeskrivna läsvyer är beslutad målarkitektur. Detaljerad lagring och
-API-utformning återstår för implementation; ingen implementation är utförd.
+Serverbeskrivna läsvyer är implementerade genom `extensionapi.ReadViewContributor`,
+`extensions.ReadViewController` och den delade `ExtensionReadViews`-värden.
+Capabilityn ligger i `capabilities.playerevaluation`. Endast aktuell
+konfiguration och aktuella betyg lagras i tre privata tabeller i `forena`.
 
 De gemensamma produktionskomponenterna, sidskalet och designreglerna ska
 återanvändas. Nya vytyper och tillstånd ska representeras på `/components`.
@@ -412,6 +415,27 @@ representativa truppstorlekar; inget numeriskt svarstidskrav är beslutat.
   och det egna utkastet kan behållas. Föråldrade anrop efter typbyte,
   borttagning eller avstängning valideras mot aktuellt tillstånd och får
   inte återskapa raderade värden eller lämna ut avstängd capabilitydata.
+
+## Implementation och verifiering
+
+Ingången är lagmenyns **Spelarutvärdering**, `/teams/{teamId}/evaluation`,
+i React/Kotlin. Gruppförslag bidras generellt till träningsdetaljerna.
+Next och Vite visar samma produktionskomponenter på `/components`; den äldre
+Next-backenden får ingen parallell implementation eller ny datamodell.
+
+| Krav / acceptanskriterier | Implementation och evidens |
+| --- | --- |
+| K-001–K-003, K-006, K-008; AK-001–AK-003, AK-005, AK-008 | Lagägda mätpunkter och aktuella heltalsbetyg med separata kompletta medelvärden. `EvaluationService`, `Grouping` och migration `player-evaluation.sql`. `GroupingTest` verifierar medelvärden och saknat underlag; API-proven använder allmän verksamhet utan fotbollsfält. |
+| K-004–K-005, K-009, K-011, K-022–K-023; AK-004, AK-009–AK-010, AK-013–AK-014, AK-027, AK-029 | Serverberäknad deterministisk nivåindelning och balansering av genomsnitt med högst en spelares storleksskillnad. Balanseringen förbättrar en deterministisk grundindelning med parbyten; globalt optimum garanteras inte. `GroupingTest` och `ApiTest` täcker 9/7/5/3, 20 spelare, flera gruppantal, likheter, saknat underlag och ogiltiga val. Läsvyn ändrar aldrig svar eller närvaro. |
+| K-007, K-014, K-017, K-025; AK-006–AK-007, AK-017, AK-021–AK-022, AK-031 | `EvaluationAccess` kontrollerar aktuell ledar-/adminåtkomst, trupp och inbjudna spelare. `ApiTest` verifierar admin utan ledarroll, ledare utan adminrätt, nekad spelar-/vårdnadshavaråtkomst, inlånad ja-anmäld utan betyg och nekat främmande personurval. |
+| K-010, K-013, K-024; AK-011–AK-012, AK-016, AK-028, AK-030 | Kandidatmarkering kommer från orundat komplett indikatormedelvärde, endast i nivåläge och under högsta gruppen. Saknat betyder aldrig noll. `GroupingTest` och API-proven verifierar partiellt underlag, giltig nolla, exakt 7 samt 20/3 under tröskel 7 och avsaknad av markering i jämnstarkt läge. |
+| K-012, K-015, K-020; AK-015, AK-018–AK-019, AK-025 | Rapporten använder aktuell spelartrupp utan aktivitet; träningen har ja-svar som förval och lokalt justerbart urval. `ExtensionReadViews` gör nya läsningar vid öppning/filterval och Uppdatera, utan pollning eller gruppflyttar. Ingen betygshistorik eller indelningstabell finns. |
+| K-016, K-026; AK-020, AK-032 | Laglås, förnyad behörighet och nya revisionsreferenser vid varje ändring. Namn-/typbyte bevarar aktuella värden. Borttagning kräver bekräftelse. `ApiTest` verifierar inaktuella skrivningar och mätpunktsändringar; browserproven verifierar bevarat utkast vid 409 och uttrycklig omläsning. |
+| K-018–K-019; AK-023–AK-024 | Spring-registrerade bidrag genom `extensionapi`, generisk aktivitetsvärd och renderare för lista/grupperad lista/tabell/information. `ArchitectureTest`, `extension-read-views.test.tsx`, `evaluation-api.test.ts` och komponentsidans oberoende exempelcapabilities täcker kontrakt, tillåtna läsoperationer och isolering av okänd typ/version. |
+| K-021; AK-026 | Av från början. Bekräftad avstängning kaskadraderar bara capabilityns tre tabeller i en transaktion. Återaktivering får en ny revisionsreferens utan gamla betyg. API- och browserproven täcker avbruten/bekräftad avstängning, bevarade medlemskap/kallelser och nekat gammalt sparande efter återaktivering. |
+
+Verifieringskommandon och browseromfattning redovisas i
+[implementationsunderlaget](../migration/player-evaluation.md).
 
 ## Bekräftade beslut och motiv
 
@@ -553,10 +577,14 @@ Inga blockerande produktfrågor återstår från intervjun.
 Grundbeskrivningen, svar 1–34, arkitekturvalet och slutbekräftelsen är
 sparade. Användaren bekräftade sammanställningen inklusive samtliga
 kompletteringar med ”ja” 2026-11-03. Status är Redo. Det innebär godkänd
-spec, inte implementerad eller verifierad funktionalitet. Den aktuella
-beställningen gäller intervju och spec; ingen implementation är utförd.
+spec. Implementation beställdes separat och genomfördes lokalt 2026-11-03;
+verifieringens omfattning redovisas ovan. Ingen driftsättning ingår.
 
 ## Ändringshistorik
+
+- 2026-11-03: Separat beställd implementation genomförd i React/Kotlin:
+  aktuell bedömning, konfiguration, serverbeskrivna gruppförslag och rapport.
+  Kravspårning och verifieringsomfattning tillagda. Ingen driftsättning.
 
 - 2026-11-03: Användaren godkände slutlig sammanställning inklusive
   kompletteringarna. Infört K-021–K-026 och AK-026–AK-032, markerat specen

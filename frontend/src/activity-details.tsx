@@ -8,6 +8,7 @@ import type { PersonalActivity } from "./personal-overview";
 import { ExtensionFields } from "../../src/components/extension-fields";
 import { ActivityCapacity } from "../../src/components/activity-capacity";
 import { ActivityFollowUp } from "../../src/components/activity-follow-up";
+import { ExtensionReadViews } from "../../src/components/extension-read-views";
 
 export function ActivityDetails({ activityId,request }: { activityId:string; request:ParticipationFetch }) {
   const [now,setNow]=useState(()=>Date.now());
@@ -53,5 +54,6 @@ export function ActivityDetails({ activityId,request }: { activityId:string; req
     </>}
     <ActivityAttendance activityId={activityId} request={request} canManage={activity.can_manage_attendance} started={Date.parse(activity.starts_at) <= now} ended={ended} cancelled={cancelled} onSaved={() => setAttempt(value => value + 1)} />
     {ended ? <ActivityFollowUp key={`${activityId}:${attempt}`} activityId={activityId} request={request}/> : null}
+    <ExtensionReadViews teamId={activity.team.id} activityId={activity.id} request={request} />
   </section></>;
 }

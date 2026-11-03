@@ -46,5 +46,12 @@ import se.forena.api.extensions.*
     SignalSnapshot::class,
     SignalAction::class,
     SignalCommand::class,
+    ReadContribution::class,
+    ReadView::class,
+    ViewCell::class,
+    ViewRow::class,
+    ViewColumn::class,
+    ViewGroup::class,
+    ViewFilter::class,
 )
 class NativeBindings

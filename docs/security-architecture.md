@@ -1,5 +1,25 @@
 # Säkerhetsarkitektur
 
+## Spelarutvärdering och serverbeskrivna läsbidrag
+
+`EvaluationAccess` kräver aktiv session och aktuell ledaråtkomst eller
+administrationsrätt för laget. Spelar-/vårdnadshavaråtkomst räcker inte.
+Endast administratörer får ändra mätpunkter, tröskel, gruppförval och aktivering.
+Låsning använder samma lagrad som annan lagadministration, med förnyad
+behörighetskontroll efter väntan. En färsk revisionsreferens krävs vid varje
+skrivning, även efter typbyte eller återaktivering. Radering av mätpunkter
+eller avstängning kräver uttrycklig bekräftelse och sker atomärt i transaktionen.
+Endast capabilityns egna tabeller berörs av kaskadradering.
+
+Läsbidraget kontrollerar aktivering och åtkomst vid varje anrop. Servern
+beräknar grupper och markeringar och validerar manuellt urval mot lagets
+aktuella spelartrupp och träningens inbjudna spelare. Inlånade får inga
+automatiskt hämtade betyg från andra lag. Rapporten använder endast aktuell
+trupp. Läsvyn skriver aldrig kallelsesvar, närvaro eller gruppindelningar.
+Alla svar är `no-store`. Frontend validerar schemaversion, vytyper, filter
+och celler och isolerar inkompatibla bidrag. Text renderas som text, aldrig
+som HTML, kod eller serverdefinierade URL:er.
+
 ## Kotlin: kallelsearbetare och testleverans
 
 `/internal/notifications/**` har en egen stateless Spring Security Resource

@@ -27,8 +27,21 @@ Frontendens gemensamma värd väljer produktionskomponent efter vytyp, inte
 capabilitynyckel. Domänberäkningar och kandidatmarkeringar ägs av serverns
 capability; backend skickar data och metadata, inte körbar UI-kod.
 
-Detta är godkänd målarkitektur 2026-11-03, ännu inte implementerat.
-Spelarutvärderingens gruppförslag och lagrapport är första avsedda användning.
+Implementerat i React/Kotlin 2026-11-03 genom `ReadViewContributor` och
+`ReadContribution` i `extensionapi`, `ReadViewController` i `extensions` och
+den delade `ExtensionReadViews`-värden. Spring registrerar bidragen, och
+kompositionslagret monterar värden i aktivitetsvyn respektive lagvyn.
+Spelarutvärderingens gruppförslag och lagrapport är första användningen.
+`capabilities.playerevaluation` äger aktuell konfiguration, spelarvärden och
+rena indelningsberäkningar. `EvaluationAccess` lämnar behörighetskontrollerade
+aktivitets-/truppfakta; capabilityn läser inga interna verksamhetsrepositories.
+Capabilityns `CapabilityDefinition` är av från början och justerbar per lag,
+oberoende av disciplin. Dess inställningar och betyg finns på lagets
+Spelarutvärdering-sida. Det separata inställningsflödet krävs för bekräftad
+destruktiv avstängning och ska inte ersättas av en vanlig aktiveringskryssruta.
+Skrivningar serialiseras under laglåset och använder en ogenomskinlig
+revisionsreferens som byts vid varje ändring. Referensen återanvänds aldrig
+efter avstängning/återaktivering. Inga tidigare betyg eller förslag lagras.
 En generell formulärmotor ingår inte genom detta beslut. Se
 [featurespecens kontraktsprinciper](specs/spelarutvardering-och-lagindelning.md#beslutad-målbild-för-serverbeskrivna-läsvyer).
 

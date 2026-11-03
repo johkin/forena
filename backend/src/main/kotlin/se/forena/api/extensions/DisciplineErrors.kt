@@ -11,8 +11,9 @@ import se.forena.api.http.ApiError
 
 @Order(0)
 @RestControllerAdvice(
+    basePackages = ["se.forena.api.capabilities.playerevaluation"],
     assignableTypes =
-        [DisciplineController::class, InformationController::class, CatalogueController::class]
+        [DisciplineController::class, InformationController::class, CatalogueController::class, ReadViewController::class]
 )
 class DisciplineErrors {
     @ExceptionHandler(IllegalArgumentException::class, HttpMessageNotReadableException::class)

@@ -10,6 +10,7 @@ import { AppLink } from "./app-link";
 import { NavigationLinksView } from "../../src/components/navigation-links-view";
 import { TeamDisciplinePlayers } from "../../src/components/team-capability-signals";
 import { ExtensionFields } from "../../src/components/extension-fields";
+import { evaluationSchema } from "../../src/components/player-evaluation";
 
 const groupSchema = z.object({ id: z.uuid(), name: z.string(), personIds: z.array(z.uuid()), revision: z.number().int().nonnegative() });
 export const rosterSchema = z.object({
@@ -122,11 +123,22 @@ export function TeamRosterPage({ request, teamId }: { request: ParticipationFetc
 export function TeamRosterNavigation({ request, teamId, pathname }: { request: ParticipationFetch; teamId: string; pathname: string }) {
   const allowed = useRosterAccess(request, teamId);
   const settings = useTeamSettingsAccess(request, teamId);
+  const [evaluation, setEvaluation] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    request(`/api/teams/${teamId}/player-evaluation`, { signal: controller.signal }).then(async response => {
+      if (!response.ok) return false;
+      const snapshot = evaluationSchema.parse(await response.json());
+      return snapshot.enabled || snapshot.canConfigure;
+    }).then(allowed => { if (!controller.signal.aborted) setEvaluation(allowed); }).catch(() => { if (!controller.signal.aborted) setEvaluation(false); });
+    return () => controller.abort();
+  }, [request, teamId]);
   const base = `/teams/${teamId}`;
   return <NavigationLinksView label="Lag" pathname={pathname} linkComponent={AppLink} items={[
     { href: base, label: "Översikt" },
     ...(allowed ? [{ href: `${base}/members`, label: "Truppen" }] : []),
     ...(settings.status === "allowed" ? [{ href: `${base}/settings`, label: "Aktivitetsinställningar" }] : []),
+    ...(evaluation ? [{ href: `${base}/evaluation`, label: "Spelarutvärdering" }] : []),
   ]} />;
 }
 
