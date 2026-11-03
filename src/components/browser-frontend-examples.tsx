@@ -19,12 +19,29 @@ import { AccountForm, EmailVerification, OAuthConsent } from "./account-form";
 import { PasskeyList } from "./passkey-list";
 import { AdministrationExample } from "./administration-example";
 import { ActivityManagementExample } from "./activity-management-example";
+import { MyTeamsPanel, type LoadMyTeams } from "./my-teams-panel";
+import { AppHeaderFrame } from "./app-header-frame";
+import { ApplicationMenu } from "./application-menu";
 import { SessionMenu } from "./session-menu";
 import { TeamRosterExample } from "./team-roster-example";
 
 /** Actual pilot components with local fixtures; no login or database mutations. */
 export function BrowserFrontendExamples({ linkComponent }: { linkComponent?: NavigationLink }) {
   const [error, setError] = useState<string>();
+  const [teamsExample, setTeamsExample] = useState("ready");
+  const loadExampleTeams = useCallback<LoadMyTeams>(async signal => {
+    if (teamsExample === "error") throw new Error("Exempelfel");
+    if (teamsExample === "loading") return new Promise((_resolve, reject) => {
+      signal.addEventListener("abort", () => reject(new DOMException("Avbruten", "AbortError")), { once: true });
+    });
+    return {
+      organizations: [{ id: "club", name: "Exempelföreningen", href: "#example-club" }],
+      teams: teamsExample === "empty" ? [] : [
+        { id: "f2016", organizationId: "club", name: "F2016", roles: ["Målsman"], href: "#example-f2016" },
+        { id: "p2014", organizationId: "club", name: "P2014", roles: ["Ledare", "Målsman"], href: "#example-p2014" },
+      ],
+    };
+  }, [teamsExample]);
   const invitations = useRef([{ id: "11111111-1111-4111-8111-111111111111", person_id: "22222222-2222-4222-8222-222222222222", name: "Alex Exempel", response: "pending", response_comment: null as string | null }]);
   const request = useCallback<ParticipationFetch>(async (path, init) => {
     if (init?.method === "PUT") {
@@ -40,6 +57,16 @@ export function BrowserFrontendExamples({ linkComponent }: { linkComponent?: Nav
     { id: "44444444-4444-4444-8444-444444444444", person_id: "55555555-5555-4555-8555-555555555555", name: "Robin Exempel", response: "declined", response_comment: "Bevaras vid snabbsvar" },
   ] }];
   return <>
+    <section><h2>Mobilnavigation</h2><p>På mobil: Min översikt, Mina lag och Meny i nederkant. Mina lag öppnar en panel ovanför menyn. Exempellänkarna byter inte arbetsyta.</p>
+      <label>Lagpanelens tillstånd<select value={teamsExample} onChange={event => setTeamsExample(event.target.value)}>
+        <option value="ready">Lag med roller</option><option value="empty">Inga lag</option><option value="loading">Laddar</option><option value="error">Hämtfel</option>
+      </select></label>
+      <AppHeaderFrame mobileNavigation sidebarNavigation linkComponent={linkComponent} teamsNavigation={<MyTeamsPanel key={teamsExample} loadTeams={loadExampleTeams} linkComponent={linkComponent} />}>
+        <ApplicationMenu accountEmail="familj@example.invalid" linkComponent={linkComponent}
+          accountLinks={<a href="/account/security">Inloggningsinställningar</a>}
+          logout={<button type="button" disabled>Logga ut</button>} />
+      </AppHeaderFrame>
+    </section>
     <AdministrationExample />
     <ExtensionFieldsExamples />
     <InformationExamples /><DisciplineAdministrationExamples />

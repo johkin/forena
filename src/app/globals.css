@@ -1186,3 +1186,46 @@ button:disabled { cursor:not-allowed; }
 .discipline-fields fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
 .discipline-fields fieldset > fieldset { padding-block: 12px; border-top: 1px solid var(--line); }
 .discipline-fields legend { padding: 0; font-weight: 650; }
+
+/* Shared signed-in mobile navigation; the existing trigger owns the dialog. */
+.mobile-navigation-link { display:none; }
+@media (max-width:767px) {
+  body:has(.has-mobile-navigation) { padding-bottom:calc(76px + env(safe-area-inset-bottom)); }
+  .mobile-bottom-navigation {
+    position:fixed; inset:auto 0 0; z-index:20; display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px; min-height:calc(76px + env(safe-area-inset-bottom));
+    padding:8px max(12px,env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));
+    background:var(--paper); border-top:1px solid var(--line);
+    box-shadow:0 -4px 20px #1e3f200a;
+  }
+  .mobile-bottom-navigation .mobile-navigation-link,
+  .mobile-bottom-navigation .header-menu-trigger {
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:4px; width:100%; min-width:0; min-height:52px; margin:0; padding:4px;
+    border:0; border-radius:12px; background:transparent; color:var(--ink-soft);
+    font-family:inherit; font-size:11px; font-weight:700; line-height:1.4; text-decoration:none;
+  }
+  .mobile-bottom-navigation .header-menu-trigger span:last-child { display:block; }
+  .mobile-bottom-navigation .header-menu-trigger span:first-child { font-size:24px; line-height:24px; }
+  .mobile-bottom-navigation a:hover, .mobile-bottom-navigation button:hover,
+  .mobile-bottom-navigation button[aria-expanded="true"] { color:var(--ink); background:var(--mint); }
+  .mobile-bottom-navigation :focus-visible { outline:2px solid var(--ink); outline-offset:2px; }
+  .has-mobile-navigation .header-menu-backdrop { bottom:calc(76px + env(safe-area-inset-bottom)); }
+  .has-mobile-navigation .header-menu-panel {
+    inset:auto 0 0; width:100%; height:auto; max-height:calc(100dvh - 100px - env(safe-area-inset-bottom));
+    border-radius:20px 20px 0 0; padding-bottom:20px;
+  }
+  body:has(.has-mobile-navigation) .squad-save-bar { bottom:calc(76px + env(safe-area-inset-bottom)); }
+  body:has(.has-mobile-navigation):has(.squad-save-bar) .assistant-launcher { bottom:calc(160px + env(safe-area-inset-bottom)); }
+  body:has(.has-mobile-navigation) .assistant-launcher { bottom:calc(92px + env(safe-area-inset-bottom)); }
+  body:has(.has-mobile-navigation) .assistant-notice { bottom:calc(156px + env(safe-area-inset-bottom)); }
+}
+
+.my-teams-panel { display:grid; gap:20px; }
+.my-teams-panel section { min-width:0; }
+.my-teams-panel h3 { margin:0 0 8px; font-size:15px; }
+.my-teams-panel h3 a { display:flex; align-items:center; min-height:44px; color:var(--ink); overflow-wrap:anywhere; }
+.my-teams-panel-link { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:56px; padding:10px 12px; border-radius:12px; color:var(--ink); text-decoration:none; }
+.my-teams-panel-link > span:first-child { min-width:0; overflow-wrap:anywhere; }
+.my-teams-panel-link small { display:block; margin-top:4px; color:var(--ink-soft); }
+.my-teams-panel-link:hover, .my-teams-panel-link[aria-current="page"] { background:var(--mint); }
