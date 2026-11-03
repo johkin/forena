@@ -42,7 +42,8 @@ try {
       await page.clock.fastForward(5 * 60_000);
       await expect.poll(() => versionReads).toBe(2);
       await expect(notice).toHaveCount(0);
-      const input = page.locator('input[type="email"]').first();
+      const loginExample = page.getByRole('heading', { name: 'Inloggning med lösenord eller passkey', exact: true }).locator('..');
+      const input = loginExample.getByRole('textbox', { name: 'E-postadress', exact: true });
       await input.fill('ongoing-work@example.invalid');
       await input.focus();
       reportedVersion = 'new-frontend-build';
