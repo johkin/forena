@@ -7,6 +7,7 @@ import { TeamRosterWorkspace, type RosterActions } from "../../src/components/te
 import { primaryRosterRole, rosterRoleLabel } from "../../src/lib/roster-roles";
 import { AppLink } from "./app-link";
 import { NavigationLinksView } from "../../src/components/navigation-links-view";
+import { TeamDisciplinePlayers } from "../../src/components/team-capability-signals";
 import { ExtensionFields } from "../../src/components/extension-fields";
 
 const groupSchema = z.object({ id: z.uuid(), name: z.string(), personIds: z.array(z.uuid()), revision: z.number().int().nonnegative() });
@@ -21,6 +22,7 @@ export function TeamRosterPage({ request, teamId }: { request: ParticipationFetc
   const location = useLocation();
   const navigate = useNavigate();
   const [data, setData] = useState<z.infer<typeof rosterSchema>>();
+  const [readOnly, setReadOnly] = useState(false);
   const [error, setError] = useState<string>();
   const [message, setMessage] = useState<string>();
   const [pending, setPending] = useState(false);
@@ -33,14 +35,17 @@ export function TeamRosterPage({ request, teamId }: { request: ParticipationFetc
   useEffect(() => {
     const controller = new AbortController();
     active.current = true;
-    let failureMessage = "Truppen kunde inte hämtas. Försök igen.";
+    const failureMessage = "Truppen kunde inte hämtas. Försök igen.";
     request(base, { signal: controller.signal }).then(async response => {
-      if (response.status === 403) failureMessage = "Du saknar behörighet att hantera truppen.";
+      if (response.status === 403) {
+        if (!controller.signal.aborted) setReadOnly(true);
+        return;
+      }
       if (!response.ok) throw new Error();
       const parsed = rosterSchema.safeParse(await response.json());
       if (!parsed.success) throw new Error();
       return parsed.data;
-    }).then(snapshot => { if (!controller.signal.aborted) { setData(snapshot); setError(undefined); } })
+    }).then(snapshot => { if (!controller.signal.aborted && snapshot) { setReadOnly(false); setData(snapshot); setError(undefined); } })
       .catch(() => { if (!controller.signal.aborted) setError(failureMessage); });
     return () => { active.current = false; controller.abort(); };
   }, [request, base, attempt]);
@@ -86,6 +91,10 @@ export function TeamRosterPage({ request, teamId }: { request: ParticipationFetc
     deleteTeamGroup: form => write(`${base}/groups/${encodeURIComponent(String(form.get("groupId")))}?revision=${encodeURIComponent(String(form.get("revision")))}`,
       "DELETE", undefined, "?view=groups", "Gruppen har tagits bort. Medlemmarna finns kvar i laget."),
   };
+  if (readOnly) return <>
+    <AppLink className="squad-back" href={`/teams/${teamId}`}>← Tillbaka till laget</AppLink>
+    <h1>Truppen</h1><TeamDisciplinePlayers teamId={teamId} request={request} />
+  </>;
   if (!data) return <><h1>Truppen</h1>{error ? <div role="alert"><p>{error}</p><button type="button" onClick={() => setAttempt(value => value + 1)}>Försök igen</button></div> : <p role="status">Laddar truppen…</p>}</>;
   const query = new URLSearchParams(location.search);
   if (error) query.set("error", error);
@@ -95,7 +104,7 @@ export function TeamRosterPage({ request, teamId }: { request: ParticipationFetc
     <TeamRosterWorkspace people={data.people.map(person => ({ ...person, title: person.title || rosterRoleLabel(primaryRosterRole(person.roles)) }))}
       groups={data.groups} team={data.team} organization={{ name: data.team.organizationName }} destination={destination}
       search={query.toString()} actions={actions} pending={pending} linkComponent={AppLink}
-      memberDetails={data.people.some(p => p.id === query.get("person") && p.roles.includes("participant")) ?
+      memberExtraDetails={data.people.some(p => p.id === query.get("person") && p.roles.includes("participant")) ?
         <ExtensionFields request={request} teamId={teamId} scope="teamMembership" personId={query.get("person") ?? undefined} /> : undefined} />
   </>;
 }
@@ -116,7 +125,11 @@ function useRosterAccess(request: ParticipationFetch, teamId: string) {
   useEffect(() => {
     const controller = new AbortController();
     request(`/api/teams/${teamId}/roster/access`, { signal: controller.signal })
-      .then(async response => response.ok && await response.json() === true)
+      .then(async response => {
+        if (response.ok && await response.json() === true) return true;
+        const players = await request(`/api/teams/${teamId}/discipline-players`, { signal: controller.signal });
+        return players.ok;
+      })
       .then(value => { if (!controller.signal.aborted) setAllowed(value); })
       .catch(() => { if (!controller.signal.aborted) setAllowed(false); });
     return () => controller.abort();

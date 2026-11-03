@@ -67,6 +67,8 @@ import tools.jackson.databind.json.JsonMapper
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class ApiTest {
+    @Autowired lateinit var events: org.springframework.context.ApplicationEventPublisher
+    @Autowired lateinit var scheduledInvitations: se.forena.api.activities.ScheduledInvitationService
     @Autowired lateinit var capabilityRuntime: se.forena.api.extensions.CapabilityRuntime
     @Autowired lateinit var capabilityWorker: se.forena.api.extensions.CapabilityWorker
     @Autowired lateinit var informationWorker: se.forena.api.extensions.InformationWorker
@@ -81,6 +83,50 @@ class ApiTest {
         admin.update("update forena.activity set activity_type_id='00000000-0000-4000-8000-000000000002',starts_at=now()-interval '2 hours',ends_at=now()-interval '1 hour' where id=?", activity)
         if (report) assertThat(request(attendancePath(), attendanceBody(present=listOf(child1,child2))).statusCode()).isEqualTo(204)
         return team
+    }
+
+    @Test fun `match numbers snapshot the right team membership and preserve overrides and missing values`() {
+        val team = informationFixture(false)
+        rosterMember(child1, "participant", start = "current_date-1")
+        rosterMember(child2, "participant", start = "current_date-1")
+        fun membership(number: Int, revision: Int) = request("/api/discipline-fields",
+            """{"teamId":"$team","scope":"teamMembership","personId":"$child1","disciplineKey":"football","version":"1.0.0","revision":$revision,"values":{"shirtNumber":$number}}""")
+        assertThat(membership(7, 0).statusCode()).isEqualTo(200)
+        val created = request("/api/activities", activityBody(team,
+            ""","activityTypeId":"00000000-0000-4000-8000-000000000002","invitationMode":"now","personIds":["$child1","$child2"]"""), method = "POST")
+        assertThat(created.statusCode()).withFailMessage(created.body()).isEqualTo(201)
+        val id = UUID.fromString(json.readTree(created.body()).get("activity").get("id").asString())
+        fun snapshot(person: UUID) = json.readTree(request("/api/discipline-fields?teamId=$team&scope=activityParticipation&activityId=$id&personId=$person").body())
+        assertThat(snapshot(child1).get("values").get("shirtNumber").asInt()).isEqualTo(7)
+        assertThat(snapshot(child2).get("values").has("shirtNumber")).isFalse()
+        assertThat(membership(9, 1).statusCode()).isEqualTo(200)
+        assertThat(snapshot(child1).get("values").get("shirtNumber").asInt()).isEqualTo(7)
+        val saved = request("/api/discipline-fields",
+            """{"teamId":"$team","scope":"activityParticipation","activityId":"$id","personId":"$child1","disciplineKey":"football","version":"1.0.0","revision":1,"values":{"shirtNumber":12}}""")
+        assertThat(saved.statusCode()).withFailMessage(saved.body()).isEqualTo(200)
+        // Re-evaluation after invitation changes must not refresh either an override or an empty snapshot.
+        TransactionTemplate(transactionManager).executeWithoutResult { events.publishEvent(se.forena.api.extensionapi.DisciplineParticipantsAdded(id)) }
+        assertThat(snapshot(child1).get("values").get("shirtNumber").asInt()).isEqualTo(12)
+        assertThat(snapshot(child2).get("values").has("shirtNumber")).isFalse()
+        assertThat(request("/api/discipline-fields?teamId=$team&scope=activityParticipation&activityId=$id&personId=$child1", cookie=loginCookie(outsider)).statusCode()).isEqualTo(403)
+    }
+
+    @Test fun `scheduled player invitations copy the membership number when materialized`() {
+        val team = informationFixture(false)
+        rosterMember(child1, "participant", start = "current_date-1")
+        val membership = request("/api/discipline-fields",
+            """{"teamId":"$team","scope":"teamMembership","personId":"$child1","disciplineKey":"football","version":"1.0.0","revision":0,"values":{"shirtNumber":8}}""")
+        assertThat(membership.statusCode()).isEqualTo(200)
+        val created = request("/api/activities", activityBody(team,
+            ""","activityTypeId":"00000000-0000-4000-8000-000000000002","invitationMode":"schedule","invitationAudience":"players""""), method = "POST")
+        assertThat(created.statusCode()).withFailMessage(created.body()).isEqualTo(201)
+        val id = UUID.fromString(json.readTree(created.body()).get("activity").get("id").asString())
+        admin.update("update forena.activity_schedule set due_at=now()-interval '1 minute',next_attempt=now()-interval '1 minute' where activity_id=? and kind='invitation'", id)
+        scheduledInvitations.materialize(System.nanoTime() + java.time.Duration.ofSeconds(30).toNanos())
+        val response = request("/api/discipline-fields?teamId=$team&scope=activityParticipation&activityId=$id&personId=$child1")
+        assertThat(response.statusCode()).withFailMessage(response.body()).isEqualTo(200)
+        val snapshot = json.readTree(response.body())
+        assertThat(snapshot.get("values").get("shirtNumber").asInt()).isEqualTo(8)
     }
 
     private fun informationBody(captain: UUID? = child1, recipients: List<UUID>? = listOf(child1), revision: Int = 0,

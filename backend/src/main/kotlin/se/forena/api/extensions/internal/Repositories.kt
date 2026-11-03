@@ -7,6 +7,14 @@ import org.springframework.data.jdbc.repository.query.Query
 import org.springframework.data.repository.Repository
 
 interface DisciplineValueRepository : Repository<DisciplineValueEntity, UUID> {
+    @Query("""select * from forena.discipline_value where team_id=:team and discipline_key=:discipline
+        and scope='teamMembership' and person_id in (:people)""")
+    fun membershipValues(team: UUID, discipline: String, people: Collection<UUID>): List<DisciplineValueEntity>
+
+    @Query("""select * from forena.discipline_value where activity_id=:activity
+        and discipline_key=:discipline and scope='activityParticipation'""")
+    fun participationValues(activity: UUID, discipline: String): List<DisciplineValueEntity>
+
     @Query(
         """select * from forena.discipline_value where team_id=:team and discipline_key=:discipline
         and scope=:scope and anchor_id=:anchor and person_id is not distinct from :person"""

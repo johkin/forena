@@ -1061,6 +1061,22 @@ Borttagningskontrollen hämtar alltid aktuella referenser på nytt; ingen
 beständig cache kan missa kopplingar från senare migrationer eller tillägg.
 Hjälpfunktionerna är privata och tar inte emot referenslistor från klienter.
 
+## Spelaruppgifter och prioriterade lagärenden
+
+React/Kotlin visar `TeamAttention` i `PersonalHome` före kalender/agendalistan.
+Den personliga sidan hämtar signaler och uppföljning för samtliga relevanta
+lag; arbetsytor begränsar urvalet. Respektive API kontrollerar aktuell
+kallelse-/ledarbehörighet. Spelaruppgifter kompletterar medlemsprofilen i
+Truppen via `memberExtraDetails`, utan att ersätta dess grunduppgifter.
+
+Disciplinpaketets `initialParticipationValues` äger förval till matchdeltagande.
+Fotboll kopierar `shirtNumber` från samma lags medlemsvärden. Runtime laddar
+befintliga deltagarvärden och medlemsvärden samlat och skapar bara saknade
+ögonblicksbilder, även tomma sådana. Direkta och schemalagda kallelser använder
+samma initialisering i kallelsens transaktion under aktivitetslås. Befintliga
+matchvärden och manuella ändringar skrivs inte över. Ingen retroaktiv
+massuppdatering av äldre matcher görs.
+
 ## Telegram-prototyp
 
 Telegram skapar frysta meddelanden per mottagare och kallad person i samma

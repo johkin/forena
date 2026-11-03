@@ -15,10 +15,18 @@ const schema = z.array(
 export function TeamFollowUp({
   teamId,
   request,
+  teamName,
+  attentionOnly = false,
+  reportOnly = false,
+  refreshKey,
   linkComponent: Link = "a",
 }: {
   teamId: string;
   request: ParticipationFetch;
+  teamName?: string;
+  attentionOnly?: boolean;
+  reportOnly?: boolean;
+  refreshKey?: string;
   linkComponent?: NavigationLink;
 }) {
   const [items, setItems] = useState<z.infer<typeof schema>>();
@@ -34,20 +42,20 @@ export function TeamFollowUp({
         }
         if (!response.ok) throw new Error();
         const data = schema.parse(await response.json());
-        if (!controller.signal.aborted) setItems(data);
+        if (!controller.signal.aborted) { setItems(data); setHidden(false); setError(undefined); }
       })
       .catch(() => {
         if (!controller.signal.aborted)
           setError("Lagets uppföljning kunde inte hämtas.");
       });
     return () => controller.abort();
-  }, [request, teamId]);
-  if (hidden) return null;
+  }, [request, teamId, refreshKey]);
+  if (hidden || (attentionOnly && !error && !items?.length)) return null;
   return (
     <section className="card">
-      <h2>Matchuppföljning</h2>
+      <h2>{reportOnly ? "Spelarhistorik och rapport" : teamName ? `Matchuppföljning · ${teamName}` : "Matchuppföljning"}</h2>
       {error ? <p role="alert">{error}</p> : null}
-      {items?.length ? (
+      {!reportOnly && items?.length ? (
         <ul>
           {items.map((item) => (
             <li key={item.activityId}>
@@ -59,10 +67,10 @@ export function TeamFollowUp({
             </li>
           ))}
         </ul>
-      ) : items ? (
+      ) : !reportOnly && items ? (
         <p>Ingen ofullständig matchuppföljning.</p>
       ) : null}
-      {items ? (
+      {!attentionOnly && items ? (
         <details>
           <summary>Spelarhistorik och rapport</summary>
           <DisciplineInformationReport

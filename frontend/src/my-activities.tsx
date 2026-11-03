@@ -5,8 +5,8 @@ import { useNavigate } from "react-router";
 import { AppLink } from "./app-link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityManagement } from "../../src/components/activity-management";
-import {TeamCapabilitySignals,TeamDisciplinePlayers} from "../../src/components/team-capability-signals";
 import { TeamFollowUp } from "../../src/components/team-follow-up";
+import { TeamAttention } from "../../src/components/team-attention";
 import { PersonalHome, teamRoleLabels } from "../../src/components/personal-home";
 import { PersonalOverview } from "../../src/components/personal-overview";
 import type { ParticipationFetch } from "../../src/components/activity-invitation-response";
@@ -85,12 +85,13 @@ export function MyActivitiesPage({ request, workspace, notifications=false, acco
     {workspace ? <OverviewBackLink linkComponent={AppLink} /> : null}
     {error ? <div role="alert"><p>{error}</p><button type="button" onClick={()=>setAttempt(value=>value+1)}>Försök igen</button></div> : null}
     <PersonalHome calendarScope={{people:data.calendar_people,teams:data.calendar_teams}} accountId={accountId} loadCalendarMonth={loadCalendarMonth} items={items} activities={activities.map(calendarActivity)} referenceTime={data.reference_time}
+      teamContent={<TeamAttention teams={data.teams.filter(item => !workspace || (team ? item.id === team.id : item.organization_id === organization?.id)).map(item => ({ id: item.id, name: `${data.organizations.find(org => org.id === item.organization_id)?.name ?? ""} · ${item.name}` }))} request={request} refreshKey={data.reference_time} linkComponent={AppLink} />}
       actions={team ? <><ActivityManagement key={team.id} teamId={team.id} request={request} onSaved={() => setAttempt(value => value + 1)} /></> : undefined}
       title={team?.name ?? organization?.name} introduction={workspace ? "Här visas aktiviteter för dig och de personer du företräder i arbetsytan." : undefined}
       organizations={data.organizations.filter(item=>!workspace || item.id===(organization?.id ?? team?.organization_id)).map(item=>({...item,role:item.role ?? undefined,href:`/organizations/${item.id}`}))}
       teams={data.teams.filter(item=>!workspace || (team ? item.id===team.id : item.organization_id===organization!.id)).map(item=>({id:item.id,organizationId:item.organization_id,name:item.name,roles:item.roles.map(role=>teamRoleLabels[role] ?? role),href:`/teams/${item.id}`}))}
       request={request} linkComponent={AppLink} onAnswered={answer} onOpenActivity={item=>navigate(`/activities/${item.activity.id}`)} />
-    {team ? <><TeamCapabilitySignals key={`signals:${team.id}`} teamId={team.id} request={request} linkComponent={AppLink}/><TeamFollowUp key={`followup:${team.id}`} request={request} teamId={team.id} linkComponent={AppLink}/><TeamDisciplinePlayers key={`players:${team.id}`} request={request} teamId={team.id}/></> : null}
+    {team ? <TeamFollowUp teamId={team.id} request={request} reportOnly linkComponent={AppLink} /> : null}
     {saved ? <p className="sr-only" role="status">{saved}</p> : null}
   </>;
 }

@@ -153,6 +153,13 @@ ingår inte i denna kommande-vy.
 
 **Min översikt** finns i den gemensamma inloggade menyn även på klubb-/lagsidor.
 Inloggning utan uttrycklig returadress går hit; djupa länkar behåller sitt mål.
+
+Lagets aktiva signaler och ofullständig matchuppföljning visas före
+aktivitetslistan, direkt efter sidans välkomsthuvud. På Min översikt omfattas
+alla användarens lag; på klubb-/lagöversikt begränsas de till den arbetsytan.
+Varje block anger förening och lag. Serverns separata signal- respektive
+ledarbehörighet avgör vad användaren får se; familjens lagåtkomst räcker inte.
+Tomma block och äldre signalhistorik fyller inte startsidan.
 Nya konton får ett tomt läge med vägledning, inte en godtyckligt vald klubb.
 Föreningslänkarna visar användarens föreningsroll även utan lagroll. En koppling
 via ett barn utan eget föreningsmedlemskap märks inte med en påhittad roll.
@@ -508,6 +515,12 @@ och det gemensamma uppföljningsformuläret. Utfallets spelarväljare använder
 sparad faktisk närvaro. Närvaro-/utfallsrättning förbereds som ett gemensamt
 utkast och sparas atomärt; utkastet får aldrig presenteras som sparad närvaro.
 Lagets interna signaler och uppföljningspunkter länkar till rätt aktivitet.
+Spelaruppgifter redigeras i spelarens profil under Truppen och kompletterar
+grunduppgifterna. De ska inte visas som en separat spelarlista på lagöversikten.
+Spelare och målsmän med läsåtkomst når spelaruppgifter via Truppen i läsläge.
+Matchens tröjnummer kopieras från spelarens nummer i matchens lag när
+kallelsen skapas. Matchnumret kan ändras separat och följer inte senare
+ändringar av lagnumret. Saknat nummer ger ett tomt sparat matchvärde.
 Rapporten visar täckning, registrerade delutfall och datum i klubbens tidszon,
 med val av årssäsong eller datumintervall. Nya tillstånd visas med samma
 produktionskomponenter på `/components` i båda apparna.

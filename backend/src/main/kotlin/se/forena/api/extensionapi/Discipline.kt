@@ -3,6 +3,7 @@ package se.forena.api.extensionapi
 import java.time.Instant
 import java.util.UUID
 import tools.jackson.databind.JsonNode
+import tools.jackson.databind.node.JsonNodeFactory
 
 /** Stable object anchors. Organization and discipline are always resolved on the server. */
 enum class DisciplineScope {
@@ -87,6 +88,10 @@ interface DisciplinePackage {
     fun validate(scope: DisciplineScope, values: JsonNode, context: DisciplineValidationContext)
 
     fun initialActivityValues(teamValues: JsonNode): JsonNode
+
+    /** Copy defaults once when a player is invited; never use a live fallback for match history. */
+    fun initialParticipationValues(membershipValues: JsonNode): JsonNode =
+        JsonNodeFactory.instance.objectNode()
 }
 
 interface DisciplineCatalog {
@@ -107,6 +112,9 @@ data class DisciplineActivity(
     val generation: Long,
     val cancelled: Boolean,
 )
+
+/** Published once per invitation batch inside the activity transaction. */
+data class DisciplineParticipantsAdded(val activityId: UUID)
 
 /** Called inside the activity transaction, so the first read already sees the snapshot. */
 interface DisciplineActivityLifecycle {

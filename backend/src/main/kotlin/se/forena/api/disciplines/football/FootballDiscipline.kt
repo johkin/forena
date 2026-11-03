@@ -171,4 +171,9 @@ class FootballDiscipline(
                 teamValues.get(field.key)?.let { result.set(field.key, it) }
             }
         }
+
+    override fun initialParticipationValues(membershipValues: JsonNode): JsonNode =
+        JsonNodeFactory.instance.objectNode().also { result ->
+            membershipValues.get("shirtNumber")?.let { result.set("shirtNumber", it) }
+        }
 }
