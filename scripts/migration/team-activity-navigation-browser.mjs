@@ -29,6 +29,7 @@ try {
     });
     await page.route('**/api/**', async route => {
       const path = new URL(route.request().url()).pathname;
+      if (path === '/api/me/roster-invitation') return route.fulfill({ status: 204 });
       let json;
       if (path === '/api/auth/session') json = { user: { id: organizationId, email: 'en.lang.epostadress@example.invalid' } };
       else if (path === '/api/me/overview') json = {

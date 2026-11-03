@@ -1,3 +1,4 @@
+import { RosterRegistration, RosterLogin } from "../../src/components/roster-registration";
 import { useTeamSettingsAccess } from "./team-activity-settings";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
@@ -14,7 +15,7 @@ const groupSchema = z.object({ id: z.uuid(), name: z.string(), personIds: z.arra
 export const rosterSchema = z.object({
   team: z.object({ id: z.uuid(), name: z.string(), organizationName: z.string() }),
   people: z.array(z.object({ id: z.uuid(), name: z.string(), roles: z.array(z.string()), title: z.string(), linked: z.boolean(),
-    guardians: z.array(z.object({ name: z.string(), phone: z.string() })), childIds: z.array(z.uuid()) })),
+    guardians: z.array(z.object({ name: z.string(), phone: z.string() })), email: z.string().nullable().optional(), invitationStatus: z.string().nullable().optional(), childIds: z.array(z.uuid()) })),
   groups: z.array(groupSchema),
 });
 
@@ -81,6 +82,8 @@ export function TeamRosterPage({ request, teamId }: { request: ParticipationFetc
     }
   }
 
+  const selectedPerson = data?.people.find(person => person.id === new URLSearchParams(location.search).get("person"));
+  const today = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Stockholm", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   const actions: RosterActions = {
     updateMemberName: form => write(`${base}/members/${encodeURIComponent(String(form.get("personId")))}`, "PUT",
       { name: String(form.get("displayName") ?? "") }, `?person=${encodeURIComponent(String(form.get("personId")))}`, "Medlemmen har uppdaterats."),
@@ -104,8 +107,15 @@ export function TeamRosterPage({ request, teamId }: { request: ParticipationFetc
     <TeamRosterWorkspace people={data.people.map(person => ({ ...person, title: person.title || rosterRoleLabel(primaryRosterRole(person.roles)) }))}
       groups={data.groups} team={data.team} organization={{ name: data.team.organizationName }} destination={destination}
       search={query.toString()} actions={actions} pending={pending} linkComponent={AppLink}
-      memberExtraDetails={data.people.some(p => p.id === query.get("person") && p.roles.includes("participant")) ?
-        <ExtensionFields request={request} teamId={teamId} scope="teamMembership" personId={query.get("person") ?? undefined} /> : undefined} />
+      memberTools={<RosterRegistration key={location.key} today={today} pending={pending} onSearch={async value => {
+        const response = await request(`${base}/candidates?q=${encodeURIComponent(value)}`);
+        if (!response.ok) throw new Error();
+        return z.array(z.object({ id: z.uuid(), name: z.string(), birthDate: z.string().nullable() })).parse(await response.json());
+      }} onCreate={value => write(`${base}/members`, "POST", value, "", "Medlemmen har lagts till. Eventuell inbjudan väntar på utskick. Uppdatera sidan för aktuell leveransstatus.")} />}
+      memberExtraDetails={<>{selectedPerson ? <RosterLogin key={selectedPerson.id} email={selectedPerson.email} linked={selectedPerson.linked}
+        status={selectedPerson.invitationStatus} pending={pending} onInvite={email => write(`${base}/members/${selectedPerson.id}/invitation`, "POST", { email },
+          `?person=${selectedPerson.id}`, "Inbjudan väntar på utskick. Uppdatera sidan för aktuell leveransstatus.")} /> : null}{data.people.some(p => p.id === query.get("person") && p.roles.includes("participant")) ?
+        <ExtensionFields request={request} teamId={teamId} scope="teamMembership" personId={query.get("person") ?? undefined} /> : undefined}</>} />
   </>;
 }
 

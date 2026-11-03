@@ -12,12 +12,12 @@ type Action = (data: FormData) => Promise<void>;
 export type RosterActions = { updateMemberName: Action; createTeamGroup: Action; updateTeamGroup: Action; deleteTeamGroup: Action };
 
 export function TeamRosterWorkspace({ people: roster, groups: rosterGroups, team, organization,
-  destination, search, actions, pending = false, memberDetails, memberExtraDetails, guardianError, childError,
+  destination, search, actions, pending = false, memberTools, memberDetails, memberExtraDetails, guardianError, childError,
   organizationSlug = "", teamSlug = "", linkComponent: Link = "a",
 }: {
   people: RosterProfile[]; groups: RosterGroup[]; team: { name: string }; organization: { name: string };
   destination: string; search: string; actions: RosterActions; pending?: boolean;
-  memberDetails?: ReactNode; memberExtraDetails?: ReactNode; guardianError?: boolean; childError?: boolean;
+  memberTools?: ReactNode; memberDetails?: ReactNode; memberExtraDetails?: ReactNode; guardianError?: boolean; childError?: boolean;
   organizationSlug?: string; teamSlug?: string; linkComponent?: NavigationLink;
 }) {
   const query = new URLSearchParams(search);
@@ -73,6 +73,7 @@ export function TeamRosterWorkspace({ people: roster, groups: rosterGroups, team
         </div>
       ) : null}
       {error ? <div className="auth-error" role="alert">{error}</div> : null}
+      {memberTools}
       <nav className="squad-tabs" aria-label="Truppen">
         <Link
           aria-current={member || view !== "groups" ? "page" : undefined}

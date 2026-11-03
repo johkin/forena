@@ -179,3 +179,10 @@ data class AttendanceChangeRow(
 )
 
 @Table(value = "activity_duty", schema = "forena") data class ActivityDutyEntity(@Id val id: UUID)
+
+@Table(value = "roster_login_invitation", schema = "forena")
+data class RosterLoginInvitationEntity(
+    @Id val id: UUID, val organizationId: UUID, val teamId: UUID, val personId: UUID,
+    val email: String, val tokenHash: String, val inviter: UUID, val mailId: UUID,
+    val createdAt: Instant, val expiresAt: Instant, val revoked: Boolean, val acceptedBy: UUID?
+)

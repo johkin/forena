@@ -2981,12 +2981,99 @@
         ],
         "type": "object"
       },
+      "RosterAccepted": {
+        "properties": {
+          "teamId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RosterCandidate": {
+        "properties": {
+          "birthDate": {
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "RosterContact": {
         "properties": {
           "name": {
             "type": "string"
           },
           "phone": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RosterCreateCommand": {
+        "properties": {
+          "birthDate": {
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "duplicatesConfirmed": {
+            "type": "boolean"
+          },
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "personId": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "requestId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "startsOn": {
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "RosterCreated": {
+        "properties": {
+          "personId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RosterEmailCommand": {
+        "properties": {
+          "email": {
             "type": "string"
           }
         },
@@ -3014,6 +3101,15 @@
         },
         "type": "object"
       },
+      "RosterInvitationCode": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "type": "object"
+      },
       "RosterMember": {
         "properties": {
           "childIds": {
@@ -3022,6 +3118,12 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "guardians": {
             "items": {
@@ -3032,6 +3134,12 @@
           "id": {
             "format": "uuid",
             "type": "string"
+          },
+          "invitationStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "linked": {
             "type": "boolean"
@@ -3054,6 +3162,24 @@
       "RosterNameCommand": {
         "properties": {
           "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RosterPendingInvitation": {
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "personName": {
+            "type": "string"
+          },
+          "teamName": {
             "type": "string"
           }
         },
@@ -6133,6 +6259,81 @@
         ]
       }
     },
+    "/api/auth/roster-invitation": {
+      "post": {
+        "operationId": "prepareRosterInvitation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RosterInvitationCode"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Invitation prepared in browser session"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Inactive session or invalid credential"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin or account access denied"
+          },
+          "429": {
+            "description": "Shared admission budget exhausted",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until retry",
+                "schema": {
+                  "format": "int32",
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Temporary verification failure"
+          }
+        },
+        "tags": [
+          "roster-invitation-controller"
+        ]
+      }
+    },
     "/api/auth/session": {
       "get": {
         "operationId": "session",
@@ -6648,6 +6849,65 @@
         ]
       }
     },
+    "/api/me/roster-invitation": {
+      "delete": {
+        "operationId": "dismissRosterInvitation",
+        "responses": {
+          "204": {
+            "description": "Pending acceptance dismissed"
+          }
+        },
+        "tags": [
+          "roster-invitation-controller"
+        ]
+      },
+      "get": {
+        "operationId": "getPendingRosterInvitation",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/RosterPendingInvitation"
+                }
+              }
+            },
+            "description": "Pending invitation"
+          },
+          "204": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/RosterPendingInvitation"
+                }
+              }
+            },
+            "description": "No pending invitation"
+          }
+        },
+        "tags": [
+          "roster-invitation-controller"
+        ]
+      },
+      "post": {
+        "operationId": "acceptRosterInvitation",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/RosterAccepted"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "roster-invitation-controller"
+        ]
+      }
+    },
     "/api/signals/{id}/actions": {
       "post": {
         "operationId": "action",
@@ -6785,6 +7045,48 @@
         ]
       }
     },
+    "/api/teams/{teamId}/roster/candidates": {
+      "get": {
+        "operationId": "searchRosterCandidates",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "teamId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RosterCandidate"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "team-roster-controller"
+        ]
+      }
+    },
     "/api/teams/{teamId}/roster/groups": {
       "post": {
         "operationId": "createRosterGroup",
@@ -6909,6 +7211,47 @@
         ]
       }
     },
+    "/api/teams/{teamId}/roster/members": {
+      "post": {
+        "operationId": "createRosterMember",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "teamId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RosterCreateCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/RosterCreated"
+                }
+              }
+            },
+            "description": "Member added"
+          }
+        },
+        "tags": [
+          "team-roster-controller"
+        ]
+      }
+    },
     "/api/teams/{teamId}/roster/members/{personId}": {
       "put": {
         "operationId": "renameRosterMember",
@@ -6945,6 +7288,49 @@
         "responses": {
           "204": {
             "description": "Member renamed"
+          }
+        },
+        "tags": [
+          "team-roster-controller"
+        ]
+      }
+    },
+    "/api/teams/{teamId}/roster/members/{personId}/invitation": {
+      "post": {
+        "operationId": "inviteRosterMember",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "teamId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "personId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RosterEmailCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Invitation queued"
           }
         },
         "tags": [

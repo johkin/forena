@@ -908,6 +908,32 @@ Migration 017 behåller befintliga separata owner-/runtime-roller och gör inga
 klientgrants eller nya RLS-policyer. Browsertransporten tillåter bara exakta
 API-rutter och binder varje skrivning till den inloggade kontots identitet.
 
+### Direktregistrering och personliga kontoinbjudningar i Kotlin
+
+Direktregistrering och utskick kräver `roster.manage`, aktiv session, strikt
+Origin och kontobunden skrivning. Personval begränsas till samma förening och
+sökresultat till namn, ID och födelsedatum. Dubblettkontroll sker även på servern;
+roll tillåts bara som `participant` eller `leader` och ger inga adminrättigheter.
+Lag- och personlås samt beständigt request-ID skyddar samtidiga kommandon.
+Retroaktiva medlemsstarter nekas och framtida start ger ingen tidig lagåtkomst.
+
+Den sjudagars inbjudan binds till person, lag, e-post och inbjudare. Nytt utskick
+återkallar tidigare oaccepterade länkar för personen. Rå länk lagras bara krypterad
+i auth-mejlkön; HMAC lagras på inbjudan. Publik förberedelse begränsas av samma
+beständiga anropsbudget som auth och sparar bara inbjudans ID i serverns session.
+Läsning/förberedelse ger aldrig åtkomst och förbrukar inte inbjudan.
+
+Acceptans är en separat autentiserad, kontobunden POST. Kontots egen verifierade
+adress måste matcha mottagaren. Inbjudarens konto och tilldelningsrätt, aktuell
+inbjudan, beständigt skickat utskick och medlemskapet kontrolleras under lås.
+Egen personåtkomst och acceptans sparas atomärt. Ett redan kopplat konto får
+inte tas över eller få adressen ändrad av en lagadministratör. En accepterad
+inbjudan får inte senare återaktivera borttagen personåtkomst. Ett barn använder
+egen verifierad adress för eget konto; en förälders adress är ingen ersättning.
+
+Migration 026 ger inga publika klientgrants. Auth-länkar, inbjudningskoder och
+persondata får inte loggas utanför den befintliga lokala testmejladaptern.
+
 ## Kalenderns historik och närvaro
 
 Månadsurvalet kräver samma aktuella session och personåtkomst som översikten.

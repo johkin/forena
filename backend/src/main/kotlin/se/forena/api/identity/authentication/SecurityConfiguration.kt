@@ -150,7 +150,7 @@ class SecurityConfiguration {
             .authorizeHttpRequests {
                 it.dispatcherTypeMatchers(ERROR).permitAll()
                 it.requestMatchers("/actuator/health", AuthenticationEndpoints.login.path, AuthenticationEndpoints.logout.path, "/api/auth/register", "/api/auth/email/verify",
-                    "/api/auth/password/reset-request", "/api/auth/password/reset", AuthenticationEndpoints.magic.path, AuthenticationEndpoints.magicVerify.path,
+                    "/api/auth/roster-invitation", "/api/auth/password/reset-request", "/api/auth/password/reset", AuthenticationEndpoints.magic.path, AuthenticationEndpoints.magicVerify.path,
                     AuthenticationEndpoints.passkeyOptions.path, AuthenticationEndpoints.passkeyVerify.path, "/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/api/mcp").permitAll()
                     .anyRequest().authenticated()
             }.exceptionHandling { it.authenticationEntryPoint { _, response, _ ->

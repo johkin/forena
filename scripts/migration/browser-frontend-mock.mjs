@@ -70,6 +70,7 @@ await context.route('**/api/**',async route=>{
  }
  if(path==='/api/auth/session'){sessionReads++;if(sessionUnavailable)return route.fulfill({status:503,json:{error:'Sessionen kan inte verifieras just nu.'}});}
  if(current===null||revoked)return route.fulfill({status:401,json:{error:'Sessionen är inte aktiv.'}});
+ if(path==='/api/me/roster-invitation')return route.fulfill({status:204});
  if(path==='/api/auth/session')return route.fulfill({json:view()});
  if(path==='/api/auth/passkey/registration/options'){
   assert.equal(headers['x-forena-account'],users[current]);

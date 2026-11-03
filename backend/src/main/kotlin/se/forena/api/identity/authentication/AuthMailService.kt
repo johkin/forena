@@ -19,23 +19,27 @@ class AuthMailService(private val jdbc: JdbcTemplate, private val transaction: T
     private val sender: EmailSender, private val settings: BrowserSessionSettings) {
     private val logger = LoggerFactory.getLogger(AuthMailService::class.java)
 
-    fun enqueue(email: String, kind: String, link: String, expires: Instant) {
+    fun enqueue(email: String, kind: String, link: String, expires: Instant): UUID {
         val id = UUID.randomUUID()
         jdbc.update("insert into forena.auth_mail_outbox(id,recipient,kind,encrypted_link,expires_at) values(?,?,?,?,?)",
             id, email, kind, settings.encrypt(link, id.toString()), Timestamp.from(expires))
+        return id
     }
     @Scheduled(fixedDelayString = "\${forena.authentication.mail-delay-ms:15000}")
     fun deliver() {
-        jdbc.update("delete from forena.auth_mail_outbox where expires_at < now() or delivered_at < now() - interval '1 day'")
+        jdbc.update("delete from forena.auth_mail_outbox where expires_at < now() or (kind <> 'roster' and delivered_at < now() - interval '1 day')")
         repeat(10) {
             val found = transaction.execute {
                 val rows = jdbc.queryForList("select id,recipient,kind,encrypted_link from forena.auth_mail_outbox where delivered_at is null and next_attempt<=now() and expires_at>now() and attempts<5 order by next_attempt for update skip locked limit 1")
                 val row = rows.firstOrNull() ?: return@execute false
                 val id = row["id"].toString()
-                val title = when (row["kind"]) { "verify" -> "Verifiera din e-postadress"; "reset" -> "Återställ ditt lösenord"; else -> "Logga in" }
+                val title = when (row["kind"]) { "verify" -> "Verifiera din e-postadress"; "reset" -> "Återställ ditt lösenord"; "roster" -> "Acceptera din laginbjudan"; else -> "Logga in" }
                 val link = settings.decrypt(row["encrypted_link"].toString(), id)
+                val instructions = if (row["kind"] == "roster")
+                    "Du har blivit inbjuden till ett lag i Förena. Öppna länken, skapa konto vid behov och verifiera denna e-postadress. Logga sedan in och acceptera inbjudan. Länken gäller i sju dagar. En ny inbjudan ersätter den gamla.\n\n$link\n\nOm du inte känner igen inbjudan kan du ignorera mejlet."
+                else "$title genom att öppna länken nedan. Länken gäller i tio minuter och kan användas en gång.\n\n$link\n\nÖppna inloggningslänken i samma webbläsare som begärde den. Om du inte begärde detta kan du ignorera mejlet."
                 val message = EmailMessage(row["recipient"].toString(), "$title i Förena",
-                    "$title genom att öppna länken nedan. Länken gäller i tio minuter och kan användas en gång.\n\n$link\n\nÖppna inloggningslänken i samma webbläsare som begärde den. Om du inte begärde detta kan du ignorera mejlet.",
+                    instructions,
                     "native-auth/$id")
                 when (val result = sender.send(message)) {
                     is EmailDeliveryResult.Accepted ->

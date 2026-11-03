@@ -15,6 +15,13 @@ import se.forena.api.assistant.RoutingPlan
 import se.forena.api.assistant.MessageCommand
 import se.forena.api.assistant.ModelAnswer
 import se.forena.api.identity.AssistantRoleSource
+import com.sun.net.httpserver.HttpServer
+import java.net.InetSocketAddress
+import java.time.LocalDate
+import java.time.ZoneId
+import java.sql.Date
+import org.springframework.context.annotation.Import
+import se.forena.api.identity.authentication.AuthMailService
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -66,6 +73,7 @@ import se.forena.api.identity.BrowserSessionSettings
 import tools.jackson.databind.json.JsonMapper
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@Import(AuthTest.MailConfiguration::class)
 class ApiTest {
     @Autowired lateinit var events: org.springframework.context.ApplicationEventPublisher
     @Autowired lateinit var scheduledInvitations: se.forena.api.activities.ScheduledInvitationService
@@ -1790,6 +1798,7 @@ class ApiTest {
             registry.add("spring.liquibase.password") { "local-owner-only" }
             registry.add("forena.email.resend-api-key") { "synthetic-unused-key" }
             registry.add("forena.administration.initial-system-admin-email") { "bootstrap@example.invalid" }
+            registry.add("forena.authentication.mail-delay-ms") { 3_600_000 }
             registry.add("forena.email.from") { "auth@example.invalid" }
             registry.add("FORENA_TELEGRAM_ENABLED") { true }
             registry.add("forena.telegram.retention-delay-ms") { 3_600_000 }
@@ -1802,6 +1811,7 @@ class ApiTest {
     }
     @MockitoSpyBean lateinit var clubRecords: ClubRepository
     @Autowired lateinit var managementRecords: ManagementRepository
+    @Autowired lateinit var authMail: AuthMailService
     @Autowired lateinit var passwords: PasswordEncoder
     @Autowired lateinit var environment: Environment
     @Autowired lateinit var jdbc: JdbcTemplate
@@ -2240,6 +2250,175 @@ class ApiTest {
             assertThat(saved.get("history").size()).isEqualTo(1)
             assertThat(saved.get("roster").single { it.get("personId").asString() == own.toString() }.get("present").asBoolean()).isTrue()
         } finally { restoreHistory() }
+    }
+
+    @Test @EnabledIfEnvironmentVariable(named = "FORENA_ROSTER_BROWSER_TEST", matches = "true")
+    fun `roster browser creates players and leaders and activates the invited account`() {
+        rosterPermission()
+        val address = "browser-${UUID.randomUUID()}@example.invalid"
+        val mailbox = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+        mailbox.createContext("/") { exchange ->
+            val kind = if (exchange.requestURI.path == "/invite") "roster" else "verify"
+            val row = admin.queryForMap("select id,encrypted_link from forena.auth_mail_outbox where recipient=? and kind=? order by expires_at desc limit 1", address, kind)
+            val link = browserSettings.decrypt(row["encrypted_link"].toString(), row["id"].toString())
+            authMail.deliver()
+            val bytes = json.writeValueAsString(mapOf("code" to link.substringAfter("?code="))).toByteArray()
+            exchange.responseHeaders.add("Content-Type", "application/json")
+            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+        }
+        mailbox.start()
+        try {
+            val process = ProcessBuilder("node", "scripts/migration/roster-registration-browser.mjs")
+                .directory(Path.of("..").toFile()).redirectErrorStream(true)
+                .redirectOutput(Path.of("target/roster-browser.log").toFile())
+            process.environment().keys.removeIf { it.startsWith("FORENA_") }
+            process.environment().putAll(mapOf(
+                "FORENA_ROSTER_API" to "http://127.0.0.1:${environment.getRequiredProperty("local.server.port")}",
+                "FORENA_ROSTER_MAILBOX" to "http://127.0.0.1:${mailbox.address.port}",
+                "FORENA_ROSTER_EMAIL" to address, "FORENA_ROSTER_ADMIN_EMAIL" to "$parent@example.invalid",
+                "FORENA_ROSTER_TEAM" to rosterTeam().toString()))
+            val child = process.start()
+            if (!child.waitFor(180, SECONDS)) { child.destroyForcibly(); error("See target/roster-browser.log") }
+            assertThat(child.exitValue()).withFailMessage("See target/roster-browser.log").isZero()
+        } finally { mailbox.stop(0) }
+    }
+
+    private fun rosterCreate(name: String = "Ny spelare", role: String = "participant", email: String = "",
+                             extra: String = "", requestId: UUID = UUID.randomUUID()) = request(
+        "/api/teams/${rosterTeam()}/roster/members",
+        """{"requestId":"$requestId","name":"$name","role":"$role","email":"$email"$extra}""", method = "POST")
+
+    private fun rosterInviteCode(person: UUID): String {
+        val row = admin.queryForMap("""select m.id,m.encrypted_link from forena.roster_login_invitation i
+            join forena.auth_mail_outbox m on m.id=i.mail_id where i.person_id=? and not i.revoked""", person)
+        return browserSettings.decrypt(row["encrypted_link"].toString(), row["id"].toString()).substringAfter("?code=")
+    }
+
+    @Test fun `roster registration is authorized validates role and retries without duplicates`() {
+        assertThat(rosterCreate().statusCode()).isEqualTo(403)
+        rosterPermission()
+        val id = UUID.randomUUID()
+        val first = rosterCreate(role = "leader", requestId = id)
+        assertThat(first.statusCode()).withFailMessage(first.body()).isEqualTo(201)
+        assertThat(rosterCreate(role = "leader", requestId = id).body()).isEqualTo(first.body())
+        val person = UUID.fromString(json.readTree(first.body()).get("personId").asString())
+        assertThat(admin.queryForObject("select count(*) from forena.team_membership where person_id=?", Long::class.java, person)).isEqualTo(1)
+        assertThat(admin.queryForObject("select count(*) from forena.person_access where person_id=?", Long::class.java, person)).isZero()
+        assertThat(admin.queryForObject("select count(*) from forena.team_permission_assignment where person_id=?", Long::class.java, person)).isZero()
+        assertThat(rosterCreate(name = "Fel roll", role = "team_admin").statusCode()).isEqualTo(400)
+        assertThat(rosterCreate(name = "Fel adress", email = "not-an-email").statusCode()).isEqualTo(400)
+        assertThat(rosterCreate(extra = ",\"startsOn\":\"2000-01-01\"").statusCode()).isEqualTo(400)
+    }
+
+    @Test fun `roster concurrent registration creates one person and membership`() {
+        rosterPermission()
+        val id = UUID.randomUUID()
+        val attempts = (1..6).map { CompletableFuture.supplyAsync { rosterCreate(requestId = id) } }
+        val results = attempts.map { it.get(20, SECONDS) }
+        assertThat(results.map { it.statusCode() }).containsOnly(201)
+        assertThat(results.map { it.body() }.distinct()).hasSize(1)
+        val person = UUID.fromString(json.readTree(results.first().body()).get("personId").asString())
+        assertThat(admin.queryForObject("select count(*) from forena.team_membership where person_id=?", Long::class.java, person)).isEqualTo(1)
+    }
+
+    @Test fun `roster future membership is saved but not exposed as a current roster member`() {
+        rosterPermission()
+        val start = LocalDate.now(ZoneId.of("Europe/Stockholm")).plusDays(2)
+        val result = rosterCreate(extra = ",\"startsOn\":\"$start\"")
+        assertThat(result.statusCode()).isEqualTo(201)
+        val person = UUID.fromString(json.readTree(result.body()).get("personId").asString())
+        assertThat(request("/api/teams/${rosterTeam()}/roster").body()).doesNotContain(person.toString())
+        assertThat(admin.queryForObject("select starts_on from forena.team_membership where person_id=?", Date::class.java, person)?.toLocalDate()).isEqualTo(start)
+    }
+
+    @Test fun `roster registration warns about duplicates supports existing people and rejects foreign people`() {
+        rosterPermission()
+        val matches = request("/api/teams/${rosterTeam()}/roster/candidates?q=Person")
+        assertThat(matches.statusCode()).withFailMessage(matches.body()).isEqualTo(200)
+        assertThat(matches.body()).contains(own.toString(), child1.toString()).doesNotContain("contactPhone", "password")
+        assertThat(rosterCreate(name = "Person 0").statusCode()).isEqualTo(409)
+        assertThat(rosterCreate(name = "Person 0", extra = ",\"duplicatesConfirmed\":true").statusCode()).isEqualTo(201)
+        val reused = rosterCreate(extra = ",\"personId\":\"$child1\"")
+        assertThat(reused.statusCode()).isEqualTo(201)
+        assertThat(reused.body()).contains(child1.toString())
+        assertThat(rosterCreate(extra = ",\"personId\":\"$child1\"").statusCode()).isEqualTo(409)
+        assertThat(rosterCreate(extra = ",\"personId\":\"${UUID.randomUUID()}\"").statusCode()).isEqualTo(404)
+    }
+
+    @Test fun `roster invitation keeps membership on mail failure and resending invalidates old links`() {
+        rosterPermission()
+        val created = rosterCreate(email = "$outsider@example.invalid", extra = ",\"duplicatesConfirmed\":true")
+        assertThat(created.statusCode()).withFailMessage(created.body()).isEqualTo(201)
+        val person = UUID.fromString(json.readTree(created.body()).get("personId").asString())
+        val old = rosterInviteCode(person)
+        admin.update("update forena.auth_mail_outbox set attempts=5 where id=(select mail_id from forena.roster_login_invitation where person_id=?)", person)
+        assertThat(request("/api/teams/${rosterTeam()}/roster").body()).contains("failed")
+        assertThat(admin.queryForObject("select count(*) from forena.team_membership where person_id=?", Long::class.java, person)).isEqualTo(1)
+        val path = "/api/teams/${rosterTeam()}/roster/members/$person/invitation"
+        assertThat(request(path, """{"email":"$outsider@example.invalid"}""", method = "POST").statusCode()).isEqualTo(429)
+        admin.update("update forena.roster_login_invitation set created_at=created_at-interval '2 minutes' where person_id=?", person)
+        assertThat(request(path, """{"email":"$outsider@example.invalid"}""", method = "POST").statusCode()).isEqualTo(204)
+        assertThat(request("/api/auth/roster-invitation", """{"code":"$old"}""", cookie = null, method = "POST").statusCode()).isEqualTo(404)
+        assertThat(admin.queryForObject("select count(*) from forena.team_membership where person_id=?", Long::class.java, person)).isEqualTo(1)
+    }
+
+    @Test fun `roster invitation requires the verified recipient explicit acceptance and current inviter rights`() {
+        rosterPermission()
+        val created = rosterCreate(email = "$outsider@example.invalid", extra = ",\"duplicatesConfirmed\":true")
+        val person = UUID.fromString(json.readTree(created.body()).get("personId").asString())
+        val code = rosterInviteCode(person)
+        val prepare = "/api/auth/roster-invitation"
+        val accept = "/api/me/roster-invitation"
+        assertThat(request(prepare, """{"code":"$code"}""", method = "POST").statusCode()).isEqualTo(204)
+        assertThat(request(accept, "{}", method = "POST").statusCode()).isEqualTo(403)
+        val recipient = loginCookie(outsider)
+        assertThat(request(prepare, """{"code":"$code"}""", cookie = recipient, method = "POST").statusCode()).isEqualTo(204)
+        assertThat(request(accept, cookie = recipient).body()).contains("Ny spelare", "Lag")
+        // Queued mail is not proof of a sent invitation.
+        assertThat(request(accept, "{}", cookie = recipient, method = "POST").statusCode()).isEqualTo(409)
+        admin.update("update forena.auth_mail_outbox set delivered_at=now() where id=(select mail_id from forena.roster_login_invitation where person_id=?)", person)
+        admin.update("update forena.team_permission_assignment set active=false where person_id=? and permission='roster.manage'", own)
+        assertThat(request(accept, "{}", cookie = recipient, method = "POST").statusCode()).isEqualTo(409)
+        admin.update("update forena.team_permission_assignment set active=true where person_id=? and permission='roster.manage'", own)
+        admin.update("update forena.account set enabled=false where subject=?", parent)
+        assertThat(request(accept, "{}", cookie = recipient, method = "POST").statusCode()).isEqualTo(409)
+        admin.update("update forena.account set enabled=true where subject=?", parent)
+        admin.update("update forena.roster_login_invitation set expires_at=now()-interval '1 second' where person_id=?", person)
+        assertThat(request(accept, "{}", cookie = recipient, method = "POST").statusCode()).isEqualTo(409)
+        admin.update("update forena.roster_login_invitation set expires_at=now()+interval '1 day' where person_id=?", person)
+        assertThat(request(accept, "{}", cookie = recipient, method = "POST").statusCode()).isEqualTo(200)
+        assertThat(admin.queryForObject("select subject from forena.person_access where person_id=? and kind='self'", UUID::class.java, person)).isEqualTo(outsider)
+        assertThat(request("/api/me/overview", cookie = recipient).body()).contains(rosterTeam().toString())
+        assertThat(request("/api/teams/${rosterTeam()}/roster", cookie = recipient).statusCode()).isEqualTo(403)
+        assertThat(request(accept, "{}", cookie = recipient, method = "POST").statusCode()).isEqualTo(404)
+    }
+
+    @Test fun `roster invitation survives new account registration verification and session rotation`() {
+        rosterPermission()
+        val address = "new-${UUID.randomUUID()}@example.invalid"
+        val created = rosterCreate(email = address)
+        val person = UUID.fromString(json.readTree(created.body()).get("personId").asString())
+        val code = rosterInviteCode(person)
+        val prepared = request("/api/auth/roster-invitation", """{"code":"$code"}""", cookie = null, method = "POST")
+        assertThat(prepared.statusCode()).isEqualTo(204)
+        val browser = prepared.headers().allValues("set-cookie").single { it.startsWith(browserSettings.cookieName + "=") }.substringBefore(';')
+        assertThat(request("/api/auth/register", """{"email":"$address","password":"synthetic-new-password"}""", cookie = browser, method = "POST").statusCode()).isEqualTo(200)
+        val mail = admin.queryForMap("select id,encrypted_link from forena.auth_mail_outbox where recipient=? and kind='verify'", address)
+        val verification = browserSettings.decrypt(mail["encrypted_link"].toString(), mail["id"].toString()).substringAfter("?code=")
+        assertThat(request("/api/auth/email/verify", """{"code":"$verification"}""", cookie = browser, method = "POST").statusCode()).isEqualTo(200)
+        val subject = admin.queryForObject("select subject from forena.native_user where email=?", UUID::class.java, address)!!
+        val login = HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI("http://127.0.0.1:${environment.getRequiredProperty("local.server.port")}/api/auth/login"))
+            .header("Origin", browserSettings.origin).header("X-Forena-Request", "1").header("Cookie", browser)
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .POST(HttpRequest.BodyPublishers.ofString("email=$address&password=synthetic-new-password")).build(), HttpResponse.BodyHandlers.ofString())
+        assertThat(login.statusCode()).isEqualTo(200)
+        val authenticated = login.headers().allValues("set-cookie").single { it.startsWith(browserSettings.cookieName + "=") }.substringBefore(';')
+        cookies[subject] = authenticated
+        assertThat(request("/api/me/roster-invitation", cookie = authenticated).body()).contains(address, "Ny spelare")
+        admin.update("update forena.auth_mail_outbox set delivered_at=now() where id=(select mail_id from forena.roster_login_invitation where person_id=?)", person)
+        assertThat(request("/api/me/roster-invitation", "{}", cookie = authenticated, method = "POST").statusCode()).isEqualTo(200)
+        assertThat(admin.queryForObject("select subject from forena.person_access where person_id=? and kind='self'", UUID::class.java, person)).isEqualTo(subject)
     }
 
     @Test fun `roster permission is independent of membership activity rights and delegated identity`() {

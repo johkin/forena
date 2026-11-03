@@ -19,6 +19,7 @@ try {
     await page.route('**/api/**', async route => {
       const request = route.request();
       const path = new URL(request.url()).pathname;
+      if (path === '/api/me/roster-invitation') return route.fulfill({ status: 204 });
       let json;
       if (path === '/api/auth/session') json = { user: { id: accountId, email: 'admin@example.invalid' } };
       else if (path === '/api/admin/overview') json = { platformAdmin, canBootstrap: false, platformAdministrators: [],

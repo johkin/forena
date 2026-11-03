@@ -799,6 +799,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/roster-invitation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["prepareRosterInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/session": {
         parameters: {
             query?: never;
@@ -963,6 +979,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/me/roster-invitation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getPendingRosterInvitation"];
+        put?: never;
+        post: operations["acceptRosterInvitation"];
+        delete: operations["dismissRosterInvitation"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/signals/{id}/actions": {
         parameters: {
             query?: never;
@@ -1027,6 +1059,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/teams/{teamId}/roster/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["searchRosterCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/teams/{teamId}/roster/groups": {
         parameters: {
             query?: never;
@@ -1059,6 +1107,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/teams/{teamId}/roster/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createRosterMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/teams/{teamId}/roster/members/{personId}": {
         parameters: {
             query?: never;
@@ -1069,6 +1133,22 @@ export interface paths {
         get?: never;
         put: operations["renameRosterMember"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{teamId}/roster/members/{personId}/invitation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["inviteRosterMember"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2168,9 +2248,41 @@ export interface components {
             /** @enum {string} */
             response: "pending" | "accepted" | "declined";
         };
+        RosterAccepted: {
+            /** Format: uuid */
+            teamId?: string;
+        };
+        RosterCandidate: {
+            /** Format: date */
+            birthDate?: string | null;
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+        };
         RosterContact: {
             name?: string;
             phone?: string;
+        };
+        RosterCreateCommand: {
+            /** Format: date */
+            birthDate?: string | null;
+            duplicatesConfirmed?: boolean;
+            email?: string;
+            name?: string;
+            /** Format: uuid */
+            personId?: string | null;
+            /** Format: uuid */
+            requestId?: string;
+            role?: string;
+            /** Format: date */
+            startsOn?: string | null;
+        };
+        RosterCreated: {
+            /** Format: uuid */
+            personId?: string;
+        };
+        RosterEmailCommand: {
+            email?: string;
         };
         RosterGroupCommand: {
             name?: string;
@@ -2178,11 +2290,16 @@ export interface components {
             /** Format: int64 */
             revision?: number | null;
         };
+        RosterInvitationCode: {
+            code?: string;
+        };
         RosterMember: {
             childIds?: string[];
+            email?: string | null;
             guardians?: components["schemas"]["RosterContact"][];
             /** Format: uuid */
             id?: string;
+            invitationStatus?: string | null;
             linked?: boolean;
             name?: string;
             roles?: string[];
@@ -2190,6 +2307,13 @@ export interface components {
         };
         RosterNameCommand: {
             name?: string;
+        };
+        RosterPendingInvitation: {
+            email?: string;
+            /** Format: uuid */
+            id?: string;
+            personName?: string;
+            teamName?: string;
         };
         RosterSubgroup: {
             /** Format: uuid */
@@ -4409,6 +4533,73 @@ export interface operations {
             };
         };
     };
+    prepareRosterInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RosterInvitationCode"];
+            };
+        };
+        responses: {
+            /** @description Invitation prepared in browser session */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Inactive session or invalid credential */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Origin or account access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Shared admission budget exhausted */
+            429: {
+                headers: {
+                    /** @description Seconds until retry */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Temporary verification failure */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     session: {
         parameters: {
             query?: never;
@@ -4790,6 +4981,73 @@ export interface operations {
             };
         };
     };
+    getPendingRosterInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Pending invitation */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RosterPendingInvitation"];
+                };
+            };
+            /** @description No pending invitation */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RosterPendingInvitation"];
+                };
+            };
+        };
+    };
+    acceptRosterInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RosterAccepted"];
+                };
+            };
+        };
+    };
+    dismissRosterInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Pending acceptance dismissed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     action: {
         parameters: {
             query?: never;
@@ -4884,6 +5142,30 @@ export interface operations {
             };
         };
     };
+    searchRosterCandidates: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path: {
+                teamId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RosterCandidate"][];
+                };
+            };
+        };
+    };
     createRosterGroup: {
         parameters: {
             query?: never;
@@ -4958,6 +5240,32 @@ export interface operations {
             };
         };
     };
+    createRosterMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RosterCreateCommand"];
+            };
+        };
+        responses: {
+            /** @description Member added */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RosterCreated"];
+                };
+            };
+        };
+    };
     renameRosterMember: {
         parameters: {
             query?: never;
@@ -4975,6 +5283,31 @@ export interface operations {
         };
         responses: {
             /** @description Member renamed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    inviteRosterMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: string;
+                personId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RosterEmailCommand"];
+            };
+        };
+        responses: {
+            /** @description Invitation queued */
             204: {
                 headers: {
                     [name: string]: unknown;

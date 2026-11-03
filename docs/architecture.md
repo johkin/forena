@@ -222,7 +222,38 @@ anslutningskontroll. Tunga dataflyttar körs separat i återupptagbara batcher.
 `GroupEditor` som Next-appens medlemsadministration. Listan, profilerna och
 undergrupperna delar markup och CSS. Profilens fotbollsfält är anslutna till
 Kotlin genom `ExtensionFields` och det behörighetskontrollerade fält-API:t.
-Inloggningsinbjudningar är ännu inte migrerade till Kotlin.
+Direktregistrering och personliga inloggningsinbjudningar finns också i Kotlin.
+`RosterRegistration`, `RosterLogin` och `RosterInvitationAcceptance` är gemensamma
+produktionskomponenter med interaktiva exempel på båda apparnas `/components`.
+Next behåller sina tidigare kontoflöden; den nya serverintegrationen är i React/Kotlin.
+
+`POST /api/teams/{id}/roster/members` återanvänder en person från samma förening
+eller skapar en ny person och ett datumgiltigt spelar-/ledarmedlemskap. Möjliga
+dubbletter söks på namn eller exakt e-post och kräver uttryckligt val av befintlig
+person eller bekräftelse före nyregistrering. Ett klientgenererat request-ID gör
+omförsök efter osäkert nätverksresultat idempotenta inom samma lag och konto.
+Startdatum är idag i `Europe/Stockholm` som förval; framtida datum stöds.
+
+Medlemskap, konto och inbjudan är separata. Inbjudan sparas atomärt med medlemskapet
+och den befintliga krypterade auth-mejlkön. Leveransfel ändrar inte medlemskapet.
+Profilen visar köad, accepterat utskick, leveransfel, utgången eller accepterad
+inbjudan. Ett accepterat utskick betyder leverantörens acceptans, inte bevisad
+inkorgsleverans. För redan kopplade konton är inloggningsadressen låst.
+
+Inbjudningslänken gäller i sju dagar och ersätts vid nytt utskick, tidigast efter
+en minut och inom den gemensamma klient-/adress-/globalbudgeten. Endast en HMAC av
+länkhemligheten lagras på inbjudan. Den råa länken finns krypterad i mejlkön tills
+leverantören accepterar den. Skickade roster-körader behålls till inbjudans utgång
+för beständig leveransstatus. `/join-team` tar bort koden ur adressfältet och låter
+mottagaren uttryckligen förbereda inbjudan. Serverns session sparar inbjudans ID
+som en sträng genom registrering, browserbunden e-postverifiering och login.
+
+`POST /api/me/roster-invitation` kräver uttrycklig acceptans från ett aktivt konto
+med exakt den verifierade mottagaradressen. Aktuell inbjudan, utskick, medlemskap
+och inbjudarens aktiva konto och `roster.manage` kontrolleras igen under lag- och
+personlås. Först därefter skapas egen personåtkomst. Namn- eller e-postlikhet
+kopplar aldrig konton automatiskt och ledarmedlemskap ger inga adminrättigheter.
+Migration 026 använder samma privata schema och owner-/runtime-grants.
 
 `TeamRosterService` äger läsning och transaktionella kommandon under
 `/api/teams/{id}/roster`. `roster.manage` kontrolleras separat från medlemsroller,

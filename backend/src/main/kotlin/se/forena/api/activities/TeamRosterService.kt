@@ -1,5 +1,8 @@
 package se.forena.api.activities
 
+import org.springframework.http.HttpStatus
+import org.springframework.web.server.ResponseStatusException
+import se.forena.api.identity.BrowserSessionSettings
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.UUID
@@ -23,7 +26,9 @@ class TeamRosterService(
     private val roster: RosterRepository,
     private val groups: AudienceGroupRepository,
     private val groupMembers: AudienceMemberRepository,
-    private val directory: RosterDirectory
+    private val directory: RosterDirectory,
+    private val registration: RosterRegistrationRepository,
+    private val settings: BrowserSessionSettings
 ) {
     @Transactional(readOnly = true)
     fun access(actor: Actor, teamId: UUID): Boolean {
@@ -48,6 +53,7 @@ class TeamRosterService(
         val guardians = directory.guardians(team.organizationId, ids)
         val guardiansByPerson = guardians.groupBy { it.personId }
         val childrenBySubject = guardians.groupBy { it.subject }
+        val loginStatuses = registration.statuses(teamId).associateBy { it.personId }
         val people = members.map { (id, rows) ->
             val responsibilities = assignmentsByPerson[id].orEmpty().mapNotNull { assignment ->
                 groupsById[assignment.groupId]?.takeIf { it.kind == "responsibility" }?.name
@@ -56,7 +62,9 @@ class TeamRosterService(
             RosterMember(id, rows.first().displayName, rows.map { it.role }.distinct(),
                 responsibilities.joinToString(" · "), subject != null,
                 guardiansByPerson[id].orEmpty().distinctBy { it.subject }.map { RosterContact(it.name, it.phone) },
-                childrenBySubject[subject].orEmpty().map { it.personId }.distinct())
+                childrenBySubject[subject].orEmpty().map { it.personId }.distinct(),
+                accounts[id]?.email ?: loginStatuses[id]?.email,
+                if (subject != null) "accepted" else loginStatuses[id]?.status)
         }
         return TeamRosterSnapshot(RosterTeam(team.id, team.name, team.organizationName), people,
             teamGroups.filter { it.kind == "group" }.sortedBy { it.name }.map { group ->
@@ -111,6 +119,119 @@ class TeamRosterService(
         roster.audit(team.organizationId, teamId, actor.subject, "group.deleted", id)
     }
 
+    @Transactional(readOnly = true)
+    @PreAuthorize("@teamAccess.canAdministerRoster(#actor, #teamId)")
+    fun candidates(actor: Actor, teamId: UUID, query: String): List<RosterCandidate> {
+        val team = authorize(actor, teamId)
+        require(query.trim().length in 2..160)
+        return registration.candidates(team.organizationId, query.trim())
+    }
+
+    @Transactional
+    @PreAuthorize("@teamAccess.canAdministerRoster(#actor, #teamId)")
+    fun createMember(actor: Actor, teamId: UUID, command: RosterCreateCommand): RosterCreated {
+        val team = lock(actor, teamId)
+        registration.registered(command.requestId, teamId, actor.subject)?.let { return RosterCreated(it) }
+        require(command.role in setOf("participant", "leader"))
+        val today = today(team)
+        val start = command.startsOn ?: today
+        require(start >= today)
+        require(command.birthDate == null || command.birthDate <= today)
+        val email = command.email.trim().takeIf { it.isNotEmpty() }?.let(directory::normalizeEmail)
+        val person = if (command.personId != null) {
+            registration.lockPerson(team.organizationId, command.personId) ?: throw NoSuchElementException()
+        } else {
+            require(command.name.trim().length in 2..160)
+            val matches = registration.candidates(team.organizationId, command.name.trim()) +
+                if (email != null) registration.candidates(team.organizationId, email) else emptyList()
+            check(matches.isEmpty() || command.duplicatesConfirmed)
+            directory.create(team.organizationId, command.name, command.birthDate)
+        }
+        check(!registration.overlaps(teamId, person, command.role, start))
+        check(registration.add(team.organizationId, teamId, person, command.role, start) == 1)
+        check(registration.record(command.requestId, teamId, actor.subject, person) == 1)
+        roster.audit(team.organizationId, teamId, actor.subject, "member.created", person)
+        if (email != null && directory.accounts(team.organizationId, listOf(person)).isEmpty()) {
+            sendInvitation(actor, team, person, email)
+        }
+        return RosterCreated(person)
+    }
+
+    @Transactional
+    @PreAuthorize("@teamAccess.canAdministerRoster(#actor, #teamId)")
+    fun inviteMember(actor: Actor, teamId: UUID, person: UUID, command: RosterEmailCommand) {
+        val team = lock(actor, teamId)
+        val email = directory.normalizeEmail(command.email)
+        check(registration.lockPerson(team.organizationId, person) != null)
+        // Future memberships may be invited now, but confer access only from their start date.
+        check(registration.overlaps(teamId, person, "participant", today(team)) ||
+            registration.overlaps(teamId, person, "leader", today(team)))
+        check(directory.accounts(team.organizationId, listOf(person)).isEmpty())
+        sendInvitation(actor, team, person, email)
+    }
+
+    private fun sendInvitation(actor: Actor, team: ManagementTeamRow, person: UUID, email: String) {
+        val now = clock.now()
+        val last = registration.lastSent(person)
+        if (last != null && last.plusSeconds(60) > now) {
+            throw ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS)
+        }
+        val code = UUID.randomUUID().toString() + UUID.randomUUID().toString()
+        val expires = now.plusSeconds(7 * 24 * 60 * 60)
+        val mail = directory.invite(email, settings.origin + "/join-team?code=" + code, expires)
+        registration.revoke(person)
+        registration.invite(UUID.randomUUID(), team.organizationId, team.id, person, email,
+            settings.fingerprint(code), actor.subject, mail, expires)
+        roster.audit(team.organizationId, team.id, actor.subject, "member.invited", person)
+    }
+
+    @Transactional(readOnly = true)
+    fun prepareInvitation(code: String): UUID {
+        require(code.length == 72)
+        return registration.invitationId(settings.fingerprint(code)) ?: throw NoSuchElementException()
+    }
+
+    @Transactional(readOnly = true)
+    fun pendingInvitation(actor: Actor, id: UUID): RosterPendingInvitation {
+        sessions.requireActive(actor)
+        val invitation = registration.invitation(id) ?: throw NoSuchElementException()
+        check(!invitation.revoked && invitation.acceptedBy == null && invitation.expiresAt > clock.now())
+        if (directory.verifiedEmail(actor.subject) != invitation.email) throw AccessDeniedException("Wrong invitation recipient")
+        val team = management.team(invitation.teamId) ?: throw NoSuchElementException()
+        val person = registration.person(team.organizationId, invitation.personId)
+            ?: throw NoSuchElementException()
+        return RosterPendingInvitation(id, person.name, team.name, invitation.email)
+    }
+
+    @Transactional
+    fun acceptInvitation(actor: Actor, id: UUID): UUID {
+        sessions.requireActive(actor)
+        val initial = registration.invitation(id) ?: throw NoSuchElementException()
+        check(management.lockTeam(initial.teamId) != null)
+        check(registration.lockPerson(initial.organizationId, initial.personId) != null)
+        sessions.requireActive(actor)
+        val invitation = registration.invitation(id) ?: throw NoSuchElementException()
+        val now = clock.now()
+        check(!invitation.revoked && invitation.expiresAt > now)
+        if (directory.verifiedEmail(actor.subject) != invitation.email) throw AccessDeniedException("Wrong invitation recipient")
+        if (invitation.acceptedBy != null) {
+            check(invitation.acceptedBy == actor.subject)
+            return invitation.teamId
+        }
+        val team = management.team(invitation.teamId) ?: throw NoSuchElementException()
+        val day = today(team)
+        check(directory.activeAccount(invitation.inviter))
+        check(management.allowed(invitation.inviter, team.organizationId, team.id, TeamPermission.MANAGE_ROSTER.key, day))
+        check(registration.overlaps(team.id, invitation.personId, "participant", day) ||
+            registration.overlaps(team.id, invitation.personId, "leader", day))
+        check(registration.statuses(team.id).any { it.personId == invitation.personId && it.status == "sent" })
+        check(directory.accounts(team.organizationId, listOf(invitation.personId)).isEmpty())
+        directory.link(team.organizationId, invitation.personId, actor.subject)
+        check(registration.accept(id, actor.subject) == 1)
+        roster.audit(team.organizationId, team.id, actor.subject, "member.linked", invitation.personId)
+        return team.id
+    }
+
     private fun validate(team: ManagementTeamRow, command: RosterGroupCommand) {
         require(command.name.trim().length in 1..80)
         require(command.personIds.size <= 20000)
@@ -121,7 +242,7 @@ class TeamRosterService(
     private fun lock(actor: Actor, teamId: UUID): ManagementTeamRow {
         val admittedTeam = authorize(actor, teamId)
         check(management.lockTeam(teamId) != null)
-        val team = management.team(teamId) ?: throw NoSuchElementException()
+        val team = authorize(actor, teamId)
         check(team.organizationId == admittedTeam.organizationId)
         return team
     }
