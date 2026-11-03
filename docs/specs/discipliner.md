@@ -443,6 +443,15 @@ Föreslagen senare placering är `features/extensions`, `capabilities/<key>` och
 specändring; bevara befintlig återanvändning och CSS vid migrering.
 Webb, Telegram, AI och MCP anropar samma behörighetskontrollerade kommandon.
 
+Kompletterande arkitekturbeslut 2026-11-03: capabilityägda läsvyer ska kunna
+beskrivas av backend genom versionerade, typade kontrakt för listor,
+grupperade listor, tabeller och informationsmeddelanden samt typade filter.
+Frontend renderar efter vytyp och behöver ingen capabilityspecifik komponent
+för dessa bidrag. Servern filtrerar bidrag och data efter aktivering och
+behörighet. Detta är ännu inte implementerat; det ersätter inte befintliga
+fälteditorer eller innebär ett beslut om en generell formulärmotor. Se
+[spelarutvärderingens beslutade målbild](spelarutvardering-och-lagindelning.md#beslutad-målbild-för-serverbeskrivna-läsvyer).
+
 ## Data, integrationer och kvalitetskrav
 
 Versionerade definitioner, objektanknutna värden, fältvis arv och aktivitetens
