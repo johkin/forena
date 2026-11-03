@@ -26,4 +26,5 @@
  <changeSet id="api-023-discipline-information" author="forena"><sqlFile path="discipline-information.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
  <changeSet id="api-024-discipline-catalogue" author="forena"><sqlFile path="discipline-catalogue.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
  <changeSet id="api-025-discipline-capabilities" author="forena"><sqlFile path="discipline-capabilities.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
+ <changeSet id="api-026-roster-registration" author="forena"><sqlFile path="roster-registration.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
 </databaseChangeLog>

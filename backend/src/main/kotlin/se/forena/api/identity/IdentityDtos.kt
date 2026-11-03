@@ -10,4 +10,4 @@ data class AccessiblePerson(val id: UUID, val name: String, val organizationId: 
 data class NotificationRecipient(val subject: UUID, val email: String)
 
 data class RosterGuardian(val personId: UUID, val subject: UUID, val name: String, val phone: String)
-data class RosterSelf(val personId: UUID, val subject: UUID)
+data class RosterSelf(val personId: UUID, val subject: UUID, val email: String?)

@@ -243,3 +243,24 @@ it.each([
   await expect(createApiFetch(account,vi.fn(),transport)(endpoint,{method})).rejects.toThrow("Unsupported API request");
   expect(account).not.toHaveBeenCalled();expect(transport).not.toHaveBeenCalled();
 });
+
+it("binds roster registration and invitation acceptance to the current account", async () => {
+  const account = vi.fn(async () => id);
+  const transport = vi.fn().mockResolvedValue(Response.json({}));
+  const request = createApiFetch(account, vi.fn(), transport);
+  await request(`/api/teams/${id}/roster/candidates?q=Alex%20Andersson`);
+  await request(`/api/teams/${id}/roster/members`, { method: "POST", body: "{}" });
+  await request(`/api/teams/${id}/roster/members/${id}/invitation`, { method: "POST", body: "{}" });
+  await request("/api/me/roster-invitation");
+  await request("/api/me/roster-invitation", { method: "POST" });
+  await request("/api/me/roster-invitation", { method: "DELETE" });
+  for (const [, init] of transport.mock.calls) {
+    expect(new Headers(init.headers).get("X-Forena-Account")).toBe(id);
+    expect(init.credentials).toBe("same-origin");
+  }
+  for (const path of [`/api/teams/${id}/roster/candidates?q=Alex&organizationId=${id}`,
+    `/api/teams/${id}/roster/members/${id}/invitation?email=other`, "/api/me/roster-invitation?subject=other"]) {
+    await expect(request(path, { method: "POST" })).rejects.toThrow();
+  }
+  expect(account).toHaveBeenCalledTimes(6);
+});

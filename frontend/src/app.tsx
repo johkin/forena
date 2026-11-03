@@ -1,3 +1,4 @@
+import { PendingRosterInvitation, RosterInvitationLanding } from "./roster-invitation";
 import { TeamActivitySettingsPage } from "./team-activity-settings";
 import { AssistantMemorySettings } from "../../src/components/assistant-memory-settings";
 import { PushNotificationSettings } from "../../src/components/push-notification-settings";
@@ -128,6 +129,7 @@ export function App({ config }: { config: PublicConfig }) {
     setError("Logga in igen för att fortsätta.");
   })(path, init), [accountId, applySession]);
   const path = location.pathname;
+  if (path === "/join-team") return <Frame><main tabIndex={-1} className="auth-page"><RosterInvitationLanding /></main></Frame>;
   if (path === "/components") return <Frame><main tabIndex={-1} className="content component-gallery"><h1>Komponenter</h1><BrowserFrontendExamples linkComponent={AppLink} /><AttendanceExamples /><AssistantExamples /><AssistantSettingsExamples /><TelegramSettingsExamples /></main></Frame>;
   if ((accountCallback || ["/register", "/password/forgot"].includes(path))) return <Frame><main tabIndex={-1} className="auth-page"><AccountPage key={path} action={path === "/register" ? "register" : path === "/password/forgot" ? "forgot" : path === "/auth/reset" ? "reset" : "verify"} code={callbackCode} /></main></Frame>;
   if (callback) return <Frame><main tabIndex={-1} className="auth-page"><MagicLinkConfirmation pending={pending} error={error} onConfirm={() => void (async () => {
@@ -208,6 +210,7 @@ export function App({ config }: { config: PublicConfig }) {
   }
   return <AdministrationProvider key={auth.session.user.id} request={request} routeKey={administrationPage ? location.key : "personal"}><Frame request={request} email={auth.session.user.email ?? undefined} logout={<button type="button" className="logout-button" aria-label="Logga ut från Förena" disabled={pending} onClick={() => void logout()}>{pending ? "Loggar ut…" : "Logga ut"}</button>}>
     <main tabIndex={-1} className={administrationPage ? "application-page" : `content ${homePath ? "personal-dashboard" : ""}`} key={auth.session.user.id}>
+      <PendingRosterInvitation key={auth.session.user.id} request={request} onAccepted={team => navigate(`/teams/${team}`)} />
       {validActivity.success && !managementPage ? <OverviewBackLink linkComponent={AppLink} /> : null}
       {!homePath && !securityPage && !managementPage && !administrationPage && !rosterPage && !settingsPage ? <><p className="eyebrow">Personligt</p><h1>{!knownPath ? "Sidan finns inte" : "Kallelser"}</h1></> : null}
       {error ? <p role="alert">{error}</p> : null}

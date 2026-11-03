@@ -48,6 +48,7 @@ try {
       const url = new URL(request.url());
       requests.push(url.pathname);
       const json = body => route.fulfill({ json: body });
+      if (url.pathname === '/api/me/roster-invitation') return route.fulfill({ status: 204 });
       if (url.pathname === '/api/auth/session') return json({ user: { id: person, email: 'leader@example.invalid' } });
       if (url.pathname === '/api/admin/overview') return json({ platformAdmin: false, canBootstrap: false, clubs: [], platformAdministrators: [] });
       if (url.pathname === '/api/assistant/conversations') return json([]);

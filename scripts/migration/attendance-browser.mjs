@@ -147,6 +147,7 @@ try {
   ];
   await page.route('**/api/**', async route => {
     const req = route.request(), path = new URL(req.url()).pathname;
+    if (path === '/api/me/roster-invitation') return route.fulfill({ status: 204 });
     if (path === '/api/auth/session') return route.fulfill({ json: { user: { id: account, email: 'test@example.invalid' } } });
     if (path === '/api/admin/overview') return route.fulfill({ json: { platformAdmin: false, canBootstrap: false, platformAdministrators: [], clubs: [] } });
     if (path === '/api/me/managed-teams') return route.fulfill({ json: [] });

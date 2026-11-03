@@ -1,5 +1,7 @@
 package se.forena.api.activities
 
+import java.time.LocalDate
+import io.swagger.v3.oas.annotations.media.Schema
 import java.util.UUID
 import tools.jackson.databind.annotation.JsonSerialize
 
@@ -14,7 +16,8 @@ data class RosterMember(
     @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC) val roles: List<String>,
     val title: String, val linked: Boolean,
     @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC) val guardians: List<RosterContact>,
-    @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC) val childIds: List<UUID>
+    @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC) val childIds: List<UUID>,
+    val email: String? = null, val invitationStatus: String? = null
 )
 data class RosterContact(val name: String, val phone: String)
 data class RosterSubgroup(
@@ -27,3 +30,16 @@ data class RosterGroupCommand(
     @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC) val personIds: List<UUID> = emptyList(),
     val revision: Long? = null
 )
+
+data class RosterCandidate(val id: UUID, val name: String, val birthDate: LocalDate?)
+data class RosterCreateCommand(val requestId: UUID, val personId: UUID? = null, val name: String = "",
+    val birthDate: LocalDate? = null, val role: String, val startsOn: LocalDate? = null,
+    val email: String = "", val duplicatesConfirmed: Boolean = false)
+data class RosterCreated(val personId: UUID)
+data class RosterEmailCommand(val email: String)
+data class RosterLoginStatus(val personId: UUID, val email: String, val status: String)
+data class RosterPendingInvitation(val id: UUID, val personName: String, val teamName: String, val email: String)
+
+class RosterInvitationCode(@get:Schema(accessMode = Schema.AccessMode.WRITE_ONLY) val code: String)
+
+data class RosterAccepted(val teamId: UUID)

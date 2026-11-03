@@ -323,8 +323,23 @@ för serververifierad `roster.manage`. `/components` i båda apparna har samma
 interaktiva truppexempel med profil, redigering, dubbla roller, gruppval, tomt
 underlag, laddning, sparande, fel och nekad behörighet. Ett sparfel behåller
 namn och gjorda personval. Gamla gruppversioner avvisas; användaren hämtar
-senaste versionen genom att uppdatera sidan. Kotlin har ännu inte Next-appens
-disciplinfält eller e-postinbjudningar i profilen.
+senaste versionen genom att uppdatera sidan. Kotlin visar disciplinfält och har nu även en separat Inloggning-sektion med
+egen e-postadress och inbjudningsstatus. Kopplade kontons adress är skrivskyddad.
+
+**Lägg till medlem** öppnar ett formulär i medlemsarbetsytan. Sökning i föreningen
+föregår valet av befintlig eller ny person. Dubblettvarning kräver uttrycklig
+bekräftelse. Formuläret har roll (spelare/ledare), startdatum och valfri egen
+e-post. Nya personers födelsedatum är valfritt. Barn utan egen e-post kan finnas
+utan eget konto; vårdnadshavaradministration tillkommer i separat del av specen.
+Sparfel behåller utkastet. Medlemskap med framtida start visas i den aktiva
+medlemslistan först från startdagen; sparbekräftelsen visas direkt.
+
+En inbjuden mottagare öppnar `/join-team`, väljer att fortsätta och skapar konto
+vid behov. Efter verifierad e-post och inloggning visas vem och vilket lag kontot
+ska kopplas till. Ingen koppling sker förrän mottagaren väljer **Acceptera
+inbjudan**. **Avbryt** stänger den egna sessionens pågående acceptans utan att
+ändra medlemskapet. Produktionskomponenterna och alla leveranstillstånd finns
+på `/components` i båda apparna.
 
 ## Kompakta aktivitetsvyer och komponentreferens
 

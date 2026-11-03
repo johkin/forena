@@ -43,6 +43,10 @@ class BrowserLoginLimiter(
     fun admit(client: String, email: String? = null) = admitBuckets(
         "login-global", "client:$client", email?.let { "email:${it.trim().lowercase(Locale.ROOT)}" })
 
+    /** Share global/email limits with auth without exhausting the recipient's login client budget. */
+    fun admitRosterInvitation(client: String, email: String? = null) = admitBuckets(
+        "login-global", "roster-client:$client", email?.let { "email:${it.trim().lowercase(Locale.ROOT)}" })
+
     /** Separate budgets prevent bootstrap traffic from consuming login permits. */
     fun admitBootstrap(client: String, subject: UUID) = admitBuckets(
         "admin-bootstrap-global", "admin-bootstrap-client:$client", "admin-bootstrap-account:$subject")

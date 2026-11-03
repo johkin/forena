@@ -1,5 +1,6 @@
 "use client";
 
+import { RosterRegistrationExamples } from "./roster-registration-examples";
 import { createContext, useContext, useState, type AnchorHTMLAttributes } from "react";
 import { TeamRosterWorkspace, type RosterActions, type RosterProfile } from "./team-roster-workspace";
 import type { RosterGroup } from "./team-roster";
@@ -50,7 +51,7 @@ export function TeamRosterExample() {
       setSearch("view=groups"); setMessage("Gruppen har tagits bort. Medlemmarna finns kvar i laget.");
     },
   };
-  return <section id="team-roster-example">
+  return <><section id="team-roster-example">
     <h2>Truppen – medlemmar och undergrupper</h2>
     <p>Gemensamma produktionskomponenter med syntetiska uppgifter. Ändringar sparas bara i detta exempel.</p>
     <label>Truppläge<select aria-label="Truppläge" value={mode} onChange={event => {
@@ -72,5 +73,5 @@ export function TeamRosterExample() {
         actions={mode === "error" ? { updateMemberName: async () => {}, createTeamGroup: async () => {}, updateTeamGroup: async () => {}, deleteTeamGroup: async () => {} } : actions}
         pending={mode === "pending"} linkComponent={ExampleLink} />
     </ExampleNavigation>}
-  </section>;
+  </section><RosterRegistrationExamples /></>;
 }

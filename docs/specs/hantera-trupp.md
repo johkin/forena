@@ -1,7 +1,7 @@
 # Lagmedlemmar – hantera trupp och medlemsansökningar
 
 - Status: Redo
-- Senast uppdaterad: 2026-10-26
+- Senast uppdaterad: 2026-11-03
 - Berörda dokument: [Designregler: Truppen](../design-spec.md#truppen),
   [arkitektur](../architecture.md), [säkerhetsarkitektur](../security-architecture.md)
 - Implementation och verifiering: Delvis implementerad; se kravredovisningen nedan.
@@ -330,6 +330,49 @@ Verifiering och begränsningar redovisas i
 [migreringsstatus](../migration/status.md#truppen-medlemsprofiler-och-undergrupper-2026-10-26).
 API-/PostgreSQL-tester och separata browserprov med mockad API-transport finns;
 hela den utökade featurens acceptansflöden är inte genomförda.
+
+### Avgränsad leverans 2026-11-03: direktregistrering och kontoinbjudan
+
+Beställd i chatten utifrån förslaget: lägg till spelare/ledare → ange egen e-post
+→ skicka inbjudan → verifiera adress → logga in och acceptera med rätt lagåtkomst.
+Produktkravens status är fortsatt Redo. Leveransen omfattar inte hela specen.
+
+| Krav / acceptanskriterium | Implementation och verifiering |
+| --- | --- |
+| K-003, K-011, K-017, K-019; AK-007, AK-013, AK-015 | Direktregistrering av spelare/ledare, personval inom föreningen, dubblettvarning utan automatisk sammanslagning och idempotenta omförsök. `TeamRosterService`, `RosterRegistrationRepository`, `ApiTest` och browserprovet nedan. Avslut och arkivering återstår. |
+| K-022; AK-018 | Idag som förval, framtida start och nekad retroaktiv start. Befintliga datumregler styr åtkomst och aktiv medlemslista. Slutdatum och avslutsflödet återstår. |
+| K-001; AK-025 | E-post för ännu inte kopplad person, inbjudan för både spelare och ledare, verifierad adress och uttrycklig acceptans. Kopplade kontons adress är låst. Login, registrering och e-postverifiering återanvänder Spring-flödena. |
+| Datakvalitet, leverans och delar av AK-028 | Beständig krypterad mejlkö i samma transaktion, synlig leveransstatus, återförsök/ny inbjudan utan nytt medlemskap och spärr av ersatta länkar. Inga medlemskap eller kontokopplingar skapas genom enbart e-postlikhet. Ansökningsgodkännande ingår inte. |
+| UI och komponentreferens | Gemensamma produktionskomponenter i båda apparnas `/components`; den nya serverintegrationen finns i React/Kotlin. Mobil-/desktopprov beskrivs nedan. |
+
+Tekniska preciseringar i denna leverans: inbjudan gäller i sju dagar, nytt utskick
+ersätter föregående och begränsas till tidigast efter en minut samt befintliga
+auth-budgetar. Medlemskap skapas även utan e-post/konto. Barnets egen adress
+används för eget konto enligt Mitt konto K-032/K-035. Födelsedatum är valfritt vid
+manuell registrering; ansökans separata krav K-020 ändras inte.
+
+Verifiering: `backend/src/test/kotlin/se/forena/api/ApiTest.kt` (`roster*`),
+`AuthTest`, `MigrationTest`, `ArchitectureTest`,
+`scripts/migration/roster-registration-browser.mjs`,
+`scripts/migration/team-roster-browser.mjs` och `frontend/src/api.test.ts`.
+Browserprovet kräver Vite preview på `http://localhost:3005` och
+`FORENA_ROSTER_BROWSER_TEST=true` vid körning av `ApiTest#roster*`.
+Testmejl fångas lokalt; faktisk inkorgsleverans i driftsmiljön ingår inte.
+
+Verifierat 2026-11-03: 13 roster-/kontraktstester inklusive browserflödet med
+riktig Spring/PostgreSQL och testmejlkö; 26 migreringsfall från tom databas och
+samtliga tidigare baslinjer; 12 auth-tester och fyra arkitekturtester. Det
+separata befintliga WebAuthn-browserprovet kördes inte i auth-testomgången.
+Frontend: 1 244 tester efter uppdatering mot `main`, typecheck, lint samt Next- och Vite-produktionsbyggen.
+Gemensamma medlemsvyer jämfördes i båda apparna vid 320, 375, 390, 768 och
+1 280 pixlar. De nya formulären, dubblettvalen och fem leveranstillstånden
+kontrollerades i samma bredder; det fullständiga verkliga kontoflödet kördes
+via React/Kotlin-browserprovet med skärmbilder i mobil- och desktopbredd.
+
+Återstående: ansökan/granskning, vårdnadshavaradministration, avslut/arkivering,
+slutdatum, namnbytet till Lagmedlemmar, Kotlin-kontaktlistan och övriga delar av
+den utökade specen. Äldre statusrader ovan beskriver delimplementationen 2026-10-26;
+denna tabell ersätter dem för den uttryckligen levererade omfattningen.
 
 ## Befintligt ansökningsflöde som underlag
 

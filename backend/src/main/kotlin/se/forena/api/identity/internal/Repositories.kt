@@ -1,6 +1,7 @@
 package se.forena.api.identity.internal
 
 import java.time.Instant
+import java.time.LocalDate
 import java.util.Optional
 import java.util.UUID
 import org.springframework.data.jdbc.repository.query.Modifying
@@ -81,6 +82,18 @@ interface NotificationRecipientRepository : Repository<AccountEntity, UUID> {
 }
 
 interface RosterIdentityRepository : Repository<PersonEntity, UUID> {
+    @Query("select exists(select 1 from forena.account a join forena.native_user u on u.subject=a.subject where a.subject=:subject and a.enabled and u.verified)")
+    fun activeAccount(subject: UUID): Boolean
+
+    @Modifying
+    @Query("insert into forena.person(id,organization_id,display_name,birth_date) values(:id,:organization,:name,:birthDate)")
+    fun create(id: UUID, organization: UUID, name: String, birthDate: LocalDate?): Int
+
+    @Modifying
+    @Query("""insert into forena.person_access(person_id,organization_id,subject,kind)
+        values(:person,:organization,:subject,'self')""")
+    fun link(organization: UUID, person: UUID, subject: UUID): Int
+
     @Query("""select p.display_name from forena.person_access a
         join forena.person p on p.id=a.person_id and p.organization_id=a.organization_id
         where a.subject=:subject and a.organization_id=:organization and a.kind='self' and a.active
@@ -96,8 +109,9 @@ interface RosterIdentityRepository : Repository<PersonEntity, UUID> {
         order by name,g.subject""")
     fun guardians(organization: UUID, people: Collection<UUID>): List<RosterGuardian>
 
-    @Query("""select person_id,subject from forena.person_access
-        where organization_id=:organization and person_id in (:people) and kind='self' and active""")
+    @Query("""select a.person_id,a.subject,u.email from forena.person_access a
+        left join forena.native_user u on u.subject=a.subject
+        where a.organization_id=:organization and a.person_id in (:people) and a.kind='self' and a.active""")
     fun accounts(organization: UUID, people: Collection<UUID>): List<RosterSelf>
 
     @Modifying
