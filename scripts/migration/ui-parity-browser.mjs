@@ -33,7 +33,24 @@ try {
       await expect(home.getByRole('link')).toHaveCount(5);
       await page.evaluate(() => document.fonts.ready);
       const homeLayout = await layoutSnapshot(home);
-      homes.push(await home.screenshot({ path: `frontend/.evidence/parity/system-${name}-${width}.png`, animations: 'disabled' }));
+      // Compare layout in place, then rasterize the card at the same viewport
+      // origin. Gallery scroll offsets and fixed navigation are outside this component.
+      const originalStyle = await home.getAttribute('style');
+      await home.evaluate(element => {
+        const width = element.getBoundingClientRect().width;
+        element.classList.add('parity-image-target');
+        Object.assign(element.style, { position: 'fixed', top: '0', left: '0', width: `${width}px`, margin: '0', zIndex: '1000' });
+      });
+      try {
+        homes.push(await home.screenshot({ path: `frontend/.evidence/parity/system-${name}-${width}.png`, animations: 'disabled',
+          style: 'body * { visibility:hidden !important; } .parity-image-target, .parity-image-target * { visibility:visible !important; }' }));
+      } finally {
+        await home.evaluate((element, style) => {
+          element.classList.remove('parity-image-target');
+          if (style === null) element.removeAttribute('style');
+          else element.setAttribute('style', style);
+        }, originalStyle);
+      }
       // Compare the real shared editor, including its footer and recipient choices.
       await page.locator('#activity-management-example').getByRole('button', { name: 'Redigera', exact: true }).click();
       const dialog = page.getByRole('dialog', { name: 'Redigera aktivitet', exact: true });

@@ -43,8 +43,8 @@ try {
     await expect(page.getByRole('heading', { name: 'Systemadministration', exact: true })).toBeVisible();
     await expect(page.locator('main .system-admin-grid > a')).toHaveCount(5);
     const mobile = width < 768;
-    if (mobile) await page.getByRole('button', { name: 'Öppna meny', exact: true }).click();
-    const menu = page.locator(mobile ? '#header-menu' : '.app-sidebar');
+    if (mobile) await page.getByRole('banner').getByRole('button', { name: 'Öppna meny', exact: true }).click();
+    const menu = (mobile ? page.getByRole('dialog', { name: 'Huvudmeny', exact: true }) : page.locator('.app-sidebar'));
     const systemMenu = menu.getByRole('navigation', { name: 'Systemadministration', exact: true });
     await expect(systemMenu.getByRole('link')).toHaveText(['System', 'Klubbar', 'Administratörer', 'Discipliner', 'Aktivitetstyper', 'Assistentminnen', 'Till Förena']);
     await expect(systemMenu.getByRole('link', { name: 'System', exact: true })).toHaveAttribute('aria-current', 'page');
@@ -69,8 +69,8 @@ try {
     await page.goto(`${origin}/system`);
     await expect(page.getByText('Du saknar behörighet till systemadministrationen.', { exact: true })).toBeVisible();
     await expect(page.locator('main .system-admin-grid')).toHaveCount(0);
-    if (mobile) await page.getByRole('button', { name: 'Öppna meny', exact: true }).click();
-    await expect(page.locator(mobile ? '#header-menu' : '.app-sidebar').getByRole('link', { name: 'Systemadministration', exact: true })).toHaveCount(0);
+    if (mobile) await page.getByRole('banner').getByRole('button', { name: 'Öppna meny', exact: true }).click();
+    await expect((mobile ? page.getByRole('dialog', { name: 'Huvudmeny', exact: true }) : page.locator('.app-sidebar')).getByRole('link', { name: 'Systemadministration', exact: true })).toHaveCount(0);
     clubAccess = true;
     await page.goto(`${origin}/organizations/${clubId}/administration`);
     await expect(page.getByRole('heading', { name: clubName, exact: true })).toBeVisible();
