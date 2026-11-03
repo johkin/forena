@@ -48,6 +48,7 @@ Exempel på implementation:
 
 ## Sparade specar
 
+- [Spelarutvärdering och lagindelning](spelarutvardering-och-lagindelning.md) – Redo, godkänd spec för capabilitystyrda mätpunkter, förmåge-/utvecklingsmedelvärden, gruppförslag och serverbeskrivna läsvyer.
 - [Generell UI – påminnelse om ny frontendversion](generell-ui.md) – Utkast, stängbar versionspopup och påminnelse efter en timme.
 - [Web-push som aviseringskanal](web-push.md) – Redo, godkänd spec för kanalordning, enhetsflöden, notisinnehåll och leveransregler.
 - [MCP-koppling](mcp-koppling.md) – Redo, godkänd spec för ChatGPT-anslutning, läsåtkomst och aktivitetsskapande med bekräftelse.

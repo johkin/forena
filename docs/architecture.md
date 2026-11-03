@@ -17,6 +17,21 @@ skapandetransaktion. Deltagargränsen är en separat aktivitetsägd regel som
 kontrolleras under samma lås som kallelsesvaret.
 [Implementation, paketinstallation och verifiering](migration/disciplines.md).
 
+### Beslutad utökning: serverbeskrivna capabilityvyer
+
+För framtida capabilityägda läsvyer är målbilden ett versionerat, typat
+vykontrakt från backend: lista, grupperad lista, tabell och informationsmeddelande,
+med typade filter där det behövs. `extensions` samlar bidrag genom kontrakt i
+`extensionapi` och filtrerar efter aktivering, tillämplighet och behörighet.
+Frontendens gemensamma värd väljer produktionskomponent efter vytyp, inte
+capabilitynyckel. Domänberäkningar och kandidatmarkeringar ägs av serverns
+capability; backend skickar data och metadata, inte körbar UI-kod.
+
+Detta är godkänd målarkitektur 2026-11-03, ännu inte implementerat.
+Spelarutvärderingens gruppförslag och lagrapport är första avsedda användning.
+En generell formulärmotor ingår inte genom detta beslut. Se
+[featurespecens kontraktsprinciper](specs/spelarutvardering-och-lagindelning.md#beslutad-målbild-för-serverbeskrivna-läsvyer).
+
 ## AI-assistent och Telegram i React/Kotlin
 
 Den nya appen delar kontobundna samtal, behörighetskontrollerade läsningar och
