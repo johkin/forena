@@ -6,6 +6,7 @@ import "../../src/app/ui-styles.css";
 import { loadConfig } from "./config";
 import { App, ConfigurationError } from "./app";
 import { clearLegacyAuth } from "./session";
+import { AppUpdateNotice } from "../../src/components/app-update-notice";
 
 const root = createRoot(document.getElementById("root")!);
 async function start() {
@@ -19,6 +20,6 @@ async function start() {
   }
   clearLegacyAuth();
   const config = await loadConfig();
-  root.render(<BrowserRouter><App config={config} /></BrowserRouter>);
+  root.render(<BrowserRouter><AppUpdateNotice currentVersion={import.meta.env.DEV ? "" : config.version} /><App config={config} /></BrowserRouter>);
 }
 void start().catch(() => root.render(<BrowserRouter><ConfigurationError /></BrowserRouter>));

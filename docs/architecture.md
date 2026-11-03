@@ -1031,6 +1031,19 @@ sker automatiskt. Kontrollen stannar när notifieringen visas och städar timers
 lyssnare och pågående anrop vid avmontering. Utvecklingsservern kontrollerar inte
 versioner. Bygg alltid via `npm run build`, även vid egen drift.
 
+React/Vite-appen använder samma `AppUpdateNotice` och monitor. Den får sitt
+ursprungliga frontend-ID från den publika konfigurationen vid uppstart och
+monteras utanför appens routade innehåll, så att navigation inte startar om
+kontrollen. Vite-utvecklingsservern aktiverar inte versionskontrollen.
+
+Stängning av notisen startar en separat entimmestimer med en absolut
+tidsgräns i komponentens lokala tillstånd. Vid återgång till fliken kontrolleras
+tidsgränsen också genom `visibilitychange`; en pausad bakgrundstimer förlänger
+inte väntetiden. Varje ny stängning startar om timmen. Väntetiden gäller
+endast aktuell flik under samma sidlivslängd, utan beständig lagring eller
+fliksynkronisering. Timern och lyssnaren städas vid avmontering. Notisen
+laddar bara om efter ett uttryckligt klick på ”Ladda om”.
+
 Systemets klubblista använder `system_clubs`, en invoker-wrapper runt ett
 auktoriserat kommando i `administration`. Det returnerar enbart id, namn, slug
 och totalt antal för sökning och sidindelning. Plattformrollen ger inte bred

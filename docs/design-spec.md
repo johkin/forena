@@ -644,9 +644,14 @@ respekterar safe area och ligger under dialoger. Texten annonseras som status
 utan att flytta fokus. Användaren väljer när sidan laddas om; pågående formulär
 avbryts inte automatiskt. Klick gör en full omladdning av aktuell adress.
 
-Planerat tillägg med stängning och påminnelse efter en timme beskrivs i
-[generell UI-spec](specs/generell-ui.md). Specen är Utkast; tillägget är
-ännu inte implementerat.
+Knappen ”Stäng” döljer popupen i en timme i aktuell öppen flik. Varje ny
+stängning startar en ny timmes väntetid. Väntetiden bevaras under navigation
+utan full sidladdning, men delas inte med andra flikar och sparas inte vid
+återbesök. Omladdning
+behåller befintligt beteende utan någon ny varning om osparade ändringar.
+Se [generell UI-spec](specs/generell-ui.md). `/components` använder samma
+produktionskomponent för synlig, stängd och återkommande påminnelse samt
+tillståndet efter laddad version.
 
 Systemets klubbsida visar klubbadministratörer och inbjudningar. Knappen
 Gör mig till klubbadministratör möjliggör första administratören i en tom

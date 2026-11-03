@@ -43,6 +43,7 @@ try {
     let rosterAllowed = true;
     const requests = [];
     await page.route('**/config.json', route => route.fulfill({ json: { version: activity } }));
+    await page.route('**/app-version.json', route => route.fulfill({ json: { version: activity } }));
     await page.route('**/api/**', async route => {
       const request = route.request();
       const url = new URL(request.url());
