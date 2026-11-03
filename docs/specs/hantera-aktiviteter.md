@@ -1,7 +1,7 @@
 # Skapa och redigera aktiviteter
 
 - Status: Redo
-- Senast uppdaterad: 2026-11-01
+- Senast uppdaterad: 2026-11-03
 - Berörda dokument: [Aktivitetshantering i React/Kotlin](../migration/activity-management.md), [Arkitektur](../architecture.md#redigering-av-befintlig-serie), [Designregler](../design-spec.md), [Tidsregler](../activity-time-rules.md), [Bemanningsschema](../activity-duty-schedule.md), [Kalender](kalender-vy.md), [Närvaro](narvaroregistrering.md), [AI-assistent](ai-assistent.md)
 - Implementation och verifiering: K-001–K-047 och AK-001–AK-050 godkändes 2026-10-27. Kompletteringen enligt issue #141 och preciseringarna av tidigare krav slutbekräftades 2026-11-01. Hela specen K-001–K-055 och AK-001–AK-061 är godkänd. Ingen implementation beställd för denna spec. Befintlig funktion och tidigare lokal iOS-anpassning är separata från nya krav.
 
@@ -426,7 +426,10 @@ appens befintliga funktion som underlag och uttryckligt granskade begränsningar
   dessa köade utskick. Information om inställningen hanteras separat från
   kallelsen.
 - K-029: Samlade ändringsmeddelanden ska grupperas per mottagarkonto och
-  använda befintliga e-post-/pushkanaler enligt befintliga notisinställningar.
+  följa kanalordningen Telegram → push → e-post enligt
+  [web-pushspecen](web-push.md#krav). Nästa kanal används när föregående
+  inte kan leverera; samma ändringsmeddelande ska inte skickas parallellt
+  via flera kanaler. Detta kanalbeslut ändrades 2026-11-03.
   Högst ett samlat meddelande per kanal och sparad serieändring ska skickas
   till kontot. En målsman med två berörda barn ska få en sammanställning som
   tydligt visar båda barnens berörda aktiviteter. Varje konto får endast se
@@ -633,8 +636,10 @@ kallelser, nekad behörighet, samtidiga ändringar och mobilinteraktion.
   ska personens skickade kallelse och tidigare svar inte automatiskt tas bort.
 - AK-030 (K-018, K-022, K-029): Givet ett konto med åtkomst till två berörda
   barn och både e-post och push aktiverade, när en serieändring berör båda,
-  ska kontot få högst ett samlat mejl och en samlad push för ändringen med
-  tydlig koppling mellan barn och tillfällen. Andra familjers personer och
+  ska kontot få ett samlat meddelande via den första levererande kanalen
+  i ordningen Telegram → push → e-post, med tydlig koppling mellan barn
+  och tillfällen. Om push väljs ska alla aktiverade enheter omfattas enligt
+  web-pushspecen. Andra familjers personer och
   aktiviteter får inte exponeras. Barnens svar ska fortfarande hanteras
   separat per person och aktivitet; avstängda kanaler får inte användas.
 - AK-031 (K-030): Givet skapande av en aktivitet, ska typ, titel och plats
@@ -1049,6 +1054,9 @@ Ingen implementation har beställts.
 
 ## Ändringshistorik
 
+- 2026-11-03: Kanalregeln för samlade ändringsmeddelanden i K-029 och
+  AK-030 ersatt med Telegram → push → e-post enligt godkänd web-pushspec.
+  Timeoutundantaget följer samma spec. Ingen implementation beställd.
 - 2026-11-01: Användaren godkände den samlade kompletteringen enligt #141.
   Markerade specen Redo och uppdaterade specförteckningen. Ingen
   implementation beställd.
