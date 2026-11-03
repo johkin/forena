@@ -1065,6 +1065,11 @@ Hjälpfunktionerna är privata och tar inte emot referenslistor från klienter.
 
 Telegram skapar frysta meddelanden per mottagare och kallad person i samma
 transaktion som köläggningen. Leveransordningen är Telegram → push → e-post.
+Den godkända [web-pushspecen](specs/web-push.md) anger samma ordning för
+aktivitetsändringar, inställningar, bemanning och närvaropåminnelser.
+Minst en accepterad push stoppar reservmejl. Vid osäker acceptans efter
+timeout tillåts reservmejl utan nytt pushförsök. Detta är målkrav;
+kompletteringarna har inte implementerats eller live-verifierats här.
 Privata kontokopplingar, engångsbevis och knappreferenser saknar klientgrants.
 Knappsvar kontrollerar aktuell personåtkomst och aktivitetens livscykel under lås.
 Gruppchattar får bara navigationslänkar, aldrig privata kallelser eller svar.
