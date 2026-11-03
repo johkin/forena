@@ -12,6 +12,7 @@ import se.forena.api.activities.internal.ManagedActivityRepository
 import se.forena.api.activities.internal.ScheduledInvitationRepository
 import se.forena.api.identity.BrowserSessionSettings
 import se.forena.api.extensionapi.DisciplineInputsChanged
+import se.forena.api.extensionapi.DisciplineParticipantsAdded
 import se.forena.api.identity.DatabaseClockService
 import se.forena.api.identity.NotificationDirectory
 
@@ -87,6 +88,7 @@ class ScheduledInvitationService(
         check(audience.size <= 1000) { "Audience exceeds materialization limit" }
         val formattedTime =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm z").format(activity.startsAt.atZone(zone))
+        var participantsAdded = false
         var decisions = 0
         for (person in audience) {
             if (schedule.kind == "invitation") {
@@ -96,7 +98,7 @@ class ScheduledInvitationService(
                     activityId,
                     person.id,
                 )
-                if (added > 0) events.publishEvent(DisciplineInputsChanged(activityId=activityId))
+                if (added > 0) participantsAdded = true
             }
             val invitation =
                 invitations
@@ -127,6 +129,10 @@ class ScheduledInvitationService(
                     ) ?: continue
                 events.publishEvent(InvitationNotificationRequested(notification))
             }
+        }
+        if (participantsAdded) {
+            events.publishEvent(DisciplineParticipantsAdded(activityId))
+            events.publishEvent(DisciplineInputsChanged(activityId=activityId))
         }
         schedules.finish(id, "completed", now)
         return true

@@ -99,6 +99,7 @@ await context.route('**/api/**',async route=>{
  if(path===`/api/assistant/conversations/${id}`)return route.fulfill(current===0?{json:{conversation,messages:[{id:users[0],role:'assistant',sender:'Förena',organizationId:null,content:'Ett sparat samtal.'}],proposals:[]}}:{status:404,json:{error:'Samtalet saknas.'}});
  if(path==='/api/admin/overview')return route.fulfill({json:{platformAdmin:false,canBootstrap:false,platformAdministrators:[],clubs:[]}});
  if(path==='/api/me/managed-teams')return route.fulfill({json:current===0?[managedTeam]:[]});
+ if(path===`/api/teams/${team.id}/signals` || path===`/api/teams/${team.id}/follow-up`)return route.fulfill({json:[]});
  if(path===`/api/teams/${team.id}/roster/access`)return route.fulfill({json:false});
  if(path===`/api/teams/${team.id}/activity-editor`)return route.fulfill({json:{team:managedTeam,
   types:[{id,name:'Övrigt',slug:'ovrigt',system_category:'other',organization_id:null}],
@@ -283,6 +284,9 @@ try{
  assert.equal(sessionReads,galleryReads);
  await page.evaluate(()=>{window.documentInstance='gallery-document';});
  await page.getByRole('link',{name:'Förena startsida',exact:true}).click();
+ // The gallery includes multiple overview examples. Wait for the real route before matching its heading.
+ await expect(page).toHaveURL(base.href);
+ await expect(page.getByRole('heading',{name:'Komponenter',exact:true})).toHaveCount(0);
  await expect(page.getByRole('heading',{name:'Min översikt',exact:true})).toBeVisible();
  await expect.poll(()=>sessionReads).toBeGreaterThan(galleryReads);
  assert.equal(await page.evaluate(()=>window.documentInstance),'gallery-document');

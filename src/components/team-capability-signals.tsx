@@ -30,10 +30,16 @@ const schema = z.array(
 export function TeamCapabilitySignals({
   teamId,
   request,
+  teamName,
+  activeOnly = false,
+  refreshKey,
   linkComponent: Link = "a",
 }: {
   teamId: string;
   request: ParticipationFetch;
+  teamName?: string;
+  activeOnly?: boolean;
+  refreshKey?: string;
   linkComponent?: NavigationLink;
 }) {
   const [data, setData] = useState<z.infer<typeof schema>>();
@@ -45,11 +51,15 @@ export function TeamCapabilitySignals({
     action: string;
   }>();
   const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string>();
   useEffect(() => {
     const controller = new AbortController();
     request(`/api/teams/${teamId}/signals`, { signal: controller.signal })
       .then(async (response) => {
-        if (response.status === 403) return;
+        if (response.status === 403) {
+          if (!controller.signal.aborted) { setData([]); setError(undefined); }
+          return;
+        }
         if (!response.ok) throw new Error();
         const snapshot = schema.parse(await response.json());
         if (!controller.signal.aborted) {
@@ -62,10 +72,11 @@ export function TeamCapabilitySignals({
           setError("Lagets signaler kunde inte hämtas.");
       });
     return () => controller.abort();
-  }, [request, teamId, attempt]);
+  }, [request, teamId, attempt, refreshKey]);
   async function perform() {
     if (!confirm || busy) return;
     setBusy(true);
+    setNotice(undefined);
     try {
       const response = await request(`/api/signals/${confirm.id}/actions`, {
         method: "POST",
@@ -76,6 +87,7 @@ export function TeamCapabilitySignals({
         }),
       });
       if (!response.ok) throw new Error();
+      setNotice(confirm.action === "dismiss" ? "Avfärdad för laget." : "Påminnelse köad för leverans.");
       setConfirm(undefined);
       setAttempt((n) => n + 1);
     } catch {
@@ -89,6 +101,7 @@ export function TeamCapabilitySignals({
   if (!error && !data?.length) return null;
   const active = data?.filter((item) => item.state === "active") ?? [];
   const history = data?.filter((item) => item.state !== "active") ?? [];
+  if (activeOnly && !error && !notice && !active.length) return null;
   function signal(item: z.infer<typeof schema>[number]) {
     return (
       <article className="settings-item" key={item.id}>
@@ -158,7 +171,8 @@ export function TeamCapabilitySignals({
   }
   return (
     <section className="card">
-      <h2>För laget</h2>
+      <h2>{teamName ? `För laget · ${teamName}` : "För laget"}</h2>
+      {notice ? <p role="status">{notice}</p> : null}
       {error ? (
         <p role="alert">
           {error}{" "}
@@ -193,7 +207,7 @@ export function TeamCapabilitySignals({
           </button>
         </div>
       ) : null}
-      {history.length ? (
+      {!activeOnly && history.length ? (
         <details>
           <summary>Tidigare signaler</summary>
           {history.map(signal)}
@@ -218,7 +232,7 @@ export function TeamDisciplinePlayers({
       signal: controller.signal,
     })
       .then(async (response) => {
-        if (response.status === 403) return;
+        if (response.status === 403) throw new Error("denied");
         if (!response.ok) throw new Error();
         const data = playerSchema.parse(await response.json());
         if (!controller.signal.aborted) setPlayers(data);
@@ -229,7 +243,8 @@ export function TeamDisciplinePlayers({
       });
     return () => controller.abort();
   }, [teamId, request]);
-  if (!error && !players?.length) return null;
+  if (!error && !players) return <p role="status">Hämtar spelaruppgifter…</p>;
+  if (!error && !players?.length) return <p>Inga spelare i laget.</p>;
   return (
     <section className="card">
       <h2>Lagets spelaruppgifter</h2>

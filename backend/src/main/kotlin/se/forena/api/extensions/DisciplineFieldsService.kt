@@ -2,9 +2,11 @@ package se.forena.api.extensions
 
 import java.util.UUID
 import org.springframework.security.access.AccessDeniedException
+import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Isolation
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.annotation.Propagation
 import se.forena.api.activities.DisciplineObject
 import se.forena.api.activities.DisciplineObjects
 import se.forena.api.activities.DisciplineTarget
@@ -93,13 +95,17 @@ class DisciplineFieldsService(
 
     override fun created(activity: DisciplineActivity) {
         initialize(activity)
+        initializeParticipants(activity.id)
         information.schedule(activity.id)
     }
 
     override fun updated(activity: DisciplineActivity, previousKind: ActivityKind) {
         val pkg = catalog.find(activity.disciplineKey)
         val entering = pkg?.appliesTo(activity.kind) == true && !pkg.appliesTo(previousKind)
-        if (entering) initialize(activity)
+        if (entering) {
+            initialize(activity)
+            initializeParticipants(activity.id)
+        }
         changed(activity.id)
     }
 
@@ -134,8 +140,35 @@ class DisciplineFieldsService(
         )
     }
 
-    override fun invited(activityId: UUID, actorId: UUID, added: Int) =
+    override fun invited(activityId: UUID, actorId: UUID, added: Int) {
+        initializeParticipants(activityId)
         capabilities.invited(activityId, actorId, added)
+    }
+
+    @EventListener
+    @Transactional(propagation = Propagation.MANDATORY)
+    fun participantsAdded(event: DisciplineParticipantsAdded) {
+        initializeParticipants(event.activityId)
+    }
+
+    private fun initializeParticipants(activityId: UUID) {
+        val (activity, players) = objects.participationDefaults(activityId) ?: return
+        val activityValues = repository.value(activity.teamId, activity.disciplineKey, "activity", activity.id, null)
+        val pkg = catalog.find(activity.disciplineKey, activityValues?.packageVersion) ?: return
+        if (!pkg.appliesTo(activity.kind) || pkg.definition.fields[DisciplineScope.activityParticipation].isNullOrEmpty()) return
+        val existing = repository.participationValues(activityId, activity.disciplineKey).map { it.personId }.toSet()
+        val missing = players.filter { it !in existing }
+        if (missing.isEmpty()) return
+        val memberships = repository.membershipValues(activity.teamId, activity.disciplineKey, missing).associateBy { it.personId }
+        for (person in missing) {
+            val source = memberships[person]?.let { json.readTree(it.valuesJson) } ?: json.createObjectNode()
+            val values = pkg.initialParticipationValues(source)
+            // Even an empty snapshot is retained so later team edits cannot rewrite a match.
+            repository.insert(UUID.randomUUID(), activity.organizationId, activity.teamId,
+                activity.disciplineKey, pkg.definition.version, "activityParticipation", activity.id,
+                activity.id, person, 1, json.writeValueAsString(values))
+        }
+    }
 
     override fun changed(activityId: UUID) {
         information.schedule(activityId)

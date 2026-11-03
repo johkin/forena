@@ -23,6 +23,21 @@ class DisciplineObjects(
     private val types: ActivityTypeRepository,
     private val repository: DisciplineObjectRepository,
 ) {
+    /** Trusted lifecycle adapter. The caller holds the activity transaction and lock. */
+    fun participationDefaults(activityId: UUID): Pair<DisciplineActivity, List<UUID>>? {
+        val row = activities.findLockedByActivityId(activityId) ?: return null
+        if (row.imported || row.deletedAt != null || row.status != "scheduled" || row.endsAt <= clock.now())
+            return null
+        val team = teams.team(row.teamId) ?: return null
+        val type = types.catalogue(team.organizationId).singleOrNull { it.id == row.activityTypeId }
+            ?: return null
+        val activity = DisciplineActivity(row.activityId, team.organizationId, team.id, team.sectionId,
+            team.disciplineKey ?: "common", ActivityKind(type.slug, type.systemCategory),
+            row.startsAt, row.endsAt, row.revision, false)
+        val date = row.startsAt.atZone(ZoneId.of(team.timeZone)).toLocalDate()
+        return activity to repository.players(activityId, team.id, date).map { it.id }
+    }
+
     fun roster(actor: Actor, teamId: UUID): List<DisciplinePlayer> {
         sessions.requireActive(actor)
         val team = teams.team(teamId) ?: throw NoSuchElementException()

@@ -4,10 +4,10 @@ import { useCallback, useRef } from "react";
 import { z } from "zod";
 import { DisciplineCatalogue } from "./discipline-catalogue";
 import { TeamActivitySettings } from "./team-activity-settings";
-import {
-  TeamCapabilitySignals,
-  TeamDisciplinePlayers,
-} from "./team-capability-signals";
+import { TeamAttention } from "./team-attention";
+import { PersonalHome } from "./personal-home";
+import { TeamRosterWorkspace } from "./team-roster-workspace";
+import { ExtensionFields } from "./extension-fields";
 import { TeamFollowUp } from "./team-follow-up";
 import type { ParticipationFetch } from "./activity-invitation-response";
 const team = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
@@ -205,9 +205,14 @@ export function DisciplineAdministrationExamples() {
       <p>Gemensamma produktionskomponenter med isolerade exempeldata.</p>
       <DisciplineCatalogue request={request} />
       <TeamActivitySettings request={request} teamId={team} />
-      <TeamCapabilitySignals request={request} teamId={team} />
-      <TeamFollowUp request={request} teamId={team} />
-      <TeamDisciplinePlayers request={request} teamId={team} />
+      <PersonalHome items={[]} activities={[]} organizations={[]} teams={[]}
+        referenceTime="2030-10-25T10:00:00Z" onOpenActivity={() => {}}
+        teamContent={<TeamAttention teams={[{ id: team, name: "Exempelföreningen · Ungdomslaget" }]} request={request} />} />
+      <TeamFollowUp request={request} teamId={team} reportOnly />
+      <TeamRosterWorkspace people={[{ id: team, name: "Alex Exempel", roles: ["participant"], title: "Spelare", linked: false, guardians: [], childIds: [] }]}
+        groups={[]} team={{ name: "Ungdomslaget" }} organization={{ name: "Exempelföreningen" }} destination="/example/players"
+        search={`person=${team}`} actions={{ updateMemberName: async () => {}, createTeamGroup: async () => {}, updateTeamGroup: async () => {}, deleteTeamGroup: async () => {} }}
+        memberExtraDetails={<ExtensionFields teamId={team} personId={team} scope="teamMembership" request={request} />} />
     </section>
   );
 }

@@ -179,6 +179,31 @@ Gemensamma kort och detaljer visar platsantal, progressbar och spärrad ja-knapp
 
 ## Verifiering
 
+### Placering och matchnummer, 2026-11-03
+
+- React/Kotlin visar aktiva lagärenden före aktiviteterna även på den
+  personliga startsidan. Spelaruppgifter finns under Truppen och kompletterar
+  spelarprofilen; lagets rapport finns kvar separat på lagöversikten.
+- Fotboll kopierar ordinarie tröjnummer till nya matchdeltaganden vid direkt
+  och schemalagd kallelse. Sparade nummer, manuella matchändringar och tomma
+  ögonblicksbilder skrivs inte över. Äldre deltaganden massuppdateras inte.
+- `npm test`: 1 238 tester godkända. Typecheck, lint, Next- och Vitebygge
+  godkända.
+- Backend `verify` med `ApiTest`, `FootballDisciplineTest`, `ArchitectureTest`
+  och `CapabilityTest`: 157 tester, inga fel, tre miljöstyrda browserprov
+  överhoppade. API-proven använder isolerad PostgreSQL och verifierar direkt
+  och schemalagd kopiering, separat matchändring och nekad åtkomst.
+- `team-attention-browser.mjs`: gemensamma produktionskomponenter i båda
+  apparnas galleri vid 390 och 1280 px. Kotlin-startsidan med syntetiska
+  API-svar verifierar prioritet, lagbehörighet, påminnelsebekräftelse,
+  spelarredigering och läsläge för spelare/målsmän. Evidens sparas under
+  `frontend/.evidence/team-attention/`. Produktion har inte verifierats.
+- Det befintliga `information-components-browser.mjs` är godkänt i båda
+  apparna vid 320, 390, 768 och 1280 px efter flytten. Det nya
+  placerings-/profilprovet ingår även i CI:s browserkontroller.
+
+### Tidigare disciplinleverans
+
 - `npm test`: 1 237 tester godkända i 143 testfiler.
 - `npm run typecheck` och `npm run lint`: godkända.
 - `npm run build` och `npm run frontend:build`: godkända.

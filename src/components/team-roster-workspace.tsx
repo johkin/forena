@@ -12,12 +12,12 @@ type Action = (data: FormData) => Promise<void>;
 export type RosterActions = { updateMemberName: Action; createTeamGroup: Action; updateTeamGroup: Action; deleteTeamGroup: Action };
 
 export function TeamRosterWorkspace({ people: roster, groups: rosterGroups, team, organization,
-  destination, search, actions, pending = false, memberDetails, guardianError, childError,
+  destination, search, actions, pending = false, memberDetails, memberExtraDetails, guardianError, childError,
   organizationSlug = "", teamSlug = "", linkComponent: Link = "a",
 }: {
   people: RosterProfile[]; groups: RosterGroup[]; team: { name: string }; organization: { name: string };
   destination: string; search: string; actions: RosterActions; pending?: boolean;
-  memberDetails?: ReactNode; guardianError?: boolean; childError?: boolean;
+  memberDetails?: ReactNode; memberExtraDetails?: ReactNode; guardianError?: boolean; childError?: boolean;
   organizationSlug?: string; teamSlug?: string; linkComponent?: NavigationLink;
 }) {
   const query = new URLSearchParams(search);
@@ -117,6 +117,7 @@ export function TeamRosterWorkspace({ people: roster, groups: rosterGroups, team
             </Link>
           </div>
           {memberDetails ?? <RosterMemberDetails key={member.id} member={member} destination={destination} edit={Boolean(edit)} action={updateMemberName} pending={pending} linkComponent={Link} organizationSlug={organizationSlug} teamSlug={teamSlug} />}
+          {memberExtraDetails}
           <section className="squad-section">
             <h3>Undergrupper</h3>
             <div className="squad-list">
