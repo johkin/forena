@@ -284,6 +284,9 @@ try{
  assert.equal(sessionReads,galleryReads);
  await page.evaluate(()=>{window.documentInstance='gallery-document';});
  await page.getByRole('link',{name:'Förena startsida',exact:true}).click();
+ // The gallery includes multiple overview examples. Wait for the real route before matching its heading.
+ await expect(page).toHaveURL(base.href);
+ await expect(page.getByRole('heading',{name:'Komponenter',exact:true})).toHaveCount(0);
  await expect(page.getByRole('heading',{name:'Min översikt',exact:true})).toBeVisible();
  await expect.poll(()=>sessionReads).toBeGreaterThan(galleryReads);
  assert.equal(await page.evaluate(()=>window.documentInstance),'gallery-document');
