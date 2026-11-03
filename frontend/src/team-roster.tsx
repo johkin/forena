@@ -1,3 +1,4 @@
+import { useTeamSettingsAccess } from "./team-activity-settings";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { z } from "zod";
@@ -101,10 +102,12 @@ export function TeamRosterPage({ request, teamId }: { request: ParticipationFetc
 
 export function TeamRosterNavigation({ request, teamId, pathname }: { request: ParticipationFetch; teamId: string; pathname: string }) {
   const allowed = useRosterAccess(request, teamId);
+  const settings = useTeamSettingsAccess(request, teamId);
   const base = `/teams/${teamId}`;
   return <NavigationLinksView label="Lag" pathname={pathname} linkComponent={AppLink} items={[
     { href: base, label: "Översikt" },
     ...(allowed ? [{ href: `${base}/members`, label: "Truppen" }] : []),
+    ...(settings.status === "allowed" ? [{ href: `${base}/settings`, label: "Aktivitetsinställningar" }] : []),
   ]} />;
 }
 

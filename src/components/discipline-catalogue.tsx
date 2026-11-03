@@ -86,8 +86,9 @@ export function DisciplineCatalogue({
     <section className="application-card">
       <h1>Discipliner</h1>
       <p>
-        Discipliner väljs på sektionen och gäller alla dess lag. Kategorin
-        grupperar katalogen.
+        Discipliner väljs på sektionen och gäller alla dess lag. Kategorier,
+        exempelvis Idrott och Kultur, används enbart för att gruppera discipliner.
+        De aktiverar inga funktioner eller behörigheter.
       </p>
       {error ? (
         <p role="alert">
