@@ -24,7 +24,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="sv">
       <body>
         <PwaRegistration />
-        <AppUpdateNotice />
+        <AppUpdateNotice currentVersion={process.env.NEXT_PUBLIC_APP_VERSION ?? ""} />
         <div className="app-page">{children}</div>
         <AppFooter />
       </body>

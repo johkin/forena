@@ -1,22 +1,31 @@
-import { afterEach, expect, it, vi } from "vitest";
+import { expect, it, vi } from "vitest";
 import type { ReactElement } from "react";
-const hooks = vi.hoisted(() => ({ available: false }));
-vi.mock("react", async original => ({ ...await original<typeof import("react")>(), useState: () => [hooks.available, vi.fn()], useEffect: vi.fn() }));
-import { AppUpdateNotice } from "./app-update-notice";
+import { renderToStaticMarkup } from "react-dom/server";
+import { AppUpdateNotice, AppUpdateNoticeView } from "./app-update-notice";
 
-afterEach(() => { hooks.available = false; vi.unstubAllGlobals(); });
-it("is hidden before a different build is detected", () => {
-  expect(AppUpdateNotice()).toBeNull();
+it("is hidden before a different frontend build is detected", () => {
+  expect(renderToStaticMarkup(<AppUpdateNotice currentVersion="old" />)).toBe("");
 });
-it("announces the update and reloads only after an explicit click", () => {
-  hooks.available = true;
-  const reload = vi.fn();
-  vi.stubGlobal("window", { location: { reload } });
-  const notice = AppUpdateNotice()!;
-  const [message, button] = notice.props.children as ReactElement<Record<string, unknown>>[];
-  expect(message.props.role).toBe("status");
-  expect(button.props.children).toBe("Ladda om");
-  expect(reload).not.toHaveBeenCalled();
-  (button.props.onClick as () => void)();
-  expect(reload).toHaveBeenCalledOnce();
+
+it("announces the update without taking focus", () => {
+  const markup = renderToStaticMarkup(<AppUpdateNoticeView onReload={() => {}} onDismiss={() => {}} />);
+  expect(markup).toContain('role="status"');
+  expect(markup).toContain("En ny version av Förena finns.");
+  expect(markup).toContain('aria-label="Stäng påminnelsen"');
+  expect(markup).not.toContain("autofocus");
+});
+
+it("only reloads or dismisses after the corresponding explicit click", () => {
+  const onReload = vi.fn();
+  const onDismiss = vi.fn();
+  const notice = AppUpdateNoticeView({ onReload, onDismiss });
+  const [, reload, dismiss] = notice.props.children as ReactElement<{ onClick: () => void; type: string }>[];
+  expect(onReload).not.toHaveBeenCalled();
+  expect(onDismiss).not.toHaveBeenCalled();
+  expect(dismiss.props.type).toBe("button");
+  dismiss.props.onClick();
+  expect(onDismiss).toHaveBeenCalledOnce();
+  expect(onReload).not.toHaveBeenCalled();
+  reload.props.onClick();
+  expect(onReload).toHaveBeenCalledOnce();
 });

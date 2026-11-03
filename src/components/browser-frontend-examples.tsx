@@ -24,6 +24,7 @@ import { AppHeaderFrame } from "./app-header-frame";
 import { ApplicationMenu } from "./application-menu";
 import { SessionMenu } from "./session-menu";
 import { TeamRosterExample } from "./team-roster-example";
+import { AppUpdateNoticeExample } from "./app-update-notice-example";
 
 /** Actual pilot components with local fixtures; no login or database mutations. */
 export function BrowserFrontendExamples({ linkComponent }: { linkComponent?: NavigationLink }) {
@@ -67,6 +68,7 @@ export function BrowserFrontendExamples({ linkComponent }: { linkComponent?: Nav
           logout={<button type="button" disabled>Logga ut</button>} />
       </AppHeaderFrame>
     </section>
+    <AppUpdateNoticeExample />
     <AdministrationExample />
     <ExtensionFieldsExamples />
     <InformationExamples /><DisciplineAdministrationExamples />
