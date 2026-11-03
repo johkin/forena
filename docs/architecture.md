@@ -279,6 +279,18 @@ skrivning och fel är avgränsade till personens rad.
 
 ### Gemensamma komponenter
 
+`AppHeaderFrame` äger också inloggade fullständiga mobilvyers bottennavigation
+(Min översikt, Mina lag, Meny). Samma menyinnehåll öppnas som en nedre panel,
+och Mina lag öppnar `MyTeamsPanel` ovanför bottenmenyn. Panelen hämtar
+lag och föreningar vid öppning, avbryter vid stängning och visar laddning,
+tomt läge eller hämtfel. Nexts `/api/me/teams` återanvänder
+`getPersonalDashboard` med anroparens session/RLS och lämnar endast
+navigationsdata utan cache. React/Kotlin mappar motsvarande listor från
+befintliga `/api/me/overview` genom den kontobundna transporten. Ingen separat
+lagkatalog eller behörighetsregel införs.
+Router-/authadaptrarna aktiverar varianten i både Next och React/Kotlin.
+
+
 Menyer, header och footer ska implementeras som centrala, återanvändbara
 komponenter under `src/components`. Ett gemensamt sidskal komponerar dem i
 layoutlagret. Enskilda sidor ska ange sitt innehåll och sin kontext, inte

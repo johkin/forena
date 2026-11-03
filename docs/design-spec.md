@@ -203,9 +203,29 @@ bakgrund `#faf9f3` och lime `#e0eb78` från HTML, skogsgrön åtgärd `#1e3f20`,
 kort 16 px och kontroller 12 px från komponentreglerna. Värden samlas som
 CSS-variabler i `globals.css`. Svar får färg och text: kommer (grönt), kan inte
 (rött), ej svarat (bärnsten). Gemensamma kontroller är minst 44 px höga och
-närvarorader minst 48 px. Befintlig hamburger-/sidomeny och verksamhetsflöden
-behålls; referensens bottennavigation och nya funktioner kräver separat beslut.
+närvarorader minst 48 px. Desktop behåller sidomenyn. Inloggade mobilvyer
+använder bottennavigation enligt beslutet nedan.
 
+
+## Mobilnavigation
+
+Inloggade fullständiga vyer har en fast bottenmeny under 768 px med
+**Min översikt**, **Mina lag** och **Meny**. Mina lag öppnar en egen panel
+ovanför bottenmenyn med användarens och barnens lag, grupperade per förening
+med roller och direktlänkar. Listan hämtas på nytt varje gång panelen öppnas
+från den autentiserade personliga översikten, även från klubb-, lag- och
+administrationssidor. Laddning, tom lista och hämtfel med återförsök visas
+uttryckligen. Ingen tidigare lista visas vid fel. Ett lagval stänger panelen
+och öppnar lagets befintliga sida. Bottenmenyn ligger kvar under panelen.
+Meny öppnar de befintliga behörighetsstyrda alternativen i en panel från
+nederkanten. Panelen delar fokuslås, Escape, bakgrundsstängning och scrollås
+med desktopmenyn. Utloggade vyer och avskalade kallelsesidor behåller sin
+befintliga meny. Safe area och extra utrymme under innehåll/sidfot gör att
+bottenmenyn inte täcker sista åtgärden; assistentknappen placeras ovanför.
+Next och React/Kotlin återanvänder `AppHeaderFrame` och samma CSS.
+Komponentsidan visar den interaktiva mobilnavigationen med lag, tom lista,
+laddning och hämtfel. Meny innehåller befintliga profil-/kontoinställningar,
+behörig administration och utloggning; assistenten har sin separata knapp.
 
 ## Gemensamma menyer, header och footer
 

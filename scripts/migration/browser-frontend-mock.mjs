@@ -189,7 +189,7 @@ try{
  await createDialog.getByRole('button',{name:'Skapa aktivitet',exact:true}).click();
  await expect(createDialog).toHaveCount(0);assert.equal(activityCreates,1);
  assert.ok(!page.url().includes('create=1'));
- await page.getByRole('link',{name:'Förena startsida',exact:true}).click();
+ await page.getByRole('banner').getByRole('link',{name:'Förena startsida',exact:true}).click();
  await page.getByRole('link',{name:/Ungdomslaget.*Målsman/}).click();
  await page.getByRole('link',{name:'Till min översikt',exact:true}).click();
  // A legitimate activity without invitations still has readable details and named people.
@@ -209,8 +209,26 @@ try{
  await page.goForward();await expect(row).toHaveCount(1);
  await page.getByRole('link',{name:'Till min översikt',exact:true}).click();
  await expect(upcoming.getByRole('button',{name:/Träning med laget/})).toBeVisible();
+ // The mobile team picker opens above the bottom bar and navigates directly.
+ const bottomNavigation=page.getByRole('banner').getByRole('navigation',{name:'Huvudnavigation',exact:true});
+ const teamsTrigger=bottomNavigation.getByRole('button',{name:'Mina lag',exact:true});
+ await teamsTrigger.click();
+ const teamsPanel=page.getByRole('dialog',{name:'Mina lag',exact:true});
+ const teamChoice=teamsPanel.getByRole('link',{name:/Ungdomslaget.*Målsman/});
+ await expect(teamChoice).toBeVisible();
+ const panelBounds=await teamsPanel.boundingBox();
+ const bottomBounds=await bottomNavigation.boundingBox();
+ assert.ok(panelBounds && bottomBounds && Math.abs(panelBounds.y+panelBounds.height-bottomBounds.y)<2);
+ await page.keyboard.press('Escape');await expect(teamsTrigger).toBeFocused();
+ await teamsTrigger.click();await teamChoice.click();
+ await expect(teamsPanel).toHaveCount(0);
+ await expect(page.getByRole('heading',{name:team.name,exact:true})).toBeVisible();
+ await teamsTrigger.click();await expect(teamChoice).toHaveAttribute('aria-current','page');
+ await bottomNavigation.getByRole('link',{name:'Min översikt',exact:true}).click();
+ await expect(teamsPanel).toHaveCount(0);
+ await expect(page.getByRole('heading',{name:'Min översikt',exact:true})).toBeVisible();
  // Header/menu links use the same router adapter as the activity list.
- await page.getByRole('button',{name:'Öppna meny',exact:true}).click();
+ await page.getByRole('banner').getByRole('button',{name:'Öppna meny',exact:true}).click();
  const menu=page.getByRole('dialog');
  const homeBox=await menu.getByRole('link',{name:'Min översikt',exact:true}).boundingBox();
  const securityBox=await menu.getByRole('link',{name:'Inloggningsinställningar',exact:true}).boundingBox();
@@ -243,7 +261,7 @@ try{
   for(const button of buttons){const box=await button.boundingBox();assert.ok(box.width>=44 && box.height>=44);assert.ok(box.x>=name.x+name.width-1);assert.ok(box.y<=name.y+name.height && box.y+box.height>=name.y);}
  }
  await page.screenshot({path:'frontend/.evidence/desktop.png',fullPage:true});await page.setViewportSize({width:390,height:844});await page.screenshot({path:'frontend/.evidence/mobile.png',fullPage:true});
- await page.getByRole('button',{name:'Öppna meny',exact:true}).click();await expect(page.getByRole('dialog',{name:'Huvudmeny'})).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);
+ await page.getByRole('banner').getByRole('button',{name:'Öppna meny',exact:true}).click();await expect(page.getByRole('dialog',{name:'Huvudmeny'})).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);
  await upcoming.getByRole('button',{name:'Kommer: Tilda Exempel',exact:true}).click();
  await expect(page.getByRole('button',{name:'Behöver svar (0)',exact:true})).toBeVisible();
  await expect(upcoming.getByRole('button',{name:/Träning med laget/})).toHaveCount(1);await expect(upcoming.locator('.badge')).toHaveText('2');
@@ -256,7 +274,7 @@ try{
  await page.getByLabel('E-postadress',{exact:true}).fill('other@example.invalid');await page.getByLabel('Lösenord',{exact:true}).fill('synthetic-password');await page.getByRole('button',{name:'Logga in',exact:true}).click();await expect(page.getByRole('heading',{name:'Kallelser'})).toBeVisible();await expect(row).toHaveCount(0);
  await page.goto(base.href);await expect(page.getByText('Inga kommande aktiviteter i dina eller barnens lag.',{exact:true})).toBeVisible();await expect(upcoming.getByRole('button',{name:/Träning med laget/})).toHaveCount(0);
  const secondTab=await context.newPage();await secondTab.goto(new URL(`/activities/${id}`,base).href);await expect(secondTab.getByRole('heading',{name:'Kallelser'})).toBeVisible();await page.bringToFront();
- await page.getByRole('button',{name:'Öppna meny',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'Logga ut från Förena'}).click();await expect(page.getByRole('heading',{name:'Logga in',exact:true})).toBeVisible();
+ await page.getByRole('banner').getByRole('button',{name:'Öppna meny',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'Logga ut från Förena'}).click();await expect(page.getByRole('heading',{name:'Logga in',exact:true})).toBeVisible();
  await expect(secondTab.getByRole('heading',{name:'Logga in',exact:true})).toBeVisible();await secondTab.close();
  // Real browser WebAuthn call with a virtual discoverable credential; mocked provider verifies the wire contract only.
  const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');
@@ -283,7 +301,7 @@ try{
  await page.reload();await expect(page.getByRole('heading',{name:'Komponenter',exact:true})).toBeVisible();
  assert.equal(sessionReads,galleryReads);
  await page.evaluate(()=>{window.documentInstance='gallery-document';});
- await page.getByRole('link',{name:'Förena startsida',exact:true}).click();
+ await page.getByRole('banner').getByRole('link',{name:'Förena startsida',exact:true}).click();
  // The gallery includes multiple overview examples. Wait for the real route before matching its heading.
  await expect(page).toHaveURL(base.href);
  await expect(page.getByRole('heading',{name:'Komponenter',exact:true})).toHaveCount(0);
@@ -291,7 +309,7 @@ try{
  await expect.poll(()=>sessionReads).toBeGreaterThan(galleryReads);
  assert.equal(await page.evaluate(()=>window.documentInstance),'gallery-document');
  // Explicit login redirect also follows the router without starting a new document.
- await page.getByRole('button',{name:'Öppna meny',exact:true}).click();
+ await page.getByRole('banner').getByRole('button',{name:'Öppna meny',exact:true}).click();
  await page.getByRole('dialog').getByRole('button',{name:'Logga ut från Förena'}).click();
  await expect(page.getByRole('heading',{name:'Logga in',exact:true})).toBeVisible();
  await page.goto(new URL(`/login?next=/activities/${id}`,base).href);
@@ -343,7 +361,7 @@ try{
  await page.screenshot({path:'frontend/.evidence/passkey-registered.png',fullPage:true});
  for(const width of [320,1280]){await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
  await page.setViewportSize({width:390,height:844});
- await page.getByRole('button',{name:'Öppna meny',exact:true}).click();
+ await page.getByRole('banner').getByRole('button',{name:'Öppna meny',exact:true}).click();
  await page.getByRole('dialog').getByRole('button',{name:'Logga ut från Förena'}).click();
  await expect(page.getByRole('heading',{name:'Logga in',exact:true})).toBeVisible();
  await page.getByLabel('E-postadress för inloggningslänk',{exact:true}).fill('family@example.invalid');

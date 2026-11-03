@@ -81,14 +81,14 @@ try {
     await expect(page.getByRole('heading', { name: 'Min översikt', exact: true })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Hantera aktiviteter' })).toHaveCount(0);
     const mobile = width < 768;
-    if (mobile) await page.getByRole('button', { name: 'Öppna meny' }).click();
-    const navigation = page.locator(mobile ? '#header-menu' : '.app-sidebar').getByRole('navigation', { name: 'Personligt' });
+    if (mobile) await page.getByRole('banner').getByRole('button', { name: 'Öppna meny' }).click();
+    const navigation = (mobile ? page.getByRole('dialog', { name: 'Huvudmeny', exact: true }) : page.locator('.app-sidebar')).getByRole('navigation', { name: 'Personligt' });
     const home = await navigation.getByRole('link', { name: 'Min översikt' }).boundingBox();
-    const security = await page.locator(mobile ? '#header-menu' : '.app-sidebar').getByRole('link', { name: 'Inloggningsinställningar' }).boundingBox();
+    const security = await (mobile ? page.getByRole('dialog', { name: 'Huvudmeny', exact: true }) : page.locator('.app-sidebar')).getByRole('link', { name: 'Inloggningsinställningar' }).boundingBox();
     assert.ok(home && security && home.height >= 44 && security.y >= home.y + home.height);
     if (mobile) {
       await page.keyboard.press('Escape');
-      await expect(page.getByRole('button', { name: 'Öppna meny' })).toBeFocused();
+      await expect(page.getByRole('banner').getByRole('button', { name: 'Öppna meny' })).toBeFocused();
     }
     await page.getByRole('link', { name: /F2016/ }).click();
     await expect(page.getByRole('heading', { name: 'F2016', exact: true })).toBeVisible();
@@ -96,8 +96,8 @@ try {
     await expect(page.getByRole('button', { name: 'Ny aktivitet', exact: true })).toBeVisible();
     await expect(page.getByRole('combobox', { name: 'Lag', exact: true })).toHaveCount(0);
     await expect(page.locator('summary').filter({ hasText: 'Aktivitetsinställningar' })).toHaveCount(0);
-    if (mobile) await page.getByRole('button', { name: 'Öppna meny' }).click();
-    const settingsMenu = page.locator(mobile ? '#header-menu' : '.app-sidebar');
+    if (mobile) await page.getByRole('banner').getByRole('button', { name: 'Öppna meny' }).click();
+    const settingsMenu = (mobile ? page.getByRole('dialog', { name: 'Huvudmeny', exact: true }) : page.locator('.app-sidebar'));
     await settingsMenu.getByRole('link', { name: 'Aktivitetsinställningar', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Aktivitetsinställningar', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Ny aktivitet', exact: true })).toHaveCount(0);
@@ -138,8 +138,8 @@ try {
     await expect(page.getByRole('heading', { name: 'F2016', exact: true })).toBeVisible();
     await expect(page.locator('.activity-management')).toHaveCount(0);
     assert.equal(editorReads, previousReads);
-    if (mobile) await page.getByRole('button', { name: 'Öppna meny' }).click();
-    await expect(page.locator(mobile ? '#header-menu' : '.app-sidebar').getByRole('link', { name: 'Aktivitetsinställningar', exact: true })).toHaveCount(0);
+    if (mobile) await page.getByRole('banner').getByRole('button', { name: 'Öppna meny' }).click();
+    await expect((mobile ? page.getByRole('dialog', { name: 'Huvudmeny', exact: true }) : page.locator('.app-sidebar')).getByRole('link', { name: 'Aktivitetsinställningar', exact: true })).toHaveCount(0);
     await page.goto(`${origin}/teams/${teamId}/settings`);
     await expect(page.getByText('Du saknar behörighet att hantera lagets aktivitetsinställningar.')).toBeVisible();
     await expect(page.getByRole('region', { name: 'Aktivitetsinställningar', exact: true })).toHaveCount(0);

@@ -15,6 +15,8 @@ import { ActivityManagement } from "../../src/components/activity-management";
 import { ActivityDetails } from "./activity-details";
 import { TeamRosterNavigation, TeamRosterPage } from "./team-roster";
 import { MyActivitiesPage } from "./my-activities";
+import { MyTeamsPanel } from "../../src/components/my-teams-panel";
+import { loadMyTeams } from "./my-teams";
 import { AppHeaderFrame } from "../../src/components/app-header-frame";
 import { AppShellFrame } from "../../src/components/app-shell-frame";
 import { AppFooter } from "../../src/components/app-footer";
@@ -41,6 +43,10 @@ function Frame({ children, email, logout, request }: { children: ReactNode; emai
   const systemWorkspace = system && (pathname.startsWith("/system") || pathname === "/administration");
   const teamMatch = /^\/teams\/([^/]+)(?:\/(?:members|settings))?$/.exec(pathname);
   const teamId = z.uuid().safeParse(teamMatch?.[1]);
+  const readMyTeams = useCallback((signal: AbortSignal) => {
+    if (!request) return Promise.reject(new Error("Inloggning krävs."));
+    return loadMyTeams(request, signal);
+  }, [request]);
   const menu = <ApplicationMenu accountEmail={email} linkComponent={AppLink}
     personalNavigation={<NavigationLinksView label="Personligt" items={[{ href: "/", label: "Min översikt" }]} pathname={pathname} linkComponent={AppLink} />}
     navigation={systemWorkspace
@@ -50,7 +56,7 @@ function Frame({ children, email, logout, request }: { children: ReactNode; emai
       {system || administration?.canBootstrap ? <AppLink href="/system">Systemadministration</AppLink> : administration?.clubs.length ? <AppLink href="/administration">Föreningsadministration</AppLink> : null}</>}
     logout={logout} />;
   return <><div className="app-page"><AppShellFrame sidebar={menu}
-    header={<AppHeaderFrame homeHref={systemWorkspace ? "/system" : "/"} linkComponent={AppLink} sidebarNavigation actions={!email ? <AppLink className="secondary" href="/login">Logga in</AppLink> : <AppLink className="notification-trigger" href="/notifications" aria-label="Visa kallelser som behöver svar"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg></AppLink>}>{menu}</AppHeaderFrame>}>
+    header={<AppHeaderFrame homeHref={systemWorkspace ? "/system" : "/"} mobileNavigation={Boolean(email)} teamsNavigation={<MyTeamsPanel key={email} loadTeams={readMyTeams} pathname={pathname} linkComponent={AppLink} />} linkComponent={AppLink} sidebarNavigation actions={!email ? <AppLink className="secondary" href="/login">Logga in</AppLink> : <AppLink className="notification-trigger" href="/notifications" aria-label="Visa kallelser som behöver svar"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg></AppLink>}>{menu}</AppHeaderFrame>}>
     {children}
   </AppShellFrame></div><AppFooter showConnect={false} /></>;
 }

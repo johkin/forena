@@ -1,4 +1,6 @@
 "use client";
+import { usePathname } from "next/navigation";
+import { MyTeamsPanel, myTeamsSchema, type LoadMyTeams } from "./my-teams-panel";
 import { SystemAdminLink } from "./system-admin-link";
 
 import type { ReactNode } from "react";
@@ -26,8 +28,16 @@ export type AppHeaderProps = {
   accountMenu?: "full" | "session";
 };
 
+const loadMyTeams: LoadMyTeams = async signal => {
+  const response = await fetch("/api/me/teams", { signal, cache: "no-store" });
+  if (!response.ok) throw new Error("Dina lag kunde inte hämtas.");
+  return myTeamsSchema.parse(await response.json());
+};
+
 export function AppHeader({ homeHref = "/", navigation, organization, team, workspaces, accountEmail, loginHref, logoutDestination = "/", adminHref, sidebarNavigation = false, accountMenu = "full" }: AppHeaderProps) {
-  return <AppHeaderFrame homeHref={homeHref} sidebarNavigation={sidebarNavigation}
+  const pathname = usePathname();
+  return <AppHeaderFrame homeHref={homeHref} sidebarNavigation={sidebarNavigation} mobileNavigation={Boolean(accountEmail && accountMenu === "full")}
+    teamsNavigation={<MyTeamsPanel key={accountEmail} loadTeams={loadMyTeams} pathname={pathname} />}
     actions={accountEmail ? accountMenu === "full" ? <NotificationSettings /> : null : <a className="secondary" href={loginHref ?? `/login?next=${encodeURIComponent(team && organization ? `/o/${organization.slug}/t/${team.slug}` : homeHref)}`}>Logga in</a>}>
     <AppMenuContent organization={organization} team={team} workspaces={workspaces} navigation={navigation} accountEmail={accountEmail} loginHref={loginHref} homeHref={homeHref} logoutDestination={logoutDestination} adminHref={adminHref} accountMenu={accountMenu} />
   </AppHeaderFrame>;
