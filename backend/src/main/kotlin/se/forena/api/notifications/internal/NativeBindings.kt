@@ -14,5 +14,6 @@ import se.forena.api.notifications.PushSettings
     PushKeys::class,
     PushCommand::class,
     PushSettings::class,
+    ExtensionNotificationEntity::class,
 )
 class NotificationsNativeBindings

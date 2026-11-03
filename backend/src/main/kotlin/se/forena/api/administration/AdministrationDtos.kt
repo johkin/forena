@@ -3,12 +3,14 @@ package se.forena.api.administration
 import java.time.LocalDate
 import java.util.UUID
 import tools.jackson.databind.annotation.JsonSerialize
+import se.forena.api.extensionapi.DisciplineDefinition
 
 data class AdministrationOverview(
     val platformAdmin: Boolean,
     val canBootstrap: Boolean,
     @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC) val platformAdministrators: List<Administrator>,
-    @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC) val clubs: List<AdministrationClub>
+    @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC) val clubs: List<AdministrationClub>,
+    val disciplines: List<DisciplineDefinition> = emptyList()
 )
 data class Administrator(val subject: UUID, val email: String, val active: Boolean,
     val startsOn: LocalDate? = null, val endsOn: LocalDate? = null)
@@ -21,7 +23,8 @@ data class AdministrationSection(
     val id: UUID, val name: String, val slug: String?, val disciplineKey: String,
     val canManage: Boolean, val canChangeDiscipline: Boolean, val canDelete: Boolean,
     @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC) val administrators: List<Administrator>,
-    @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC) val teams: List<AdministrationTeam>
+    @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC) val teams: List<AdministrationTeam>,
+    val canManageActivityDefaults: Boolean = false
 )
 data class AdministrationTeam(
     val id: UUID, val name: String, val slug: String?, val season: String, val canManage: Boolean, val canDelete: Boolean, val canAssignAdministrators: Boolean,
@@ -34,6 +37,7 @@ data class CreateClub(
 )
 data class ClubChange(val name: String, val slug: String, val timeZone: String)
 data class SectionChange(val name: String, val slug: String, val disciplineKey: String)
+data class SectionDefaultsContext(val id: UUID,val organizationId: UUID,val disciplineKey: String)
 data class TeamChange(val name: String, val slug: String? = null, val season: String = "")
 data class AdministratorChange(
     val email: String, val name: String = "", val active: Boolean = true,

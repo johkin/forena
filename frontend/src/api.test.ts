@@ -210,3 +210,36 @@ it("keeps assistant, memory and Telegram writes account-bound and rejects endpoi
     await expect(request(url, { method: "POST" })).rejects.toThrow("Unsupported API request");
   }
 });
+
+it.each([
+  ["GET", "/api/disciplines"], ["GET", "/api/discipline-catalogue"],
+  ["GET", `/api/discipline-fields?teamId=${id}&scope=teamMembership&personId=${id}`],
+  ["PUT", "/api/discipline-fields"],
+  ["GET", `/api/activity-defaults?scope=section&scopeId=${id}`], ["PUT", "/api/activity-defaults"],
+  ["GET", `/api/teams/${id}/capabilities`], ["PUT", `/api/teams/${id}/capabilities`],
+  ["GET", `/api/teams/${id}/follow-up`], ["GET", `/api/teams/${id}/signals`],
+  ["GET", `/api/teams/${id}/discipline-players`],
+  ["GET", `/api/teams/${id}/information-report?fromDate=2030-01-01&untilDate=2031-01-01`],
+  ["GET", `/api/teams/${id}/information-report?season=2029`],
+  ["GET", `/api/activities/${id}/follow-up`], ["PUT", `/api/activities/${id}/follow-up`],
+  ["POST", `/api/signals/${id}/actions`],
+  ["PUT", "/api/discipline-catalogue/disciplines/choir"], ["DELETE", "/api/discipline-catalogue/categories/culture"],
+])("uses the account-bound transport for extension commands: %s %s", async (method, endpoint) => {
+  const transport=vi.fn().mockResolvedValue(Response.json({}));
+  await createApiFetch(async()=>id,vi.fn(),transport)(endpoint,{method});
+  expect(transport).toHaveBeenCalledOnce();
+  expect(new Headers(transport.mock.calls[0][1].headers).get("X-Forena-Account")).toBe(id);
+});
+it.each([
+  ["GET", `/api/teams/${id}/information-report?subject=${id}`],
+  ["GET", `/api/discipline-fields?teamId=${id}&scope=team&teamId=${id}`],
+  ["GET", `/api/discipline-fields?teamId=${id}&scope=team&token=secret`],
+  ["GET", `/api/teams/${id}/signals#other`], ["PUT", `/api/teams/${id}/signals`],
+  ["DELETE", `/api/activities/${id}/follow-up`],
+  ["GET", `https://other.test/api/teams/${id}/signals`],
+  ["GET", `/api/activity-defaults?scope=team&scopeId=invalid`],
+])("rejects unsupported extension scopes before account access: %s %s",async(method,endpoint)=>{
+  const account=vi.fn();const transport=vi.fn();
+  await expect(createApiFetch(account,vi.fn(),transport)(endpoint,{method})).rejects.toThrow("Unsupported API request");
+  expect(account).not.toHaveBeenCalled();expect(transport).not.toHaveBeenCalled();
+});

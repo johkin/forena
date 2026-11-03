@@ -1,14 +1,23 @@
 # Kodägda discipliner
 
+## React/Kotlin: disciplinpaket och matchuppföljning
+
+Fotboll är en valbar disciplin i `disciplines.football`. Kontrakten finns i
+`extensionapi`, gemensam lagring/runtime i `extensions` och capabilities i
+`capabilities.targetteamsize` respektive `capabilities.greencard`. Katalog,
+fält, förval, truppsignaler, deltagargräns och intern matchuppföljning med
+spelarhistorik är implementerade i Kotlinappens separata datalager.
+[Kravspårning, API, paketinstallation och verifiering](migration/disciplines.md).
+Övriga avsnitt nedan beskriver även den befintliga Next/Supabase-implementationen.
+
 ## Bekräftad specifikation för migrering och utökning
 
 [Disciplinernas featurespec](specs/discipliner.md) beskriver generell mekanik
 och bekräftad teknisk målbild. [Fotbollsspecen](specs/fotboll.md) beskriver konkreta
 egenskaper, åtkomstregler, Gröna kortet och matchuppföljning. Båda är Redo
-efter användarens bekräftelse 2026-10-27 och beskriver ännu inte implementerad
-funktionalitet. Migreringen ska bevara
-Next-appens beteende. Därefter planeras Gröna kortet som en valbar capability
-per lag, med eftermatchregistrering och rapport. Capabilityn ska kunna bidra
+efter användarens bekräftelse 2026-10-27. Den beställda implementationen redovisas ovan. Next-appens beteende har
+bevarats och Gröna kortet har tillförts som valbar capability per lag med
+eftermatchregistrering och rapport. Capabilityn ska kunna bidra
 med request-for-info vid match-avslutad till ett samlat eftermatchformulär.
 Synlighet ska definieras per fält i ägande disciplin/capability och ändras
 genom PR, utan administrativa överstyrningar. Aktivitetens sluttid utlöser

@@ -43,7 +43,8 @@ data class AccessibleInvitation(
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val person_id: UUID,
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val response: InvitationResponse,
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED, types = ["string", "null"]) val response_comment: String?,
-    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val name: String
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val name: String,
+    val consumes_capacity: Boolean = true
 )
 data class MyInvitations(
     @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC)

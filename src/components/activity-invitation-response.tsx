@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import type { components } from "../../backend/contract/generated";
 type Invitation = components["schemas"]["MyInvitations"]["invitations"][number];
 export type ParticipationFetch = (path: string, init?: RequestInit) => Promise<Response>;
-export function ActivityInvitationResponse({ activityId, cancelled, readOnly = false, responseClosed = false, request = fetch }: { activityId:string; cancelled:boolean; readOnly?:boolean; responseClosed?:boolean; request?: ParticipationFetch }) {
+export function ActivityInvitationResponse({ activityId, cancelled, readOnly = false, responseClosed = false, full = false, onAnswered, request = fetch }: { activityId:string; cancelled:boolean; readOnly?:boolean; responseClosed?:boolean; full?:boolean; onAnswered?: () => void; request?: ParticipationFetch }) {
   const [items,setItems] = useState<Invitation[]>([]);
   // Keep unsaved text separate from server state so a push cannot erase edits.
   const [drafts,setDrafts] = useState<Record<string,string>>({});
@@ -39,6 +39,7 @@ export function ActivityInvitationResponse({ activityId, cancelled, readOnly = f
       const r=await request(`/api/invitations/${item.id}/respond`,{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify({response,comment})});
       if(!r.ok)throw new Error();
       setItems(current=>current.map(i=>i.id===item.id?{...i,response,response_comment:comment}:i));
+      onAnswered?.();
       setDrafts(current=>{const next={...current};delete next[item.id];return next;});
       setSaved(`Svaret för ${item.name} har sparats.`);
     } catch {setError("Svaret kunde inte sparas. Försök igen.");} finally {setPending(false);}
@@ -56,7 +57,7 @@ export function ActivityInvitationResponse({ activityId, cancelled, readOnly = f
         <label>Kommentar<input disabled={pending || responseClosed} maxLength={500} value={comment}
           onChange={e=>{setSaved(undefined);setDrafts(current=>({...current,[item.id]:e.target.value}));}}/></label>
         <div className="personal-response">
-          <button type="button" className={item.response==="accepted"?"selected":""} disabled={pending || responseClosed} onClick={()=>void answer(item,"accepted")}>Kommer</button>
+          <button type="button" className={item.response==="accepted"?"selected":""} disabled={pending || responseClosed || (full && item.response !== "accepted" && item.consumes_capacity !== false)} onClick={()=>void answer(item,"accepted")}>Kommer</button>
           <button type="button" className={item.response==="declined"?"selected":""} disabled={pending || responseClosed} onClick={()=>void answer(item,"declined")}>Kan inte</button>
           {changed && item.response!=="pending"?<button type="button" disabled={pending || responseClosed} onClick={()=>void answer(item,item.response)}>Spara kommentar</button>:null}
           {item.response!=="pending"?<button type="button" disabled={pending || responseClosed} onClick={()=>void answer(item,"pending")}>Ta bort svar</button>:null}

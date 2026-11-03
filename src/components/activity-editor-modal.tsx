@@ -182,7 +182,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
         return;
       }
       setPreview(occurrences);
-      setPayload({teamId:team.id,activityTypeId:activityTypeId || undefined,title:String(data.get("title")),description:String(data.get("description")),location:String(data.get("location")),invitationMode,invitationAudience,invitationSelection:invitationMode==="schedule"?invitationSelection:undefined,personIds:invitationMode==="now"?[...selectedPeople]:undefined,timingRules,startsOn,startTime,timeZone,endsOn:recurring?String(data.get("endsOn")):startsOn,weekdays:recurring?data.getAll("weekdays").map(Number):[new Date(`${startsOn}T00:00:00Z`).getUTCDay()||7]});
+      setPayload({...(adapter ? {maxParticipants:data.get("maxParticipants") ? Number(data.get("maxParticipants")) : null} : {}),teamId:team.id,activityTypeId:activityTypeId || undefined,title:String(data.get("title")),description:String(data.get("description")),location:String(data.get("location")),invitationMode,invitationAudience,invitationSelection:invitationMode==="schedule"?invitationSelection:undefined,personIds:invitationMode==="now"?[...selectedPeople]:undefined,timingRules,startsOn,startTime,timeZone,endsOn:recurring?String(data.get("endsOn")):startsOn,weekdays:recurring?data.getAll("weekdays").map(Number):[new Date(`${startsOn}T00:00:00Z`).getUTCDay()||7]});
       setError(undefined);
     } catch(caught) { setError(caught instanceof Error?caught.message:"Förhandsgranskningen kunde inte skapas"); }
   }
@@ -283,6 +283,7 @@ export function ActivityEditorModal({mode,organization,team,members,activity,dra
             <label>Titel<input name="title" required defaultValue={draft?.title??activity?.title??""} placeholder="Träning eller match"/></label>
             <label>Plats<input name="location" required defaultValue={draft?.location??activity?.location??""} placeholder="Plan eller hall"/></label>
           </div>
+          {adapter ? <label>Maxantal deltagare (valfritt)<input name="maxParticipants" type="number" min={1} step={1} defaultValue={activity?.maxParticipants ?? ""} /><small>Ledare räknas inte. Tomt fält betyder obegränsat.</small></label> : null}
           <details className="editor-optional" open={descriptionOpen} onToggle={event=>setDescriptionOpen(event.currentTarget.open)}><summary>Beskrivning (valfritt)</summary><label className="sr-only" htmlFor="editor-description">Beskrivning</label><textarea id="editor-description" name="description" rows={3} defaultValue={draft?.description??activity?.description??""} placeholder="Praktisk information till deltagarna"/></details>
         </section>
         <section className="editor-section" aria-labelledby="editor-time-title">

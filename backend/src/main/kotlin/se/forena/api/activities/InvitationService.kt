@@ -3,6 +3,8 @@ package se.forena.api.activities
 import java.util.UUID
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.stereotype.Service
+import org.springframework.context.ApplicationEventPublisher
+import se.forena.api.extensionapi.DisciplineInputsChanged
 import org.springframework.transaction.annotation.Transactional
 import se.forena.api.activities.internal.ActivityRepository
 import se.forena.api.activities.internal.ActivitySignalEntity
@@ -26,6 +28,8 @@ class InvitationService(
     private val history: InvitationHistoryRepository,
     private val signals: ActivitySignalRepository,
     private val management: ActivityManagementService,
+    private val capacity: ActivityCapacityService,
+    private val events: ApplicationEventPublisher,
 ) {
     @Transactional(readOnly = true)
     fun list(actor: Actor, activity: UUID): MyInvitations {
@@ -52,6 +56,7 @@ class InvitationService(
                         InvitationResponse.fromDatabase(invitation.response),
                         invitation.responseComment,
                         person.name,
+                        capacity.consumesPlace(current.id, person.id),
                     )
                 }
             }
@@ -155,6 +160,8 @@ class InvitationService(
                 !admission.canOverrideDeadline
         )
             throw IllegalStateException("Svarstiden har gått ut. Svaret kan inte ändras.")
+        if (change.response == "accepted" && current.response != "accepted")
+            capacity.checkAcceptance(activity.id, current.personId)
         val comment =
             when {
                 change.response == "pending" -> null
@@ -197,6 +204,7 @@ class InvitationService(
                     )
                 )
                 if (responseChanged) {
+                    events.publishEvent(DisciplineInputsChanged(activityId=current.activityId))
                     val signal = signals.findById(current.activityId).orElse(null)
                     signals.save(
                         if (signal == null)

@@ -62,10 +62,12 @@
 .duty-capacity { display:grid; gap:12px; padding:16px; margin:16px 0 24px; background:var(--surface-low); border-radius:12px; }
 .duty-capacity > div { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
 .duty-capacity span { color:var(--ink-soft); font-size:12px; }
-.duty-capacity progress { appearance:none; width:100%; height:8px; border:0; border-radius:9999px; overflow:hidden; background:var(--surface-container); accent-color:var(--primary); }
-.duty-capacity progress::-webkit-progress-bar { background:var(--surface-container); }
-.duty-capacity progress::-webkit-progress-value { background:var(--primary); border-radius:9999px; }
-.duty-capacity progress::-moz-progress-bar { background:var(--primary); }
+.activity-capacity { min-width:0; margin-block:8px; }
+.activity-capacity label { display:grid; gap:6px; }
+:is(.duty-capacity, .activity-capacity) progress { appearance:none; width:100%; height:8px; border:0; border-radius:9999px; overflow:hidden; background:var(--surface-container); accent-color:var(--primary); }
+:is(.duty-capacity, .activity-capacity) progress::-webkit-progress-bar { background:var(--surface-container); }
+:is(.duty-capacity, .activity-capacity) progress::-webkit-progress-value { background:var(--primary); border-radius:9999px; }
+:is(.duty-capacity, .activity-capacity) progress::-moz-progress-bar { background:var(--primary); }
 .duty-card { padding:20px; margin-block:16px; border:1px solid var(--line); border-radius:16px; background:var(--paper); box-shadow:var(--shadow); }
 .duty-card-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .duty-card-heading > div { min-width:0; }

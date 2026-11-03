@@ -1071,7 +1071,8 @@ body:has(.squad-save-bar) .assistant-launcher { bottom:calc(84px + env(safe-area
 .discipline-fields { min-width: 0; padding-block: 16px; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
 .discipline-values { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 12px; }
 .discipline-values dd { margin: 4px 0 0; font-weight: 600; }
-.discipline-form-fields { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+.discipline-form-fields { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; align-items: start; }
+.discipline-form-fields > fieldset { min-width: 0; margin: 0; padding: 12px; border: 1px solid var(--line); border-radius: 12px; }
 .discipline-fields label { display: grid; gap: 6px; min-width: 0; }
 .discipline-fields input:not([type="checkbox"]), .discipline-fields select { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; min-height: 44px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: white; color: var(--ink); font: inherit; }
 .discipline-fields .settings-checkbox { display: flex; align-items: center; min-height: 44px; }
@@ -1181,3 +1182,7 @@ button:disabled { cursor:not-allowed; }
   .personal-dashboard .calendar-event { padding:10px; }
   .personal-dashboard .calendar-event span, .personal-dashboard .calendar-event b { font-size:12px; }
 }
+
+.discipline-fields fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.discipline-fields fieldset > fieldset { padding-block: 12px; border-top: 1px solid var(--line); }
+.discipline-fields legend { padding: 0; font-weight: 650; }

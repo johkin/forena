@@ -13,16 +13,19 @@ import type { ParticipationFetch } from "./activity-invitation-response";
 
 import { administratorSchema, clubSchema, sectionSchema } from "../lib/administration";
 import { SystemAdministrationHome } from "./system-administration-home";
+import { ActivityDefaultsAdministration } from "./activity-defaults-administration";
+import { DisciplineCatalogue } from "./discipline-catalogue";
 import type { NavigationLink } from "./navigation-link";
 import { useAdministrationOverview } from "./administration-context";
 export { administrationOverviewSchema } from "../lib/administration";
 type Mutation = (path: string, method: "POST" | "PUT" | "DELETE", body?: unknown) => Promise<{ id?: string }>;
-const disciplines = [{ id: "common", name: "Allmän verksamhet" }, { id: "football", name: "Fotboll" }];
+type DisciplineChoice = { id: string; name: string };
 
 export function Administration({ request, path = "/administration", onNavigate, linkComponent: Link = "a" }: {
   request: ParticipationFetch; path?: string; onNavigate?: (href: string) => void; linkComponent?: NavigationLink;
 }) {
   const { data, error: loadError, refresh } = useAdministrationOverview(request);
+  const disciplines = data?.disciplines.map(item => ({ id: item.key, name: item.name })) ?? [];
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
   const [pending, setPending] = useState(false);
@@ -95,7 +98,8 @@ export function Administration({ request, path = "/administration", onNavigate, 
     <p>Systemadministratörer är plattformsroller och är helt separerade från roller i en förening.</p>{messages}
     <AdministratorForm label="Systemadministratör" path="/api/admin/platform-administrators" items={data.platformAdministrators} mutate={mutate} pending={pending} />
   </section>;
-  const unavailable: Record<string, string> = { "/system/disciplines": "Discipliner", "/system/activity-types": "Aktivitetstyper", "/system/memories": "Assistentminnen" };
+  if (pathname === "/system/disciplines") return <DisciplineCatalogue request={request} onChanged={refresh}/>;
+  const unavailable: Record<string, string> = { "/system/activity-types": "Aktivitetstyper", "/system/memories": "Assistentminnen" };
   if (unavailable[pathname]) return <section className="application-card" aria-label="Administration"><p className="eyebrow">System</p><h1>{unavailable[pathname]}</h1>
     <p>Den här funktionen finns i Next-appen men har ännu inte flyttats till den nya appen.</p><Link href="/system">Till systemadministrationen</Link>
   </section>;
@@ -110,12 +114,13 @@ export function Administration({ request, path = "/administration", onNavigate, 
       if (!section || !section.canManage) return <section className="application-card" aria-label="Administration"><h1>Lagen är inte tillgängliga</h1><p>Du saknar behörighet till lagadministrationen i den här sektionen.</p></section>;
       return <section className="application-card" aria-label="Administration"><p className="eyebrow">{club.name} · {section.name}</p><h1>Hantera lag</h1>{messages}
         <Link href={data.platformAdmin ? `/system/organizations/${club.id}` : `/organizations/${club.id}/administration`}>Till klubbens administration</Link>
-        <SectionAdministration club={club} section={section} mutate={mutate} pending={pending} />
+        <SectionAdministration club={club} section={section} mutate={mutate} pending={pending} disciplines={disciplines} />
+        {section.canManageActivityDefaults?<details><summary>Sektionens aktivitetsförval</summary><ActivityDefaultsAdministration key={section.id} scope="section" scopeId={section.id} request={request}/></details>:null}
         <AssistantProfileEditor request={request} organizationId={club.id} sectionId={section.id} />
       </section>;
     }
     return <section className="application-card" aria-label="Administration"><p className="eyebrow">{data.platformAdmin ? "System · Klubb" : "Förening"}</p><h1>{club.name}</h1>{messages}
-      <ClubAdministration club={club} linkComponent={Link} platformAdmin={data.platformAdmin} mutate={mutate} pending={pending} checkSlug={checkSlug} />
+      <ClubAdministration club={club} linkComponent={Link} platformAdmin={data.platformAdmin} mutate={mutate} pending={pending} checkSlug={checkSlug} disciplines={disciplines} />
       {club.canManage && !data.platformAdmin ? <AssistantProfileEditor request={request} organizationId={club.id} /> : null}
     </section>;
   }
@@ -173,7 +178,8 @@ function AdministratorForm({ label, path, items, mutate, pending, team = false }
   </div>;
 }
 
-function ClubAdministration({ club, platformAdmin, mutate, pending, checkSlug, linkComponent }: {
+function ClubAdministration({ club, platformAdmin, mutate, pending, checkSlug, linkComponent, disciplines }: {
+  disciplines: DisciplineChoice[];
   club: z.infer<typeof clubSchema>; platformAdmin: boolean; mutate: Mutation; pending: boolean; linkComponent?: NavigationLink;
   checkSlug: (slug: string, organizationId?: string) => Promise<"available" | "taken" | "error">;
 }) {
@@ -209,7 +215,7 @@ function ClubAdministration({ club, platformAdmin, mutate, pending, checkSlug, l
   </section>;
 }
 
-function SectionAdministration({ club, section, mutate, pending }: { club: z.infer<typeof clubSchema>; section: z.infer<typeof sectionSchema>; mutate: Mutation; pending: boolean }) {
+function SectionAdministration({ club, section, mutate, pending, disciplines }: { club: z.infer<typeof clubSchema>; section: z.infer<typeof sectionSchema>; mutate: Mutation; pending: boolean; disciplines: DisciplineChoice[] }) {
   const [error, setError] = useState<string>();
   const action = async (form: FormData) => {
     const id = String(form.get("teamId") ?? "");

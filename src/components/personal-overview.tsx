@@ -6,6 +6,7 @@ import type { OverviewItem, OverviewAnswered, OverviewRespond } from "./personal
 import type { ParticipationFetch } from "./activity-invitation-response";
 import { attendanceNames } from "../lib/attendance-names";
 import { getFormatter } from "../lib/date-time";
+import { ActivityCapacity } from "./activity-capacity";
 
 type Props<T extends OverviewItem> = {
   activities: T[];
@@ -73,12 +74,14 @@ export function PersonalOverview<T extends OverviewItem>({ activities, timeZone,
             </span>
             <b aria-hidden="true">→</b>
           </button>
+          <ActivityCapacity maximum={item.activity.maxParticipants} accepted={item.activity.acceptedParticipants} />
           <div className="personal-activity-people">{people.filter(person => !person.activityOnly).map(person => {
             const currentTime = referenceTime ?? new Date().toISOString();
             const deadlinePassed = person.invitation && person.activity.responseDueAt
               && Date.parse(person.activity.responseDueAt) <= Date.parse(currentTime) && !person.canManageActivity;
             return <OverviewInvitationResponse key={person.member.id} item={person} displayName={names.get(person.member.id)}
               readOnly={!invitationResponseOpen(person, currentTime)}
+              full={item.activity.maxParticipants != null && (item.activity.acceptedParticipants ?? 0) >= item.activity.maxParticipants}
               closedMessage={deadlinePassed ? "Svarstiden har gått ut" : undefined}
               demo={demo} onAnswered={onAnswered} request={request} onRespond={onRespond}
               busy={person.invitation ? pendingInvitations?.has(person.invitation.id) : false} />;

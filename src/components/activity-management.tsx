@@ -10,6 +10,9 @@ import type { Activity, Member, Organization, Team } from "../domain/club";
 import { normalizeDefaultsPatch, resolveDisciplineDefaults } from "../lib/discipline-defaults";
 import type { ActivityConfiguration } from "../lib/activity-configuration";
 import type { ParticipationFetch } from "./activity-invitation-response";
+import { ExtensionFields } from "./extension-fields";
+import { DisciplineFollowUpTools } from "./discipline-follow-up-tools";
+import { ActivityDefaultsAdministration } from "./activity-defaults-administration";
 
 const teamSchema = z.object({
   id: z.uuid(), organizationId: z.uuid(), name: z.string(), organizationName: z.string(),
@@ -18,7 +21,7 @@ const teamSchema = z.object({
 const activitySchema = z.object({
   id: z.uuid(), organization_id: z.uuid(), team_id: z.uuid(), activity_type_id: z.uuid().nullable(),
   title: z.string(), description: z.string(), location: z.string(), starts_at: z.string(),
-  ends_at: z.string(), gathering_at: z.string().nullable(), status: z.enum(["scheduled", "cancelled"]), revision: z.number(),
+  ends_at: z.string(), gathering_at: z.string().nullable(), status: z.enum(["scheduled", "cancelled"]), revision: z.number(), max_participants: z.number().nullable().optional(), imported: z.boolean().optional(),
 });
 const contextSchema = z.object({
   team: teamSchema,
@@ -37,6 +40,7 @@ const commandSchema = z.object({
   gatheringAt: z.string().nullable(), timingRules: z.unknown().optional(),
   invitationMode: z.enum(["none", "now", "schedule"]), invitationAudience: z.string().optional(),
   invitationSelection: z.unknown().optional(), personIds: z.array(z.uuid()).optional(), revision: z.number().optional(),
+  maxParticipants: z.number().int().positive().nullable().optional(),
 });
 
 
@@ -133,7 +137,7 @@ export function ActivityManagement({ request, teamId, activityId, onSaved, initi
     const activity: Activity | undefined = current ? { id: current.id, organizationId: current.organization_id,
       teamId: current.team_id, activityTypeId: current.activity_type_id ?? undefined, title: current.title,
       description: current.description, location: current.location, startsAt: current.starts_at, endsAt: current.ends_at,
-      gatheringAt: current.gathering_at ?? undefined, status: current.status === "scheduled" ? "published" : "cancelled" } : undefined;
+      gatheringAt: current.gathering_at ?? undefined, status: current.status === "scheduled" ? "published" : "cancelled", maxParticipants: current.max_participants } : undefined;
     editor = <ActivityEditorModal key={current?.id ?? "create"} mode={current ? "edit" : "create"}
       organization={organization} team={team} activity={activity} members={members} source="database"
       draft={!current && assistantDraft?.teamId === context.team.id ? assistantActivityDraft(assistantDraft, context.team.timeZone) : undefined}
@@ -146,7 +150,7 @@ export function ActivityManagement({ request, teamId, activityId, onSaved, initi
   if (teamId && teams && !canManageTeam) return null;
 
   const selectedActivity = context?.activities.find(item => item.id === activityId);
-  const canEditActivity = selectedActivity?.status === "scheduled" && Date.parse(selectedActivity.ends_at) > now;
+  const canEditActivity = !selectedActivity?.imported && selectedActivity?.status === "scheduled" && Date.parse(selectedActivity.ends_at) > now;
 
   return <section className="club-administration activity-management" aria-label="Hantera aktiviteter">
     {!teamId ? <h1>Hantera aktiviteter</h1> : null}
@@ -158,11 +162,12 @@ export function ActivityManagement({ request, teamId, activityId, onSaved, initi
     {selectedTeam && teams && !canManageTeam ? <p>Du saknar behörighet att hantera aktiviteter i det valda laget. Välj ett annat lag.</p>
       : selectedTeam && !context && !error ? <p role="status">Laddar aktiviteter…</p> : null}
     {context ? <>
+      {!activityId ? <details className="settings-item"><summary>Aktivitetsinställningar</summary><ActivityDefaultsAdministration key={`defaults:${context.team.id}`} request={request} scope="team" scopeId={context.team.id} onChanged={()=>setAttempt(value=>value+1)}/><ExtensionFields request={request} teamId={context.team.id} scope="team" /><DisciplineFollowUpTools key={context.team.id} request={request} teamId={context.team.id}/></details> : null}
       {activityId ? canEditActivity ? <ActivityEditButton onClick={() => setEditing(selectedActivity)} /> : null
         : <button type="button" className="primary" aria-label="Ny aktivitet" onClick={() => setEditing("create")}>Ny aktivitet</button>}
       {!teamId && !activityId ? context.activities.length === 0 ? <p>Inga aktiviteter ännu.</p> : <ul>{context.activities.map(activity => <li key={activity.id}>
         <strong>{activity.title}</strong> · {new Intl.DateTimeFormat("sv-SE", { timeZone: context.team.timeZone, dateStyle: "medium", timeStyle: "short" }).format(new Date(activity.starts_at))}
-        {activity.status === "cancelled" ? <span> · Inställd</span> : Date.parse(activity.ends_at) > now ? <button type="button" className="secondary" onClick={() => setEditing(activity)}>Redigera {activity.title}</button> : <span> · Avslutad</span>}
+        {activity.imported ? <span> · Importerad</span> : activity.status === "cancelled" ? <span> · Inställd</span> : Date.parse(activity.ends_at) > now ? <button type="button" className="secondary" onClick={() => setEditing(activity)}>Redigera {activity.title}</button> : <span> · Avslutad</span>}
       </li>)}</ul> : null}
     </> : null}
     {editor ? createPortal(editor, document.body) : null}

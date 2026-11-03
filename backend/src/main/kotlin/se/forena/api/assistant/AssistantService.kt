@@ -8,6 +8,7 @@ import org.springframework.security.access.AccessDeniedException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 import se.forena.api.activities.*
+import se.forena.api.extensions.CapabilityRuntime
 import se.forena.api.assistant.internal.ConversationRepository
 import se.forena.api.identity.*
 import tools.jackson.databind.json.JsonMapper
@@ -32,6 +33,7 @@ class AssistantService(
     private val transactions: TransactionTemplate,
     private val json: JsonMapper,
     private val identities: AssistantIdentityService,
+    private val capabilitySignals: CapabilityRuntime,
 ) {
     fun list(actor: Actor): List<Conversation> {
         sessions.requireActive(actor)
@@ -510,6 +512,12 @@ class AssistantService(
                 "members" to
                     members.read(actor, target.organizationId, team?.teamId, team?.sectionId),
                 "team" to team,
+                "capabilitySignals" to team?.takeIf { it.invitationAccess }?.let {
+                    try {
+                        val signals = capabilitySignals.list(actor,it.teamId).filter { signal -> signal.state=="active" }
+                        mapOf("available" to true,"limited" to (signals.size>100),"signals" to signals.take(100))
+                    } catch (_: Exception) { mapOf("available" to false) }
+                },
                 "dutyTargets" to
                     team?.takeIf { it.invitationAccess }?.let { duties.targets(actor, it.teamId) },
                 "teams" to snapshot.teams.filter { it.organization_id == target.organizationId },

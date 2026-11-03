@@ -22,4 +22,8 @@
  <changeSet id="api-019-attendance" author="forena"><sqlFile path="attendance.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
  <changeSet id="api-020-assistant-telegram" author="forena"><sqlFile path="assistant-telegram.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
  <changeSet id="api-021-telegram-update-retention" author="forena"><sqlFile path="telegram-update-retention.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
+ <changeSet id="api-022-disciplines" author="forena"><sqlFile path="disciplines.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
+ <changeSet id="api-023-discipline-information" author="forena"><sqlFile path="discipline-information.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
+ <changeSet id="api-024-discipline-catalogue" author="forena"><sqlFile path="discipline-catalogue.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
+ <changeSet id="api-025-discipline-capabilities" author="forena"><sqlFile path="discipline-capabilities.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
 </databaseChangeLog>

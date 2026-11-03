@@ -102,6 +102,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/activities/{id}/follow-up": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["read_1"];
+        put: operations["save_4"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/activity-defaults": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["load"];
+        put: operations["save_3"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/activity-series": {
         parameters: {
             query?: never;
@@ -384,7 +416,7 @@ export interface paths {
         get: operations["view"];
         put?: never;
         post?: never;
-        delete: operations["delete_1"];
+        delete: operations["delete_2"];
         options?: never;
         head?: never;
         patch?: never;
@@ -448,7 +480,7 @@ export interface paths {
         get?: never;
         put: operations["update"];
         post?: never;
-        delete: operations["delete"];
+        delete: operations["delete_1"];
         options?: never;
         head?: never;
         patch?: never;
@@ -462,7 +494,7 @@ export interface paths {
             cookie?: never;
         };
         get: operations["profile"];
-        put: operations["save"];
+        put: operations["save_2"];
         post?: never;
         delete?: never;
         options?: never;
@@ -783,6 +815,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/discipline-catalogue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["read_2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/discipline-catalogue/{kind}/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["save_1"];
+        post?: never;
+        delete: operations["delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/discipline-fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["read"];
+        put: operations["save"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/disciplines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["catalogue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/invitations/{invitationId}/respond": {
         parameters: {
             query?: never;
@@ -861,6 +957,22 @@ export interface paths {
         get: operations["getPersonalOverview"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/signals/{id}/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["action"];
         delete?: never;
         options?: never;
         head?: never;
@@ -963,6 +1075,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/teams/{team}/capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["settings"];
+        put: operations["configure"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team}/discipline-players": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["roster"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team}/follow-up": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["pending"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team}/follow-up-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["report"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team}/information-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["periodReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team}/signals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["signals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/teams/{team}/telegram/groups": {
         parameters: {
             query?: never;
@@ -1002,7 +1210,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["settings"];
+        get: operations["settings_1"];
         put?: never;
         post: operations["change"];
         delete?: never;
@@ -1032,6 +1240,7 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         AccessibleInvitation: {
+            consumes_capacity?: boolean;
             /** Format: uuid */
             id: string;
             name: string;
@@ -1065,6 +1274,8 @@ export interface components {
             invitationMode?: string;
             invitationSelection?: components["schemas"]["ActivityAudience"] | null;
             location?: string;
+            /** Format: int32 */
+            maxParticipants?: number | null;
             personIds?: string[];
             /** Format: int64 */
             revision?: number | null;
@@ -1132,6 +1343,8 @@ export interface components {
             invitationMode?: string;
             invitationSelection?: components["schemas"]["ActivityAudience"] | null;
             location?: string;
+            /** Format: int32 */
+            maxParticipants?: number | null;
             /** Format: time-local */
             startTime?: string;
             /** Format: date */
@@ -1173,6 +1386,7 @@ export interface components {
         AdministrationOverview: {
             canBootstrap?: boolean;
             clubs?: components["schemas"]["AdministrationClub"][];
+            disciplines?: components["schemas"]["DisciplineDefinition"][];
             platformAdmin?: boolean;
             platformAdministrators?: components["schemas"]["Administrator"][];
         };
@@ -1185,6 +1399,7 @@ export interface components {
             canChangeDiscipline?: boolean;
             canDelete?: boolean;
             canManage?: boolean;
+            canManageActivityDefaults?: boolean;
             disciplineKey?: string;
             /** Format: uuid */
             id?: string;
@@ -1406,6 +1621,49 @@ export interface components {
             /** Format: int64 */
             revision?: number | null;
         };
+        CapabilityChange: {
+            enabled?: boolean;
+            key?: string;
+            /** Format: int64 */
+            revision?: number;
+        };
+        CapabilityDefinition: {
+            adjustable?: boolean;
+            configurationScope?: string;
+            enabledByDefault?: boolean;
+            key?: string;
+            name?: string;
+            version?: string;
+        };
+        CapabilitySetting: {
+            adjustable?: boolean;
+            editable?: boolean;
+            enabled?: boolean;
+            key?: string;
+            name?: string;
+            /** Format: int64 */
+            revision?: number;
+        };
+        CatalogueCategory: {
+            key?: string;
+            name?: string;
+        };
+        CatalogueChange: {
+            category?: string | null;
+            key?: string;
+            name?: string;
+        };
+        CatalogueDiscipline: {
+            category?: string;
+            codeOwned?: boolean;
+            key?: string;
+            name?: string;
+            packageVersion?: string | null;
+        };
+        CatalogueSnapshot: {
+            categories?: components["schemas"]["CatalogueCategory"][];
+            disciplines?: components["schemas"]["CatalogueDiscipline"][];
+        };
         ClubChange: {
             name?: string;
             slug?: string;
@@ -1473,6 +1731,101 @@ export interface components {
         CredentialRegistrationRequest: {
             publicKey?: components["schemas"]["RelyingPartyPublicKey"];
         };
+        DefaultsCommand: {
+            /** Format: uuid */
+            activityTypeId?: string;
+            /** Format: int64 */
+            revision?: number;
+            scope?: string;
+            /** Format: uuid */
+            scopeId?: string;
+            values?: components["schemas"]["JsonNode"];
+        };
+        DefaultsWorkspace: {
+            disciplineKey?: string;
+            /** Format: uuid */
+            organizationId?: string;
+            rows?: components["schemas"]["ActivityDefaultsRow"][];
+            scope?: string;
+            /** Format: uuid */
+            scopeId?: string;
+            /** Format: uuid */
+            sectionId?: string | null;
+            types?: components["schemas"]["ManagedActivityType"][];
+            version?: string;
+        };
+        DisciplineDefinition: {
+            capabilities?: components["schemas"]["CapabilityDefinition"][];
+            category?: string;
+            fields?: {
+                [key: string]: components["schemas"]["DisciplineField"][];
+            };
+            key?: string;
+            name?: string;
+            scopeTitles?: {
+                [key: string]: string;
+            };
+            version?: string;
+        };
+        DisciplineField: {
+            key?: string;
+            /** Format: int32 */
+            maximum?: number | null;
+            /** Format: int32 */
+            minimum?: number | null;
+            options?: components["schemas"]["FieldOption"][];
+            /** @enum {string} */
+            read?: "managers" | "invitations" | "team";
+            title?: string;
+            /** @enum {string} */
+            type?: "integer" | "choice" | "choices" | "player" | "players";
+            visibleWhen?: components["schemas"]["FieldCondition"] | null;
+            /** @enum {string} */
+            write?: "managers" | "invitations" | "team";
+        };
+        DisciplineFieldsCommand: {
+            /** Format: uuid */
+            activityId?: string | null;
+            disciplineKey?: string;
+            /** Format: uuid */
+            personId?: string | null;
+            /** Format: int64 */
+            revision?: number;
+            /** @enum {string} */
+            scope?: "section" | "team" | "teamMembership" | "activity" | "activityParticipation";
+            /** Format: uuid */
+            teamId?: string;
+            values?: components["schemas"]["JsonNode"];
+            version?: string;
+        };
+        DisciplineFieldsSnapshot: {
+            acceptedPlayers?: components["schemas"]["DisciplinePlayer"][];
+            canManageInvitations?: boolean;
+            disciplineKey?: string;
+            editable?: boolean;
+            enabled?: boolean;
+            fields?: components["schemas"]["DisciplineField"][];
+            participants?: components["schemas"]["DisciplinePlayer"][];
+            /** Format: int64 */
+            revision?: number;
+            teamPlayers?: components["schemas"]["DisciplinePlayer"][];
+            title?: string;
+            values?: components["schemas"]["JsonNode"];
+            version?: string | null;
+        };
+        DisciplinePlayer: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+        };
+        FieldCondition: {
+            field?: string;
+            value?: string;
+        };
+        FieldOption: {
+            id?: string;
+            name?: string;
+        };
         GroupCommand: {
             kind?: string;
         };
@@ -1483,8 +1836,114 @@ export interface components {
         GroupStart: {
             pairingUrl?: string;
         };
+        InformationAnswer: {
+            ownerKey?: string;
+            /** Format: int64 */
+            revision?: number;
+            values?: components["schemas"]["JsonNode"];
+        };
+        InformationCommand: {
+            answers?: components["schemas"]["InformationAnswer"][];
+            attendance?: components["schemas"]["AttendanceCommand"] | null;
+        };
+        InformationDefinition: {
+            capabilityKey?: string | null;
+            fields?: components["schemas"]["DisciplineField"][];
+            key?: string;
+            title?: string;
+            version?: string;
+        };
+        InformationHistory: {
+            actorName?: string;
+            /** Format: date-time */
+            changedAt?: string;
+            names?: {
+                [key: string]: string;
+            };
+            ownerKey?: string;
+            previous?: components["schemas"]["JsonNode"];
+            /** Format: int64 */
+            revision?: number;
+            state?: string;
+            values?: components["schemas"]["JsonNode"];
+        };
+        InformationItem: {
+            closeReason?: string | null;
+            definition?: components["schemas"]["InformationDefinition"];
+            /** Format: int64 */
+            revision?: number;
+            state?: string;
+            values?: components["schemas"]["JsonNode"];
+        };
+        InformationPeriodReport: {
+            /** Format: date */
+            fromDate?: string;
+            report?: components["schemas"]["InformationReport"];
+            season?: string;
+            timeZone?: string;
+            /** Format: date */
+            untilDate?: string;
+        };
+        InformationReport: {
+            entries?: components["schemas"]["InformationReportEntry"][];
+            /** Format: date-time */
+            from?: string;
+            players?: components["schemas"]["DisciplinePlayer"][];
+            /** Format: uuid */
+            teamId?: string;
+            /** Format: date-time */
+            until?: string;
+        };
+        InformationReportEntry: {
+            /** Format: uuid */
+            activityId?: string;
+            contributions?: components["schemas"]["InformationItem"][];
+            /** Format: date-time */
+            startsAt?: string;
+            title?: string;
+        };
+        InformationSnapshot: {
+            /** Format: uuid */
+            activityId?: string;
+            /** Format: int64 */
+            attendanceRevision?: number;
+            canManageAttendance?: boolean;
+            contributions?: components["schemas"]["InformationItem"][];
+            editable?: boolean;
+            history?: components["schemas"]["InformationHistory"][];
+            players?: components["schemas"]["DisciplinePlayer"][];
+            title?: string;
+        };
         InvitationResponseResult: {
             ok: boolean;
+        };
+        JsonNode: {
+            array?: boolean;
+            bigDecimal?: boolean;
+            bigInteger?: boolean;
+            binary?: boolean;
+            boolean?: boolean;
+            container?: boolean;
+            double?: boolean;
+            embeddedValue?: boolean;
+            empty?: boolean;
+            float?: boolean;
+            floatingPointNumber?: boolean;
+            int?: boolean;
+            integralNumber?: boolean;
+            long?: boolean;
+            missingNode?: boolean;
+            /** @enum {string} */
+            nodeType?: "ARRAY" | "BINARY" | "BOOLEAN" | "MISSING" | "NULL" | "NUMBER" | "OBJECT" | "POJO" | "STRING";
+            null?: boolean;
+            number?: boolean;
+            object?: boolean;
+            pojo?: boolean;
+            short?: boolean;
+            string?: boolean;
+            /** @deprecated */
+            textual?: boolean;
+            valueNode?: boolean;
         };
         MagicLinkRequest: {
             /** Format: email */
@@ -1500,7 +1959,10 @@ export interface components {
             gathering_at?: string | null;
             /** Format: uuid */
             id?: string;
+            imported?: boolean;
             location?: string;
+            /** Format: int32 */
+            max_participants?: number | null;
             /** Format: uuid */
             organization_id?: string;
             /** Format: int64 */
@@ -1567,7 +2029,17 @@ export interface components {
             id?: string;
             label?: string;
         };
+        PendingInformation: {
+            /** Format: uuid */
+            activityId?: string;
+            missing?: string[];
+            /** Format: date-time */
+            startsAt?: string;
+            title?: string;
+        };
         PersonalActivity: {
+            /** Format: int32 */
+            accepted_participants?: number;
             can_manage_activities: boolean;
             can_manage_attendance: boolean;
             description: string;
@@ -1578,6 +2050,8 @@ export interface components {
             /** Format: uuid */
             id: string;
             location: string;
+            /** Format: int32 */
+            max_participants?: number | null;
             organization: components["schemas"]["PersonalOrganization"];
             people: components["schemas"]["ActivityPerson"][];
             /** Format: date-time */
@@ -1740,6 +2214,35 @@ export interface components {
             instructions?: string;
             /** Format: int64 */
             revision?: number;
+        };
+        SignalAction: {
+            action?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            result?: string;
+        };
+        SignalCommand: {
+            action?: string;
+            /** Format: int64 */
+            revision?: number;
+        };
+        SignalSnapshot: {
+            actions?: string[];
+            /** Format: uuid */
+            activityId?: string;
+            /** Format: int64 */
+            episode?: number;
+            /** Format: date-time */
+            evaluatedAt?: string;
+            history?: components["schemas"]["SignalAction"][];
+            /** Format: uuid */
+            id?: string;
+            /** Format: int64 */
+            revision?: number;
+            severity?: string;
+            state?: string;
+            text?: string;
+            title?: string;
         };
         SlugAvailability: {
             status?: string;
@@ -2031,6 +2534,101 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    read_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["InformationSnapshot"];
+                };
+            };
+        };
+    };
+    save_4: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InformationCommand"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["InformationSnapshot"];
+                };
+            };
+        };
+    };
+    load: {
+        parameters: {
+            query: {
+                scope: string;
+                scopeId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DefaultsWorkspace"];
+                };
+            };
+        };
+    };
+    save_3: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DefaultsCommand"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DefaultsWorkspace"];
                 };
             };
         };
@@ -2490,7 +3088,7 @@ export interface operations {
             };
         };
     };
-    delete_1: {
+    delete_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -2615,7 +3213,7 @@ export interface operations {
             };
         };
     };
-    delete: {
+    delete_1: {
         parameters: {
             query: {
                 revision: number;
@@ -2663,7 +3261,7 @@ export interface operations {
             };
         };
     };
-    save: {
+    save_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -3867,6 +4465,149 @@ export interface operations {
             };
         };
     };
+    read_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CatalogueSnapshot"];
+                };
+            };
+        };
+    };
+    save_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CatalogueChange"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+        };
+    };
+    delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+        };
+    };
+    read: {
+        parameters: {
+            query: {
+                teamId: string;
+                scope: "section" | "team" | "teamMembership" | "activity" | "activityParticipation";
+                activityId?: string;
+                personId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DisciplineFieldsSnapshot"];
+                };
+            };
+        };
+    };
+    save: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DisciplineFieldsCommand"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DisciplineFieldsSnapshot"];
+                };
+            };
+        };
+    };
+    catalogue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DisciplineDefinition"][];
+                };
+            };
+        };
+    };
     respondToInvitation: {
         parameters: {
             query?: never;
@@ -4049,6 +4790,34 @@ export interface operations {
             };
         };
     };
+    action: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignalCommand"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+        };
+    };
     getActivityEditor: {
         parameters: {
             query?: never;
@@ -4214,6 +4983,173 @@ export interface operations {
             };
         };
     };
+    settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CapabilitySetting"][];
+                };
+            };
+        };
+    };
+    configure: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CapabilityChange"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+        };
+    };
+    roster: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DisciplinePlayer"][];
+                };
+            };
+        };
+    };
+    pending: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PendingInformation"][];
+                };
+            };
+        };
+    };
+    report: {
+        parameters: {
+            query: {
+                from: string;
+                until: string;
+            };
+            header?: never;
+            path: {
+                team: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["InformationReport"];
+                };
+            };
+        };
+    };
+    periodReport: {
+        parameters: {
+            query?: {
+                fromDate?: string;
+                untilDate?: string;
+                season?: number;
+            };
+            header?: never;
+            path: {
+                team: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["InformationPeriodReport"];
+                };
+            };
+        };
+    };
+    signals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SignalSnapshot"][];
+                };
+            };
+        };
+    };
     links: {
         parameters: {
             query?: never;
@@ -4287,7 +5223,7 @@ export interface operations {
             };
         };
     };
-    settings: {
+    settings_1: {
         parameters: {
             query?: never;
             header?: never;

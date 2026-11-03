@@ -40,7 +40,9 @@ data class PersonalActivity(
     @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC)
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val people: List<ActivityPerson>,
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val can_manage_activities: Boolean,
-    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val can_manage_attendance: Boolean = false
+    @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val can_manage_attendance: Boolean = false,
+    val max_participants: Int? = null,
+    val accepted_participants: Int = 0
 )
 data class PersonalOverview(
     @get:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val reference_time: Instant,

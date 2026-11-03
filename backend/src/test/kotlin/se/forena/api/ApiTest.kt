@@ -67,6 +67,324 @@ import tools.jackson.databind.json.JsonMapper
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class ApiTest {
+    @Autowired lateinit var capabilityRuntime: se.forena.api.extensions.CapabilityRuntime
+    @Autowired lateinit var capabilityWorker: se.forena.api.extensions.CapabilityWorker
+    @Autowired lateinit var informationWorker: se.forena.api.extensions.InformationWorker
+    @Autowired lateinit var informationService: se.forena.api.extensions.InformationService
+
+    private fun informationFixture(report: Boolean = true): UUID {
+        val team = managedTeam()
+        val section = UUID.randomUUID()
+        admin.update("insert into forena.section(id,organization_id,name,discipline_key) values(?,?,'Fotboll','football')", section, organization)
+        admin.update("update forena.team set section_id=? where id=?", section, team)
+        rosterMember(own, "leader", start="current_date-1")
+        admin.update("update forena.activity set activity_type_id='00000000-0000-4000-8000-000000000002',starts_at=now()-interval '2 hours',ends_at=now()-interval '1 hour' where id=?", activity)
+        if (report) assertThat(request(attendancePath(), attendanceBody(present=listOf(child1,child2))).statusCode()).isEqualTo(204)
+        return team
+    }
+
+    private fun informationBody(captain: UUID? = child1, recipients: List<UUID>? = listOf(child1), revision: Int = 0,
+        attendance: String? = null): String = json.writeValueAsString(mapOf(
+            "answers" to listOf(mapOf("ownerKey" to "actualCaptain", "revision" to revision,
+                "values" to if(captain==null) emptyMap<String,String>() else mapOf("actualCaptainPersonId" to captain.toString())),
+                mapOf("ownerKey" to "greenCard", "revision" to revision,
+                    "values" to if(recipients==null) mapOf("outcome" to "none") else mapOf("outcome" to "awarded","recipientIds" to recipients.map { it.toString() }))),
+            "attendance" to attendance?.let { json.readTree(it) }))
+
+    @Test fun `information requires actual attendance distinguishes unknown from none and protects internal fields`() {
+        val team = informationFixture(report=false)
+        val path = "/api/activities/$activity/follow-up"
+        assertThat(request("/api/teams/$team/capabilities", """{"key":"greenCard","enabled":true,"revision":0}""").statusCode()).isEqualTo(200)
+        assertThat(request(path,informationBody()).statusCode()).isEqualTo(409)
+        assertThat(request(attendancePath(),attendanceBody(present=listOf(child1,child2))).statusCode()).isEqualTo(204)
+        assertThat(request(path,informationBody(captain=null,recipients=null)).statusCode()).isEqualTo(200)
+        val partial=json.readTree(request(path).body()).get("contributions")
+        assertThat(partial.single { it.get("definition").get("key").asString()=="actualCaptain" }.get("state").asString()).isEqualTo("open")
+        assertThat(partial.single { it.get("definition").get("key").asString()=="greenCard" }.get("state").asString()).isEqualTo("answered")
+        assertThat(request(path,informationBody(captain=other,revision=1)).statusCode()).isEqualTo(400)
+        assertThat(request(path,informationBody(recipients=listOf(child1,child2),revision=1)).statusCode()).isEqualTo(200)
+        assertThat(request(path,informationBody(revision=1)).statusCode()).isEqualTo(409)
+        assertThat(request(path,cookie=loginCookie(outsider)).statusCode()).isEqualTo(403)
+        admin.update("update forena.organization_member set active=false where organization_id=?",organization)
+        admin.update("update forena.team_membership set active=false where team_id=? and role='leader'",team)
+        assertThat(request(path).statusCode()).isEqualTo(403)
+        assertThat(request("/api/teams/$team/follow-up-report?from=2000-01-01T00:00:00Z&until=2040-01-01T00:00:00Z").statusCode()).isEqualTo(403)
+    }
+
+    @Test fun `information and attendance corrections are atomic and standalone removals cannot orphan outcomes`() {
+        val team=informationFixture()
+        assertThat(request("/api/teams/$team/capabilities","""{"key":"greenCard","enabled":true,"revision":0}""").statusCode()).isEqualTo(200)
+        val path="/api/activities/$activity/follow-up"
+        assertThat(request(path,informationBody()).statusCode()).isEqualTo(200)
+        assertThat(request(attendancePath(),attendanceBody(1,present=listOf(child2))).statusCode()).isEqualTo(409)
+        val stale=attendanceBody(0,present=listOf(child2))
+        assertThat(request(path,informationBody(child2,listOf(child2),1,stale)).statusCode()).isEqualTo(409)
+        assertThat(json.readTree(request(attendancePath()).body()).get("revision").asInt()).isEqualTo(1)
+        assertThat(json.readTree(request(path).body()).get("contributions").first().get("revision").asInt()).isEqualTo(1)
+        assertThat(request(path,informationBody(child2,listOf(child2),1,attendanceBody(1,present=listOf(child2)))).statusCode()).isEqualTo(200)
+        assertThat(json.readTree(request(attendancePath()).body()).get("revision").asInt()).isEqualTo(2)
+        val corrected=json.readTree(request(path).body())
+        assertThat(corrected.get("contributions").all { it.get("revision").asInt()==2 }).isTrue()
+        assertThat(corrected.get("history").size()).isEqualTo(4)
+    }
+
+    @Test fun `information background requests deduplicate and disabled contributions preserve history without closing captain`() {
+        val team=informationFixture()
+        assertThat(request("/api/teams/$team/capabilities","""{"key":"greenCard","enabled":true,"revision":0}""").statusCode()).isEqualTo(200)
+        admin.update("update forena.team_capability set enabled_at=now()-interval '3 hours' where team_id=?",team)
+        admin.update("insert into forena.discipline_activity_job(activity_id,team_id,due_at) values(?,?,now()-interval '1 hour')",activity,team)
+        informationService.process(activity)
+        informationWorker.runDue(100)
+        informationWorker.runDue(100)
+        assertThat(admin.queryForObject("select count(*) from forena.discipline_information where activity_id=?",Long::class.java,activity)).isEqualTo(2)
+        assertThat(admin.queryForObject("select count(*) from forena.extension_notification where activity_id=?",Long::class.java,activity)).isEqualTo(1)
+        assertThat(request("/api/teams/$team/capabilities","""{"key":"greenCard","enabled":false,"revision":1}""").statusCode()).isEqualTo(200)
+        val contributions=json.readTree(request("/api/activities/$activity/follow-up").body()).get("contributions")
+        assertThat(contributions.single { it.get("definition").get("key").asString()=="greenCard" }.get("closeReason").asString()).isEqualTo("capability_disabled")
+        assertThat(contributions.single { it.get("definition").get("key").asString()=="actualCaptain" }.get("state").asString()).isEqualTo("open")
+        assertThat(request("/api/teams/$team/capabilities","""{"key":"greenCard","enabled":true,"revision":2}""").statusCode()).isEqualTo(200)
+        informationWorker.runDue(100)
+        assertThat(admin.queryForObject("select count(*) from forena.extension_notification where activity_id=?",Long::class.java,activity)).isEqualTo(1)
+        val snapshot=json.readTree(request("/api/activities/$activity/follow-up").body())
+        val answers=snapshot.get("contributions").toList().map { mapOf("ownerKey" to it.get("definition").get("key").asString(),"revision" to it.get("revision").asLong(),"values" to emptyMap<String,String>()) }
+        assertThat(request("/api/activities/$activity/follow-up",json.writeValueAsString(mapOf("answers" to answers))).statusCode()).isEqualTo(200)
+    }
+
+    @Test fun `information is shared by current team leaders and rejects absent duplicate and guardian outcomes`() {
+        val team=informationFixture()
+        admin.update("update forena.team_membership set active=false where person_id=? and role='leader'",own)
+        assertThat(request("/api/activities/$activity/follow-up").statusCode()).isEqualTo(403)
+        assertThat(request("/api/teams/$team/capabilities").statusCode()).isEqualTo(200)
+        admin.update("update forena.team_membership set active=true where person_id=? and role='leader'",own)
+        admin.update("update forena.organization_member set active=false where organization_id=?",organization)
+        rosterMember(other,"leader",start="current_date-1")
+        admin.update("delete from forena.invitation where activity_id=? and person_id=?",activity,other)
+        admin.update("update forena.activity set starts_at=now()-interval '2 days',ends_at=now()-interval '1 day' where id=?",activity)
+        admin.update("update forena.team_membership set starts_on=current_date where person_id=? and role='leader'",other)
+        val leaderCookie=loginCookie(outsider)
+        assertThat(request("/api/activities/$activity",cookie=leaderCookie).statusCode()).isEqualTo(200)
+        val path="/api/activities/$activity/follow-up"
+        assertThat(request(path,cookie=leaderCookie).statusCode()).isEqualTo(200)
+        assertThat(request(path,"""{"answers":[{"ownerKey":"actualCaptain","revision":0,"values":{"actualCaptainPersonId":"$child1"}}]}""",cookie=leaderCookie).statusCode()).isEqualTo(200)
+        assertThat(json.readTree(request(path).body()).get("contributions").single().get("values").get("actualCaptainPersonId").asString()).isEqualTo(child1.toString())
+        assertThat(request(path,"""{"answers":[{"ownerKey":"actualCaptain","revision":1,"values":{"actualCaptainPersonId":"$other"}}]}""").statusCode()).isEqualTo(400)
+        assertThat(request("/api/teams/$team/capabilities","""{"key":"greenCard","revision":0,"enabled":true}""",cookie=leaderCookie).statusCode()).isEqualTo(403)
+        admin.update("update forena.team_membership set active=false where person_id=? and role='leader'",own)
+        assertThat(request(path).statusCode()).isEqualTo(403)
+        assertThat(request("/api/teams/$team/discipline-players").statusCode()).isEqualTo(200)
+        assertThat(request("/api/teams/$team/signals").statusCode()).isEqualTo(403)
+    }
+
+    @Test fun `capability snapshots deduplicate closest checkpoints and signals resolve dismiss and recur`() {
+        val team=informationFixture(false)
+        rosterMember(child1,"participant",start="current_date-1")
+        rosterMember(child2,"participant",start="current_date-1")
+        val type="00000000-0000-4000-8000-000000000002"
+        val defaults="""{"scope":"team","scopeId":"$team","activityTypeId":"$type","revision":0,"values":{"capabilities":{"targetTeamSize":{"notificationsEnabled":true,"notificationHours":[72,24]}}}}"""
+        assertThat(request("/api/activity-defaults",defaults).statusCode()).isEqualTo(200)
+        val created=request("/api/activities",activityBody(team,""","activityTypeId":"$type","invitationMode":"now","personIds":["$child1","$child2"]"""),method="POST")
+        assertThat(created.statusCode()).withFailMessage(created.body()).isEqualTo(201)
+        val id=UUID.fromString(json.readTree(created.body()).get("activity").get("id").asString())
+        val fields="""{"teamId":"$team","scope":"activity","activityId":"$id","disciplineKey":"football","version":"1.0.0","revision":1,"values":{"targetTeamSize":10}}"""
+        assertThat(request("/api/discipline-fields",fields).statusCode()).isEqualTo(200)
+        admin.update("update forena.activity set starts_at=now()+interval '20 hours',ends_at=now()+interval '22 hours' where id=?",id)
+        capabilityRuntime.process(id)
+        capabilityRuntime.process(id)
+        assertThat(admin.queryForObject("select count(*) from forena.capability_checkpoint where activity_id=?",Long::class.java,id)).isEqualTo(1)
+        assertThat(admin.queryForObject("select hours from forena.capability_checkpoint where activity_id=?",Int::class.java,id)).isEqualTo(24)
+        assertThat(admin.queryForObject("select count(*) from forena.extension_notification where activity_id=?",Long::class.java,id)).isEqualTo(1)
+        var row=json.readTree(request("/api/teams/$team/signals").body()).single { it.get("activityId").asString()==id.toString() }
+        val signalId=row.get("id").asString()
+        assertThat(row.get("state").asString()).isEqualTo("active")
+        assertThat(request("/api/signals/$signalId/actions","""{"revision":${row.get("revision").asLong()},"action":"dismiss"}""",method="POST").statusCode()).isEqualTo(200)
+        capabilityRuntime.process(id)
+        assertThat(admin.queryForObject("select state from forena.capability_signal where id=?",String::class.java,UUID.fromString(signalId))).isEqualTo("dismissed")
+        admin.update("update forena.invitation set response='accepted',responded_at=now() where activity_id=?",id)
+        admin.update("update forena.discipline_value set values_json='{\"targetTeamSize\":1}' where activity_id=? and scope='activity'",id)
+        capabilityRuntime.process(id)
+        assertThat(admin.queryForObject("select state from forena.capability_signal where id=?",String::class.java,UUID.fromString(signalId))).isEqualTo("resolved")
+        admin.update("update forena.invitation set response='pending',responded_at=null where activity_id=?",id)
+        capabilityRuntime.process(id)
+        row=json.readTree(request("/api/teams/$team/signals").body()).single { it.get("id").asString()==signalId }
+        assertThat(row.get("state").asString()).isEqualTo("active")
+        assertThat(row.get("episode").asLong()).isEqualTo(2)
+        assertThat(row.get("history").size()).isEqualTo(1)
+        assertThat(request("/api/teams/$team/signals",cookie=loginCookie(outsider)).statusCode()).isEqualTo(403)
+        admin.update("update forena.activity set imported=true where id=?",id)
+        capabilityRuntime.process(id)
+        assertThat(admin.queryForObject("select state from forena.capability_signal where id=?",String::class.java,UUID.fromString(signalId))).isEqualTo("resolved")
+        assertThat(admin.queryForObject("select count(*) from forena.extension_notification where activity_id=?",Long::class.java,id)).isEqualTo(1)
+    }
+
+    @Test @EnabledIfEnvironmentVariable(named="FORENA_M09_BROWSER_TEST",matches="true")
+    fun `information browser saves shared match outcomes through real Spring and PostgreSQL`() {
+        val team=informationFixture()
+        assertThat(request("/api/teams/$team/capabilities","""{"key":"greenCard","revision":0,"enabled":true}""").statusCode()).isEqualTo(200)
+        val process=ProcessBuilder("node","scripts/migration/information-browser.mjs")
+            .directory(Path.of("..").toFile()).redirectErrorStream(true)
+            .redirectOutput(Path.of("target/information-browser.log").toFile())
+        process.environment().putAll(mapOf(
+            "FORENA_M09_API" to "http://127.0.0.1:${environment.getRequiredProperty("local.server.port")}",
+            "FORENA_M09_EMAIL" to "$parent@example.invalid", "FORENA_INFORMATION_ACTIVITY" to activity.toString(),
+            "FORENA_INFORMATION_PLAYER" to child1.toString()))
+        val child=process.start()
+        if(!child.waitFor(180,SECONDS)) { child.destroyForcibly();error("Information browser timed out") }
+        assertThat(child.exitValue()).withFailMessage("See target/information-browser.log").isZero()
+        assertThat(admin.queryForObject("select count(*) from forena.discipline_information where activity_id=? and state='answered'",Long::class.java,activity)).isEqualTo(2)
+    }
+
+    @Test fun `information isolates two matches accepts imported outcomes and reschedules future lifecycle work`() {
+        val team=informationFixture()
+        val second=UUID.randomUUID()
+        admin.update("""insert into forena.activity(id,organization_id,team_id,activity_type_id,title,starts_at,ends_at)
+            select ?,organization_id,team_id,activity_type_id,'Andra matchen',starts_at,ends_at from forena.activity where id=?""",second,activity)
+        admin.update("""insert into forena.invitation(id,organization_id,activity_id,person_id,activity_role)
+            select gen_random_uuid(),organization_id,?,person_id,activity_role from forena.invitation where activity_id=?""",second,activity)
+        assertThat(request("/api/activities/$second/attendance",attendanceBody(present=listOf(child1,child2))).statusCode()).isEqualTo(204)
+        assertThat(request("/api/teams/$team/capabilities","""{"key":"greenCard","revision":0,"enabled":true}""").statusCode()).isEqualTo(200)
+        admin.update("update forena.team_capability set enabled_at=now()-interval '3 hours' where team_id=?",team)
+        for(id in listOf(activity,second))admin.update("insert into forena.discipline_activity_job(activity_id,team_id,due_at) values(?,?,now()-interval '1 hour')",id,team)
+        informationWorker.runDue(100)
+        val pending=json.readTree(request("/api/teams/$team/follow-up").body())
+        assertThat(pending.toList().map { it.get("activityId").asString() }).containsExactlyInAnyOrder(activity.toString(),second.toString())
+        admin.update("update forena.activity set imported=true where id=?",activity)
+        assertThat(request("/api/activities/$activity/follow-up",informationBody(revision=1)).statusCode()).isEqualTo(200)
+        val remaining=json.readTree(request("/api/teams/$team/follow-up").body())
+        assertThat(remaining.single().get("activityId").asString()).isEqualTo(second.toString())
+        val report=json.readTree(request("/api/teams/$team/follow-up-report?from=2000-01-01T00:00:00Z&until=2040-01-01T00:00:00Z").body())
+        assertThat(report.get("entries").size()).isEqualTo(2)
+        assertThat(report.get("entries").single { it.get("activityId").asString()==activity.toString() }.get("contributions").all { it.get("state").asString()=="answered" }).isTrue()
+        val created=request("/api/activities",activityBody(team,""","activityTypeId":"00000000-0000-4000-8000-000000000002""""),method="POST")
+        assertThat(created.statusCode()).isEqualTo(201)
+        val future=UUID.fromString(json.readTree(created.body()).get("activity").get("id").asString())
+        assertThat(request("/api/activities/$future",activityBody(team).replace("17:30:00Z","18:30:00Z")).statusCode()).isEqualTo(200)
+        assertThat(admin.queryForObject("select j.due_at=a.ends_at from forena.discipline_activity_job j join forena.activity a on a.id=j.activity_id where a.id=?",Boolean::class.java,future)).isTrue()
+        assertThat(request("/api/activities/$future","""{"action":"cancel"}""",method="DELETE").statusCode()).isEqualTo(200)
+        assertThat(admin.queryForObject("select state from forena.discipline_activity_job where activity_id=?",String::class.java,future)).isEqualTo("done")
+        admin.update("update forena.activity set status='cancelled' where id=?",second)
+        TransactionTemplate(transactionManager).executeWithoutResult { informationService.schedule(second) }
+        val closed=json.readTree(request("/api/activities/$second/follow-up").body())
+        assertThat(closed.get("contributions").all { it.get("closeReason").asString()=="activity_cancelled" }).isTrue()
+        assertThat(json.readTree(request("/api/activities/$activity/follow-up").body()).get("contributions").all { it.get("state").asString()=="answered" }).isTrue()
+    }
+
+    @Test fun `information never synthesizes open requests for a cancelled match without saved contributions`() {
+        val team=informationFixture(false)
+        assertThat(request("/api/teams/$team/capabilities","""{"key":"greenCard","enabled":true,"revision":0}""").statusCode()).isEqualTo(200)
+        val created=request("/api/activities",activityBody(team,""","activityTypeId":"00000000-0000-4000-8000-000000000002""""),method="POST")
+        assertThat(created.statusCode()).isEqualTo(201)
+        val id=UUID.fromString(json.readTree(created.body()).get("activity").get("id").asString())
+        assertThat(request("/api/activities/$id","""{"action":"cancel"}""",method="DELETE").statusCode()).isEqualTo(200)
+        admin.update("update forena.activity set starts_at=now()-interval '2 hours',ends_at=now()-interval '1 hour' where id=?",id)
+        val response=request("/api/activities/$id/follow-up")
+        assertThat(response.statusCode()).isEqualTo(200)
+        val snapshot=json.readTree(response.body())
+        assertThat(snapshot.get("editable").asBoolean()).isFalse()
+        assertThat(snapshot.get("contributions").size()).isZero()
+        assertThat(snapshot.get("history").size()).isZero()
+        informationWorker.runDue(100)
+        assertThat(admin.queryForObject("select count(*) from forena.discipline_information where activity_id=?",Long::class.java,id)).isZero()
+        assertThat(admin.queryForObject("select count(*) from forena.extension_notification where activity_id=?",Long::class.java,id)).isZero()
+        assertThat(admin.queryForObject("select state from forena.discipline_activity_job where activity_id=?",String::class.java,id)).isEqualTo("done")
+    }
+
+    @Test fun `discipline applicability transitions initialize once and preserve snapshots and checkpoints`() {
+        val team=informationFixture(false)
+        val matchType="00000000-0000-4000-8000-000000000002"
+        val trainingType="00000000-0000-4000-8000-000000000001"
+        fun values(revision: Int,target: Int)="""{"teamId":"$team","scope":"team","disciplineKey":"football","version":"1.0.0","revision":$revision,"values":{"gameFormat":"7v7","targetTeamSize":$target}}"""
+        fun settings(revision: Int,hours: Int)="""{"scope":"team","scopeId":"$team","activityTypeId":"$matchType","revision":$revision,"values":{"capabilities":{"targetTeamSize":{"notificationsEnabled":true,"notificationHours":[$hours]}}}}"""
+        assertThat(request("/api/discipline-fields",values(0,10)).statusCode()).isEqualTo(200)
+        assertThat(request("/api/activity-defaults",settings(0,24)).statusCode()).isEqualTo(200)
+        val created=request("/api/activities",activityBody(team,""","activityTypeId":"$trainingType""""),method="POST")
+        assertThat(created.statusCode()).isEqualTo(201)
+        val id=UUID.fromString(json.readTree(created.body()).get("activity").get("id").asString())
+        fun change(type: String) = request("/api/activities/$id",activityBody(team,""","activityTypeId":"$type""""))
+        val fields="/api/discipline-fields?teamId=$team&scope=activity&activityId=$id"
+        assertThat(admin.queryForObject("select count(*) from forena.discipline_value where activity_id=?",Long::class.java,id)).isZero()
+        assertThat(admin.queryForObject("select count(*) from forena.activity_capability where activity_id=?",Long::class.java,id)).isZero()
+        assertThat(change(matchType).statusCode()).isEqualTo(200)
+        val snapshot=json.readTree(request(fields).body())
+        assertThat(snapshot.get("values").get("targetTeamSize").asInt()).isEqualTo(10)
+        assertThat(snapshot.get("revision").asLong()).isEqualTo(1)
+        assertThat(admin.queryForObject("select hours_json from forena.activity_capability where activity_id=?",String::class.java,id)).isEqualTo("[24]")
+        val ownValues="""{"teamId":"$team","scope":"activity","activityId":"$id","disciplineKey":"football","version":"1.0.0","revision":1,"values":{"gameFormat":"7v7","targetTeamSize":11}}"""
+        assertThat(request("/api/discipline-fields",ownValues).statusCode()).isEqualTo(200)
+        admin.update("insert into forena.capability_checkpoint(activity_id,capability_key,hours) values(?,'targetTeamSize',24)",id)
+        assertThat(request("/api/discipline-fields",values(1,12)).statusCode()).isEqualTo(200)
+        assertThat(request("/api/activity-defaults",settings(1,48)).statusCode()).isEqualTo(200)
+        assertThat(change(matchType).statusCode()).isEqualTo(200)
+        assertThat(json.readTree(request(fields).body()).get("values").get("targetTeamSize").asInt()).isEqualTo(11)
+        assertThat(change(trainingType).statusCode()).isEqualTo(200)
+        assertThat(json.readTree(request(fields).body()).get("enabled").asBoolean()).isFalse()
+        assertThat(admin.queryForObject("select state from forena.discipline_activity_job where activity_id=?",String::class.java,id)).isEqualTo("done")
+        capabilityRuntime.process(id)
+        assertThat(admin.queryForObject("select count(*) from forena.capability_signal where activity_id=? and state='active'",Long::class.java,id)).isZero()
+        assertThat(change(matchType).statusCode()).isEqualTo(200)
+        val restored=json.readTree(request(fields).body())
+        assertThat(restored.get("values").get("targetTeamSize").asInt()).isEqualTo(11)
+        assertThat(restored.get("revision").asLong()).isEqualTo(2)
+        assertThat(admin.queryForObject("select hours_json from forena.activity_capability where activity_id=?",String::class.java,id)).isEqualTo("[24]")
+        assertThat(admin.queryForObject("select count(*) from forena.capability_checkpoint where activity_id=?",Long::class.java,id)).isEqualTo(1)
+        assertThat(admin.queryForObject("select count(*) from forena.extension_notification where activity_id=?",Long::class.java,id)).isZero()
+        assertThat(admin.queryForObject("select count(*) from forena.discipline_value where activity_id=? and scope='activity'",Long::class.java,id)).isEqualTo(1)
+    }
+
+    @Test fun `information report defaults to team season and interprets local date filters in club timezone`() {
+        val team=informationFixture()
+        admin.update("update forena.team set season='2025' where id=?",team)
+        admin.update("update forena.organization set time_zone='America/Los_Angeles' where id=?",organization)
+        val result=request("/api/teams/$team/information-report")
+        assertThat(result.statusCode()).isEqualTo(200)
+        val data=json.readTree(result.body())
+        assertThat(data.get("fromDate").asString()).isEqualTo("2025-01-01")
+        assertThat(data.get("report").get("from").asString()).isEqualTo("2025-01-01T08:00:00Z")
+        assertThat(request("/api/teams/$team/information-report?fromDate=2026-10-25&untilDate=2026-10-24").statusCode()).isEqualTo(400)
+        assertThat(request("/api/teams/$team/information-report",cookie=loginCookie(outsider)).statusCode()).isEqualTo(403)
+    }
+
+    @Test fun `discipline catalogue enforces platform access immutable packages and references`() {
+        managedTeam()
+        val path="/api/discipline-catalogue"
+        assertThat(request(path).statusCode()).isEqualTo(403)
+        admin.update("insert into forena.platform_administrator(subject) values(?)",parent)
+        assertThat(request(path).statusCode()).isEqualTo(200)
+        assertThat(request("$path/disciplines/football","""{"key":"football","name":"Ändrad","category":"sport"}""").statusCode()).isEqualTo(400)
+        assertThat(request("$path/disciplines/choir-test","""{"key":"choir-test","name":"Kör","category":"culture"}""").statusCode()).isEqualTo(200)
+        val created=request("/api/admin/clubs/$organization/sections","""{"name":"Kör","slug":"kor","disciplineKey":"choir-test"}""",method="POST")
+        assertThat(created.statusCode()).isEqualTo(200)
+        val section=json.readTree(created.body()).get("id").asString()
+        assertThat(request("$path/disciplines/choir-test",method="DELETE").statusCode()).isEqualTo(409)
+        assertThat(request("$path/categories/culture",method="DELETE").statusCode()).isEqualTo(409)
+        admin.update("insert into forena.section(id,organization_id,name,discipline_key) values(gen_random_uuid(),?,'Allmänt','common')",organization)
+        assertThat(request("/api/admin/sections/$section",method="DELETE").statusCode()).isEqualTo(200)
+        assertThat(request("$path/disciplines/choir-test",method="DELETE").statusCode()).isEqualTo(200)
+        assertThat(request(path,cookie=loginCookie(outsider)).statusCode()).isEqualTo(403)
+    }
+
+    @Test fun `activity defaults inherit sparse section and team values with revisions and snapshot scheduling`() {
+        val team=managedTeam()
+        val section=UUID.randomUUID()
+        admin.update("insert into forena.section(id,organization_id,name,discipline_key) values(?,?,'Fotboll','football')",section,organization)
+        admin.update("update forena.team set section_id=? where id=?",section,team)
+        val type="00000000-0000-4000-8000-000000000002"
+        fun defaultsBody(scope: String,id: UUID,revision: Int,values: String)="""{"scope":"$scope","scopeId":"$id","activityTypeId":"$type","revision":$revision,"values":$values}"""
+        val sectionValues="""{"duration":"PT60M","invitationRule":"start-2d","options":{"duration":["PT60M","PT90M"]}}"""
+        assertThat(request("/api/activity-defaults",defaultsBody("section",section,0,sectionValues)).statusCode()).isEqualTo(200)
+        assertThat(request("/api/activity-defaults",defaultsBody("section",section,0,sectionValues)).statusCode()).isEqualTo(409)
+        assertThat(request("/api/activity-defaults",defaultsBody("team",team,0,"""{"duration":null,"responseDueRule":"start-3h","reminderRules":[]}""")).statusCode()).isEqualTo(200)
+        val snapshot=json.readTree(request("/api/activity-defaults?scope=team&scopeId=$team").body())
+        assertThat(snapshot.get("rows").size()).isEqualTo(2)
+        assertThat(request("/api/activity-defaults?scope=team&scopeId=$team",cookie=loginCookie(outsider)).statusCode()).isEqualTo(403)
+        val created=request("/api/activities",activityBody(team,""","activityTypeId":"$type","invitationMode":"schedule","invitationAudience":"players""""),method="POST")
+        assertThat(created.statusCode()).isEqualTo(201)
+        val id=UUID.fromString(json.readTree(created.body()).get("activity").get("id").asString())
+        assertThat(admin.queryForObject("select response_due_at=starts_at-interval '3 hours' from forena.activity where id=?",Boolean::class.java,id)).isTrue()
+        assertThat(admin.queryForObject("select invitation_send_at=starts_at-interval '2 days' from forena.activity where id=?",Boolean::class.java,id)).isTrue()
+        assertThat(request("/api/activity-defaults",defaultsBody("section",section,1,"""{"invitationRule":"start-7d"}""")).statusCode()).isEqualTo(200)
+        assertThat(admin.queryForObject("select invitation_send_at=starts_at-interval '2 days' from forena.activity where id=?",Boolean::class.java,id)).isTrue()
+        assertThat(request("/api/activity-defaults",defaultsBody("team",team,1,"""{"options":{"duration":[]}}""")).statusCode()).isEqualTo(400)
+    }
     @org.springframework.test.context.bean.override.mockito.MockitoBean
     lateinit var assistantModel: se.forena.api.assistant.AssistantModel
     @org.springframework.test.context.bean.override.mockito.MockitoBean
@@ -1429,6 +1747,7 @@ class ApiTest {
             registry.add("forena.email.from") { "auth@example.invalid" }
             registry.add("FORENA_TELEGRAM_ENABLED") { true }
             registry.add("forena.telegram.retention-delay-ms") { 3_600_000 }
+            registry.add("forena.disciplines.poll-ms") { 3_600_000 }
             registry.add("FORENA_TELEGRAM_BOT_USERNAME") { "ForenaTestBot" }
             registry.add("forena.web-session.enabled") { true }
             registry.add("forena.web-session.origin") { "https://app.example.invalid" }
@@ -1511,6 +1830,136 @@ class ApiTest {
     private fun row() = admin.queryForMap("select * from forena.invitation where id=?", invitation)
     private fun history() = admin.queryForObject("select count(*) from forena.invitation_history where invitation_id=?", Long::class.java, invitation)!!
     private fun dirty() = admin.queryForObject("select coalesce((select dirty_revision from forena.activity_signal_state where activity_id=?),0)", Long::class.java, activity)!!
+
+    @Test
+    fun `discipline packages are selected by section with validated versioned values and independent snapshots`() {
+        val team = managedTeam()
+        val section = UUID.randomUUID()
+        admin.update("insert into forena.section(id,organization_id,name,discipline_key) values(?,?,'Fotboll','football')", section, organization)
+        admin.update("update forena.team set section_id=? where id=?", section, team)
+        val catalogue = request("/api/disciplines")
+        assertThat(catalogue.statusCode()).isEqualTo(200)
+        assertThat(catalogue.body()).contains("\"key\":\"football\"", "\"key\":\"common\"")
+        val path = "/api/discipline-fields?teamId=$team&scope=team"
+        assertThat(json.readTree(request(path).body()).get("enabled").asBoolean()).isTrue()
+        fun body(revision: Int, values: String, version: String = "1.0.0") =
+            """{"teamId":"$team","scope":"team","disciplineKey":"football","version":"$version","revision":$revision,"values":$values}"""
+        val values = """{"gameFormat":"7v7","targetTeamSize":10,"periods":3}"""
+        assertThat(request("/api/discipline-fields", body(0, values)).statusCode()).isEqualTo(200)
+        assertThat(request("/api/discipline-fields", body(0, "{}")).statusCode()).isEqualTo(409)
+        assertThat(request("/api/discipline-fields", body(1, "{}", "9.0.0")).statusCode()).isEqualTo(409)
+        assertThat(request("/api/discipline-fields", body(1, """{"targetTeamSize":1.5}""")).statusCode()).isEqualTo(400)
+        val created = request("/api/activities", activityBody(team, ""","activityTypeId":"00000000-0000-4000-8000-000000000002""""), method = "POST")
+        assertThat(created.statusCode()).isEqualTo(201)
+        val id = json.readTree(created.body()).get("activity").get("id").asString()
+        val matchPath = "/api/discipline-fields?teamId=$team&scope=activity&activityId=$id"
+        assertThat(json.readTree(request(matchPath).body()).get("values")).isEqualTo(json.readTree(values))
+        assertThat(request("/api/discipline-fields", body(1, """{"targetTeamSize":12}""")).statusCode()).isEqualTo(200)
+        assertThat(json.readTree(request(matchPath).body()).get("values")).isEqualTo(json.readTree(values))
+        assertThat(request(path, cookie = loginCookie(outsider)).statusCode()).isEqualTo(403)
+    }
+
+    @Test
+    fun `discipline properties grant team readers shirt and position without permitting writes or match internals`() {
+        val team = rosterTeam()
+        val section = UUID.randomUUID()
+        admin.update("insert into forena.section(id,organization_id,name,discipline_key) values(?,?,'Fotboll','football')", section, organization)
+        admin.update("update forena.team set section_id=? where id=?", section, team)
+        rosterMember(child1)
+        rosterPermission(permission = "roster.manage")
+        val body = """{"teamId":"$team","personId":"$child1","scope":"teamMembership","disciplineKey":"football","version":"1.0.0","revision":0,"values":{"shirtNumber":7,"positions":["forward"]}}"""
+        assertThat(request("/api/discipline-fields", body).statusCode()).isEqualTo(200)
+        admin.update("update forena.team_permission_assignment set active=false where team_id=?", team)
+        val read = request("/api/discipline-fields?teamId=$team&personId=$child1&scope=teamMembership")
+        assertThat(read.statusCode()).isEqualTo(200)
+        val snapshot = json.readTree(read.body())
+        assertThat(snapshot.get("editable").asBoolean()).isFalse()
+        assertThat(snapshot.get("values").get("shirtNumber").asInt()).isEqualTo(7)
+        assertThat(request("/api/discipline-fields", body).statusCode()).isEqualTo(403)
+        assertThat(request("/api/discipline-fields?teamId=$team&scope=activity&activityId=$activity").statusCode()).isEqualTo(403)
+        assertThat(request("/api/discipline-fields?teamId=$team&personId=$child1&scope=teamMembership", cookie = loginCookie(outsider)).statusCode()).isEqualTo(403)
+    }
+
+    @Test
+    fun `activity capacity serializes concurrent acceptances preserves existing answers and excludes leaders`() {
+        admin.update("update forena.activity set max_participants=1 where id=?", activity)
+        val second = admin.queryForObject("select id from forena.invitation where activity_id=? and person_id=?", UUID::class.java, activity, child2)
+        val paths = listOf("/api/invitations/$invitation/respond", "/api/invitations/$second/respond")
+        val cookie = loginCookie()
+        val results = paths.map { path -> CompletableFuture.supplyAsync { request(path, """{"response":"accepted"}""", cookie).statusCode() } }
+            .map { it.get(20, SECONDS) }
+        assertThat(results).containsExactlyInAnyOrder(200, 409)
+        val winner = paths[results.indexOf(200)]
+        val loser = paths[results.indexOf(409)]
+        assertThat(request(winner, """{"response":"accepted"}""").statusCode()).isEqualTo(200)
+        admin.update("update forena.invitation set activity_role='leader' where activity_id=? and person_id=?", activity, own)
+        val leader = admin.queryForObject("select id from forena.invitation where activity_id=? and person_id=?", UUID::class.java, activity, own)
+        assertThat(request("/api/invitations/$leader/respond", """{"response":"accepted"}""").statusCode()).isEqualTo(200)
+        assertThat(request(winner, """{"response":"pending"}""").statusCode()).isEqualTo(200)
+        assertThat(request(loser, """{"response":"accepted"}""").statusCode()).isEqualTo(200)
+        val overview = json.readTree(request("/api/me/overview").body()).get("activities").single { it.get("id").asString() == activity.toString() }
+        assertThat(overview.get("accepted_participants").asInt()).isEqualTo(1)
+        assertThat(overview.get("max_participants").asInt()).isEqualTo(1)
+    }
+
+    @Test
+    fun `discipline captain candidates stay invitation scoped and hidden values survive planning edits`() {
+        val team = rosterTeam()
+        val section = UUID.randomUUID()
+        admin.update("insert into forena.section(id,organization_id,name,discipline_key) values(?,?,'Fotboll','football')", section, organization)
+        admin.update("update forena.team set section_id=? where id=?", section, team)
+        admin.update("update forena.activity set activity_type_id='00000000-0000-4000-8000-000000000002' where id=?", activity)
+        admin.update("update forena.invitation set response='accepted',responded_at=now(),activity_role='participant' where id=?", invitation)
+        rosterPermission(permission = "activity.manage")
+        rosterPermission(permission = "invitation.manage")
+        fun body(revision: Int, values: String) = """{"teamId":"$team","activityId":"$activity","scope":"activity","disciplineKey":"football","version":"1.0.0","revision":$revision,"values":$values}"""
+        assertThat(request("/api/discipline-fields", body(0, """{"captainPersonId":"$child1","captainSource":"acceptedActivityPlayers"}""")).statusCode()).isEqualTo(200)
+        admin.update("update forena.team_permission_assignment set active=false where permission='invitation.manage' and team_id=?", team)
+        val path = "/api/discipline-fields?teamId=$team&scope=activity&activityId=$activity"
+        val hidden = json.readTree(request(path).body())
+        assertThat(hidden.get("values").has("captainPersonId")).isFalse()
+        assertThat(hidden.get("acceptedPlayers").isEmpty).isTrue()
+        assertThat(request("/api/discipline-fields", body(1, """{"captainPersonId":"$child1"}""")).statusCode()).isEqualTo(403)
+        assertThat(request("/api/discipline-fields", body(1, """{"venue":"away"}""")).statusCode()).isEqualTo(200)
+        admin.update("update forena.team_permission_assignment set active=true where permission='invitation.manage' and team_id=?", team)
+        assertThat(json.readTree(request(path).body()).get("values").get("captainPersonId").asString()).isEqualTo(child1.toString())
+        admin.update("update forena.invitation set response='declined' where id=?", invitation)
+        assertThat(request("/api/discipline-fields", body(2, """{"captainPersonId":"$child1"}""")).statusCode()).isEqualTo(400)
+        assertThat(request("/api/discipline-fields", body(2, """{"venue":"home"}""")).statusCode()).isEqualTo(200)
+    }
+
+    @Test
+    fun `capacity accepts only positive JSON integers and lowering a limit preserves all accepted answers`() {
+        val team = managedTeam()
+        for (invalid in listOf("0", "-1", "1.5", "\"10\"", "true", "2147483648"))
+            assertThat(request("/api/activities", activityBody(team, ",\"maxParticipants\":$invalid"), method = "POST").statusCode())
+                .withFailMessage("Invalid capacity accepted: $invalid").isEqualTo(400)
+        val second = admin.queryForObject("select id from forena.invitation where activity_id=? and person_id=?", UUID::class.java, activity, child2)
+        assertThat(respond("""{"response":"accepted"}""").statusCode()).isEqualTo(200)
+        assertThat(request("/api/invitations/$second/respond", """{"response":"accepted"}""").statusCode()).isEqualTo(200)
+        assertThat(request("/api/activities/$activity", activityBody(team, ""","maxParticipants":1,"revision":0""")).statusCode()).isEqualTo(200)
+        assertThat(admin.queryForObject("select count(*) from forena.invitation where activity_id=? and response='accepted'", Long::class.java, activity)).isEqualTo(2)
+        assertThat(respond("""{"response":"accepted"}""").statusCode()).isEqualTo(200)
+        val ownInvitation = admin.queryForObject("select id from forena.invitation where activity_id=? and person_id=?", UUID::class.java, activity, own)
+        val rejected = request("/api/invitations/$ownInvitation/respond", """{"response":"accepted"}""")
+        assertThat(rejected.statusCode()).isEqualTo(409)
+        assertThat(rejected.body()).contains("Aktiviteten är full")
+        assertThat(request("/api/activities/$activity", activityBody(team, ""","maxParticipants":null,"revision":1""")).statusCode()).isEqualTo(200)
+        assertThat(request("/api/invitations/$ownInvitation/respond", """{"response":"accepted"}""").statusCode()).isEqualTo(200)
+    }
+
+    @Test
+    fun `capacity reads legacy leader roles on the activity date even after membership is deactivated`() {
+        rosterMember(own, "leader", start = "current_date-1")
+        admin.update("update forena.team_membership set active=false where team_id=? and person_id=?", rosterTeam(), own)
+        admin.update("update forena.activity set max_participants=1 where id=?", activity)
+        assertThat(respond("""{"response":"accepted"}""").statusCode()).isEqualTo(200)
+        val leader = admin.queryForObject("select id from forena.invitation where activity_id=? and person_id=?", UUID::class.java, activity, own)
+        assertThat(request("/api/invitations/$leader/respond", """{"response":"accepted"}""").statusCode()).isEqualTo(200)
+        val snapshot = json.readTree(request("/api/me/overview").body()).get("activities").single { it.get("id").asString() == activity.toString() }
+        assertThat(snapshot.get("accepted_participants").asInt()).isEqualTo(1)
+        assertThat(snapshot.get("people").single { it.get("id").asString() == own.toString() }.get("invitation").get("consumes_capacity").asBoolean()).isFalse()
+    }
 
     private fun rosterTeam(): UUID = admin.queryForObject("select team_id from forena.activity where id=?", UUID::class.java, activity)!!
     private fun rosterMember(person: UUID, role: String = "participant", start: String = "current_date", end: String = "null") {
@@ -2796,6 +3245,7 @@ class ApiTest {
         process.environment().putAll(mapOf(
             "FORENA_M09_API" to "http://127.0.0.1:${environment.getRequiredProperty("local.server.port")}",
             "FORENA_M09_EMAIL" to "$parent@example.invalid", "FORENA_M09_TEAM" to team.toString(),
+            "FORENA_M09_FRONTEND" to (System.getenv("FORENA_M09_FRONTEND") ?: "http://localhost:3002"),
             "FORENA_BROWSER_EXECUTABLE" to (System.getenv("FORENA_BROWSER_EXECUTABLE") ?: "")))
         val child = process.start()
         if (!child.waitFor(180, SECONDS)) { child.destroyForcibly(); error("Activity browser timed out") }
@@ -2963,7 +3413,8 @@ class ApiTest {
                 "FORENA_M09_API" to "http://127.0.0.1:${environment.getRequiredProperty("local.server.port")}",
                 "FORENA_M09_EMAIL" to "bootstrap@example.invalid", "FORENA_M09_ADMIN_CHAIN" to "true",
                 "FORENA_M09_TEAM_ADMIN_EMAIL" to "$outsider@example.invalid",
-                "FORENA_BROWSER_EXECUTABLE" to (System.getenv("FORENA_BROWSER_EXECUTABLE") ?: "")))
+                "FORENA_M09_FRONTEND" to (System.getenv("FORENA_M09_FRONTEND") ?: "http://localhost:3002"),
+            "FORENA_BROWSER_EXECUTABLE" to (System.getenv("FORENA_BROWSER_EXECUTABLE") ?: "")))
             val child = process.start()
             if (!child.waitFor(180, SECONDS)) { child.destroyForcibly(); error("Administration browser timed out") }
             assertThat(child.exitValue()).withFailMessage("See target/administration-browser.log").isZero()

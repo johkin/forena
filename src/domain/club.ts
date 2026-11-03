@@ -56,6 +56,8 @@ export type Member = {
 };
 
 export type Activity = {
+  maxParticipants?: number | null;
+  acceptedParticipants?: number;
   activityTypeId?: string;
   id: EntityId;
   organizationId: EntityId;
@@ -98,6 +100,7 @@ export type TeamTask = {
 export type InvitationResponse = "pending" | "accepted" | "declined";
 
 export type Invitation = {
+  consumes_capacity?: boolean;
   id: EntityId;
   organizationId: EntityId;
   activityId: EntityId;

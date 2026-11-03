@@ -8,6 +8,8 @@ import java.util.UUID
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.stereotype.Service
+import org.springframework.context.ApplicationEventPublisher
+import se.forena.api.extensionapi.DisciplineInputsChanged
 import org.springframework.transaction.annotation.Isolation
 import org.springframework.transaction.annotation.Transactional
 import se.forena.api.administration.internal.*
@@ -15,6 +17,7 @@ import se.forena.api.identity.Actor
 import se.forena.api.identity.AdministrationDirectory
 import se.forena.api.identity.DatabaseClockService
 import se.forena.api.identity.SessionService
+import se.forena.api.extensionapi.DisciplineCatalog
 
 @Service
 class AdministrationService(
@@ -29,8 +32,22 @@ class AdministrationService(
     private val clubAdmins: ClubAdministratorRepository,
     private val sectionAdmins: SectionAdministratorRepository,
     private val teamAdmins: TeamAdministratorRepository,
+    private val disciplines: DisciplineCatalog,
+    private val events: ApplicationEventPublisher,
     @Value("\${forena.administration.initial-system-admin-email:}") private val initialEmail: String
 ) {
+    @Transactional
+    fun sectionDefaultsContext(actor: Actor,id: UUID,writing: Boolean = false): SectionDefaultsContext {
+        sessions.requireActive(actor)
+        var section=sections.findById(id) ?: throw NoSuchElementException()
+        if(!clubRole(actor,section.organizationId) && !sectionRole(actor,id)) denied()
+        if(writing) {
+            administration.lock()
+            section=sections.findById(id) ?: throw NoSuchElementException()
+            if(!clubRole(actor,section.organizationId) && !sectionRole(actor,id)) denied()
+        }
+        return SectionDefaultsContext(id,section.organizationId,section.disciplineKey)
+    }
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     fun overview(actor: Actor): AdministrationOverview {
         sessions.requireActive(actor)
@@ -64,13 +81,13 @@ class AdministrationService(
                             AdministrationTeam(id, team.name, team.slug, team.season, manageSection || id in activeTeams,
                                 administration.teamEmpty(id), clubId in ownClubs || sectionId in ownSections || id in activeTeams,
                                 teamAdmins.findByTeamId(id).map { Administrator(it.subject, directory.email(it.subject), it.active, it.startsOn, it.endsOn) })
-                        })
+                        }, clubId in ownClubs || sectionId in ownSections)
                 })
         }
         val bootstrap = initialEmail.isNotBlank() && !administration.initialized() && platforms.findAll().isEmpty() &&
             directory.verifiedEmail(actor.subject).equals(initialEmail.trim(), ignoreCase = true)
         return AdministrationOverview(platform, bootstrap,
-            if (platform) platforms.findAll().map { administrator(it.subject, true) } else emptyList(), result)
+            if (platform) platforms.findAll().map { administrator(it.subject, true) } else emptyList(), result, disciplines.definitions())
     }
 
     @Transactional(readOnly = true)
@@ -154,6 +171,9 @@ class AdministrationService(
         val club = clubs.findById(id) ?: throw NoSuchElementException()
         validName(change.name); validSlug(change.slug)
         clubs.save(club.copy(name = change.name.trim(), slug = change.slug, timeZone = zone(change.timeZone).id))
+        if(club.timeZone != change.timeZone) teams.findByOrganizationId(id).forEach { team ->
+            team.id?.let { events.publishEvent(DisciplineInputsChanged(teamId=it)) }
+        }
         audit(actor, "club.update", id)
         return AdministrationOk()
     }
@@ -314,7 +334,7 @@ class AdministrationService(
     private fun validSlug(value: String) { require(value.length in 1..120 && value.matches(Regex("[a-z0-9]+(?:-[a-z0-9]+)*"))) }
     private fun validSection(change: SectionChange) {
         validName(change.name); validSlug(change.slug)
-        require(change.disciplineKey in listOf("common", "football"))
+        require(disciplines.definitions().any { it.key==change.disciplineKey })
     }
     private fun zone(value: String): ZoneId {
         require(value in ZoneId.getAvailableZoneIds())

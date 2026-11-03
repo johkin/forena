@@ -8,12 +8,12 @@ import type { components } from "../../backend/contract/generated";
 import type { ParticipationFetch } from "./activity-invitation-response";
 
 type AccessibleInvitation = components["schemas"]["AccessibleInvitation"];
-type Props = { readOnly:boolean; closedMessage?:string; displayName?:string; demo?:boolean; onAnswered?:OverviewAnswered; request?:ParticipationFetch; onRespond?:OverviewRespond; busy?:boolean } &
+type Props = { readOnly:boolean; full?:boolean; closedMessage?:string; displayName?:string; demo?:boolean; onAnswered?:OverviewAnswered; request?:ParticipationFetch; onRespond?:OverviewRespond; busy?:boolean } &
   ({ item:OverviewPersonItem; invitation?:never } | { item?:never; invitation:AccessibleInvitation });
 const labels = { pending:"Ej svarat", accepted:"Kommer", declined:"Kan ej" } as const;
 
 /** One person's answer, independent of other people and the activity-details trigger. */
-export function OverviewInvitationResponse({ item, invitation:directInvitation, displayName, readOnly, closedMessage, demo = false, onAnswered, request = fetch, onRespond, busy=false }:Props) {
+export function OverviewInvitationResponse({ item, invitation:directInvitation, displayName, readOnly, full = false, closedMessage, demo = false, onAnswered, request = fetch, onRespond, busy=false }:Props) {
   const invitation=directInvitation ?? item?.invitation;
   const name=directInvitation?.name ?? item!.member.displayName;
   const [saved, setSaved]=useState<{base:NonNullable<OverviewPersonItem["invitation"]> | AccessibleInvitation; response:InvitationResponse}>();
@@ -43,7 +43,7 @@ export function OverviewInvitationResponse({ item, invitation:directInvitation, 
     <span className="overview-person-avatar" aria-hidden="true">{name.slice(0,1)}</span>
     <div className="overview-person-copy"><strong title={displayName && displayName!==name ? name : undefined}>{displayName && displayName!==name ? <><span aria-hidden="true">{displayName}</span><span className="sr-only">{name}</span></> : name}</strong><span>{[item?.hasDutyAssignment ? "Bokad arbetsuppgift" : undefined,response ? labels[response] : undefined,closedMessage].filter(Boolean).join(" · ") || "Ingen kallelse ännu"}</span></div>
     {invitation ? <div className="overview-response-actions" role="group" aria-label={`Kallelsesvar för ${name}`}>
-      {(["accepted","declined"] as const).map(value=><button key={value} type="button" data-response={value} aria-label={`${labels[value]}: ${name}`} aria-pressed={response===value} disabled={readOnly || demo || pending || busy} onClick={()=>void answer(value)}><span aria-hidden="true">{value==="accepted" ? "✓" : "×"}</span> {labels[value]}</button>)}
+      {(["accepted","declined"] as const).map(value=><button key={value} type="button" data-response={value} aria-label={`${labels[value]}: ${name}`} aria-pressed={response===value} disabled={readOnly || demo || pending || busy || (full && value === "accepted" && response !== "accepted" && invitation.consumes_capacity !== false)} onClick={()=>void answer(value)}><span aria-hidden="true">{value==="accepted" ? "✓" : "×"}</span> {labels[value]}</button>)}
     </div> : null}
     {pending ? <small className="overview-response-feedback" role="status">Sparar svaret för {name}…</small> : saved && saved.base===invitation ? <small className="sr-only" role="status">Svaret för {name} har sparats.</small> : null}
     {error && error===invitation ? <small className="overview-response-feedback" role="alert">Svaret kunde inte sparas. Försök igen.</small> : null}

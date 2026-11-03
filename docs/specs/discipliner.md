@@ -1,12 +1,13 @@
 # Discipliner – gemensam modell och utökningsarkitektur
 
 - Status: Redo
-- Senast uppdaterad: 2026-10-27
+- Senast uppdaterad: 2026-11-02
 - Berörda dokument: [Fotbollsspec](fotboll.md), [Discipliner](../disciplines.md),
   [Arkitektur](../architecture.md), [Migreringsbeslut](../migration/decisions.md),
   [Funktionsparitet](../migration/feature-parity.md)
-- Implementation och verifiering: Ej påbörjad. Kod och dokumentation är lästa;
-  apparna har inte funktionstestats inom specarbetet.
+- Implementation och verifiering: Implementerad 2026-11-02 i React/Kotlin,
+  med separata disciplin-/capabilitypaket, matchuppföljning och rapport.
+  [Kravspårning, avgränsningar och verifiering](../migration/disciplines.md).
 
 ## Problem och mål
 
@@ -587,6 +588,11 @@ versionen. Status är Redo.
 Ingen implementation är beställd genom intervjun.
 
 ## Ändringshistorik
+
+- 2026-11-02: Implementerat paketgrund och deltagargräns i React/Kotlin.
+  Varje disciplin ligger i eget Kotlinpaket enligt användarens förtydligande.
+  Kompletterat med katalog/förval, beständigt bakgrundsarbete, signaler,
+  matchuppföljning, Gröna kortet och rapport; se implementationsredovisningen.
 
 - 2026-10-27, slutlig bekräftelse: Användaren godkände båda specarna.
   Markerat Redo; implementation och verifiering är fortsatt ej påbörjade.

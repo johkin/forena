@@ -32,7 +32,8 @@ export function AdministrationExample() {
         teams: [{ id: "44444444-4444-4444-8444-444444444444", name: "Exempellaget", slug: "exempellaget", season: "2030", canManage: true, canDelete: false, canAssignAdministrators: state === "club", administrators: [role] }],
       }],
     };
-    return Response.json({ platformAdmin: state === "platform", canBootstrap: state === "bootstrap", platformAdministrators: state === "platform" ? [role] : [], clubs: ["platform", "club"].includes(state) ? [club] : [] });
+    return Response.json({ platformAdmin: state === "platform", canBootstrap: state === "bootstrap", platformAdministrators: state === "platform" ? [role] : [], clubs: ["platform", "club"].includes(state) ? [club] : [],
+      disciplines: [{ key: "common", name: "Allmän verksamhet", version: "1.0.0", category: "other" }, { key: "football", name: "Fotboll", version: "1.0.0", category: "sport" }] });
   }, [state]);
   return <section id="administration-example"><h2>Administrationskedjan</h2>
     <p>Produktionskomponenter med lokala exempel. Ingen kontotilldelning eller databasändring görs.</p>

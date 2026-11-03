@@ -12,6 +12,7 @@ import se.forena.api.identity.Actor
 import se.forena.api.identity.DatabaseClockService
 import se.forena.api.identity.RosterDirectory
 import se.forena.api.identity.SessionService
+import se.forena.api.extensionapi.AttendanceOutcomeGuard
 
 @Service
 class AttendanceService(
@@ -23,7 +24,8 @@ class AttendanceService(
     private val attendance: AttendanceRepository,
     private val groups: AudienceGroupRepository,
     private val groupMembers: AudienceMemberRepository,
-    private val directory: RosterDirectory
+    private val directory: RosterDirectory,
+    private val outcomeGuards: List<AttendanceOutcomeGuard>,
 ) {
     @Transactional(readOnly = true)
     fun teams(actor: Actor): List<ManagementTeamRow> {
@@ -75,6 +77,8 @@ class AttendanceService(
         check(previous.all { it.personId in assessed })
         val allowed = (previous + candidates(team)).associateBy { it.personId }
         require(assessed.all { it in allowed })
+        val presentPlayers = present.filter { allowed[it]?.role == "participant" }.toSet()
+        outcomeGuards.forEach { it.validateAttendance(id, presentPlayers) }
         val now = clock.now()
         val revision = (report?.revision ?: 0) + 1
         attendance.writeReport(id, activity.organizationId, revision, now, actor.subject)
@@ -102,6 +106,8 @@ class AttendanceService(
         require(changes.isNotEmpty() && changes.size<=20000)
         val before = roster(activity,team,report!=null).associateBy { it.personId }
         require(changes.keys.all { it in before })
+        val presentPlayers = before.values.filter { it.role == "participant" && (changes[it.personId] ?: it.present) == true }.map { it.personId }.toSet()
+        outcomeGuards.forEach { it.validateAttendance(id, presentPlayers) }
         val now = clock.now(); val next = revision+1; val history = UUID.randomUUID()
         attendance.writeReport(id,activity.organizationId,next,now,actor.subject)
         attendance.writeHistory(history,id,activity.organizationId,next,actor.subject,directory.actorName(activity.organizationId,actor.subject),now)

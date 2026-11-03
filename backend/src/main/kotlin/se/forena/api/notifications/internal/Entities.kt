@@ -5,6 +5,11 @@ import java.util.UUID
 import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.Table
 
+@Table(value="extension_notification", schema="forena")
+data class ExtensionNotificationEntity(@Id val id: UUID, val activityId: UUID, val purpose: String,
+    val recipientSubject: UUID, val title: String, val body: String, val path: String,
+    val state: String, val channelIndex: Int, val attemptedAt: Instant?)
+
 @Table(value = "invitation_email", schema = "forena")
 data class InvitationEmailEntity(
     @Id val id: UUID,

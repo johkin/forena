@@ -23,6 +23,7 @@ class PersonalOverviewService(
     private val access: PersonAccessService,
     private val activities: PersonalActivityRepository,
     private val invitations: InvitationRepository,
+    private val capacity: CapacityRepository,
     private val memberships: TeamMembershipRepository,
     private val assignments: TeamAccessAssignmentRepository,
     private val organizationMembers: OrganizationMemberRepository,
@@ -103,9 +104,14 @@ class PersonalOverviewService(
         val invitationRows = if (rows.isEmpty() || people.isEmpty()) emptyList() else
             invitations.findByActivityIdInAndPersonIdIn(rows.map { it.id }, people.map { it.id })
         val byActivity = invitationRows.groupBy { it.activityId }
+        // A legacy invitation's role follows membership on the activity date, including
+        // retained historical rows. Current active membership still controls the read scope.
+        val invitationRoles = if (invitationRows.isEmpty()) emptyMap() else
+            memberships.findByPersonIdIn(invitationRows.map { it.personId }.distinct()).groupBy { it.teamId }
         val attendanceRows = if (rows.isEmpty() || people.isEmpty()) emptyList() else
             activities.attendance(rows.map { it.id }, people.map { it.id })
         val attendance = attendanceRows.associateBy { it.activityId to it.personId }
+        val capacities = if (rows.isEmpty()) emptyMap() else capacity.capacities(rows.map { it.id }).associateBy { it.id }
         val result = rows.map { row ->
             val org = byOrganization.getValue(row.organizationId)
             val date = row.startsAt.atZone(ZoneId.of(org.time_zone)).toLocalDate()
@@ -119,11 +125,14 @@ class PersonalOverviewService(
                 val person = peopleById.getValue(personId)
                 val invitation = invited[personId]?.takeUnless { row.invitationSendAt?.isAfter(now) == true }
                 ActivityPerson(person.id, person.name, invitation?.let {
-                    AccessibleInvitation(it.id, person.id, InvitationResponse.fromDatabase(it.response), it.responseComment, person.name)
+                    AccessibleInvitation(it.id, person.id, InvitationResponse.fromDatabase(it.response), it.responseComment, person.name,
+                        it.activityRole?.let { role -> role == "participant" } ?: !invitationRoles[row.teamId].orEmpty().any { m ->
+                            m.personId == person.id && m.role == "leader" && covers(m.startsOn, m.endsOn, date) })
                 }, attendance[row.id to person.id]?.let { if (it.present) "present" else "absent" } ?: "unknown")
             }.sortedWith(compareBy<ActivityPerson> { it.name }.thenBy { it.id })
             PersonalActivity(row.id, row.title, row.startsAt, row.endsAt, row.gatheringAt, row.responseDueAt,
-                row.location, row.description, row.status, org, byTeam.getValue(row.teamId), personRows, row.teamId in managedTeamIds, row.teamId in attendanceTeamIds)
+                row.location, row.description, row.status, org, byTeam.getValue(row.teamId), personRows, row.teamId in managedTeamIds, row.teamId in attendanceTeamIds,
+                capacities[row.id]?.maxParticipants, capacities[row.id]?.acceptedParticipants ?: 0)
         }
         val visible = if (month == null) result else result.filter { it.people.isNotEmpty() || it.can_manage_activities || it.can_manage_attendance }
         val scopePeople = people.filter { person ->

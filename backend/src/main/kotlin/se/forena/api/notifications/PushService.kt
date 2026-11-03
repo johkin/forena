@@ -17,6 +17,7 @@ import se.forena.api.identity.Actor
 import se.forena.api.identity.SessionService
 import se.forena.api.notifications.internal.PushRepository
 import tools.jackson.databind.json.JsonMapper
+import se.forena.api.extensionapi.PrivateExtensionMessage
 
 interface PushTransport {
     fun send(subscription: PushSubscription, payload: String): Int
@@ -69,8 +70,20 @@ class PushService(
     private val json: JsonMapper,
     @Value("\${FORENA_PUSH_ENABLED:false}") private val enabled: Boolean,
     @Value("\${FORENA_VAPID_PUBLIC_KEY:}") private val publicKey: String,
-) : InvitationChannel {
+) : InvitationChannel, PrivateNotificationChannel {
     override val name = "push"
+    override fun deliverPrivate(message: PrivateExtensionMessage): Boolean {
+        if (!settings().available) return false
+        var accepted = false
+        repository.findActiveSubscriptions(message.subject).take(20).forEach { subscription ->
+            validateEndpoint(subscription.endpoint)
+            val result = transport.send(subscription, json.writeValueAsString(mapOf(
+                "title" to message.title, "body" to message.body, "url" to message.path, "tag" to message.id.toString())))
+            if (result in 200..299) accepted = true
+            if (result in listOf(404,410)) repository.disableSubscription(subscription.id)
+        }
+        return accepted
+    }
 
     fun settings() = PushSettings(enabled && publicKey.isNotBlank(), publicKey)
 

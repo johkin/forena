@@ -33,7 +33,8 @@ object ActivityTimes {
                     startsAt = start, endsAt = start.plusSeconds(duration * 60),
                     gatheringAt = evaluate(command.timingRules.gatheringRule, "start", start, zone),
                     timingRules = command.timingRules, invitationMode = command.invitationMode,
-                    invitationAudience = command.invitationAudience, invitationSelection = command.invitationSelection)
+                    invitationAudience = command.invitationAudience, invitationSelection = command.invitationSelection,
+                    maxParticipants = command.maxParticipants)
                 require(occurrences.size <= 100)
             }
             date = date.plusDays(1)

@@ -1,5 +1,22 @@
 # Arkitektur
 
+## Disciplinpaket i React/Kotlin
+
+Varje disciplin ligger i ett eget paket, exempelvis `disciplines.football`.
+`extensionapi` innehåller de gemensamma kontrakten; `extensions` registrerar
+implementationer genom Spring och äger fältlagring, revisioner och API.
+Aktivitetskärna och administration använder kontrakten utan konkreta
+disciplinimporter. Fotboll komponerar en återanvändbar capability genom dess
+interface. `InformationContributor` samlar versionsbundna eftermatchbidrag,
+`ActivityCapability` utvärderar verifierade fakta utan databasåtkomst.
+Modulith och ArchUnit verifierar beroendegränserna.
+
+Paketkatalogen styr sektionens val, och alla lag ärver disciplinen.
+Fältåtkomst filtreras på servern. Matchens initialvärden kopieras i aktivitetens
+skapandetransaktion. Deltagargränsen är en separat aktivitetsägd regel som
+kontrolleras under samma lås som kallelsesvaret.
+[Implementation, paketinstallation och verifiering](migration/disciplines.md).
+
 ## AI-assistent och Telegram i React/Kotlin
 
 Den nya appen delar kontobundna samtal, behörighetskontrollerade läsningar och
@@ -188,9 +205,9 @@ anslutningskontroll. Tunga dataflyttar körs separat i återupptagbara batcher.
 
 `/teams/{id}/members` använder samma `TeamRosterWorkspace`, `TeamRoster` och
 `GroupEditor` som Next-appens medlemsadministration. Listan, profilerna och
-undergrupperna delar markup och CSS. Next behåller sina befintliga profilfält
-för discipliner och inloggningsinbjudningar som en profilutökning; dessa flöden
-är ännu inte migrerade till Kotlin.
+undergrupperna delar markup och CSS. Profilens fotbollsfält är anslutna till
+Kotlin genom `ExtensionFields` och det behörighetskontrollerade fält-API:t.
+Inloggningsinbjudningar är ännu inte migrerade till Kotlin.
 
 `TeamRosterService` äger läsning och transaktionella kommandon under
 `/api/teams/{id}/roster`. `roster.manage` kontrolleras separat från medlemsroller,
@@ -645,8 +662,8 @@ befintliga verksamhetsmoduler. Aktivitetskärnan äger maxantal deltagare och
 transaktionen för ja-svar/kapacitetskontroll. En orkestrerande tjänst i
 utökningslagret äger atomär närvaro-/utfallsrättning genom publika kommandon.
 Synkrona kontroller skiljs från beständiga händelser och informationsförfrågningar.
-Det är en bekräftad målbild, inte redan implementerade modulgränser;
-befintliga regler mot cykler och korsvis intern repositoryåtkomst gäller fortsatt.
+Denna målbild är implementerad i Kotlin enligt dokumentets inledning.
+Befintliga regler mot cykler och korsvis intern repositoryåtkomst gäller fortsatt.
 
 Fotboll har ett versionshanterat paket med separata schemastrukturer för sektion,
 lag, lagmedlemskap, aktivitet och deltagande. Paketet kopplas via sektionens

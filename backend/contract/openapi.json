@@ -3,6 +3,9 @@
     "schemas": {
       "AccessibleInvitation": {
         "properties": {
+          "consumes_capacity": {
+            "type": "boolean"
+          },
           "id": {
             "format": "uuid",
             "type": "string"
@@ -129,6 +132,13 @@
           },
           "location": {
             "type": "string"
+          },
+          "maxParticipants": {
+            "format": "int32",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "personIds": {
             "items": {
@@ -363,6 +373,13 @@
           "location": {
             "type": "string"
           },
+          "maxParticipants": {
+            "format": "int32",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
           "startTime": {
             "format": "time-local",
             "type": "string"
@@ -491,6 +508,12 @@
             },
             "type": "array"
           },
+          "disciplines": {
+            "items": {
+              "$ref": "#/components/schemas/DisciplineDefinition"
+            },
+            "type": "array"
+          },
           "platformAdmin": {
             "type": "boolean"
           },
@@ -527,6 +550,9 @@
             "type": "boolean"
           },
           "canManage": {
+            "type": "boolean"
+          },
+          "canManageActivityDefaults": {
             "type": "boolean"
           },
           "disciplineKey": {
@@ -1234,6 +1260,136 @@
         },
         "type": "object"
       },
+      "CapabilityChange": {
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "key": {
+            "type": "string"
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "CapabilityDefinition": {
+        "properties": {
+          "adjustable": {
+            "type": "boolean"
+          },
+          "configurationScope": {
+            "type": "string"
+          },
+          "enabledByDefault": {
+            "type": "boolean"
+          },
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CapabilitySetting": {
+        "properties": {
+          "adjustable": {
+            "type": "boolean"
+          },
+          "editable": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "CatalogueCategory": {
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CatalogueChange": {
+        "properties": {
+          "category": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CatalogueDiscipline": {
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "codeOwned": {
+            "type": "boolean"
+          },
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "packageVersion": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "CatalogueSnapshot": {
+        "properties": {
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogueCategory"
+            },
+            "type": "array"
+          },
+          "disciplines": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogueDiscipline"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
       "ClubChange": {
         "properties": {
           "name": {
@@ -1440,6 +1596,312 @@
           }
         }
       },
+      "DefaultsCommand": {
+        "properties": {
+          "activityTypeId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "scopeId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "values": {
+            "$ref": "#/components/schemas/JsonNode"
+          }
+        },
+        "type": "object"
+      },
+      "DefaultsWorkspace": {
+        "properties": {
+          "disciplineKey": {
+            "type": "string"
+          },
+          "organizationId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityDefaultsRow"
+            },
+            "type": "array"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "scopeId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "sectionId": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "types": {
+            "items": {
+              "$ref": "#/components/schemas/ManagedActivityType"
+            },
+            "type": "array"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "DisciplineDefinition": {
+        "properties": {
+          "capabilities": {
+            "items": {
+              "$ref": "#/components/schemas/CapabilityDefinition"
+            },
+            "type": "array"
+          },
+          "category": {
+            "type": "string"
+          },
+          "fields": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/DisciplineField"
+              },
+              "type": "array"
+            },
+            "type": "object"
+          },
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scopeTitles": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "DisciplineField": {
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "maximum": {
+            "format": "int32",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "minimum": {
+            "format": "int32",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/FieldOption"
+            },
+            "type": "array"
+          },
+          "read": {
+            "enum": [
+              "managers",
+              "invitations",
+              "team"
+            ],
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "integer",
+              "choice",
+              "choices",
+              "player",
+              "players"
+            ],
+            "type": "string"
+          },
+          "visibleWhen": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FieldCondition"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "write": {
+            "enum": [
+              "managers",
+              "invitations",
+              "team"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "DisciplineFieldsCommand": {
+        "properties": {
+          "activityId": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "disciplineKey": {
+            "type": "string"
+          },
+          "personId": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "scope": {
+            "enum": [
+              "section",
+              "team",
+              "teamMembership",
+              "activity",
+              "activityParticipation"
+            ],
+            "type": "string"
+          },
+          "teamId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "values": {
+            "$ref": "#/components/schemas/JsonNode"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "DisciplineFieldsSnapshot": {
+        "properties": {
+          "acceptedPlayers": {
+            "items": {
+              "$ref": "#/components/schemas/DisciplinePlayer"
+            },
+            "type": "array"
+          },
+          "canManageInvitations": {
+            "type": "boolean"
+          },
+          "disciplineKey": {
+            "type": "string"
+          },
+          "editable": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/DisciplineField"
+            },
+            "type": "array"
+          },
+          "participants": {
+            "items": {
+              "$ref": "#/components/schemas/DisciplinePlayer"
+            },
+            "type": "array"
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "teamPlayers": {
+            "items": {
+              "$ref": "#/components/schemas/DisciplinePlayer"
+            },
+            "type": "array"
+          },
+          "title": {
+            "type": "string"
+          },
+          "values": {
+            "$ref": "#/components/schemas/JsonNode"
+          },
+          "version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "DisciplinePlayer": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "FieldCondition": {
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "FieldOption": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "GroupCommand": {
         "properties": {
           "kind": {
@@ -1467,6 +1929,239 @@
         },
         "type": "object"
       },
+      "InformationAnswer": {
+        "properties": {
+          "ownerKey": {
+            "type": "string"
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "values": {
+            "$ref": "#/components/schemas/JsonNode"
+          }
+        },
+        "type": "object"
+      },
+      "InformationCommand": {
+        "properties": {
+          "answers": {
+            "items": {
+              "$ref": "#/components/schemas/InformationAnswer"
+            },
+            "type": "array"
+          },
+          "attendance": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AttendanceCommand"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "InformationDefinition": {
+        "properties": {
+          "capabilityKey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/DisciplineField"
+            },
+            "type": "array"
+          },
+          "key": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "InformationHistory": {
+        "properties": {
+          "actorName": {
+            "type": "string"
+          },
+          "changedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "names": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "ownerKey": {
+            "type": "string"
+          },
+          "previous": {
+            "$ref": "#/components/schemas/JsonNode"
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "state": {
+            "type": "string"
+          },
+          "values": {
+            "$ref": "#/components/schemas/JsonNode"
+          }
+        },
+        "type": "object"
+      },
+      "InformationItem": {
+        "properties": {
+          "closeReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "definition": {
+            "$ref": "#/components/schemas/InformationDefinition"
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "state": {
+            "type": "string"
+          },
+          "values": {
+            "$ref": "#/components/schemas/JsonNode"
+          }
+        },
+        "type": "object"
+      },
+      "InformationPeriodReport": {
+        "properties": {
+          "fromDate": {
+            "format": "date",
+            "type": "string"
+          },
+          "report": {
+            "$ref": "#/components/schemas/InformationReport"
+          },
+          "season": {
+            "type": "string"
+          },
+          "timeZone": {
+            "type": "string"
+          },
+          "untilDate": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "InformationReport": {
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/InformationReportEntry"
+            },
+            "type": "array"
+          },
+          "from": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "players": {
+            "items": {
+              "$ref": "#/components/schemas/DisciplinePlayer"
+            },
+            "type": "array"
+          },
+          "teamId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "until": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "InformationReportEntry": {
+        "properties": {
+          "activityId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "contributions": {
+            "items": {
+              "$ref": "#/components/schemas/InformationItem"
+            },
+            "type": "array"
+          },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "InformationSnapshot": {
+        "properties": {
+          "activityId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "attendanceRevision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "canManageAttendance": {
+            "type": "boolean"
+          },
+          "contributions": {
+            "items": {
+              "$ref": "#/components/schemas/InformationItem"
+            },
+            "type": "array"
+          },
+          "editable": {
+            "type": "boolean"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/InformationHistory"
+            },
+            "type": "array"
+          },
+          "players": {
+            "items": {
+              "$ref": "#/components/schemas/DisciplinePlayer"
+            },
+            "type": "array"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "InvitationResponseResult": {
         "properties": {
           "ok": {
@@ -1476,6 +2171,95 @@
         "required": [
           "ok"
         ],
+        "type": "object"
+      },
+      "JsonNode": {
+        "properties": {
+          "array": {
+            "type": "boolean"
+          },
+          "bigDecimal": {
+            "type": "boolean"
+          },
+          "bigInteger": {
+            "type": "boolean"
+          },
+          "binary": {
+            "type": "boolean"
+          },
+          "boolean": {
+            "type": "boolean"
+          },
+          "container": {
+            "type": "boolean"
+          },
+          "double": {
+            "type": "boolean"
+          },
+          "embeddedValue": {
+            "type": "boolean"
+          },
+          "empty": {
+            "type": "boolean"
+          },
+          "float": {
+            "type": "boolean"
+          },
+          "floatingPointNumber": {
+            "type": "boolean"
+          },
+          "int": {
+            "type": "boolean"
+          },
+          "integralNumber": {
+            "type": "boolean"
+          },
+          "long": {
+            "type": "boolean"
+          },
+          "missingNode": {
+            "type": "boolean"
+          },
+          "nodeType": {
+            "enum": [
+              "ARRAY",
+              "BINARY",
+              "BOOLEAN",
+              "MISSING",
+              "NULL",
+              "NUMBER",
+              "OBJECT",
+              "POJO",
+              "STRING"
+            ],
+            "type": "string"
+          },
+          "null": {
+            "type": "boolean"
+          },
+          "number": {
+            "type": "boolean"
+          },
+          "object": {
+            "type": "boolean"
+          },
+          "pojo": {
+            "type": "boolean"
+          },
+          "short": {
+            "type": "boolean"
+          },
+          "string": {
+            "type": "boolean"
+          },
+          "textual": {
+            "deprecated": true,
+            "type": "boolean"
+          },
+          "valueNode": {
+            "type": "boolean"
+          }
+        },
         "type": "object"
       },
       "MagicLinkRequest": {
@@ -1519,8 +2303,18 @@
             "format": "uuid",
             "type": "string"
           },
+          "imported": {
+            "type": "boolean"
+          },
           "location": {
             "type": "string"
+          },
+          "max_participants": {
+            "format": "int32",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "organization_id": {
             "format": "uuid",
@@ -1719,8 +2513,34 @@
         },
         "type": "object"
       },
+      "PendingInformation": {
+        "properties": {
+          "activityId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "missing": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "PersonalActivity": {
         "properties": {
+          "accepted_participants": {
+            "format": "int32",
+            "type": "integer"
+          },
           "can_manage_activities": {
             "type": "boolean"
           },
@@ -1747,6 +2567,13 @@
           },
           "location": {
             "type": "string"
+          },
+          "max_participants": {
+            "format": "int32",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "organization": {
             "$ref": "#/components/schemas/PersonalOrganization"
@@ -2296,6 +3123,82 @@
         },
         "type": "object"
       },
+      "SignalAction": {
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "result": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "SignalCommand": {
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "SignalSnapshot": {
+        "properties": {
+          "actions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "activityId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "episode": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "evaluatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/SignalAction"
+            },
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "severity": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "SlugAvailability": {
         "properties": {
           "status": {
@@ -2765,6 +3668,143 @@
         },
         "tags": [
           "invitation-controller"
+        ]
+      }
+    },
+    "/api/activities/{id}/follow-up": {
+      "get": {
+        "operationId": "read_1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InformationSnapshot"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "information-controller"
+        ]
+      },
+      "put": {
+        "operationId": "save_4",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InformationCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InformationSnapshot"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "information-controller"
+        ]
+      }
+    },
+    "/api/activity-defaults": {
+      "get": {
+        "operationId": "load",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "scope",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scopeId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultsWorkspace"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "activity-defaults-controller"
+        ]
+      },
+      "put": {
+        "operationId": "save_3",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DefaultsCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultsWorkspace"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "activity-defaults-controller"
         ]
       }
     },
@@ -3398,7 +4438,7 @@
     },
     "/api/assistant/conversations/{id}": {
       "delete": {
-        "operationId": "delete_1",
+        "operationId": "delete_2",
         "parameters": [
           {
             "in": "path",
@@ -3594,7 +4634,7 @@
     },
     "/api/assistant/memories/{id}": {
       "delete": {
-        "operationId": "delete",
+        "operationId": "delete_1",
         "parameters": [
           {
             "in": "path",
@@ -3708,7 +4748,7 @@
         ]
       },
       "put": {
-        "operationId": "save",
+        "operationId": "save_2",
         "parameters": [
           {
             "in": "path",
@@ -5153,6 +6193,231 @@
         ]
       }
     },
+    "/api/discipline-catalogue": {
+      "get": {
+        "operationId": "read_2",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogueSnapshot"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "catalogue-controller"
+        ]
+      }
+    },
+    "/api/discipline-catalogue/{kind}/{key}": {
+      "delete": {
+        "operationId": "delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "catalogue-controller"
+        ]
+      },
+      "put": {
+        "operationId": "save_1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogueChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "catalogue-controller"
+        ]
+      }
+    },
+    "/api/discipline-fields": {
+      "get": {
+        "operationId": "read",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "teamId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope",
+            "required": true,
+            "schema": {
+              "enum": [
+                "section",
+                "team",
+                "teamMembership",
+                "activity",
+                "activityParticipation"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "activityId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "personId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisciplineFieldsSnapshot"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "discipline-controller"
+        ]
+      },
+      "put": {
+        "operationId": "save",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisciplineFieldsCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisciplineFieldsSnapshot"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "discipline-controller"
+        ]
+      }
+    },
+    "/api/disciplines": {
+      "get": {
+        "operationId": "catalogue",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DisciplineDefinition"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "discipline-controller"
+        ]
+      }
+    },
     "/api/invitations/{invitationId}/respond": {
       "put": {
         "description": "Identical state creates no revision. Concurrent commands serialize in database lock order; a delayed different answer can replace an earlier one. Cache-Control: no-store.",
@@ -5380,6 +6645,50 @@
         },
         "tags": [
           "personal-overview-controller"
+        ]
+      }
+    },
+    "/api/signals/{id}/actions": {
+      "post": {
+        "operationId": "action",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignalCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "information-controller"
         ]
       }
     },
@@ -5643,6 +6952,291 @@
         ]
       }
     },
+    "/api/teams/{team}/capabilities": {
+      "get": {
+        "operationId": "settings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CapabilitySetting"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "information-controller"
+        ]
+      },
+      "put": {
+        "operationId": "configure",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CapabilityChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "information-controller"
+        ]
+      }
+    },
+    "/api/teams/{team}/discipline-players": {
+      "get": {
+        "operationId": "roster",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DisciplinePlayer"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "discipline-controller"
+        ]
+      }
+    },
+    "/api/teams/{team}/follow-up": {
+      "get": {
+        "operationId": "pending",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PendingInformation"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "information-controller"
+        ]
+      }
+    },
+    "/api/teams/{team}/follow-up-report": {
+      "get": {
+        "operationId": "report",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "until",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InformationReport"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "information-controller"
+        ]
+      }
+    },
+    "/api/teams/{team}/information-report": {
+      "get": {
+        "operationId": "periodReport",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fromDate",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "untilDate",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "season",
+            "required": false,
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InformationPeriodReport"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "information-controller"
+        ]
+      }
+    },
+    "/api/teams/{team}/signals": {
+      "get": {
+        "operationId": "signals",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SignalSnapshot"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "information-controller"
+        ]
+      }
+    },
     "/api/teams/{team}/telegram/groups": {
       "get": {
         "operationId": "links",
@@ -5757,7 +7351,7 @@
     },
     "/api/telegram/settings": {
       "get": {
-        "operationId": "settings",
+        "operationId": "settings_1",
         "responses": {
           "200": {
             "content": {

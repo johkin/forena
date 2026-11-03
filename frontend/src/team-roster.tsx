@@ -6,6 +6,7 @@ import { TeamRosterWorkspace, type RosterActions } from "../../src/components/te
 import { primaryRosterRole, rosterRoleLabel } from "../../src/lib/roster-roles";
 import { AppLink } from "./app-link";
 import { NavigationLinksView } from "../../src/components/navigation-links-view";
+import { ExtensionFields } from "../../src/components/extension-fields";
 
 const groupSchema = z.object({ id: z.uuid(), name: z.string(), personIds: z.array(z.uuid()), revision: z.number().int().nonnegative() });
 export const rosterSchema = z.object({
@@ -92,7 +93,9 @@ export function TeamRosterPage({ request, teamId }: { request: ParticipationFetc
     {message ? <p className="auth-message" role="status">{message}</p> : null}
     <TeamRosterWorkspace people={data.people.map(person => ({ ...person, title: person.title || rosterRoleLabel(primaryRosterRole(person.roles)) }))}
       groups={data.groups} team={data.team} organization={{ name: data.team.organizationName }} destination={destination}
-      search={query.toString()} actions={actions} pending={pending} linkComponent={AppLink} />
+      search={query.toString()} actions={actions} pending={pending} linkComponent={AppLink}
+      memberDetails={data.people.some(p => p.id === query.get("person") && p.roles.includes("participant")) ?
+        <ExtensionFields request={request} teamId={teamId} scope="teamMembership" personId={query.get("person") ?? undefined} /> : undefined} />
   </>;
 }
 
