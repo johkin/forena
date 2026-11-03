@@ -4,7 +4,9 @@ import { mkdir } from 'node:fs/promises';
 
 const origins = (process.env.FORENA_EVALUATION_ORIGINS ?? 'http://127.0.0.1:3000,http://127.0.0.1:3001').split(',');
 for (const origin of origins) assert.ok(['127.0.0.1', 'localhost'].includes(new URL(origin).hostname));
-const browser = await chromium.launch({ headless: true, executablePath: process.env.FORENA_BROWSER_EXECUTABLE ?? '/usr/bin/chromium' });
+const browser = await chromium.launch({ headless: true,
+  ...(process.env.FORENA_BROWSER_EXECUTABLE ? { executablePath: process.env.FORENA_BROWSER_EXECUTABLE } : {}),
+});
 await mkdir('frontend/.evidence/evaluation', { recursive: true });
 try {
   for (const origin of origins) for (const width of [320, 390, 1280]) {

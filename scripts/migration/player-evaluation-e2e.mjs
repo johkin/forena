@@ -7,7 +7,8 @@ const frontend = process.env.FORENA_EVALUATION_FRONTEND;
 for (const endpoint of [backend, frontend]) assert.ok(['localhost', '127.0.0.1'].includes(new URL(endpoint).hostname));
 const team = process.env.FORENA_EVALUATION_TEAM;
 const activity = process.env.FORENA_EVALUATION_ACTIVITY;
-const browser = await chromium.launch({ headless: true, executablePath: '/usr/bin/chromium',
+const browser = await chromium.launch({ headless: true,
+  ...(process.env.FORENA_BROWSER_EXECUTABLE ? { executablePath: process.env.FORENA_BROWSER_EXECUTABLE } : {}),
   env: Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('FORENA_'))),
 });
 let page;
