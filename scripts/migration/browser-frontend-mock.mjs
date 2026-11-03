@@ -40,6 +40,7 @@ async function assertOnlyCalendarPreferences(page){
  }
 }
 await context.route('**/config.json',r=>r.fulfill({json:{activityId:id,version:id}}));
+await context.route('**/app-version.json',r=>r.fulfill({json:{version:id}}));
 await context.route('https://*.supabase.co/**',r=>{directProviderRequests++;return r.abort();});
 await context.route('**/api/**',async route=>{
  requests++;const req=route.request();const headers=await req.allHeaders();const path=new URL(req.url()).pathname;
