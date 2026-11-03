@@ -611,6 +611,10 @@ respekterar safe area och ligger under dialoger. Texten annonseras som status
 utan att flytta fokus. Användaren väljer när sidan laddas om; pågående formulär
 avbryts inte automatiskt. Klick gör en full omladdning av aktuell adress.
 
+Planerat tillägg med stängning och påminnelse efter en timme beskrivs i
+[generell UI-spec](specs/generell-ui.md). Specen är Utkast; tillägget är
+ännu inte implementerat.
+
 Systemets klubbsida visar klubbadministratörer och inbjudningar. Knappen
 Gör mig till klubbadministratör möjliggör första administratören i en tom
 klubb. Inbjudningar visar väntande, utgångna och misslyckade utskick och kan
