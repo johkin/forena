@@ -5,7 +5,7 @@ import { mkdir } from 'node:fs/promises';
 const origins = (process.env.FORENA_ATTENTION_ORIGINS ?? 'http://127.0.0.1:3004,http://127.0.0.1:3005').split(',');
 const frontend = process.env.FORENA_BROWSER_BASE_URL ?? 'http://127.0.0.1:3005';
 for (const origin of [...origins, frontend]) assert.ok(['localhost', '127.0.0.1'].includes(new URL(origin).hostname));
-const browser = await chromium.launch({ headless: true, executablePath: process.env.FORENA_BROWSER_EXECUTABLE ?? '/usr/bin/chromium' });
+const browser = await chromium.launch({ headless: true, ...(process.env.FORENA_BROWSER_EXECUTABLE ? { executablePath: process.env.FORENA_BROWSER_EXECUTABLE } : {}) });
 await mkdir('frontend/.evidence/team-attention', { recursive: true });
 const team = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const familyTeam = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';

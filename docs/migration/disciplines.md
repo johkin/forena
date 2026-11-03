@@ -198,6 +198,9 @@ Gemensamma kort och detaljer visar platsantal, progressbar och spärrad ja-knapp
   API-svar verifierar prioritet, lagbehörighet, påminnelsebekräftelse,
   spelarredigering och läsläge för spelare/målsmän. Evidens sparas under
   `frontend/.evidence/team-attention/`. Produktion har inte verifierats.
+- Det befintliga `information-components-browser.mjs` är godkänt i båda
+  apparna vid 320, 390, 768 och 1280 px efter flytten. Det nya
+  placerings-/profilprovet ingår även i CI:s browserkontroller.
 
 ### Tidigare disciplinleverans
 

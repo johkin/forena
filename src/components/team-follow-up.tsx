@@ -53,7 +53,7 @@ export function TeamFollowUp({
   if (hidden || (attentionOnly && !error && !items?.length)) return null;
   return (
     <section className="card">
-      <h2>{reportOnly ? "Spelarhistorik och rapport" : teamName ? `Matchuppföljning · ${teamName}` : "Matchuppföljning"}</h2>
+      <h2>{reportOnly ? "Spelarrapporter" : teamName ? `Matchuppföljning · ${teamName}` : "Matchuppföljning"}</h2>
       {error ? <p role="alert">{error}</p> : null}
       {!reportOnly && items?.length ? (
         <ul>
