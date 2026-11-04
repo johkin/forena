@@ -13,7 +13,8 @@ export default async function LoginPage({ searchParams }: Props) {
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
 
-  const safeNext = next?.startsWith("/") && !next.startsWith("//") ? next : "/";
+  // SECURITY: Prevent open redirect via /\example.com (handled by new URL())
+  const safeNext = next?.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : "/";
   if (data.user) redirect(safeNext);
 
   return (<AppShell homeHref="/">

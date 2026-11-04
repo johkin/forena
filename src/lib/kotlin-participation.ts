@@ -38,7 +38,8 @@ function kotlinParticipationBaseUrl() {
 }
 
 function endpoint(base: URL, path: string) {
-  if (!path.startsWith("/") || path.startsWith("//")) throw new Error("Invalid API path");
+  // SECURITY: Prevent open redirect via /\example.com (handled by new URL())
+  if (!path.startsWith("/") || path.startsWith("//") || path.startsWith("/\\")) throw new Error("Invalid API path");
   const url = new URL(path.slice(1), base);
   url.search = base.search;
   return url.href;
