@@ -1,7 +1,7 @@
 # Spelarutvärdering och lagindelning
 
 - Status: Redo
-- Senast uppdaterad: 2026-11-03
+- Senast uppdaterad: 2026-11-04
 - Berörda dokument: [Discipliner](discipliner.md), [Fotboll](fotboll.md),
   [Aktiviteter](hantera-aktiviteter.md), [Lagmedlemmar](hantera-trupp.md),
   [Roadmap](../roadmap.md), [Arkitektur](../architecture.md),
@@ -581,6 +581,12 @@ spec. Implementation beställdes separat och genomfördes lokalt 2026-11-03;
 verifieringens omfattning redovisas ovan. Ingen driftsättning ingår.
 
 ## Ändringshistorik
+
+- 2026-11-04: Användaren önskar betyg i en redigerbar tabell, med spelare
+  per rad och mätpunkter per kolumn, och tydligare layout för inställningarna.
+  Förtydligat att sparade betyg kan ändras men inte tömmas; en femma är ett
+  uttryckligt betyg för medelnivå. Saknade initiala värden förblir saknade och
+  fylls aldrig automatiskt med femmor. Behörighetsreglerna är oförändrade.
 
 - 2026-11-03: Separat beställd implementation genomförd i React/Kotlin:
   aktuell bedömning, konfiguration, serverbeskrivna gruppförslag och rapport.

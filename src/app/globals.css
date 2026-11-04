@@ -1241,3 +1241,31 @@ button:disabled { cursor:not-allowed; }
 .extension-view-table th, .extension-view-table td { padding: .75rem; text-align: left; vertical-align: top; }
 .extension-view-table th { min-width: 7rem; }
 .extension-view-table table { border-collapse: collapse; width: 100%; }
+
+.player-evaluation-workspace { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; border-top: 0; padding: 0; }
+.player-evaluation-workspace > * { min-width: 0; }
+.player-evaluation-workspace :is(.primary, .secondary) { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.player-evaluation-workspace > h1, .player-evaluation-workspace > .auth-message { margin: 0; }
+.player-evaluation-workspace .card { min-width: 0; }
+.evaluation-configuration > summary { min-height: 44px; cursor: pointer; font-weight: 700; }
+.evaluation-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.evaluation-fields > legend { margin-bottom: 16px; font-weight: 700; }
+.evaluation-fields > button { justify-self: start; }
+.evaluation-metrics { display: grid; gap: 16px; min-width: 0; }
+.evaluation-metric-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+.evaluation-metric-row > button { justify-self: start; }
+.evaluation-rules { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; max-width: 680px; }
+.evaluation-disable { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+.evaluation-score-scroll { max-width: 100%; min-width: 0; overflow-x: auto; isolation: isolate; border: 1px solid var(--line); border-radius: 12px; }
+.evaluation-score-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.evaluation-score-table th, .evaluation-score-table td { padding: 12px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.evaluation-score-table thead th { min-width: 8rem; max-width: 14rem; background: var(--surface-low); font-size: 14px; overflow-wrap: anywhere; }
+.evaluation-score-table :is(th, td):first-child { position: sticky; left: 0; z-index: 1; width: 10rem; min-width: 10rem; max-width: 10rem; background: var(--paper); border-right: 1px solid var(--line); overflow-wrap: anywhere; }
+.evaluation-score-table thead th:first-child { background: var(--surface-low); z-index: 2; }
+.evaluation-score-table tbody tr:last-child :is(th, td) { border-bottom: 0; }
+.evaluation-score-table input[type="number"] { width: 5.5rem; min-width: 5.5rem; text-align: center; }
+.evaluation-metric-kind { display: block; margin-top: 4px; color: var(--ink-soft); font-size: 12px; font-weight: 500; }
+@media (min-width: 640px) {
+  .evaluation-metric-row { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) auto; align-items: end; }
+  .evaluation-rules { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

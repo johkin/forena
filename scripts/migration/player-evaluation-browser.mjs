@@ -16,15 +16,45 @@ try {
     await page.goto(`${origin}/components`);
     const example = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Spelarutvärdering och gemensamma tilläggsvyer', exact: true }) }).first();
     await expect(example.getByRole('heading', { name: 'Aktuella betyg', exact: true })).toBeVisible();
-    await example.getByText('Robin Exempel', { exact: true }).first().click();
+    await expect(example.getByRole('rowheader', { name: 'Robin Exempel', exact: true })).toBeVisible();
     await expect(example.getByRole('spinbutton', { name: 'Robin Exempel: Spelförståelse' })).toHaveValue('6');
     await example.getByRole('button', { name: 'Gruppförslag', exact: true }).click();
     await expect(example.getByText('Kan prova nästa förmågegrupp – ledaren beslutar', { exact: true })).toBeVisible();
     await expect(example.getByRole('columnheader', { name: 'Utveckling' })).toBeVisible();
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `overflow ${origin} ${width}`);
     await example.screenshot({ path: `frontend/.evidence/evaluation/${new URL(origin).port}-${width}.png` });
+    await example.getByLabel('Exempeltillstånd').selectOption('matrix');
+    const scoreRegion = example.getByRole('region', { name: 'Redigera spelarvärden', exact: true });
+    await expect(scoreRegion.getByRole('rowheader')).toHaveCount(3);
+    await expect(scoreRegion.getByRole('columnheader')).toHaveCount(5);
+    await expect(scoreRegion.getByRole('spinbutton')).toHaveCount(12);
+    const saved = scoreRegion.getByRole('spinbutton', { name: 'Robin Exempel: Spelförståelse', exact: true });
+    await saved.fill('');
+    assert.equal(await saved.evaluate(input => input.validity.valueMissing), true, 'saved scores cannot be cleared');
+    await saved.fill('6');
+    await saved.focus();
+    await page.keyboard.press('Tab');
+    await expect(scoreRegion.getByRole('spinbutton', { name: 'Robin Exempel: Spelteknik', exact: true })).toBeFocused();
+    if (width < 640) {
+      const name = scoreRegion.getByRole('rowheader').first();
+      const left = await name.evaluate(element => element.getBoundingClientRect().left);
+      await scoreRegion.evaluate(element => { element.scrollLeft = element.scrollWidth; });
+      assert.ok(Math.abs(await name.evaluate(element => element.getBoundingClientRect().left) - left) < 1, 'player names stay visible while scrolling');
+      await scoreRegion.evaluate(element => { element.scrollLeft = 0; });
+    }
+    await example.getByText('Mätpunkter och regler', { exact: true }).click();
+    const metricRows = example.locator('.evaluation-metric-row');
+    await expect(metricRows).toHaveCount(4);
+    for (const row of await metricRows.all()) {
+      const name = await row.getByRole('textbox').boundingBox();
+      const kind = await row.getByRole('combobox').boundingBox();
+      assert.ok(name && kind && name.height >= 44 && kind.height >= 44);
+      if (width >= 640) assert.ok(kind.x >= name.x + name.width, 'name and type occupy separate columns');
+      else assert.ok(kind.y >= name.y + name.height, 'name and type stack on mobile');
+    }
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `matrix/configuration overflow ${origin} ${width}`);
+    await example.screenshot({ path: `frontend/.evidence/evaluation/${new URL(origin).port}-matrix-${width}.png` });
     await example.getByLabel('Exempeltillstånd').selectOption('conflict');
-    await example.getByText('Robin Exempel', { exact: true }).first().click();
     const input = example.getByRole('spinbutton', { name: 'Robin Exempel: Spelförståelse' });
     await input.fill('8');
     await example.getByRole('button', { name: 'Spara betyg', exact: true }).click();
