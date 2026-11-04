@@ -96,7 +96,7 @@ export const sampleReadContribution: ReadContribution = {
 export function PlayerEvaluationExamples() {
   const [state, setState] = useState("ready");
   return (
-    <section>
+    <section id="player-evaluation-example">
       <h2>Spelarutvärdering och gemensamma tilläggsvyer</h2>
       <label>
         Exempeltillstånd
@@ -105,6 +105,7 @@ export function PlayerEvaluationExamples() {
           onChange={(event) => setState(event.target.value)}
         >
           <option value="ready">Aktiverat</option>
+          <option value="matrix">Flera spelare och mätpunkter</option>
           <option value="disabled">Avstängt</option>
           <option value="leader">Ledare utan lagadmin</option>
           <option value="conflict">Revisionskonflikt vid sparande</option>
@@ -126,9 +127,44 @@ function EvaluationExample({ state }: { state: string }) {
       revision,
       defaultGroups: 2,
       threshold: 7,
-      metrics: [{ id: metric, name: "Spelförståelse", kind: "ability" }],
+      metrics: [
+        { id: metric, name: "Spelförståelse", kind: "ability" },
+        ...(state === "matrix"
+          ? [
+              {
+                id: "10000000-0000-4000-8000-000000000005",
+                name: "Spelteknik",
+                kind: "ability",
+              },
+              {
+                id: "10000000-0000-4000-8000-000000000006",
+                name: "Styrka",
+                kind: "ability",
+              },
+              {
+                id: "10000000-0000-4000-8000-000000000007",
+                name: "Ambition",
+                kind: "development",
+              },
+            ]
+          : []),
+      ],
       scores: [{ personId: person, metricId: metric, value: 6 }],
-      players: [{ id: person, name: "Robin Exempel" }],
+      players: [
+        { id: person, name: "Robin Exempel" },
+        ...(state === "matrix"
+          ? [
+              {
+                id: "10000000-0000-4000-8000-000000000008",
+                name: "Alex Exempel",
+              },
+              {
+                id: "10000000-0000-4000-8000-000000000009",
+                name: "Kim Exempel med ett långt efternamn",
+              },
+            ]
+          : []),
+      ],
     }),
   );
   const request = useCallback<ParticipationFetch>(

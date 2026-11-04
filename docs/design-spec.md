@@ -25,6 +25,11 @@ Lagmenyn visar ingången för lagets ledare och administratörer. Lagadmin kan
 aktivera, ändra mätpunkter/regler och bekräfta avstängning som raderar
 utvärderingsdata. Ledare kan ändra gemensamma heltalsbetyg 0–10. Konflikt
 bevarar utkastet tills användaren uttryckligen läser om värdena.
+Mätpunkternas inställningar visas på egna rader med namn, typ och borttagning;
+gruppregler och sparåtgärd ligger separat. Betyg redigeras i en tabell med
+spelare på rader och mätpunkter i kolumner. Tabellens namnkolumn ligger kvar
+vid horisontell rullning på mobil. Rubriker anger mätpunktstyp och varje
+betygsfält har spelarens och mätpunktens namn som tillgänglig etikett.
 Serverbeskrivna listor, grupperade listor, tabeller och informationsmeddelanden
 delar renderare i båda apparna. Aktivitetsbidraget heter Gruppförslag och
 rapporten visar hela aktuella truppen. Ändrade filter räknar om förslaget;

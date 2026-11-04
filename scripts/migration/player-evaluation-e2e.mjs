@@ -58,7 +58,7 @@ try {
       page.getByRole('button', { name: 'Spara mätpunkter och regler' }).click(),
     ]);
     for (const [index, value] of [9, 5, 3].entries()) {
-      await page.getByText(`Person ${index}`, { exact: true }).click();
+      await expect(page.getByRole('rowheader', { name: `Person ${index}`, exact: true })).toBeVisible();
       await page.getByRole('spinbutton', { name: `Person ${index}: Teknik`, exact: true }).fill(String(value));
       await page.getByRole('spinbutton', { name: `Person ${index}: Driv`, exact: true }).fill('7');
     }

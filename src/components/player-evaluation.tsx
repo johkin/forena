@@ -121,7 +121,7 @@ export function PlayerEvaluation({
   if (!data)
     return (
       <section>
-        <h1>Spelarutvärdering</h1>
+        <h1>Spelar<wbr />utvärdering</h1>
         {error ? (
           <p role="alert">{error}</p>
         ) : (
@@ -137,8 +137,11 @@ export function PlayerEvaluation({
       </section>
     );
   return (
-    <section aria-busy={pending}>
-      <h1>Spelarutvärdering</h1>
+    <section
+      className="player-evaluation-workspace discipline-fields"
+      aria-busy={pending}
+    >
+      <h1>Spelar<wbr />utvärdering</h1>
       {error ? (
         <div role="alert">
           <p>{error}</p>
@@ -158,7 +161,11 @@ export function PlayerEvaluation({
           </button>
         </div>
       ) : null}
-      {message ? <p role="status">{message}</p> : null}
+      {message ? (
+        <p className="auth-message" role="status">
+          {message}
+        </p>
+      ) : null}
       {!data.enabled ? (
         <p>
           Funktionen är avstängd. Vid aktivering börjar laget utan mätpunkter
@@ -178,10 +185,11 @@ export function PlayerEvaluation({
             Aktivera spelarutvärdering
           </button>
         ) : (
-          <details className="card">
+          <details className="card evaluation-configuration">
             <summary>Mätpunkter och regler</summary>
             <form
               className="application-form"
+              onChange={() => setMessage(undefined)}
               onSubmit={(event) => {
                 event.preventDefault();
                 const removed = data.metrics.some(
@@ -204,61 +212,68 @@ export function PlayerEvaluation({
                 });
               }}
             >
-              <fieldset className="discipline-form-fields" disabled={pending}>
+              <fieldset className="evaluation-fields" disabled={pending}>
                 <legend>Lagets egna mätpunkter</legend>
-                {metrics.map((metric, index) => (
-                  <div key={metric.id}>
-                    <label>
-                      Namn på mätpunkt {index + 1}
-                      <input
-                        required
-                        maxLength={100}
-                        value={metric.name}
-                        onChange={(event) =>
+                <div className="evaluation-metrics">
+                  {metrics.map((metric, index) => (
+                    <div className="evaluation-metric-row" key={metric.id}>
+                      <label>
+                        Namn på mätpunkt {index + 1}
+                        <input
+                          required
+                          maxLength={100}
+                          value={metric.name}
+                          onChange={(event) =>
+                            setMetrics((items) =>
+                              items.map((item) =>
+                                item.id === metric.id
+                                  ? { ...item, name: event.target.value }
+                                  : item,
+                              ),
+                            )
+                          }
+                        />
+                      </label>
+                      <label>
+                        Typ för mätpunkt {index + 1}
+                        <select
+                          value={metric.kind}
+                          onChange={(event) => {
+                            const kind = z
+                              .enum(["ability", "development"])
+                              .parse(event.target.value);
+                            setMetrics((items) =>
+                              items.map((item) =>
+                                item.id === metric.id
+                                  ? { ...item, kind }
+                                  : item,
+                              ),
+                            );
+                          }}
+                        >
+                          <option value="ability">Förmåga</option>
+                          <option value="development">
+                            Utvecklingsindikator
+                          </option>
+                        </select>
+                      </label>
+                      <button
+                        className="secondary"
+                        type="button"
+                        onClick={() =>
                           setMetrics((items) =>
-                            items.map((item) =>
-                              item.id === metric.id
-                                ? { ...item, name: event.target.value }
-                                : item,
-                            ),
+                            items.filter((item) => item.id !== metric.id),
                           )
                         }
-                      />
-                    </label>
-                    <label>
-                      Typ för mätpunkt {index + 1}
-                      <select
-                        value={metric.kind}
-                        onChange={(event) => {
-                          const kind = z
-                            .enum(["ability", "development"])
-                            .parse(event.target.value);
-                          setMetrics((items) =>
-                            items.map((item) =>
-                              item.id === metric.id ? { ...item, kind } : item,
-                            ),
-                          );
-                        }}
                       >
-                        <option value="ability">Förmåga</option>
-                        <option value="development">
-                          Utvecklingsindikator
-                        </option>
-                      </select>
-                    </label>
-                    <button
-                      className="secondary"
-                      type="button"
-                      onClick={() =>
-                        setMetrics((items) =>
-                          items.filter((item) => item.id !== metric.id),
-                        )
-                      }
-                    >
-                      Ta bort {metric.name || "mätpunkt"}
-                    </button>
-                  </div>
-                ))}
+                        <span aria-hidden="true">Ta bort</span>
+                        <span className="sr-only">
+                          Ta bort {metric.name || "mätpunkt"}
+                        </span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
                 <button
                   className="secondary"
                   type="button"
@@ -271,55 +286,63 @@ export function PlayerEvaluation({
                 >
                   Lägg till mätpunkt
                 </button>
-                <label>
-                  Förvalt antal grupper
-                  <input
-                    type="number"
-                    min={2}
-                    step={1}
-                    required
-                    value={groups}
-                    onChange={(event) => setGroups(event.target.valueAsNumber)}
-                  />
-                </label>
-                <label>
-                  Tröskel för utvecklingsvärde
-                  <input
-                    type="number"
-                    min={0}
-                    max={10}
-                    step="any"
-                    required
-                    value={threshold}
-                    onChange={(event) =>
-                      setThreshold(event.target.valueAsNumber)
-                    }
-                  />
-                </label>
-                <button className="primary" type="submit">
-                  Spara mätpunkter och regler
-                </button>
+                <div className="evaluation-rules">
+                  <label>
+                    Förvalt antal grupper
+                    <input
+                      type="number"
+                      min={2}
+                      step={1}
+                      required
+                      value={groups}
+                      onChange={(event) =>
+                        setGroups(event.target.valueAsNumber)
+                      }
+                    />
+                  </label>
+                  <label>
+                    Tröskel för utvecklingsvärde
+                    <input
+                      type="number"
+                      min={0}
+                      max={10}
+                      step="any"
+                      required
+                      value={threshold}
+                      onChange={(event) =>
+                        setThreshold(event.target.valueAsNumber)
+                      }
+                    />
+                  </label>
+                </div>
+                <div className="discipline-actions">
+                  <button className="primary" type="submit" disabled={pending}>
+                    Spara mätpunkter och regler
+                  </button>
+                </div>
               </fieldset>
             </form>
-            <button
-              className="secondary"
-              type="button"
-              disabled={pending}
-              onClick={() => {
-                if (
-                  window.confirm(
-                    "Stänga av spelarutvärdering? Lagets mätpunkter, inställningar och samtliga betyg raderas. Detta kan inte ångras.",
+            <div className="evaluation-disable">
+              <button
+                className="secondary"
+                type="button"
+                disabled={pending}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      "Stänga av spelarutvärdering? Lagets mätpunkter, inställningar och samtliga betyg raderas. Detta kan inte ångras.",
+                    )
                   )
-                )
-                  void save(base, {
-                    revision: data.revision,
-                    enabled: false,
-                    confirmDeletion: true,
-                  });
-              }}
-            >
-              Stäng av och radera utvärderingsdata
-            </button>
+                    void save(base, {
+                      revision: data.revision,
+                      enabled: false,
+                      confirmDeletion: true,
+                    });
+                }}
+              >
+                Stäng av och radera utvärderingsdata
+              </button>
+            </div>
           </details>
         )
       ) : null}
@@ -329,10 +352,15 @@ export function PlayerEvaluation({
             <h2>Aktuella betyg</h2>
             <p>
               Gemensamma heltalsbetyg 0–10. Tomt betyder saknar bedömning,
-              aldrig noll. Alla mätpunkter inom en typ väger lika.
+              aldrig noll. Alla mätpunkter inom en typ väger lika. En femma
+              motsvarar medelnivå. Sparade betyg kan ändras men inte tömmas.
             </p>
             {data.metrics.length === 0 ? (
-              <p>Lagadmin behöver först lägga till mätpunkter.</p>
+              <p>
+                {metrics.length > 0
+                  ? "Spara mätpunkterna ovan för att börja registrera betyg."
+                  : "Lagadmin behöver först lägga till mätpunkter."}
+              </p>
             ) : (
               <form
                 key={generation}
@@ -362,42 +390,79 @@ export function PlayerEvaluation({
                   });
                 }}
               >
-                <fieldset className="discipline-form-fields" disabled={pending}>
-                  <legend>Spelarvärden</legend>
-                  {data.players.map((person) => (
-                    <details key={person.id}>
-                      <summary>{person.name}</summary>
-                      {data.metrics.map((metric) => {
-                        const saved = data.scores.find(
-                          (score) =>
-                            score.personId === person.id &&
-                            score.metricId === metric.id,
-                        );
-                        return (
-                          <label key={metric.id}>
-                            {metric.name} ·{" "}
-                            {metric.kind === "ability"
-                              ? "Förmåga"
-                              : "Utvecklingsindikator"}
-                            <input
-                              aria-label={`${person.name}: ${metric.name}`}
-                              type="number"
-                              min={0}
-                              max={10}
-                              step={1}
-                              required={saved !== undefined}
-                              name={`${person.id}:${metric.id}`}
-                              defaultValue={saved?.value ?? ""}
-                              placeholder="Saknar bedömning"
-                            />
-                          </label>
-                        );
-                      })}
-                    </details>
-                  ))}
-                  <button className="primary" type="submit">
-                    Spara betyg
-                  </button>
+                <fieldset className="evaluation-fields" disabled={pending}>
+                  <legend className="sr-only">Spelarvärden</legend>
+                  <div
+                    className="evaluation-score-scroll"
+                    role="region"
+                    aria-label="Redigera spelarvärden"
+                    tabIndex={0}
+                  >
+                    <table className="evaluation-score-table">
+                      <caption className="sr-only">
+                        Spelare per rad och mätpunkter per kolumn. Betyg från 0
+                        till 10.
+                      </caption>
+                      <thead>
+                        <tr>
+                          <th scope="col">Spelare</th>
+                          {data.metrics.map((metric) => (
+                            <th key={metric.id} scope="col">
+                              {metric.name}
+                              <span className="evaluation-metric-kind">
+                                {metric.kind === "ability"
+                                  ? "Förmåga"
+                                  : "Utvecklingsindikator"}
+                              </span>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.players.map((person) => (
+                          <tr key={person.id}>
+                            <th scope="row">{person.name}</th>
+                            {data.metrics.map((metric) => {
+                              const saved = data.scores.find(
+                                (score) =>
+                                  score.personId === person.id &&
+                                  score.metricId === metric.id,
+                              );
+                              return (
+                                <td key={metric.id}>
+                                  <input
+                                    aria-label={`${person.name}: ${metric.name}`}
+                                    type="number"
+                                    min={0}
+                                    max={10}
+                                    step={1}
+                                    required={saved !== undefined}
+                                    name={`${person.id}:${metric.id}`}
+                                    defaultValue={saved?.value ?? ""}
+                                    placeholder="—"
+                                    title={
+                                      saved === undefined
+                                        ? "Saknar bedömning"
+                                        : undefined
+                                    }
+                                  />
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="discipline-actions">
+                    <button
+                      className="primary"
+                      type="submit"
+                      disabled={pending}
+                    >
+                      Spara betyg
+                    </button>
+                  </div>
                 </fieldset>
               </form>
             )}
