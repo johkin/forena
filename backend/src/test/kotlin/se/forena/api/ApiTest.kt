@@ -75,6 +75,150 @@ import tools.jackson.databind.json.JsonMapper
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(AuthTest.MailConfiguration::class)
 class ApiTest {
+    @Test fun `player evaluation metric edits preserve current scores and confirmed deletion removes only its values`() {
+        val team = managedTeam()
+        val base = "/api/teams/$team/player-evaluation"
+        val metric = UUID.randomUUID()
+        var revision: String? = null
+        fun configure(name: String, kind: String, include: Boolean = true, confirm: Boolean = false) = request(base,
+            json.writeValueAsString(mapOf("revision" to revision, "enabled" to true, "threshold" to 0, "defaultGroups" to 3,
+                "confirmDeletion" to confirm, "metrics" to if (include) listOf(mapOf("id" to metric, "name" to name, "kind" to kind)) else emptyList())))
+        var response = configure("Teknik", "ability")
+        assertThat(response.statusCode()).isEqualTo(200)
+        revision = json.readTree(response.body()).get("revision").asString()
+        response = request("$base/scores", json.writeValueAsString(mapOf("revision" to revision,
+            "scores" to listOf(mapOf("personId" to own, "metricId" to metric, "value" to 6)))))
+        assertThat(response.statusCode()).isEqualTo(200)
+        revision = json.readTree(response.body()).get("revision").asString()
+        val priorTypeRevision = revision
+        response = configure("Nytt namn", "development")
+        assertThat(response.statusCode()).isEqualTo(200)
+        revision = json.readTree(response.body()).get("revision").asString()
+        assertThat(json.readTree(response.body()).get("scores").single().get("value").asInt()).isEqualTo(6)
+        assertThat(json.readTree(response.body()).get("metrics").single().get("kind").asString()).isEqualTo("development")
+        assertThat(request("$base/scores", json.writeValueAsString(mapOf("revision" to priorTypeRevision, "scores" to emptyList<Any>()))).statusCode()).isEqualTo(409)
+        assertThat(configure("", "ability", include = false).statusCode()).isEqualTo(400)
+        assertThat(json.readTree(request(base).body()).get("scores").size()).isEqualTo(1)
+        assertThat(configure("", "ability", include = false, confirm = true).statusCode()).isEqualTo(200)
+        assertThat(json.readTree(request(base).body()).get("scores").size()).isZero()
+    }
+    @Test
+    @EnabledIfEnvironmentVariable(named = "FORENA_EVALUATION_BROWSER_TEST", matches = "true")
+    fun `browser player evaluation flows through actual API and database`() {
+        val team = managedTeam()
+        rosterMember(child1); rosterMember(child2)
+        admin.update("update forena.activity set activity_type_id='00000000-0000-4000-8000-000000000001' where id=?", activity)
+        admin.update("update forena.invitation set activity_role='participant',response='accepted',responded_at=now() where activity_id=?", activity)
+        val process = ProcessBuilder("node", "scripts/migration/player-evaluation-e2e.mjs")
+            .directory(Path.of("..").toFile()).redirectErrorStream(true)
+            .redirectOutput(Path.of("target/evaluation-browser.log").toFile())
+        process.environment().putAll(mapOf(
+            "FORENA_EVALUATION_API" to "http://127.0.0.1:${environment.getRequiredProperty("local.server.port")}",
+            "FORENA_EVALUATION_FRONTEND" to "http://127.0.0.1:3001",
+            "FORENA_EVALUATION_EMAIL" to "$parent@example.invalid",
+            "FORENA_EVALUATION_TEAM" to team.toString(), "FORENA_EVALUATION_ACTIVITY" to activity.toString(),
+        ))
+        val running = process.start()
+        try {
+            assertThat(running.waitFor(120, SECONDS)).isTrue()
+            assertThat(running.exitValue()).withFailMessage(Files.readString(Path.of("target/evaluation-browser.log"))).isZero()
+        } finally { if (running.isAlive) running.destroyForcibly() }
+        assertThat(admin.queryForObject("select count(*) from forena.player_evaluation where team_id=?", Long::class.java, team)).isZero()
+        assertThat(admin.queryForObject("select count(*) from forena.invitation where activity_id=? and response='accepted'", Long::class.java, activity)).isEqualTo(4)
+    }
+    @Test fun `player evaluation reports and training use current team scores and validate selection and thresholds`() {
+        val team = managedTeam()
+        rosterMember(child1); rosterMember(child2)
+        // Invited outsider is borrowed: never require membership to include their yes response.
+        admin.update("update forena.activity set activity_type_id='00000000-0000-4000-8000-000000000001' where id=?", activity)
+        admin.update("update forena.invitation set activity_role='participant',response='accepted',responded_at=now() where activity_id=?", activity)
+        val base = "/api/teams/$team/player-evaluation"
+        val metric = UUID.randomUUID()
+        val indicators = (1..3).map { UUID.randomUUID() }
+        val metrics = listOf(mapOf("id" to metric, "name" to "Teknik", "kind" to "ability")) + indicators.map { mapOf("id" to it, "name" to "Driv", "kind" to "development") }
+        var response = request(base, json.writeValueAsString(mapOf("enabled" to true, "metrics" to metrics, "threshold" to 7, "defaultGroups" to 2)))
+        assertThat(response.statusCode()).withFailMessage(response.body()).isEqualTo(200)
+        val revision = json.readTree(response.body()).get("revision").asString()
+        val scores = listOf(own to 9, child1 to 5, child2 to 3).map { (person, value) -> mapOf("personId" to person, "metricId" to metric, "value" to value) } +
+            listOf(child1, child2).flatMap { person -> indicators.mapIndexed { index, id -> mapOf("personId" to person, "metricId" to id, "value" to if (person == child1) listOf(6, 7, 7)[index] else 7) } }
+        response = request("$base/scores", json.writeValueAsString(mapOf("revision" to revision, "scores" to scores)))
+        assertThat(response.statusCode()).withFailMessage(response.body()).isEqualTo(200)
+        val reportPath = "/api/teams/$team/read-views"
+        val report = request(reportPath)
+        assertThat(report.statusCode()).withFailMessage(report.body()).isEqualTo(200)
+        val views = json.readTree(report.body()).single().get("views")
+        val grouped = views.single { it.get("type").asString() == "groupedList" }.get("groups")
+        assertThat(grouped.toList().map { it.get("rows").size() }).containsExactly(2, 1)
+        assertThat(grouped.last().get("rows").single().get("markers").size()).isEqualTo(1)
+        val allRows = grouped.flatMap { it.get("rows").toList() }
+        assertThat(allRows.single { it.get("id").asString() == child1.toString() }.get("markers").size()).isZero()
+        assertThat(allRows.map { it.get("id").asString() }).doesNotContain(other.toString())
+        val trainingPath = "$reportPath?activityId=$activity"
+        val training = request(trainingPath)
+        assertThat(training.statusCode()).withFailMessage(training.body()).isEqualTo(200)
+        val missing = json.readTree(training.body()).single().get("views").single { it.get("type").asString() == "list" }
+        assertThat(missing.get("rows").single().get("id").asString()).isEqualTo(other.toString())
+        assertThat(request("$trainingPath&groupCount=1").statusCode()).isEqualTo(400)
+        assertThat(request("$trainingPath&groupCount=4").statusCode()).isEqualTo(400)
+        assertThat(request("$trainingPath&groupCount=2.5").statusCode()).isEqualTo(400)
+        assertThat(request("$trainingPath&personIds=${UUID.randomUUID()}").statusCode()).isEqualTo(400)
+        val balanced = json.readTree(request("$trainingPath&mode=balanced").body()).single().get("views").single { it.get("type").asString() == "groupedList" }
+        assertThat(balanced.get("groups").flatMap { it.get("rows").toList() }.all { it.get("markers").isEmpty }).isTrue()
+        assertThat(request("$trainingPath&personIds=").statusCode()).isEqualTo(200)
+        // Selection is a read: invitations and attendance remain unchanged.
+        assertThat(admin.queryForObject("select count(*) from forena.invitation where activity_id=? and response='accepted'", Long::class.java, activity)).isEqualTo(4)
+        assertThat(admin.queryForObject("select count(*) from forena.attendance_report where activity_id=?", Long::class.java, activity)).isZero()
+        val current = json.readTree(request(base).body()).get("revision").asString()
+        for (threshold in listOf(-1, 11)) assertThat(request(base, json.writeValueAsString(mapOf("revision" to current, "enabled" to true, "metrics" to metrics, "threshold" to threshold))).statusCode()).isEqualTo(400)
+    }
+    @Test fun `player evaluation is private revision checked and destructively disabled in one transaction`() {
+        val team = managedTeam()
+        rosterMember(child1)
+        rosterMember(child2)
+        val base = "/api/teams/$team/player-evaluation"
+        val metric = UUID.randomUUID()
+        val indicator = UUID.randomUUID()
+        fun configure(revision: String?, enabled: Boolean = true, confirm: Boolean = false, kind: String = "ability") = json.writeValueAsString(mapOf(
+            "revision" to revision, "enabled" to enabled, "confirmDeletion" to confirm,
+            "defaultGroups" to 2, "threshold" to 7,
+            "metrics" to listOf(mapOf("id" to metric, "name" to "Teknik", "kind" to kind), mapOf("id" to indicator, "name" to "Driv", "kind" to "development"))))
+        assertThat(json.readTree(request(base).body()).get("enabled").asBoolean()).isFalse()
+        assertThat(json.readTree(request("/api/teams/$team/read-views").body()).size()).isZero()
+        var response = request(base, configure(null))
+        assertThat(response.statusCode()).withFailMessage(response.body()).isEqualTo(200)
+        val first = json.readTree(response.body()).get("revision").asString()
+        fun scores(revision: String, value: Double = 0.0, person: UUID = child1) = json.writeValueAsString(mapOf("revision" to revision,
+            "scores" to listOf(mapOf("personId" to person, "metricId" to metric, "value" to value))))
+        for (value in listOf(-1.0, 11.0, 7.5)) assertThat(request("$base/scores", scores(first, value)).statusCode()).isEqualTo(400)
+        assertThat(request("$base/scores", scores(first, person = UUID.randomUUID())).statusCode()).isEqualTo(400)
+        response = request("$base/scores", scores(first))
+        assertThat(response.statusCode()).withFailMessage(response.body()).isEqualTo(200)
+        val second = json.readTree(response.body()).get("revision").asString()
+        assertThat(request("$base/scores", scores(first, 10.0)).statusCode()).isEqualTo(409)
+        assertThat(json.readTree(request(base).body()).get("scores").single().get("value").asDouble()).isZero()
+        // A leader without any management permission can read/write scores, but cannot configure.
+        admin.update("delete from forena.organization_member where organization_id=? and subject=?", organization, parent)
+        rosterMember(own, "leader")
+        assertThat(request(base).statusCode()).isEqualTo(200)
+        assertThat(request(base, configure(second)).statusCode()).isEqualTo(403)
+        response = request("$base/scores", scores(second, 10.0))
+        assertThat(response.statusCode()).withFailMessage(response.body()).isEqualTo(200)
+        val third = json.readTree(response.body()).get("revision").asString()
+        admin.update("delete from forena.team_membership where team_id=? and role='leader'", team)
+        assertThat(request(base).statusCode()).isEqualTo(403)
+        assertThat(request("$base/scores", scores(third)).statusCode()).isEqualTo(403)
+        assertThat(request("/api/teams/$team/read-views").body()).isEqualTo("[]")
+        admin.update("insert into forena.organization_member(organization_id,subject,role) values(?,?,'admin')", organization, parent)
+        assertThat(request(base, configure(third, enabled = false)).statusCode()).isEqualTo(400)
+        assertThat(json.readTree(request(base).body()).get("enabled").asBoolean()).isTrue()
+        assertThat(request(base, configure(third, enabled = false, confirm = true)).statusCode()).isEqualTo(200)
+        assertThat(admin.queryForObject("select count(*) from forena.player_evaluation_score where team_id=?", Long::class.java, team)).isZero()
+        assertThat(request("$base/scores", scores(third)).statusCode()).isEqualTo(403)
+        assertThat(request(base, configure(null)).statusCode()).isEqualTo(200)
+        assertThat(json.readTree(request(base).body()).get("scores").size()).isZero()
+        assertThat(request("$base/scores", scores(third)).statusCode()).isEqualTo(409)
+        assertThat(admin.queryForObject("select count(*) from forena.team_membership where team_id=?", Long::class.java, team)).isEqualTo(3)
+    }
     @Autowired lateinit var events: org.springframework.context.ApplicationEventPublisher
     @Autowired lateinit var scheduledInvitations: se.forena.api.activities.ScheduledInvitationService
     @Autowired lateinit var capabilityRuntime: se.forena.api.extensions.CapabilityRuntime

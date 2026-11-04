@@ -1233,3 +1233,11 @@ button:disabled { cursor:not-allowed; }
 .squad-select-field { display:grid; gap:8px; min-width:0; }
 .squad-fieldset>.squad-checkbox { display:flex; align-items:flex-start; gap:10px; }
 .squad-checkbox>input[type="checkbox"] { flex:0 0 20px; width:20px; height:20px; min-height:20px; margin:2px 0 0; padding:0; }
+
+.extension-view-groups { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); }
+.extension-read-view { min-width: 0; margin-block: 1rem; }
+.extension-read-view li { margin-block: .75rem; overflow-wrap: anywhere; }
+.extension-view-table { max-width: 100%; overflow-x: auto; }
+.extension-view-table th, .extension-view-table td { padding: .75rem; text-align: left; vertical-align: top; }
+.extension-view-table th { min-width: 7rem; }
+.extension-view-table table { border-collapse: collapse; width: 100%; }

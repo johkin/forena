@@ -91,6 +91,14 @@ class AdministrationService(
     }
 
     @Transactional(readOnly = true)
+    fun canAdministerTeam(actor: Actor, id: UUID): Boolean {
+        sessions.requireActive(actor)
+        val team = teams.findById(id) ?: throw NoSuchElementException()
+        return clubRole(actor, team.organizationId) ||
+            team.sectionId?.let { sectionRole(actor, it) } == true || teamRole(actor, team)
+    }
+
+    @Transactional(readOnly = true)
     fun authorizeMutation(actor: Actor, authority: AdministrationAuthority) {
         sessions.requireActive(actor)
         when (authority) {

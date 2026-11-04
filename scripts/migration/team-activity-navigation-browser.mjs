@@ -45,7 +45,9 @@ try {
       else if ([
         `/api/teams/${teamId}/signals`, `/api/teams/${teamId}/follow-up`,
         `/api/teams/${teamId}/discipline-players`, `/api/teams/${teamId}/capabilities`,
+        `/api/teams/${teamId}/read-views`,
       ].includes(path)) json = [];
+      else if (path === `/api/teams/${teamId}/player-evaluation`) return route.fulfill({ status: 403, json: { error: 'Spelarutvärdering är inte tillgänglig i detta exempel.' } });
       else if (path === `/api/teams/${teamId}/information-report`) json = {
         timeZone: team.timeZone, season: '2030', fromDate: '2030-01-01', untilDate: '2031-01-01',
         report: { teamId, from: '2029-12-31T23:00:00Z', until: '2030-12-31T23:00:00Z', players: [], entries: [] },

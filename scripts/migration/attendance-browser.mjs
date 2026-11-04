@@ -151,6 +151,7 @@ try {
     if (path === '/api/auth/session') return route.fulfill({ json: { user: { id: account, email: 'test@example.invalid' } } });
     if (path === '/api/admin/overview') return route.fulfill({ json: { platformAdmin: false, canBootstrap: false, platformAdministrators: [], clubs: [] } });
     if (path === '/api/me/managed-teams') return route.fulfill({ json: [] });
+    if (path === `/api/teams/${id}/read-views`) return route.fulfill({ json: [] });
     if (path === '/api/me/overview') return route.fulfill({ json: {
       reference_time: new Date().toISOString(), activities: [], organizations: [], teams: [], calendar_people: [], calendar_teams: [],
     } });

@@ -90,6 +90,7 @@ try {
     const req = route.request(); const url = new URL(req.url());
     if (url.pathname === '/api/me/roster-invitation') return route.fulfill({ status: 204 });
     if (url.pathname === '/api/me/managed-teams') return route.fulfill({ json: [] });
+    if (url.pathname === `/api/teams/${team}/player-evaluation`) return route.fulfill({ status: 403, json: { error: 'Spelarutvärdering är inte tillgänglig i detta exempel.' } });
     if (url.pathname === '/api/auth/session') return route.fulfill({ json: { user: { id: account, email: 'test@example.invalid' } } });
     if (url.pathname === '/api/admin/overview') return route.fulfill({ json: { platformAdmin: false, canBootstrap: false, platformAdministrators: [], clubs: [] } });
     if (url.pathname === '/api/me/overview') return route.fulfill({ json: {

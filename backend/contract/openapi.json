@@ -1880,6 +1880,133 @@
         },
         "type": "object"
       },
+      "EvaluationConfiguration": {
+        "properties": {
+          "confirmDeletion": {
+            "type": "boolean"
+          },
+          "defaultGroups": {
+            "format": "double",
+            "type": "number"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/EvaluationMetric"
+            },
+            "type": "array"
+          },
+          "revision": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "threshold": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "EvaluationMetric": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "ability",
+              "development"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "EvaluationScore": {
+        "properties": {
+          "metricId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "personId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "value": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "EvaluationScoreCommand": {
+        "properties": {
+          "revision": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "scores": {
+            "items": {
+              "$ref": "#/components/schemas/EvaluationScore"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "EvaluationSnapshot": {
+        "properties": {
+          "canConfigure": {
+            "type": "boolean"
+          },
+          "defaultGroups": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/EvaluationMetric"
+            },
+            "type": "array"
+          },
+          "players": {
+            "items": {
+              "$ref": "#/components/schemas/DisciplinePlayer"
+            },
+            "type": "array"
+          },
+          "revision": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scores": {
+            "items": {
+              "$ref": "#/components/schemas/EvaluationScore"
+            },
+            "type": "array"
+          },
+          "threshold": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
       "FieldCondition": {
         "properties": {
           "field": {
@@ -2919,6 +3046,88 @@
           }
         }
       },
+      "ReadContribution": {
+        "properties": {
+          "capabilityKey": {
+            "type": "string"
+          },
+          "filters": {
+            "items": {
+              "$ref": "#/components/schemas/ViewFilter"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "order": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "placement": {
+            "enum": [
+              "activity",
+              "teamReport"
+            ],
+            "type": "string"
+          },
+          "schemaVersion": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "views": {
+            "items": {
+              "$ref": "#/components/schemas/ReadView"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "ReadView": {
+        "properties": {
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/ViewColumn"
+            },
+            "type": "array"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/ViewGroup"
+            },
+            "type": "array"
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ViewRow"
+            },
+            "type": "array"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "list",
+              "groupedList",
+              "table",
+              "information"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "RegisterRequest": {
         "properties": {
           "email": {
@@ -3444,6 +3653,134 @@
       },
       "UserVerificationRequirement": {
         "type": "string"
+      },
+      "ViewCell": {
+        "properties": {
+          "number": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "text": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "type": {
+            "enum": [
+              "text",
+              "number",
+              "missing"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ViewColumn": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ViewFilter": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "maximum": {
+            "format": "int32",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "minimum": {
+            "format": "int32",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/FieldOption"
+            },
+            "type": "array"
+          },
+          "selected": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "integer",
+              "choice",
+              "people"
+            ],
+            "type": "string"
+          },
+          "value": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "ViewGroup": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ViewRow"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ViewRow": {
+        "properties": {
+          "cells": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ViewCell"
+            },
+            "type": "object"
+          },
+          "id": {
+            "type": "string"
+          },
+          "markers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -6980,6 +7317,208 @@
         },
         "tags": [
           "activity-management-controller"
+        ]
+      }
+    },
+    "/api/teams/{teamId}/player-evaluation": {
+      "get": {
+        "operationId": "getPlayerEvaluation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "teamId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "activityId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationSnapshot"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "evaluation-controller"
+        ]
+      },
+      "put": {
+        "operationId": "configurePlayerEvaluation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "teamId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvaluationConfiguration"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationSnapshot"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "evaluation-controller"
+        ]
+      }
+    },
+    "/api/teams/{teamId}/player-evaluation/scores": {
+      "put": {
+        "operationId": "savePlayerScores",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "teamId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "activityId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvaluationScoreCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationSnapshot"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "evaluation-controller"
+        ]
+      }
+    },
+    "/api/teams/{teamId}/read-views": {
+      "get": {
+        "operationId": "getExtensionReadViews",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "teamId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "activityId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "groupCount",
+            "required": false,
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "mode",
+            "required": false,
+            "schema": {
+              "default": "ability",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "personIds",
+            "required": false,
+            "schema": {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "type": "array"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReadContribution"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "read-view-controller"
         ]
       }
     },

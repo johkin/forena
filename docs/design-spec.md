@@ -20,6 +20,18 @@ Deltagargränsen visas med `ActivityCapacity`: numeriskt antal och en progressba
 med gemensamma färg-/formregler för kapacitet. Överbeläggning behåller faktiskt
 antal i text medan baren stannar vid full. Obegränsade aktiviteter saknar bar.
 
+Spelarutvärdering använder delade `PlayerEvaluation` och `ExtensionReadViews`.
+Lagmenyn visar ingången för lagets ledare och administratörer. Lagadmin kan
+aktivera, ändra mätpunkter/regler och bekräfta avstängning som raderar
+utvärderingsdata. Ledare kan ändra gemensamma heltalsbetyg 0–10. Konflikt
+bevarar utkastet tills användaren uttryckligen läser om värdena.
+Serverbeskrivna listor, grupperade listor, tabeller och informationsmeddelanden
+delar renderare i båda apparna. Aktivitetsbidraget heter Gruppförslag och
+rapporten visar hela aktuella truppen. Ändrade filter räknar om förslaget;
+övriga ändringar hämtas först med Uppdatera. Inga gruppflyttar eller sparade
+indelningar ingår. Alla vytyper, rollvarianter och fel-/konflikttillstånd
+visas med produktionskomponenter på `/components`.
+
 ## Komponentsidan är den gemensamma UI-referensen
 
 Alla UI-element som används i systemet ska finnas representerade på `/components`.

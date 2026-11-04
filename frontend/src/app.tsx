@@ -17,6 +17,7 @@ import { ActivityDetails } from "./activity-details";
 import { TeamRosterNavigation, TeamRosterPage } from "./team-roster";
 import { MyActivitiesPage } from "./my-activities";
 import { MyTeamsPanel } from "../../src/components/my-teams-panel";
+import { PlayerEvaluation } from "../../src/components/player-evaluation";
 import { loadMyTeams } from "./my-teams";
 import { AppHeaderFrame } from "../../src/components/app-header-frame";
 import { AppShellFrame } from "../../src/components/app-shell-frame";
@@ -42,7 +43,7 @@ function Frame({ children, email, logout, request }: { children: ReactNode; emai
   const administration = useAdministrationAccess()?.data;
   const system = administration?.platformAdmin ?? false;
   const systemWorkspace = system && (pathname.startsWith("/system") || pathname === "/administration");
-  const teamMatch = /^\/teams\/([^/]+)(?:\/(?:members|settings))?$/.exec(pathname);
+  const teamMatch = /^\/teams\/([^/]+)(?:\/(?:members|settings|evaluation))?$/.exec(pathname);
   const teamId = z.uuid().safeParse(teamMatch?.[1]);
   const readMyTeams = useCallback((signal: AbortSignal) => {
     if (!request) return Promise.reject(new Error("Inloggning krävs."));
@@ -198,7 +199,10 @@ export function App({ config }: { config: PublicConfig }) {
   const settingsMatch = /^\/teams\/([^/]+)\/settings$/.exec(path);
   const settingsTeam = z.uuid().safeParse(settingsMatch?.[1]);
   const settingsPage = Boolean(settingsMatch && settingsTeam.success);
-  const knownPath = settingsPage || rosterPage || administrationPage || managementPage || securityPage || homePath || path === "/migration/participation" || Boolean(match);
+  const evaluationMatch = /^\/teams\/([^/]+)\/evaluation$/.exec(path);
+  const evaluationTeam = z.uuid().safeParse(evaluationMatch?.[1]);
+  const evaluationPage = Boolean(evaluationMatch && evaluationTeam.success);
+  const knownPath = evaluationPage || settingsPage || rosterPage || administrationPage || managementPage || securityPage || homePath || path === "/migration/participation" || Boolean(match);
   async function logout() {
     setPending(true); setError(undefined);
     try {
@@ -212,9 +216,9 @@ export function App({ config }: { config: PublicConfig }) {
     <main tabIndex={-1} className={administrationPage ? "application-page" : `content ${homePath ? "personal-dashboard" : ""}`} key={auth.session.user.id}>
       <PendingRosterInvitation key={auth.session.user.id} request={request} onAccepted={team => navigate(`/teams/${team}`)} />
       {validActivity.success && !managementPage ? <OverviewBackLink linkComponent={AppLink} /> : null}
-      {!homePath && !securityPage && !managementPage && !administrationPage && !rosterPage && !settingsPage ? <><p className="eyebrow">Personligt</p><h1>{!knownPath ? "Sidan finns inte" : "Kallelser"}</h1></> : null}
+      {!homePath && !securityPage && !managementPage && !administrationPage && !rosterPage && !settingsPage && !evaluationPage ? <><p className="eyebrow">Personligt</p><h1>{!knownPath ? "Sidan finns inte" : "Kallelser"}</h1></> : null}
       {error ? <p role="alert">{error}</p> : null}
-      {settingsPage && settingsTeam.success ? <TeamActivitySettingsPage key={settingsTeam.data} request={request} teamId={settingsTeam.data} /> : rosterPage && rosterTeam.success ? <TeamRosterPage key={rosterTeam.data} request={request} teamId={rosterTeam.data} /> : administrationPage ? <Administration request={request} path={path + location.search} onNavigate={navigate} linkComponent={AppLink} /> : managementPage ? <ActivityManagement key={location.search} request={request}
+      {evaluationPage && evaluationTeam.success ? <><AppLink href={`/teams/${evaluationTeam.data}`}>← Tillbaka till laget</AppLink><PlayerEvaluation key={evaluationTeam.data} teamId={evaluationTeam.data} request={request} /></> : settingsPage && settingsTeam.success ? <TeamActivitySettingsPage key={settingsTeam.data} request={request} teamId={settingsTeam.data} /> : rosterPage && rosterTeam.success ? <TeamRosterPage key={rosterTeam.data} request={request} teamId={rosterTeam.data} /> : administrationPage ? <Administration request={request} path={path + location.search} onNavigate={navigate} linkComponent={AppLink} /> : managementPage ? <ActivityManagement key={location.search} request={request}
         initialTeamId={managementTeam.success ? managementTeam.data : undefined}
         createOnLoad={managementTeam.success && managementQuery.get("create") === "1"}
         onEditorClose={() => { if (managementTeam.success && managementQuery.get("create") === "1") navigate(`/activities/manage?team=${managementTeam.data}`, { replace: true }); }} /> : securityPage ? <><PasskeyRegistration pending={pending} registered={passkeyCreatedFor === accountId} supported={Boolean(window.PublicKeyCredential && navigator.credentials)} onRegister={() => void (async () => {
