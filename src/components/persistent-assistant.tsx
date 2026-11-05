@@ -478,10 +478,10 @@ export function AssistantWorkspace({
         />
         <button
           type="submit"
-          aria-label="Skicka"
           disabled={pending || Boolean(readOnly) || !question.trim()}
         >
-          ↑
+          <span className="sr-only">Skicka</span>
+          <span aria-hidden="true">↑</span>
         </button>
       </form>
       <small className="assistant-disclaimer">
