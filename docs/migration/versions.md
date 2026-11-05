@@ -105,12 +105,14 @@ Miljöns proxy och TLS-kontroll behölls. `supabase.com/changelog.md` och Java.n
 
 ## Springdoc i första verksamhets-API:t
 
-`backend` låser `springdoc-openapi-starter-webmvc-api` till **3.1.1** med
+`backend` låser `springdoc-openapi-starter-webmvc-ui` till **3.1.1** med
 Spring Boot 4.1.0, Kotlin 2.4.20 och Jackson 3.1.4 från Boot. Den officiella
 [dokumentationen](https://springdoc.org/) anger springdoc 3.x för Boot 4;
 Maven Central publicerar 3.1.1 som stabil version. Kompatibiliteten verifieras
-här genom riktig HTTP-generering, JWT-skydd, nullable-/required-fält, enums och
-körning av API:ts integrationstester. Ingen Swagger UI- eller MCP-modul införs.
+här genom riktig HTTP-generering, sessionsskydd, nullable-/required-fält, enums och
+körning av API:ts integrationstester. Swagger UI serveras under `/api/swagger-ui/`
+och specen på `/api/v3/api-docs`; båda är publika. Verksamhets-API:t kräver
+fortsatt inloggad webbsession.
 
 ## Spring Data JDBC i verksamhets-API:t
 

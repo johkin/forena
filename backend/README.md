@@ -142,6 +142,26 @@ med `FORENA_OAUTH_CLIENT_ID`, `FORENA_OAUTH_CLIENT_REDIRECT` och valfri
 Inga konton importeras automatiskt och e-postlikhet kopplar inga identiteter.
 Liquibase-historik och historiska databasnamn bevaras.
 
+## OpenAPI och Swagger UI
+
+Öppna `/api/swagger-ui.html` på webbappens origin
+(lokalt `http://localhost:3000/api/swagger-ui.html`). Springdoc serverar UI och
+alla dess resurser under `/api/swagger-ui/`; både Vite och produktionsproxyn
+kan därför använda sin befintliga `/api`-routing.
+
+Specifikationen finns på `/api/v3/api-docs` (JSON) och `/api/v3/api-docs.yaml`.
+UI-konfigurationen finns på `/api/v3/api-docs/swagger-config`. Dokumentationen är
+publik och kan läsas utan inloggning. Verksamhets-API:ts behörighetskrav gäller
+fortsatt. `/v3/api-docs` används inte längre. `v3` är en sökvägskonvention för OpenAPI, inte verksamhets-API:ts version.
+
+Swagger UI använder browserns sessionscookie för anrop på samma origin.
+Skrivningar kräver fortsatt korrekt Origin samt `X-Forena-Request: 1` och
+`X-Forena-Account` enligt API:ts transportregler. UI:t tillför inte dessa headers
+automatiskt. Extern validator och Swagger Petstore-exempel är avstängda.
+
+`./mvnw verify` exporterar specen till `target/openapi.json`.
+`contract/` innehåller den versionshanterade exporten och genererade TypeScript-typer.
+
 ## Verifiering
 
 ```sh

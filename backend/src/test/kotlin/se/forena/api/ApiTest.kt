@@ -3285,8 +3285,8 @@ class ApiTest {
     }
 
     @Test fun `springdoc exports the implemented typed authenticated API for client generation`() {
-        assertThat(request("/v3/api-docs", cookie=null).statusCode()).isEqualTo(401)
-        val result = request("/v3/api-docs")
+        assertThat(request("/api/v3/api-docs", cookie=null).statusCode()).isEqualTo(200)
+        val result = request("/api/v3/api-docs")
         assertThat(result.statusCode()).isEqualTo(200)
         val document = json.readTree(result.body())
         val update = document.get("paths").get("/api/invitations/{invitationId}/respond").get("put")

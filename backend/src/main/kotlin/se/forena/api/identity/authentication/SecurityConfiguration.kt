@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.annotation.Order
 import org.springframework.dao.DataAccessException
+import org.springframework.http.HttpMethod.GET
 import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.security.authentication.BadCredentialsException
 import org.springframework.security.authentication.ott.OneTimeTokenAuthenticationToken
@@ -149,6 +150,8 @@ class SecurityConfiguration {
             }
             .authorizeHttpRequests {
                 it.dispatcherTypeMatchers(ERROR).permitAll()
+                it.requestMatchers(GET, "/api/swagger-ui.html", "/api/swagger-ui/**",
+                    "/api/v3/api-docs", "/api/v3/api-docs.yaml", "/api/v3/api-docs/**").permitAll()
                 it.requestMatchers("/actuator/health", AuthenticationEndpoints.login.path, AuthenticationEndpoints.logout.path, "/api/auth/register", "/api/auth/email/verify",
                     "/api/auth/roster-invitation", "/api/auth/password/reset-request", "/api/auth/password/reset", AuthenticationEndpoints.magic.path, AuthenticationEndpoints.magicVerify.path,
                     AuthenticationEndpoints.passkeyOptions.path, AuthenticationEndpoints.passkeyVerify.path, "/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/api/mcp").permitAll()
