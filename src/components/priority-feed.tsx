@@ -1,6 +1,7 @@
 "use client";
 
 import type { Activity, TeamTask } from "@/domain/club";
+import { getFormatter } from "@/lib/date-time";
 
 type Props = {
   activity: Activity;
@@ -19,6 +20,7 @@ type FeedItem = {
 };
 
 const labels = { invitation: "Kallelse", task: "Uppgift" } as const;
+const LOCAL_TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 export function PriorityFeed({ activity, pendingInvitations, tasks, onOpenActivity }: Props) {
   const items: FeedItem[] = [];
@@ -29,7 +31,7 @@ export function PriorityFeed({ activity, pendingInvitations, tasks, onOpenActivi
       kind: "invitation",
       title: `${pendingInvitations} obesvarade kallelser till ${activity.title}`,
       meta: activity.responseDueAt
-        ? `Svara senast ${new Intl.DateTimeFormat("sv-SE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(activity.responseDueAt))}`
+        ? `Svara senast ${getFormatter(LOCAL_TIME_ZONE, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(activity.responseDueAt))}`
         : "Svar saknas",
       dueAt: activity.responseDueAt ? new Date(activity.responseDueAt).getTime() : new Date(activity.startsAt).getTime(),
       onClick: () => onOpenActivity(activity),
@@ -41,7 +43,7 @@ export function PriorityFeed({ activity, pendingInvitations, tasks, onOpenActivi
       id: `task:${task.id}`,
       kind: "task",
       title: task.title,
-      meta: `${task.createdByLabel} · senast ${new Intl.DateTimeFormat("sv-SE", { day: "numeric", month: "long" }).format(new Date(task.dueAt))}`,
+      meta: `${task.createdByLabel} · senast ${getFormatter(LOCAL_TIME_ZONE, { day: "numeric", month: "long" }).format(new Date(task.dueAt))}`,
       dueAt: new Date(task.dueAt).getTime(),
     });
   }
