@@ -8,3 +8,6 @@
 ## 2025-02-12 - Cached Intl.DateTimeFormat
 **Learning:** `Intl.DateTimeFormat` instantiations are heavily used in React component render cycles (e.g. lists). Doing `new Intl.DateTimeFormat` inline is extremely slow (tested ~59ms vs ~1.5ms for 100 iterations).
 **Action:** Use the pre-existing cached utility `getFormatter(timeZone, options)` exported from `src/lib/date-time.ts` everywhere possible instead of `new Intl.DateTimeFormat`.
+## 2024-03-24 - Intl.DateTimeFormat instantiation in PriorityFeed component
+**Learning:** Frequent instantiations of `Intl.DateTimeFormat` during render cycles is computationally expensive.
+**Action:** Use the cached `getFormatter` utility from `src/lib/date-time.ts` instead.
