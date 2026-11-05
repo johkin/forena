@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import type { NavigationLink } from "./navigation-link";
 
-const localDestination = z.string().startsWith("/").refine(value => !value.startsWith("//"));
+const localDestination = z.string().startsWith("/").refine(value => !value.startsWith("//") && !value.startsWith("/\\"));
 export const myTeamsSchema = z.object({
   organizations: z.array(z.object({ id: z.string(), name: z.string(), href: localDestination })),
   teams: z.array(z.object({
