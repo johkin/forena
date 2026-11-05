@@ -19,12 +19,17 @@ import io.swagger.v3.oas.models.security.SecurityRequirement
 import io.swagger.v3.oas.models.security.SecurityScheme
 import java.lang.reflect.Type
 import org.springdoc.core.customizers.OpenApiCustomizer
+import org.springframework.aot.hint.BindingReflectionHintsRegistrar
+import org.springframework.aot.hint.RuntimeHints
+import org.springframework.aot.hint.RuntimeHintsRegistrar
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.ImportRuntimeHints
 import org.springframework.context.annotation.Configuration
 import se.forena.api.http.ApiError
 import se.forena.api.identity.BrowserSessionSettings
 
 @Configuration(proxyBeanMethods = false)
+@ImportRuntimeHints(AuthenticationDocumentationHints::class)
 class AuthApiDocumentation {
     @Bean fun apiSecurity(settings: BrowserSessionSettings) = OpenApiCustomizer { api ->
         fun schema(type: Type): Schema<*> {
@@ -82,5 +87,15 @@ class AuthApiDocumentation {
                     .addHeaderObject("Retry-After", Header().description("Seconds until retry").schema(IntegerSchema())))
             }
         } }
+    }
+}
+
+/** Filter payloads have no MVC handler for Spring AOT to discover their binding metadata. */
+class AuthenticationDocumentationHints : RuntimeHintsRegistrar {
+    override fun registerHints(hints: RuntimeHints, classLoader: ClassLoader?) {
+        val types = AuthenticationEndpoints.all.flatMap { endpoint ->
+            listOfNotNull(endpoint.request, endpoint.response)
+        }.toTypedArray()
+        BindingReflectionHintsRegistrar().registerReflectionHints(hints.reflection(), *types)
     }
 }

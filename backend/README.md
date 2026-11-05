@@ -162,6 +162,19 @@ automatiskt. Extern validator och Swagger Petstore-exempel är avstängda.
 `./mvnw verify` exporterar specen till `target/openapi.json`.
 `contract/` innehåller den versionshanterade exporten och genererade TypeScript-typer.
 
+Springdoc 3.1.1 läser Spring-konverterarnas interna register via reflection.
+Native-bygget registrerar därför fältet `GenericConversionService$Converters.converters`
+samt Kotlin-reflections dynamiskt laddade `EnumEntriesKt.enumEntries(Enum[])`
+i `src/main/resources/META-INF/native-image/se.forena/openapi/reachability-metadata.json`,
+tillsammans med Springdocs sorterings-/typmixins och Jacksons `JsonParser.NumberType`.
+Autentiseringsfiltrens typade dokumentationsmodeller registreras genom Springs
+`BindingReflectionHintsRegistrar`, eftersom de saknar MVC-handlers.
+`ApiDocumentation` registrerar dessutom de nyare Swagger-schemaklasser som
+saknas i springdoc-versionens egna native-hints.
+`local-smoke.py` jämför hela den publika specen med kontraktet i JVM-, AOT- och
+native-körning och hämtar även UI-resurser och YAML. Deployflödet jämför specen
+på den förberedda Vercel-deploymenten före publicering.
+
 ## Verifiering
 
 ```sh

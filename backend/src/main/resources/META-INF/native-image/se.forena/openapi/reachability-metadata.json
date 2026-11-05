@@ -1,0 +1,62 @@
+{
+  "reflection": [
+    {
+      "type": "org.springframework.core.convert.support.GenericConversionService$Converters",
+      "fields": [
+        {
+          "name": "converters"
+        }
+      ]
+    },
+    {
+      "type": "kotlin.enums.EnumEntriesKt",
+      "methods": [
+        {
+          "name": "enumEntries",
+          "parameterTypes": [
+            "java.lang.Enum[]"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.springdoc.core.mixins.SchemaTypeMixin",
+      "allDeclaredConstructors": true,
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "org.springdoc.core.mixins.SortedOpenAPIMixin",
+      "allDeclaredConstructors": true,
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "org.springdoc.core.mixins.SortedOpenAPIMixin31",
+      "allDeclaredConstructors": true,
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "org.springdoc.core.mixins.SortedSchemaMixin",
+      "allDeclaredConstructors": true,
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "org.springdoc.core.mixins.SortedSchemaMixin31",
+      "allDeclaredConstructors": true,
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "org.springdoc.core.deserializers.TypeSetDeserializer",
+      "allDeclaredConstructors": true,
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "tools.jackson.core.JsonParser"
+    },
+    {
+      "type": "tools.jackson.core.JsonParser$NumberType",
+      "allDeclaredConstructors": true,
+      "allDeclaredMethods": true,
+      "allDeclaredFields": true
+    }
+  ]
+}

@@ -151,6 +151,15 @@ jobs:
             if (health.status !== "UP" || remote.version !== build.version) process.exit(1);
           '
           vercel curl "$DEPLOYMENT_URL/login" --scope "$VERCEL_ORG_ID" -- --silent --show-error --fail --max-time 60 --output /dev/null
+          vercel curl "$DEPLOYMENT_URL/api/v3/api-docs" --scope "$VERCEL_ORG_ID" -- --silent --show-error --fail --max-time 90 > "$RUNNER_TEMP/openapi.json"
+          OPENAPI_FILE="$RUNNER_TEMP/openapi.json" node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            import { deepStrictEqual } from "node:assert";
+            const actual = JSON.parse(readFileSync(process.env.OPENAPI_FILE, "utf8"));
+            const expected = JSON.parse(readFileSync("backend/contract/openapi.json", "utf8"));
+            deepStrictEqual(actual, expected, "Deployed OpenAPI differs from the generated contract");
+          '
+          vercel curl "$DEPLOYMENT_URL/api/swagger-ui/index.html" --scope "$VERCEL_ORG_ID" -- --silent --show-error --fail --max-time 60 --output /dev/null
 
       - name: Publish the tested deployment if it is still current main
         env:

@@ -218,6 +218,24 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
                         assert int(response.headers["Retry-After"]) > 0
                     return json.load(response)
 
+            # Documentation must work in the packaged JVM, AOT and native runtimes,
+            # before any account or authenticated session exists.
+            specification = call("/api/v3/api-docs", bound=False)
+            (ROOT / "backend/target/runtime-openapi.json").write_text(json.dumps(specification, indent=2) + "\n")
+            expected_specification = json.loads((ROOT / "backend/contract/openapi.json").read_text())
+            assert specification == expected_specification, "Runtime OpenAPI differs from the generated API contract"
+            configuration = call("/api/v3/api-docs/swagger-config", bound=False)
+            assert configuration["url"] == "/api/v3/api-docs"
+            for path, expected_type in (("/api/swagger-ui.html", "text/html"),
+                                        ("/api/swagger-ui/swagger-ui-bundle.js", "javascript"),
+                                        ("/api/swagger-ui/swagger-ui.css", "text/css"),
+                                        ("/api/v3/api-docs.yaml", "application/vnd.oai.openapi")):
+                with urllib.request.urlopen(f"http://127.0.0.1:{http_port}{path}", timeout=15) as response:
+                    assert response.status == 200, f"{path}: documentation unavailable"
+                    assert expected_type in response.headers["Content-Type"], f"{path}: unexpected content type"
+                    assert response.read(), f"{path}: empty documentation resource"
+            print("PASS: public OpenAPI matches the generated contract; Swagger UI, assets and YAML work without a session", flush=True)
+
             credentials = {"email": "smoke@example.invalid", "password": "synthetic-smoke-password"}
             call("/api/auth/register", credentials, bound=False, status=403)
             call("/api/auth/register", credentials)
