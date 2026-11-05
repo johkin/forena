@@ -74,6 +74,13 @@ I Supabase-lägets magic-link-adapter konsumeras PKCE-verifieraren atomiskt unde
 databasens sessionslås, innan leverantören anropas. Även samtidiga bekräftelser
 över flera instanser får bara göra ett kodutbyte.
 
+## Publik API-dokumentation
+
+GET till `/api/swagger-ui.html`, `/api/swagger-ui/**`, `/api/v3/api-docs`,
+`/api/v3/api-docs.yaml` och `/api/v3/api-docs/**` är publikt. Undantaget omfattar
+endast dokumentationen; verksamhets-API:ts session, Origin, kontobindning och
+behörighetskontroller gäller fortsatt. Swagger UI använder ingen extern validator.
+
 ## Runtime och migrationsägare
 
 ADR-021 ersätter tabellspecifika runtime-grants med gemensam datarätt i det

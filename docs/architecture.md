@@ -110,6 +110,9 @@ för säkerhetsgränser, verifiering och återstående aktivering. REST-controll
 använder typade Kotlin data classes för svar. OpenAPI genereras med springdoc från controller-signaturer, DTO-annoteringar
 och filter-endpointernas gemensamma typade metadata; TypeScript-typer härleds från
 exporten i CI; kontraktsspecen underhålls inte separat för hand.
+Swagger UI ligger på `/api/swagger-ui.html` och specen på `/api/v3/api-docs`.
+UI, resurser och konfiguration ligger under `/api/` och är publika;
+se [körguiden](../backend/README.md#openapi-och-swagger-ui).
 Kotlin-tjänster namnges med suffixet `Service`, exempelvis `InvitationService`.
 Varje moduls interna databasmodeller samlas i `Entities.kt` och repository-
 interface i `Repositories.kt`. DTO:er ligger i separata filer från tjänstelogiken;

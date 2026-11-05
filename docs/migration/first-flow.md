@@ -56,7 +56,7 @@ förblir leverantörsägda. Ingen radering av gamla projektet ingår.
 Auth-policy och gränser. [OpenAPI](../../backend/contract/openapi.json) och
 [genererade TS-typer](../../backend/contract/generated.ts) är versionshanterade. Specen genereras med springdoc 3.1.1 från REST-controllers
 med typade request-/svarsklasser. Maven-verifieringen exporterar den via den
-bearer-skyddade `/v3/api-docs`; CI genererar och jämför både spec och TS-typer.
+publika `/api/v3/api-docs`; CI genererar och jämför både spec och TS-typer.
 Kotlin-tjänsten är ensam producent av historik/signalversion; inga triggers
 eller Modulith-producenter skriver samma händelse en gång till.
 Signalversionen är endast beständig invalidering; ingen signalworker är ännu inkopplad.

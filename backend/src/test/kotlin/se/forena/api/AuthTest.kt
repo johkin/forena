@@ -350,9 +350,31 @@ class AuthTest {
         assertThat(request("/api/auth/logout", "", form=true).statusCode()).isEqualTo(200)
     }
 
+    @Test fun `Swagger UI and OpenAPI are public under the API proxy path while business APIs stay protected`() {
+        val entry = request("/api/swagger-ui.html")
+        assertThat(entry.statusCode()).isEqualTo(302)
+        assertThat(entry.headers().firstValue("Location").orElseThrow()).isEqualTo("/api/swagger-ui/index.html")
+        val resources = listOf("/api/swagger-ui/index.html", "/api/swagger-ui/swagger-ui.css",
+            "/api/swagger-ui/swagger-ui-bundle.js", "/api/swagger-ui/swagger-ui-standalone-preset.js",
+            "/api/swagger-ui/swagger-initializer.js", "/api/v3/api-docs", "/api/v3/api-docs.yaml",
+            "/api/v3/api-docs/swagger-config")
+        for (path in resources) {
+            assertThat(request(path).statusCode()).describedAs(path).isEqualTo(200)
+        }
+        val config = json.readTree(request("/api/v3/api-docs/swagger-config").body())
+        assertThat(config.path("url").asString()).isEqualTo("/api/v3/api-docs")
+        assertThat(config.path("configUrl").asString()).isEqualTo("/api/v3/api-docs/swagger-config")
+        assertThat(config.path("validatorUrl").asString()).isEmpty()
+        val initializer = request("/api/swagger-ui/swagger-initializer.js").body()
+        assertThat(initializer).contains("/api/v3/api-docs/swagger-config").doesNotContain("petstore.swagger.io")
+        assertThat(request("/api/auth/session").statusCode()).isEqualTo(401)
+        assertThat(request("/api/activities").statusCode()).isEqualTo(401)
+        assertThat(request("/v3/api-docs", cookie=register()).statusCode()).isEqualTo(404)
+    }
+
     @Test fun `OpenAPI exports the sole authentication contract`() {
         val cookie = register()
-        val spec = request("/v3/api-docs", cookie=cookie)
+        val spec = request("/api/v3/api-docs", cookie=cookie)
         assertThat(spec.statusCode()).isEqualTo(200)
         assertThat(spec.body()).contains("/api/auth/register", "/api/auth/password/reset", "__Host-forena-session")
         assertThat(spec.body()).doesNotContain("bearerFormat")
