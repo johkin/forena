@@ -59,7 +59,7 @@ export function AssistantHistoryCard({ result, answer, onOpenActivity }: { resul
 }
 
 function HistoryActivityLink({ activity, label, opening, onOpen }: { activity: ActivityHistoryResult["activities"][number]; label: string; opening: boolean; onOpen: (id: string, button: HTMLButtonElement) => Promise<void> }) {
-  return <button className="assistant-activity-link" type="button" disabled={opening} aria-label={`Öppna ${label}`} onClick={event => void onOpen(activity.id, event.currentTarget)}>{label}</button>;
+  return <button className="assistant-activity-link" type="button" disabled={opening} onClick={event => void onOpen(activity.id, event.currentTarget)}><span className="sr-only">Öppna </span>{label}</button>;
 }
 
 function titleIndex(text: string, title: string): number {
