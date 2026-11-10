@@ -8,3 +8,7 @@
 ## 2025-02-12 - Cached Intl.DateTimeFormat
 **Learning:** `Intl.DateTimeFormat` instantiations are heavily used in React component render cycles (e.g. lists). Doing `new Intl.DateTimeFormat` inline is extremely slow (tested ~59ms vs ~1.5ms for 100 iterations).
 **Action:** Use the pre-existing cached utility `getFormatter(timeZone, options)` exported from `src/lib/date-time.ts` everywhere possible instead of `new Intl.DateTimeFormat`.
+
+## 2025-02-12 - Prevent formatters execution in React State hook on every render
+**Learning:** Even when caching `Intl.DateTimeFormat` via `getFormatter`, directly calling its `.format()` in a `useState` initializer evaluates the formatting logic unconditionally during every single render cycle, tying up the main thread unnessarily.
+**Action:** When initializing state that derives from an expensive synchronous call like formatting dates, use React's lazy initialization mechanism (`useState(() => getFormatter(...).format(...))`) to evaluate it exactly once on mount.
