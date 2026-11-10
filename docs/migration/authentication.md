@@ -57,6 +57,9 @@ Nya konton får inga sådana relationer automatiskt.
 
 ## OAuth och MCP
 
+För praktiska anslutningssteg och klientkonfiguration, se
+[Anslut ChatGPT till Förena](../mcp-chatgpt.md).
+
 Authorization Server körs i samma backend. Klienter, godkännanden och grants
 lagras med Spring Securitys JDBC-repositories. Appen använder opaka
 access-token med 15 minuters livstid. Token verifieras lokalt mot aktuell grant,

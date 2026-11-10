@@ -12,6 +12,9 @@ inte i MCP-katalogen. MCP-servern behöver ingen AI-modell eller modellleverant�
 PostgreSQL kan köras lokalt eller hos Supabase. Den äldre Next-appen behåller
 sin befintliga autentisering, implementation och separata deployment.
 
+Se [Anslut ChatGPT till Förena](../docs/mcp-chatgpt.md) för anslutningssteg,
+OAuth-klientens konfiguration och manuellt anslutningsprov.
+
 ## Lokal utveckling
 
 Java 25 och Docker Compose v2 krävs. Från `backend/`:

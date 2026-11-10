@@ -7,6 +7,9 @@ OAuth. De 14 läsverktygen i `SharedActivityTools` och `AssistantReadTools` är
 assistentens lokala callbacks och MCP-servern. Servern behöver
 ingen AI-modell eller modellleverantör; MCP-klienten står för AI:n.
 
+För användarsteg, OAuth-konfiguration och anslutningsprov, se
+[Anslut ChatGPT till Förena](mcp-chatgpt.md). Guiden gäller Kotlin/Spring-servern.
+
 | Kotlin-verktyg | Resultat | Behörighet |
 | --- | --- | --- |
 | `list_my_activities` | Högst 50 minimerade aktiviteter | Personöversiktens egen/delegerade åtkomst |
