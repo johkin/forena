@@ -163,8 +163,8 @@ lösenord, passkeys, magic links, återställning och logout. Spring Session JDB
 och generation. Browsern skickar endast en ogenomskinlig HttpOnly-cookie via
 API-proxyn. Backend äger behörigheter och sessionskontroll. Publik config
 innehåller version och valfri provaktivitet. Se [webbsessioner](migration/web-sessions.md)
-och ADR-026. OAuth/MCP går genom Spring Authorization Server med separat
-token-/resourcekontroll.
+och ADR-026. Spring Authorization Server äger OAuth med separat
+token-/resourcekontroll; Spring AI äger MCP-protokollet och HTTP-transporten.
 
 
 [Actions-deployen för Kotlin-sajten](migration/actions-deployment.md) bygger
@@ -525,7 +525,15 @@ kan anpassas per förening, men säkerhetsregler och systemprompt kan inte ersä
 
 ## MCP
 
-`src/app/api/mcp/route.ts` är HTTP-adapter till en stateless MCP-server.
+Kotlin-backenden använder Spring AI:s stateless WebMVC-server på `/api/mcp`.
+Spring AI hanterar MCP-protokollet; Spring Authorization Server och Resource
+Server hanterar OAuth och tokenkontroll. Det enda verktyget, `list_my_activities`,
+registreras med `@Tool` och återanvänder `PersonalOverviewService`. Svaret
+begränsas till 50 aktiviteter utan personnamn, kontaktuppgifter eller
+svarskommentarer. Ingen AI-modell eller modellleverantör behövs i MCP-servern.
+
+Den äldre Next-serverns `src/app/api/mcp/route.ts` är HTTP-adapter till en
+stateless MCP-server.
 `src/lib/mcp/auth.ts` verifierar explicit användar-token och skapar en
 request-lokal Supabase-klient utan service role eller browser-cookies.
 `src/lib/mcp/server.ts` registrerar typade verktyg som återanvänder

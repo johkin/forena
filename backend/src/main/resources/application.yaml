@@ -1,4 +1,17 @@
 spring:
+  ai:
+    mcp:
+      server:
+        name: Förena
+        version: "1.0"
+        protocol: STATELESS
+        type: SYNC
+        streamable-http:
+          mcp-endpoint: /api/mcp
+        capabilities:
+          resource: false
+          prompt: false
+          completion: false
   docker:
     compose:
       enabled: false

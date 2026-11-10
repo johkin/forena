@@ -1,7 +1,7 @@
 # AI-assistenten
 
 - Status: Redo
-- Senast uppdaterad: 2026-10-28
+- Senast uppdaterad: 2026-11-10
 - Berörda dokument: [Designregler](../design-spec.md),
   [arkitektur](../architecture.md), [säkerhetsarkitektur](../security-architecture.md),
   [assistentminne](../assistant-memory.md), [MCP](../mcp.md),
@@ -83,7 +83,10 @@ Läst i källkod och dokumentation 2026-10-26, inte verifierat genom körning:
 Källor: `src/components/floating-assistant.tsx`,
 `src/lib/ai/workspace-assistant.ts`, `src/lib/ai/team-assistant.ts`,
 `src/lib/ai/team-assistant-types.ts`, `src/lib/ai/team-assistant-prompts.ts`,
-`src/lib/mcp/server.ts`, `backend/src/main/kotlin/se/forena/api/mcp/McpController.kt`
+`src/lib/mcp/server.ts`,
+[MCP-konfiguration](../../backend/src/main/kotlin/se/forena/api/mcp/McpConfiguration.kt),
+[MCP-verktyg](../../backend/src/main/kotlin/se/forena/api/mcp/McpActivityService.kt),
+[OAuth-resursmetadata](../../backend/src/main/kotlin/se/forena/api/mcp/McpMetadataController.kt)
 och dokumenten ovan. Verktygskatalogen behöver inventeras i detalj när
 omfattningen preciseras; uppräkningen ovan är inte en fullständig verktygsinventering.
 
