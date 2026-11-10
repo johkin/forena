@@ -1,7 +1,7 @@
 # MCP-koppling
 
 - Status: Redo
-- Senast uppdaterad: 2026-11-02
+- Senast uppdaterad: 2026-11-10
 - Berörda dokument: [MCP](../mcp.md), [arkitektur](../architecture.md),
   [säkerhetsarkitektur](../security-architecture.md),
   [autentisering](../migration/authentication.md),
@@ -64,7 +64,9 @@ verksamhetslogik ska kunna återanvändas av andra kanaler.
 - `docs/mcp.md` beskriver huvudsakligen den äldre Next/Supabase-lösningen;
   dess installationssteg ska inte förväxlas med den nya Spring-lösningen.
 
-Källor: `backend/src/main/kotlin/se/forena/api/mcp/McpController.kt`,
+Källor: [MCP-konfiguration](../../backend/src/main/kotlin/se/forena/api/mcp/McpConfiguration.kt),
+[MCP-verktyg](../../backend/src/main/kotlin/se/forena/api/mcp/McpActivityService.kt),
+[OAuth-resursmetadata](../../backend/src/main/kotlin/se/forena/api/mcp/McpMetadataController.kt),
 `docs/migration/authentication.md`, `docs/mcp.md` och `docs/specs/ai-assistent.md`.
 
 ## Krav
