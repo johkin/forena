@@ -13,16 +13,16 @@ await context.addCookies([{name:'_vercel_jwt',value:'synthetic-protection-cookie
 await context.addInitScript(()=>{if(!sessionStorage.getItem('migration-seeded')){localStorage.setItem('forena-kotlin-browser-auth','{"access_token":"obsolete-private-token"}');sessionStorage.setItem('migration-seeded','true');}});
 let magicRequested=false, registrationVerified=false;
 let current=null, revoked=false, platformDenied=false, sessionUnavailable=false, overviewUnavailable=false, sessionReads=0, requests=0, privateRequests=0, directProviderRequests=0, detailReads=0, answerUnavailable=false, holdAnswer=false, releaseAnswer;
-let invitations=[{id,person_id:users[0],name:'Alex Exempel med ett längre familjenamn',response:'pending',response_comment:null},
- {id:'44444444-4444-4444-8444-444444444444',person_id:users[1],name:'Tilda Exempel',response:'pending',response_comment:null}];
+let invitations=[{id,person_id:users[0],name:'Alex Exempel med ett längre familjenamn',response:'pending',response_comment:null,consumes_capacity:true},
+ {id:'44444444-4444-4444-8444-444444444444',person_id:users[1],name:'Tilda Exempel',response:'pending',response_comment:null,consumes_capacity:true}];
 const organization={id:'55555555-5555-4555-8555-555555555555',name:'Exempelföreningen med ett långt namn',time_zone:'Europe/Stockholm',role:'owner'};
 const team={id:'66666666-6666-4666-8666-666666666666',organization_id:organization.id,name:'Ungdomslaget',roles:['guardian','leader','team_access']};
 const managedTeam={id:team.id,organizationId:organization.id,name:team.name,organizationName:organization.name,timeZone:organization.time_zone,canManageInvitations:true};
 let activityCreates=0;
 let telegramActive=false;
-const activities=()=>[{id,can_manage_activities:true,can_manage_attendance:false,title:'Träning med laget',starts_at:'2030-10-26T16:00:00Z',ends_at:'2030-10-26T17:30:00Z',gathering_at:null,response_due_at:'2030-10-19T10:00:00Z',location:'Örvallen',description:'Ta med vattenflaska.',status:'scheduled',organization,team,
+const activities=()=>[{id,can_manage_activities:true,can_manage_attendance:false,title:'Träning med laget',starts_at:'2030-10-26T16:00:00Z',ends_at:'2030-10-26T17:30:00Z',gathering_at:null,response_due_at:'2030-10-19T10:00:00Z',location:'Örvallen',description:'Ta med vattenflaska.',status:'scheduled',accepted_participants:invitations.filter(invitation=>invitation.response==='accepted' && invitation.consumes_capacity).length,organization,team,
  people:invitations.map(invitation=>({id:invitation.person_id,name:invitation.name,attendance:"unknown",invitation}))},
- {id:users[1],can_manage_activities:true,can_manage_attendance:false,title:'Nästa aktivitet',starts_at:'2030-10-27T16:00:00Z',ends_at:'2030-10-27T17:30:00Z',gathering_at:null,response_due_at:null,location:'Uip',description:'',status:'scheduled',organization,team,people:invitations.map(invitation=>({id:invitation.person_id,name:invitation.name,attendance:"unknown",invitation:null}))}];
+ {id:users[1],can_manage_activities:true,can_manage_attendance:false,title:'Nästa aktivitet',starts_at:'2030-10-27T16:00:00Z',ends_at:'2030-10-27T17:30:00Z',gathering_at:null,response_due_at:null,location:'Uip',description:'',status:'scheduled',accepted_participants:0,organization,team,people:invitations.map(invitation=>({id:invitation.person_id,name:invitation.name,attendance:"unknown",invitation:null}))}];
 const calendarScope=()=>({
  people:current===0?invitations.map((invitation,index)=>({id:invitation.person_id,displayName:invitation.name,isSelf:index===0,teamIds:[team.id]})):[],
  teams:current===0?[{id:team.id,name:`${organization.name} · ${team.name}`}]:[],

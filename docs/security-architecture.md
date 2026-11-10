@@ -70,6 +70,20 @@ skapar inga sessioner; databasfel stoppar anropet med 503. React validerar
 OAuth-fortsättning separat från vanliga sidbyten och tillåter bara den fasta
 samma-origin-sökvägen `/oauth2/authorize?`.
 
+MCP-klienter kan registreras genom Spring Securitys publika RFC 7591-endpoint
+`POST /oauth2/register`. Registreringen är stateless och begränsas före JSON-
+parsning av befintliga distribuerade auth-budgetar, en kropp på högst 16 KiB
+och högst tio callback-adresser inom JDBC-lagringens gräns på 1 000 tecken.
+Endast `mcp:read`, Authorization Code och refresh för klienter med hemlighet
+tillåts; PKCE och samtycke krävs alltid. Registrering
+ger ingen användar- eller verksamhetsåtkomst. Fjärr-HTTPS-callback valideras
+exakt; Springs loopbackundantag låter enbart porten variera för HTTP/HTTPS till
+IP-litteraler. Övriga URI-delar och hela `localhost`-adressen måste matcha.
+Klientnamn är självuppgivna och får inte betraktas som verifierade leverantörer.
+Onödig klientmetadata används inte för externa nätanrop. Registret gallras
+inte automatiskt; driften behöver bevaka tillväxt och hantera klienter separat
+från användarnas grants. Statiskt registrerade klienter fungerar fortsatt.
+
 I Supabase-lägets magic-link-adapter konsumeras PKCE-verifieraren atomiskt under
 databasens sessionslås, innan leverantören anropas. Även samtidiga bekräftelser
 över flera instanser får bara göra ett kodutbyte.

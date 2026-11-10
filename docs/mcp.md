@@ -8,7 +8,13 @@ assistentens lokala callbacks och MCP-servern. Servern behöver
 ingen AI-modell eller modellleverantör; MCP-klienten står för AI:n.
 
 För användarsteg, OAuth-konfiguration och anslutningsprov, se
-[Anslut ChatGPT till Förena](mcp-chatgpt.md). Guiden gäller Kotlin/Spring-servern.
+[Anslut ChatGPT eller Claude till Förena](mcp-chatgpt.md). Guiden gäller Kotlin/Spring-servern.
+
+OAuth-discovery annonserar DCR på `POST /oauth2/register`. Kompatibla klienter
+registrerar sin callback automatiskt och kan därefter be användaren logga in
+och godkänna `mcp:read`. Förregistrerade klienter stöds också. Registrering
+ger ingen verksamhetsåtkomst; varje MCP-anrop kräver fortsatt giltig token
+och aktuell domänbehörighet. CIMD ingår ännu inte.
 
 | Kotlin-verktyg | Resultat | Behörighet |
 | --- | --- | --- |

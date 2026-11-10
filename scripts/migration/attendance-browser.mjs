@@ -157,7 +157,7 @@ try {
     } });
     if (path === `/api/activities/${id}`) return route.fulfill({ json: {
       id, can_manage_activities: false, can_manage_attendance: true, title: 'Historisk träning', starts_at: '2020-01-01T10:00:00Z', ends_at: '2020-01-01T12:00:00Z',
-      gathering_at: null, response_due_at: null, location: '', description: '', status: 'scheduled',
+      gathering_at: null, response_due_at: null, location: '', description: '', status: 'scheduled', accepted_participants: 0,
       organization: { id, name: 'Klubb', time_zone: 'Europe/Stockholm', role: null },
       team: { id, organization_id: id, name: 'Lag', roles: ['leader'] }, people: [],
     } });

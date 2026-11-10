@@ -236,6 +236,36 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
                     assert response.read(), f"{path}: empty documentation resource"
             print("PASS: public OpenAPI matches the generated contract; Swagger UI, assets and YAML work without a session", flush=True)
 
+            metadata = call("/.well-known/oauth-authorization-server", bound=False)
+            assert metadata["registration_endpoint"] == origin + "/oauth2/register"
+            assert metadata["scopes_supported"] == ["mcp:read"]
+            assert metadata["code_challenge_methods_supported"] == ["S256"]
+            assert set(metadata["token_endpoint_auth_methods_supported"]) == {"none", "client_secret_basic", "client_secret_post"}
+            sessions_before_registration = seed("select count(*) from forena.spring_session")
+            for authentication_method in ("none", "client_secret_basic", "client_secret_post"):
+                clear_limits()
+                registration = call("/oauth2/register", {
+                    "client_name": "Synthetic MCP smoke client",
+                    "redirect_uris": ["https://client.example.invalid/dcr-callback"],
+                    "token_endpoint_auth_method": authentication_method,
+                    "grant_types": ["authorization_code", "refresh_token"],
+                }, status=201, bound=False)
+                assert registration["client_id"]
+                assert registration["client_name"] == "Extern MCP-klient"
+                assert registration["scope"] == "mcp:read"
+                assert registration["token_endpoint_auth_method"] == authentication_method
+                assert set(registration["grant_types"]) == ({"authorization_code"} if authentication_method == "none" else {"authorization_code", "refresh_token"})
+                assert bool(registration.get("client_secret")) == (authentication_method != "none")
+                assert cookie is None, "DCR must not create a browser session"
+            assert seed("select count(*) from forena.spring_session") == sessions_before_registration
+            clear_limits()
+            denied_registration = call("/oauth2/register", {
+                "redirect_uris": ["https://client.example.invalid/dcr-callback"], "scope": "mcp:write",
+            }, status=400, bound=False)
+            assert denied_registration["error"] == "invalid_client_metadata"
+            clear_limits()
+            print("PASS: native RFC 7591 discovery and public/confidential registrations with read-only scope, normalized grants and no browser sessions", flush=True)
+
             credentials = {"email": "smoke@example.invalid", "password": "synthetic-smoke-password"}
             call("/api/auth/register", credentials, bound=False, status=403)
             call("/api/auth/register", credentials)
