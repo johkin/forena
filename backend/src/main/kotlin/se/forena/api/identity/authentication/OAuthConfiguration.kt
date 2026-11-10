@@ -46,6 +46,7 @@ import org.springframework.security.oauth2.server.authorization.token.OAuth2Refr
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenGenerator
 import org.springframework.security.oauth2.server.resource.introspection.BadOpaqueTokenException
 import org.springframework.security.oauth2.server.resource.introspection.OpaqueTokenIntrospector
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.context.NullSecurityContextRepository
 import org.springframework.security.web.context.SecurityContextHolderFilter
@@ -187,6 +188,7 @@ class OAuthConfiguration {
         return http.securityMatcher("/api/mcp").securityContext { it.securityContextRepository(NullSecurityContextRepository()) }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }.csrf { it.disable() }
             .authorizeHttpRequests { it.anyRequest().hasAuthority("SCOPE_mcp:read") }
+            .addFilterAfter(McpRequestFilter(settings.origin), BearerTokenAuthenticationFilter::class.java)
             .oauth2ResourceServer { it.opaqueToken { opaque -> opaque.introspector(introspector) }.authenticationEntryPoint { _, response, _ ->
                 response.status = 401; response.setHeader("Cache-Control", "no-store")
                 response.setHeader("WWW-Authenticate", "Bearer resource_metadata=\"${settings.origin}/.well-known/oauth-protected-resource/api/mcp\", scope=\"mcp:read\"")

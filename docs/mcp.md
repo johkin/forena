@@ -1,8 +1,20 @@
 # MCP-server
 
-[Spring Authorization Server](migration/authentication.md) äger OAuth/MCP i
-den nya Kotlin-appen. Den erbjuder det avgränsade läsverktyget `list_my_activities`. Verktygen och
-Supabase-flödena nedan avser fortfarande den äldre Next-servern.
+I Kotlin-appen äger Spring AI MCP-protokollet och den stateless WebMVC-transporten
+på `/api/mcp`. [Spring Authorization Server](migration/authentication.md) äger
+OAuth. Ett `@Tool`-annoterat läsverktyg, `list_my_activities`, återanvänder
+personöversiktens behörighetskontroller och returnerar högst 50 aktiviteter utan
+kontaktuppgifter, personnamn eller svarskommentarer. Servern behöver ingen
+AI-modell eller modellleverantör; MCP-klienten står för AI:n.
+
+Kotlin-klienten skickar OAuth-token med scope `mcp:read` som Bearer-header,
+`Content-Type: application/json` och `Accept: application/json, text/event-stream`.
+Spring AI svarar med JSON utan MCP-session eller SSE-prenumeration. Anropen
+begränsas till 64 KiB och svaren får `Cache-Control: no-store`. En angiven
+`Origin` måste vara appens konfigurerade origin; klienter utan `Origin` tillåts.
+
+Verktygen och Supabase-flödena nedan avser den äldre Next-servern, vars övriga
+verktyg ännu inte har flyttats till Kotlin.
 
 Förena exponerar en MCP-server på `/api/mcp` i samma Next.js-applikation.
 Transporten är stateless Streamable HTTP med JSON-svar och en ny server och

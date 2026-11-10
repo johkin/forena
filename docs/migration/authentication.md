@@ -75,11 +75,14 @@ Spring sköter kodutbyte, introspektion och återkallning. Webb-API:t accepterar
 inte MCP-token, och MCP accepterar inte browsercookies som autentisering.
 
 Metadata finns på `/.well-known/oauth-authorization-server` och
-`/.well-known/oauth-protected-resource/api/mcp`. MCP-endpointen erbjuder ett
-avgränsat read-only-verktyg, `list_my_activities`, med högst 50 aktiviteter
-utan kontaktuppgifter, personnamn eller svarskommentarer. Det är ett separat
-MCP-prov, inte full flytt av gamla Next-serverns verktyg. Vercels routing måste
-skicka `/oauth2/*` och metadata till backend; `/oauth/consent` går till SPA:n.
+`/.well-known/oauth-protected-resource/api/mcp`. Spring AI hanterar MCP-protokollet
+och den stateless WebMVC-transporten på `/api/mcp`; OAuth hanteras fortsatt av
+Spring Authorization Server. Verktyget `list_my_activities` registreras med
+`@Tool` och erbjuder enbart läsning av högst 50 aktiviteter utan kontaktuppgifter,
+personnamn eller svarskommentarer. Servern behöver ingen AI-modell eller
+modellleverantör. Övriga verktyg i gamla Next-servern återstår att flytta.
+Vercels routing måste skicka `/oauth2/*` och metadata till backend;
+`/oauth/consent` går till SPA:n.
 
 ## Lokal konfiguration
 

@@ -511,8 +511,18 @@ beskriva vilken dataklass de använder och varför informationen behöver lagras
 
 ## MCP-åtkomst
 
-MCP-adaptern verifierar explicit bearer-token för en användare och använder en
-request-lokal Supabase-klient med publishable key och samma token. Cookie-auth
+I Kotlin-backenden hanterar Spring AI MCP-protokollet genom en stateless
+WebMVC-transport på `/api/mcp`. Spring Securitys Resource Server kräver en opak
+OAuth-token med `mcp:read`; Spring Authorization Server äger samtycke och grants.
+Tokenkontrollen verifierar aktuell grant, konto, sessionsversion och exakt
+resource. Browsercookies ger ingen MCP-åtkomst. `list_my_activities` återanvänder
+personöversiktens behörighetskontroller och lämnar högst 50 aktiviteter utan
+personnamn, kontaktuppgifter eller svarskommentarer. Origin begränsas till
+appens konfigurerade URL och svar får inte cachas. Servern anropar ingen AI-modell.
+
+Den äldre Next-serverns MCP-adapter verifierar explicit bearer-token för en
+användare och använder en request-lokal Supabase-klient med publishable key och
+samma token. Cookie-auth
 eller service role accepteras inte. Verktygen kontrollerar aktuell lagbehörighet
 och RLS gäller för samtliga läsningar. Familjer får endast egna kallelsesvar;
 trupp- och deltagarnamn kräver särskilda lagbehörigheter. Privata kommentarer,

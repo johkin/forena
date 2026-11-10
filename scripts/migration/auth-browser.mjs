@@ -90,7 +90,7 @@ try{
   body:new URLSearchParams({grant_type:'refresh_token',refresh_token:initialTokens.refresh_token,resource:app+'/api/mcp'})});
  assert.equal(refreshed.status,200);const rotated=await refreshed.json();assert.notEqual(rotated.refresh_token,initialTokens.refresh_token);
  const access=rotated.access_token;assert.ok(access);
- const mcp=()=>fetch(backend+'/api/mcp',{method:'POST',headers:{authorization:'Bearer '+access,'content-type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'tools/list'})});
+ const mcp=()=>fetch(backend+'/api/mcp',{method:'POST',headers:{authorization:'Bearer '+access,'content-type':'application/json',accept:'application/json, text/event-stream'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'tools/list'})});
  assert.equal((await mcp()).status,200);
  const revoked=await fetch(backend+'/oauth2/revoke',{method:'POST',headers:{authorization:clientAuthorization,'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({token:access,token_type_hint:'access_token'})});
  assert.equal(revoked.status,200);assert.equal((await mcp()).status,401);
