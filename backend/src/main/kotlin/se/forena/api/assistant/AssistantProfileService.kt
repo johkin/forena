@@ -5,6 +5,7 @@ import org.springframework.security.access.AccessDeniedException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import se.forena.api.activities.ActivityManagementService
+import se.forena.api.administration.AdministrationAccessService
 import se.forena.api.assistant.internal.AssistantProfileRepository
 import se.forena.api.identity.Actor
 import se.forena.api.identity.SessionService
@@ -13,6 +14,7 @@ import se.forena.api.identity.SessionService
 class AssistantProfileService(
     private val repository: AssistantProfileRepository,
     private val sessions: SessionService,
+    private val administration: AdministrationAccessService,
     private val management: ActivityManagementService,
     private val identities: se.forena.api.identity.AssistantIdentityService,
 ) {
@@ -24,12 +26,10 @@ class AssistantProfileService(
 
     fun requireAdmin(actor: Actor, org: UUID, section: UUID? = null) {
         sessions.requireActive(actor)
-        val club = repository.isClubAdministrator(actor.subject, org)
-        val sectionAdmin =
-            section != null && repository.isSectionAdministrator(actor.subject, section, org)
-        if (!club && !sectionAdmin) throw AccessDeniedException("Profile administration required")
-        if (section != null && !repository.sectionBelongsToOrganization(section, org))
-            throw AccessDeniedException("Section mismatch")
+        val allowed = if (section == null)
+            administration.isClubAdministrator(actor.subject, org)
+        else administration.canAdministerSectionBusiness(actor.subject, org, section)
+        if (!allowed) throw AccessDeniedException("Profile administration required")
     }
 
     @Transactional(readOnly = true)
@@ -64,7 +64,7 @@ class AssistantProfileService(
     @Transactional(readOnly = true)
     fun section(actor: Actor, org: UUID, section: UUID): SectionProfile {
         requireOrganization(actor, org)
-        require(repository.sectionBelongsToOrganization(section, org))
+        require(administration.sectionBelongsToOrganization(org, section))
         return repository.findSectionProfile(section).orElse(SectionProfile())
     }
 

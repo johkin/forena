@@ -7,6 +7,8 @@ import org.mockito.Mockito
 import org.mockito.Mockito.times
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.ArgumentMatchers.anyMap
+import org.mockito.ArgumentMatchers.any
+import org.springframework.ai.chat.model.ToolContext
 import se.forena.api.activities.ActivityDutyCommand
 import se.forena.api.telegram.TelegramUpdateRetentionService
 import se.forena.api.telegram.TelegramGroupService
@@ -14,6 +16,9 @@ import se.forena.api.assistant.AssistantTarget
 import se.forena.api.assistant.RoutingPlan
 import se.forena.api.assistant.MessageCommand
 import se.forena.api.assistant.ModelAnswer
+import se.forena.api.assistant.AssistantToolSet
+import se.forena.api.assistant.AssistantToolScope
+import se.forena.api.assistant.AssistantReply
 import se.forena.api.identity.AssistantRoleSource
 import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
@@ -583,7 +588,7 @@ class ApiTest {
         assertThat(admin.queryForObject("select invitation_send_at=starts_at-interval '2 days' from forena.activity where id=?",Boolean::class.java,id)).isTrue()
         assertThat(request("/api/activity-defaults",defaultsBody("team",team,1,"""{"options":{"duration":[]}}""")).statusCode()).isEqualTo(400)
     }
-    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    @org.springframework.test.context.bean.override.mockito.MockitoBean(answers = org.mockito.Answers.CALLS_REAL_METHODS)
     lateinit var assistantModel: se.forena.api.assistant.AssistantModel
     @org.springframework.test.context.bean.override.mockito.MockitoBean
     lateinit var telegramClient: se.forena.api.telegram.TelegramClient
@@ -601,6 +606,47 @@ class ApiTest {
     @Autowired lateinit var rosterService: se.forena.api.activities.TeamRosterService
 
     private fun assistantActor() = se.forena.api.identity.Actor(parent, session, "")
+
+    @Test
+    fun `club assistant receives shared read callbacks with server scope and fetches heavy context only on demand`() {
+        val team = rosterTeam()
+        rosterMember(own)
+        val actor = assistantActor()
+        val conversation = assistant.new(actor)
+        Mockito.`when`(assistantModel.route(anyString()))
+            .thenReturn(RoutingPlan(listOf(AssistantTarget(organization, team))))
+        Mockito.doAnswer { invocation ->
+            val context = json.readTree(invocation.getArgument<String>(1))
+            for (field in listOf("documents", "members", "attendance", "history", "dutyTargets", "capabilitySignals")) {
+                assertThat(context.has(field)).describedAs("%s should be fetched on demand", field).isFalse()
+            }
+            assertThat(context.path("team").has("roster")).isFalse()
+            assertThat(context.path("team").path("editor").has("members")).isFalse()
+            val tools = invocation.getArgument<AssistantToolSet>(2)
+            val scope = AssistantToolScope.from(tools.context)
+            assertThat(scope.actor).isEqualTo(actor)
+            assertThat(scope.organizationId).isEqualTo(organization)
+            assertThat(scope.teamId).isEqualTo(team)
+            val overview = tools.callbacks.single { it.toolDefinition.name() == "get_team_overview" }
+            val result = json.readTree(overview.call("""{"teamId":"$team"}""", tools.context))
+            assertThat(result.path("team").path("id").asString()).isEqualTo(team.toString())
+            assertThatThrownBy {
+                overview.call("""{"teamId":"${UUID.randomUUID()}"}""", tools.context)
+            }.hasRootCauseInstanceOf(AccessDeniedException::class.java)
+            ModelAnswer("Verifierad lagöversikt från det delade verktyget.")
+        }.`when`(assistantModel).answer(
+            anyString(), anyString(),
+            any(AssistantToolSet::class.java) ?: AssistantToolSet(emptyList(), ToolContext(emptyMap())),
+        )
+
+        val replies = mutableListOf<AssistantReply>()
+        assistant.send(actor, conversation.id, MessageCommand("Visa lagets översikt", teamId = team)) { replies.add(it) }
+
+        assertThat(replies.filterNot { it.pending }.single().text)
+            .isEqualTo("Verifierad lagöversikt från det delade verktyget.")
+        assertThat(assistant.view(actor, conversation.id).messages.last().content)
+            .isEqualTo("Verifierad lagöversikt från det delade verktyget.")
+    }
 
     @ParameterizedTest
     @ValueSource(booleans = [false, true])
@@ -1113,6 +1159,73 @@ class ApiTest {
             )
             .isEqualTo(completed)
     }
+
+    @Test
+    fun `batched team permissions match scalar authorization across dates revocation and administrator sources`() {
+        val teamId = rosterTeam()
+        val actor = assistantActor()
+        admin.update("update forena.organization set time_zone='Pacific/Kiritimati' where id=?", organization)
+        val day = requireNotNull(admin.queryForObject(
+            "select (clock_timestamp() at time zone time_zone)::date from forena.organization where id=?", LocalDate::class.java, organization,
+        ))
+        val permissionKeys = se.forena.api.activities.TeamPermission.keys
+        val team = requireNotNull(managementRecords.team(teamId))
+        fun assertPermissions(expected: Set<String>) {
+            assertThat(managementRecords.permissions(parent, organization, teamId, permissionKeys, day).toSet()).isEqualTo(expected)
+            for (permission in se.forena.api.activities.TeamPermission.entries) {
+                assertThat(managementRecords.allowed(parent, organization, teamId, permission.key, day))
+                    .describedAs(permission.key).isEqualTo(permission.key in expected)
+            }
+            val current = TransactionTemplate(transactionManager).execute {
+                teamPermissionsAccess.permissions(actor, team).map { it.key }.toSet()
+            }
+            assertThat(current).isEqualTo(expected)
+        }
+        assertPermissions(emptySet())
+        for (permission in permissionKeys) admin.update(
+            "insert into forena.team_permission_assignment(organization_id,team_id,person_id,permission,starts_on) values(?,?,?,?,?)",
+            organization, teamId, own, permission, Date.valueOf(day),
+        )
+        assertPermissions(permissionKeys.toSet())
+        // Exercise the real Spring Data default-interface method and its bound permission keys.
+        assertThat(managementRecords.teams(parent)).containsExactlyElementsOf(managementRecords.teams(parent, permissionKeys))
+        assertThat(managementRecords.teams(parent).map { it.id }).containsExactly(teamId)
+        admin.update("update forena.team_permission_assignment set active=false where person_id=? and permission='assistant.memory.manage'", own)
+        admin.update("update forena.team_permission_assignment set starts_on=? where person_id=? and permission='activity.manage'", Date.valueOf(day.plusDays(1)), own)
+        admin.update("update forena.team_permission_assignment set starts_on=?,ends_on=? where person_id=? and permission='invitation.manage'",
+            Date.valueOf(day.minusDays(2)), Date.valueOf(day.minusDays(1)), own)
+        admin.update("update forena.team_permission_assignment set ends_on=? where person_id=? and permission='attendance.manage'", Date.valueOf(day), own)
+        assertPermissions(setOf("attendance.manage", "roster.manage"))
+
+        admin.update("update forena.team_permission_assignment set active=false where person_id=?", own)
+        admin.update("insert into forena.team_permission_assignment(organization_id,team_id,person_id,permission,starts_on) values(?,?,?,'roster.manage',?)",
+            organization, teamId, child1, Date.valueOf(day))
+        assertPermissions(emptySet()) // A guardian does not inherit the child's independent permission.
+        assertThat(managementRecords.teams(parent)).isEmpty()
+        assertThat(managementRecords.permissions(outsider, organization, teamId, permissionKeys, day)).isEmpty()
+
+        admin.update("insert into forena.organization_member(organization_id,subject,role) values(?,?,'admin')", organization, parent)
+        assertPermissions(permissionKeys.toSet())
+        admin.update("update forena.organization_member set active=false where organization_id=? and subject=?", organization, parent)
+        val section = UUID.randomUUID()
+        admin.update("insert into forena.section(id,organization_id,name) values(?,?,'Behörighetssektion')", section, organization)
+        admin.update("update forena.team set section_id=? where id=?", section, teamId)
+        admin.update("insert into forena.section_administrator(organization_id,section_id,subject) values(?,?,?)", organization, section, parent)
+        assertPermissions(permissionKeys.toSet())
+        admin.update("update forena.section_administrator set active=false where section_id=? and subject=?", section, parent)
+        assertPermissions(emptySet())
+
+        val assignment = UUID.randomUUID()
+        admin.update("insert into forena.team_access_assignment(id,organization_id,team_id,person_id,starts_on) values(?,?,?,?,?)",
+            assignment, organization, teamId, own, Date.valueOf(day))
+        admin.update("insert into forena.team_administrator(organization_id,team_id,subject,person_id,access_assignment_id,starts_on,ends_on) values(?,?,?,?,?,?,?)",
+            organization, teamId, parent, own, assignment, Date.valueOf(day), Date.valueOf(day))
+        assertPermissions(permissionKeys.toSet())
+        admin.update("update forena.person_access set active=false where subject=? and person_id=?", parent, own)
+        assertPermissions(emptySet())
+    }
+
+    @Autowired lateinit var teamPermissionsAccess: se.forena.api.activities.TeamAccessService
 
     @Test
     fun `method security scopes live team permissions for web and Telegram actors`() {

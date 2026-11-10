@@ -39,7 +39,7 @@ export function OAuthConsent({ data, pending = false, error, example = false }: 
   return <section className="auth-card"><h1>Godkänn åtkomst</h1>
     {pending ? <p role="status">Hämtar åtkomstförfrågan…</p> : null}
     {error ? <p className="auth-error" role="alert">{error}</p> : null}
-    {data ? <><p>{data.clientName} vill läsa dina aktiviteter via Förena MCP.</p><p>Åtkomsten ger inga nya förenings- eller familjerättigheter.</p>
+    {data ? <><p>{data.clientName} vill via Förena MCP läsa uppgifter som du har behörighet att se: aktiviteter, lagunderlag, namnlistor, medlemsuppdrag, kallelsesvar med kommentarer, närvaro, historik, dokument, arbetspass och uppföljningssignaler.</p><p>Åtkomsten ger inga nya förenings- eller familjerättigheter.</p>
       <form className="auth-form" method="post" action="/oauth2/authorize" onSubmit={example ? event => event.preventDefault() : undefined}>
         <input type="hidden" name="client_id" value={data.clientId} /><input type="hidden" name="state" value={data.state} />
         <input type="hidden" name="resource" value={data.resource} /><input type="hidden" name={data.csrfParameter} value={data.csrfToken} />

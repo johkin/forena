@@ -16,10 +16,14 @@ enum class TeamPermission(val key: String) {
     MANAGE_INVITATIONS("invitation.manage"),
     MANAGE_ATTENDANCE("attendance.manage"),
     MANAGE_ROSTER("roster.manage"),
-    MANAGE_ASSISTANT_MEMORY("assistant.memory.manage"),
+    MANAGE_ASSISTANT_MEMORY("assistant.memory.manage");
+
+    companion object {
+        val keys: List<String> = entries.map { it.key }
+    }
 }
 
-/** Object-level authorization, shared by method security and checks after a lock wait. */
+/** Object-level authorization shared by method security, command admission and authorized reads. */
 @Component("teamAccess")
 @Transactional(readOnly = true)
 class TeamAccessService(
@@ -31,11 +35,15 @@ class TeamAccessService(
     fun allowed(actor: Actor, teamId: UUID, permission: TeamPermission): Boolean {
         sessions.requireActive(actor)
         val team = repository.team(teamId) ?: return false
-        return allowed(actor, team, permission)
+        return allowedVerified(actor, team, permission)
     }
 
     fun allowed(actor: Actor, team: ManagementTeamRow, permission: TeamPermission): Boolean {
         sessions.requireActive(actor)
+        return allowedVerified(actor, team, permission)
+    }
+
+    private fun allowedVerified(actor: Actor, team: ManagementTeamRow, permission: TeamPermission): Boolean {
         val today = clock.now().atZone(ZoneId.of(team.timeZone)).toLocalDate()
         return repository.allowed(
             actor.subject,
@@ -51,7 +59,8 @@ class TeamAccessService(
 
     fun canCreateActivities(actor: Actor, teamId: UUID?): Boolean {
         sessions.requireActive(actor)
-        return allowed(actor, requireNotNull(teamId), TeamPermission.MANAGE_ACTIVITIES)
+        val team = repository.team(requireNotNull(teamId)) ?: return false
+        return allowedVerified(actor, team, TeamPermission.MANAGE_ACTIVITIES)
     }
 
     fun canManageInvitations(actor: Actor, teamId: UUID): Boolean =
@@ -80,7 +89,7 @@ class TeamAccessService(
     ): Boolean {
         sessions.requireActive(actor)
         val team = repository.team(teamId) ?: throw NoSuchElementException()
-        return allowed(actor, team, permission)
+        return allowedVerified(actor, team, permission)
     }
 
     fun canManageActivity(actor: Actor, activityId: UUID): Boolean =
@@ -97,12 +106,28 @@ class TeamAccessService(
         sessions.requireActive(actor)
         val activity = activities.findById(activityId).orElseThrow { NoSuchElementException() }
         if (activity.deletedAt != null) throw NoSuchElementException()
-        return allowed(actor, activity.teamId, permission)
+        val team = repository.team(activity.teamId) ?: return false
+        return allowedVerified(actor, team, permission)
     }
 
-    fun hasAssistantManagementAccess(actor: Actor, teamId: UUID): Boolean {
+    /** Fresh permissions for one domain operation; never retained in an Actor or across tool calls. */
+    fun permissions(actor: Actor, teamId: UUID): Set<TeamPermission> {
         sessions.requireActive(actor)
-        val team = repository.team(teamId) ?: return false
-        return TeamPermission.entries.any { allowed(actor, team, it) }
+        val team = repository.team(teamId) ?: return emptySet()
+        return permissionsVerified(actor, team)
     }
+
+    fun permissions(actor: Actor, team: ManagementTeamRow): Set<TeamPermission> {
+        sessions.requireActive(actor)
+        return permissionsVerified(actor, team)
+    }
+
+    private fun permissionsVerified(actor: Actor, team: ManagementTeamRow): Set<TeamPermission> {
+        val today = clock.now().atZone(ZoneId.of(team.timeZone)).toLocalDate()
+        val granted = repository.permissions(actor.subject, team.organizationId, team.id, TeamPermission.keys, today).toSet()
+        return TeamPermission.entries.filterTo(linkedSetOf()) { it.key in granted }
+    }
+
+    fun hasAssistantManagementAccess(actor: Actor, teamId: UUID): Boolean =
+        permissions(actor, teamId).isNotEmpty()
 }

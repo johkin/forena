@@ -254,8 +254,19 @@ class AuthTest {
         val listed = request("/api/mcp", """{"jsonrpc":"2.0","id":2,"method":"tools/list"}""", bearer=access, origin=null)
         assertThat(listed.statusCode()).isEqualTo(200)
         val tools = json.readTree(listed.body()).path("result").path("tools")
-        assertThat(tools.size()).isEqualTo(1)
-        val tool = tools.first()
+        assertThat(tools.toList().map { it.path("name").asText() }).containsExactlyInAnyOrder(
+            "list_my_activities", "list_teams", "get_team_overview", "get_team_member_names", "get_accepted_participant_names",
+            "get_team_context", "get_activity_details", "get_activity_invitations", "get_activity_attendance",
+            "get_activity_history", "get_assistant_documents", "get_member_assignments", "get_duty_targets", "get_capability_signals",
+        )
+        tools.forEach { publicTool ->
+            assertThat(publicTool.path("annotations").path("readOnlyHint").asBoolean()).isTrue()
+            assertThat(publicTool.path("annotations").path("destructiveHint").asBoolean()).isFalse()
+            assertThat(publicTool.path("inputSchema").path("additionalProperties").asBoolean()).isFalse()
+            assertThat(publicTool.path("inputSchema").path("properties").properties().map { it.key })
+                .doesNotContain("context", "actor", "subject", "session", "bearerToken")
+        }
+        val tool = tools.first { it.path("name").asText() == "list_my_activities" }
         assertThat(tool.path("name").asText()).isEqualTo("list_my_activities")
         assertThat(tool.path("inputSchema").path("type").asText()).isEqualTo("object")
         assertThat(tool.path("inputSchema").path("properties").size()).isZero()
@@ -285,6 +296,25 @@ class AuthTest {
         val extraArguments = request("/api/mcp", """{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"list_my_activities","arguments":{"subject":"${UUID.randomUUID()}"}}}""", bearer=access)
         assertThat(extraArguments.statusCode()).isEqualTo(200)
         assertThat(json.readTree(extraArguments.body()).path("result").path("isError").asBoolean()).isTrue()
+        val missingTeam = request("/api/mcp", """{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"get_team_overview","arguments":{}}}""", bearer=access)
+        assertThat(json.readTree(missingTeam.body()).path("result").path("isError").asBoolean()).isTrue()
+        val teams = request("/api/mcp", """{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"list_teams","arguments":{}}}""", bearer=access)
+        val teamsResult = json.readTree(teams.body()).path("result")
+        assertThat(teamsResult.path("isError").asBoolean()).isFalse()
+        val teamPage = json.readTree(teamsResult.path("content").first().path("text").asText())
+        assertThat(teamPage.path("teams").size()).isZero()
+        assertThat(teamPage.path("limit").asInt()).isEqualTo(25)
+        assertThat(teamPage.path("nextOffset").isNull).isTrue()
+        val deniedDocuments = request("/api/mcp", """{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"get_assistant_documents","arguments":{"organizationId":"${UUID.randomUUID()}"}}}""", bearer=access)
+        val deniedDocumentResult = json.readTree(deniedDocuments.body()).path("result")
+        assertThat(deniedDocuments.statusCode()).isEqualTo(200)
+        assertThat(deniedDocumentResult.path("isError").asBoolean()).isTrue()
+        assertThat(deniedDocumentResult.path("content").first().path("text").asString()).isEqualTo("Uppgifterna kunde inte hämtas.")
+        val deniedHistory = request("/api/mcp", """{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"get_activity_history","arguments":{"teamId":"${UUID.randomUUID()}","from":"2026-10-01","through":"2026-10-31"}}}""", bearer=access)
+        val deniedHistoryResult = json.readTree(deniedHistory.body()).path("result")
+        assertThat(deniedHistory.statusCode()).isEqualTo(200)
+        assertThat(deniedHistoryResult.path("isError").asBoolean()).isTrue()
+        assertThat(deniedHistoryResult.path("content").first().path("text").asString()).isEqualTo("Uppgifterna kunde inte hämtas.")
         val deniedOrigin = request("/api/mcp", """{"jsonrpc":"2.0","id":6,"method":"ping"}""", bearer=access, origin="https://foreign.example.invalid")
         assertThat(deniedOrigin.statusCode()).isEqualTo(403)
         assertThat(deniedOrigin.headers().firstValue("Cache-Control").orElseThrow()).contains("no-store")

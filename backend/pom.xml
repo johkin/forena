@@ -19,6 +19,8 @@
     <spring-modulith.version>2.1.0</spring-modulith.version>
     <springdoc.version>3.1.1</springdoc.version>
     <spring-ai.version>2.0.2</spring-ai.version>
+    <!-- Keep the explicit transport aligned with spring-ai-openai's SDK version. -->
+    <openai-java.version>4.80.0</openai-java.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -39,6 +41,19 @@
     </dependencies>
   </dependencyManagement>
   <dependencies>
+    <dependency>
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-client-chat</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-openai</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.openai</groupId>
+      <artifactId>openai-java-client-okhttp</artifactId>
+      <version>${openai-java.version}</version>
+    </dependency>
     <dependency>
       <groupId>org.springframework.ai</groupId>
       <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>

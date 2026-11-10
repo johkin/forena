@@ -65,7 +65,7 @@ verksamhetslogik ska kunna återanvändas av andra kanaler.
   dess installationssteg ska inte förväxlas med den nya Spring-lösningen.
 
 Källor: [MCP-konfiguration](../../backend/src/main/kotlin/se/forena/api/mcp/McpConfiguration.kt),
-[MCP-verktyg](../../backend/src/main/kotlin/se/forena/api/mcp/McpActivityService.kt),
+[delade läsverktyg](../../backend/src/main/kotlin/se/forena/api/assistant/SharedActivityTools.kt),
 [OAuth-resursmetadata](../../backend/src/main/kotlin/se/forena/api/mcp/McpMetadataController.kt),
 `docs/migration/authentication.md`, `docs/mcp.md` och `docs/specs/ai-assistent.md`.
 

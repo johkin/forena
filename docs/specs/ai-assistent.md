@@ -85,7 +85,7 @@ Källor: `src/components/floating-assistant.tsx`,
 `src/lib/ai/team-assistant-types.ts`, `src/lib/ai/team-assistant-prompts.ts`,
 `src/lib/mcp/server.ts`,
 [MCP-konfiguration](../../backend/src/main/kotlin/se/forena/api/mcp/McpConfiguration.kt),
-[MCP-verktyg](../../backend/src/main/kotlin/se/forena/api/mcp/McpActivityService.kt),
+[delade läsverktyg](../../backend/src/main/kotlin/se/forena/api/assistant/SharedActivityTools.kt),
 [OAuth-resursmetadata](../../backend/src/main/kotlin/se/forena/api/mcp/McpMetadataController.kt)
 och dokumenten ovan. Verktygskatalogen behöver inventeras i detalj när
 omfattningen preciseras; uppräkningen ovan är inte en fullständig verktygsinventering.

@@ -82,6 +82,11 @@ forena:
     client-redirect: "${FORENA_OAUTH_CLIENT_REDIRECT:}"
     client-secret: "${FORENA_OAUTH_CLIENT_SECRET:}"
 
+# The model adapter can log full prompts for malformed provider responses.
+logging:
+  level:
+    org.springframework.ai.openai.OpenAiChatModel: "OFF"
+
 management:
   endpoints:
     web:

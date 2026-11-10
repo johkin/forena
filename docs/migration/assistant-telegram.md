@@ -76,6 +76,27 @@ bedömda personer; andra personers okända närvaro och kallelsesvar bevaras.
 
 ## Metodskydd och lagbehörigheter
 
+Läsningarna är Spring AI `@Tool`-metoder. Assistenten och MCP återanvänder samma
+14 verktyg från `SharedActivityTools` och `AssistantReadTools` genom
+`AssistantToolCatalog`: aktiviteter, lagöversikter, behöriga namnlistor,
+dokument, medlemsuppdrag, kallelsesvar med kommentarer, närvaro, historik,
+redigeringsunderlag, arbetspass och signaler. Båda ingångarna använder samma
+aktuella domänbehörigheter. Grundkontexten innehåller fortsatt vald aktivitet,
+kallelsesummering, verifierade roller, profil, minnen och dialog. Samtal och
+minnen exporteras inte via MCP; inga skrivkommandon ingår i verktygskatalogen.
+
+`AssistantToolScope` förmedlar verifierad identitet och servervald klubb/lag
+genom `ToolContext`. Ett modellargument kan varken byta identitet eller lämna
+den routade klubben, även när kontot har rättigheter i flera klubbar. Ett
+utelämnat lag-id kan inte bredda ett redan valt lag till hela klubben.
+Domäntjänsterna verifierar fortfarande aktuell åtkomst vid varje läsning.
+`AssistantToolAccessService` sköter det gemensamma uppslaget av behöriga lag och
+aktiviteter samt kontrollen av deras faktiska klubb-/lagkoppling. Filtrering,
+verktyg och förslagsgranskning använder samma scope-predikat. Ett utelämnat
+lagargument följer det servervalda laget.
+Spring AI:s verktygsflöde använder befintlig Gateway-konfiguration; ingen
+ny modell, nyckel eller skrivbehörighet införs.
+
 Implementationens säkerhetsmönster följer Spring Securitys
 [method security med en egen behörighetskomponent](https://docs.spring.io/spring-security/reference/servlet/authorization/method-security.html).
 `@EnableMethodSecurity` aktiverar metodskyddet. Lagbundna operationer använder
@@ -84,6 +105,14 @@ exempelvis `@PreAuthorize("@teamAccess.canManageInvitations(#actor, #team)")`.
 databasnycklar. Konto, egen personkoppling, organisation, lag, giltighetsdatum
 och lagets tidszon kontrolleras mot aktuella data. Aktivitetsbundna kontroller
 hämtar laget från den lagrade aktiviteten.
+
+Lagets samlade rättigheter kan hämtas i en fråga med samma SQL-predikat som
+enskilda rättighetskontroller. Permissionnycklarna till SQL-kandidatlistan
+kommer från `TeamPermission`. Assistentens lagläsningar återanvänder detta
+underlag inom operationen; nästa verktygsanrop eller kommando gör en ny kontroll.
+`AdministrationAccessService` samlar administratörsfakta och struktur-/
+verksamhetsregler även för profil- och medlemsläsning. Plattformens struktur-
+administration är fortsatt skild från verksamhetsbehörighet.
 
 `Actor` skapas av backendens identitetsadaptrar och tas aldrig från klientens
 JSON. En verifierad webb-session, ett MCP-grant eller en aktiv Telegram-koppling
@@ -167,6 +196,9 @@ en beständig botgemensam transportpaus innan reservkanaler används.
 
 - Fem frågor per minut och trettio per timme per konto; även misslyckade modellförsök förbrukar budget.
 - Högst 4 000 tecken per fråga, 4 096 genererade token per modellförsök och begränsad kontext.
+- Högst åtta verktygskörningar per klubbsvar, tre per verktyg och nio modellvarv.
+  Verktygsargument begränsas till 8 000 tecken, ett verktygsresultat till 80 000
+  och modellkontext inklusive verktygshistorik och scheman till 180 000 tecken.
 - Röster: svenska, högst 60 sekunder inklusive exakt 60, högst 5 MB tillfälligt ljud. Ingen egen beständig ljudkopia.
 - Historik: högst 366 dagar och 200 detaljerade poster, med begränsningsflagga och separata exakta närvarosummeringar.
 - Arbetsuppgiftsförslag: högst 100 uttryckligen valda aktiviteter, 1–50 platser per uppgift; befintligt namn hoppas över atomärt.

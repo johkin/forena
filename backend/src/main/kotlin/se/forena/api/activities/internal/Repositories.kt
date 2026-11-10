@@ -154,7 +154,27 @@ interface ActivityScheduleRepository : Repository<ActivityScheduleEntity, UUID> 
     fun save(entity: ActivityScheduleEntity): ActivityScheduleEntity
     fun findByActivityId(id: UUID): List<ActivityScheduleEntity>
 }
+/** Shared by scalar authorization and the per-command permission projection. */
+private const val TEAM_PERMISSION_ACCESS = """
+    exists(select 1 from forena.organization_member m
+        where m.organization_id=:organization and m.subject=:subject and m.active and m.role in ('owner','admin'))
+    or exists(select 1 from forena.team_permission_assignment p
+        join forena.person_access a on a.person_id=p.person_id and a.organization_id=p.organization_id
+        where p.team_id=:team and p.organization_id=:organization and p.permission=requested.permission
+          and p.active and p.starts_on<=:today and (p.ends_on is null or p.ends_on>=:today)
+          and a.subject=:subject and a.active and a.kind='self')
+    or exists(select 1 from forena.team_administrator t
+        join forena.person_access a on a.person_id=t.person_id and a.organization_id=t.organization_id
+        where t.team_id=:team and t.organization_id=:organization and t.subject=:subject
+          and t.active and t.starts_on<=:today and (t.ends_on is null or t.ends_on>=:today)
+          and a.subject=:subject and a.active and a.kind='self')
+    or exists(select 1 from forena.section_administrator s join forena.team t on t.section_id=s.section_id and t.organization_id=s.organization_id
+        where t.id=:team and s.organization_id=:organization and s.subject=:subject and s.active)
+"""
+
 interface ManagementRepository : Repository<TeamEntity, UUID> {
+    fun teams(subject: UUID): List<ManagementTeamRow> = teams(subject, TeamPermission.keys)
+
     @Query("""select t.id,t.organization_id,t.name,o.name as organization_name,o.time_zone,s.discipline_key,t.section_id
         from forena.team t join forena.organization o on o.id=t.organization_id
         left join forena.section s on s.id=t.section_id and s.organization_id=t.organization_id
@@ -162,11 +182,11 @@ interface ManagementRepository : Repository<TeamEntity, UUID> {
             select organization_id from forena.organization_member where subject=:subject and active and role in ('owner','admin')
             union select p.organization_id from forena.team_permission_assignment p
                 join forena.person_access a on a.person_id=p.person_id and a.organization_id=p.organization_id
-                where a.subject=:subject and a.active and a.kind='self' and p.active and p.permission in ('activity.manage','attendance.manage','invitation.manage','roster.manage','assistant.memory.manage')
+                where a.subject=:subject and a.active and a.kind='self' and p.active and p.permission in (:permissions)
             union select organization_id from forena.team_administrator where subject=:subject and active
             union select organization_id from forena.section_administrator where subject=:subject and active)
         order by t.name""")
-    fun teams(subject: UUID): List<ManagementTeamRow>
+    fun teams(subject: UUID, permissions: Collection<String>): List<ManagementTeamRow>
 
     @Query("""select t.id,t.organization_id,t.name,o.name as organization_name,o.time_zone,s.discipline_key,t.section_id
         from forena.team t join forena.organization o on o.id=t.organization_id
@@ -177,22 +197,11 @@ interface ManagementRepository : Repository<TeamEntity, UUID> {
     @Query("select id from forena.team where id=:team for update")
     fun lockTeam(team: UUID): UUID?
 
-    @Query("""select exists(select 1 from forena.organization_member m
-        where m.organization_id=:organization and m.subject=:subject and m.active and m.role in ('owner','admin'))
-        or exists(select 1 from forena.team_permission_assignment p
-            join forena.person_access a on a.person_id=p.person_id and a.organization_id=p.organization_id
-            where p.team_id=:team and p.organization_id=:organization and p.permission=:permission
-              and p.active and p.starts_on<=:today and (p.ends_on is null or p.ends_on>=:today)
-              and a.subject=:subject and a.active and a.kind='self')
-        or exists(select 1 from forena.team_administrator t
-            join forena.person_access a on a.person_id=t.person_id and a.organization_id=t.organization_id
-            where t.team_id=:team and t.organization_id=:organization and t.subject=:subject
-              and t.active and t.starts_on<=:today and (t.ends_on is null or t.ends_on>=:today)
-              and a.subject=:subject and a.active and a.kind='self')
-        or exists(select 1 from forena.section_administrator s join forena.team t on t.section_id=s.section_id and t.organization_id=s.organization_id
-            where t.id=:team and s.organization_id=:organization and s.subject=:subject and s.active)
-        """)
-    fun allowed(subject: UUID, organization: UUID, team: UUID, permission: String, today: java.time.LocalDate): Boolean
+    @Query("select exists(select 1 from (select cast(:permission as text) as permission) requested where " + TEAM_PERMISSION_ACCESS + ")")
+    fun allowed(subject: UUID, organization: UUID, team: UUID, permission: String, today: LocalDate): Boolean
+
+    @Query("select requested.permission from unnest(array[:permissions]::text[]) requested(permission) where " + TEAM_PERMISSION_ACCESS)
+    fun permissions(subject: UUID, organization: UUID, team: UUID, permissions: Collection<String>, today: LocalDate): List<String>
 
     @Query("""select distinct p.id,p.display_name,m.role from forena.team_membership m
         join forena.person p on p.id=m.person_id and p.organization_id=m.organization_id
@@ -514,16 +523,6 @@ interface AssistantActivityRepository : Repository<ActivityEntity, UUID> {
 }
 
 interface AssistantMemberRepository : Repository<TeamEntity, UUID> {
-    @Query(
-        "select exists(select 1 from forena.organization_member where organization_id=:org and subject=:actor and active and role in ('owner','admin'))"
-    )
-    fun isClubAdministrator(org: UUID, actor: UUID): Boolean
-
-    @Query(
-        "select exists(select 1 from forena.section_administrator where organization_id=:org and section_id=:section and subject=:actor and active)"
-    )
-    fun isSectionAdministrator(org: UUID, section: UUID?, actor: UUID): Boolean
-
     @Query(
         """select p.id as person_id,p.display_name as name,t.id as team_id,t.name as team_name,m.role,g.name as responsibility
             from forena.team_membership m join forena.team t on t.id=m.team_id and t.organization_id=m.organization_id

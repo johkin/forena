@@ -77,10 +77,14 @@ inte MCP-token, och MCP accepterar inte browsercookies som autentisering.
 Metadata finns på `/.well-known/oauth-authorization-server` och
 `/.well-known/oauth-protected-resource/api/mcp`. Spring AI hanterar MCP-protokollet
 och den stateless WebMVC-transporten på `/api/mcp`; OAuth hanteras fortsatt av
-Spring Authorization Server. Verktyget `list_my_activities` registreras med
-`@Tool` och erbjuder enbart läsning av högst 50 aktiviteter utan kontaktuppgifter,
-personnamn eller svarskommentarer. Servern behöver ingen AI-modell eller
-modellleverantör. Övriga verktyg i gamla Next-servern återstår att flytta.
+Spring Authorization Server. Assistenten och MCP registrerar samma 14
+`@Tool`-annoterade läsverktyg genom `AssistantToolCatalog`. Domäntjänsterna
+kontrollerar aktuell åtkomst till aktiviteter, lagunderlag, dokument,
+kallelsesvar med kommentarer, närvaro, historik och medlemsuppdrag.
+OAuth-samtycket beskriver denna läsåtkomst; scope `mcp:read` ger inga nya
+verksamhetsrättigheter. Verktyg, resultatgränser och behörigheter listas i
+[MCP-guiden](../mcp.md). Servern behöver ingen AI-modell eller modellleverantör;
+samtal, minnen och skrivkommandon ingår inte i verktygskatalogen.
 Vercels routing måste skicka `/oauth2/*` och metadata till backend;
 `/oauth/consent` går till SPA:n.
 

@@ -35,11 +35,11 @@ class AssistantActivityService(
     fun catalogActivities(actor: Actor): List<PersonalActivity> {
         val personal = overview.overview(actor).activities
         val extraTeams =
-            catalogTeams(actor).filter {
-                management.canManageInvitations(actor, it.id) &&
-                    !management.canManageActivity(actor, it.id) &&
-                    !management.canManageAttendance(actor, it.id)
-            }
+            managedTeamPermissions(actor).filter {
+                TeamPermission.MANAGE_INVITATIONS in it.permissions &&
+                    TeamPermission.MANAGE_ACTIVITIES !in it.permissions &&
+                    TeamPermission.MANAGE_ATTENDANCE !in it.permissions
+            }.map { it.team }
         val additional = extraTeams.flatMap { team ->
             activities
                 .findByTeamIdOrderByStartsAtAsc(team.id)
@@ -97,22 +97,27 @@ class AssistantActivityService(
     }
 
     @Transactional(readOnly = true)
-    fun catalogTeams(actor: Actor): List<AssistantTeam> {
+    fun catalogTeams(actor: Actor): List<AssistantTeam> =
+        managedTeamPermissions(actor).map { AssistantTeam(it.team.id, it.team.organizationId, it.team.name) }
+
+    private fun managedTeamPermissions(actor: Actor): List<ManagedTeamPermissions> {
         sessions.requireActive(actor)
         return teams
             .teams(actor.subject)
-            .filter { teamAccess.hasAssistantManagementAccess(actor, it.id) }
-            .map { AssistantTeam(it.id, it.organizationId, it.name) }
+            .map { ManagedTeamPermissions(it, teamAccess.permissions(actor, it)) }
+            .filter { it.permissions.isNotEmpty() }
     }
+
+    private data class ManagedTeamPermissions(val team: ManagementTeamRow, val permissions: Set<TeamPermission>)
 
     @Transactional(readOnly = true)
     fun team(actor: Actor, id: UUID): AssistantTeamData {
         sessions.requireActive(actor)
         val team = teams.team(id) ?: throw NoSuchElementException()
-        val authorized = teamAccess.hasAssistantManagementAccess(actor, id)
-        if (!authorized && overview.overview(actor).teams.none { it.id == id })
+        val permissions = teamAccess.permissions(actor, team)
+        if (permissions.isEmpty() && overview.overview(actor).teams.none { it.id == id })
             throw AccessDeniedException("Team access required")
-        val canRoster = teamAccess.canManageRoster(actor, id)
+        val canRoster = TeamPermission.MANAGE_ROSTER in permissions
         val today = clock.now().atZone(ZoneId.of(team.timeZone)).toLocalDate()
         return AssistantTeamData(
             id,
@@ -122,9 +127,9 @@ class AssistantActivityService(
             team.sectionId,
             team.disciplineKey,
             team.timeZone,
-            if (management.canManageActivity(actor, id)) management.context(actor, id) else null,
-            management.canManageInvitations(actor, id),
-            management.canManageAttendance(actor, id),
+            if (TeamPermission.MANAGE_ACTIVITIES in permissions) management.context(actor, id) else null,
+            TeamPermission.MANAGE_INVITATIONS in permissions,
+            TeamPermission.MANAGE_ATTENDANCE in permissions,
             if (canRoster)
                 teams.participants(id, today).map {
                     AssistantRosterPerson(it.id, it.displayName, it.role)

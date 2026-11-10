@@ -3,6 +3,7 @@ package se.forena.api.assistant.internal
 import org.springframework.aot.hint.annotation.RegisterReflectionForBinding
 import org.springframework.aot.hint.RuntimeHints
 import org.springframework.aot.hint.RuntimeHintsRegistrar
+import org.springframework.aot.hint.MemberCategory
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.ImportRuntimeHints
 import se.forena.api.assistant.Conversation
@@ -25,6 +26,13 @@ import se.forena.api.assistant.AssistantDocuments
 import se.forena.api.assistant.MemoryEdit
 import se.forena.api.assistant.ConfirmationResult
 import se.forena.api.assistant.ReminderDraft
+import se.forena.api.assistant.AssistantReadTools
+import se.forena.api.assistant.SharedActivityTools
+import se.forena.api.assistant.ToolInvitations
+import se.forena.api.assistant.ToolAttendance
+import se.forena.api.assistant.ToolSignals
+import se.forena.api.assistant.AssistantTeamSummary
+import se.forena.api.assistant.AssistantEditorSummary
 
 /** Typed JDBC projections and provider payloads are also reachable in the native runtime. */
 @Configuration(proxyBeanMethods = false)
@@ -50,11 +58,18 @@ import se.forena.api.assistant.ReminderDraft
     MemoryEdit::class,
     ConfirmationResult::class,
     ReminderDraft::class,
+    ToolInvitations::class,
+    ToolAttendance::class,
+    ToolSignals::class,
+    AssistantTeamSummary::class,
+    AssistantEditorSummary::class,
 )
 class AssistantNativeBindings
 
 class AssistantPromptResourceHints : RuntimeHintsRegistrar {
     override fun registerHints(hints: RuntimeHints, classLoader: ClassLoader?) {
         hints.resources().registerPattern("prompts/*.md")
+        hints.reflection().registerType(AssistantReadTools::class.java, MemberCategory.INVOKE_PUBLIC_METHODS)
+        hints.reflection().registerType(SharedActivityTools::class.java, MemberCategory.INVOKE_PUBLIC_METHODS)
     }
 }

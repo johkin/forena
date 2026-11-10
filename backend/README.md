@@ -3,11 +3,14 @@
 Backend för den separata React/Vite-appen. Spring Security äger autentisering,
 Spring Authorization Server äger OAuth och Spring Session JDBC lagrar
 webbsessioner. Spring AI hanterar MCP-protokollet genom en stateless
-WebMVC-server på `/api/mcp`, med läsverktyget `list_my_activities` registrerat
-genom `@Tool`. MCP-servern behöver ingen AI-modell eller modellleverantör.
+WebMVC-server på `/api/mcp`, med läsverktyg registrerade genom `@Tool`.
+`SharedActivityTools` och `AssistantReadTools` ger samma 14 läsverktyg till MCP
+och assistentens lokala callbacks genom `AssistantToolCatalog`. Dokument,
+medlemsuppdrag, kallelsesvar, närvaro och historik använder samma aktuella
+domänbehörigheter i båda ingångarna. Samtal, minnen och skrivkommandon ingår
+inte i MCP-katalogen. MCP-servern behöver ingen AI-modell eller modellleverantör.
 PostgreSQL kan köras lokalt eller hos Supabase. Den äldre Next-appen behåller
-sin befintliga autentisering och separata deployment; dess övriga MCP-verktyg
-återstår att flytta.
+sin befintliga autentisering, implementation och separata deployment.
 
 ## Lokal utveckling
 
