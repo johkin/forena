@@ -1368,7 +1368,7 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         AccessibleInvitation: {
-            consumes_capacity?: boolean;
+            consumes_capacity: boolean;
             /** Format: uuid */
             id: string;
             name: string;
@@ -1379,77 +1379,77 @@ export interface components {
             response_comment: string | null;
         };
         ActivityAudience: {
-            groupIds?: string[];
-            responsibilityTypeIds?: string[];
-            roles?: string[];
+            groupIds: string[];
+            responsibilityTypeIds: string[];
+            roles: string[];
         };
         ActivityAudienceGroup: {
             /** Format: uuid */
-            id?: string;
-            kind?: string;
-            name?: string;
-            personIds?: string[];
+            id: string;
+            kind: string;
+            name: string;
+            personIds: string[];
         };
         ActivityCommand: {
             /** Format: uuid */
             activityTypeId?: string | null;
-            description?: string;
+            description: string;
             /** Format: date-time */
-            endsAt?: string;
+            endsAt: string;
             /** Format: date-time */
             gatheringAt?: string | null;
             invitationAudience?: string | null;
-            invitationMode?: string;
+            invitationMode: string;
             invitationSelection?: components["schemas"]["ActivityAudience"] | null;
-            location?: string;
+            location: string;
             /** Format: int32 */
             maxParticipants?: number | null;
-            personIds?: string[];
+            personIds: string[];
             /** Format: int64 */
             revision?: number | null;
             /** Format: date-time */
-            startsAt?: string;
+            startsAt: string;
             /** Format: uuid */
             teamId?: string | null;
             timingRules?: components["schemas"]["ActivityTimingRules"] | null;
-            title?: string;
+            title: string;
         };
         ActivityDefaultsRow: {
             /** Format: uuid */
-            activityTypeId?: string;
-            disciplineKey?: string;
+            activityTypeId: string;
+            disciplineKey: string;
             /** Format: uuid */
-            id?: string;
+            id: string;
             /** Format: int64 */
-            revision?: number;
-            scope?: string;
+            revision: number;
+            scope: string;
             /** Format: uuid */
-            scopeId?: string;
-            valuesJson?: string;
-            version?: string;
+            scopeId: string;
+            valuesJson: string;
+            version: string;
         };
         ActivityDeletionOptions: {
-            canDelete?: boolean;
+            canDelete: boolean;
         };
         ActivityDisposition: {
-            disposition?: string;
+            disposition: string;
         };
         ActivityEditorContext: {
-            activities?: components["schemas"]["ManagedActivity"][];
-            defaults?: components["schemas"]["ActivityDefaultsRow"][];
+            activities: components["schemas"]["ManagedActivity"][];
+            defaults: components["schemas"]["ActivityDefaultsRow"][];
             disciplineKey?: string | null;
-            groups?: components["schemas"]["ActivityAudienceGroup"][];
-            members?: components["schemas"]["ActivityParticipant"][];
+            groups: components["schemas"]["ActivityAudienceGroup"][];
+            members: components["schemas"]["ActivityParticipant"][];
             /** Format: uuid */
             sectionId?: string | null;
-            team?: components["schemas"]["ManagedTeam"];
-            types?: components["schemas"]["ManagedActivityType"][];
+            team: components["schemas"]["ManagedTeam"];
+            types: components["schemas"]["ManagedActivityType"][];
         };
         ActivityParticipant: {
-            displayName?: string;
+            displayName: string;
             /** Format: uuid */
-            id?: string;
-            role?: string;
+            id: string;
+            role: string;
         };
         ActivityPerson: {
             attendance: string;
@@ -1459,109 +1459,109 @@ export interface components {
             name: string;
         };
         ActivityResult: {
-            activity?: components["schemas"]["ManagedActivity"];
+            activity: components["schemas"]["ManagedActivity"];
         };
         ActivitySeriesCommand: {
             /** Format: uuid */
             activityTypeId?: string | null;
-            description?: string;
+            description: string;
             /** Format: date */
-            endsOn?: string;
+            endsOn: string;
             invitationAudience?: string | null;
-            invitationMode?: string;
+            invitationMode: string;
             invitationSelection?: components["schemas"]["ActivityAudience"] | null;
-            location?: string;
+            location: string;
             /** Format: int32 */
             maxParticipants?: number | null;
             /** Format: time-local */
-            startTime?: string;
+            startTime: string;
             /** Format: date */
-            startsOn?: string;
+            startsOn: string;
             /** Format: uuid */
-            teamId?: string;
-            timeZone?: string;
-            timingRules?: components["schemas"]["ActivityTimingRules"];
-            title?: string;
-            weekdays?: number[];
+            teamId: string;
+            timeZone: string;
+            timingRules: components["schemas"]["ActivityTimingRules"];
+            title: string;
+            weekdays: number[];
         };
         ActivitySeriesResult: {
-            activities?: components["schemas"]["ManagedActivity"][];
+            activities: components["schemas"]["ManagedActivity"][];
             /** Format: int32 */
-            count?: number;
+            count: number;
             /** Format: uuid */
-            seriesId?: string;
+            seriesId: string;
         };
         ActivityTimingRules: {
-            duration?: string;
-            gatheringRule?: string;
-            invitationRule?: string;
-            reminderRules?: string[];
-            responseDueRule?: string;
+            duration: string;
+            gatheringRule: string;
+            invitationRule: string;
+            reminderRules: string[];
+            responseDueRule: string;
         };
         AdministrationClub: {
-            administrators?: components["schemas"]["Administrator"][];
-            canManage?: boolean;
+            administrators: components["schemas"]["Administrator"][];
+            canManage: boolean;
             /** Format: uuid */
-            id?: string;
-            name?: string;
-            sections?: components["schemas"]["AdministrationSection"][];
+            id: string;
+            name: string;
+            sections: components["schemas"]["AdministrationSection"][];
             slug?: string | null;
-            timeZone?: string;
+            timeZone: string;
         };
         AdministrationOk: {
-            ok?: boolean;
+            ok: boolean;
         };
         AdministrationOverview: {
-            canBootstrap?: boolean;
-            clubs?: components["schemas"]["AdministrationClub"][];
-            disciplines?: components["schemas"]["DisciplineDefinition"][];
-            platformAdmin?: boolean;
-            platformAdministrators?: components["schemas"]["Administrator"][];
+            canBootstrap: boolean;
+            clubs: components["schemas"]["AdministrationClub"][];
+            disciplines: components["schemas"]["DisciplineDefinition"][];
+            platformAdmin: boolean;
+            platformAdministrators: components["schemas"]["Administrator"][];
         };
         AdministrationResult: {
             /** Format: uuid */
-            id?: string;
+            id: string;
         };
         AdministrationSection: {
-            administrators?: components["schemas"]["Administrator"][];
-            canChangeDiscipline?: boolean;
-            canDelete?: boolean;
-            canManage?: boolean;
-            canManageActivityDefaults?: boolean;
-            disciplineKey?: string;
+            administrators: components["schemas"]["Administrator"][];
+            canChangeDiscipline: boolean;
+            canDelete: boolean;
+            canManage: boolean;
+            canManageActivityDefaults: boolean;
+            disciplineKey: string;
             /** Format: uuid */
-            id?: string;
-            name?: string;
+            id: string;
+            name: string;
             slug?: string | null;
-            teams?: components["schemas"]["AdministrationTeam"][];
+            teams: components["schemas"]["AdministrationTeam"][];
         };
         AdministrationTeam: {
-            administrators?: components["schemas"]["Administrator"][];
-            canAssignAdministrators?: boolean;
-            canDelete?: boolean;
-            canManage?: boolean;
+            administrators: components["schemas"]["Administrator"][];
+            canAssignAdministrators: boolean;
+            canDelete: boolean;
+            canManage: boolean;
             /** Format: uuid */
-            id?: string;
-            name?: string;
-            season?: string;
+            id: string;
+            name: string;
+            season: string;
             slug?: string | null;
         };
         Administrator: {
-            active?: boolean;
-            email?: string;
+            active: boolean;
+            email: string;
             /** Format: date */
             endsOn?: string | null;
             /** Format: date */
             startsOn?: string | null;
             /** Format: uuid */
-            subject?: string;
+            subject: string;
         };
         AdministratorChange: {
-            active?: boolean;
-            email?: string;
+            active: boolean;
+            email: string;
             /** Format: date */
             endsOn?: string | null;
-            name?: string;
+            name: string;
             /** Format: date */
             startsOn?: string | null;
         };
@@ -1569,18 +1569,18 @@ export interface components {
             error: string;
         };
         AssistantMemory: {
-            content?: string;
+            content: string;
             /** Format: date-time */
-            createdAt?: string;
+            createdAt: string;
             /** Format: uuid */
-            createdBy?: string;
+            createdBy: string;
             disciplineKey?: string | null;
             /** Format: uuid */
-            id?: string;
+            id: string;
             /** Format: uuid */
             organizationId?: string | null;
             /** Format: int64 */
-            revision?: number;
+            revision: number;
             /** Format: uuid */
             sectionId?: string | null;
             /** Format: uuid */
@@ -1589,43 +1589,43 @@ export interface components {
             teamId?: string | null;
         };
         AssistantMessage: {
-            content?: string;
+            content: string;
             /** Format: uuid */
-            conversationId?: string;
+            conversationId: string;
             /** Format: date-time */
-            createdAt?: string;
+            createdAt: string;
             /** Format: uuid */
-            id?: string;
+            id: string;
             /** Format: uuid */
             organizationId?: string | null;
-            role?: string;
-            sender?: string;
+            role: string;
+            sender: string;
         };
         AssistantProfile: {
-            instructions?: string;
-            name?: string;
-            personality?: string;
+            instructions: string;
+            name: string;
+            personality: string;
             /** Format: int64 */
-            revision?: number;
+            revision: number;
         };
         AssistantProposal: {
             /** Format: uuid */
-            conversationId?: string;
+            conversationId: string;
             /** Format: date-time */
-            createdAt?: string;
+            createdAt: string;
             /** Format: date-time */
-            expiresAt?: string;
-            fingerprint?: string;
+            expiresAt: string;
+            fingerprint: string;
             /** Format: uuid */
-            id?: string;
-            kind?: string;
-            label?: string;
+            id: string;
+            kind: string;
+            label: string;
             /** Format: uuid */
             organizationId?: string | null;
-            payload?: string;
-            state?: string;
+            payload: string;
+            state: string;
             /** Format: uuid */
-            subject?: string;
+            subject: string;
             /** Format: uuid */
             teamId?: string | null;
         };
@@ -1744,95 +1744,95 @@ export interface components {
             name: string;
         };
         CancellationCommand: {
-            action?: string;
+            action: string;
             reason?: string | null;
             /** Format: int64 */
             revision?: number | null;
         };
         CapabilityChange: {
-            enabled?: boolean;
-            key?: string;
+            enabled: boolean;
+            key: string;
             /** Format: int64 */
-            revision?: number;
+            revision: number;
         };
         CapabilityDefinition: {
-            adjustable?: boolean;
-            configurationScope?: string;
-            enabledByDefault?: boolean;
-            key?: string;
-            name?: string;
-            version?: string;
+            adjustable: boolean;
+            configurationScope: string;
+            enabledByDefault: boolean;
+            key: string;
+            name: string;
+            version: string;
         };
         CapabilitySetting: {
-            adjustable?: boolean;
-            editable?: boolean;
-            enabled?: boolean;
-            key?: string;
-            name?: string;
+            adjustable: boolean;
+            editable: boolean;
+            enabled: boolean;
+            key: string;
+            name: string;
             /** Format: int64 */
-            revision?: number;
+            revision: number;
         };
         CatalogueCategory: {
-            key?: string;
-            name?: string;
+            key: string;
+            name: string;
         };
         CatalogueChange: {
             category?: string | null;
-            key?: string;
-            name?: string;
+            key: string;
+            name: string;
         };
         CatalogueDiscipline: {
-            category?: string;
-            codeOwned?: boolean;
-            key?: string;
-            name?: string;
+            category: string;
+            codeOwned: boolean;
+            key: string;
+            name: string;
             packageVersion?: string | null;
         };
         CatalogueSnapshot: {
-            categories?: components["schemas"]["CatalogueCategory"][];
-            disciplines?: components["schemas"]["CatalogueDiscipline"][];
+            categories: components["schemas"]["CatalogueCategory"][];
+            disciplines: components["schemas"]["CatalogueDiscipline"][];
         };
         ClubChange: {
-            name?: string;
-            slug?: string;
-            timeZone?: string;
+            name: string;
+            slug: string;
+            timeZone: string;
         };
         CodeRequest: {
-            code?: string;
+            code: string;
         };
         ConfirmationResult: {
-            confirmed?: boolean;
-            message?: string;
+            confirmed: boolean;
+            message: string;
             proposal?: components["schemas"]["AssistantProposal"] | null;
         };
         ConsentView: {
-            clientId?: string;
-            clientName?: string;
-            csrfParameter?: string;
-            csrfToken?: string;
-            resource?: string;
-            scope?: string;
-            state?: string;
+            clientId: string;
+            clientName: string;
+            csrfParameter: string;
+            csrfToken: string;
+            resource: string;
+            scope: string;
+            state: string;
         };
         Conversation: {
-            active?: boolean;
+            active: boolean;
             /** Format: uuid */
             activityId?: string | null;
-            channel?: string;
+            channel: string;
             /** Format: date-time */
-            createdAt?: string;
+            createdAt: string;
             /** Format: uuid */
-            id?: string;
+            id: string;
             /** Format: uuid */
             organizationId?: string | null;
             /** Format: int64 */
-            revision?: number;
+            revision: number;
             /** Format: uuid */
-            subject?: string;
+            subject: string;
             /** Format: uuid */
             teamId?: string | null;
             /** Format: date-time */
-            updatedAt?: string;
+            updatedAt: string;
         };
         ConversationCommand: {
             /** Format: uuid */
@@ -1841,250 +1841,250 @@ export interface components {
             teamId?: string | null;
         };
         ConversationView: {
-            conversation?: components["schemas"]["Conversation"];
-            messages?: components["schemas"]["AssistantMessage"][];
-            proposals?: components["schemas"]["AssistantProposal"][];
+            conversation: components["schemas"]["Conversation"];
+            messages: components["schemas"]["AssistantMessage"][];
+            proposals: components["schemas"]["AssistantProposal"][];
         };
         CreateClub: {
-            disciplineKey?: string;
-            organizationName?: string;
-            organizationSlug?: string;
-            season?: string;
-            sectionName?: string;
-            sectionSlug?: string;
+            disciplineKey: string;
+            organizationName: string;
+            organizationSlug: string;
+            season: string;
+            sectionName: string;
+            sectionSlug: string;
             teamName?: string | null;
             teamSlug?: string | null;
-            timeZone?: string;
+            timeZone: string;
         };
         CredentialRegistrationRequest: {
             publicKey?: components["schemas"]["RelyingPartyPublicKey"];
         };
         DefaultsCommand: {
             /** Format: uuid */
-            activityTypeId?: string;
+            activityTypeId: string;
             /** Format: int64 */
-            revision?: number;
-            scope?: string;
+            revision: number;
+            scope: string;
             /** Format: uuid */
-            scopeId?: string;
-            values?: components["schemas"]["JsonNode"];
+            scopeId: string;
+            values: components["schemas"]["JsonNode"];
         };
         DefaultsWorkspace: {
-            disciplineKey?: string;
+            disciplineKey: string;
             /** Format: uuid */
-            organizationId?: string;
-            rows?: components["schemas"]["ActivityDefaultsRow"][];
-            scope?: string;
+            organizationId: string;
+            rows: components["schemas"]["ActivityDefaultsRow"][];
+            scope: string;
             /** Format: uuid */
-            scopeId?: string;
+            scopeId: string;
             /** Format: uuid */
             sectionId?: string | null;
-            types?: components["schemas"]["ManagedActivityType"][];
-            version?: string;
+            types: components["schemas"]["ManagedActivityType"][];
+            version: string;
         };
         DisciplineDefinition: {
-            capabilities?: components["schemas"]["CapabilityDefinition"][];
-            category?: string;
-            fields?: {
+            capabilities: components["schemas"]["CapabilityDefinition"][];
+            category: string;
+            fields: {
                 [key: string]: components["schemas"]["DisciplineField"][];
             };
-            key?: string;
-            name?: string;
-            scopeTitles?: {
+            key: string;
+            name: string;
+            scopeTitles: {
                 [key: string]: string;
             };
-            version?: string;
+            version: string;
         };
         DisciplineField: {
-            key?: string;
+            key: string;
             /** Format: int32 */
             maximum?: number | null;
             /** Format: int32 */
             minimum?: number | null;
-            options?: components["schemas"]["FieldOption"][];
+            options: components["schemas"]["FieldOption"][];
             /** @enum {string} */
-            read?: "managers" | "invitations" | "team";
-            title?: string;
+            read: "managers" | "invitations" | "team";
+            title: string;
             /** @enum {string} */
-            type?: "integer" | "choice" | "choices" | "player" | "players";
+            type: "integer" | "choice" | "choices" | "player" | "players";
             visibleWhen?: components["schemas"]["FieldCondition"] | null;
             /** @enum {string} */
-            write?: "managers" | "invitations" | "team";
+            write: "managers" | "invitations" | "team";
         };
         DisciplineFieldsCommand: {
             /** Format: uuid */
             activityId?: string | null;
-            disciplineKey?: string;
+            disciplineKey: string;
             /** Format: uuid */
             personId?: string | null;
             /** Format: int64 */
-            revision?: number;
+            revision: number;
             /** @enum {string} */
-            scope?: "section" | "team" | "teamMembership" | "activity" | "activityParticipation";
+            scope: "section" | "team" | "teamMembership" | "activity" | "activityParticipation";
             /** Format: uuid */
-            teamId?: string;
-            values?: components["schemas"]["JsonNode"];
-            version?: string;
+            teamId: string;
+            values: components["schemas"]["JsonNode"];
+            version: string;
         };
         DisciplineFieldsSnapshot: {
-            acceptedPlayers?: components["schemas"]["DisciplinePlayer"][];
-            canManageInvitations?: boolean;
-            disciplineKey?: string;
-            editable?: boolean;
-            enabled?: boolean;
-            fields?: components["schemas"]["DisciplineField"][];
-            participants?: components["schemas"]["DisciplinePlayer"][];
+            acceptedPlayers: components["schemas"]["DisciplinePlayer"][];
+            canManageInvitations: boolean;
+            disciplineKey: string;
+            editable: boolean;
+            enabled: boolean;
+            fields: components["schemas"]["DisciplineField"][];
+            participants: components["schemas"]["DisciplinePlayer"][];
             /** Format: int64 */
-            revision?: number;
-            teamPlayers?: components["schemas"]["DisciplinePlayer"][];
-            title?: string;
-            values?: components["schemas"]["JsonNode"];
+            revision: number;
+            teamPlayers: components["schemas"]["DisciplinePlayer"][];
+            title: string;
+            values: components["schemas"]["JsonNode"];
             version?: string | null;
         };
         DisciplinePlayer: {
             /** Format: uuid */
-            id?: string;
-            name?: string;
+            id: string;
+            name: string;
         };
         EvaluationConfiguration: {
-            confirmDeletion?: boolean;
+            confirmDeletion: boolean;
             /** Format: double */
-            defaultGroups?: number;
-            enabled?: boolean;
-            metrics?: components["schemas"]["EvaluationMetric"][];
+            defaultGroups: number;
+            enabled: boolean;
+            metrics: components["schemas"]["EvaluationMetric"][];
             /** Format: uuid */
             revision?: string | null;
             /** Format: double */
-            threshold?: number;
+            threshold: number;
         };
         EvaluationMetric: {
             /** Format: uuid */
-            id?: string;
+            id: string;
             /** @enum {string} */
-            kind?: "ability" | "development";
-            name?: string;
+            kind: "ability" | "development";
+            name: string;
         };
         EvaluationScore: {
             /** Format: uuid */
-            metricId?: string;
+            metricId: string;
             /** Format: uuid */
-            personId?: string;
+            personId: string;
             /** Format: double */
-            value?: number;
+            value: number;
         };
         EvaluationScoreCommand: {
             /** Format: uuid */
-            revision?: string;
-            scores?: components["schemas"]["EvaluationScore"][];
+            revision: string;
+            scores: components["schemas"]["EvaluationScore"][];
         };
         EvaluationSnapshot: {
-            canConfigure?: boolean;
+            canConfigure: boolean;
             /** Format: int32 */
-            defaultGroups?: number;
-            enabled?: boolean;
-            metrics?: components["schemas"]["EvaluationMetric"][];
-            players?: components["schemas"]["DisciplinePlayer"][];
+            defaultGroups: number;
+            enabled: boolean;
+            metrics: components["schemas"]["EvaluationMetric"][];
+            players: components["schemas"]["DisciplinePlayer"][];
             /** Format: uuid */
             revision?: string | null;
-            scores?: components["schemas"]["EvaluationScore"][];
+            scores: components["schemas"]["EvaluationScore"][];
             /** Format: double */
-            threshold?: number;
+            threshold: number;
         };
         FieldCondition: {
-            field?: string;
-            value?: string;
+            field: string;
+            value: string;
         };
         FieldOption: {
-            id?: string;
-            name?: string;
+            id: string;
+            name: string;
         };
         GroupCommand: {
-            kind?: string;
+            kind: string;
         };
         GroupLink: {
-            kind?: string;
-            url?: string;
+            kind: string;
+            url: string;
         };
         GroupStart: {
-            pairingUrl?: string;
+            pairingUrl: string;
         };
         InformationAnswer: {
-            ownerKey?: string;
+            ownerKey: string;
             /** Format: int64 */
-            revision?: number;
-            values?: components["schemas"]["JsonNode"];
+            revision: number;
+            values: components["schemas"]["JsonNode"];
         };
         InformationCommand: {
-            answers?: components["schemas"]["InformationAnswer"][];
+            answers: components["schemas"]["InformationAnswer"][];
             attendance?: components["schemas"]["AttendanceCommand"] | null;
         };
         InformationDefinition: {
             capabilityKey?: string | null;
-            fields?: components["schemas"]["DisciplineField"][];
-            key?: string;
-            title?: string;
-            version?: string;
+            fields: components["schemas"]["DisciplineField"][];
+            key: string;
+            title: string;
+            version: string;
         };
         InformationHistory: {
-            actorName?: string;
+            actorName: string;
             /** Format: date-time */
-            changedAt?: string;
-            names?: {
+            changedAt: string;
+            names: {
                 [key: string]: string;
             };
-            ownerKey?: string;
-            previous?: components["schemas"]["JsonNode"];
+            ownerKey: string;
+            previous: components["schemas"]["JsonNode"];
             /** Format: int64 */
-            revision?: number;
-            state?: string;
-            values?: components["schemas"]["JsonNode"];
+            revision: number;
+            state: string;
+            values: components["schemas"]["JsonNode"];
         };
         InformationItem: {
             closeReason?: string | null;
-            definition?: components["schemas"]["InformationDefinition"];
+            definition: components["schemas"]["InformationDefinition"];
             /** Format: int64 */
-            revision?: number;
-            state?: string;
-            values?: components["schemas"]["JsonNode"];
+            revision: number;
+            state: string;
+            values: components["schemas"]["JsonNode"];
         };
         InformationPeriodReport: {
             /** Format: date */
-            fromDate?: string;
-            report?: components["schemas"]["InformationReport"];
-            season?: string;
-            timeZone?: string;
+            fromDate: string;
+            report: components["schemas"]["InformationReport"];
+            season: string;
+            timeZone: string;
             /** Format: date */
-            untilDate?: string;
+            untilDate: string;
         };
         InformationReport: {
-            entries?: components["schemas"]["InformationReportEntry"][];
+            entries: components["schemas"]["InformationReportEntry"][];
             /** Format: date-time */
-            from?: string;
-            players?: components["schemas"]["DisciplinePlayer"][];
+            from: string;
+            players: components["schemas"]["DisciplinePlayer"][];
             /** Format: uuid */
-            teamId?: string;
+            teamId: string;
             /** Format: date-time */
-            until?: string;
+            until: string;
         };
         InformationReportEntry: {
             /** Format: uuid */
-            activityId?: string;
-            contributions?: components["schemas"]["InformationItem"][];
+            activityId: string;
+            contributions: components["schemas"]["InformationItem"][];
             /** Format: date-time */
-            startsAt?: string;
-            title?: string;
+            startsAt: string;
+            title: string;
         };
         InformationSnapshot: {
             /** Format: uuid */
-            activityId?: string;
+            activityId: string;
             /** Format: int64 */
-            attendanceRevision?: number;
-            canManageAttendance?: boolean;
-            contributions?: components["schemas"]["InformationItem"][];
-            editable?: boolean;
-            history?: components["schemas"]["InformationHistory"][];
-            players?: components["schemas"]["DisciplinePlayer"][];
-            title?: string;
+            attendanceRevision: number;
+            canManageAttendance: boolean;
+            contributions: components["schemas"]["InformationItem"][];
+            editable: boolean;
+            history: components["schemas"]["InformationHistory"][];
+            players: components["schemas"]["DisciplinePlayer"][];
+            title: string;
         };
         InvitationResponseResult: {
             ok: boolean;
@@ -2124,58 +2124,58 @@ export interface components {
         ManagedActivity: {
             /** Format: uuid */
             activity_type_id?: string | null;
-            description?: string;
+            description: string;
             /** Format: date-time */
-            ends_at?: string;
+            ends_at: string;
             /** Format: date-time */
             gathering_at?: string | null;
             /** Format: uuid */
-            id?: string;
-            imported?: boolean;
-            location?: string;
+            id: string;
+            imported: boolean;
+            location: string;
             /** Format: int32 */
             max_participants?: number | null;
             /** Format: uuid */
-            organization_id?: string;
+            organization_id: string;
             /** Format: int64 */
-            revision?: number;
+            revision: number;
             /** Format: date-time */
-            starts_at?: string;
-            status?: string;
+            starts_at: string;
+            status: string;
             /** Format: uuid */
-            team_id?: string;
-            title?: string;
+            team_id: string;
+            title: string;
         };
         ManagedActivityType: {
             /** Format: uuid */
-            id?: string;
-            name?: string;
+            id: string;
+            name: string;
             /** Format: uuid */
             organization_id?: string | null;
-            slug?: string;
-            system_category?: string;
+            slug: string;
+            system_category: string;
         };
         ManagedTeam: {
-            canManageInvitations?: boolean;
+            canManageInvitations: boolean;
             /** Format: uuid */
-            id?: string;
-            name?: string;
+            id: string;
+            name: string;
             /** Format: uuid */
-            organizationId?: string;
-            organizationName?: string;
-            timeZone?: string;
+            organizationId: string;
+            organizationName: string;
+            timeZone: string;
         };
         MemoryEdit: {
-            content?: string;
+            content: string;
             /** Format: int64 */
-            revision?: number;
+            revision: number;
         };
         MessageCommand: {
             /** Format: uuid */
             activityId?: string | null;
             /** Format: uuid */
             teamId?: string | null;
-            text?: string;
+            text: string;
         };
         MyActivities: {
             activities: components["schemas"]["MyActivity"][];
@@ -2198,20 +2198,20 @@ export interface components {
             invitations: components["schemas"]["AccessibleInvitation"][];
         };
         PasskeyView: {
-            id?: string;
-            label?: string;
+            id: string;
+            label: string;
         };
         PendingInformation: {
             /** Format: uuid */
-            activityId?: string;
-            missing?: string[];
+            activityId: string;
+            missing: string[];
             /** Format: date-time */
-            startsAt?: string;
-            title?: string;
+            startsAt: string;
+            title: string;
         };
         PersonalActivity: {
             /** Format: int32 */
-            accepted_participants?: number;
+            accepted_participants: number;
             can_manage_activities: boolean;
             can_manage_attendance: boolean;
             description: string;
@@ -2322,38 +2322,38 @@ export interface components {
             name?: string;
         };
         ReadContribution: {
-            capabilityKey?: string;
-            filters?: components["schemas"]["ViewFilter"][];
-            id?: string;
+            capabilityKey: string;
+            filters: components["schemas"]["ViewFilter"][];
+            id: string;
             /** Format: int32 */
-            order?: number;
+            order: number;
             /** @enum {string} */
-            placement?: "activity" | "teamReport";
+            placement: "activity" | "teamReport";
             /** Format: int32 */
-            schemaVersion?: number;
-            title?: string;
-            views?: components["schemas"]["ReadView"][];
+            schemaVersion: number;
+            title: string;
+            views: components["schemas"]["ReadView"][];
         };
         ReadView: {
-            columns?: components["schemas"]["ViewColumn"][];
-            groups?: components["schemas"]["ViewGroup"][];
+            columns: components["schemas"]["ViewColumn"][];
+            groups: components["schemas"]["ViewGroup"][];
             message?: string | null;
-            rows?: components["schemas"]["ViewRow"][];
-            title?: string;
+            rows: components["schemas"]["ViewRow"][];
+            title: string;
             /** @enum {string} */
-            type?: "list" | "groupedList" | "table" | "information";
+            type: "list" | "groupedList" | "table" | "information";
         };
         RegisterRequest: {
-            email?: string;
-            password?: string;
+            email: string;
+            password: string;
         };
         RelyingPartyPublicKey: {
             credential?: components["schemas"]["PublicKeyCredentialAuthenticatorAttestationResponse"];
             label?: string;
         };
         ResetRequest: {
-            code?: string;
-            password?: string;
+            code: string;
+            password: string;
         };
         ResidentKeyRequirement: string;
         RespondToInvitationRequest: {
@@ -2364,155 +2364,155 @@ export interface components {
         };
         RosterAccepted: {
             /** Format: uuid */
-            teamId?: string;
+            teamId: string;
         };
         RosterCandidate: {
             /** Format: date */
             birthDate?: string | null;
             /** Format: uuid */
-            id?: string;
-            name?: string;
+            id: string;
+            name: string;
         };
         RosterContact: {
-            name?: string;
-            phone?: string;
+            name: string;
+            phone: string;
         };
         RosterCreateCommand: {
             /** Format: date */
             birthDate?: string | null;
-            duplicatesConfirmed?: boolean;
-            email?: string;
-            name?: string;
+            duplicatesConfirmed: boolean;
+            email: string;
+            name: string;
             /** Format: uuid */
             personId?: string | null;
             /** Format: uuid */
-            requestId?: string;
-            role?: string;
+            requestId: string;
+            role: string;
             /** Format: date */
             startsOn?: string | null;
         };
         RosterCreated: {
             /** Format: uuid */
-            personId?: string;
+            personId: string;
         };
         RosterEmailCommand: {
-            email?: string;
+            email: string;
         };
         RosterGroupCommand: {
-            name?: string;
-            personIds?: string[];
+            name: string;
+            personIds: string[];
             /** Format: int64 */
             revision?: number | null;
         };
         RosterInvitationCode: {
-            code?: string;
+            code: string;
         };
         RosterMember: {
-            childIds?: string[];
+            childIds: string[];
             email?: string | null;
-            guardians?: components["schemas"]["RosterContact"][];
+            guardians: components["schemas"]["RosterContact"][];
             /** Format: uuid */
-            id?: string;
+            id: string;
             invitationStatus?: string | null;
-            linked?: boolean;
-            name?: string;
-            roles?: string[];
-            title?: string;
+            linked: boolean;
+            name: string;
+            roles: string[];
+            title: string;
         };
         RosterNameCommand: {
-            name?: string;
+            name: string;
         };
         RosterPendingInvitation: {
-            email?: string;
+            email: string;
             /** Format: uuid */
-            id?: string;
-            personName?: string;
-            teamName?: string;
+            id: string;
+            personName: string;
+            teamName: string;
         };
         RosterSubgroup: {
             /** Format: uuid */
-            id?: string;
-            name?: string;
-            personIds?: string[];
+            id: string;
+            name: string;
+            personIds: string[];
             /** Format: int64 */
-            revision?: number;
+            revision: number;
         };
         RosterTeam: {
             /** Format: uuid */
-            id?: string;
-            name?: string;
-            organizationName?: string;
+            id: string;
+            name: string;
+            organizationName: string;
         };
         SectionChange: {
-            disciplineKey?: string;
-            name?: string;
-            slug?: string;
+            disciplineKey: string;
+            name: string;
+            slug: string;
         };
         SectionProfile: {
-            instructions?: string;
+            instructions: string;
             /** Format: int64 */
-            revision?: number;
+            revision: number;
         };
         SignalAction: {
-            action?: string;
+            action: string;
             /** Format: date-time */
-            createdAt?: string;
-            result?: string;
+            createdAt: string;
+            result: string;
         };
         SignalCommand: {
-            action?: string;
+            action: string;
             /** Format: int64 */
-            revision?: number;
+            revision: number;
         };
         SignalSnapshot: {
-            actions?: string[];
+            actions: string[];
             /** Format: uuid */
-            activityId?: string;
+            activityId: string;
             /** Format: int64 */
-            episode?: number;
+            episode: number;
             /** Format: date-time */
-            evaluatedAt?: string;
-            history?: components["schemas"]["SignalAction"][];
+            evaluatedAt: string;
+            history: components["schemas"]["SignalAction"][];
             /** Format: uuid */
-            id?: string;
+            id: string;
             /** Format: int64 */
-            revision?: number;
-            severity?: string;
-            state?: string;
-            text?: string;
-            title?: string;
+            revision: number;
+            severity: string;
+            state: string;
+            text: string;
+            title: string;
         };
         SlugAvailability: {
-            status?: string;
+            status: string;
         };
         StreamingResponseBody: unknown;
         SuccessfulUserRegistrationResponse: {
             success?: boolean;
         };
         TeamChange: {
-            name?: string;
-            season?: string;
+            name: string;
+            season: string;
             slug?: string | null;
         };
         TeamRosterSnapshot: {
-            groups?: components["schemas"]["RosterSubgroup"][];
-            people?: components["schemas"]["RosterMember"][];
-            team?: components["schemas"]["RosterTeam"];
+            groups: components["schemas"]["RosterSubgroup"][];
+            people: components["schemas"]["RosterMember"][];
+            team: components["schemas"]["RosterTeam"];
         };
         TelegramGroupOverview: {
-            canManage?: boolean;
-            links?: components["schemas"]["GroupLink"][];
+            canManage: boolean;
+            links: components["schemas"]["GroupLink"][];
         };
         TelegramSettings: {
-            active?: boolean;
-            available?: boolean;
+            active: boolean;
+            available: boolean;
             /** Format: int64 */
             pairingExpiresAt?: number | null;
             pairingUrl?: string | null;
         };
         TelegramSettingsChange: {
-            consent?: boolean;
-            operation?: string;
+            consent: boolean;
+            operation: string;
         };
         TokenGenerationRequest: {
             username?: string;
@@ -2526,37 +2526,37 @@ export interface components {
             number?: number | null;
             text?: string | null;
             /** @enum {string} */
-            type?: "text" | "number" | "missing";
+            type: "text" | "number" | "missing";
         };
         ViewColumn: {
-            id?: string;
-            title?: string;
+            id: string;
+            title: string;
         };
         ViewFilter: {
-            id?: string;
+            id: string;
             /** Format: int32 */
             maximum?: number | null;
             /** Format: int32 */
             minimum?: number | null;
-            options?: components["schemas"]["FieldOption"][];
-            selected?: string[];
-            title?: string;
+            options: components["schemas"]["FieldOption"][];
+            selected: string[];
+            title: string;
             /** @enum {string} */
-            type?: "integer" | "choice" | "people";
+            type: "integer" | "choice" | "people";
             value?: string | null;
         };
         ViewGroup: {
-            id?: string;
-            rows?: components["schemas"]["ViewRow"][];
-            summary?: string;
-            title?: string;
+            id: string;
+            rows: components["schemas"]["ViewRow"][];
+            summary: string;
+            title: string;
         };
         ViewRow: {
-            cells?: {
+            cells: {
                 [key: string]: components["schemas"]["ViewCell"];
             };
-            id?: string;
-            markers?: string[];
+            id: string;
+            markers: string[];
         };
     };
     responses: never;

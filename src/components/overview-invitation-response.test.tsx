@@ -53,7 +53,7 @@ it("shows a duty-only person without response buttons or invented invitation",()
 it("uses the authenticated Kotlin request for a direct invitation without sending comments",async()=>{
  const request=vi.fn().mockResolvedValue({ok:true});
  hooks.index=0;
- const invitation={id:"invitation-two",person_id:"person-two",name:"Ombudets person",response:"pending" as const,response_comment:null};
+ const invitation={id:"invitation-two",person_id:"person-two",name:"Ombudets person",response:"pending" as const,response_comment:null,consumes_capacity:true};
  const tree=elements(OverviewInvitationResponse({invitation,readOnly:false,request}));
  (tree.find(e=>e.props["data-response"]==="accepted")!.props.onClick as ()=>void)();
  await vi.waitFor(()=>expect(request).toHaveBeenCalledOnce());

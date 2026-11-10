@@ -1,10 +1,11 @@
 import { expect,it } from "vitest";
 import { confirmedAnswer, overviewItems, type Overview } from "./personal-overview";
+import { kotlinCalendarSchema } from "./calendar";
 const data:Overview={calendar_people:[],calendar_teams:[],reference_time:"2029-12-01T00:00:00Z",organizations:[],teams:[],activities:[{
- id:"a",can_manage_activities:false,can_manage_attendance:false,title:"Träning",starts_at:"2030-01-01T10:00:00Z",ends_at:"2030-01-01T12:00:00Z",gathering_at:null,response_due_at:null,location:"Örvallen",description:"",status:"scheduled",
+ id:"a",can_manage_activities:false,can_manage_attendance:false,title:"Träning",starts_at:"2030-01-01T10:00:00Z",ends_at:"2030-01-01T12:00:00Z",gathering_at:null,response_due_at:null,location:"Örvallen",description:"",status:"scheduled",accepted_participants:0,
  organization:{id:"o",name:"Klubb",time_zone:"Europe/Stockholm",role:null},team:{id:"t",name:"F2016",organization_id:"o",roles:[]},
- people:[{id:"p1",attendance:"unknown",name:"Johan",invitation:{id:"i1",person_id:"p1",name:"Johan",response:"pending",response_comment:null}},
- {id:"p2",attendance:"unknown",name:"Tilda",invitation:{id:"i2",person_id:"p2",name:"Tilda",response:"declined",response_comment:"Hämtas senare"}},
+ people:[{id:"p1",attendance:"unknown",name:"Johan",invitation:{id:"i1",person_id:"p1",name:"Johan",response:"pending",response_comment:null,consumes_capacity:true}},
+ {id:"p2",attendance:"unknown",name:"Tilda",invitation:{id:"i2",person_id:"p2",name:"Tilda",response:"declined",response_comment:"Hämtas senare",consumes_capacity:true}},
  {id:"p3",attendance:"unknown",name:"Robin",invitation:null}]
 }]};
 it("keeps named person rows independent of invitations and preserves club-local metadata",()=>{
@@ -40,4 +41,37 @@ it("keeps actual attendance separate from invitation answers and preserves false
  expect(rows.map(row=>row.attendance)).toEqual(["present","absent","unknown"]);
  expect(rows[0].invitation?.response).toBe("pending");
  expect(overviewItems(data.activities).every(row=>row.attendance==="unknown")).toBe(true);
+});
+
+it("preserves server capacity values when a leader accepts through the calendar", () => {
+ const activity = data.activities[0];
+ const person = activity.people[0];
+ const snapshot = kotlinCalendarSchema.parse({
+  reference_time:data.reference_time,people:[],teams:[],activities:[{
+   ...activity,accepted_participants:0,people:[{...person,invitation:{...person.invitation,consumes_capacity:false}}],
+  }],
+ });
+
+ expect(snapshot.activities[0].accepted_participants).toBe(0);
+ expect(snapshot.activities[0].people[0].invitation?.consumes_capacity).toBe(false);
+ const updated = confirmedAnswer({...data,activities:snapshot.activities},"i1","accepted");
+ expect(updated.activities[0].accepted_participants).toBe(0);
+});
+
+it.each([undefined,null,-1,1.5,"0"])("rejects missing or invalid calendar participant counts: %j", count => {
+ const result = kotlinCalendarSchema.safeParse({
+  reference_time:data.reference_time,people:[],teams:[],activities:[{...data.activities[0],accepted_participants:count}],
+ });
+ expect(result.success).toBe(false);
+});
+
+it.each([undefined,null,"false",0])("rejects missing or invalid calendar invitation capacity: %j", capacity => {
+ const activity = data.activities[0];
+ const person = activity.people[0];
+ const result = kotlinCalendarSchema.safeParse({
+  reference_time:data.reference_time,people:[],teams:[],activities:[{
+   ...activity,people:[{...person,invitation:{...person.invitation,consumes_capacity:capacity}}],
+  }],
+ });
+ expect(result.success).toBe(false);
 });

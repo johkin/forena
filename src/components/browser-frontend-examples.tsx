@@ -44,7 +44,7 @@ export function BrowserFrontendExamples({ linkComponent }: { linkComponent?: Nav
       ],
     };
   }, [teamsExample]);
-  const invitations = useRef([{ id: "11111111-1111-4111-8111-111111111111", person_id: "22222222-2222-4222-8222-222222222222", name: "Alex Exempel", response: "pending", response_comment: null as string | null }]);
+  const invitations = useRef([{ id: "11111111-1111-4111-8111-111111111111", person_id: "22222222-2222-4222-8222-222222222222", name: "Alex Exempel", response: "pending", response_comment: null as string | null, consumes_capacity: true }]);
   const request = useCallback<ParticipationFetch>(async (path, init) => {
     if (init?.method === "PUT") {
       const change = JSON.parse(String(init.body)) as { response: string; comment?: string };
@@ -55,8 +55,8 @@ export function BrowserFrontendExamples({ linkComponent }: { linkComponent?: Nav
     return Response.json({ invitations: invitations.current });
   }, []);
   const activities: MyActivity[] = [{ id: "33333333-3333-4333-8333-333333333333", title: "Träning med laget", starts_at: "2030-10-22T16:00:00Z", ends_at: "2030-10-22T17:30:00Z", organization_name: "Exempelföreningen med ett långt namn", team_name: "Ungdomslaget", invitations: [
-    { id: "11111111-1111-4111-8111-111111111111", person_id: "22222222-2222-4222-8222-222222222222", name: "Alex Exempel med ett långt familjenamn", response: "pending", response_comment: null },
-    { id: "44444444-4444-4444-8444-444444444444", person_id: "55555555-5555-4555-8555-555555555555", name: "Robin Exempel", response: "declined", response_comment: "Bevaras vid snabbsvar" },
+    { id: "11111111-1111-4111-8111-111111111111", person_id: "22222222-2222-4222-8222-222222222222", name: "Alex Exempel med ett långt familjenamn", response: "pending", response_comment: null, consumes_capacity: true },
+    { id: "44444444-4444-4444-8444-444444444444", person_id: "55555555-5555-4555-8555-555555555555", name: "Robin Exempel", response: "declined", response_comment: "Bevaras vid snabbsvar", consumes_capacity: true },
   ] }];
   return <>
     <PlayerEvaluationExamples />

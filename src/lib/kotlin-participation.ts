@@ -8,6 +8,7 @@ const responseValue = z.enum(["pending", "accepted", "declined"]);
 const change = z.object({ response: responseValue, comment: z.string().nullable().optional() }).strict();
 const family = z.object({ invitations: z.array(z.object({
   id: uuid, person_id: uuid, response: responseValue, response_comment: z.string().nullable(), name: z.string(),
+  consumes_capacity: z.boolean(),
 }).strict()) }).strict();
 const committed = z.object({ ok: z.literal(true) }).strict();
 type MyInvitations = components["schemas"]["MyInvitations"];
