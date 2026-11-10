@@ -11,6 +11,13 @@ export default function nextConfig(phase: string): NextConfig {
     env: { NEXT_PUBLIC_APP_VERSION: version },
     async headers() {
       return [{
+        source: "/(.*)",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains; preload" }
+        ],
+      }, {
         source: "/app-version.json",
         headers: [{ key: "Cache-Control", value: "no-store, max-age=0" }],
       }, {
