@@ -3,6 +3,7 @@ package se.forena.api.mcp
 import io.modelcontextprotocol.common.McpTransportContext
 import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapper
 import io.modelcontextprotocol.server.McpStatelessServerFeatures.SyncToolSpecification
+import io.modelcontextprotocol.server.transport.DefaultServerTransportSecurityValidator
 import io.modelcontextprotocol.spec.McpSchema
 import java.util.UUID
 import org.springframework.ai.mcp.McpToolUtils
@@ -15,6 +16,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.security.authentication.BadCredentialsException
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthentication
 import se.forena.api.identity.Actor
+import se.forena.api.identity.BrowserSessionSettings
 import tools.jackson.databind.json.JsonMapper
 
 @Configuration(proxyBeanMethods = false)
@@ -22,10 +24,12 @@ import tools.jackson.databind.json.JsonMapper
 class McpConfiguration {
     @Bean
     fun webMvcStatelessServerTransport(
-        @Qualifier("mcpServerJsonMapper") json: JsonMapper
+        @Qualifier("mcpServerJsonMapper") json: JsonMapper,
+        settings: BrowserSessionSettings
     ): WebMvcStatelessServerTransport = WebMvcStatelessServerTransport.builder()
         .jsonMapper(JacksonMcpJsonMapper(json))
         .messageEndpoint("/api/mcp")
+        .securityValidator(DefaultServerTransportSecurityValidator.builder().allowedOrigin(settings.origin).build())
         .contextExtractor { request ->
             val authentication = request.principal().orElse(null) as? BearerTokenAuthentication
                 ?: throw BadCredentialsException("Missing MCP identity")

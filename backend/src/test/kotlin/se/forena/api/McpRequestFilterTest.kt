@@ -11,7 +11,7 @@ import se.forena.api.identity.authentication.McpRequestFilter
 
 class McpRequestFilterTest {
     private val origin = "https://app.example.invalid"
-    private val filter = McpRequestFilter(origin)
+    private val filter = McpRequestFilter()
 
     @Test fun `unknown length UTF-8 body at byte limit is replayed unchanged`() {
         val body = "å".repeat(32 * 1024).toByteArray(Charsets.UTF_8)
@@ -22,7 +22,9 @@ class McpRequestFilterTest {
 
         filter.doFilter(request, response) { forwarded, _ ->
             replayed = forwarded.inputStream.readAllBytes()
-            assertThat((forwarded as HttpServletRequest).contentLengthLong).isEqualTo(body.size.toLong())
+            val buffered = forwarded as HttpServletRequest
+            assertThat(buffered.contentLengthLong).isEqualTo(body.size.toLong())
+            assertThat(buffered.getHeader("Origin")).isEqualTo(origin)
         }
 
         assertThat(response.status).isEqualTo(200)
@@ -43,23 +45,6 @@ class McpRequestFilterTest {
         assertThat(response.status).isEqualTo(413)
         assertThat(source.available()).isEqualTo(body.size - 64 * 1024 - 1)
         assertThat(response.contentAsByteArray).isEmpty()
-    }
-
-    @Test fun `supplied foreign or empty origin is rejected before reading the body`() {
-        for (requestOrigin in listOf("https://other.example.invalid", "")) {
-            val source = ByteArrayInputStream(byteArrayOf(1, 2, 3))
-            val request = unknownLengthRequest(source)
-            request.addHeader("Origin", requestOrigin)
-            val response = MockHttpServletResponse()
-            var forwarded = false
-
-            filter.doFilter(request, response) { _, _ -> forwarded = true }
-
-            assertThat(forwarded).isFalse()
-            assertThat(response.status).isEqualTo(403)
-            assertThat(response.getHeader("Cache-Control")).isEqualTo("no-store")
-            assertThat(source.available()).isEqualTo(3)
-        }
     }
 
     private fun unknownLengthRequest(source: ByteArrayInputStream): MockHttpServletRequest =

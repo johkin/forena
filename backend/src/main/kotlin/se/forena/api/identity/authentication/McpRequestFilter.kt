@@ -12,14 +12,9 @@ import java.io.InputStreamReader
 import org.springframework.web.filter.OncePerRequestFilter
 
 /** Bounds the MCP body before the transport reads it, including requests without Content-Length. */
-class McpRequestFilter(private val origin: String) : OncePerRequestFilter() {
+class McpRequestFilter : OncePerRequestFilter() {
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) {
         response.setHeader("Cache-Control", "no-store")
-        val requestOrigin = request.getHeader("Origin")
-        if (requestOrigin != null && requestOrigin != origin) {
-            response.status = 403
-            return
-        }
         if (request.method != "POST") {
             chain.doFilter(request, response)
             return

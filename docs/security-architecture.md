@@ -517,8 +517,11 @@ OAuth-token med `mcp:read`; Spring Authorization Server äger samtycke och grant
 Tokenkontrollen verifierar aktuell grant, konto, sessionsversion och exakt
 resource. Browsercookies ger ingen MCP-åtkomst. `list_my_activities` återanvänder
 personöversiktens behörighetskontroller och lämnar högst 50 aktiviteter utan
-personnamn, kontaktuppgifter eller svarskommentarer. Origin begränsas till
-appens konfigurerade URL och svar får inte cachas. Servern anropar ingen AI-modell.
+personnamn, kontaktuppgifter eller svarskommentarer. MCP-SDK:ns
+`DefaultServerTransportSecurityValidator` kontrollerar `Origin` mot appens
+konfigurerade origin; saknad eller blank `Origin` tillåts. Ett servletfilter
+behåller gränsen på 64 KiB och `Cache-Control: no-store`. Servern anropar ingen
+AI-modell.
 
 Den äldre Next-serverns MCP-adapter verifierar explicit bearer-token för en
 användare och använder en request-lokal Supabase-klient med publishable key och

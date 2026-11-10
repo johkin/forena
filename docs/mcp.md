@@ -9,9 +9,10 @@ AI-modell eller modellleverantör; MCP-klienten står för AI:n.
 
 Kotlin-klienten skickar OAuth-token med scope `mcp:read` som Bearer-header,
 `Content-Type: application/json` och `Accept: application/json, text/event-stream`.
-Spring AI svarar med JSON utan MCP-session eller SSE-prenumeration. Anropen
-begränsas till 64 KiB och svaren får `Cache-Control: no-store`. En angiven
-`Origin` måste vara appens konfigurerade origin; klienter utan `Origin` tillåts.
+Spring AI svarar med JSON utan MCP-session eller SSE-prenumeration. Ett
+servletfilter begränsar anropen till 64 KiB och sätter `Cache-Control: no-store`.
+MCP-SDK:ns `DefaultServerTransportSecurityValidator` kontrollerar `Origin` mot
+appens konfigurerade origin. Saknad eller blank `Origin` tillåts.
 
 Verktygen och Supabase-flödena nedan avser den äldre Next-servern, vars övriga
 verktyg ännu inte har flyttats till Kotlin.
