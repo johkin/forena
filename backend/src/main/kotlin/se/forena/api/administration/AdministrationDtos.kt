@@ -10,7 +10,7 @@ data class AdministrationOverview(
     val canBootstrap: Boolean,
     @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC) val platformAdministrators: List<Administrator>,
     @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC) val clubs: List<AdministrationClub>,
-    val disciplines: List<DisciplineDefinition> = emptyList()
+    @get:JsonSerialize(typing = JsonSerialize.Typing.STATIC) val disciplines: List<DisciplineDefinition> = emptyList()
 )
 data class Administrator(val subject: UUID, val email: String, val active: Boolean,
     val startsOn: LocalDate? = null, val endsOn: LocalDate? = null)
