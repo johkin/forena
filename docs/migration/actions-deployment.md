@@ -2,7 +2,11 @@
 
 Spring-autentisering enligt ADR-026 är den nya appens enda auth-lösning.
 Supabase kan fortsatt vara PostgreSQL-leverantör. Den äldre Next-appen har
-separat auth och deployment. Ingen produktionsaktivering ingår i denna PR.
+separat auth. Automatisk deploy till dess Vercel-projekt är avstängd
+i `.github/workflows/deploy-production.yml`; databas- och Edge-workerjobbet
+fortsätter. `git.deploymentEnabled: false` i rotens `vercel.json` stänger också
+av Vercels Git-deploy för både `main` och PR-/preview-brancher.
+Ingen produktionsaktivering ingår i denna PR.
 
 
 ## Workflow och artefakter
@@ -21,6 +25,18 @@ av builderdigesten görs uttryckligen och verifieras med hela native-provet.
 aktuell main-commit. GitHub-miljön `kotlin-production` behåller sin review-policy.
 Workflowen hämtar den verifierade imagen, kontrollerar innehåll och digest,
 bygger statisk frontend och skapar Build Output API-output med befintlig entrypoint.
+VCR accepterar inte okomprimerade bildlager. `skopeo` från runnerns Ubuntu-paket
+normaliserar därför först CI:s Docker-arkiv till en lokal bild med gzip-lager
+och publicerar sedan den med `--preserve-digests`. Det hanterar blandade lagerformat
+och hindrar återbruk av råa lager från en tidigare misslyckad uppladdning.
+Bilden byggs inte om. Komprimeringen
+ändrar registry-digesten men bevarar konfigurationens digest (`configDigest`),
+filsystem och entrypoint. Workflowen hämtar det publicerade manifestet via dess
+nya digest och kontrollerar att lagren använder gzip och att konfigurationens
+digest matchar CI-metadata innan den skriver deploymentens oföränderliga
+bildreferens. Dockers lokala `imageId` används
+fortsatt för kontroll av originalartefakten; det kan ändras vid ompaketering
+när Docker använder containerd.
 Staging använder exakt deployment-URL, health och byggversion före promotion.
 Verkligt inloggat browserprov krävs dessutom före produktionsaktivering av auth.
 
@@ -42,8 +58,9 @@ omfattar frontend, delade komponenter, publika resurser, låsta npm-beroenden,
 Node-version och valfri provaktivitet. Dokumentation och runtime-secrets ingår inte.
 En ny UTC-vecka förnyar rörliga buildpack-/basimage-inputs vid nästa CI-körning.
 
-Metadata innehåller `sourceCommit`, `verifiedCommit`, `buildInputs`, `imageId`
-och `migrationJarSha256`. Cachepaketet innehåller både imagen och migrations-JAR.
+Metadata innehåller `sourceCommit`, `verifiedCommit`, `buildInputs`, `imageId`,
+`configDigest` och `migrationJarSha256`. Cachepaketet innehåller både imagen
+och migrations-JAR.
 Cache kan återanvändas endast för identiska inputs och måste verifieras på nytt
 för aktuell commit. Release kräver linux/amd64 och exakt registry-digest.
 PR-cacher får inte ersätta main-cacher. Main återställer paketet före jobburvalet
@@ -56,8 +73,8 @@ JVM-sviten. Aktuell frontend körs ändå mot imagen och en disponibel databas i
 native-jobbets HTTP-/browserprov. Ny verifieringsmetadata och publiceringens
 imageartefakt skapas för aktuell release-commit. Cachemiss, veckoförnyelse eller
 ändrade backendindata kräver backendbygge och JVM-svit. En ändrad eller trasig
-cacheartefakt stoppar körningen. Den nya v2-nyckeln kräver ett första fullständigt
-bygge för att fylla cachen med både image och migrations-JAR.
+cacheartefakt stoppar körningen. Uppdaterade bygg- och verifieringsskript ändrar
+innehållsnyckeln och kräver ett första fullständigt bygge med aktuell metadata.
 
 ## Databas och aktivering
 
@@ -67,8 +84,8 @@ kan migrera eller verifiera grants utan auth/mejlkonfiguration och utan HTTP.
 Historik och checksummor bevaras; större dataflyttar sker i separata återupptagbara jobb.
 
 Att byta auth för befintliga användare kräver en separat identifierad och testad
-kontomigrering med verksamhetskopplingar. E-postlikhet räcker inte. Äldre Next-
-deployment och dess delade beroenden behålls. Denna PR genomför ingen deploy,
+kontomigrering med verksamhetskopplingar. E-postlikhet räcker inte. Den publicerade
+Next-appen och dess delade beroenden finns kvar. Denna PR genomför ingen deploy,
 kontomigrering, databasåterställning eller ändring av externa produktionsinställningar.
 
 ## Relevanta CI-jobb
@@ -97,5 +114,6 @@ väljer alla jobb. Manuella körningar behåller full verifiering.
 Main kräver alltid aktuell native-integration och publiceringens backendartefakt,
 även när JVM-jobbet återanvänds. Oförändrat Supabase-schema kör inget databasjobb.
 Frontendbygget återanvänds även i JVM- och native-jobben med samma Node-version
-och innehållsnyckel som applikationsjobbet. Äldre Next-deployens produktionsbygge
-är ett separat flöde.
+och innehållsnyckel som applikationsjobbet. Next-appens tester, typkontroll, lint
+och produktionsbygge finns kvar i CI när dess inputs ändras, även när automatisk
+deploy till den äldre sajten är avstängd.
