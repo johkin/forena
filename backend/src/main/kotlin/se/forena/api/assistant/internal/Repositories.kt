@@ -401,19 +401,6 @@ interface AssistantMemoryRepository : DataRepository<AssistantMemoryEntity, UUID
 
 interface AssistantProfileRepository : DataRepository<AssistantProfileEntity, UUID> {
     @Query(
-        "select exists(select 1 from forena.organization_member where subject=:subject and organization_id=:org and active and role in ('owner','admin'))"
-    )
-    fun isClubAdministrator(subject: UUID, org: UUID): Boolean
-
-    @Query(
-        "select exists(select 1 from forena.section_administrator where subject=:subject and section_id=:section and organization_id=:org and active)"
-    )
-    fun isSectionAdministrator(subject: UUID, section: UUID, org: UUID): Boolean
-
-    @Query("select exists(select 1 from forena.section where id=:section and organization_id=:org)")
-    fun sectionBelongsToOrganization(section: UUID, org: UUID): Boolean
-
-    @Query(
         "select name,personality,instructions,revision from forena.assistant_profile where organization_id=:org"
     )
     fun findProfile(org: UUID): Optional<AssistantProfile>

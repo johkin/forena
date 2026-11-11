@@ -23,7 +23,7 @@ try {
       description: '', location: 'Örvallen', starts_at: '2030-10-25T16:00:00Z', ends_at: '2030-10-25T17:00:00Z',
       gathering_at: null, status: 'scheduled', revision: 0,
     };
-    const personalActivity = () => ({ ...activity, can_manage_activities:canManage, can_manage_attendance:false, response_due_at: null,
+    const personalActivity = () => ({ ...activity, can_manage_activities:canManage, can_manage_attendance:false, response_due_at: null, accepted_participants: 0,
       organization: { id: organizationId, name: team.organizationName, time_zone: team.timeZone, role: null },
       team: { id: teamId, organization_id: organizationId, name: team.name, roles: ['leader'] }, people: [],
     });

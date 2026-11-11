@@ -1,7 +1,6 @@
 package se.forena.api.administration
 
 import java.text.Normalizer
-import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Locale
 import java.util.UUID
@@ -22,6 +21,7 @@ import se.forena.api.extensionapi.DisciplineCatalog
 @Service
 class AdministrationService(
     private val sessions: SessionService,
+    private val access: AdministrationAccessService,
     private val directory: AdministrationDirectory,
     private val clock: DatabaseClockService,
     private val administration: AdministrationRepository,
@@ -40,35 +40,34 @@ class AdministrationService(
     fun sectionDefaultsContext(actor: Actor,id: UUID,writing: Boolean = false): SectionDefaultsContext {
         sessions.requireActive(actor)
         var section=sections.findById(id) ?: throw NoSuchElementException()
-        if(!clubRole(actor,section.organizationId) && !sectionRole(actor,id)) denied()
+        if (!access.canAdministerSectionBusiness(actor.subject, section.organizationId, id)) denied()
         if(writing) {
             administration.lock()
             section=sections.findById(id) ?: throw NoSuchElementException()
-            if(!clubRole(actor,section.organizationId) && !sectionRole(actor,id)) denied()
+            if (!access.canAdministerSectionBusiness(actor.subject, section.organizationId, id)) denied()
         }
         return SectionDefaultsContext(id,section.organizationId,section.disciplineKey)
     }
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     fun overview(actor: Actor): AdministrationOverview {
         sessions.requireActive(actor)
-        val platform = platforms.existsById(actor.subject)
-        val ownClubs = clubAdmins.findBySubjectAndActiveTrue(actor.subject).filter { it.role in listOf("owner", "admin") }.map { it.organizationId }.toSet()
-        val sectionRoles = sectionAdmins.findBySubjectAndActiveTrue(actor.subject)
-        val ownSections = sectionRoles.map { it.sectionId }.toSet()
-        val ownTeams = teamAdmins.findBySubjectAndActiveTrue(actor.subject)
-        val clubIds = ownClubs + sectionRoles.map { it.organizationId } + ownTeams.map { it.organizationId }
+        val roles = access.roles(actor)
+        val platform = roles.platform
+        val ownClubs = roles.clubIds
+        val ownSections = roles.sectionIds
+        val clubIds = roles.organizationIds
         val visibleClubs = if (platform) clubs.findAllByOrderByNameAsc()
             else if (clubIds.isEmpty()) emptyList() else clubs.findByIdInOrderByNameAsc(clubIds)
         val result = visibleClubs.mapNotNull { club ->
             val clubId = requireNotNull(club.id)
             val allSections = sections.findByOrganizationId(clubId)
             val allTeams = teams.findByOrganizationId(clubId)
-            val activeTeams = ownTeams.filter { current(it.startsOn, it.endsOn, club) && directory.ownsPerson(actor.subject, clubId, it.personId) }.map { it.teamId }.toSet()
+            val activeTeams = access.currentTeamIds(roles, club)
             val manageClub = platform || clubId in ownClubs
             val visibleSections = allSections.filter { section -> manageClub || section.id in ownSections || allTeams.any { it.sectionId == section.id && it.id in activeTeams } }
             if (!manageClub && visibleSections.isEmpty()) return@mapNotNull null
             AdministrationClub(clubId, club.name, club.slug, club.timeZone, manageClub,
-                if (manageClub) clubAdmins.findByOrganizationIdAndActiveTrue(clubId).filter { it.role in listOf("owner", "admin") }.map { administrator(it.subject, it.active) } else emptyList(),
+                if (manageClub) clubAdmins.findByOrganizationIdAndActiveTrue(clubId).filter(access::isClubAdministrator).map { administrator(it.subject, it.active) } else emptyList(),
                 visibleSections.map { section ->
                     val sectionId = requireNotNull(section.id)
                     val manageSection = manageClub || sectionId in ownSections
@@ -93,9 +92,7 @@ class AdministrationService(
     @Transactional(readOnly = true)
     fun canAdministerTeam(actor: Actor, id: UUID): Boolean {
         sessions.requireActive(actor)
-        val team = teams.findById(id) ?: throw NoSuchElementException()
-        return clubRole(actor, team.organizationId) ||
-            team.sectionId?.let { sectionRole(actor, it) } == true || teamRole(actor, team)
+        return access.canAdministerTeamBusiness(actor.subject, id)
     }
 
     @Transactional(readOnly = true)
@@ -138,7 +135,7 @@ class AdministrationService(
         val target = directory.verifiedAccount(change.email)
         if (change.active) platforms.add(target)
         else {
-            check(platforms.findAll().size > 1 || !platforms.existsById(target))
+            check(platforms.findAll().size > 1 || !access.isPlatformAdministrator(target))
             platforms.remove(target)
         }
         audit(actor, if (change.active) "platform.grant" else "platform.revoke", target)
@@ -193,7 +190,7 @@ class AdministrationService(
         val target = directory.verifiedAccount(change.email)
         val existing = clubAdmins.findByOrganizationIdAndSubject(id, target)
         if (!change.active && existing?.active == true) {
-            check(clubAdmins.findByOrganizationIdAndActiveTrue(id).count { it.role in listOf("owner", "admin") } > 1)
+            check(clubAdmins.findByOrganizationIdAndActiveTrue(id).count(access::isClubAdministrator) > 1)
         }
         clubAdmins.save(existing?.copy(role = "admin", active = change.active)
             ?: ClubAdministratorEntity(null, id, target, "admin", change.active))
@@ -303,9 +300,7 @@ class AdministrationService(
 
     private fun requireBusinessTeam(actor: Actor, team: AdministrationTeamEntity) {
         // A platform role alone never grants control of business access.
-        val section = team.sectionId?.let { sections.findById(it) }
-        if (!clubRole(actor, team.organizationId) &&
-            !(section != null && sectionRole(actor, requireNotNull(section.id))) && !teamRole(actor, team)) denied()
+        if (!access.canAdministerTeamBusiness(actor.subject, team)) denied()
     }
 
     private fun requireBootstrapIdentity(actor: Actor) {
@@ -316,28 +311,18 @@ class AdministrationService(
         sessions.requireActive(actor)
         return administration.lock()
     }
-    private fun requirePlatform(actor: Actor) { if (!platforms.existsById(actor.subject)) denied() }
-    private fun clubRole(actor: Actor, organization: UUID) = clubAdmins.findByOrganizationIdAndSubject(organization, actor.subject)
-        ?.let { it.active && it.role in listOf("owner", "admin") } == true
-    private fun sectionRole(actor: Actor, section: UUID) = sectionAdmins.findBySectionIdAndSubject(section, actor.subject)?.active == true
+    private fun requirePlatform(actor: Actor) { if (!access.isPlatformAdministrator(actor.subject)) denied() }
     private fun requireClub(actor: Actor, organization: UUID) {
-        if (!platforms.existsById(actor.subject) && !clubRole(actor, organization)) denied()
+        if (!access.canAdministerClubStructure(actor.subject, organization)) denied()
     }
     private fun requireSection(actor: Actor, section: SectionEntity) {
-        if (!platforms.existsById(actor.subject) && !clubRole(actor, section.organizationId) && !sectionRole(actor, requireNotNull(section.id))) denied()
-    }
-    private fun teamRole(actor: Actor, team: AdministrationTeamEntity): Boolean {
-        val role = teamAdmins.findByTeamIdAndSubject(requireNotNull(team.id), actor.subject) ?: return false
-        val club = clubs.findById(team.organizationId) ?: return false
-        return role.active && current(role.startsOn, role.endsOn, club) && directory.ownsPerson(actor.subject, team.organizationId, role.personId)
+        if (!access.canAdministerSectionStructure(actor.subject, section.organizationId, requireNotNull(section.id))) denied()
     }
     private fun requireTeam(actor: Actor, team: AdministrationTeamEntity) {
-        if (platforms.existsById(actor.subject) || clubRole(actor, team.organizationId) || teamRole(actor, team)) return
-        if (team.sectionId?.let { sectionRole(actor, it) } != true) denied()
+        if (!access.canAdministerTeamStructure(actor.subject, team)) denied()
     }
     private fun administrator(subject: UUID, active: Boolean) = Administrator(subject, directory.email(subject), active)
     private fun today(club: ClubEntity) = clock.now().atZone(zone(club.timeZone)).toLocalDate()
-    private fun current(start: LocalDate, end: LocalDate?, club: ClubEntity) = today(club).let { start <= it && (end == null || end >= it) }
     private fun validName(value: String) { require(value.trim().length in 1..120) }
     private fun validSlug(value: String) { require(value.length in 1..120 && value.matches(Regex("[a-z0-9]+(?:-[a-z0-9]+)*"))) }
     private fun validSection(change: SectionChange) {

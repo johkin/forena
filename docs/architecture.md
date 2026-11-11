@@ -64,6 +64,26 @@ Rollunderlag hämtas genom en typad Spring Data JDBC-projektion: namngivna CTE:e
 beskriver de olika tilldelningarna och en gemensam fråga avgränsar resultatet.
 Det är ett databasanrop; ingen SQL eller rollauktorisering flyttas till tjänsterna.
 
+Kotlin-assistentens läsverktyg definieras med Spring AI `@Tool`.
+`SharedActivityTools` och `AssistantReadTools` återanvänds av assistentens lokala
+callbacks och MCP-servern genom en gemensam katalog med 14 läsverktyg.
+`AssistantToolCatalog` väljer dessa läsbönor uttryckligen. Verifierad `Actor`
+och aktuell klubb-/lagavgränsning förs i serverägd `ToolContext`, aldrig i
+modellens argument. Tunga dokument-, medlems-, närvaro-, historik-, uppgifts-
+och signalunderlag hämtas när modellen behöver dem. Båda ingångarna använder
+samma domäntjänster och aktuella behörigheter för dokument, medlemsuppdrag,
+kallelsesvar med kommentarer, närvaro och historik. Klubbassistentens servervalda
+klubb-/lagavgränsning gäller utöver kontots vanliga åtkomst. Profil, verifierade
+roller, minnen och avgränsad dialog ligger kvar i assistentens grundkontext;
+samtal och minnen exporteras inte via MCP.
+`AssistantToolAccessService` samlar verktygens behöriga resursuppslag och
+kontroller mot `AssistantToolScope`. Samma scope-predikat används vid
+filtrering i orkestreringen och vid granskning av förslag. Domäntjänsterna
+äger fortfarande verksamhetsbehörigheten för varje operation.
+Spring AI driver verktygsanropen mot befintlig Vercel AI Gateway; MCP-servern
+behöver fortfarande ingen modellleverantör. Förslag granskas och bekräftas
+genom befintliga applikationskommandon, utanför verktygskatalogen.
+
 
 ## Kotlin: schemalagda kallelser och e-post
 
@@ -132,6 +152,17 @@ från Telegram. Next och Vite delar statusvyn och dess interaktiva exempel på
 lagets tidszon. Spring Securitys metodskydd anropar komponenten genom
 `@PreAuthorize`. Samma regler används vid filtrering och när ett nytt
 verksamhetskommando godkänns före låsväntan (ADR-026). Se [mönstret och dess säkerhetsgränser](migration/assistant-telegram.md#metodskydd-och-lagbehörigheter).
+
+`TeamPermission` är den gemensamma källan för permissionnycklar, även i
+repositoryts kandidatfråga. Skalär kontroll och samlad rättighetsläsning delar
+samma SQL-predikat. Assistentens lagunderlag återanvänder en färsk uppsättning
+rättigheter inom samma domänanrop, utan cache mellan verktygsanrop eller kommandon.
+`AdministrationAccessService` samlar klubb-, sektions- och lagadministratörsfakta
+och namngivna regler för struktur respektive verksamhet. Administration,
+assistentprofiler och medlemsläsning använder denna komponent. Översikten
+filtrerar med inlästa rollfakta och en gemensam referenstid för att undvika
+behörighetsfrågor per rad. En plattformsroll ger fortsatt ingen automatisk
+verksamhetsåtkomst.
 
 Kotlin-modulen `email` har ett leverantörsoberoende `EmailSender`-gränssnitt.
 Resends REST-adapter och hemlighetskonfiguration är samlade i `email.internal`.
@@ -527,10 +558,10 @@ kan anpassas per förening, men säkerhetsregler och systemprompt kan inte ersä
 
 Kotlin-backenden använder Spring AI:s stateless WebMVC-server på `/api/mcp`.
 Spring AI hanterar MCP-protokollet; Spring Authorization Server och Resource
-Server hanterar OAuth och tokenkontroll. Det enda verktyget, `list_my_activities`,
-registreras med `@Tool` och återanvänder `PersonalOverviewService`. Svaret
-begränsas till 50 aktiviteter utan personnamn, kontaktuppgifter eller
-svarskommentarer. Ingen AI-modell eller modellleverantör behövs i MCP-servern.
+Server hanterar OAuth och tokenkontroll. Samma katalog med 14 `@Tool`-annoterade
+läsverktyg används av MCP och assistentens lokala callbacks, med aktuella
+domänbehörigheter för varje läsning. Samtal, minnen och skrivkommandon ingår
+inte i MCP-katalogen. Ingen AI-modell eller modellleverantör behövs i MCP-servern.
 
 Den äldre Next-serverns `src/app/api/mcp/route.ts` är HTTP-adapter till en
 stateless MCP-server.

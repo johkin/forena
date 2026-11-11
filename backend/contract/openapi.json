@@ -33,6 +33,7 @@
           }
         },
         "required": [
+          "consumes_capacity",
           "id",
           "name",
           "person_id",
@@ -64,6 +65,11 @@
             "type": "array"
           }
         },
+        "required": [
+          "groupIds",
+          "responsibilityTypeIds",
+          "roles"
+        ],
         "type": "object"
       },
       "ActivityAudienceGroup": {
@@ -86,6 +92,12 @@
             "type": "array"
           }
         },
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "personIds"
+        ],
         "type": "object"
       },
       "ActivityCommand": {
@@ -179,6 +191,15 @@
             "type": "string"
           }
         },
+        "required": [
+          "description",
+          "endsAt",
+          "invitationMode",
+          "location",
+          "personIds",
+          "startsAt",
+          "title"
+        ],
         "type": "object"
       },
       "ActivityDefaultsRow": {
@@ -212,6 +233,16 @@
             "type": "string"
           }
         },
+        "required": [
+          "activityTypeId",
+          "disciplineKey",
+          "id",
+          "revision",
+          "scope",
+          "scopeId",
+          "valuesJson",
+          "version"
+        ],
         "type": "object"
       },
       "ActivityDeletionOptions": {
@@ -220,6 +251,9 @@
             "type": "boolean"
           }
         },
+        "required": [
+          "canDelete"
+        ],
         "type": "object"
       },
       "ActivityDisposition": {
@@ -228,6 +262,9 @@
             "type": "string"
           }
         },
+        "required": [
+          "disposition"
+        ],
         "type": "object"
       },
       "ActivityEditorContext": {
@@ -279,6 +316,14 @@
             "type": "array"
           }
         },
+        "required": [
+          "activities",
+          "defaults",
+          "groups",
+          "members",
+          "team",
+          "types"
+        ],
         "type": "object"
       },
       "ActivityParticipant": {
@@ -294,6 +339,11 @@
             "type": "string"
           }
         },
+        "required": [
+          "displayName",
+          "id",
+          "role"
+        ],
         "type": "object"
       },
       "ActivityPerson": {
@@ -333,6 +383,9 @@
             "$ref": "#/components/schemas/ManagedActivity"
           }
         },
+        "required": [
+          "activity"
+        ],
         "type": "object"
       },
       "ActivitySeriesCommand": {
@@ -409,6 +462,19 @@
             "type": "array"
           }
         },
+        "required": [
+          "description",
+          "endsOn",
+          "invitationMode",
+          "location",
+          "startTime",
+          "startsOn",
+          "teamId",
+          "timeZone",
+          "timingRules",
+          "title",
+          "weekdays"
+        ],
         "type": "object"
       },
       "ActivitySeriesResult": {
@@ -428,6 +494,11 @@
             "type": "string"
           }
         },
+        "required": [
+          "activities",
+          "count",
+          "seriesId"
+        ],
         "type": "object"
       },
       "ActivityTimingRules": {
@@ -451,6 +522,13 @@
             "type": "string"
           }
         },
+        "required": [
+          "duration",
+          "gatheringRule",
+          "invitationRule",
+          "reminderRules",
+          "responseDueRule"
+        ],
         "type": "object"
       },
       "AdministrationClub": {
@@ -487,6 +565,14 @@
             "type": "string"
           }
         },
+        "required": [
+          "administrators",
+          "canManage",
+          "id",
+          "name",
+          "sections",
+          "timeZone"
+        ],
         "type": "object"
       },
       "AdministrationOk": {
@@ -495,6 +581,9 @@
             "type": "boolean"
           }
         },
+        "required": [
+          "ok"
+        ],
         "type": "object"
       },
       "AdministrationOverview": {
@@ -524,6 +613,13 @@
             "type": "array"
           }
         },
+        "required": [
+          "canBootstrap",
+          "clubs",
+          "disciplines",
+          "platformAdmin",
+          "platformAdministrators"
+        ],
         "type": "object"
       },
       "AdministrationResult": {
@@ -533,6 +629,9 @@
             "type": "string"
           }
         },
+        "required": [
+          "id"
+        ],
         "type": "object"
       },
       "AdministrationSection": {
@@ -578,6 +677,17 @@
             "type": "array"
           }
         },
+        "required": [
+          "administrators",
+          "canChangeDiscipline",
+          "canDelete",
+          "canManage",
+          "canManageActivityDefaults",
+          "disciplineKey",
+          "id",
+          "name",
+          "teams"
+        ],
         "type": "object"
       },
       "AdministrationTeam": {
@@ -614,6 +724,15 @@
             ]
           }
         },
+        "required": [
+          "administrators",
+          "canAssignAdministrators",
+          "canDelete",
+          "canManage",
+          "id",
+          "name",
+          "season"
+        ],
         "type": "object"
       },
       "Administrator": {
@@ -643,6 +762,11 @@
             "type": "string"
           }
         },
+        "required": [
+          "active",
+          "email",
+          "subject"
+        ],
         "type": "object"
       },
       "AdministratorChange": {
@@ -671,6 +795,11 @@
             ]
           }
         },
+        "required": [
+          "active",
+          "email",
+          "name"
+        ],
         "type": "object"
       },
       "ApiError": {
@@ -739,6 +868,13 @@
             ]
           }
         },
+        "required": [
+          "content",
+          "createdAt",
+          "createdBy",
+          "id",
+          "revision"
+        ],
         "type": "object"
       },
       "AssistantMessage": {
@@ -772,6 +908,14 @@
             "type": "string"
           }
         },
+        "required": [
+          "content",
+          "conversationId",
+          "createdAt",
+          "id",
+          "role",
+          "sender"
+        ],
         "type": "object"
       },
       "AssistantProfile": {
@@ -790,6 +934,12 @@
             "type": "integer"
           }
         },
+        "required": [
+          "instructions",
+          "name",
+          "personality",
+          "revision"
+        ],
         "type": "object"
       },
       "AssistantProposal": {
@@ -844,6 +994,18 @@
             ]
           }
         },
+        "required": [
+          "conversationId",
+          "createdAt",
+          "expiresAt",
+          "fingerprint",
+          "id",
+          "kind",
+          "label",
+          "payload",
+          "state",
+          "subject"
+        ],
         "type": "object"
       },
       "AttendanceChange": {
@@ -1258,6 +1420,9 @@
             ]
           }
         },
+        "required": [
+          "action"
+        ],
         "type": "object"
       },
       "CapabilityChange": {
@@ -1273,6 +1438,11 @@
             "type": "integer"
           }
         },
+        "required": [
+          "enabled",
+          "key",
+          "revision"
+        ],
         "type": "object"
       },
       "CapabilityDefinition": {
@@ -1296,6 +1466,14 @@
             "type": "string"
           }
         },
+        "required": [
+          "adjustable",
+          "configurationScope",
+          "enabledByDefault",
+          "key",
+          "name",
+          "version"
+        ],
         "type": "object"
       },
       "CapabilitySetting": {
@@ -1320,6 +1498,14 @@
             "type": "integer"
           }
         },
+        "required": [
+          "adjustable",
+          "editable",
+          "enabled",
+          "key",
+          "name",
+          "revision"
+        ],
         "type": "object"
       },
       "CatalogueCategory": {
@@ -1331,6 +1517,10 @@
             "type": "string"
           }
         },
+        "required": [
+          "key",
+          "name"
+        ],
         "type": "object"
       },
       "CatalogueChange": {
@@ -1348,6 +1538,10 @@
             "type": "string"
           }
         },
+        "required": [
+          "key",
+          "name"
+        ],
         "type": "object"
       },
       "CatalogueDiscipline": {
@@ -1371,6 +1565,12 @@
             ]
           }
         },
+        "required": [
+          "category",
+          "codeOwned",
+          "key",
+          "name"
+        ],
         "type": "object"
       },
       "CatalogueSnapshot": {
@@ -1388,6 +1588,10 @@
             "type": "array"
           }
         },
+        "required": [
+          "categories",
+          "disciplines"
+        ],
         "type": "object"
       },
       "ClubChange": {
@@ -1402,6 +1606,11 @@
             "type": "string"
           }
         },
+        "required": [
+          "name",
+          "slug",
+          "timeZone"
+        ],
         "type": "object"
       },
       "CodeRequest": {
@@ -1411,6 +1620,9 @@
             "writeOnly": true
           }
         },
+        "required": [
+          "code"
+        ],
         "type": "object"
       },
       "ConfirmationResult": {
@@ -1432,6 +1644,10 @@
             ]
           }
         },
+        "required": [
+          "confirmed",
+          "message"
+        ],
         "type": "object"
       },
       "ConsentView": {
@@ -1458,6 +1674,15 @@
             "type": "string"
           }
         },
+        "required": [
+          "clientId",
+          "clientName",
+          "csrfParameter",
+          "csrfToken",
+          "resource",
+          "scope",
+          "state"
+        ],
         "type": "object"
       },
       "Conversation": {
@@ -1510,6 +1735,15 @@
             "type": "string"
           }
         },
+        "required": [
+          "active",
+          "channel",
+          "createdAt",
+          "id",
+          "revision",
+          "subject",
+          "updatedAt"
+        ],
         "type": "object"
       },
       "ConversationCommand": {
@@ -1549,6 +1783,11 @@
             "type": "array"
           }
         },
+        "required": [
+          "conversation",
+          "messages",
+          "proposals"
+        ],
         "type": "object"
       },
       "CreateClub": {
@@ -1587,6 +1826,15 @@
             "type": "string"
           }
         },
+        "required": [
+          "disciplineKey",
+          "organizationName",
+          "organizationSlug",
+          "season",
+          "sectionName",
+          "sectionSlug",
+          "timeZone"
+        ],
         "type": "object"
       },
       "CredentialRegistrationRequest": {
@@ -1617,6 +1865,13 @@
             "$ref": "#/components/schemas/JsonNode"
           }
         },
+        "required": [
+          "activityTypeId",
+          "revision",
+          "scope",
+          "scopeId",
+          "values"
+        ],
         "type": "object"
       },
       "DefaultsWorkspace": {
@@ -1658,6 +1913,15 @@
             "type": "string"
           }
         },
+        "required": [
+          "disciplineKey",
+          "organizationId",
+          "rows",
+          "scope",
+          "scopeId",
+          "types",
+          "version"
+        ],
         "type": "object"
       },
       "DisciplineDefinition": {
@@ -1696,6 +1960,15 @@
             "type": "string"
           }
         },
+        "required": [
+          "capabilities",
+          "category",
+          "fields",
+          "key",
+          "name",
+          "scopeTitles",
+          "version"
+        ],
         "type": "object"
       },
       "DisciplineField": {
@@ -1763,6 +2036,14 @@
             "type": "string"
           }
         },
+        "required": [
+          "key",
+          "options",
+          "read",
+          "title",
+          "type",
+          "write"
+        ],
         "type": "object"
       },
       "DisciplineFieldsCommand": {
@@ -1809,6 +2090,14 @@
             "type": "string"
           }
         },
+        "required": [
+          "disciplineKey",
+          "revision",
+          "scope",
+          "teamId",
+          "values",
+          "version"
+        ],
         "type": "object"
       },
       "DisciplineFieldsSnapshot": {
@@ -1866,6 +2155,19 @@
             ]
           }
         },
+        "required": [
+          "acceptedPlayers",
+          "canManageInvitations",
+          "disciplineKey",
+          "editable",
+          "enabled",
+          "fields",
+          "participants",
+          "revision",
+          "teamPlayers",
+          "title",
+          "values"
+        ],
         "type": "object"
       },
       "DisciplinePlayer": {
@@ -1878,6 +2180,10 @@
             "type": "string"
           }
         },
+        "required": [
+          "id",
+          "name"
+        ],
         "type": "object"
       },
       "EvaluationConfiguration": {
@@ -1910,6 +2216,13 @@
             "type": "number"
           }
         },
+        "required": [
+          "confirmDeletion",
+          "defaultGroups",
+          "enabled",
+          "metrics",
+          "threshold"
+        ],
         "type": "object"
       },
       "EvaluationMetric": {
@@ -1929,6 +2242,11 @@
             "type": "string"
           }
         },
+        "required": [
+          "id",
+          "kind",
+          "name"
+        ],
         "type": "object"
       },
       "EvaluationScore": {
@@ -1946,6 +2264,11 @@
             "type": "number"
           }
         },
+        "required": [
+          "metricId",
+          "personId",
+          "value"
+        ],
         "type": "object"
       },
       "EvaluationScoreCommand": {
@@ -1961,6 +2284,10 @@
             "type": "array"
           }
         },
+        "required": [
+          "revision",
+          "scores"
+        ],
         "type": "object"
       },
       "EvaluationSnapshot": {
@@ -2005,6 +2332,15 @@
             "type": "number"
           }
         },
+        "required": [
+          "canConfigure",
+          "defaultGroups",
+          "enabled",
+          "metrics",
+          "players",
+          "scores",
+          "threshold"
+        ],
         "type": "object"
       },
       "FieldCondition": {
@@ -2016,6 +2352,10 @@
             "type": "string"
           }
         },
+        "required": [
+          "field",
+          "value"
+        ],
         "type": "object"
       },
       "FieldOption": {
@@ -2027,6 +2367,10 @@
             "type": "string"
           }
         },
+        "required": [
+          "id",
+          "name"
+        ],
         "type": "object"
       },
       "GroupCommand": {
@@ -2035,6 +2379,9 @@
             "type": "string"
           }
         },
+        "required": [
+          "kind"
+        ],
         "type": "object"
       },
       "GroupLink": {
@@ -2046,6 +2393,10 @@
             "type": "string"
           }
         },
+        "required": [
+          "kind",
+          "url"
+        ],
         "type": "object"
       },
       "GroupStart": {
@@ -2054,6 +2405,9 @@
             "type": "string"
           }
         },
+        "required": [
+          "pairingUrl"
+        ],
         "type": "object"
       },
       "InformationAnswer": {
@@ -2069,6 +2423,11 @@
             "$ref": "#/components/schemas/JsonNode"
           }
         },
+        "required": [
+          "ownerKey",
+          "revision",
+          "values"
+        ],
         "type": "object"
       },
       "InformationCommand": {
@@ -2090,6 +2449,9 @@
             ]
           }
         },
+        "required": [
+          "answers"
+        ],
         "type": "object"
       },
       "InformationDefinition": {
@@ -2116,6 +2478,12 @@
             "type": "string"
           }
         },
+        "required": [
+          "fields",
+          "key",
+          "title",
+          "version"
+        ],
         "type": "object"
       },
       "InformationHistory": {
@@ -2150,6 +2518,16 @@
             "$ref": "#/components/schemas/JsonNode"
           }
         },
+        "required": [
+          "actorName",
+          "changedAt",
+          "names",
+          "ownerKey",
+          "previous",
+          "revision",
+          "state",
+          "values"
+        ],
         "type": "object"
       },
       "InformationItem": {
@@ -2174,6 +2552,12 @@
             "$ref": "#/components/schemas/JsonNode"
           }
         },
+        "required": [
+          "definition",
+          "revision",
+          "state",
+          "values"
+        ],
         "type": "object"
       },
       "InformationPeriodReport": {
@@ -2196,6 +2580,13 @@
             "type": "string"
           }
         },
+        "required": [
+          "fromDate",
+          "report",
+          "season",
+          "timeZone",
+          "untilDate"
+        ],
         "type": "object"
       },
       "InformationReport": {
@@ -2225,6 +2616,13 @@
             "type": "string"
           }
         },
+        "required": [
+          "entries",
+          "from",
+          "players",
+          "teamId",
+          "until"
+        ],
         "type": "object"
       },
       "InformationReportEntry": {
@@ -2247,6 +2645,12 @@
             "type": "string"
           }
         },
+        "required": [
+          "activityId",
+          "contributions",
+          "startsAt",
+          "title"
+        ],
         "type": "object"
       },
       "InformationSnapshot": {
@@ -2287,6 +2691,16 @@
             "type": "string"
           }
         },
+        "required": [
+          "activityId",
+          "attendanceRevision",
+          "canManageAttendance",
+          "contributions",
+          "editable",
+          "history",
+          "players",
+          "title"
+        ],
         "type": "object"
       },
       "InvitationResponseResult": {
@@ -2466,6 +2880,19 @@
             "type": "string"
           }
         },
+        "required": [
+          "description",
+          "ends_at",
+          "id",
+          "imported",
+          "location",
+          "organization_id",
+          "revision",
+          "starts_at",
+          "status",
+          "team_id",
+          "title"
+        ],
         "type": "object"
       },
       "ManagedActivityType": {
@@ -2491,6 +2918,12 @@
             "type": "string"
           }
         },
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "system_category"
+        ],
         "type": "object"
       },
       "ManagedTeam": {
@@ -2516,6 +2949,14 @@
             "type": "string"
           }
         },
+        "required": [
+          "canManageInvitations",
+          "id",
+          "name",
+          "organizationId",
+          "organizationName",
+          "timeZone"
+        ],
         "type": "object"
       },
       "MemoryEdit": {
@@ -2528,6 +2969,10 @@
             "type": "integer"
           }
         },
+        "required": [
+          "content",
+          "revision"
+        ],
         "type": "object"
       },
       "MessageCommand": {
@@ -2550,6 +2995,9 @@
             "type": "string"
           }
         },
+        "required": [
+          "text"
+        ],
         "type": "object"
       },
       "MyActivities": {
@@ -2638,6 +3086,10 @@
             "type": "string"
           }
         },
+        "required": [
+          "id",
+          "label"
+        ],
         "type": "object"
       },
       "PendingInformation": {
@@ -2660,6 +3112,12 @@
             "type": "string"
           }
         },
+        "required": [
+          "activityId",
+          "missing",
+          "startsAt",
+          "title"
+        ],
         "type": "object"
       },
       "PersonalActivity": {
@@ -2733,6 +3191,7 @@
           }
         },
         "required": [
+          "accepted_participants",
           "can_manage_activities",
           "can_manage_attendance",
           "description",
@@ -3085,6 +3544,16 @@
             "type": "array"
           }
         },
+        "required": [
+          "capabilityKey",
+          "filters",
+          "id",
+          "order",
+          "placement",
+          "schemaVersion",
+          "title",
+          "views"
+        ],
         "type": "object"
       },
       "ReadView": {
@@ -3126,6 +3595,13 @@
             "type": "string"
           }
         },
+        "required": [
+          "columns",
+          "groups",
+          "rows",
+          "title",
+          "type"
+        ],
         "type": "object"
       },
       "RegisterRequest": {
@@ -3138,6 +3614,10 @@
             "writeOnly": true
           }
         },
+        "required": [
+          "email",
+          "password"
+        ],
         "type": "object"
       },
       "RelyingPartyPublicKey": {
@@ -3161,6 +3641,10 @@
             "writeOnly": true
           }
         },
+        "required": [
+          "code",
+          "password"
+        ],
         "type": "object"
       },
       "ResidentKeyRequirement": {
@@ -3197,6 +3681,9 @@
             "type": "string"
           }
         },
+        "required": [
+          "teamId"
+        ],
         "type": "object"
       },
       "RosterCandidate": {
@@ -3216,6 +3703,10 @@
             "type": "string"
           }
         },
+        "required": [
+          "id",
+          "name"
+        ],
         "type": "object"
       },
       "RosterContact": {
@@ -3227,6 +3718,10 @@
             "type": "string"
           }
         },
+        "required": [
+          "name",
+          "phone"
+        ],
         "type": "object"
       },
       "RosterCreateCommand": {
@@ -3269,6 +3764,13 @@
             ]
           }
         },
+        "required": [
+          "duplicatesConfirmed",
+          "email",
+          "name",
+          "requestId",
+          "role"
+        ],
         "type": "object"
       },
       "RosterCreated": {
@@ -3278,6 +3780,9 @@
             "type": "string"
           }
         },
+        "required": [
+          "personId"
+        ],
         "type": "object"
       },
       "RosterEmailCommand": {
@@ -3286,6 +3791,9 @@
             "type": "string"
           }
         },
+        "required": [
+          "email"
+        ],
         "type": "object"
       },
       "RosterGroupCommand": {
@@ -3308,6 +3816,10 @@
             ]
           }
         },
+        "required": [
+          "name",
+          "personIds"
+        ],
         "type": "object"
       },
       "RosterInvitationCode": {
@@ -3317,6 +3829,9 @@
             "writeOnly": true
           }
         },
+        "required": [
+          "code"
+        ],
         "type": "object"
       },
       "RosterMember": {
@@ -3366,6 +3881,15 @@
             "type": "string"
           }
         },
+        "required": [
+          "childIds",
+          "guardians",
+          "id",
+          "linked",
+          "name",
+          "roles",
+          "title"
+        ],
         "type": "object"
       },
       "RosterNameCommand": {
@@ -3374,6 +3898,9 @@
             "type": "string"
           }
         },
+        "required": [
+          "name"
+        ],
         "type": "object"
       },
       "RosterPendingInvitation": {
@@ -3392,6 +3919,12 @@
             "type": "string"
           }
         },
+        "required": [
+          "email",
+          "id",
+          "personName",
+          "teamName"
+        ],
         "type": "object"
       },
       "RosterSubgroup": {
@@ -3415,6 +3948,12 @@
             "type": "integer"
           }
         },
+        "required": [
+          "id",
+          "name",
+          "personIds",
+          "revision"
+        ],
         "type": "object"
       },
       "RosterTeam": {
@@ -3430,6 +3969,11 @@
             "type": "string"
           }
         },
+        "required": [
+          "id",
+          "name",
+          "organizationName"
+        ],
         "type": "object"
       },
       "SectionChange": {
@@ -3444,6 +3988,11 @@
             "type": "string"
           }
         },
+        "required": [
+          "disciplineKey",
+          "name",
+          "slug"
+        ],
         "type": "object"
       },
       "SectionProfile": {
@@ -3456,6 +4005,10 @@
             "type": "integer"
           }
         },
+        "required": [
+          "instructions",
+          "revision"
+        ],
         "type": "object"
       },
       "SignalAction": {
@@ -3471,6 +4024,11 @@
             "type": "string"
           }
         },
+        "required": [
+          "action",
+          "createdAt",
+          "result"
+        ],
         "type": "object"
       },
       "SignalCommand": {
@@ -3483,6 +4041,10 @@
             "type": "integer"
           }
         },
+        "required": [
+          "action",
+          "revision"
+        ],
         "type": "object"
       },
       "SignalSnapshot": {
@@ -3532,6 +4094,19 @@
             "type": "string"
           }
         },
+        "required": [
+          "actions",
+          "activityId",
+          "episode",
+          "evaluatedAt",
+          "history",
+          "id",
+          "revision",
+          "severity",
+          "state",
+          "text",
+          "title"
+        ],
         "type": "object"
       },
       "SlugAvailability": {
@@ -3540,6 +4115,9 @@
             "type": "string"
           }
         },
+        "required": [
+          "status"
+        ],
         "type": "object"
       },
       "StreamingResponseBody": {},
@@ -3565,6 +4143,10 @@
             ]
           }
         },
+        "required": [
+          "name",
+          "season"
+        ],
         "type": "object"
       },
       "TeamRosterSnapshot": {
@@ -3585,6 +4167,11 @@
             "$ref": "#/components/schemas/RosterTeam"
           }
         },
+        "required": [
+          "groups",
+          "people",
+          "team"
+        ],
         "type": "object"
       },
       "TelegramGroupOverview": {
@@ -3599,6 +4186,10 @@
             "type": "array"
           }
         },
+        "required": [
+          "canManage",
+          "links"
+        ],
         "type": "object"
       },
       "TelegramSettings": {
@@ -3623,6 +4214,10 @@
             ]
           }
         },
+        "required": [
+          "active",
+          "available"
+        ],
         "type": "object"
       },
       "TelegramSettingsChange": {
@@ -3634,6 +4229,10 @@
             "type": "string"
           }
         },
+        "required": [
+          "consent",
+          "operation"
+        ],
         "type": "object"
       },
       "TokenGenerationRequest": {
@@ -3678,6 +4277,9 @@
             "type": "string"
           }
         },
+        "required": [
+          "type"
+        ],
         "type": "object"
       },
       "ViewColumn": {
@@ -3689,6 +4291,10 @@
             "type": "string"
           }
         },
+        "required": [
+          "id",
+          "title"
+        ],
         "type": "object"
       },
       "ViewFilter": {
@@ -3740,6 +4346,13 @@
             ]
           }
         },
+        "required": [
+          "id",
+          "options",
+          "selected",
+          "title",
+          "type"
+        ],
         "type": "object"
       },
       "ViewGroup": {
@@ -3760,6 +4373,12 @@
             "type": "string"
           }
         },
+        "required": [
+          "id",
+          "rows",
+          "summary",
+          "title"
+        ],
         "type": "object"
       },
       "ViewRow": {
@@ -3780,6 +4399,11 @@
             "type": "array"
           }
         },
+        "required": [
+          "cells",
+          "id",
+          "markers"
+        ],
         "type": "object"
       }
     },

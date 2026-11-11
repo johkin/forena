@@ -195,13 +195,10 @@ class AssistantProposalService(
         target: AssistantTarget?,
     ): Pair<String, String> {
         fun hash(value: Any) = identities.fingerprint(json.writeValueAsString(value))
+        val scope = target?.let { AssistantToolScope(actor, it.organizationId, it.teamId) }
         fun activity(id: UUID): PersonalActivity {
             val activity = activities.activity(actor, id)
-            if (target != null)
-                require(
-                    activity.organization.id == target.organizationId &&
-                        (target.teamId == null || activity.team.id == target.teamId)
-                )
+            if (scope != null) require(scope.includes(activity.organization.id, activity.team.id))
             return activity
         }
         return when (kind) {

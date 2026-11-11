@@ -111,7 +111,8 @@ class OAuthConfiguration {
     @Bean fun clients(jdbc: JdbcTemplate): RegisteredClientRepository = JdbcRegisteredClientRepository(jdbc)
     @Bean fun authorizations(jdbc: JdbcTemplate, clients: RegisteredClientRepository): OAuth2AuthorizationService = JdbcOAuth2AuthorizationService(jdbc, clients)
     @Bean fun consents(jdbc: JdbcTemplate, clients: RegisteredClientRepository): OAuth2AuthorizationConsentService = JdbcOAuth2AuthorizationConsentService(jdbc, clients)
-    @Bean fun authorizationServerSettings(settings: BrowserSessionSettings) = AuthorizationServerSettings.builder().issuer(settings.origin).build()
+    @Bean fun authorizationServerSettings(settings: BrowserSessionSettings) = AuthorizationServerSettings.builder()
+        .issuer(settings.origin).clientRegistrationEndpoint(McpClientRegistrationPolicy.ENDPOINT).build()
     @Bean fun tokenGenerator(accounts: AccountService, settings: BrowserSessionSettings): OAuth2TokenGenerator<*> {
         val generator = OAuth2AccessTokenGenerator()
         generator.setAccessTokenCustomizer { context ->
@@ -157,7 +158,15 @@ class OAuthConfiguration {
         val config = OAuth2AuthorizationServerConfigurer()
         http.securityMatcher(config.endpointsMatcher)
             .with(config) { it.registeredClientRepository(clients).authorizationService(grants).authorizationConsentService(consents)
-                .tokenGenerator(tokens).authorizationServerSettings(server).authorizationEndpoint { endpoint -> endpoint.consentPage("/oauth/consent") } }
+                .tokenGenerator(tokens).authorizationServerSettings(server).authorizationEndpoint { endpoint -> endpoint.consentPage("/oauth/consent") }
+                .authorizationServerMetadataEndpoint { endpoint -> endpoint.authorizationServerMetadataCustomizer { metadata ->
+                    metadata.clientRegistrationEndpoint(settings.origin + McpClientRegistrationPolicy.ENDPOINT)
+                        .scopes { scopes -> scopes.clear(); scopes.add(McpClientRegistrationPolicy.SCOPE) }
+                        .grantTypes { grants -> grants.clear(); grants.addAll(listOf("authorization_code", "refresh_token")) }
+                        .responseTypes { responses -> responses.clear(); responses.add("code") }
+                        .tokenEndpointAuthenticationMethods { methods -> methods.clear(); methods.addAll(McpClientRegistrationPolicy.AUTHENTICATION_METHODS) }
+                        .codeChallengeMethods { methods -> methods.clear(); methods.add("S256") }
+                } } }
             .securityContext { it.securityContextRepository(contexts) }
             .requestCache { it.disable() }
             .csrf { it.csrfTokenRepository(csrf) }

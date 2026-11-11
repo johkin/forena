@@ -8,7 +8,6 @@ import org.springframework.security.access.AccessDeniedException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 import se.forena.api.activities.*
-import se.forena.api.extensions.CapabilityRuntime
 import se.forena.api.assistant.internal.ConversationRepository
 import se.forena.api.identity.*
 import tools.jackson.databind.json.JsonMapper
@@ -24,16 +23,12 @@ class AssistantService(
     private val prompts: AssistantPrompts,
     private val overview: PersonalOverviewService,
     private val activityData: AssistantActivityService,
-    private val attendance: AttendanceService,
-    private val duties: ActivityDutyService,
-    private val members: AssistantMemberService,
-    private val documents: AssistantDocumentService,
+    private val tools: AssistantToolCatalog,
     private val proposals: AssistantProposalService,
     private val model: AssistantModel,
     private val transactions: TransactionTemplate,
     private val json: JsonMapper,
     private val identities: AssistantIdentityService,
-    private val capabilitySignals: CapabilityRuntime,
 ) {
     fun list(actor: Actor): List<Conversation> {
         sessions.requireActive(actor)
@@ -107,20 +102,14 @@ class AssistantService(
                         throw IllegalStateException("Start a new conversation to continue")
                     current.organizationId?.let { profiles.requireOrganization(actor, it) }
                     val team = command.teamId ?: current.teamId
+                    val scope = AssistantToolScope(actor, current.organizationId, team)
                     if (team != null) {
                         val data = activityData.team(actor, team)
-                        require(
-                            current.organizationId == null ||
-                                data.organizationId == current.organizationId
-                        )
+                        require(scope.includes(data.organizationId, data.teamId))
                     }
                     val activity = command.activityId?.let { activityData.activity(actor, it) }
                     if (activity != null) {
-                        require(
-                            current.organizationId == null ||
-                                current.organizationId == activity.organization.id
-                        )
-                        require(team == null || team == activity.team.id)
+                        require(scope.includes(activity.organization.id, activity.team.id))
                     }
                     conversations.budget(actor.subject)
                     conversations.invalidate(actor.subject, id)
@@ -440,12 +429,12 @@ class AssistantService(
                 ?: throw AccessDeniedException("Organization access required")
         val profile = profiles.profile(actor, target.organizationId)
         val team = target.teamId?.let { activityData.team(actor, it) }
-        require(team == null || team.organizationId == target.organizationId)
+        val scope = AssistantToolScope(actor, target.organizationId, team?.teamId)
+        require(team == null || scope.includes(team.organizationId, team.teamId))
         val catalog = activityData.catalog(actor)
         val visible =
             catalog.activities.filter {
-                it.organization.id == target.organizationId &&
-                    (team == null || it.team.id == team.teamId)
+                scope.includes(it.organization.id, it.team.id)
             }
         val explicit =
             (target.activityId ?: command.activityId)?.let { activityData.activity(actor, it) }
@@ -466,8 +455,7 @@ class AssistantService(
             }
         val selected =
             (explicit ?: oldActivity)?.takeIf {
-                it.organization.id == target.organizationId &&
-                    (team == null || it.team.id == team.teamId)
+                scope.includes(it.organization.id, it.team.id)
             }
         if (
             retainContext &&
@@ -507,19 +495,7 @@ class AssistantService(
                 "viewer" to identities.viewer(actor, target.organizationId, team?.teamId),
                 "sectionInstructions" to
                     team?.sectionId?.let { profiles.section(actor, target.organizationId, it) },
-                "documents" to
-                    documents.read(actor, target.organizationId, team?.teamId, team?.sectionId),
-                "members" to
-                    members.read(actor, target.organizationId, team?.teamId, team?.sectionId),
-                "team" to team,
-                "capabilitySignals" to team?.takeIf { it.invitationAccess }?.let {
-                    try {
-                        val signals = capabilitySignals.list(actor,it.teamId).filter { signal -> signal.state=="active" }
-                        mapOf("available" to true,"limited" to (signals.size>100),"signals" to signals.take(100))
-                    } catch (_: Exception) { mapOf("available" to false) }
-                },
-                "dutyTargets" to
-                    team?.takeIf { it.invitationAccess }?.let { duties.targets(actor, it.teamId) },
+                "team" to team?.promptSummary(),
                 "teams" to snapshot.teams.filter { it.organization_id == target.organizationId },
                 "activities" to visible,
                 "activityCategories" to visible.associate { it.id to catalog.categories[it.id] },
@@ -528,10 +504,6 @@ class AssistantService(
                 "invitationSummary" to invitations?.groupingBy { it.response }?.eachCount(),
                 "invitationSummaryScope" to
                     if (team?.invitationAccess == true) "whole_activity" else "visible_people_only",
-                "attendance" to
-                    selected
-                        ?.takeIf { it.can_manage_attendance }
-                        ?.let { attendance.snapshot(actor, it.id) },
                 "memories" to
                     profiles.memories(
                         actor,
@@ -541,17 +513,16 @@ class AssistantService(
                         team?.discipline,
                     ),
                 "clubConversationHistory" to thread,
-                "history" to
+                "requestedHistory" to
                     if (target.historyFrom != null && target.historyThrough != null && team != null)
-                        activityData.history(
-                            actor,
-                            team.teamId,
-                            target.historyFrom,
-                            target.historyThrough,
-                        )
+                        mapOf("teamId" to team.teamId, "from" to target.historyFrom, "through" to target.historyThrough)
                     else null,
             )
-        val answer = model.answer(prompts.rules, json.writeValueAsString(context))
+        val answer = model.answer(
+            prompts.rules,
+            json.writeValueAsString(context),
+            tools.forClub(actor, target.organizationId, team?.teamId),
+        )
         val editor = answer.activityEditor?.also { draft ->
             val editorTeam = requireNotNull(team)
             val configuration = requireNotNull(editorTeam.editor)

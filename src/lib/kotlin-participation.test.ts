@@ -7,7 +7,7 @@ import { kotlinParticipationSelected } from "./kotlin-participation";
 
 const id = "8d346830-5261-466c-aa58-769c83032376";
 const person = "0bc56f4f-dfea-4f6c-b03e-15553ecf859a";
-const row = { id, person_id: person, response: "accepted", response_comment: null, name: "Syntetiskt barn" };
+const row = { id, person_id: person, response: "accepted", response_comment: null, name: "Syntetiskt barn", consumes_capacity: true };
 const list = () => GET(new Request("https://web.test/api/activities/" + id), { params: Promise.resolve({ activityId: id }) });
 const respond = (body: unknown, origin = "https://web.test") => PUT(new Request("https://web.test/api/invitations/" + id, {
   method: "PUT", headers: { Origin: origin, Authorization: "Bearer caller-token", Cookie: "untrusted=cookie" }, body: JSON.stringify(body),
@@ -33,6 +33,26 @@ it("uses the generated contract shape and forwards only the verified session tok
   expect(url).toBe(`https://api.test/api/activities/${id}/my-invitations`);
   expect(options).toMatchObject({ cache: "no-store", redirect: "error", headers: { Authorization: "Bearer verified-session-token" } });
   expect(options?.headers).not.toHaveProperty("Cookie");
+  expect(mocks.from).not.toHaveBeenCalled();
+});
+it("preserves the server decision that an invitation does not consume participant capacity", async () => {
+  const invitation = { ...row, consumes_capacity: false };
+  vi.mocked(fetch).mockResolvedValue(Response.json({ invitations: [invitation] }));
+
+  const result = await list();
+
+  expect(result.status).toBe(200);
+  expect(await result.json()).toEqual({ invitations: [invitation] });
+});
+it.each([undefined, null, "false", 0])("rejects missing or invalid capacity information without a legacy fallback: %j", async capacity => {
+  vi.mocked(fetch).mockResolvedValue(Response.json({ invitations: [{ ...row, consumes_capacity: capacity }] }));
+
+  const result = await list();
+
+  expect(result.status).toBe(503);
+  expect(result.headers.get("cache-control")).toBe("no-store");
+  expect(await result.json()).not.toHaveProperty("invitations");
+  expect(fetch).toHaveBeenCalledTimes(1);
   expect(mocks.from).not.toHaveBeenCalled();
 });
 it.each([{ response: "accepted" }, { response: "declined", comment: null }, { response: "accepted", comment: "  😀  " }, { response: "pending" }])("preserves omission/null and lets Kotlin normalize comments: %j", async body => {

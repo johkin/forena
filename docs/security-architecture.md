@@ -70,6 +70,20 @@ skapar inga sessioner; databasfel stoppar anropet med 503. React validerar
 OAuth-fortsättning separat från vanliga sidbyten och tillåter bara den fasta
 samma-origin-sökvägen `/oauth2/authorize?`.
 
+MCP-klienter kan registreras genom Spring Securitys publika RFC 7591-endpoint
+`POST /oauth2/register`. Registreringen är stateless och begränsas före JSON-
+parsning av befintliga distribuerade auth-budgetar, en kropp på högst 16 KiB
+och högst tio callback-adresser inom JDBC-lagringens gräns på 1 000 tecken.
+Endast `mcp:read`, Authorization Code och refresh för klienter med hemlighet
+tillåts; PKCE och samtycke krävs alltid. Registrering
+ger ingen användar- eller verksamhetsåtkomst. Fjärr-HTTPS-callback valideras
+exakt; Springs loopbackundantag låter enbart porten variera för HTTP/HTTPS till
+IP-litteraler. Övriga URI-delar och hela `localhost`-adressen måste matcha.
+Klientnamn är självuppgivna och får inte betraktas som verifierade leverantörer.
+Onödig klientmetadata används inte för externa nätanrop. Registret gallras
+inte automatiskt; driften behöver bevaka tillväxt och hantera klienter separat
+från användarnas grants. Statiskt registrerade klienter fungerar fortsatt.
+
 I Supabase-lägets magic-link-adapter konsumeras PKCE-verifieraren atomiskt under
 databasens sessionslås, innan leverantören anropas. Även samtidiga bekräftelser
 över flera instanser får bara göra ett kodutbyte.
@@ -522,6 +536,41 @@ personnamn, kontaktuppgifter eller svarskommentarer. MCP-SDK:ns
 konfigurerade origin; saknad eller blank `Origin` tillåts. Ett servletfilter
 behåller gränsen på 64 KiB och `Cache-Control: no-store`. Servern anropar ingen
 AI-modell.
+
+MCP och klubbassistenten delar samtliga 14 läsverktyg från `SharedActivityTools`
+och `AssistantReadTools` genom en gemensam `AssistantToolCatalog`. Det omfattar
+laglista, lag- och redigeringsunderlag, aktiviteter, behörighetsskyddade
+namnlistor, dokument, medlemsuppdrag, kallelsesvar med kommentarer, närvaro,
+historik, arbetspassunderlag och verksamhetssignaler. Alla läsningar använder
+domäntjänsternas aktuella åtkomstkontroller; `mcp:read` ersätter ingen
+verksamhetsbehörighet. Kallelsesvar gäller egna personer eller hela aktiviteten
+vid aktuell `invitation.manage`. Närvarolistor kräver `attendance.manage`;
+historikens närvaro- och arbetsdelar kräver respektive behörighet. Dokument
+filtreras efter klubb, lag/sektion och tillämplig målgrupp; medlemsuppdrag kräver
+klubb-/sektionsadministration eller aktuell `roster.manage` för valt lag.
+Lagmedlemmars namn kräver aktuell `roster.manage`; ja-svarens namn kräver
+`invitation.manage` för aktivitetens verkliga lag. Samtal och assistentminnen
+exporteras inte och inga skrivverktyg registreras. OAuth-samtycket beskriver
+den samlade läsåtkomsten. Båda vägarna använder en
+serverägd `AssistantToolScope` med verifierad aktör. Klubbassistentens scope
+begränsar dessutom klubb och eventuellt lag utöver kontots vanliga behörighet;
+modellens argument kan inte bredda den avgränsningen. Aktör och token skickas
+aldrig till modellen som verktygsargument eller schema.
+
+Verktygens resurs- och scopekontroller samlas i `AssistantToolAccessService`;
+filtrering och nekande kontroll utgår från samma `AssistantToolScope`-predikat.
+Verksamhetsreglerna ligger kvar i domäntjänsterna. Klubb-/sektions- och
+lagadministratörsfakta samlas i `AdministrationAccessService`, med separata
+beslut för struktur och verksamhet. Samlad lagbehörighet och enskild kontroll
+använder samma SQL-predikat och permissionnycklar från `TeamPermission`.
+Återanvändning av rättighetsunderlag gäller bara den pågående operationen;
+återkallning kontrolleras på nytt vid nästa kommando eller verktygsanrop.
+
+Modellens verktygsflöde har gränser för antal anrop, argument, resultat och
+samlad kontext. Okända verktyg kan inte slås upp utanför den erbjudna katalogen.
+Gateway-transporten följer inga omdirigeringar och läser högst 256 KiB per svar.
+SDK-loggning och Spring-adapterns promptloggning är avstängda; tekniska fel
+översätts till neutrala svar utan modellunderlag, token eller databasdetaljer.
 
 Den äldre Next-serverns MCP-adapter verifierar explicit bearer-token för en
 användare och använder en request-lokal Supabase-klient med publishable key och

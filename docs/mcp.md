@@ -2,10 +2,54 @@
 
 I Kotlin-appen äger Spring AI MCP-protokollet och den stateless WebMVC-transporten
 på `/api/mcp`. [Spring Authorization Server](migration/authentication.md) äger
-OAuth. Ett `@Tool`-annoterat läsverktyg, `list_my_activities`, återanvänder
-personöversiktens behörighetskontroller och returnerar högst 50 aktiviteter utan
-kontaktuppgifter, personnamn eller svarskommentarer. Servern behöver ingen
-AI-modell eller modellleverantör; MCP-klienten står för AI:n.
+OAuth. De 14 läsverktygen i `SharedActivityTools` och `AssistantReadTools` är
+`@Tool`-annoterade och registreras genom samma `AssistantToolCatalog` för
+assistentens lokala callbacks och MCP-servern. Servern behöver
+ingen AI-modell eller modellleverantör; MCP-klienten står för AI:n.
+
+För användarsteg, OAuth-konfiguration och anslutningsprov, se
+[Anslut ChatGPT eller Claude till Förena](mcp-chatgpt.md). Guiden gäller Kotlin/Spring-servern.
+
+OAuth-discovery annonserar DCR på `POST /oauth2/register`. Kompatibla klienter
+registrerar sin callback automatiskt och kan därefter be användaren logga in
+och godkänna `mcp:read`. Förregistrerade klienter stöds också. Registrering
+ger ingen verksamhetsåtkomst; varje MCP-anrop kräver fortsatt giltig token
+och aktuell domänbehörighet. CIMD ingår ännu inte.
+
+| Kotlin-verktyg | Resultat | Behörighet |
+| --- | --- | --- |
+| `list_my_activities` | Högst 50 minimerade aktiviteter | Personöversiktens egen/delegerade åtkomst |
+| `list_teams` | Tillgängliga lag, 25 per sida | Personöversikt eller aktuell assistenthantering |
+| `get_team_overview` | Lagets tidszon och högst fem kommande aktiviteter | Aktuell åtkomst till laget |
+| `get_team_member_names` | Behöriga medlemmars visningsnamn | `roster.manage` |
+| `get_accepted_participant_names` | Visningsnamn på dem som tackat ja | `invitation.manage` för aktivitetens faktiska lag |
+| `get_team_context` | Lagets behöriga redigeringsunderlag och trupp | Aktuell lagåtkomst; redigering och trupp filtreras efter respektive behörighet |
+| `get_activity_details` | Aktivitetsdetaljer och egna kallelser | Aktuell åtkomst till aktiviteten |
+| `get_activity_invitations` | Högst 200 behöriga kallelsesvar med kommentarer och fullständig summering | Egna personers svar, eller `invitation.manage` för hela aktiviteten |
+| `get_activity_attendance` | Aktuell närvarolista utan rapporthistorik eller extra kandidater | `attendance.manage` för aktivitetens lag |
+| `get_activity_history` | Närvaro- och arbetshistorik, högst 366 dagar och 200 detaljerade poster per lista | `attendance.manage` eller `invitation.manage`; respektive del kräver sin behörighet |
+| `get_assistant_documents` | Högst tio tillämpliga dokument | Aktuell klubbåtkomst och dokumentets målgrupp; lagval avgränsar klubb och sektion |
+| `get_member_assignments` | Medlemsantal och högst 200 roll- och uppdragsrader | Klubb-/sektionsadministration eller `roster.manage` för valt lag |
+| `get_duty_targets` | Högst 200 möjliga aktiviteter inför ett arbetspassförslag | `invitation.manage` för laget |
+| `get_capability_signals` | Högst 100 aktiva verksamhetssignaler | `invitation.manage` för laget |
+
+Begränsade listor markerar ofullständiga resultat med `truncated`.
+Kallelsesummeringen omfattar alla behöriga svar även när detaljlistan begränsas;
+`invitationSummaryScope` anger om underlaget gäller hela aktiviteten eller bara
+synliga personer. Dokument, kommentarer, närvaro och medlemsuppdrag lämnas bara
+inom samma aktuella domänbehörigheter som för assistenten. MCP exporterar inte
+samtal eller assistentminnen. Inga skrivkommandon registreras; läsning av
+redigeringsunderlag eller möjliga arbetspass sparar ingenting.
+
+Servern härleder `Actor` från den verifierade transportidentiteten och för den
+vidare i `ToolContext`. Identitet och serverbestämd klubb-/lagavgränsning ingår
+inte i verktygens argumentscheman. Enbart `@Tool` gör inte en metod externt
+tillgänglig: den gemensamma katalogen registrerar uttryckligen de två läsbönorna.
+Klubbassistenten behåller dessutom sin servervalda klubb-/lagavgränsning.
+MCP-klientens OAuth-samtycke beskriver den samlade läsåtkomsten; varje verktyg
+kontrollerar fortfarande aktuell behörighet för de begärda uppgifterna.
+Följ argumentschemat från `tools/list`: frivilliga argument, exempelvis `teamId`
+för dokumentläsning, utelämnas när de inte används.
 
 Kotlin-klienten skickar OAuth-token med scope `mcp:read` som Bearer-header,
 `Content-Type: application/json` och `Accept: application/json, text/event-stream`.
@@ -14,8 +58,8 @@ servletfilter begränsar anropen till 64 KiB och sätter `Cache-Control: no-stor
 MCP-SDK:ns `DefaultServerTransportSecurityValidator` kontrollerar `Origin` mot
 appens konfigurerade origin. Saknad eller blank `Origin` tillåts.
 
-Verktygen och Supabase-flödena nedan avser den äldre Next-servern, vars övriga
-verktyg ännu inte har flyttats till Kotlin.
+Verktygen och Supabase-flödena nedan avser den äldre Next-serverns separata
+implementation.
 
 Förena exponerar en MCP-server på `/api/mcp` i samma Next.js-applikation.
 Transporten är stateless Streamable HTTP med JSON-svar och en ny server och

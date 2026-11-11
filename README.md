@@ -91,6 +91,8 @@ Nya Kotlin-sajten har ett separat [Actions-flöde för frontend och backend](doc
 till `forena-kotlin`. Det väntar på grön CI för samma main-commit, provar en
 stagingdeployment och publicerar därefter båda tjänsterna tillsammans.
 Engångskonfiguration och gränser för den nya miljön finns i körinstruktionen.
+För den nya Kotlin-servern finns även en guide för att
+[ansluta ChatGPT eller Claude till Förena via MCP](docs/mcp-chatgpt.md).
 Det befintliga produktionsflödet nedan gäller den gamla sajten och databasen.
 
 Pull requests verifieras av GitHub Actions genom att databasen byggs från

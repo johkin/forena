@@ -3,11 +3,17 @@
 Backend för den separata React/Vite-appen. Spring Security äger autentisering,
 Spring Authorization Server äger OAuth och Spring Session JDBC lagrar
 webbsessioner. Spring AI hanterar MCP-protokollet genom en stateless
-WebMVC-server på `/api/mcp`, med läsverktyget `list_my_activities` registrerat
-genom `@Tool`. MCP-servern behöver ingen AI-modell eller modellleverantör.
+WebMVC-server på `/api/mcp`, med läsverktyg registrerade genom `@Tool`.
+`SharedActivityTools` och `AssistantReadTools` ger samma 14 läsverktyg till MCP
+och assistentens lokala callbacks genom `AssistantToolCatalog`. Dokument,
+medlemsuppdrag, kallelsesvar, närvaro och historik använder samma aktuella
+domänbehörigheter i båda ingångarna. Samtal, minnen och skrivkommandon ingår
+inte i MCP-katalogen. MCP-servern behöver ingen AI-modell eller modellleverantör.
 PostgreSQL kan köras lokalt eller hos Supabase. Den äldre Next-appen behåller
-sin befintliga autentisering och separata deployment; dess övriga MCP-verktyg
-återstår att flytta.
+sin befintliga autentisering, implementation och separata deployment.
+
+Se [Anslut ChatGPT eller Claude till Förena](../docs/mcp-chatgpt.md) för
+anslutningssteg, automatisk klientregistrering och manuellt anslutningsprov.
 
 ## Lokal utveckling
 
@@ -115,7 +121,9 @@ Browserbindning, engångskonsumtion, kontospärr, generation vid lösenordsreset
 revokering och gemensam databasbaserad anropsbegränsning bevaras.
 API-kontobindning hindrar gamla flikar från att skriva under ett annat konto.
 MCP accepterar endast opaka OAuth-token, aldrig browsercookies; verksamhets-API:t
-accepterar aldrig MCP-token. OAuth kräver exakt redirect, resource, PKCE och consent.
+accepterar aldrig MCP-token. OAuth kräver registrerad redirect, exakt resource,
+PKCE och consent. Fjärr-HTTPS-redirect matchas exakt; Springs portundantag för
+loopback-IP gäller för lokala klienter med HTTP/HTTPS.
 
 `EmailSender` är leverantörsoberoende. `email.internal` innehåller Resends
 Spring HTTP Service Client, registrerad med `@ImportHttpServices`;
@@ -139,9 +147,11 @@ runtime-grants utan HTTP eller migration. Använd endast en av dessa engångsåt
 Ordinarie webbstart kräver `SITE_URL` (eller `FORENA_WEB_ORIGIN` som överstyrning),
 en separat base64-kodad 32-byte-nyckel i `FORENA_WEB_SESSION_KEY`, `RESEND_API_KEY` och
 `RESEND_FROM_EMAIL`. Inga auth-lägen väljs. Valfritt RP-ID sätts med
-`FORENA_PASSKEY_RP_ID`; standard är originens host. OAuth-klient provisioneras
-med `FORENA_OAUTH_CLIENT_ID`, `FORENA_OAUTH_CLIENT_REDIRECT` och valfri
-`FORENA_OAUTH_CLIENT_SECRET`. Se [körguiden](../docs/migration/authentication.md).
+`FORENA_PASSKEY_RP_ID`; standard är originens host. OAuth-discovery annonserar
+dynamisk klientregistrering på `POST /oauth2/register`, så kompatibla MCP-klienter
+behöver ingen manuell callback-konfiguration. Förregistrerade klienter kan även
+provisioneras med `FORENA_OAUTH_CLIENT_ID`, `FORENA_OAUTH_CLIENT_REDIRECT` och
+valfri `FORENA_OAUTH_CLIENT_SECRET`. Se [körguiden](../docs/migration/authentication.md).
 
 Inga konton importeras automatiskt och e-postlikhet kopplar inga identiteter.
 Liquibase-historik och historiska databasnamn bevaras.

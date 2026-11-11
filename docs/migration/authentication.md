@@ -57,17 +57,34 @@ Nya konton får inga sådana relationer automatiskt.
 
 ## OAuth och MCP
 
+För praktiska anslutningssteg och klientkonfiguration, se
+[Anslut ChatGPT eller Claude till Förena](../mcp-chatgpt.md).
+
 Authorization Server körs i samma backend. Klienter, godkännanden och grants
 lagras med Spring Securitys JDBC-repositories. Appen använder opaka
 access-token med 15 minuters livstid. Token verifieras lokalt mot aktuell grant,
 konto och sessionsversion; separat signeringsnyckel eller JWKS behövs inte.
 Token lagras som känsliga credentials i de privata frameworktabellerna.
 
-En klient provisioneras uttryckligen från konfiguration. Exakt redirect-URI,
-PKCE och användarens godkännande krävs. Ingen öppen dynamisk klientregistrering
-aktiveras. En konfidentiell klient har en slumpad klienthemlighet på 32–72 byte och kan använda roterande refresh-token;
-en publik klient autentiserar utan klienthemlighet och behöver ny auktorisering
-när access-token går ut. Webbinloggningen kan då återanvändas.
+Spring Securitys RFC 7591-stöd exponerar publik DCR på `POST /oauth2/register`,
+annonserad i OAuth-discovery. JSON begränsas till 16 KiB och tio callback-adresser
+med sammanlagt högst 1 000 tecken inklusive separatorer;
+befintliga PostgreSQL-baserade budgetar begränsar registrering före parser och
+sessionsladdning. Endpointen är stateless och accepterar bara `mcp:read` och
+Authorization Code, med PKCE `S256` och samtycke. Klienter med hemlighet kan
+även få refresh-grant. Publika klienters begärda refresh-grant tas bort i det
+registrerade resultatet. CIMD är inte aktiverat.
+
+Fjärr-HTTPS-redirect matchas exakt. HTTP tillåts bara för localhost och loopback-
+IP-litteraler; Springs standardundantag låter porten variera för IP-litteraler
+med både HTTP och HTTPS, medan övriga URI-delar måste matcha.
+`localhost` jämförs inklusive port.
+En förregistrerad klient kan fortsatt provisioneras från konfiguration.
+En konfidentiell klient använder klienthemlighet och kan få roterande
+refresh-token med åtta timmars livstid. En publik klient autentiserar utan
+hemlighet och behöver ny auktorisering när access-token går ut.
+Webbinloggningen kan då återanvändas. Klientregistreringar gallras inte
+automatiskt och klientens självvalda namn är inte en verifierad identitet.
 
 Resursen är exakt `${FORENA_WEB_ORIGIN}/api/mcp`, scope `mcp:read`.
 Klienten skickar `resource` på både authorization- och tokenanrop.
@@ -77,10 +94,14 @@ inte MCP-token, och MCP accepterar inte browsercookies som autentisering.
 Metadata finns på `/.well-known/oauth-authorization-server` och
 `/.well-known/oauth-protected-resource/api/mcp`. Spring AI hanterar MCP-protokollet
 och den stateless WebMVC-transporten på `/api/mcp`; OAuth hanteras fortsatt av
-Spring Authorization Server. Verktyget `list_my_activities` registreras med
-`@Tool` och erbjuder enbart läsning av högst 50 aktiviteter utan kontaktuppgifter,
-personnamn eller svarskommentarer. Servern behöver ingen AI-modell eller
-modellleverantör. Övriga verktyg i gamla Next-servern återstår att flytta.
+Spring Authorization Server. Assistenten och MCP registrerar samma 14
+`@Tool`-annoterade läsverktyg genom `AssistantToolCatalog`. Domäntjänsterna
+kontrollerar aktuell åtkomst till aktiviteter, lagunderlag, dokument,
+kallelsesvar med kommentarer, närvaro, historik och medlemsuppdrag.
+OAuth-samtycket beskriver denna läsåtkomst; scope `mcp:read` ger inga nya
+verksamhetsrättigheter. Verktyg, resultatgränser och behörigheter listas i
+[MCP-guiden](../mcp.md). Servern behöver ingen AI-modell eller modellleverantör;
+samtal, minnen och skrivkommandon ingår inte i verktygskatalogen.
 Vercels routing måste skicka `/oauth2/*` och metadata till backend;
 `/oauth/consent` går till SPA:n.
 
