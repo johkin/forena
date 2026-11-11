@@ -64,6 +64,8 @@ jobs:
         run: |
           npm ci
           npm install --global "vercel@$VERCEL_CLI_VERSION"
+          sudo apt-get update
+          sudo apt-get install --yes skopeo
 
       - name: Select isolated Kotlin deployment configuration
         run: |
@@ -90,6 +92,11 @@ jobs:
           docker image inspect forena-backend:ci > "$RUNNER_TEMP/backend-loaded.json"
           python3 scripts/deploy/use-backend-image.py verify \
             "$RUNNER_TEMP/backend-image/backend-image.json" "$RUNNER_TEMP/backend-loaded.json" "$RELEASE_SHA"
+          gzip --decompress --stdout "$RUNNER_TEMP/backend-image/forena-backend.tar.gz" \
+            > "$RUNNER_TEMP/backend-publish.tar"
+          # Normalize locally so a previous failed push cannot cause reuse of raw registry blobs.
+          skopeo copy --format v2s2 --dest-compress --dest-compress-format gzip \
+            "docker-archive:$RUNNER_TEMP/backend-publish.tar" "dir:$RUNNER_TEMP/backend-publish"
 
       - name: Calculate production browser build inputs
         id: frontend-inputs
@@ -112,12 +119,18 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           vercel vcr login docker --project "$VERCEL_PROJECT_ID" --scope "$VERCEL_ORG_ID"
-          image_ref="vcr.vercel.com/johkin/forena-kotlin/backend:$RELEASE_SHA"
-          docker tag forena-backend:ci "$image_ref"
-          vercel vcr push docker "backend:$RELEASE_SHA" --project "$VERCEL_PROJECT_ID" --scope "$VERCEL_ORG_ID"
-          docker image inspect "$image_ref" > "$RUNNER_TEMP/backend-published.json"
+          # Preserve normalized digests so existing raw blobs cannot replace the gzip layers.
+          skopeo copy --authfile "${DOCKER_CONFIG:-$HOME/.docker}/config.json" \
+            --preserve-digests \
+            --digestfile "$RUNNER_TEMP/backend-image-digest" \
+            "dir:$RUNNER_TEMP/backend-publish" \
+            "docker://vcr.vercel.com/johkin/forena-kotlin/backend:$RELEASE_SHA"
+          # Read the immutable manifest to verify its config digest against the tested CI artifact.
+          published_image="vcr.vercel.com/johkin/forena-kotlin/backend@$(cat "$RUNNER_TEMP/backend-image-digest")"
+          skopeo inspect --authfile "${DOCKER_CONFIG:-$HOME/.docker}/config.json" \
+            --raw "docker://$published_image" > "$RUNNER_TEMP/backend-published-manifest.json"
           python3 scripts/deploy/use-backend-image.py configure \
-            "$RUNNER_TEMP/backend-image/backend-image.json" "$RUNNER_TEMP/backend-published.json" "$RELEASE_SHA"
+            "$RUNNER_TEMP/backend-image/backend-image.json" "$RUNNER_TEMP/backend-published-manifest.json" "$RELEASE_SHA"
 
       - name: Package frontend and stage production using the tested backend image
         id: stage
@@ -127,7 +140,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 scripts/deploy/use-backend-image.py verify-output \
-            "$RUNNER_TEMP/backend-image/backend-image.json" "$RUNNER_TEMP/backend-published.json" "$RELEASE_SHA"
+            "$RUNNER_TEMP/backend-image/backend-image.json" "$RUNNER_TEMP/backend-published-manifest.json" "$RELEASE_SHA"
           deployment_url=$(vercel deploy --prebuilt --prod --skip-domain --yes --scope "$VERCEL_ORG_ID")
           DEPLOYMENT_URL="$deployment_url" node --input-type=module -e '
             const value = process.env.DEPLOYMENT_URL;

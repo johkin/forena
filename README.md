@@ -93,7 +93,9 @@ stagingdeployment och publicerar därefter båda tjänsterna tillsammans.
 Engångskonfiguration och gränser för den nya miljön finns i körinstruktionen.
 För den nya Kotlin-servern finns även en guide för att
 [ansluta ChatGPT eller Claude till Förena via MCP](docs/mcp-chatgpt.md).
-Det befintliga produktionsflödet nedan gäller den gamla sajten och databasen.
+Produktionsflödet nedan hanterar den delade databasen och Edge-arbetarna.
+Automatisk deploy av den äldre Next-appen är avstängd i Actions
+och Vercels Git-integration, för både `main` och PR-/preview-brancher.
 
 Pull requests verifieras av GitHub Actions genom att databasen byggs från
 migrationerna, databastyper kan genereras och appens tester, typkontroll, lint
@@ -111,9 +113,10 @@ När en ändring landar på `main` kör GitHub Actions databasmigrationer om fil
 `supabase/migrations` har ändrats. Båda Edge-arbetarna driftsätts efter
 migrationerna från samma verifierade commit. Worker-workflowet kan också startas
 manuellt från `main` via `workflow_dispatch`. Workflowen `Deploy production`
-väntar på grön CI och kör migrationer och Edge-arbetare före den gamla webbappens
-Vercel-deploy. Håll schemaändringar kompatibla med den redan körande webbversionen
-under driftsättning. Det nya Kotlin-flödet använder ett separat projekt-ID.
+väntar på grön CI och kör migrationer och Edge-arbetare. Next-appens tester,
+typkontroll, lint och produktionsbygge finns kvar i CI. Håll schemaändringar
+kompatibla med den redan körande webbversionen under driftsättning.
+Det nya Kotlin-flödet använder ett separat projekt-ID.
 
 Lägg följande secrets i GitHub-miljön `production`:
 
