@@ -12,6 +12,8 @@ import type { ReminderDraft } from "@/lib/ai/reminder-draft";
 import type { ActivityDutyDraft } from "@/lib/ai/activity-duty-draft";
 import { AssistantDutyDraftCard } from "./assistant-duty-draft-card";
 
+const LOCAL_TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
 type Message = { role: "user" | "assistant"; content: string; memoryDrafts?: AssistantMemoryDraft[]; reminderDrafts?: ReminderDraft[]; dutyDrafts?: ActivityDutyDraft[]; historyResults?: ActivityHistoryResult[] };
 type Props = {
   teamId?: string;
@@ -54,7 +56,7 @@ export function TeamAssistantCard({ teamId, teamName, assistantName, demo, canCr
         signal: requestController.current.signal,
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ organizationId, sectionSlug, teamId, page, question: trimmed, messages: previous.slice(-6).map(({ role, content }) => ({ role, content: content.slice(0, 800) })), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+        body: JSON.stringify({ organizationId, sectionSlug, teamId, page, question: trimmed, messages: previous.slice(-6).map(({ role, content }) => ({ role, content: content.slice(0, 800) })), timeZone: LOCAL_TIME_ZONE }),
       });
       const body = await response.json();
       if (!active.current) return;
