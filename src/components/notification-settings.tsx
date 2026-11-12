@@ -155,10 +155,9 @@ export function NotificationSettings() {
       aria-haspopup="dialog"
       className={`notification-settings-trigger${state === "active" ? " active" : ""}`}
       onClick={() => setOpen((current) => !current)}
-      aria-label={state === "active" ? "Pushnotiser aktiverade, öppna inställningar" : "Pushnotiser inaktiva, öppna inställningar"}
       title={state === "active" ? "Pushnotiser aktiverade" : "Pushnotiser inaktiva"}
       type="button"
-    ><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>{state !== "active" ? <path d="M3 3l18 18" strokeWidth="2.2"/> : null}</svg><span>Notiser</span></button>
+    ><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>{state !== "active" ? <path d="M3 3l18 18" strokeWidth="2.2"/> : null}</svg><span>Notiser</span><span className="sr-only">, {state === "active" ? "pushnotiser aktiverade, öppna inställningar" : "pushnotiser inaktiva, öppna inställningar"}</span></button>
     {open ? <div className="notification-settings-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}>
     <section aria-label="Notisinställningar" aria-modal="true" role="dialog" className="notification-settings-panel">
       <button className="notification-settings-close" type="button" aria-label="Stäng" onClick={() => setOpen(false)}>×</button>
