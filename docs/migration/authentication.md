@@ -71,20 +71,46 @@ annonserad i OAuth-discovery. JSON begränsas till 16 KiB och tio callback-adres
 med sammanlagt högst 1 000 tecken inklusive separatorer;
 befintliga PostgreSQL-baserade budgetar begränsar registrering före parser och
 sessionsladdning. Endpointen är stateless och accepterar bara `mcp:read` och
-Authorization Code, med PKCE `S256` och samtycke. Klienter med hemlighet kan
-även få refresh-grant. Publika klienters begärda refresh-grant tas bort i det
-registrerade resultatet. CIMD är inte aktiverat.
+Authorization Code, med PKCE `S256` och samtycke. Förena normaliserar godkända
+registreringar till `authorization_code` och `refresh_token` för både publika
+klienter med `none` och klienter med hemlighet. Serverpolicyn gäller även när
+`grant_types` utelämnas eller bara innehåller `authorization_code`; båda grants
+returneras i registreringssvaret enligt
+[RFC 7591 avsnitt 3.2.1](https://www.rfc-editor.org/rfc/rfc7591.html#section-3.2.1).
+Refresh utan Authorization Code och andra granttyper nekas. CIMD är inte aktiverat.
 
 Fjärr-HTTPS-redirect matchas exakt. HTTP tillåts bara för localhost och loopback-
 IP-litteraler; Springs standardundantag låter porten variera för IP-litteraler
 med både HTTP och HTTPS, medan övriga URI-delar måste matcha.
 `localhost` jämförs inklusive port.
 En förregistrerad klient kan fortsatt provisioneras från konfiguration.
-En konfidentiell klient använder klienthemlighet och kan få roterande
-refresh-token med åtta timmars livstid. En publik klient autentiserar utan
-hemlighet och behöver ny auktorisering när access-token går ut.
-Webbinloggningen kan då återanvändas. Klientregistreringar gallras inte
-automatiskt och klientens självvalda namn är inte en verifierad identitet.
+Refresh-token gäller i 24 timmar från utfärdandet för alla tillåtna MCP-klienter.
+Varje lyckad förnyelse roterar tokenen och startar ett nytt 24-timmarsfönster.
+En publik klient använder klient-id utan hemlighet; dess ursprungliga kodutbyte
+kräver fortfarande PKCE `S256`. Scope och resource får inte utökas vid förnyelse.
+Klientregistreringar gallras inte automatiskt och klientens självvalda namn
+är inte en verifierad identitet.
+
+Förenas adapter för publik klientautentisering och refresh-generering kompletterar
+Spring Securitys standardstöd. Själva refresh-granten valideras och sparas fortsatt
+av Springs provider. En transaktion med radlås per OAuth-grant serialiserar
+rotationer över instanser. Konsumerade refresh-token identifieras med SHA-256 i
+en separat tabell; inga råa gamla token sparas där. Vid återanvändning för rätt
+klient återkallas hela granten, inklusive den senaste access- och refresh-tokenen.
+Hashkopplingarna bevaras under grantens livslängd och tas bort med granten;
+den gamla tokenens eget utgångsdatum förkortar inte återanvändningsskyddet.
+Klienten behöver då auktorisera anslutningen igen. Webbinloggningen kan återanvändas.
+Utgångna grants och deras hashhistorik gallras inte automatiskt. Borttagning
+hanteras separat av driftens schemaägare; grantens hashhistorik tas då bort
+genom databasens främmande nyckel.
+
+Liquibase uppgraderar befintliga MCP-klienter med Authorization Code, PKCE,
+enbart `mcp:read` och auth-metoden `none`, `client_secret_basic` eller
+`client_secret_post` till refresh-grant och aktuell tokenpolicy. Redan
+utfärdade access-token får ingen refresh-token i efterhand. En sådan äldre
+anslutning behöver ny auktorisering, med samma klient-id, för att få refresh-token.
+Tidigare utfärdade token behåller sina utgångstider; 24-timmarspolicyn gäller
+nya refresh-token, inklusive dem som utfärdas vid förnyelse.
 
 Resursen är exakt `${FORENA_WEB_ORIGIN}/api/mcp`, scope `mcp:read`.
 Klienten skickar `resource` på både authorization- och tokenanrop.

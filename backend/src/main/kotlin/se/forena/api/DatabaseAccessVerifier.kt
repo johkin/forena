@@ -28,6 +28,7 @@ class DatabaseAccessVerifier(private val jdbc: JdbcTemplate) {
                 jdbc.queryForList("select primary_id,session_id,creation_time,expiry_time from forena.spring_session where false")
                 jdbc.queryForList("select session_primary_id,attribute_name,attribute_bytes from forena.spring_session_attributes where false")
                 jdbc.queryForList("select key_hash,available_at from forena.auth_rate_limit where false")
+                jdbc.queryForList("select token_hash,authorization_id,registered_client_id from forena.oauth2_refresh_token_use where false")
             }
             grantsReady
         } catch (_: DataAccessException) { false }

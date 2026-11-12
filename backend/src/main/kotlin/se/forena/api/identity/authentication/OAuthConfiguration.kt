@@ -6,7 +6,6 @@ import jakarta.servlet.http.HttpServletResponse
 import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets.UTF_8
-import java.time.Duration
 import java.util.UUID
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.ApplicationRunner
@@ -33,6 +32,7 @@ import org.springframework.security.oauth2.server.authorization.JdbcOAuth2Author
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType
+import org.springframework.security.oauth2.server.authorization.authentication.OAuth2RefreshTokenAuthenticationProvider
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository
@@ -42,7 +42,6 @@ import org.springframework.security.oauth2.server.authorization.settings.OAuth2T
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings
 import org.springframework.security.oauth2.server.authorization.token.DelegatingOAuth2TokenGenerator
 import org.springframework.security.oauth2.server.authorization.token.OAuth2AccessTokenGenerator
-import org.springframework.security.oauth2.server.authorization.token.OAuth2RefreshTokenGenerator
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenGenerator
 import org.springframework.security.oauth2.server.resource.introspection.BadOpaqueTokenException
 import org.springframework.security.oauth2.server.resource.introspection.OpaqueTokenIntrospector
@@ -53,6 +52,9 @@ import org.springframework.security.web.context.SecurityContextHolderFilter
 import org.springframework.security.web.csrf.CsrfFilter
 import org.springframework.web.ErrorResponseException
 import org.springframework.web.filter.OncePerRequestFilter
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.TransactionDefinition
+import org.springframework.transaction.support.TransactionTemplate
 import se.forena.api.identity.BrowserLoginLimiter
 import se.forena.api.identity.BrowserSessionSettings
 
@@ -123,7 +125,7 @@ class OAuthConfiguration {
                 throw OAuth2AuthenticationException(OAuth2Error(OAuth2ErrorCodes.INVALID_GRANT))
             context.claims.subject(user.subject.toString()).audience(listOf(settings.origin + "/api/mcp")).claim("auth_version", user.authVersion.toString())
         }
-        return DelegatingOAuth2TokenGenerator(generator, OAuth2RefreshTokenGenerator())
+        return DelegatingOAuth2TokenGenerator(generator, PublicClientRefreshTokenGenerator())
     }
     @Bean fun configureOAuthClient(clients: RegisteredClientRepository, passwords: PasswordEncoder,
         @Value("\${forena.authentication.client-id:}") clientId: String, @Value("\${forena.authentication.client-redirect:}") redirect: String,
@@ -142,23 +144,37 @@ class OAuthConfiguration {
         } else {
             val builder = RegisteredClient.withId(UUID.randomUUID().toString()).clientId(clientId).clientName("Förena MCP")
                 .redirectUri(redirect).scope("mcp:read").authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .clientSettings(ClientSettings.builder().requireProofKey(true).requireAuthorizationConsent(true).build())
-                .tokenSettings(TokenSettings.builder().accessTokenFormat(OAuth2TokenFormat.REFERENCE).accessTokenTimeToLive(Duration.ofMinutes(15))
-                    .reuseRefreshTokens(false).refreshTokenTimeToLive(Duration.ofHours(8)).build())
+                .tokenSettings(TokenSettings.builder().accessTokenFormat(OAuth2TokenFormat.REFERENCE).accessTokenTimeToLive(McpOAuthPolicy.ACCESS_TOKEN_TTL)
+                    .reuseRefreshTokens(false).refreshTokenTimeToLive(McpOAuthPolicy.REFRESH_TOKEN_TTL).build())
             if (secret.isBlank()) builder.clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
             else builder.clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC).clientSecret(requireNotNull(passwords.encode(secret)))
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
             clients.save(builder.build())
         }
     }
     @Bean @Order(1)
     fun authorizationSecurity(http: HttpSecurity, contexts: AccountSecurityContextRepository, csrf: StringCsrfTokenRepository,
         settings: BrowserSessionSettings, limiter: BrowserLoginLimiter, clients: RegisteredClientRepository, grants: OAuth2AuthorizationService,
-        consents: OAuth2AuthorizationConsentService, tokens: OAuth2TokenGenerator<*>, server: AuthorizationServerSettings): SecurityFilterChain {
+        consents: OAuth2AuthorizationConsentService, tokens: OAuth2TokenGenerator<*>, server: AuthorizationServerSettings,
+        jdbc: JdbcTemplate, transactionManager: PlatformTransactionManager): SecurityFilterChain {
         val config = OAuth2AuthorizationServerConfigurer()
+        val refreshTransactions = TransactionTemplate(transactionManager).apply {
+            isolationLevel = TransactionDefinition.ISOLATION_READ_COMMITTED
+            propagationBehavior = TransactionDefinition.PROPAGATION_REQUIRES_NEW
+        }
         http.securityMatcher(config.endpointsMatcher)
             .with(config) { it.registeredClientRepository(clients).authorizationService(grants).authorizationConsentService(consents)
                 .tokenGenerator(tokens).authorizationServerSettings(server).authorizationEndpoint { endpoint -> endpoint.consentPage("/oauth/consent") }
+                .clientAuthentication { authentication ->
+                    authentication.authenticationConverters { converters -> converters.add(0, PublicClientRefreshAuthenticationConverter(server.tokenEndpoint)) }
+                    authentication.authenticationProviders { providers -> providers.add(0, PublicClientRefreshAuthenticationProvider(clients)) }
+                }
+                .tokenEndpoint { endpoint -> endpoint.authenticationProviders { providers ->
+                    val index = providers.indexOfFirst { it is OAuth2RefreshTokenAuthenticationProvider }
+                    check(index >= 0 && providers.count { it is OAuth2RefreshTokenAuthenticationProvider } == 1) { "Expected one native refresh provider" }
+                    providers[index] = ReplayProtectedRefreshAuthenticationProvider(providers[index], grants, jdbc, refreshTransactions)
+                } }
                 .authorizationServerMetadataEndpoint { endpoint -> endpoint.authorizationServerMetadataCustomizer { metadata ->
                     metadata.clientRegistrationEndpoint(settings.origin + McpClientRegistrationPolicy.ENDPOINT)
                         .scopes { scopes -> scopes.clear(); scopes.add(McpClientRegistrationPolicy.SCOPE) }

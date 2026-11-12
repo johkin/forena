@@ -3,6 +3,7 @@
 import argparse
 import os
 import base64
+import hashlib
 import http.server
 import json
 from pathlib import Path
@@ -28,6 +29,11 @@ def docker(*args, **kwargs):
     if result.returncode:
         raise RuntimeError(f"Local Docker command failed: {result.stderr}")
     return result.stdout.strip()
+
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, request, response, code, message, headers, url):
+        return None
 
 
 def main():
@@ -191,20 +197,23 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
             origin = env["FORENA_WEB_ORIGIN"]
             cookie = None
             subject = None
-            def call(path, body=None, *, form=False, status=200, bound=True, account=True, method=None):
+            def call(path, body=None, *, form=False, status=200, bound=True, account=True, method=None,
+                     headers=None, session=True, follow_redirects=True, read_json=True):
                 nonlocal cookie
-                headers = {"Origin": origin, "X-Forena-Request": "1"} if bound else {}
-                if cookie:
-                    headers["Cookie"] = cookie
+                request_headers = {"Origin": origin, "X-Forena-Request": "1"} if bound else {}
+                request_headers.update(headers or {})
+                if cookie and session:
+                    request_headers["Cookie"] = cookie
                 if subject and account:
-                    headers["X-Forena-Account"] = subject
+                    request_headers["X-Forena-Account"] = subject
                 data = None
                 if body is not None:
-                    headers["Content-Type"] = "application/x-www-form-urlencoded" if form else "application/json"
+                    request_headers["Content-Type"] = "application/x-www-form-urlencoded" if form else "application/json"
                     data = (urllib.parse.urlencode(body) if form else json.dumps(body)).encode()
-                request = urllib.request.Request(f"http://127.0.0.1:{http_port}{path}", data=data, headers=headers, method=method)
+                request = urllib.request.Request(f"http://127.0.0.1:{http_port}{path}", data=data, headers=request_headers, method=method)
+                open_request = urllib.request.urlopen if follow_redirects else urllib.request.build_opener(NoRedirect()).open
                 try:
-                    response = urllib.request.urlopen(request, timeout=10)
+                    response = open_request(request, timeout=10)
                 except urllib.error.HTTPError as error:
                     response = error
                 with response:
@@ -212,11 +221,15 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
                     assert response.headers.get("Cache-Control") and "no-store" in response.headers["Cache-Control"]
                     value = response.headers.get("Set-Cookie")
                     if value:
+                        assert session, "OAuth machine requests must not create browser sessions"
                         assert all(flag in value for flag in ("HttpOnly", "Secure", "SameSite=Lax"))
                         cookie = value.split(";", 1)[0]
                     if status == 429:
                         assert int(response.headers["Retry-After"]) > 0
-                    return json.load(response)
+                    if read_json:
+                        return json.load(response)
+                    response.read()
+                    return response.headers
 
             # Documentation must work in the packaged JVM, AOT and native runtimes,
             # before any account or authenticated session exists.
@@ -242,21 +255,26 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
             assert metadata["code_challenge_methods_supported"] == ["S256"]
             assert set(metadata["token_endpoint_auth_methods_supported"]) == {"none", "client_secret_basic", "client_secret_post"}
             sessions_before_registration = seed("select count(*) from forena.spring_session")
-            for authentication_method in ("none", "client_secret_basic", "client_secret_post"):
+            registered_clients = []
+            for authentication_method, requested_grants in (("none", None), ("client_secret_basic", ["authorization_code"]),
+                                                           ("client_secret_post", ["authorization_code", "refresh_token"])):
                 clear_limits()
-                registration = call("/oauth2/register", {
+                client_metadata = {
                     "client_name": "Synthetic MCP smoke client",
                     "redirect_uris": ["https://client.example.invalid/dcr-callback"],
                     "token_endpoint_auth_method": authentication_method,
-                    "grant_types": ["authorization_code", "refresh_token"],
-                }, status=201, bound=False)
+                }
+                if requested_grants is not None:
+                    client_metadata["grant_types"] = requested_grants
+                registration = call("/oauth2/register", client_metadata, status=201, bound=False)
                 assert registration["client_id"]
                 assert registration["client_name"] == "Extern MCP-klient"
                 assert registration["scope"] == "mcp:read"
                 assert registration["token_endpoint_auth_method"] == authentication_method
-                assert set(registration["grant_types"]) == ({"authorization_code"} if authentication_method == "none" else {"authorization_code", "refresh_token"})
+                assert set(registration["grant_types"]) == {"authorization_code", "refresh_token"}
                 assert bool(registration.get("client_secret")) == (authentication_method != "none")
                 assert cookie is None, "DCR must not create a browser session"
+                registered_clients.append(registration)
             assert seed("select count(*) from forena.spring_session") == sessions_before_registration
             clear_limits()
             denied_registration = call("/oauth2/register", {
@@ -285,6 +303,83 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
             assert cookie != registration_cookie
             active_cookie = cookie
             assert call("/api/auth/session")["user"]["id"] == subject
+
+            resource = origin + "/api/mcp"
+
+            def oauth_token(client, fields, *, status=200):
+                fields = fields | {"resource": resource}
+                headers = {}
+                if client["token_endpoint_auth_method"] == "client_secret_basic":
+                    encoded_credentials = urllib.parse.quote(client["client_id"], safe="") + ":" + urllib.parse.quote(client["client_secret"], safe="")
+                    headers["Authorization"] = "Basic " + base64.b64encode(encoded_credentials.encode()).decode()
+                else:
+                    fields["client_id"] = client["client_id"]
+                    if client["token_endpoint_auth_method"] == "client_secret_post":
+                        fields["client_secret"] = client["client_secret"]
+                return call("/oauth2/token", fields, form=True, status=status, bound=False, account=False, session=False, headers=headers)
+
+            def mcp_ping(access_token, *, status=200):
+                return call("/api/mcp", {"jsonrpc": "2.0", "id": 1, "method": "ping"}, status=status,
+                            bound=False, account=False, session=False, read_json=status == 200,
+                            headers={"Authorization": "Bearer " + access_token, "Accept": "application/json, text/event-stream"})
+
+            def assert_oauth_lifetimes(client):
+                assert seed("select extract(epoch from a.access_token_expires_at-a.access_token_issued_at)::bigint, "
+                            "extract(epoch from a.refresh_token_expires_at-a.refresh_token_issued_at)::bigint "
+                            "from forena.oauth2_authorization a join forena.oauth2_registered_client c "
+                            "on c.id=a.registered_client_id where c.client_id='" + client["client_id"] + "'") == "900|86400"
+
+            for client in registered_clients:
+                clear_limits()
+                verifier = base64.urlsafe_b64encode(os.urandom(32)).rstrip(b"=").decode()
+                challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
+                state = str(uuid.uuid4())
+                callback = client["redirect_uris"][0]
+                authorization = call("/oauth2/authorize?" + urllib.parse.urlencode({
+                    "response_type": "code", "client_id": client["client_id"], "redirect_uri": callback,
+                    "scope": "mcp:read", "state": state, "resource": resource,
+                    "code_challenge": challenge, "code_challenge_method": "S256",
+                }), status=302, follow_redirects=False, read_json=False)
+                consent_location = urllib.parse.urlparse(authorization["Location"])
+                assert consent_location.path == "/oauth/consent"
+                consent = call("/api/auth/oauth/consent?" + consent_location.query)
+                assert consent["clientId"] == client["client_id"] and consent["scope"] == "mcp:read"
+                assert consent["resource"] == resource
+                approved = call("/oauth2/authorize", {
+                    "client_id": client["client_id"], "state": consent["state"], "scope": "mcp:read",
+                    "resource": resource, consent["csrfParameter"]: consent["csrfToken"],
+                }, form=True, status=302, follow_redirects=False, read_json=False)
+                redirect = urllib.parse.urlparse(approved["Location"])
+                assert redirect._replace(query="", fragment="").geturl() == callback
+                parameters = urllib.parse.parse_qs(redirect.query, strict_parsing=True)
+                assert parameters["state"] == [state]
+                assert len(parameters["code"]) == 1
+                tokens = oauth_token(client, {
+                    "grant_type": "authorization_code", "code": parameters["code"][0],
+                    "redirect_uri": callback, "code_verifier": verifier,
+                })
+                assert tokens["scope"] == "mcp:read" and tokens["token_type"] == "Bearer"
+                assert tokens["access_token"] and "." not in tokens["access_token"]
+                assert tokens["refresh_token"] and 890 <= tokens["expires_in"] <= 900
+                assert_oauth_lifetimes(client)
+                assert mcp_ping(tokens["access_token"])["result"] == {}
+                rotated = oauth_token(client, {"grant_type": "refresh_token", "refresh_token": tokens["refresh_token"]})
+                assert rotated["refresh_token"] != tokens["refresh_token"]
+                assert rotated["access_token"] != tokens["access_token"]
+                assert rotated["scope"] == "mcp:read" and 890 <= rotated["expires_in"] <= 900
+                assert_oauth_lifetimes(client)
+                assert mcp_ping(rotated["access_token"])["result"] == {}
+                replay = oauth_token(client, {"grant_type": "refresh_token", "refresh_token": tokens["refresh_token"]}, status=400)
+                assert replay == {"error": "invalid_grant"}
+                denied = oauth_token(client, {"grant_type": "refresh_token", "refresh_token": rotated["refresh_token"]}, status=400)
+                assert denied == {"error": "invalid_grant"}
+                rejected = mcp_ping(rotated["access_token"], status=401)
+                assert origin + "/.well-known/oauth-protected-resource/api/mcp" in rejected["WWW-Authenticate"]
+                assert 'scope="mcp:read"' in rejected["WWW-Authenticate"]
+                assert cookie == active_cookie, "OAuth token operations changed the browser session"
+            clear_limits()
+            print("PASS: public/basic/post S256 consent, opaque 15-minute access, 24-hour refresh, rotation and replay revocation through packaged OAuth and MCP", flush=True)
+
             empty = call("/api/me/overview")
             assert all(empty[name] == [] for name in ("activities", "organizations", "teams"))
             organization, team, person, activity, invitation = [str(uuid.uuid4()) for _ in range(5)]
