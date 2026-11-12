@@ -74,8 +74,12 @@ MCP-klienter kan registreras genom Spring Securitys publika RFC 7591-endpoint
 `POST /oauth2/register`. Registreringen är stateless och begränsas före JSON-
 parsning av befintliga distribuerade auth-budgetar, en kropp på högst 16 KiB
 och högst tio callback-adresser inom JDBC-lagringens gräns på 1 000 tecken.
-Endast `mcp:read`, Authorization Code och refresh för klienter med hemlighet
-tillåts; PKCE och samtycke krävs alltid. Registrering
+Endast `mcp:read` och Authorization Code med refresh
+tillåts; PKCE `S256` och samtycke krävs alltid. Serverpolicyn registrerar
+`authorization_code` och `refresh_token` för både publika klienter med `none`
+och klienter med hemlighet, även när `grant_types` utelämnas eller bara anger
+Authorization Code. Svaret anger båda grants; refresh utan Authorization Code
+och andra granttyper nekas. Registrering
 ger ingen användar- eller verksamhetsåtkomst. Fjärr-HTTPS-callback valideras
 exakt; Springs loopbackundantag låter enbart porten variera för HTTP/HTTPS till
 IP-litteraler. Övriga URI-delar och hela `localhost`-adressen måste matcha.
@@ -83,6 +87,23 @@ Klientnamn är självuppgivna och får inte betraktas som verifierade leverantö
 Onödig klientmetadata används inte för externa nätanrop. Registret gallras
 inte automatiskt; driften behöver bevaka tillväxt och hantera klienter separat
 från användarnas grants. Statiskt registrerade klienter fungerar fortsatt.
+
+OAuth-access-token gäller i 15 minuter. Refresh-token roteras vid varje lyckad
+förnyelse och gäller då i ytterligare 24 timmar. Förnyelse får varken utöka
+scope eller byta resource. Publika klienter binds till registrerat klient-id
+och ett ursprungligt Authorization Code-flöde med PKCE; rotation och
+återanvändningsdetektering skyddar refresh-flödet enligt
+[RFC 9700 avsnitt 4.14.2](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.14.2).
+Rotationen och bokföringen av konsumerad token sker atomiskt under ett gemensamt
+databasradlås per grant. Historiken lagrar endast SHA-256 av gamla refresh-token
+och binder dem till rätt grant och klient. Återanvändning för den registrerade
+klienten återkallar hela granten, så även senast utfärdade access- och refresh-token
+blir ogiltiga. Hashkopplingarna behålls under hela grantens livslängd och
+tas bort med granten. Tekniska lagringsfel får inte ge ett lyckat tokensvar.
+Utgångna grants och deras hashhistorik gallras inte automatiskt; driftens
+schemaägare hanterar borttagning separat. Främmande nycklar raderar historiken
+när granten tas bort.
+Webbsessionens giltighet och OAuth-grantens livslängd hanteras separat.
 
 I Supabase-lägets magic-link-adapter konsumeras PKCE-verifieraren atomiskt under
 databasens sessionslås, innan leverantören anropas. Även samtidiga bekräftelser

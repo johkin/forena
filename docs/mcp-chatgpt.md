@@ -90,9 +90,12 @@ fortfarande logga in och godkänna OAuth-åtkomsten.
 
 Registreringen tillåter endast `mcp:read`, Authorization Code och auth-metoderna
 `none`, `client_secret_basic` eller `client_secret_post`. Utelämnat scope blir
-`mcp:read`. PKCE med `S256` och samtycke krävs alltid. Klienter med hemlighet kan
-även registrera `refresh_token`. För en publik klient tas begärd refresh-grant bort
-och svaret visar de grants som faktiskt registrerats.
+`mcp:read`. PKCE med `S256` och samtycke krävs alltid. Förena registrerar
+`authorization_code` och `refresh_token` för både publika klienter (`none`)
+och klienter med hemlighet. Det är serverns policy även om klienten utelämnar
+`grant_types` eller bara begär `authorization_code`. Registreringssvaret anger
+båda grants uttryckligen. Refresh utan Authorization Code och andra granttyper
+nekas.
 
 Callback-adresser valideras vid registrering och auktorisering. Fjärr-HTTPS
 matchas exakt. Lokal HTTP tillåts för `localhost`, `127.0.0.1` och `[::1]`.
@@ -129,10 +132,22 @@ Förena erbjuder OAuth utan OpenID Connect. Lägg inte till `openid`, `profile`,
 vara avstängt. `resource` måste skickas på både authorization- och tokenanrop.
 Samma värden gäller andra MCP-klienter som stöder detta OAuth-flöde.
 
-Access-token gäller i 15 minuter. En konfidentiell klient kan få roterande
-refresh-token som gäller i åtta timmar. En publik klient saknar refresh-grant
-och behöver ny auktorisering efter att access-token gått ut. ChatGPT:s faktiska
-förnyelse behöver verifieras i anslutningsprovet för respektive klient.
+Access-token gäller i 15 minuter. Klienter med refresh-grant får roterande
+refresh-token som gäller i 24 timmar från utfärdandet. Varje lyckad förnyelse
+ger en ny refresh-token med ett nytt 24-timmarsfönster och gör den gamla ogiltig.
+Detta gäller även publika klienter med `none` efter Authorization Code med PKCE.
+Klienten måste spara den nya tokenen och samordna förnyelsen så att samma token
+inte används flera gånger. Återanvändning återkallar alla token för samma
+OAuth-grant och kräver ny auktorisering. Webbsessionens livslängd är separat.
+ChatGPT:s faktiska förnyelse behöver verifieras i anslutningsprovet för respektive
+klient.
+
+Befintliga MCP-klienter med PKCE uppgraderas till refresh-stöd vid
+databasmigreringen. En äldre anslutning som aldrig fick en refresh-token behöver
+auktoriseras igen efter uppdateringen. Samma klient-id kan återanvändas;
+migreringen skapar ingen refresh-token för en redan utfärdad access-token.
+Redan utfärdade token behåller sina utgångstider. Det nya 24-timmarsfönstret
+gäller refresh-token som utfärdas efter uppdateringen, även vid lyckad förnyelse.
 
 ### Alternativ: förregistrerad klient
 
@@ -189,7 +204,9 @@ Använd en testmiljö med syntetiska uppgifter. Detta manuella prov är ännu
   där kontot har relevant behörighet.
 - Prova ett andra konto utan den behörigheten och ett lag utanför kontots
   åtkomst. Kontrollera att skyddade uppgifter inte lämnas ut.
-- Prova igen efter 15 minuter och kontrollera förnyelse eller ny inloggning.
+- Prova igen efter att access-token gått ut efter 15 minuter. Kontrollera att
+  klienten använder refresh-grant och sparar den nya refresh-tokenen. Prova
+  också ny auktorisering efter mer än 24 timmar utan lyckad förnyelse.
 - Koppla från i klienten och prova återanslutning. Verifiera separat att en token
   som återkallats via OAuth inte kan användas mot MCP. Utloggning från webbappen
   är inte en återkallning av alla MCP-anslutningar. Förena har ännu ingen
@@ -210,6 +227,7 @@ detta prov med den faktiska klienten.
 | Fel scope eller resource | Använd bara `mcp:read` och exakt installationens `/api/mcp`-adress på båda OAuth-anropen. |
 | Samtyckesförfrågan är ogiltig eller har gått ut | Starta anslutningen igen från ChatGPT. |
 | HTTP 401 eller anslutningen upphör efter en stund | Anslut på nytt och kontrollera tokenförnyelsen och kontots status. Browsercookies och Supabase-token fungerar inte som Kotlin-MCP-token. |
+| `invalid_grant` vid förnyelse | Använd den senaste refresh-tokenen inom dess 24-timmarsfönster och gör en förnyelse åt gången. Efter återanvändning eller en äldre anslutning utan refresh-token krävs ny auktorisering; nytt klient-id behövs inte. |
 | `Uppgifterna kunde inte hämtas.` | Kontrollera aktuell Förena-behörighet och begärt lag eller aktivitet. Detta kan vara ett verktygsfel även om HTTP-svaret är 200. |
 | Verktygslista eller argument verkar inaktuella | Uppdatera anslutningens verktygsdefinitioner i ChatGPT och jämför med serverns aktuella katalog. |
 | Svaret visar bara en del av uppgifterna | Kontrollera `truncated`; för paginerad laglistning ska klienten följa `nextOffset` tills det är `null`. |

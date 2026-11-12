@@ -124,6 +124,12 @@ MCP accepterar endast opaka OAuth-token, aldrig browsercookies; verksamhets-API:
 accepterar aldrig MCP-token. OAuth kräver registrerad redirect, exakt resource,
 PKCE och consent. Fjärr-HTTPS-redirect matchas exakt; Springs portundantag för
 loopback-IP gäller för lokala klienter med HTTP/HTTPS.
+Access-token gäller i 15 minuter. Både publika PKCE-klienter med `none` och
+klienter med hemlighet kan använda refresh-grant. Varje lyckad förnyelse ger en
+ny refresh-token som gäller i 24 timmar; återanvändning av en konsumerad token
+återkallar hela OAuth-granten. Klienten måste spara den senaste tokenen och
+samordna samtidiga förnyelser. Befintliga MCP-anslutningar som saknar
+refresh-token behöver auktoriseras igen efter uppdateringen, med samma klient-id.
 
 `EmailSender` är leverantörsoberoende. `email.internal` innehåller Resends
 Spring HTTP Service Client, registrerad med `@ImportHttpServices`;

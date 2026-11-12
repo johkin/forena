@@ -9,10 +9,16 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.nio.charset.StandardCharsets.UTF_8
 import java.security.MessageDigest
+import java.sql.DriverManager
 import java.time.Duration
 import java.util.Base64
 import java.util.UUID
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit.SECONDS
 import org.assertj.core.api.Assertions.assertThat
+import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
@@ -26,6 +32,8 @@ import org.springframework.core.env.Environment
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.datasource.DriverManagerDataSource
 import org.springframework.security.crypto.password.PasswordEncoder
+import org.springframework.security.oauth2.core.AuthorizationGrantType
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClient
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository
 import org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat
 import org.springframework.test.context.DynamicPropertyRegistry
@@ -128,14 +136,14 @@ class DynamicClientRegistrationTest {
         assertThat(registered.path("scope").asString()).isEqualTo("mcp:read")
         assertThat(registered.path("token_endpoint_auth_method").asString()).isEqualTo("client_secret_basic")
         assertThat(registered.path("redirect_uris").toList().map { it.asString() }).containsExactly(callback)
-        assertThat(registered.path("grant_types").toList().map { it.asString() }).containsExactly("authorization_code")
+        assertThat(registered.path("grant_types").toList().map { it.asString() }).containsExactlyInAnyOrder("authorization_code", "refresh_token")
         val stored = requireNotNull(clients.findByClientId(registered.path("client_id").asString()))
         assertThat(stored.clientSettings.isRequireProofKey).isTrue()
         assertThat(stored.clientSettings.isRequireAuthorizationConsent).isTrue()
         assertThat(stored.tokenSettings.accessTokenFormat).isEqualTo(OAuth2TokenFormat.REFERENCE)
         assertThat(stored.tokenSettings.accessTokenTimeToLive).isEqualTo(Duration.ofMinutes(15))
         assertThat(stored.tokenSettings.isReuseRefreshTokens).isFalse()
-        assertThat(stored.tokenSettings.refreshTokenTimeToLive).isEqualTo(Duration.ofHours(8))
+        assertThat(stored.tokenSettings.refreshTokenTimeToLive).isEqualTo(Duration.ofHours(24))
         val secret = registered.path("client_secret").asString()
         assertThat(stored.clientSecret).isNotEqualTo(secret)
         assertThat(passwords.matches(secret, stored.clientSecret)).isTrue()
@@ -171,10 +179,10 @@ class DynamicClientRegistrationTest {
     }
 
     @Test
-    fun `a public client requesting refresh metadata completes consent PKCE and scoped MCP without gaining refresh tokens`() {
+    fun `a public PKCE client renews an expired access token with a rotating twenty four hour refresh token`() {
         val client = registeredClient("none", refresh = true)
         val stored = requireNotNull(clients.findByClientId(client.id))
-        assertThat(stored.authorizationGrantTypes.map { it.value }).containsExactly("authorization_code")
+        assertThat(stored.authorizationGrantTypes.map { it.value }).containsExactlyInAnyOrder("authorization_code", "refresh_token")
         assertThat(stored.clientSecret).isNull()
         val session = userSession()
         val activity = personalActivity(session)
@@ -184,10 +192,12 @@ class DynamicClientRegistrationTest {
 
         assertThat(issued.statusCode()).isEqualTo(200)
         val tokens = json.readTree(issued.body())
-        assertThat(tokens.hasNonNull("refresh_token")).isFalse()
+        val firstRefresh = tokens.path("refresh_token").asString()
+        assertThat(firstRefresh).isNotBlank()
         assertThat(tokens.path("scope").asString()).isEqualTo("mcp:read")
         val access = tokens.path("access_token").asString()
         assertThat(access).isNotBlank().doesNotContain(".")
+        assertTokenLifetimes(firstRefresh)
         val called = request("/api/mcp", json.writeValueAsString(mapOf(
             "jsonrpc" to "2.0", "id" to 1, "method" to "tools/call",
             "params" to mapOf("name" to "list_my_activities", "arguments" to emptyMap<String, Any>()),
@@ -198,6 +208,94 @@ class DynamicClientRegistrationTest {
         val payload = json.readTree(result.path("content").single().path("text").asString())
         assertThat(payload.path("activities").toList().map { it.path("id").asString() }).containsExactly(activity.toString())
         assertThat(called.headers().allValues("set-cookie")).isEmpty()
+
+        admin.update("""update forena.oauth2_authorization
+            set access_token_issued_at=now()-interval '16 minutes', access_token_expires_at=now()-interval '1 minute'
+            where refresh_token_value=?""", firstRefresh)
+        assertThat(mcp(access).statusCode()).isEqualTo(401)
+        clearLimits()
+
+        val renewed = refresh(client, firstRefresh)
+
+        assertThat(renewed.statusCode()).isEqualTo(200)
+        val next = json.readTree(renewed.body())
+        assertThat(next.path("scope").asString()).isEqualTo("mcp:read")
+        assertThat(next.path("refresh_token").asString()).isNotBlank().isNotEqualTo(firstRefresh)
+        assertTokenLifetimes(next.path("refresh_token").asString())
+        assertThat(mcp(next.path("access_token").asString()).statusCode()).isEqualTo(200)
+        assertThat(renewed.headers().allValues("set-cookie")).isEmpty()
+    }
+
+    @Test
+    fun `new public code only registration receives the servers supported refresh grant`() {
+        val client = registeredClient("none")
+        val issued = issuedTokens(client)
+
+        assertThat(requireNotNull(clients.findByClientId(client.id)).authorizationGrantTypes)
+            .containsExactlyInAnyOrder(AuthorizationGrantType.AUTHORIZATION_CODE, AuthorizationGrantType.REFRESH_TOKEN)
+        assertThat(refresh(client, issued.refresh).statusCode()).isEqualTo(200)
+    }
+
+    @Test
+    fun `public refresh still requires the stored clients refresh grant`() {
+        val client = registeredClient("none", refresh = true)
+        val issued = issuedTokens(client)
+        val stored = requireNotNull(clients.findByClientId(client.id))
+        clients.save(RegisteredClient.from(stored).authorizationGrantTypes { it.remove(AuthorizationGrantType.REFRESH_TOKEN) }.build())
+
+        val rejected = refresh(client, issued.refresh)
+
+        // ProviderManager continues to Spring's public PKCE provider, which reports invalid_grant.
+        assertInvalidGrant(rejected)
+        assertThat(mcp(issued.access).statusCode()).isEqualTo(200)
+        assertThat(admin.queryForObject("""select count(*) from forena.oauth2_refresh_token_use
+            where authorization_id=(select id from forena.oauth2_authorization where refresh_token_value=?)""",
+            Int::class.java, issued.refresh)).isZero()
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["secret", "empty secret", "basic and body secret", "duplicate client", "duplicate refresh", "bearer"])
+    fun `public refresh rejects unsupported or ambiguous client credentials without consuming the token`(credentials: String) {
+        val client = registeredClient("none", refresh = true)
+        val issued = issuedTokens(client)
+        val fields = mapOf("client_id" to client.id, "grant_type" to "refresh_token", "refresh_token" to issued.refresh, "resource" to resource)
+        val body = when (credentials) {
+            "secret", "basic and body secret" -> form(fields + ("client_secret" to "unregistered-synthetic-secret"))
+            "empty secret" -> form(fields + ("client_secret" to ""))
+            "duplicate client" -> form(fields) + "&" + form(mapOf("client_id" to client.id))
+            "duplicate refresh" -> form(fields) + "&" + form(mapOf("refresh_token" to issued.refresh))
+            else -> form(fields)
+        }
+        val authorization = when (credentials) {
+            "basic and body secret" -> "Basic " + Base64.getEncoder().encodeToString("${client.id}:unregistered-synthetic-secret".toByteArray(UTF_8))
+            "bearer" -> "Bearer synthetic-client-credential"
+            else -> null
+        }
+
+        val rejected = request("/oauth2/token", body, authorization = authorization, form = true)
+
+        assertThat(rejected.statusCode()).isEqualTo(if (credentials == "secret") 401 else 400)
+        assertThat(json.readTree(rejected.body()).path("error").asString())
+            .isEqualTo(if (credentials == "secret") "invalid_client" else "invalid_request")
+        assertThat(refresh(client, issued.refresh).statusCode()).isEqualTo(200)
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["/oauth2/introspect", "/oauth2/revoke"])
+    fun `public refresh credentials do not authenticate another protocol endpoint`(endpoint: String) {
+        val public = registeredClient("none", refresh = true)
+        val confidential = registeredClient("client_secret_basic", refresh = true)
+        val target = issuedTokens(confidential)
+        val caller = issuedTokens(public)
+
+        val rejected = token(public, mapOf("grant_type" to "refresh_token", "refresh_token" to caller.refresh, "token" to target.access), endpoint)
+
+        assertThat(rejected.statusCode()).isEqualTo(302)
+        val login = URI(rejected.headers().firstValue("Location").orElseThrow())
+        assertThat(login.path).isEqualTo("/login")
+        assertThat(parameters(login)["next"]).isEqualTo(endpoint)
+        assertThat(mcp(target.access).statusCode()).isEqualTo(200)
+        assertThat(refresh(public, caller.refresh).statusCode()).isEqualTo(200)
     }
 
     @ParameterizedTest
@@ -210,19 +308,199 @@ class DynamicClientRegistrationTest {
         val first = json.readTree(issued.body())
         val oldRefresh = first.path("refresh_token").asString()
         assertThat(oldRefresh).isNotBlank()
+        assertTokenLifetimes(oldRefresh)
         clearLimits()
 
         val refreshed = token(client, mapOf("grant_type" to "refresh_token", "refresh_token" to oldRefresh))
         assertThat(refreshed.statusCode()).isEqualTo(200)
         val second = json.readTree(refreshed.body())
         assertThat(second.path("refresh_token").asString()).isNotBlank().isNotEqualTo(oldRefresh)
+        assertTokenLifetimes(second.path("refresh_token").asString())
         val access = second.path("access_token").asString()
         assertThat(request("/api/mcp", """{"jsonrpc":"2.0","id":1,"method":"ping"}""", authorization = "Bearer $access").statusCode()).isEqualTo(200)
-        assertThat(token(client, mapOf("grant_type" to "refresh_token", "refresh_token" to oldRefresh)).statusCode()).isEqualTo(400)
         clearLimits()
 
         assertThat(token(client, mapOf("token" to access), "/oauth2/revoke").statusCode()).isEqualTo(200)
         assertThat(request("/api/mcp", """{"jsonrpc":"2.0","id":2,"method":"ping"}""", authorization = "Bearer $access").statusCode()).isEqualTo(401)
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["none", "client_secret_basic", "client_secret_post"])
+    fun `refresh replay revokes the current family but preserves a separate user grant`(method: String) {
+        val client = registeredClient(method, refresh = true)
+        val initial = issuedTokens(client)
+        val separate = issuedTokens(client)
+        val rotated = refreshedTokens(client, initial.refresh)
+        assertThat(mcp(rotated.access).statusCode()).isEqualTo(200)
+        // A sliding family can outlive an earlier token's 24-hour lifetime.
+        admin.update("""update forena.oauth2_refresh_token_use set used_at=now()-interval '25 hours'
+            where authorization_id=(select id from forena.oauth2_authorization where refresh_token_value=?)""", rotated.refresh)
+        clearLimits()
+
+        assertInvalidGrant(refresh(client, initial.refresh))
+
+        assertThat(mcp(rotated.access).statusCode()).isEqualTo(401)
+        assertInvalidGrant(refresh(client, rotated.refresh))
+        assertThat(mcp(separate.access).statusCode()).isEqualTo(200)
+        assertThat(refresh(client, separate.refresh).statusCode()).isEqualTo(200)
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["none", "client_secret_basic", "client_secret_post"])
+    fun `another registered client cannot use current or consumed refresh tokens to revoke their owner`(method: String) {
+        val owner = registeredClient(method, refresh = true)
+        val attacker = registeredClient(method, refresh = true)
+        val initial = issuedTokens(owner)
+
+        assertInvalidGrant(refresh(attacker, initial.refresh))
+        assertThat(mcp(initial.access).statusCode()).isEqualTo(200)
+        val rotated = refreshedTokens(owner, initial.refresh)
+        clearLimits()
+
+        assertInvalidGrant(refresh(attacker, initial.refresh))
+
+        assertThat(mcp(rotated.access).statusCode()).isEqualTo(200)
+        assertThat(refresh(owner, rotated.refresh).statusCode()).isEqualTo(200)
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["none", "client_secret_basic", "client_secret_post"])
+    fun `refresh cannot expand scope or resource and failed attempts leave the grant usable`(method: String) {
+        val client = registeredClient(method, refresh = true)
+        val issued = issuedTokens(client)
+        val fields = mapOf("grant_type" to "refresh_token", "refresh_token" to issued.refresh)
+
+        val widerScope = token(client, fields + ("scope" to "mcp:read openid"))
+        assertThat(widerScope.statusCode()).isEqualTo(400)
+        assertThat(json.readTree(widerScope.body()).path("error").asString()).isEqualTo("invalid_scope")
+        val wrongResource = token(client, fields + ("resource" to "https://other.example.invalid/api/mcp"))
+        assertThat(wrongResource.statusCode()).isEqualTo(400)
+        assertThat(json.readTree(wrongResource.body()).path("error").asString()).isEqualTo("invalid_target")
+
+        val renewed = refreshedTokens(client, issued.refresh)
+        assertThat(mcp(renewed.access).statusCode()).isEqualTo(200)
+    }
+
+    @Test
+    fun `an unknown public refresh token does not invalidate a legitimate token for that client`() {
+        val client = registeredClient("none", refresh = true)
+        val issued = issuedTokens(client)
+
+        assertInvalidGrant(refresh(client, "unknown-synthetic-refresh-token"))
+
+        assertThat(mcp(issued.access).statusCode()).isEqualTo(200)
+        assertThat(refresh(client, issued.refresh).statusCode()).isEqualTo(200)
+    }
+
+    @Test
+    fun `an expired public refresh token cannot mint a new access token`() {
+        val client = registeredClient("none", refresh = true)
+        val issued = issuedTokens(client)
+        admin.update("""update forena.oauth2_authorization
+            set refresh_token_issued_at=now()-interval '25 hours', refresh_token_expires_at=now()-interval '1 hour'
+            where refresh_token_value=?""", issued.refresh)
+
+        assertInvalidGrant(refresh(client, issued.refresh))
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["ban", "password reset"])
+    fun `account security changes block existing public access and refresh tokens`(change: String) {
+        val client = registeredClient("none", refresh = true)
+        val session = userSession()
+        val user = json.readTree(request("/api/auth/session", cookie = session, browser = true).body()).path("user")
+        val issued = issuedTokens(client, session)
+        assertThat(mcp(issued.access).statusCode()).isEqualTo(200)
+        if (change == "ban") {
+            admin.update("update forena.account set enabled=false where subject=?", UUID.fromString(user.path("id").asString()))
+        } else {
+            val email = user.path("email").asString()
+            assertThat(request("/api/auth/password/reset-request", json.writeValueAsString(mapOf("email" to email)), browser = true).statusCode()).isEqualTo(200)
+            val outbox = admin.queryForMap("select id,encrypted_link from forena.auth_mail_outbox where recipient=? and kind='reset'", email)
+            val link = URI(settings.decrypt(outbox["encrypted_link"].toString(), outbox["id"].toString()))
+            val reset = request("/api/auth/password/reset", json.writeValueAsString(mapOf(
+                "code" to parameters(link).getValue("code"), "password" to "synthetic-new-dynamic-registration-password",
+            )), browser = true)
+            assertThat(reset.statusCode()).isEqualTo(200)
+        }
+        clearLimits()
+
+        assertThat(mcp(issued.access).statusCode()).isEqualTo(401)
+        assertInvalidGrant(refresh(client, issued.refresh))
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["none", "client_secret_basic", "client_secret_post"])
+    fun `concurrent refresh consumes a token once and replay invalidates the winning descendant`(method: String) {
+        val client = registeredClient(method, refresh = true)
+        val issued = issuedTokens(client)
+        val start = CountDownLatch(1)
+        val results = Executors.newFixedThreadPool(2).use { executor ->
+            val requests = (1..2).map {
+                CompletableFuture.supplyAsync({
+                    check(start.await(5, SECONDS))
+                    refresh(client, issued.refresh)
+                }, executor)
+            }
+            start.countDown()
+            requests.map { it.get(15, SECONDS) }
+        }
+        assertThat(results.map { it.statusCode() }).containsExactlyInAnyOrder(200, 400)
+        assertInvalidGrant(results.single { it.statusCode() == 400 })
+        val winner = json.readTree(results.single { it.statusCode() == 200 }.body())
+        clearLimits()
+
+        assertThat(mcp(winner.path("access_token").asString()).statusCode()).isEqualTo(401)
+        assertInvalidGrant(refresh(client, winner.path("refresh_token").asString()))
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["none", "client_secret_basic", "client_secret_post"])
+    fun `failure to record consumption rolls back the issued access and refresh tokens`(method: String) {
+        val client = registeredClient(method, refresh = true)
+        val issued = issuedTokens(client)
+        admin.execute("revoke insert on forena.oauth2_refresh_token_use from forena_api_runtime")
+        val failed = try {
+            refresh(client, issued.refresh)
+        } finally {
+            admin.execute("grant insert on forena.oauth2_refresh_token_use to forena_api_runtime")
+        }
+
+        assertThat(failed.statusCode()).isBetween(500, 599)
+        assertThat(mcp(issued.access).statusCode()).isEqualTo(200)
+        val recovered = refreshedTokens(client, issued.refresh)
+        assertThat(mcp(recovered.access).statusCode()).isEqualTo(200)
+    }
+
+    @Test
+    fun `public refresh waits for a grant row lock held by an independent database connection`() {
+        val client = registeredClient("none", refresh = true)
+        val issued = issuedTokens(client)
+        DriverManager.getConnection(database.jdbcUrl, database.username, database.password).use { connection ->
+            connection.autoCommit = false
+            val blocker = connection.createStatement().use { statement ->
+                statement.executeQuery("select pg_backend_pid()").use { result -> result.next(); result.getInt(1) }
+            }
+            connection.prepareStatement("select id from forena.oauth2_authorization where refresh_token_value=? for update").use { statement ->
+                statement.setString(1, issued.refresh)
+                statement.executeQuery().use { result -> assertThat(result.next()).isTrue() }
+            }
+            Executors.newSingleThreadExecutor().use { executor ->
+                val pending = CompletableFuture.supplyAsync({ refresh(client, issued.refresh) }, executor)
+                try {
+                    await().atMost(Duration.ofSeconds(10)).untilAsserted {
+                        val blocked = admin.queryForObject("select count(*) from pg_stat_activity where ? = any(pg_blocking_pids(pid))", Int::class.java, blocker)
+                        assertThat(blocked).isPositive()
+                        assertThat(pending.isDone).isFalse()
+                    }
+                } finally {
+                    connection.commit()
+                }
+                val refreshed = pending.get(15, SECONDS)
+                assertThat(refreshed.statusCode()).isEqualTo(200)
+                assertThat(mcp(json.readTree(refreshed.body()).path("access_token").asString()).statusCode()).isEqualTo(200)
+            }
+        }
     }
 
     @Test
@@ -351,6 +629,53 @@ class DynamicClientRegistrationTest {
     }
 
     private data class Client(val id: String, val secret: String?, val method: String, val redirect: String)
+    private data class Tokens(val access: String, val refresh: String)
+
+    private fun issuedTokens(client: Client, session: String = userSession()): Tokens {
+        val response = exchange(client, authorize(client, session))
+        assertThat(response.statusCode()).isEqualTo(200)
+        return tokens(response)
+    }
+
+    private fun refreshedTokens(client: Client, refreshToken: String): Tokens {
+        val response = refresh(client, refreshToken)
+        assertThat(response.statusCode()).isEqualTo(200)
+        val tokens = tokens(response)
+        assertThat(tokens.refresh).isNotEqualTo(refreshToken)
+        return tokens
+    }
+
+    private fun tokens(response: HttpResponse<String>): Tokens {
+        val body = json.readTree(response.body())
+        assertThat(body.path("scope").asString()).isEqualTo("mcp:read")
+        assertThat(body.path("access_token").asString()).isNotBlank().doesNotContain(".")
+        assertThat(body.path("refresh_token").asString()).isNotBlank()
+        assertThat(response.headers().allValues("set-cookie")).isEmpty()
+        return Tokens(body.path("access_token").asString(), body.path("refresh_token").asString())
+    }
+
+    private fun refresh(client: Client, refreshToken: String) =
+        token(client, mapOf("grant_type" to "refresh_token", "refresh_token" to refreshToken))
+
+    private fun mcp(accessToken: String) =
+        request("/api/mcp", """{"jsonrpc":"2.0","id":1,"method":"ping"}""", authorization = "Bearer $accessToken")
+
+    private fun assertInvalidGrant(response: HttpResponse<String>) {
+        assertThat(response.statusCode()).isEqualTo(400)
+        val body = json.readTree(response.body())
+        assertThat(body.path("error").asString()).isEqualTo("invalid_grant")
+        assertThat(body.has("access_token")).isFalse()
+        assertThat(body.has("refresh_token")).isFalse()
+    }
+
+    private fun assertTokenLifetimes(refreshToken: String) {
+        val lifetimes = admin.queryForMap("""select
+            extract(epoch from access_token_expires_at-access_token_issued_at)::bigint as access_seconds,
+            extract(epoch from refresh_token_expires_at-refresh_token_issued_at)::bigint as refresh_seconds
+            from forena.oauth2_authorization where refresh_token_value=?""", refreshToken)
+        assertThat(lifetimes["access_seconds"]).isEqualTo(900L)
+        assertThat(lifetimes["refresh_seconds"]).isEqualTo(86400L)
+    }
 
     private fun registeredClient(method: String, redirect: String = callback, refresh: Boolean = false): Client {
         val result = registration(mapOf(
@@ -436,7 +761,7 @@ class DynamicClientRegistrationTest {
         token(client, mapOf("grant_type" to "authorization_code", "code" to code, "redirect_uri" to redirect, "code_verifier" to proof))
 
     private fun token(client: Client, values: Map<String, String>, path: String = "/oauth2/token"): HttpResponse<String> {
-        val fields = values.toMutableMap().also { it["resource"] = resource }
+        val fields = values.toMutableMap().also { it.putIfAbsent("resource", resource) }
         val authorization = if (client.method == "client_secret_basic") {
             "Basic " + Base64.getEncoder().encodeToString("${client.id}:${client.secret}".toByteArray(UTF_8))
         } else {

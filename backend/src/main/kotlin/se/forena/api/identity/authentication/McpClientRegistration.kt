@@ -10,7 +10,6 @@ import java.io.BufferedReader
 import java.io.ByteArrayInputStream
 import java.io.InputStreamReader
 import java.net.URI
-import java.time.Duration
 import java.util.Locale
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -99,21 +98,20 @@ internal object McpClientRegistrationPolicy {
         val converter = OAuth2ClientRegistrationRegisteredClientConverter().apply {
             setTokenSettingsCustomizer { settings ->
                 settings.accessTokenFormat(OAuth2TokenFormat.REFERENCE)
-                    .accessTokenTimeToLive(Duration.ofMinutes(15))
+                    .accessTokenTimeToLive(McpOAuthPolicy.ACCESS_TOKEN_TTL)
                     .reuseRefreshTokens(false)
-                    .refreshTokenTimeToLive(Duration.ofHours(8))
+                    .refreshTokenTimeToLive(McpOAuthPolicy.REFRESH_TOKEN_TTL)
             }
         }
         provider.setRegisteredClientConverter { registration ->
             val authentication = registration.tokenEndpointAuthenticationMethod ?: "client_secret_basic"
-            val grants = registration.grantTypes.orEmpty().ifEmpty { listOf("authorization_code") }
-                .filter { authentication != "none" || it != "refresh_token" }
             // Client-supplied names and URLs do not constitute a verified client identity.
             val normalized = OAuth2ClientRegistration.builder()
                 .clientName("Extern MCP-klient")
                 .tokenEndpointAuthenticationMethod(authentication)
                 .redirectUris { it.addAll(registration.redirectUris.orEmpty()) }
-                .grantTypes { it.addAll(grants) }
+                // Explicit server policy; return the effective grants per RFC 7591 section 3.2.1.
+                .grantTypes { it.addAll(listOf("authorization_code", "refresh_token")) }
                 .responseType("code")
                 .scope(SCOPE)
                 .build()

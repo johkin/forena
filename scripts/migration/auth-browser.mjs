@@ -78,7 +78,15 @@ try{
  await page.getByLabel('E-postadress',{exact:true}).fill(email);await page.getByLabel('Lösenord',{exact:true}).fill(password);
  await page.getByRole('button',{name:'Logga in',exact:true}).click();
  await expect(page.getByRole('button',{name:'Godkänn läsåtkomst',exact:true})).toBeVisible();
+ await expect(page.getByText(/Klienten kan förnya läsåtkomsten automatiskt/)).toBeVisible();
  await page.screenshot({path:'frontend/.evidence/oauth-consent.png',fullPage:true});
+ for(const width of [390,1280]){
+  await page.setViewportSize({width,height:900});
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  await expect(page.getByRole('button',{name:'Godkänn läsåtkomst',exact:true})).toBeVisible();
+  await page.screenshot({path:`frontend/.evidence/oauth-consent-${width}.png`,fullPage:true});
+ }
+ await page.setViewportSize({width:390,height:844});
  await page.getByRole('button',{name:'Godkänn läsåtkomst',exact:true}).click();
  await expect(page).toHaveURL(/https:\/\/client\.example\.invalid\/callback\?/);
  assert.equal(oauthCallback.searchParams.get('state'),'browser-oauth-state');

@@ -1,6 +1,8 @@
 package se.forena.api
 
 import java.sql.DriverManager
+import java.time.Duration
+import java.time.Instant
 import java.util.UUID
 import liquibase.Contexts
 import liquibase.LabelExpression
@@ -12,10 +14,22 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
+import org.junit.jupiter.api.Test
+import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.jdbc.datasource.DriverManagerDataSource
+import org.springframework.security.oauth2.core.AuthorizationGrantType
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod
+import org.springframework.security.oauth2.core.OAuth2AccessToken
+import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService
+import org.springframework.security.oauth2.server.authorization.OAuth2Authorization
+import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClient
+import org.springframework.security.oauth2.server.authorization.settings.ClientSettings
+import org.springframework.security.oauth2.server.authorization.settings.TokenSettings
 import org.testcontainers.postgresql.PostgreSQLContainer
 
 class MigrationTest {
-    @ParameterizedTest @ValueSource(ints = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25])
+    @ParameterizedTest @ValueSource(ints = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27])
     fun `empty install or previous baseline upgrade validates and is repeatable without data loss`(baseline: Int) {
         PostgreSQLContainer("postgres:17.6-alpine").withInitScript("init.sql").use { pg ->
             pg.start()
@@ -80,7 +94,7 @@ class MigrationTest {
                     migrations.validate()
                     connection.createStatement().use { statement ->
                         statement.executeQuery("select count(*) from forena.databasechangelog").use {
-                            it.next(); assertThat(it.getInt(1)).isEqualTo(27)
+                            it.next(); assertThat(it.getInt(1)).isEqualTo(28)
                         }
                         statement.executeQuery("select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='forena' and c.relkind='r' and c.relname not like 'databasechangelog%' and (c.relrowsecurity or c.relforcerowsecurity)").use {
                             it.next(); assertThat(it.getInt(1)).isZero()
@@ -164,6 +178,78 @@ class MigrationTest {
                             .isInstanceOf(java.sql.SQLException::class.java)
                         assertThatThrownBy { admin.createStatement().use { it.execute("insert into forena.organization(id,name) values(gen_random_uuid(),' ')") } }
                             .isInstanceOf(java.sql.SQLException::class.java)
+                    }
+                }
+            }
+        }
+    }
+    @Test
+    fun `existing MCP clients gain refresh without changing identity credentials or issued grants`() {
+        PostgreSQLContainer("postgres:17.6-alpine").withInitScript("init.sql").use { pg ->
+            pg.start()
+            DriverManager.getConnection(pg.jdbcUrl, "forena_api_owner", "local-owner-only").use { connection ->
+                val database = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(JdbcConnection(connection))
+                database.defaultSchemaName = "forena"
+                database.liquibaseSchemaName = "forena"
+                Liquibase("db/changelog.xml", ClassLoaderResourceAccessor(), database).use { migrations ->
+                    migrations.update(27, Contexts(), LabelExpression())
+                    val jdbc = JdbcTemplate(DriverManagerDataSource(pg.jdbcUrl, "forena_api_runtime", "local-runtime-only").apply {
+                        schema = "forena"
+                    })
+                    val clients = JdbcRegisteredClientRepository(jdbc)
+                    val grants = JdbcOAuth2AuthorizationService(jdbc, clients)
+                    fun client(method: ClientAuthenticationMethod, scope: String = "mcp:read", proof: Boolean = true,
+                               grant: AuthorizationGrantType = AuthorizationGrantType.AUTHORIZATION_CODE): RegisteredClient =
+                        RegisteredClient.withId(UUID.randomUUID().toString()).clientId(UUID.randomUUID().toString())
+                            .clientName("Existing migration client").clientAuthenticationMethod(method)
+                            .apply { if (method != ClientAuthenticationMethod.NONE) clientSecret("{noop}synthetic-migration-secret-${UUID.randomUUID()}") }
+                            .redirectUri("https://client.example.invalid/callback").authorizationGrantType(grant).scope(scope)
+                            .clientSettings(ClientSettings.builder().requireProofKey(proof).requireAuthorizationConsent(true).build())
+                            .tokenSettings(TokenSettings.builder().accessTokenTimeToLive(Duration.ofMinutes(15))
+                                .refreshTokenTimeToLive(Duration.ofHours(8)).reuseRefreshTokens(true).build()).build()
+                    val eligible = listOf(client(ClientAuthenticationMethod.NONE), client(ClientAuthenticationMethod.CLIENT_SECRET_BASIC),
+                                          client(ClientAuthenticationMethod.CLIENT_SECRET_POST))
+                    val unchanged = listOf(client(ClientAuthenticationMethod.NONE, scope = "reports:read"),
+                                           client(ClientAuthenticationMethod.NONE, proof = false),
+                                           client(ClientAuthenticationMethod.CLIENT_SECRET_BASIC, grant = AuthorizationGrantType.CLIENT_CREDENTIALS))
+                    (eligible + unchanged).forEach(clients::save)
+                    val original = OAuth2Authorization.withRegisteredClient(eligible.first()).id(UUID.randomUUID().toString())
+                        .principalName("synthetic-migration-user").authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                        .authorizedScopes(setOf("mcp:read"))
+                        .accessToken(OAuth2AccessToken(OAuth2AccessToken.TokenType.BEARER, "synthetic-existing-access",
+                            Instant.now(), Instant.now().plusSeconds(900), setOf("mcp:read"))).build()
+                    grants.save(original)
+
+                    migrations.update(Contexts(), LabelExpression())
+                    migrations.update(Contexts(), LabelExpression())
+                    migrations.validate()
+                    eligible.forEach { old ->
+                        val updated = requireNotNull(clients.findById(old.id))
+                        assertThat(updated.clientId).isEqualTo(old.clientId)
+                        assertThat(updated.clientSecret).isEqualTo(old.clientSecret)
+                        assertThat(updated.redirectUris).isEqualTo(old.redirectUris)
+                        assertThat(updated.scopes).isEqualTo(old.scopes)
+                        assertThat(updated.authorizationGrantTypes).containsExactlyInAnyOrder(
+                            AuthorizationGrantType.AUTHORIZATION_CODE, AuthorizationGrantType.REFRESH_TOKEN)
+                        assertThat(updated.tokenSettings.refreshTokenTimeToLive).isEqualTo(Duration.ofHours(24))
+                        assertThat(updated.tokenSettings.accessTokenTimeToLive).isEqualTo(Duration.ofMinutes(15))
+                        assertThat(updated.tokenSettings.isReuseRefreshTokens).isFalse()
+                    }
+                    unchanged.forEach { old ->
+                        val updated = requireNotNull(clients.findById(old.id))
+                        assertThat(updated.authorizationGrantTypes).isEqualTo(old.authorizationGrantTypes)
+                        assertThat(updated.tokenSettings.settings).isEqualTo(old.tokenSettings.settings)
+                    }
+                    val preserved = requireNotNull(grants.findById(original.id))
+                    assertThat(preserved.accessToken?.token?.tokenValue).isEqualTo("synthetic-existing-access")
+                    assertThat(preserved.refreshToken).isNull()
+                    jdbc.update("insert into forena.oauth2_refresh_token_use(token_hash,authorization_id,registered_client_id) values(?,?,?)",
+                        "a".repeat(64), original.id, eligible.first().id)
+                    grants.remove(preserved)
+                    assertThat(jdbc.queryForObject("select count(*) from forena.oauth2_refresh_token_use", Int::class.java)).isZero()
+                    for (role in listOf("anon", "authenticated", "service_role")) {
+                        assertThat(jdbc.queryForObject("select has_table_privilege(?, 'forena.oauth2_refresh_token_use', 'SELECT,INSERT,UPDATE,DELETE')",
+                            Boolean::class.java, role)).isFalse()
                     }
                 }
             }
