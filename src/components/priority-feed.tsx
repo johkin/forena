@@ -1,6 +1,10 @@
 "use client";
 
 import type { Activity, TeamTask } from "@/domain/club";
+import { getFormatter } from "@/lib/date-time";
+
+// ⚡ Bolt: Evaluate LOCAL_TIMEZONE once outside the component to prevent re-evaluation on every render
+const LOCAL_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 type Props = {
   activity: Activity;
@@ -23,13 +27,14 @@ const labels = { invitation: "Kallelse", task: "Uppgift" } as const;
 export function PriorityFeed({ activity, pendingInvitations, tasks, onOpenActivity }: Props) {
   const items: FeedItem[] = [];
 
+  // ⚡ Bolt: Use cached getFormatter instead of new Intl.DateTimeFormat to prevent expensive instantiation
   if (pendingInvitations > 0) {
     items.push({
       id: `invitation:${activity.id}`,
       kind: "invitation",
       title: `${pendingInvitations} obesvarade kallelser till ${activity.title}`,
       meta: activity.responseDueAt
-        ? `Svara senast ${new Intl.DateTimeFormat("sv-SE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(activity.responseDueAt))}`
+        ? `Svara senast ${getFormatter(LOCAL_TIMEZONE, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(activity.responseDueAt))}`
         : "Svar saknas",
       dueAt: activity.responseDueAt ? new Date(activity.responseDueAt).getTime() : new Date(activity.startsAt).getTime(),
       onClick: () => onOpenActivity(activity),
@@ -41,7 +46,7 @@ export function PriorityFeed({ activity, pendingInvitations, tasks, onOpenActivi
       id: `task:${task.id}`,
       kind: "task",
       title: task.title,
-      meta: `${task.createdByLabel} · senast ${new Intl.DateTimeFormat("sv-SE", { day: "numeric", month: "long" }).format(new Date(task.dueAt))}`,
+      meta: `${task.createdByLabel} · senast ${getFormatter(LOCAL_TIMEZONE, { day: "numeric", month: "long" }).format(new Date(task.dueAt))}`,
       dueAt: new Date(task.dueAt).getTime(),
     });
   }
