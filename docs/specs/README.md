@@ -48,6 +48,8 @@ Exempel på implementation:
 
 ## Sparade specar
 
+- [Rotationsträning – planering, kallelser och uppföljning](rotationstraning.md) – Redo, godkänd spec för rotationsperioder, veckofördelning, familjebyten, kallelser, närvaro och ledarens veckovy.
+
 - [Spelarutvärdering och lagindelning](spelarutvardering-och-lagindelning.md) – Redo, godkänd spec för capabilitystyrda mätpunkter, förmåge-/utvecklingsmedelvärden, gruppförslag och serverbeskrivna läsvyer.
 - [Generell UI – påminnelse om ny frontendversion](generell-ui.md) – Utkast, stängbar versionspopup och påminnelse efter en timme.
 - [Web-push som aviseringskanal](web-push.md) – Redo, godkänd spec för kanalordning, enhetsflöden, notisinnehåll och leveransregler.
