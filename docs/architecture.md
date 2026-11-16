@@ -556,6 +556,15 @@ kan anpassas per förening, men säkerhetsregler och systemprompt kan inte ersä
 
 ## MCP
 
+Beslutad komplettering 2026-11-16, ännu inte implementerad:
+[MCP-specens K-017–K-024](specs/mcp-koppling.md#krav) anger en deklarativ
+`McpAccess` på verktygsmetoden, gemensamt tolkad för listning och anrop utan
+dubblerade verktygsspecifika behörighetsregler. Discipliner och capabilities
+ska kunna bidra med verktyg till registret; ägande paket härleds från
+registreringen och kontrolleras tillsammans med aktuell lagaktivering och
+resursbehörighet. Delning med webbassistenten innebär inte automatisk
+MCP-exponering. Följande stycken beskriver befintlig implementation.
+
 Kotlin-backenden använder Spring AI:s stateless WebMVC-server på `/api/mcp`.
 Spring AI hanterar MCP-protokollet; Spring Authorization Server och Resource
 Server hanterar OAuth och tokenkontroll. Samma katalog med 14 `@Tool`-annoterade

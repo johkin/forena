@@ -546,6 +546,16 @@ beskriva vilken dataklass de använder och varför informationen behöver lagras
 
 ## MCP-åtkomst
 
+Beslutad målmodell 2026-11-16, ännu inte implementerad:
+[MCP-specens K-017–K-024](specs/mcp-koppling.md#krav) kräver uttrycklig
+`McpAccess` med scope, verksamhetsåtkomst och resursbindning. Samma deklaration
+ska styra listfilter och anropsauktorisering med befintliga domänkontroller
+bevarade. Paketverktyg kräver dessutom rätt disciplin och effektivt aktiverad
+capability för samma behöriga lag. Utan lagavgränsning räcker minst ett sådant
+lag för listning; varje anrop kontrollerar sitt konkreta mål på nytt även efter
+återkallning eller inaktivering. Befintlig gemensam katalog nedan är nuläge,
+inte målmodellens tillåtna MCP-exponering.
+
 I Kotlin-backenden hanterar Spring AI MCP-protokollet genom en stateless
 WebMVC-transport på `/api/mcp`. Spring Securitys Resource Server kräver en opak
 OAuth-token med `mcp:read`; Spring Authorization Server äger samtycke och grants.
