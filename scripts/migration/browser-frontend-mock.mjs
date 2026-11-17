@@ -336,7 +336,7 @@ try{
  // Returning from Telegram must refresh the saved connection without a reload or pending link.
  for(const width of [390,1280]){
   await page.setViewportSize({width,height:844});
-  await page.goto(new URL('/account',base).href);
+  await page.goto(new URL('/account/security',base).href);
   const telegram=page.getByRole('region',{name:'Telegram-notifieringar'});
   await expect(telegram.getByText('Telegram är inte aktiverat.',{exact:true})).toBeVisible();
   const documentInstance=await page.evaluate(()=>window.documentInstance='telegram-profile');
