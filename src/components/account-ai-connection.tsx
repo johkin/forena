@@ -1,0 +1,5 @@
+"use client";
+import { CopyAddress } from "./copy-address";
+export function AccountAiConnection({ address }: { address: string }) {
+  return <section className="application-card connection-card"><p className="eyebrow">Integrationer</p><h1>Anslut AI</h1><p>Använd Förena från en AI-tjänst som stöder MCP. Anslutningen följer ditt kontos aktuella behörigheter.</p><div className="connection-content"><section className="form-section"><h2>Serveradress</h2><CopyAddress address={address} /></section><section className="form-section"><h2>Anslut med en MCP-klient</h2><ol className="connection-steps"><li>Kopiera serveradressen och lägg till den i din MCP-klient.</li><li>Välj Streamable HTTP och OAuth. Logga in med ditt eget Förena-konto.</li><li>Kontrollera klienten och godkänn läsåtkomsten på Förena-sidan.</li></ol><p>Klienten behöver vara registrerad för den här installationen. Kontakta administratören om anslutningen inte erbjuds. Den här sidan innebär inte att någon klient är ansluten.</p></section></div><a href="/account">Till Mitt konto</a></section>;
+}

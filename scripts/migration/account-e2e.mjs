@@ -1,0 +1,74 @@
+import { chromium, expect } from '@playwright/test';
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+
+const origin = process.env.FORENA_ACCOUNT_FRONTEND ?? 'http://localhost:3000';
+assert.ok(['localhost', '127.0.0.1'].includes(new URL(origin).hostname));
+const logPath = process.env.FORENA_ACCOUNT_LOCAL_LOG;
+assert.ok(logPath, 'Provide the local-only email adapter log for synthetic verification');
+const email = `account-e2e-${randomUUID()}@example.invalid`;
+const password = 'synthetic-profile-e2e-password';
+const sql = command => execFileSync('docker', ['compose', '-f', 'backend/compose.yaml', '-f', '/workspace/.forena-tools/compose-cloud.yaml', 'exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'forena', '-v', 'ON_ERROR_STOP=1', '-Atc', command], { encoding: 'utf8' }).trim();
+const browser = await chromium.launch({ headless: true, executablePath: process.env.FORENA_BROWSER_EXECUTABLE ?? '/usr/bin/chromium' });
+try {
+  const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto(`${origin}/register`);
+  await page.getByLabel('E-postadress', { exact: true }).fill(email);
+  await page.getByLabel('Nytt lösenord', { exact: true }).fill(password);
+  await page.getByRole('button', { name: 'Skapa konto', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('verifieringslänk');
+  let verification;
+  await expect.poll(async () => {
+    const log = await readFile(logPath, 'utf8');
+    const section = log.slice(log.lastIndexOf(`[LOCAL MAIL] To: ${email}`));
+    verification = section.match(/http:\/\/localhost:3000\/auth\/verify\?code=[a-zA-Z0-9-]+/)?.[0];
+    return Boolean(verification);
+  }, { timeout: 15000 }).toBe(true);
+  await page.goto(verification);
+  await page.getByRole('button', { name: 'Verifiera e-postadress' }).click();
+  await expect(page.getByRole('status')).toContainText('verifierad');
+  const subject = sql(`select subject from forena.native_user where email='${email}'`);
+  assert.match(subject, /^[a-f0-9-]{36}$/);
+  const organizations = [randomUUID(), randomUUID()];
+  const people = [randomUUID(), randomUUID()];
+  const children = [randomUUID(), randomUUID()];
+  for (let index = 0; index < 2; index++) {
+    sql(`insert into forena.organization(id,name) values('${organizations[index]}','E2E club ${index}');
+      insert into forena.person(id,organization_id,display_name,birth_date) values('${people[index]}','${organizations[index]}','E2E parent','1980-01-01'),('${children[index]}','${organizations[index]}','E2E child','2014-01-01');
+      insert into forena.person_access(person_id,organization_id,subject,kind) values('${people[index]}','${organizations[index]}','${subject}','self'),('${children[index]}','${organizations[index]}','${subject}','guardian');`);
+  }
+  await page.goto(`${origin}/login?next=%2Faccount`);
+  await page.getByLabel('E-postadress', { exact: true }).fill(email);
+  await page.getByLabel('Lösenord', { exact: true }).fill(password);
+  await page.getByRole('button', { name: 'Logga in', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Mitt konto', exact: true })).toBeVisible();
+  await page.getByLabel('Visningsnamn').fill('E2E saved parent');
+  await page.getByLabel('Telefonnummer', { exact: true }).fill('0701234567');
+  await page.getByRole('button', { name: 'Spara profil', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Profilen har sparats' })).toBeVisible();
+  assert.equal(sql(`select count(*) from forena.person where id in ('${people[0]}','${people[1]}') and display_name='E2E saved parent' and phone='0701234567'`), '2');
+  assert.equal(sql(`select count(*) from forena.person where id in ('${children[0]}','${children[1]}') and display_name='E2E child'`), '2');
+  const child = page.locator('article').filter({ has: page.getByText('E2E club 0', { exact: true }) }).first();
+  await child.getByRole('button', { name: 'Redigera barnets uppgifter' }).click();
+  await child.getByLabel('Namn', { exact: true }).fill('E2E saved child');
+  await child.getByLabel('Kontaktadress (e-post)').fill('synthetic-child@example.invalid');
+  await child.getByRole('button', { name: 'Spara barnets uppgifter' }).click();
+  await expect(child.getByRole('status')).toContainText('sparats');
+  assert.equal(sql(`select count(*) from forena.person where id in ('${children[0]}','${children[1]}') and display_name='E2E saved child'`), '1');
+  await page.goto(`${origin}/account/security`);
+  await expect(page.getByRole('heading', { name: 'Aktiva sessioner' })).toBeVisible();
+  await expect(page.getByText(/Denna session/)).toBeVisible();
+  await page.getByLabel('Nuvarande lösenord').fill('incorrect-synthetic-password');
+  await page.getByRole('button', { name: 'Verifiera med lösenord' }).click();
+  await expect(page.getByRole('alert')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Inloggningsinställningar', exact: true })).toBeVisible();
+  await page.getByLabel('Nuvarande lösenord').fill(password);
+  await page.getByRole('button', { name: 'Verifiera med lösenord' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'fem minuter' })).toBeVisible();
+  assert.deepEqual(errors, []);
+  console.log('Real profile flow passed: browser registration, email verification, login, two-club profile persistence, isolated child edit, sessions and failed/successful password reauthentication.');
+} finally { await browser.close(); }

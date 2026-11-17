@@ -1,9 +1,9 @@
 # Mitt konto
 
 - Status: Redo
-- Senast uppdaterad: 2026-10-30
+- Senast uppdaterad: 2026-11-16
 - Berörda dokument: [Säkerhetsarkitektur](../security-architecture.md), [Autentisering](../migration/authentication.md), [Funktionell likvärdighet](../migration/feature-parity.md), [Lagmedlemmar](hantera-trupp.md), [Telegram](telegram-bot.md), [Designregler](../design-spec.md)
-- Implementation och verifiering: Ej påbörjad för denna spec.
+- Implementation och verifiering: Kontoflöden implementerade i React/Kotlin. Verifieringsmatris och återstående integrationer nedan; produktkraven behåller status Redo.
 
 ## Problem och mål
 
@@ -416,6 +416,41 @@ Dessa tillämpar beslutade krav och befintlig säkerhetsarkitektur:
   öppna respektive kontobundet inställningsflöde. Konto utan aktiverad
   integration ska kunna nå dess anslutningsflöde utan att visas som anslutet.
 
+## Implementation och verifiering
+
+Implementationen beställdes 2026-11-16. Den tidigare avgränsningen om att
+intervjun inte beställde implementation gäller just intervjun, inte denna
+beställning. Tekniska detaljer och driftvillkor finns i
+[Mitt konto i React/Kotlin](../migration/account-profile.md).
+
+| Krav/acceptanskriterier | Implementation och evidens |
+| --- | --- |
+| K-001–K-004, AK-001 | Implementerat: gemensam kontoplats, egna uppgifter, barn och klubbar. `AccountProfileService`, `AccountProfile`, menyn i `frontend/src/app.tsx`. Tvåklubbsfallet i `AuthTest`; gemensam mobil-/desktopvy i `account-browser.mjs`. |
+| K-003, K-006–K-008, AK-002–AK-003 | Implementerat: kontohantering före godkänd klubbkoppling och separat verksamhetsspärr för webb/MCP/Telegram, med undantag för systemadmin. `AccountLifecycleRepository`, `TransportFilter`, `SessionVerifier`. Verifierad förregistrering och nekad MCP-läsning i `AuthTest`; befintligt roster-inbjudningsflöde återanvänds. Själva ansökansflödet ägs av medlems-/ansökansspecen och har inte migrerats genom denna kontouppgift. |
+| K-009–K-010, K-023–K-024, K-033, AK-004–AK-005, AK-017–AK-018, AK-027 | Implementerat och riktat verifierat: 18-årsgräns, klubbvis samtycke/återkallning och separat matchprojektion utan kallelse-/närvarodata. `PersonAccessService`, `AccountFollowerService`, `AccountFollowerRepository` och `AuthTest`. Resultatdelen återstår: dagens discipliner har ingen resultatkälla; `result` är null och UI visar ”Resultat ej registrerat”. Resultatregistrering är undantagen i fotbollsspecen. |
+| K-011, K-025–K-026, K-038, AK-006, AK-019–AK-020, AK-032 | Implementerat: exakt 30-dygnsfrist i data, start/påminnelse i krypterad kö, avbruten borttagning vid ny koppling och kontorensning med klubbhistorik kvar. `AccountLifecycleService`/`Repository`. `AuthTest` provar sista/flera/ny koppling och borttagning; galleriet provar varningen. Extern väckning, riktiga mejlleveranser, fullständig rensning av varje integration och driftens tidsnoggrannhet är inte driftverifierade. |
+| K-012–K-013, K-027, AK-007, AK-021 | Implementerat och riktat verifierat: atomär namn-/telefonsparning till egna klubbposter, bevarade barnuppgifter, revisionsskydd och rollback vid fel i andra klubben. `AccountProfileService.update`, `AccountProfileRepository`, `AuthTest`. Klubbadministrationen kan rätta födelsedatum genom truppens behöriga flöde. |
+| K-014–K-015, K-018–K-019, K-028, K-031, K-040, AK-008–AK-009, AK-012–AK-013, AK-022, AK-025, AK-034 | Implementerat: barnets person-/kontaktfält, separat inloggningsidentitet, klubbavgränsad historik och nekad sparning efter åtkomstförlust. `AccountProfileService.updateChild/history`, `ClubAccountService`. Riktade prov för konflikt, historik, födelsedatumsrättelse och stängt formulärunderlag i `AuthTest`; barnformulär/historik och bevarat utkast i browserprovet. Varje möjlig roll-/fältkombination har inte egna riktade prov. |
+| K-016, AK-010 | Implementerat och riktat verifierat: förslag ändrar inte relationer; klubbens befintliga truppmandat krävs för godkännande. `AccountProfileService.propose/review`, `ClubAccountService`, `ClubAccountAdministration`, `AuthTest`. Godkänd mottagare måste ha verifierat aktivt konto. |
+| K-017, K-034, K-037, AK-011, AK-028, AK-031 | Implementerat och riktat verifierat: uttrycklig kontobunden länkning av redan godkända barnposter, versionerat klubburval och uppbrytning utan person-/relationsradering. `account_child_link`, `AccountProfileService.link/unlink`, `AuthTest`. Ingen namn-/datum-/e-postbaserad automatisk identifiering. |
+| K-020–K-021, K-029, AK-014–AK-015, AK-023, AK-035 | Implementerat och riktat verifierat: nytt verifierat e-postflöde, gamla adressen tills bekräftelse, kontobunden 30-minuterslänk, ersättning/avbrott/förbrukning och återkallade andra sessioner. `AccountSecurityService`, `AccountSecurityRepository`, auth-mejlkön och `AuthTest`. Leveransfel påverkar inte redan sparat byte. Samtidiga försök serialiseras av kontolås och unikt e-postindex; särskilt parallellt e-postbytesprov återstår. |
+| K-022, K-030, K-039, AK-016, AK-024, AK-033 | Implementerat: sessionslista, uppskattad/okänd enhet, återkallning utan extra verifiering, namngivna passkeys och fem minuters verifiering för säkerhetsändringar. Spring-filtren behålls. `AccountSecurityService`, `AccountSecurity`, `PasskeyList`, `AuthTest`. Sista passkeyn får tas bort eftersom verifierat konto har fungerande magic link/lösenord. Fysisk passkey på faktisk enhet är inte provad i denna omgång. |
+| K-032, K-035, AK-026, AK-029 | Befintlig personlig klubb-/laginbjudan med barnets verifierade inloggningsadress återanvänds (`RosterInvitationService`, befintliga `ApiTest`-prov). Kontaktredigering anropar aldrig kontoregistrering eller kontots säkerhetskommandon. Samtliga alternativa barn-/föräldraadresser har inte egna nya riktade prov. |
+| K-036, AK-030 | Implementerat: väntande förfrågan i eget konto och krypterad e-postavisering när verifierad egen adress finns; 30-dygnsgiltighet och avslag i `AccountFollowerRepository`. Godkännande kräver eget verifierat konto; ingen kontoaktivering genom förfrågan. Riktat samtyckes-/klubbprov finns; separat tidsgränsprov för följarförfrågan återstår. |
+| K-004, AK-036 | Implementerat: kontobundna ingångar till befintliga Telegram-/pushinställningar och ny AI-anslutningssida för Kotlin-serverns OAuth/MCP. `AccountProfile`, `AccountSecurity`, `AccountAiConnection`, `frontend/src/app.tsx`. Inga anslutningar påstås vara aktiva genom att sidan öppnas. Externa klienter och enhetsintegrationer är inte driftprovade. |
+| K-005 | Permanent personradering, generell notifieringspolicy och personnummerinsamling ingår fortsatt inte. Rensningen lämnar en tömd, inaktiverad UUID-nyckel för klubbhistoriens främmande nycklar. Ingen produktion har ändrats eller raderats. |
+
+Slutlig lokal verifiering 2026-11-16:
+
+- `npm test`: 147 testfiler och 1 264 tester godkända.
+- `npm run typecheck`, `npm run lint`, `npm run build` och `npm run frontend:build`: godkända.
+- Hela backendens `./mvnw -q verify`: godkänd. Efter de sista säkerhetsrättningarna kördes även `ApiTest`, `AuthTest` och `ArchitectureTest`, därefter slutlig `AuthTest` med 28 testfall. De senaste rapporterna omfattar 466 testfall: 460 godkända och 6 villkorligt överhoppade, inga fel. Migrationstestet provar tom installation och uppgradering från samtliga 28 tidigare baslinjer.
+- `npm run generate` i `backend/contract`: OpenAPI och TypeScript-kontrakt regenererade från den faktiska Spring-exporten; efterföljande typkontroll godkänd.
+- `account-browser.mjs`: godkänd geometri och profilinteraktion i Next/Vite på 390 och 1280 px.
+- `account-e2e.mjs`: verklig lokal browser → API → PostgreSQL verifierad för registrering/verifiering, inloggning, atomärt sparad tvåklubbsprofil, isolerad barnändring, sessionslista och ny lösenordsverifiering. Fel lösenord behåller den giltiga inloggningen.
+- Särskilda regressioner nekar återupplivning efter passerad borttagningsfrist, målsmansroll i assistenten efter 18-årsdagen och säkerhetsskrivning efter sessionsåterkallning under låsväntan.
+- Produktionsväckning, riktiga mejlleveranser, fysiska passkeys och resultatkälla är fortsatt inte driftverifierade.
+
 ## Bekräftade beslut och motiv
 
 - 2026-10-30: Användaren beställde en ny specintervju för Mitt konto.
@@ -558,6 +593,11 @@ Implementation är inte beställd genom denna intervju. Teknisk inventering
 och verifiering inför implementation återstår enligt villkoren ovan.
 
 ## Ändringshistorik
+
+- 2026-11-16: Implementerat kontoflöden i React/Kotlin, Liquibase-migration,
+  delade produktionskomponenter, kontosäkerhet, vårdnadshavar-/följarflöden och
+  kontolivscykel. Lagt till verifieringsmatris och tydliga återstående
+  integrations-/driftprov; kravstatus Redo är oförändrad.
 
 - 2026-10-30: Användaren bekräftade slutlig sammanfattning och
   avgränsningar med ”Ja”. Specen markerad Redo; ingen implementation utförd.

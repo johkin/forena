@@ -125,7 +125,7 @@ class AuthTest {
                 .path("user")
                 .path("id")
                 .asText()
-        val first = request("/api/auth/passkey/registration/options", "{}", session)
+        val first = accountRequest("/api/auth/passkey/registration/options", session, "POST", emptyMap<String, String>())
         assertThat(first.statusCode()).isEqualTo(200)
         val options = json.readTree(first.body())
         assertThat(options.path("user").path("name").asText()).isEqualTo(email)
@@ -138,7 +138,7 @@ class AuthTest {
                 )
             )
             .isEqualTo(subject)
-        val again = request("/api/auth/passkey/registration/options", "{}", session)
+        val again = accountRequest("/api/auth/passkey/registration/options", session, "POST", emptyMap<String, String>())
         assertThat(json.readTree(again.body()).path("user").path("id").asText())
             .isEqualTo(options.path("user").path("id").asText())
     }
@@ -163,7 +163,7 @@ class AuthTest {
         val user = admin.queryForMap("select subject,password_hash from forena.native_user where email=?", email)
         assertThat(user["password_hash"].toString()).startsWith("{bcrypt}").doesNotContain(password)
         assertThat(request("/api/auth/session", cookie=cookie).body()).contains(email)
-        assertThat(request("/api/me/overview", cookie=cookie).statusCode()).isEqualTo(200)
+        assertThat(request("/api/me/overview", cookie=cookie).statusCode()).isEqualTo(403)
         assertThat(request("/api/auth/email/verify", """{"code":"${token("verify")}"}""").statusCode()).isEqualTo(401)
         clearLimits()
         val magic = request("/api/auth/magic-link", """{"email":"$email"}""")
@@ -274,6 +274,12 @@ class AuthTest {
         assertThat(tool.path("annotations").path("readOnlyHint").asBoolean()).isTrue()
         assertThat(tool.path("annotations").path("destructiveHint").asBoolean()).isFalse()
 
+        val preactivation = request("/api/mcp", """{"jsonrpc":"2.0","id":30,"method":"tools/call","params":{"name":"list_my_activities","arguments":{}}}""", bearer=access)
+        assertThat(json.readTree(preactivation.body()).path("result").path("isError").asBoolean()).isTrue()
+        val approvedOrganization = UUID.randomUUID()
+        val approvedSubject = admin.queryForObject("select subject from forena.native_user where email=?", UUID::class.java, email)
+        admin.update("insert into forena.organization(id,name) values(?,'Approved OAuth club')", approvedOrganization)
+        admin.update("insert into forena.organization_member(organization_id,subject,role) values(?,?,'member')", approvedOrganization, approvedSubject)
         val called = request("/api/mcp", """{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_my_activities","arguments":{}}}""", bearer=access)
         assertThat(called.statusCode()).isEqualTo(200)
         val result = json.readTree(called.body()).path("result")
@@ -402,7 +408,7 @@ class AuthTest {
         }
         val own = credential(ownUser); val foreign = credential(foreignUser)
         fun delete(id: String) = http.send(HttpRequest.newBuilder(URI(base+"/api/auth/passkeys/"+id))
-            .header("Origin", settings.origin).header("X-Forena-Request", "1").header("Cookie", session).DELETE().build(), HttpResponse.BodyHandlers.ofString())
+            .header("Origin", settings.origin).header("X-Forena-Request", "1").header("X-Forena-Account", subject).header("Cookie", session).DELETE().build(), HttpResponse.BodyHandlers.ofString())
         clearLimits()
         assertThat(delete(foreign).statusCode()).isEqualTo(403)
         assertThat(delete(own).statusCode()).isEqualTo(204)
@@ -491,6 +497,298 @@ class AuthTest {
             if (!child.waitFor(180, SECONDS)) { child.destroyForcibly(); error("Auth browser timed out; see target/auth-browser.log") }
             assertThat(child.exitValue()).withFailMessage("See target/auth-browser.log").isZero()
         } finally { mailbox.stop(0) }
+    }
+
+    private fun accountRequest(path: String, cookie: String, method: String = "GET", body: Any? = null,
+                               expected: String? = null): HttpResponse<String> {
+        val subject = expected ?: json.readTree(request("/api/auth/session", cookie = cookie).body()).path("user").path("id").asString()
+        val builder = HttpRequest.newBuilder(URI(base + path)).header("Origin", settings.origin)
+            .header("X-Forena-Request", "1").header("X-Forena-Account", subject).header("Cookie", cookie)
+        val publisher = if (body == null) HttpRequest.BodyPublishers.noBody() else {
+            builder.header("Content-Type", "application/json")
+            HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body))
+        }
+        return http.send(builder.method(method, publisher).build(), HttpResponse.BodyHandlers.ofString())
+    }
+    private data class ProfileFixture(val cookie: String, val subject: UUID, val organizations: List<UUID>,
+                                      val teams: List<UUID>, val own: List<UUID>, val children: List<UUID>)
+    private fun profileFixture(): ProfileFixture {
+        val cookie = register()
+        val subject = UUID.fromString(json.readTree(request("/api/auth/session", cookie = cookie).body()).path("user").path("id").asString())
+        val organizations = List(2) { UUID.randomUUID() }
+        val teams = List(2) { UUID.randomUUID() }
+        val own = List(2) { UUID.randomUUID() }
+        val children = List(2) { UUID.randomUUID() }
+        organizations.indices.forEach { index ->
+            val org = organizations[index]
+            admin.update("insert into forena.organization(id,name) values(?,?)", org, "Profile club $index")
+            admin.update("insert into forena.team(id,organization_id,name) values(?,?,?)", teams[index], org, "Profile team $index")
+            admin.update("insert into forena.person(id,organization_id,display_name,birth_date) values(?,?,?,date '1980-01-01'),(?,?,?,date '2015-01-01')", own[index], org, "Parent", children[index], org, "Child")
+            admin.update("insert into forena.person_access(person_id,organization_id,subject,kind) values(?,?,?,'self'),(?,?,?,'guardian')", own[index], org, subject, children[index], org, subject)
+            listOf(own[index], children[index]).forEach { person -> admin.update("insert into forena.team_membership(organization_id,team_id,person_id,role,starts_on) values(?,?,?,'player',current_date-1)", org, teams[index], person) }
+        }
+        return ProfileFixture(cookie, subject, organizations, teams, own, children)
+    }
+    private fun ownCommand(fixture: ProfileFixture, name: String = "Changed parent") = mapOf(
+        "name" to name, "phone" to "+46701234567", "revision" to 0,
+        "people" to fixture.own.associate { it.toString() to 0 })
+    private fun childCommand(ids: List<UUID>, name: String = "Changed child", revision: Long = 0) = mapOf(
+        "name" to name, "phone" to "0700000000", "birthDate" to "2015-01-01", "contactEmail" to "child-contact@example.invalid",
+        "address" to "Example street", "people" to ids.associate { it.toString() to revision })
+
+    @Test fun `profile saves all own club records atomically and keeps children unchanged`() {
+        val fixture = profileFixture()
+        val initial = accountRequest("/api/me/account", fixture.cookie)
+        assertThat(initial.statusCode()).isEqualTo(200)
+        assertThat(json.readTree(initial.body()).path("clubs").size()).isEqualTo(2)
+        assertThat(accountRequest("/api/me/account", fixture.cookie, "PUT", ownCommand(fixture)).statusCode()).isEqualTo(200)
+        fixture.own.forEach { assertThat(admin.queryForObject("select display_name from forena.person where id=?", String::class.java, it)).isEqualTo("Changed parent") }
+        fixture.children.forEach { assertThat(admin.queryForObject("select display_name from forena.person where id=?", String::class.java, it)).isEqualTo("Child") }
+        assertThat(accountRequest("/api/me/account", fixture.cookie, "PUT", ownCommand(fixture, "Stale overwrite")).statusCode()).isEqualTo(409)
+        assertThat(accountRequest("/api/me/account", fixture.cookie, "PUT", ownCommand(fixture), UUID.randomUUID().toString()).statusCode()).isEqualTo(401)
+    }
+    @Test fun `a failed club update rolls back the entire profile transaction`() {
+        val fixture = profileFixture()
+        admin.execute("alter table forena.person add constraint profile_atomic_test check(id<>'${fixture.own[1]}'::uuid or display_name<>'Rejected parent')")
+        try {
+            assertThat(accountRequest("/api/me/account", fixture.cookie, "PUT", ownCommand(fixture, "Rejected parent")).statusCode()).isEqualTo(409)
+            fixture.own.forEach { assertThat(admin.queryForObject("select display_name from forena.person where id=?", String::class.java, it)).isEqualTo("Parent") }
+            assertThat(admin.queryForObject("select profile_revision from forena.account where subject=?", Long::class.java, fixture.subject)).isZero()
+        } finally { admin.execute("alter table forena.person drop constraint profile_atomic_test") }
+    }
+    @Test fun `child synchronization is explicit versioned and can be broken without deleting relationships`() {
+        val fixture = profileFixture()
+        assertThat(accountRequest("/api/me/account/children/${fixture.children[0]}", fixture.cookie, "PUT", childCommand(fixture.children)).statusCode()).isEqualTo(409)
+        assertThat(accountRequest("/api/me/account/child-links", fixture.cookie, "POST", mapOf("people" to fixture.children)).statusCode()).isEqualTo(200)
+        assertThat(accountRequest("/api/me/account/children/${fixture.children[0]}", fixture.cookie, "PUT", childCommand(fixture.children)).statusCode()).isEqualTo(200)
+        fixture.children.forEach { assertThat(admin.queryForObject("select display_name from forena.person where id=?", String::class.java, it)).isEqualTo("Changed child") }
+        assertThat(accountRequest("/api/me/account/children/${fixture.children[0]}", fixture.cookie, "PUT", childCommand(fixture.children, "Stale child")).statusCode()).isEqualTo(409)
+        val history = accountRequest("/api/me/account/children/${fixture.children[0]}/history", fixture.cookie)
+        assertThat(history.statusCode()).isEqualTo(200)
+        assertThat(history.body()).contains("Namn", "Changed child")
+        val group = admin.queryForObject("select group_id from forena.account_child_link where subject=? limit 1", UUID::class.java, fixture.subject)
+        assertThat(accountRequest("/api/me/account/child-links/$group", fixture.cookie, "DELETE").statusCode()).isEqualTo(200)
+        assertThat(accountRequest("/api/me/account/children/${fixture.children[0]}", fixture.cookie, "PUT", childCommand(listOf(fixture.children[0]), "Only first child", 1)).statusCode()).isEqualTo(200)
+        assertThat(admin.queryForObject("select display_name from forena.person where id=?", String::class.java, fixture.children[1])).isEqualTo("Changed child")
+        assertThat(admin.queryForObject("select count(*) from forena.person_access where subject=? and active", Int::class.java, fixture.subject)).isEqualTo(4)
+    }
+    @Test fun `eighteenth birthday removes guardian read and write access including an already opened form`() {
+        val fixture = profileFixture()
+        val child = fixture.children[0]
+        admin.update("update forena.person set birth_date=current_date-interval '18 years' where id=?", child)
+        assertThat(accountRequest("/api/me/account/children/$child", fixture.cookie, "PUT", childCommand(listOf(child))).statusCode()).isEqualTo(403)
+        assertThat(accountRequest("/api/me/account/children/$child/history", fixture.cookie).statusCode()).isEqualTo(403)
+        val response = accountRequest("/api/me/account", fixture.cookie)
+        assertThat(response.statusCode()).isEqualTo(200)
+        val person = json.readTree(response.body()).path("people").first { it.path("id").asString() == child.toString() }
+        assertThat(person.path("editable").asBoolean()).isFalse()
+        assertThat(person.path("birthDate").isNull).isTrue()
+        assertThat(accountRequest("/api/me/account/children/$child/proposals", fixture.cookie, "POST", mapOf("operation" to "birth-date-correction", "email" to email)).statusCode()).isEqualTo(200)
+        assertThat(admin.queryForObject("select birth_date<=current_date-interval '18 years' from forena.person where id=?", Boolean::class.java, child)).isTrue()
+        admin.update("update forena.person_access set active=false where person_id=? and subject=?", fixture.own[0], fixture.subject)
+        val sessionId = admin.queryForObject("select session_id from forena.spring_session where principal_name=?", String::class.java, fixture.subject.toString())
+        val actor = se.forena.api.identity.Actor(fixture.subject, UUID.fromString(sessionId), "")
+        assertThat(assistantIdentity.organizations(actor).map { it.id }).doesNotContain(fixture.organizations[0])
+        assertThat(assistantIdentity.viewer(actor, fixture.organizations[0], null).roleAssignments)
+            .noneMatch { it.source == se.forena.api.identity.AssistantRoleSource.GUARDIAN_RELATION }
+
+    }
+    @Test fun `email change is account bound replaceable single use and revokes other sessions`() {
+        val fixture = profileFixture()
+        val other = cookie(request("/api/auth/login", """{"email":"$email","password":"$password"}"""))
+        val nextEmail = "new-${UUID.randomUUID()}@example.invalid"
+        assertThat(accountRequest("/api/me/account/email", fixture.cookie, "POST", mapOf("email" to nextEmail)).statusCode()).isEqualTo(200)
+        fun changeCode(): String {
+            val row = admin.queryForMap("select id,encrypted_link from forena.auth_mail_outbox where recipient=? and kind='email-change' order by expires_at desc limit 1", nextEmail)
+            return URI(settings.decrypt(row["encrypted_link"].toString(), row["id"].toString())).query.substringAfter('=')
+        }
+        val replaced = changeCode()
+        assertThat(accountRequest("/api/me/account/email", fixture.cookie, "POST", mapOf("email" to nextEmail)).statusCode()).isEqualTo(200)
+        val code = changeCode()
+        clearLimits()
+        assertThat(accountRequest("/api/me/account/email/confirm", fixture.cookie, "POST", mapOf("code" to replaced)).statusCode()).isEqualTo(403)
+        assertThat(accountRequest("/api/me/account/email/confirm", other, "POST", mapOf("code" to code)).statusCode()).isEqualTo(403)
+        assertThat(accountRequest("/api/me/account/email/confirm", fixture.cookie, "POST", mapOf("code" to code)).statusCode()).isEqualTo(200)
+        assertThat(request("/api/auth/session", cookie = other).statusCode()).isEqualTo(401)
+        assertThat(request("/api/auth/session", cookie = fixture.cookie).body()).contains(nextEmail)
+        assertThat(accountRequest("/api/me/account/email/confirm", fixture.cookie, "POST", mapOf("code" to code)).statusCode()).isEqualTo(403)
+        assertThat(admin.queryForObject("select count(*) from forena.auth_mail_outbox where recipient=? and kind='email-changed'", Int::class.java, email)).isEqualTo(1)
+    }
+    @Test fun `session revocation needs no recent authentication while password changes do`() {
+        val fixture = profileFixture()
+        val other = cookie(request("/api/auth/login", """{"email":"$email","password":"$password"}"""))
+        val currentId = admin.queryForObject("select session_id from forena.spring_session where principal_name=? order by creation_time limit 1", String::class.java, fixture.subject.toString())
+        @Suppress("UNCHECKED_CAST")
+        val sessionRepository = sessions as org.springframework.session.SessionRepository<org.springframework.session.Session>
+        val current = requireNotNull(sessionRepository.findById(requireNotNull(currentId)))
+        current.removeAttribute("forena.recent-authentication"); sessionRepository.save(current)
+        assertThat(accountRequest("/api/me/account/password", fixture.cookie, "PUT", mapOf("password" to "updated-synthetic-password")).statusCode()).isEqualTo(403)
+        val listed = accountRequest("/api/me/account/sessions", fixture.cookie)
+        assertThat(listed.statusCode()).isEqualTo(200)
+        assertThat(listed.body()).contains("device", "lastActiveAt", "current")
+        assertThat(accountRequest("/api/me/account/sessions", fixture.cookie, "DELETE").statusCode()).isEqualTo(200)
+        assertThat(request("/api/auth/session", cookie = other).statusCode()).isEqualTo(401)
+        assertThat(accountRequest("/api/me/account/reauthenticate", fixture.cookie, "POST", mapOf("password" to password)).statusCode()).isEqualTo(200)
+        assertThat(accountRequest("/api/me/account/password", fixture.cookie, "PUT", mapOf("password" to "updated-synthetic-password")).statusCode()).isEqualTo(200)
+        assertThat(request("/api/auth/session", cookie = fixture.cookie).statusCode()).isEqualTo(200)
+    }
+    @Autowired lateinit var assistantIdentity: se.forena.api.identity.AssistantIdentityService
+    @Autowired lateinit var lifecycle: se.forena.api.identity.AccountLifecycleService
+    @Test fun `last connection starts thirty days and deletion preserves club people and history`() {
+        val fixture = profileFixture()
+        lifecycle.connectionsChanged(fixture.subject)
+        admin.update("update forena.person_access set active=false where subject=?", fixture.subject)
+        lifecycle.connectionsChanged(fixture.subject)
+        val view = accountRequest("/api/me/account", fixture.cookie)
+        assertThat(view.statusCode()).isEqualTo(200)
+        val at = java.time.Instant.parse(json.readTree(view.body()).path("deletionAt").asString())
+        val disconnected = admin.queryForObject("select disconnected_at from forena.account_lifecycle where subject=?", java.sql.Timestamp::class.java, fixture.subject)
+        assertThat(at).isEqualTo(requireNotNull(disconnected).toInstant().plus(java.time.Duration.ofDays(30)))
+        assertThat(request("/api/me/overview", cookie = fixture.cookie).statusCode()).isEqualTo(403)
+        admin.update("update forena.account_lifecycle set disconnected_at=clock_timestamp()-interval '30 days' where subject=?", fixture.subject)
+        lifecycle.connectionsChanged(fixture.subject)
+        assertThat(request("/api/auth/session", cookie = fixture.cookie).statusCode()).isEqualTo(401)
+        assertThat(admin.queryForObject("select count(*) from forena.native_user where subject=?", Int::class.java, fixture.subject)).isZero()
+        fixture.own.forEach { assertThat(admin.queryForObject("select count(*) from forena.person where id=?", Int::class.java, it)).isEqualTo(1) }
+    }
+
+    private fun additionalAccount(): Pair<UUID, String> {
+        val subject = UUID.randomUUID()
+        val address = "additional-$subject@example.invalid"
+        admin.update("insert into forena.account(subject,display_name) values(?,'Additional account')", subject)
+        admin.update("insert into forena.native_user(subject,email,password_hash,verified) select ?,?,password_hash,true from forena.native_user where email=?", subject, address, email)
+        return subject to address
+    }
+    @Test fun `adult approves follower access per club without exposing personal invitations or attendance`() {
+        val fixture = profileFixture()
+        val (adult, address) = additionalAccount()
+        fixture.children.forEach { admin.update("update forena.person set birth_date=date '2000-01-01' where id=?", it) }
+        admin.update("insert into forena.person_access(person_id,organization_id,subject,kind) values(?,?,?,'self')", fixture.children[0], fixture.organizations[0], adult)
+        val adultCookie = cookie(request("/api/auth/login", """{"email":"$address","password":"$password"}"""))
+        fixture.children.forEach { assertThat(accountRequest("/api/me/account/children/$it/follower", fixture.cookie, "POST").statusCode()).isEqualTo(200) }
+        val follower = admin.queryForObject("select id from forena.account_follower where subject=? and person_id=?", UUID::class.java, fixture.subject, fixture.children[0])
+        val otherClub = admin.queryForObject("select id from forena.account_follower where subject=? and person_id=?", UUID::class.java, fixture.subject, fixture.children[1])
+        assertThat(accountRequest("/api/me/account/followers/$follower", fixture.cookie, "PUT", mapOf("state" to "approved")).statusCode()).isEqualTo(403)
+        assertThat(accountRequest("/api/me/account/followers/$follower", adultCookie, "PUT", mapOf("state" to "approved")).statusCode()).isEqualTo(200)
+        val activity = UUID.randomUUID()
+        admin.update("""insert into forena.activity(id,organization_id,team_id,title,starts_at,ends_at,invitation_send_at,activity_type_id)
+            values(?,?,?,'Public match',now()+interval '1 day',now()+interval '2 days',now()-interval '1 day','00000000-0000-4000-8000-000000000002')""", activity, fixture.organizations[0], fixture.teams[0])
+        admin.update("""insert into forena.invitation(id,organization_id,activity_id,person_id,response,response_comment,responded_at)
+            values(?,?,?,?,'accepted','PRIVATE RESPONSE',now())""", UUID.randomUUID(), fixture.organizations[0], activity, fixture.children[0])
+        val matches = accountRequest("/api/me/account/followers/$follower/matches", fixture.cookie)
+        assertThat(matches.statusCode()).isEqualTo(200)
+        assertThat(matches.body()).contains("Public match").doesNotContain("PRIVATE RESPONSE", "personId", "response", "attendance")
+        assertThat(accountRequest("/api/me/account/followers/$otherClub/matches", fixture.cookie).statusCode()).isEqualTo(403)
+        assertThat(accountRequest("/api/me/account/children/${fixture.children[0]}/history", fixture.cookie).statusCode()).isEqualTo(403)
+        assertThat(accountRequest("/api/me/account/followers/$follower", adultCookie, "PUT", mapOf("state" to "revoked")).statusCode()).isEqualTo(200)
+        assertThat(accountRequest("/api/me/account/followers/$follower/matches", fixture.cookie).statusCode()).isEqualTo(403)
+    }
+    @Test fun `guardian proposal changes no access until club approval and stays within the team mandate`() {
+        val fixture = profileFixture()
+        val (guardian, address) = additionalAccount()
+        val child = fixture.children[0]
+        assertThat(accountRequest("/api/me/account/children/$child/proposals", fixture.cookie, "POST", mapOf("email" to address, "operation" to "add")).statusCode()).isEqualTo(200)
+        assertThat(admin.queryForObject("select count(*) from forena.person_access where subject=?", Int::class.java, guardian)).isZero()
+        val proposal = admin.queryForObject("select id from forena.account_guardian_proposal where person_id=?", UUID::class.java, child)
+        val path = "/api/teams/${fixture.teams[0]}/account-administration/proposals/$proposal"
+        assertThat(accountRequest(path, fixture.cookie, "PUT", mapOf("approve" to true)).statusCode()).isEqualTo(403)
+        admin.update("insert into forena.organization_member(organization_id,subject,role) values(?,?,'admin')", fixture.organizations[0], fixture.subject)
+        assertThat(accountRequest(path, fixture.cookie, "PUT", mapOf("approve" to true)).statusCode()).isEqualTo(200)
+        assertThat(admin.queryForObject("select count(*) from forena.person_access where subject=? and person_id=? and active", Int::class.java, guardian, child)).isEqualTo(1)
+        assertThat(accountRequest("/api/teams/${fixture.teams[0]}/account-administration/people/${fixture.children[1]}/history", fixture.cookie).statusCode()).isEqualTo(400)
+        assertThat(accountRequest("/api/teams/${fixture.teams[0]}/account-administration/people/$child/birth-date", fixture.cookie, "PUT", mapOf("birthDate" to "2000-01-01", "revision" to 0)).statusCode()).isEqualTo(200)
+        assertThat(accountRequest("/api/me/account/children/$child", fixture.cookie, "PUT", childCommand(listOf(child))).statusCode()).isEqualTo(403)
+    }
+
+    @Test fun `email cancellation expiry and occupied addresses cannot change login identity`() {
+        val fixture = profileFixture()
+        val (_, occupied) = additionalAccount()
+        assertThat(accountRequest("/api/me/account/email", fixture.cookie, "POST", mapOf("email" to occupied)).statusCode()).isEqualTo(400)
+        val proposed = "pending-${UUID.randomUUID()}@example.invalid"
+        fun begin(): String {
+            clearLimits()
+            assertThat(accountRequest("/api/me/account/email", fixture.cookie, "POST", mapOf("email" to proposed)).statusCode()).isEqualTo(200)
+            val row = admin.queryForMap("select id,encrypted_link from forena.auth_mail_outbox where recipient=? order by expires_at desc limit 1", proposed)
+            return URI(settings.decrypt(row["encrypted_link"].toString(), row["id"].toString())).query.substringAfter('=')
+        }
+        val cancelled = begin()
+        assertThat(accountRequest("/api/me/account/email", fixture.cookie, "DELETE").statusCode()).isEqualTo(200)
+        assertThat(accountRequest("/api/me/account/email/confirm", fixture.cookie, "POST", mapOf("code" to cancelled)).statusCode()).isEqualTo(403)
+        val expired = begin()
+        admin.update("update forena.account_email_change set expires_at=clock_timestamp()-interval '1 second' where subject=?", fixture.subject)
+        assertThat(accountRequest("/api/me/account/email/confirm", fixture.cookie, "POST", mapOf("code" to expired)).statusCode()).isEqualTo(403)
+        assertThat(request("/api/auth/session", cookie=fixture.cookie).body()).contains(email).doesNotContain(proposed, occupied)
+    }
+    @Test fun `five minute verification expires and can be renewed without changing the account`() {
+        val fixture = profileFixture()
+        val sessionId = admin.queryForObject("select session_id from forena.spring_session where principal_name=?", String::class.java, fixture.subject.toString())
+        @Suppress("UNCHECKED_CAST")
+        val sessionRepository = sessions as org.springframework.session.SessionRepository<org.springframework.session.Session>
+        val current = requireNotNull(sessionRepository.findById(requireNotNull(sessionId)))
+        current.setAttribute("forena.recent-authentication", "${fixture.subject}\n0\n${System.currentTimeMillis()-300001}")
+        sessionRepository.save(current)
+        assertThat(accountRequest("/api/me/account/password", fixture.cookie, "PUT", mapOf("password" to "new-synthetic-password")).statusCode()).isEqualTo(403)
+        assertThat(accountRequest("/api/me/account/reauthenticate", fixture.cookie, "POST", mapOf("password" to "incorrect-password")).statusCode()).isEqualTo(403)
+        assertThat(accountRequest("/api/me/account/reauthenticate", fixture.cookie, "POST", mapOf("password" to password)).statusCode()).isEqualTo(200)
+        assertThat(accountRequest("/api/me/account/password", fixture.cookie, "PUT", mapOf("password" to "new-synthetic-password")).statusCode()).isEqualTo(200)
+        assertThat(request("/api/auth/session", cookie=fixture.cookie).statusCode()).isEqualTo(200)
+    }
+    @Test fun `only loss of the final approved connection starts grace and a new connection cancels deletion`() {
+        val fixture = profileFixture()
+        lifecycle.connectionsChanged(fixture.subject)
+        admin.update("update forena.person_access set active=false where subject=? and organization_id=?", fixture.subject, fixture.organizations[0])
+        lifecycle.connectionsChanged(fixture.subject)
+        assertThat(admin.queryForObject("select disconnected_at is null from forena.account_lifecycle where subject=?", Boolean::class.java, fixture.subject)).isTrue()
+        admin.update("update forena.person_access set active=false where subject=?", fixture.subject)
+        lifecycle.connectionsChanged(fixture.subject)
+        assertThat(admin.queryForObject("select disconnected_at is not null from forena.account_lifecycle where subject=?", Boolean::class.java, fixture.subject)).isTrue()
+        admin.update("update forena.person_access set active=true where subject=? and person_id=?", fixture.subject, fixture.own[0])
+        lifecycle.connectionsChanged(fixture.subject)
+        assertThat(admin.queryForObject("select disconnected_at is null from forena.account_lifecycle where subject=?", Boolean::class.java, fixture.subject)).isTrue()
+        assertThat(accountRequest("/api/me/account", fixture.cookie).statusCode()).isEqualTo(200)
+    }
+
+    @Test fun `guardian approval cannot revive an account whose thirty day deadline has passed`() {
+        val fixture = profileFixture()
+        val (guardian, address) = additionalAccount()
+        val formerPerson = UUID.randomUUID()
+        admin.update("insert into forena.person(id,organization_id,display_name) values(?,?,'Former member')", formerPerson, fixture.organizations[0])
+        admin.update("insert into forena.person_access(person_id,organization_id,subject,kind) values(?,?,?,'self')", formerPerson, fixture.organizations[0], guardian)
+        lifecycle.connectionsChanged(guardian)
+        admin.update("update forena.person_access set active=false where subject=?", guardian)
+        lifecycle.connectionsChanged(guardian)
+        admin.update("update forena.account_lifecycle set disconnected_at=clock_timestamp()-interval '30 days' where subject=?", guardian)
+        admin.update("insert into forena.organization_member(organization_id,subject,role) values(?,?,'admin')", fixture.organizations[0], fixture.subject)
+        val child = fixture.children[0]
+        assertThat(accountRequest("/api/me/account/children/$child/proposals", fixture.cookie, "POST", mapOf("email" to address, "operation" to "add")).statusCode()).isEqualTo(200)
+        val proposal = admin.queryForObject("select id from forena.account_guardian_proposal where person_id=?", UUID::class.java, child)
+        assertThat(accountRequest("/api/teams/${fixture.teams[0]}/account-administration/proposals/$proposal", fixture.cookie, "PUT", mapOf("approve" to true)).statusCode()).isEqualTo(400)
+        assertThat(admin.queryForObject("select count(*) from forena.person_access where subject=? and kind='guardian' and active", Int::class.java, guardian)).isZero()
+        lifecycle.connectionsChanged(guardian)
+        assertThat(admin.queryForObject("select count(*) from forena.native_user where subject=?", Int::class.java, guardian)).isZero()
+    }
+
+    @Test fun `revocation while a security command waits for the account lock prevents its write`() {
+        val fixture = profileFixture()
+        assertThat(accountRequest("/api/me/account/email", fixture.cookie, "POST", mapOf("email" to "waiting-${UUID.randomUUID()}@example.invalid")).statusCode()).isEqualTo(200)
+        val sessionId = admin.queryForObject("select session_id from forena.spring_session where principal_name=?", String::class.java, fixture.subject.toString())
+        requireNotNull(admin.dataSource).connection.use { connection ->
+            connection.autoCommit = false
+            connection.prepareStatement("select subject from forena.account where subject=? for update").use {
+                it.setObject(1, fixture.subject); it.executeQuery().close()
+            }
+            val result = CompletableFuture.supplyAsync {
+                accountRequest("/api/me/account/email", fixture.cookie, "DELETE", expected = fixture.subject.toString())
+            }
+            try {
+                org.awaitility.Awaitility.await().atMost(5, SECONDS).until {
+                    requireNotNull(admin.queryForObject("select count(*) from pg_stat_activity where usename='forena_api_runtime' and wait_event_type='Lock'", Int::class.java)) > 0
+                }
+                admin.update("delete from forena.spring_session where session_id=?", sessionId)
+            } finally { connection.rollback() }
+            assertThat(result.get(10, SECONDS).statusCode()).isEqualTo(401)
+        }
+        assertThat(admin.queryForObject("select count(*) from forena.account_email_change where subject=?", Int::class.java, fixture.subject)).isEqualTo(1)
     }
 
 }

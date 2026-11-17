@@ -1,5 +1,6 @@
 package se.forena.api.administration
 
+import se.forena.api.identity.AccountLifecycleService
 import java.text.Normalizer
 import java.time.ZoneId
 import java.util.Locale
@@ -21,6 +22,7 @@ import se.forena.api.extensionapi.DisciplineCatalog
 @Service
 class AdministrationService(
     private val sessions: SessionService,
+    private val accountLifecycle: AccountLifecycleService,
     private val access: AdministrationAccessService,
     private val directory: AdministrationDirectory,
     private val clock: DatabaseClockService,
@@ -133,11 +135,14 @@ class AdministrationService(
     fun platformAdministrator(actor: Actor, change: AdministratorChange): AdministrationOk {
         authorizeAndLock(actor) { requirePlatform(actor) }
         val target = directory.verifiedAccount(change.email)
+        accountLifecycle.connectionsChanged(target)
+        directory.verifiedEmail(target)
         if (change.active) platforms.add(target)
         else {
             check(platforms.findAll().size > 1 || !access.isPlatformAdministrator(target))
             platforms.remove(target)
         }
+        accountLifecycle.connectionsChanged(target)
         audit(actor, if (change.active) "platform.grant" else "platform.revoke", target)
         return AdministrationOk()
     }
@@ -188,12 +193,15 @@ class AdministrationService(
         authorizeAndLock(actor) { requirePlatform(actor) }
         clubs.findById(id) ?: throw NoSuchElementException()
         val target = directory.verifiedAccount(change.email)
+        accountLifecycle.connectionsChanged(target)
+        directory.verifiedEmail(target)
         val existing = clubAdmins.findByOrganizationIdAndSubject(id, target)
         if (!change.active && existing?.active == true) {
             check(clubAdmins.findByOrganizationIdAndActiveTrue(id).count(access::isClubAdministrator) > 1)
         }
         clubAdmins.save(existing?.copy(role = "admin", active = change.active)
             ?: ClubAdministratorEntity(null, id, target, "admin", change.active))
+        accountLifecycle.connectionsChanged(target)
         audit(actor, if (change.active) "club.admin.grant" else "club.admin.revoke", id, target)
         return AdministrationOk()
     }
@@ -232,10 +240,13 @@ class AdministrationService(
         }
         val section = sections.findById(id) ?: throw NoSuchElementException()
         val target = directory.verifiedAccount(change.email)
+        accountLifecycle.connectionsChanged(target)
+        directory.verifiedEmail(target)
         val existing = sectionAdmins.findBySectionIdAndSubject(id, target)
         if (existing == null && !change.active) return AdministrationOk()
         sectionAdmins.save(existing?.copy(active = change.active)
             ?: SectionAdministratorEntity(null, section.organizationId, id, target, change.active))
+        accountLifecycle.connectionsChanged(target)
         audit(actor, if (change.active) "section.admin.grant" else "section.admin.revoke", id, target)
         return AdministrationOk()
     }
@@ -277,6 +288,8 @@ class AdministrationService(
         }
         val team = teams.findById(id) ?: throw NoSuchElementException()
         val target = directory.verifiedAccount(change.email)
+        accountLifecycle.connectionsChanged(target)
+        directory.verifiedEmail(target)
         val club = clubs.findById(team.organizationId) ?: throw NoSuchElementException()
         val starts = change.startsOn ?: today(club)
         require(change.endsOn == null || change.endsOn >= starts)
@@ -287,6 +300,7 @@ class AdministrationService(
         if (existing == null) administration.createReadAccess(accessId, team.organizationId, id, person, starts, change.endsOn, change.active)
         else administration.readAccess(accessId, starts, change.endsOn, change.active)
         teamAdmins.save(TeamAdministratorEntity(existing?.id, team.organizationId, id, target, person, accessId, starts, change.endsOn, change.active))
+        accountLifecycle.connectionsChanged(target)
         audit(actor, if (change.active) "team.admin.grant" else "team.admin.revoke", id, target)
         return AdministrationOk()
     }

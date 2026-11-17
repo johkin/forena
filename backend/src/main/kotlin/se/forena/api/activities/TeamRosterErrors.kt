@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 import se.forena.api.http.ApiError
 
 @Order(0)
-@RestControllerAdvice(assignableTypes = [TeamRosterController::class, RosterInvitationController::class])
+@RestControllerAdvice(assignableTypes = [TeamRosterController::class, RosterInvitationController::class, ClubAccountController::class])
 class TeamRosterErrors {
     @ExceptionHandler(IllegalArgumentException::class, HttpMessageNotReadableException::class)
     fun invalid() = error(400, "Kontrollera namn, e-post, roll och datum. Välj en person från rätt förening.")

@@ -1374,3 +1374,15 @@ spårbarhet. Importerad historik använder konto-ID när visningsnamn saknas.
 Personligt aktivitetsunderlag läser enbart redan behöriga personers sparade
 närvaro i ett batchanrop. `unknown` betyder okänd, `absent` bedömd frånvaro och
 `present` närvaro. Kalenderns befintliga statuskontrakt bevaras. Se [spec och verifiering](specs/narvaroregistrering.md).
+
+## Mitt konto i React/Kotlin
+
+Den gemensamma kontoplatsen `/account` och säkerhetsplatsen `/account/security`
+återanvänder gemensamma profil-/formulärkomponenter och CSS från Next-förlagan.
+`identity` äger atomära kontoprofilkommandon, personrevisioner, uttryckliga
+barnlänkar, separat följaråtkomst, säkerhetskommandon och kontolivscykel.
+`activities` komponerar klubbens befintliga truppmandat med identity-kommandon
+för vårdnadshavarförslag, födelsedatumsrättelse och profilhistorik. Spring
+Security äger fortsatt autentisering och passkeyfiltren; kontospecifika
+säkerhetsregler ligger i `AccountSecurityService`. Se
+[implementation, datagränser, driftvillkor och återstående resultatkälla](migration/account-profile.md).

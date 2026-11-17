@@ -1,5 +1,6 @@
 package se.forena.api.identity.authentication
 
+import org.springframework.security.access.AccessDeniedException
 import jakarta.servlet.DispatcherType.ERROR
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
@@ -37,6 +38,7 @@ import org.springframework.security.web.webauthn.registration.WebAuthnRegistrati
 import org.springframework.session.web.http.HttpSessionIdResolver
 import org.springframework.web.ErrorResponseException
 import org.springframework.web.filter.OncePerRequestFilter
+import se.forena.api.identity.AccountLifecycleService
 import se.forena.api.identity.BrowserLoginLimiter
 import se.forena.api.identity.BrowserSessionSettings
 import se.forena.api.identity.sessionCookie
@@ -53,7 +55,7 @@ class StringCsrfTokenRepository : CsrfTokenRepository {
 }
 
 class TransportFilter(private val settings: BrowserSessionSettings,
-    private val limiter: BrowserLoginLimiter) : OncePerRequestFilter() {
+    private val limiter: BrowserLoginLimiter, private val security: AccountSecurityService, private val lifecycle: AccountLifecycleService) : OncePerRequestFilter() {
     private val logger = LoggerFactory.getLogger(TransportFilter::class.java)
 
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) {
@@ -82,8 +84,30 @@ class TransportFilter(private val settings: BrowserSessionSettings,
                 ((expected != null && expected != auth.name) || (!request.requestURI.startsWith("/api/auth/") && request.method !in listOf("GET", "HEAD", "OPTIONS") && expected == null))) {
                 fail(response, 401, "Sessionen är inte aktiv."); return
             }
-            chain.doFilter(request, response)
-        } catch (_: DataAccessException) { if (!response.isCommitted) fail(response, 503, "Sessionen kan inte verifieras just nu.") }
+            if (auth != null && auth.name != "anonymousUser" &&
+                (request.requestURI.startsWith("/api/auth/passkey/registration/") ||
+                    (request.method == "DELETE" && request.requestURI.startsWith("/api/auth/passkeys/")))) {
+                if (expected != auth.name) { fail(response, 401, "Sessionen är inte aktiv."); return }
+                security.requireRecent(UUID.fromString(auth.name), request)
+            }
+            if (auth != null && auth.name != "anonymousUser" && request.requestURI.startsWith("/api/") &&
+                !request.requestURI.startsWith("/api/swagger-ui") && !request.requestURI.startsWith("/api/v3/api-docs") &&
+                !request.requestURI.startsWith("/api/auth/") && !request.requestURI.startsWith("/api/me/account") &&
+                !request.requestURI.startsWith("/api/admin/") && request.requestURI != "/api/me/roster-invitation" &&
+                request.requestURI != "/api/telegram/settings" && request.requestURI != "/api/push-subscriptions" &&
+                !(request.requestURI == "/api/assistant/memories" && request.getParameter("scope") == "personal")) {
+                if (!lifecycle.hasBusinessAccess(UUID.fromString(auth.name))) {
+                    fail(response, 403, "Kontot saknar en godkänd klubbkoppling. Hantera kontot i Mitt konto."); return
+                }
+            }
+            if (request.requestURI.startsWith("/api/")) response.setHeader("Cache-Control", "no-store")
+            val passkeyChange = request.requestURI.startsWith("/api/auth/passkey/registration/") ||
+                (request.method == "DELETE" && request.requestURI.startsWith("/api/auth/passkeys/"))
+            if (passkeyChange && auth != null && auth.name != "anonymousUser") {
+                security.passkeyChange(UUID.fromString(auth.name), request) { chain.doFilter(request, response) }
+            } else chain.doFilter(request, response)
+        } catch (_: AccessDeniedException) { if (!response.isCommitted) fail(response, 403, "Verifiera din inloggning igen för att fortsätta.") }
+        catch (_: DataAccessException) { if (!response.isCommitted) fail(response, 503, "Sessionen kan inte verifieras just nu.") }
         catch (error: ErrorResponseException) {
             error.headers.forEach { name, values -> values.forEach { response.addHeader(name, it) } }
             if (!response.isCommitted) fail(response, error.statusCode.value(), "Begäran kunde inte genomföras.")
@@ -113,14 +137,14 @@ class SecurityConfiguration {
         @Qualifier("magicTokens") magic: OneTimeTokenService,
         success: AuthenticationSuccessHandler,
         failure: AuthenticationFailureHandler,
-        limiter: BrowserLoginLimiter, accounts: AccountService,
+        limiter: BrowserLoginLimiter, accounts: AccountService, security: AccountSecurityService, lifecycle: AccountLifecycleService,
         sessionIds: HttpSessionIdResolver): SecurityFilterChain {
         http.securityContext { it.securityContextRepository(contexts) }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED) }
             .requestCache { it.disable() }
             .csrf { it.csrfTokenRepository(csrf).ignoringRequestMatchers("/api/**") }
             .headers { it.referrerPolicy { policy -> policy.policy(NO_REFERRER) } }
-            .addFilterAfter(TransportFilter(settings, limiter), HeaderWriterFilter::class.java)
+            .addFilterAfter(TransportFilter(settings, limiter, security, lifecycle), HeaderWriterFilter::class.java)
             .addFilterBefore(passkey, UsernamePasswordAuthenticationFilter::class.java)
             .addFilterAfter(requestOptions, AuthorizationFilter::class.java)
             .addFilterAfter(creationOptions, AuthorizationFilter::class.java)

@@ -42,6 +42,157 @@
         ],
         "type": "object"
       },
+      "AccountClub": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object"
+      },
+      "AccountPerson": {
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "birthDate": {
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "contactEmail": {
+            "type": "string"
+          },
+          "editable": {
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "linkGroup": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "organizationId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "organizationName": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "address",
+          "contactEmail",
+          "editable",
+          "id",
+          "kind",
+          "name",
+          "organizationId",
+          "organizationName",
+          "phone",
+          "revision"
+        ],
+        "type": "object"
+      },
+      "AccountProfileView": {
+        "properties": {
+          "activated": {
+            "type": "boolean"
+          },
+          "clubs": {
+            "items": {
+              "$ref": "#/components/schemas/AccountClub"
+            },
+            "type": "array"
+          },
+          "deletionAt": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email": {
+            "type": "string"
+          },
+          "followers": {
+            "items": {
+              "$ref": "#/components/schemas/FollowerView"
+            },
+            "type": "array"
+          },
+          "people": {
+            "items": {
+              "$ref": "#/components/schemas/AccountPerson"
+            },
+            "type": "array"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/OwnProfile"
+          }
+        },
+        "required": [
+          "activated",
+          "clubs",
+          "email",
+          "followers",
+          "people",
+          "profile"
+        ],
+        "type": "object"
+      },
+      "AccountSessionView": {
+        "properties": {
+          "current": {
+            "type": "boolean"
+          },
+          "device": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "lastActiveAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current",
+          "device",
+          "id",
+          "lastActiveAt"
+        ],
+        "type": "object"
+      },
       "ActivityAudience": {
         "properties": {
           "groupIds": {
@@ -1294,6 +1445,25 @@
       "AuthenticatorTransport": {
         "type": "string"
       },
+      "BirthDateCorrectionCommand": {
+        "properties": {
+          "birthDate": {
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "revision"
+        ],
+        "type": "object"
+      },
       "BrowserAuthAcknowledgement": {
         "properties": {
           "ok": {
@@ -1591,6 +1761,109 @@
         "required": [
           "categories",
           "disciplines"
+        ],
+        "type": "object"
+      },
+      "ChildLinkCommand": {
+        "properties": {
+          "people": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "people"
+        ],
+        "type": "object"
+      },
+      "ChildProfileCommand": {
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "birthDate": {
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "contactEmail": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "people": {
+            "additionalProperties": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "phone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "address",
+          "contactEmail",
+          "name",
+          "people",
+          "phone"
+        ],
+        "type": "object"
+      },
+      "ClubAccountPerson": {
+        "properties": {
+          "birthDate": {
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "revision"
+        ],
+        "type": "object"
+      },
+      "ClubAccountView": {
+        "properties": {
+          "people": {
+            "items": {
+              "$ref": "#/components/schemas/ClubAccountPerson"
+            },
+            "type": "array"
+          },
+          "proposals": {
+            "items": {
+              "$ref": "#/components/schemas/GuardianProposalView"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "people",
+          "proposals"
         ],
         "type": "object"
       },
@@ -2186,6 +2459,29 @@
         ],
         "type": "object"
       },
+      "EmailChangeCommand": {
+        "properties": {
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      },
+      "EmailConfirmCommand": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "type": "object"
+      },
       "EvaluationConfiguration": {
         "properties": {
           "confirmDeletion": {
@@ -2373,6 +2669,107 @@
         ],
         "type": "object"
       },
+      "FollowerDecision": {
+        "properties": {
+          "state": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "type": "object"
+      },
+      "FollowerMatch": {
+        "properties": {
+          "endsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "result": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "endsAt",
+          "id",
+          "location",
+          "startsAt",
+          "title"
+        ],
+        "type": "object"
+      },
+      "FollowerView": {
+        "properties": {
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "incoming": {
+            "type": "boolean"
+          },
+          "organizationId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "organizationName": {
+            "type": "string"
+          },
+          "personId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "personName": {
+            "type": "string"
+          },
+          "requester": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "teams": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "expiresAt",
+          "id",
+          "incoming",
+          "organizationId",
+          "organizationName",
+          "personId",
+          "personName",
+          "requester",
+          "state",
+          "teams"
+        ],
+        "type": "object"
+      },
       "GroupCommand": {
         "properties": {
           "kind": {
@@ -2407,6 +2804,50 @@
         },
         "required": [
           "pairingUrl"
+        ],
+        "type": "object"
+      },
+      "GuardianProposalCommand": {
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "operation": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "operation"
+        ],
+        "type": "object"
+      },
+      "GuardianProposalView": {
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "operation": {
+            "type": "string"
+          },
+          "personId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "id",
+          "operation",
+          "personId",
+          "state"
         ],
         "type": "object"
       },
@@ -3077,6 +3518,65 @@
         ],
         "type": "object"
       },
+      "OwnProfile": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "phone",
+          "revision"
+        ],
+        "type": "object"
+      },
+      "OwnProfileCommand": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "people": {
+            "additionalProperties": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "people",
+          "phone",
+          "revision"
+        ],
+        "type": "object"
+      },
+      "PasskeyLabelCommand": {
+        "properties": {
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "label"
+        ],
+        "type": "object"
+      },
       "PasskeyView": {
         "properties": {
           "id": {
@@ -3089,6 +3589,18 @@
         "required": [
           "id",
           "label"
+        ],
+        "type": "object"
+      },
+      "PasswordChangeCommand": {
+        "properties": {
+          "password": {
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "password"
         ],
         "type": "object"
       },
@@ -3341,6 +3853,31 @@
           "name",
           "organization_id",
           "roles"
+        ],
+        "type": "object"
+      },
+      "ProfileHistory": {
+        "properties": {
+          "actor": {
+            "type": "string"
+          },
+          "changedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "changes": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "actor",
+          "changedAt",
+          "changes",
+          "id"
         ],
         "type": "object"
       },
@@ -3604,6 +4141,18 @@
         ],
         "type": "object"
       },
+      "ReauthenticateCommand": {
+        "properties": {
+          "password": {
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "type": "object"
+      },
       "RegisterRequest": {
         "properties": {
           "email": {
@@ -3671,6 +4220,17 @@
         },
         "required": [
           "response"
+        ],
+        "type": "object"
+      },
+      "ReviewGuardianCommand": {
+        "properties": {
+          "approve": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "approve"
         ],
         "type": "object"
       },
@@ -5557,7 +6117,7 @@
         ]
       },
       "get": {
-        "operationId": "view",
+        "operationId": "view_2",
         "parameters": [
           {
             "in": "path",
@@ -5762,7 +6322,7 @@
         ]
       },
       "put": {
-        "operationId": "update",
+        "operationId": "update_1",
         "parameters": [
           {
             "in": "path",
@@ -7672,6 +8232,618 @@
         ]
       }
     },
+    "/api/me/account": {
+      "get": {
+        "operationId": "view",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountProfileView"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "account-profile-controller"
+        ]
+      },
+      "put": {
+        "operationId": "update",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnProfileCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserAuthAcknowledgement"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "account-profile-controller"
+        ]
+      }
+    },
+    "/api/me/account/child-links": {
+      "post": {
+        "operationId": "link",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChildLinkCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserAuthAcknowledgement"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "account-profile-controller"
+        ]
+      }
+    },
+    "/api/me/account/child-links/{id}": {
+      "delete": {
+        "operationId": "unlink",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserAuthAcknowledgement"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "account-profile-controller"
+        ]
+      }
+    },
+    "/api/me/account/children/{id}": {
+      "put": {
+        "operationId": "child",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChildProfileCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserAuthAcknowledgement"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "account-profile-controller"
+        ]
+      }
+    },
+    "/api/me/account/children/{id}/follower": {
+      "post": {
+        "operationId": "follow",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserAuthAcknowledgement"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "account-profile-controller"
+        ]
+      }
+    },
+    "/api/me/account/children/{id}/history": {
+      "get": {
+        "operationId": "history_1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProfileHistory"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "account-profile-controller"
+        ]
+      }
+    },
+    "/api/me/account/children/{id}/proposals": {
+      "get": {
+        "operationId": "proposals",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GuardianProposalView"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "account-profile-controller"
+        ]
+      },
+      "post": {
+        "operationId": "propose",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuardianProposalCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserAuthAcknowledgement"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "account-profile-controller"
+        ]
+      }
+    },
+    "/api/me/account/email": {
+      "delete": {
+        "operationId": "cancelEmail",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserAuthAcknowledgement"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "account-profile-controller"
+        ]
+      },
+      "post": {
+        "operationId": "email",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailChangeCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserAuthAcknowledgement"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "account-profile-controller"
+        ]
+      }
+    },
+    "/api/me/account/email/confirm": {
+      "post": {
+        "operationId": "confirmEmail",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailConfirmCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserAuthAcknowledgement"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "account-profile-controller"
+        ]
+      }
+    },
+    "/api/me/account/followers/{id}": {
+      "put": {
+        "operationId": "decide",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FollowerDecision"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserAuthAcknowledgement"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "account-profile-controller"
+        ]
+      }
+    },
+    "/api/me/account/followers/{id}/matches": {
+      "get": {
+        "operationId": "matches",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FollowerMatch"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "account-profile-controller"
+        ]
+      }
+    },
+    "/api/me/account/passkeys/{id}": {
+      "put": {
+        "operationId": "label",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasskeyLabelCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserAuthAcknowledgement"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "account-profile-controller"
+        ]
+      }
+    },
+    "/api/me/account/password": {
+      "put": {
+        "operationId": "password",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChangeCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserAuthAcknowledgement"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "account-profile-controller"
+        ]
+      }
+    },
+    "/api/me/account/reauthenticate": {
+      "post": {
+        "operationId": "reauthenticate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReauthenticateCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserAuthAcknowledgement"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "account-profile-controller"
+        ]
+      }
+    },
+    "/api/me/account/sessions": {
+      "delete": {
+        "operationId": "revokeOthers",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserAuthAcknowledgement"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "account-profile-controller"
+        ]
+      },
+      "get": {
+        "operationId": "sessions",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AccountSessionView"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "account-profile-controller"
+        ]
+      }
+    },
+    "/api/me/account/sessions/{id}": {
+      "delete": {
+        "operationId": "revoke",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserAuthAcknowledgement"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "account-profile-controller"
+        ]
+      }
+    },
     "/api/me/activities": {
       "get": {
         "description": "Own and delegated person access. Invitation-backed, ongoing/upcoming scheduled activities starting within 90 days; includes declined and not-yet-sent invitations. Each activity includes only sent invitations for authorized people, with current responses; future invitations remain hidden. Stable starts_at/id order, 50 activities per page, no duplicates. No-store. Offset 0..100000; concurrent changes may shift pages.",
@@ -8498,6 +9670,180 @@
         },
         "tags": [
           "team-roster-controller"
+        ]
+      }
+    },
+    "/api/teams/{team}/account-administration": {
+      "get": {
+        "operationId": "view_1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClubAccountView"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "club-account-controller"
+        ]
+      }
+    },
+    "/api/teams/{team}/account-administration/people/{person}/birth-date": {
+      "put": {
+        "operationId": "correct",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "person",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BirthDateCorrectionCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserAuthAcknowledgement"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "club-account-controller"
+        ]
+      }
+    },
+    "/api/teams/{team}/account-administration/people/{person}/history": {
+      "get": {
+        "operationId": "history",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "person",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProfileHistory"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "club-account-controller"
+        ]
+      }
+    },
+    "/api/teams/{team}/account-administration/proposals/{proposal}": {
+      "put": {
+        "operationId": "review",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "proposal",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewGuardianCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserAuthAcknowledgement"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "club-account-controller"
         ]
       }
     },

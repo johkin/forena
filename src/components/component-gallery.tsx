@@ -1,5 +1,6 @@
 "use client";
 
+import { AccountExamples } from "./account-examples";
 import { BrowserFrontendExamples } from "./browser-frontend-examples";
 import { AttendanceExamples } from "./attendance-examples";
 import { TelegramGroupExamples } from "@/components/telegram-group-settings";
@@ -69,6 +70,7 @@ export function ComponentGallery() {
   const [selectedPeople, setSelectedPeople] = useState(new Set(["coach-1", "player-1", "player-2"]));
   const [notice, setNotice] = useState("Prova en knapp.");
   return <>
+    <AccountExamples />
     <BrowserFrontendExamples />
     <AttendanceExamples />
     <section><h2>Avskalad kontomeny</h2><p>Kallelsesidans gemensamma meny utan profil, notiser eller administration. Utloggningsknappen är inaktiverad i exemplet.</p><fieldset disabled><legend>Inloggad familj</legend><AppMenuContent accountEmail="familj@example.invalid" accountMenu="session" homeHref="/components" /></fieldset></section>

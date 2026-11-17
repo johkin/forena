@@ -27,6 +27,11 @@ interface RevokedSessionRepository : Repository<RevokedSessionEntity, UUID> {
 }
 
 interface PersonAccessRepository : Repository<PersonAccessEntity, PersonAccessKey> {
+    @Query("""select a.* from forena.person_access a join forena.person p on p.id=a.person_id
+        join forena.organization o on o.id=a.organization_id where a.subject=:subject and a.active
+        and (a.kind='self' or p.birth_date is null or p.birth_date+interval '18 years'>(clock_timestamp() at time zone o.time_zone)::date)""")
+    fun effective(subject: UUID): List<PersonAccessEntity>
+
     fun findByKeySubjectAndActiveTrue(subject: UUID): List<PersonAccessEntity>
     fun findById(id: PersonAccessKey): Optional<PersonAccessEntity>
     fun findByKeySubjectAndOrganizationIdAndActiveTrue(subject: UUID, organizationId: UUID): List<PersonAccessEntity>
@@ -72,9 +77,12 @@ interface NotificationRecipientRepository : Repository<AccountEntity, UUID> {
     @Query("""
         select a.subject, u.email
         from forena.person_access p
+        join forena.person person on person.id=p.person_id
+        join forena.organization o on o.id=p.organization_id
         join forena.account a on a.subject = p.subject and a.enabled
         join forena.native_user u on u.subject = a.subject and u.verified
         where p.person_id = :person and p.organization_id = :organization and p.active
+        and (p.kind='self' or person.birth_date is null or person.birth_date+interval '18 years'>(clock_timestamp() at time zone o.time_zone)::date)
         order by a.subject
         limit 1001
     """)
@@ -115,14 +123,16 @@ interface RosterIdentityRepository : Repository<PersonEntity, UUID> {
     fun accounts(organization: UUID, people: Collection<UUID>): List<RosterSelf>
 
     @Modifying
-    @Query("update forena.person set display_name=:name where id=:person and organization_id=:organization")
+    @Query("update forena.person set display_name=:name,profile_revision=profile_revision+1 where id=:person and organization_id=:organization")
     fun rename(organization: UUID, person: UUID, name: String): Int
 }
 
 interface AssistantIdentityRepository : Repository<PersonEntity, UUID> {
     @Query(
         """select o.id,o.name,o.time_zone from forena.organization o where
-            exists(select 1 from forena.person_access a where a.organization_id=o.id and a.subject=:subject and a.active)
+            exists(select 1 from forena.person_access a join forena.person child on child.id=a.person_id
+                where a.organization_id=o.id and a.subject=:subject and a.active
+                and (a.kind='self' or child.birth_date is null or child.birth_date+interval '18 years'>(clock_timestamp() at time zone o.time_zone)::date))
             or exists(select 1 from forena.organization_member m where m.organization_id=o.id and m.subject=:subject and m.active)
             or exists(select 1 from forena.section_administrator s where s.organization_id=o.id and s.subject=:subject and s.active)
             or exists(select 1 from forena.team_permission_assignment p join forena.person_access a
@@ -164,6 +174,8 @@ interface AssistantIdentityRepository : Repository<PersonEntity, UUID> {
                 and (m.ends_on is null or m.ends_on>=(clock_timestamp() at time zone o.time_zone)::date)
             left join forena.team t on t.id=m.team_id and t.organization_id=o.id
             where a.subject=:subject and a.active and a.kind='guardian'
+                and exists(select 1 from forena.person child where child.id=a.person_id and
+                    (child.birth_date is null or child.birth_date+interval '18 years'>(clock_timestamp() at time zone o.time_zone)::date))
         ),
         team_administration_roles as (
             select o.id organization_id,o.name organization_name,t.id team_id,t.name team_name,

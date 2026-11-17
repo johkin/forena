@@ -2797,7 +2797,7 @@ class ApiTest {
         }
     }
 
-    @Test fun `personal overview serializes invitation-only teams and empty access lists`() {
+    @Test fun `personal overview serializes invitation-only teams and denies unlinked accounts`() {
         val response = request("/api/me/overview")
         assertThat(response.statusCode()).isEqualTo(200)
         val overview = json.readTree(response.body())
@@ -2812,14 +2812,10 @@ class ApiTest {
         assertThat(json.readTree(unsent.body()).get("invitations").size()).isZero()
         admin.update("update forena.person_access set active=false where subject=?", parent)
         val empty = request("/api/me/overview")
-        assertThat(empty.statusCode()).isEqualTo(200)
-        val emptyOverview = json.readTree(empty.body())
-        for (field in listOf("activities", "organizations", "teams")) {
-            assertThat(emptyOverview.get(field).isArray).isTrue()
-            assertThat(emptyOverview.get(field).size()).isZero()
-        }
-        assertThat(json.readTree(request("/api/me/activities").body()).get("activities").size()).isZero()
-        assertThat(request("/api/activities/$activity/my-invitations").statusCode()).isEqualTo(404)
+        assertThat(empty.statusCode()).isEqualTo(403)
+        assertThat(empty.body()).doesNotContain(activity.toString(), "Träning", "Klubb", "Lag")
+        assertThat(request("/api/me/activities").statusCode()).isEqualTo(403)
+        assertThat(request("/api/activities/$activity/my-invitations").statusCode()).isEqualTo(403)
     }
 
 
@@ -2845,7 +2841,7 @@ class ApiTest {
         assertThat(request("/api/me/calendar?month=2026-13").statusCode()).isEqualTo(400)
         assertThat(request("/api/me/calendar?month=2026-10", cookie=null).statusCode()).isEqualTo(401)
         admin.update("update forena.person_access set active=false where subject=?", parent)
-        assertThat(json.readTree(request("/api/me/calendar?month=2026-10").body()).get("activities").size()).isZero()
+        assertThat(request("/api/me/calendar?month=2026-10").statusCode()).isEqualTo(403)
     }
 
     @Test fun `calendar retains cancellations and unknown attendance and excludes children from leader meetings`() {
@@ -2979,7 +2975,7 @@ class ApiTest {
         assertThat(overview.get("activities").get(55).get("people").size()).isEqualTo(1)
         assertThat(overview.get("activities").get(55).get("people").get(0).get("invitation").isNull).isTrue()
         admin.update("update forena.person_access set active=false where subject=?", parent)
-        assertThat(json.readTree(request("/api/me/overview").body()).get("activities").size()).isZero()
+        assertThat(request("/api/me/overview").statusCode()).isEqualTo(403)
     }
 
     @Test fun `personal workspaces show current roles without widening personal invitation access`() {
@@ -3025,7 +3021,7 @@ class ApiTest {
         assertThat(json.readTree(request("/api/me/activities").body()).get("activities").size()).isEqualTo(1)
         admin.update("update forena.person_access set active=false where subject=?", parent)
         val empty = request("/api/me/activities")
-        assertThat(json.readTree(empty.body()).get("activities").size()).isZero()
+        assertThat(empty.statusCode()).isEqualTo(403)
         assertThat(empty.body()).doesNotContain(activity.toString(), "Träning", "Klubb", "Lag")
     }
 
@@ -3131,9 +3127,9 @@ class ApiTest {
 
     @Test fun `inactive family links deny reads even when the activity and organization exist`() {
         admin.update("update forena.person_access set active=false where subject=?",parent)
-        assertThat(request("/api/activities/$activity/my-invitations").statusCode()).isEqualTo(404)
+        assertThat(request("/api/activities/$activity/my-invitations").statusCode()).isEqualTo(403)
         admin.update("update forena.activity set invitation_send_at=now()+interval '1 day' where id=?",activity)
-        assertThat(request("/api/activities/$activity/my-invitations").statusCode()).isEqualTo(404)
+        assertThat(request("/api/activities/$activity/my-invitations").statusCode()).isEqualTo(403)
         assertThat(respond("""{"response":"accepted"}""").statusCode()).isEqualTo(403)
         assertThat(history()).isZero(); assertThat(dirty()).isZero()
     }
@@ -3647,7 +3643,7 @@ class ApiTest {
         assertThat(request("/api/me/overview").body()).contains(id)
         assertThat(request("/api/activities/$id/my-invitations").statusCode()).isEqualTo(404)
         admin.update("update forena.organization_member set active=false where subject=?", parent)
-        assertThat(request("/api/activities/$id").statusCode()).isEqualTo(404)
+        assertThat(request("/api/activities/$id").statusCode()).isEqualTo(403)
         assertThat(request("/api/me/overview").body()).doesNotContain(id)
     }
 
@@ -3659,6 +3655,10 @@ class ApiTest {
         admin.update("insert into forena.activity(id,organization_id,team_id,title,starts_at,ends_at,status) values(?,?,?,'Skyddad aktivitet','2030-10-25T16:00:00Z','2030-10-25T17:00:00Z','scheduled')", id, organization, zero)
         admin.update("insert into forena.invitation(id,organization_id,activity_id,person_id) values(gen_random_uuid(),?,?,?)", organization, id, zero)
         admin.update("update forena.person_access set active=false where subject=?", parent)
+        // An approved connection elsewhere keeps the account active without granting any scope here.
+        val approvedClub = UUID.randomUUID()
+        admin.update("insert into forena.organization(id,name) values(?,'Independent membership')", approvedClub)
+        admin.update("insert into forena.organization_member(organization_id,subject,role) values(?,?,'member')", approvedClub, parent)
         val overview = request("/api/me/overview")
         assertThat(overview.statusCode()).isEqualTo(200)
         assertThat(json.readTree(overview.body()).get("activities").size()).isZero()
@@ -3848,9 +3848,9 @@ class ApiTest {
         assertThat(overview.get("activities").size()).isZero()
         assertThat(overview.toString()).doesNotContain(otherTeam, foreignClub.toString())
         assertThat(request("/api/admin/sections/$section/administrators", """{"email":"$outsider@example.invalid","active":false}""", method="POST").statusCode()).isEqualTo(200)
-        val revoked = json.readTree(request("/api/me/overview", cookie=outsiderCookie).body())
-        assertThat(revoked.get("teams").size()).isZero()
-        assertThat(revoked.get("organizations").size()).isZero()
+        val revoked = request("/api/me/overview", cookie=outsiderCookie)
+        assertThat(revoked.statusCode()).isEqualTo(403)
+        assertThat(revoked.body()).doesNotContain(team, club.toString())
     }
 
     @Test fun `section administrators are confined to their own section and foreign role grants are denied`() {

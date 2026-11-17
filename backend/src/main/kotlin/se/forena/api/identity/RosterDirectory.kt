@@ -6,13 +6,14 @@ import java.util.UUID
 import se.forena.api.identity.authentication.AccountService
 import se.forena.api.identity.authentication.AuthMailService
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import se.forena.api.identity.internal.RosterIdentityRepository
 
 /** Identity facts for a roster already authorized by its calling service. */
 @Service
 class RosterDirectory(private val records: RosterIdentityRepository,
     private val accounts: AccountService,
-    private val mail: AuthMailService) {
+    private val mail: AuthMailService, private val lifecycle: AccountLifecycleService) {
     fun activeAccount(subject: UUID): Boolean = records.activeAccount(subject)
 
     fun normalizeEmail(value: String): String = accounts.email(value)
@@ -26,9 +27,12 @@ class RosterDirectory(private val records: RosterIdentityRepository,
 
     fun verifiedEmail(subject: UUID): String = accounts.requireUser(subject).email
 
+    @Transactional
     fun link(organization: UUID, person: UUID, subject: UUID) {
+        lifecycle.connectionsChanged(subject)
         accounts.requireUser(subject)
         check(records.link(organization, person, subject) == 1)
+        lifecycle.connectionsChanged(subject)
     }
 
     fun invite(email: String, link: String, expires: Instant): UUID = mail.enqueue(email, "roster", link, expires)
