@@ -14,6 +14,15 @@ import se.forena.api.identity.AssistantRoleSource
 /** Typed JDBC projections and provider payloads are also reachable in the native runtime. */
 @Configuration(proxyBeanMethods = false)
 @RegisterReflectionForBinding(
+    se.forena.api.identity.OwnProfile::class,
+    se.forena.api.identity.AccountPerson::class,
+    se.forena.api.identity.ClubAccountPerson::class,
+    se.forena.api.identity.AccountSessionView::class,
+    se.forena.api.identity.ProfileHistory::class,
+    se.forena.api.identity.GuardianProposalView::class,
+    se.forena.api.identity.FollowerMatch::class,
+    AccountLifecycleRow::class, AccountConnection::class, PendingEmail::class,
+    FollowerRow::class, FollowerTarget::class,
     TelegramConnection::class,
     TelegramSettings::class,
     TelegramSettingsChange::class,

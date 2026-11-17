@@ -1,5 +1,7 @@
 package se.forena.api.notifications
 
+import se.forena.api.identity.AccountLifecycleService
+import se.forena.api.identity.BrowserAuthAcknowledgement
 import java.time.Duration
 import org.slf4j.LoggerFactory
 import org.springframework.http.CacheControl
@@ -24,6 +26,7 @@ data class NotificationWorkerResult(
 @Service
 class NotificationWorker(
     private val settings: NotificationSettings,
+    private val accountLifecycle: AccountLifecycleService,
     private val schedules: ScheduledInvitationService,
     private val recovery: PublicationRecovery,
     private val delivery: InvitationEmailDelivery,
@@ -36,6 +39,7 @@ class NotificationWorker(
     fun run(): NotificationWorkerResult {
         check(settings.enabled)
         operations.started()
+        accountLifecycle.sweep()
         val deadline = System.nanoTime() + Duration.ofSeconds(45).toNanos()
         val materialized = schedules.materialize(deadline)
         disciplineWork.forEach { it.runDue(100) }
@@ -77,10 +81,17 @@ class NotificationWorker(
 class NotificationWorkerController(
     private val worker: NotificationWorker,
     private val operations: NotificationOperations,
+    private val accountLifecycle: AccountLifecycleService,
 ) {
     @GetMapping("/internal/notifications/status")
     fun status(): ResponseEntity<NotificationStatus> =
         ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(operations.status())
+
+    @PostMapping("/internal/notifications/accounts/run")
+    fun accounts(): ResponseEntity<BrowserAuthAcknowledgement> {
+        accountLifecycle.runMaintenance()
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(BrowserAuthAcknowledgement(true))
+    }
 
     @PostMapping("/internal/notifications/run")
     fun run(): ResponseEntity<NotificationWorkerResult> =

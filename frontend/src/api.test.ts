@@ -264,3 +264,28 @@ it("binds roster registration and invitation acceptance to the current account",
   }
   expect(account).toHaveBeenCalledTimes(6);
 });
+
+it("binds profile, child and account security requests to the current account", async () => {
+  const transport = vi.fn().mockResolvedValue(Response.json({ ok: true }));
+  const request = createApiFetch(async () => id, vi.fn(), transport);
+  for (const [method, resource] of [
+    ["GET", "/api/me/account"], ["PUT", "/api/me/account"],
+    ["GET", `/api/me/account/children/${id}/history?offset=100`],
+    ["GET", `/api/teams/${id}/account-administration?offset=100`],
+    ["GET", `/api/teams/${id}/account-administration/people/${id}/history?offset=100`],
+    ["PUT", `/api/me/account/children/${id}`], ["GET", `/api/me/account/children/${id}/history`],
+    ["POST", "/api/me/account/child-links"], ["DELETE", `/api/me/account/child-links/${id}`],
+    ["POST", "/api/me/account/reauthenticate"], ["GET", "/api/me/account/sessions"],
+    ["DELETE", `/api/me/account/sessions/${id}`], ["PUT", "/api/me/account/password"],
+    ["POST", "/api/me/account/email/confirm"], ["PUT", "/api/me/account/passkeys/example-key"],
+    ["PUT", `/api/me/account/followers/${id}`], ["GET", `/api/me/account/followers/${id}/matches`],
+    ["GET", `/api/teams/${id}/account-administration`], ["PUT", `/api/teams/${id}/account-administration/proposals/${id}`],
+  ]) await request(resource, { method });
+  for (const [, init] of transport.mock.calls) {
+    expect(new Headers(init.headers).get("X-Forena-Account")).toBe(id);
+    expect(init.cache).toBe("no-store");
+  }
+  for (const resource of ["/api/me/account?subject=other", `/api/me/account/children/${id}/password`, "/api/me/account/email/confirm?code=secret", `/api/me/account/sessions/${id}/anything`, `/api/teams/${id}/account-administration?club=other`]) {
+    await expect(request(resource)).rejects.toThrow();
+  }
+});

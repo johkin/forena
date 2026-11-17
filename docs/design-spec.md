@@ -884,3 +884,29 @@ Vid skapande väljer aktivitetsredigeraren Träning som förvald aktivitetstyp n
 inget uttryckligt typval finns. En namngiven annan typ ska bevaras. Saknas en
 tillgänglig träningstyp behålls Övrigt som reservval. Utkastets uttryckliga tider
 ska bevaras, medan utelämnade tidsfält ärver aktivitetstypens förval.
+
+## Mitt konto
+
+Profilhistorik använder `AccountProfileHistory` för både föräldrar och
+klubbadministratörer. Visa högst 100 ändringar åt gången, med knapparna
+**Äldre ändringar** och **Nyare ändringar**. Klubbens väntande förslag har
+motsvarande sidbläddring. Komponentsidans kontoläge **Sidindelad historik**
+visar produktionskomponenten med flera sidor.
+
+`/account` använder Next-profilens `application-card profile-card`,
+`application-form`, `form-section` och föreningslänkar. Egna namn-/telefonfält
+visar vilka klubbar som uppdateras före sparande. Barn redigeras uttryckligen
+med den gemensamma datumväljaren. Förlorad åtkomst visar endast relationens
+namn/klubb och begäran om följaråtkomst eller klubbrättelse.
+
+Sparfel behåller utkastet. Vid versionskonflikt kan aktuella värden läsas in
+och jämföras innan användaren uttryckligen väljer aktuell version för nytt
+sparande. Kontobyte tömmer hela komponentträdet. Övergångstiden visar varning
+och planerat borttagningsdatum. `/account/security` skiljer verifiering,
+e-post-/lösenordsbyte, sessioner och passkeys. Sessionernas enheter markeras
+som uppskattade eller okända.
+
+`/components#account-example` visar samma produktionskomponenter i båda
+apparna: konto med kopplingar, väntande aktivering, övergångstid, laddning,
+läsfel, sparningskonflikt, säkerhetsformulär, namngivna passkeys och klubbens
+granskning. Inga exempel skriver till verksamheten.

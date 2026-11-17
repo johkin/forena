@@ -1,3 +1,5 @@
+import { accountCommand } from "../../src/components/account-profile";
+import type { ParticipationFetch } from "../../src/components/activity-invitation-response";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { EmailVerification, AccountForm, OAuthConsent, type AccountAction, type OAuthConsentData } from "../../src/components/account-form";
@@ -39,7 +41,7 @@ export function ConsentPage({ search }: { search: string }) {
   return <OAuthConsent data={data} pending={!data && !error} error={error} />;
 }
 
-export function PasskeyList({ accountId, revision }: { accountId: string; revision: boolean }) {
+export function PasskeyList({ accountId, revision, request }: { accountId: string; revision: boolean; request: ParticipationFetch }) {
   const [items, setItems] = useState<{ id: string; label: string }[]>();
   const [error, setError] = useState<string>();
   const [change, setChange] = useState(0);
@@ -59,7 +61,7 @@ export function PasskeyList({ accountId, revision }: { accountId: string; revisi
         headers: { "X-Forena-Request": "1", "X-Forena-Account": accountId } });
       if (!response.ok) throw new Error("Removal failed");
       setChange(value => value + 1);
-    } catch { setError("Passkey kunde inte tas bort. Försök igen."); }
+    } catch { setError("Passkey kunde inte tas bort. Verifiera din inloggning igen och försök på nytt."); }
   }
-  return <PasskeyListView items={items} pending={!items && !error} error={error} onRemove={id => void remove(id)} />;
+  return <PasskeyListView items={items} pending={!items && !error} error={error} onRename={(id, label) => void accountCommand(request, `/passkeys/${encodeURIComponent(id)}`, "PUT", { label }).then(() => setChange(value => value + 1)).catch(error => setError(error.message))} onRemove={id => void remove(id)} />;
 }

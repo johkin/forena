@@ -56,6 +56,10 @@ class BrowserLoginLimiter(
         "admin-mutation-global", "admin-mutation-client:$client", "admin-mutation-account:$subject",
         Budget(1, 120), Budget(1, 60), Budget(1, 30))
 
+    fun admitProfile(client: String, subject: UUID) = admitBuckets(
+        "profile-mutation-global", "profile-mutation-client:$client", "profile-mutation-account:$subject",
+        Budget(1, 120), Budget(2, 30), Budget(5, 12))
+
     private fun admitBuckets(globalScope: String, clientScope: String, identityScope: String?,
                             globalBudget: Budget = Budget(15, 10), clientBudget: Budget = Budget(30, 5),
                             identityBudget: Budget = Budget(60, 3)) {

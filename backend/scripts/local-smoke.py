@@ -380,8 +380,8 @@ ALTER ROLE forena_api_runtime LOGIN PASSWORD 'local-runtime-only';
             clear_limits()
             print("PASS: public/basic/post S256 consent, opaque 15-minute access, 24-hour refresh, rotation and replay revocation through packaged OAuth and MCP", flush=True)
 
-            empty = call("/api/me/overview")
-            assert all(empty[name] == [] for name in ("activities", "organizations", "teams"))
+            call("/api/me/overview", status=403)
+            call("/api/me/account")
             organization, team, person, activity, invitation = [str(uuid.uuid4()) for _ in range(5)]
             seed(f"""
 insert into forena.organization(id,name) values('{organization}','Local club');

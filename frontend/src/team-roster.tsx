@@ -1,3 +1,4 @@
+import { ClubAccountAdministration } from "../../src/components/club-account-administration";
 import { RosterRegistration, RosterLogin } from "../../src/components/roster-registration";
 import { useTeamSettingsAccess } from "./team-activity-settings";
 import { useEffect, useRef, useState } from "react";
@@ -104,6 +105,7 @@ export function TeamRosterPage({ request, teamId }: { request: ParticipationFetc
   if (error) query.set("error", error);
   return <>
     <AppLink className="squad-back" href={`/teams/${teamId}`}>← Tillbaka till laget</AppLink>
+    <ClubAccountAdministration teamId={teamId} request={request} />
     {message ? <p className="auth-message" role="status">{message}</p> : null}
     <TeamRosterWorkspace people={data.people.map(person => ({ ...person, title: person.title || rosterRoleLabel(primaryRosterRole(person.roles)) }))}
       groups={data.groups} team={data.team} organization={{ name: data.team.organizationName }} destination={destination}

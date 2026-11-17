@@ -18,6 +18,7 @@ import se.forena.api.identity.internal.TelegramIdentityRepository
 class TelegramIdentityService(
     private val repository: TelegramIdentityRepository,
     private val accounts: AccountService,
+    private val lifecycle: AccountLifecycleService,
     private val clock: DatabaseClockService,
     @Value("\${FORENA_TELEGRAM_ENABLED:false}") private val enabled: Boolean,
     @Value("\${FORENA_TELEGRAM_BOT_USERNAME:}") private val username: String,
@@ -98,6 +99,7 @@ class TelegramIdentityService(
         repository.findConnectionForSubject(subject).orElse(null)
 
     fun actor(connection: TelegramConnection): Actor {
+        lifecycle.requireBusinessAccess(connection.subject)
         val actor = Actor(connection.subject, connection.id, "", telegram = true)
         requireActive(actor)
         return actor

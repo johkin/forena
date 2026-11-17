@@ -1269,3 +1269,10 @@ button:disabled { cursor:not-allowed; }
   .evaluation-metric-row { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) auto; align-items: end; }
   .evaluation-rules { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* Account history must remain readable without widening the mobile profile card. */
+.account-history { white-space:pre-wrap; overflow-wrap:anywhere; font:inherit; }
+.profile-card article, .profile-card form, .profile-card input, .profile-card textarea { min-width:0; }
+.profile-card textarea { width:100%; }
+.profile-card .form-section > button, .profile-card form > button { margin:4px 8px 4px 0; }
+.account-examples { display:grid; gap:24px; }

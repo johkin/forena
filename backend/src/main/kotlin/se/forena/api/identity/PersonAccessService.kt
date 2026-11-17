@@ -2,7 +2,6 @@ package se.forena.api.identity
 
 import java.util.UUID
 import org.springframework.stereotype.Service
-import se.forena.api.identity.internal.PersonAccessKey
 import se.forena.api.identity.internal.PersonAccessRepository
 import se.forena.api.identity.internal.PersonRepository
 
@@ -10,7 +9,7 @@ import se.forena.api.identity.internal.PersonRepository
 @Service
 class PersonAccessService(private val links: PersonAccessRepository, private val people: PersonRepository) {
     fun people(actor: Actor): List<AccessiblePerson> {
-        val active = links.findByKeySubjectAndActiveTrue(actor.subject)
+        val active = links.effective(actor.subject)
         if (active.isEmpty()) return emptyList()
         val organizations = active.associate { it.key.personId to it.organizationId }
         val byPerson = active.associateBy { it.key.personId }
@@ -20,7 +19,7 @@ class PersonAccessService(private val links: PersonAccessRepository, private val
     }
 
     fun people(actor: Actor, organization: UUID): List<AccessiblePerson> {
-        val active = links.findByKeySubjectAndOrganizationIdAndActiveTrue(actor.subject, organization)
+        val active = links.effective(actor.subject).filter { it.organizationId == organization }
         val ids = active.map { it.key.personId }
         val byPerson = active.associateBy { it.key.personId }
         if (ids.isEmpty()) return emptyList()
@@ -29,6 +28,5 @@ class PersonAccessService(private val links: PersonAccessRepository, private val
     }
 
     fun canActFor(actor: Actor, person: UUID, organization: UUID): Boolean =
-        links.findById(PersonAccessKey(person, actor.subject)).orElse(null)
-            ?.let { it.active && it.organizationId == organization } == true
+        links.effective(actor.subject).any { it.key.personId == person && it.organizationId == organization }
 }

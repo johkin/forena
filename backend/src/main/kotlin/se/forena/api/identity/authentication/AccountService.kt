@@ -15,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import se.forena.api.identity.BrowserSessionSettings
+import se.forena.api.identity.internal.AccountProfileRepository
 import se.forena.api.identity.internal.AccountRepository
 import se.forena.api.identity.internal.UserEntity
 import se.forena.api.identity.internal.UserRepository
@@ -22,7 +23,7 @@ import se.forena.api.identity.internal.UserRepository
 @Service
 class AccountService(private val users: UserRepository, private val accounts: AccountRepository,
     private val passwords: PasswordEncoder, private val tokens: JdbcOneTimeTokenService,
-    private val mail: AuthMailService, private val settings: BrowserSessionSettings) {
+    private val mail: AuthMailService, private val settings: BrowserSessionSettings, private val profiles: AccountProfileRepository) {
     fun email(value: String): String = value.trim().lowercase(Locale.ROOT).also {
         require(it.length in 3..320 && it.matches(Regex("[^\\s@]+@[^\\s@]+\\.[^\\s@]+")))
     }
@@ -82,6 +83,7 @@ class AccountService(private val users: UserRepository, private val accounts: Ac
     fun resetPassword(code: String, rawPassword: String) {
         val hash = password(rawPassword)
         val user = consume(code, "reset")
+        profiles.lock(user.subject)
         if (users.resetPassword(user.subject, hash, user.authVersion) != 1) throw BadCredentialsException("Invalid link")
     }
     private fun consume(code: String, purpose: String, confirmed: Boolean = true): UserEntity {

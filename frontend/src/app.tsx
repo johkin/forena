@@ -1,3 +1,7 @@
+import { AccountExamples } from "../../src/components/account-examples";
+import { AccountAiConnection } from "../../src/components/account-ai-connection";
+import { AccountProfile } from "../../src/components/account-profile";
+import { AccountSecurity, AccountEmailConfirmation } from "../../src/components/account-security";
 import { PendingRosterInvitation, RosterInvitationLanding } from "./roster-invitation";
 import { TeamActivitySettingsPage } from "./team-activity-settings";
 import { AssistantMemorySettings } from "../../src/components/assistant-memory-settings";
@@ -54,7 +58,7 @@ function Frame({ children, email, logout, request }: { children: ReactNode; emai
     navigation={systemWorkspace
       ? <NavigationLinksView label="Systemadministration" items={systemNavigationItems} pathname={pathname === "/administration" ? "/system" : pathname} linkComponent={AppLink} />
       : request && teamId.success ? <TeamRosterNavigation key={teamId.data} request={request} teamId={teamId.data} pathname={pathname} /> : undefined}
-    accountLinks={<><AppLink href="/account/security">Inloggningsinställningar</AppLink>
+    accountLinks={<><AppLink href="/account">Mitt konto</AppLink><AppLink href="/account/security">Inloggningsinställningar</AppLink>
       {system || administration?.canBootstrap ? <AppLink href="/system">Systemadministration</AppLink> : administration?.clubs.length ? <AppLink href="/administration">Föreningsadministration</AppLink> : null}</>}
     logout={logout} />;
   return <><div className="app-page"><AppShellFrame sidebar={menu}
@@ -131,7 +135,7 @@ export function App({ config }: { config: PublicConfig }) {
   })(path, init), [accountId, applySession]);
   const path = location.pathname;
   if (path === "/join-team") return <Frame><main tabIndex={-1} className="auth-page"><RosterInvitationLanding /></main></Frame>;
-  if (path === "/components") return <Frame><main tabIndex={-1} className="content component-gallery"><h1>Komponenter</h1><BrowserFrontendExamples linkComponent={AppLink} /><AttendanceExamples /><AssistantExamples /><AssistantSettingsExamples /><TelegramSettingsExamples /></main></Frame>;
+  if (path === "/components") return <Frame><main tabIndex={-1} className="content component-gallery"><h1>Komponenter</h1><AccountExamples /><BrowserFrontendExamples linkComponent={AppLink} /><AttendanceExamples /><AssistantExamples /><AssistantSettingsExamples /><TelegramSettingsExamples /></main></Frame>;
   if ((accountCallback || ["/register", "/password/forgot"].includes(path))) return <Frame><main tabIndex={-1} className="auth-page"><AccountPage key={path} action={path === "/register" ? "register" : path === "/password/forgot" ? "forgot" : path === "/auth/reset" ? "reset" : "verify"} code={callbackCode} /></main></Frame>;
   if (callback) return <Frame><main tabIndex={-1} className="auth-page"><MagicLinkConfirmation pending={pending} error={error} onConfirm={() => void (async () => {
     if (pending) return;
@@ -188,7 +192,10 @@ export function App({ config }: { config: PublicConfig }) {
   const match = /^\/activities\/([^/]+)$/.exec(path);
   const activityId = match?.[1] ?? (path === "/migration/participation" ? config.activityId : undefined);
   const validActivity = z.uuid().safeParse(activityId);
-  const securityPage = path === "/account/security" || path === "/account";
+  const connectPage = path === "/connect";
+  const profilePage = path === "/account" || path === "/profile";
+  const emailConfirmPage = path === "/account/email/confirm";
+  const securityPage = path === "/account/security";
   const managementPage = path === "/activities/manage";
   const managementQuery = new URLSearchParams(location.search);
   const managementTeam = z.uuid().safeParse(managementQuery.get("team"));
@@ -202,7 +209,7 @@ export function App({ config }: { config: PublicConfig }) {
   const evaluationMatch = /^\/teams\/([^/]+)\/evaluation$/.exec(path);
   const evaluationTeam = z.uuid().safeParse(evaluationMatch?.[1]);
   const evaluationPage = Boolean(evaluationMatch && evaluationTeam.success);
-  const knownPath = evaluationPage || settingsPage || rosterPage || administrationPage || managementPage || securityPage || homePath || path === "/migration/participation" || Boolean(match);
+  const knownPath = connectPage || profilePage || emailConfirmPage || evaluationPage || settingsPage || rosterPage || administrationPage || managementPage || securityPage || homePath || path === "/migration/participation" || Boolean(match);
   async function logout() {
     setPending(true); setError(undefined);
     try {
@@ -216,19 +223,25 @@ export function App({ config }: { config: PublicConfig }) {
     <main tabIndex={-1} className={administrationPage ? "application-page" : `content ${homePath ? "personal-dashboard" : ""}`} key={auth.session.user.id}>
       <PendingRosterInvitation key={auth.session.user.id} request={request} onAccepted={team => navigate(`/teams/${team}`)} />
       {validActivity.success && !managementPage ? <OverviewBackLink linkComponent={AppLink} /> : null}
-      {!homePath && !securityPage && !managementPage && !administrationPage && !rosterPage && !settingsPage && !evaluationPage ? <><p className="eyebrow">Personligt</p><h1>{!knownPath ? "Sidan finns inte" : "Kallelser"}</h1></> : null}
+      {!homePath && !connectPage && !profilePage && !emailConfirmPage && !securityPage && !managementPage && !administrationPage && !rosterPage && !settingsPage && !evaluationPage ? <><p className="eyebrow">Personligt</p><h1>{!knownPath ? "Sidan finns inte" : "Kallelser"}</h1></> : null}
       {error ? <p role="alert">{error}</p> : null}
       {evaluationPage && evaluationTeam.success ? <><AppLink className="squad-back" href={`/teams/${evaluationTeam.data}`}>← Tillbaka till laget</AppLink><PlayerEvaluation key={evaluationTeam.data} teamId={evaluationTeam.data} request={request} /></> : settingsPage && settingsTeam.success ? <TeamActivitySettingsPage key={settingsTeam.data} request={request} teamId={settingsTeam.data} /> : rosterPage && rosterTeam.success ? <TeamRosterPage key={rosterTeam.data} request={request} teamId={rosterTeam.data} /> : administrationPage ? <Administration request={request} path={path + location.search} onNavigate={navigate} linkComponent={AppLink} /> : managementPage ? <ActivityManagement key={location.search} request={request}
         initialTeamId={managementTeam.success ? managementTeam.data : undefined}
         createOnLoad={managementTeam.success && managementQuery.get("create") === "1"}
-        onEditorClose={() => { if (managementTeam.success && managementQuery.get("create") === "1") navigate(`/activities/manage?team=${managementTeam.data}`, { replace: true }); }} /> : securityPage ? <><PasskeyRegistration pending={pending} registered={passkeyCreatedFor === accountId} supported={Boolean(window.PublicKeyCredential && navigator.credentials)} onRegister={() => void (async () => {
+        onEditorClose={() => { if (managementTeam.success && managementQuery.get("create") === "1") navigate(`/activities/manage?team=${managementTeam.data}`, { replace: true }); }} /> : connectPage ? <AccountAiConnection address={`${window.location.origin}/api/mcp`} /> : profilePage ? <AccountProfile request={request} linkComponent={AppLink} /> : emailConfirmPage ? <AccountEmailConfirmation request={request} onConfirmed={() => { void reloadSession(); notifySessionChanged(); }} /> : securityPage ? <><AccountSecurity request={request} onPasskeyVerify={async () => {
+        const expected = auth.session?.user.id;
+        if (!expected) throw new Error("Logga in igen.");
+        const verified = await passkeyLogin(expected);
+        if (verified?.user.id !== expected) throw new Error("Verifieringen måste göras med samma konto.");
+        applySession(verified); notifySessionChanged();
+      }} onSessionRevoked={() => { applySession(null); notifySessionChanged(); }} /><PasskeyRegistration pending={pending} registered={passkeyCreatedFor === accountId} supported={Boolean(window.PublicKeyCredential && navigator.credentials)} onRegister={() => void (async () => {
         const expectedAccount = accountId;
         if (!expectedAccount || pending) return;
         setPending(true); setError(undefined);
         try { await registerPasskey(expectedAccount); if (activeAccount.current === expectedAccount) setPasskeyCreatedFor(expectedAccount); }
         catch (error) { if (activeAccount.current === expectedAccount) setError(error instanceof DOMException && error.name === "NotAllowedError" ? "Registreringen avbröts. Du kan försöka igen." : "Passkey kunde inte skapas. Försök igen senare."); }
         finally { setPending(false); }
-      })()} /><PasskeyList key={auth.session.user.id} accountId={auth.session.user.id} revision={passkeyCreatedFor === accountId} /><TelegramProfileSettings key={`telegram:${auth.session.user.id}`} request={request} /><PushNotificationSettings request={request} /><AssistantMemorySettings request={request} /></> : !knownPath ? <AppLink href="/">Till startsidan</AppLink> : homePath ? <MyActivitiesPage accountId={auth.session.user.id} request={request} workspace={workspace} notifications={path==="/notifications"} /> : validActivity.success ? <>
+      })()} /><PasskeyList key={auth.session.user.id} accountId={auth.session.user.id} request={request} revision={passkeyCreatedFor === accountId} /><TelegramProfileSettings key={`telegram:${auth.session.user.id}`} request={request} /><PushNotificationSettings request={request} /><AssistantMemorySettings request={request} /></> : !knownPath ? <AppLink href="/">Till startsidan</AppLink> : homePath ? <MyActivitiesPage accountId={auth.session.user.id} request={request} workspace={workspace} notifications={path==="/notifications"} /> : validActivity.success ? <>
         <ActivityDetails key={validActivity.data} activityId={validActivity.data} request={request} />
       </> : <p>Inga kallelser att visa här ännu. Öppna länken till en aktivitet för att se dina kallelser.</p>}
       {workspace?.kind === "team" ? <TelegramGroups request={request} teamId={workspace.id} /> : null}

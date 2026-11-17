@@ -34,14 +34,14 @@ function encode(value: ArrayBuffer) {
 }
 
 /** Spring Security verifies the challenge/signature, RP ID and origin. No Supabase browser client is used. */
-export async function passkeyLogin(): Promise<SessionView | null> {
+export async function passkeyLogin(accountId?: string): Promise<SessionView | null> {
   if (!window.PublicKeyCredential || !navigator.credentials) throw new Error("Webbläsaren stöder inte passkey.");
   const optionsSchema = z.object({
     challenge: z.string(), rpId: z.string(), timeout: z.number().optional(),
     userVerification: z.enum(["required", "preferred", "discouraged"]).optional(),
     allowCredentials: z.array(z.object({ id: z.string(), type: z.literal("public-key") })).optional(),
   });
-  const raw = await authRequest("passkey/options", {});
+  const raw = await authRequest("passkey/options", {}, fetch, accountId);
   const result = { options: optionsSchema.parse(raw) };
   const hostname = window.location.hostname;
   if (hostname !== result.options.rpId && !hostname.endsWith(`.${result.options.rpId}`)) throw new Error("Passkey är inte konfigurerad för webbplatsen.");
@@ -58,7 +58,7 @@ export async function passkeyLogin(): Promise<SessionView | null> {
       response: { clientDataJSON: encode(assertion.clientDataJSON), authenticatorData: encode(assertion.authenticatorData),
         signature: encode(assertion.signature), userHandle: assertion.userHandle ? encode(assertion.userHandle) : null },
   };
-  return parseSession(await authRequest("passkey/verify", assertionPayload));
+  return parseSession(await authRequest("passkey/verify", assertionPayload, fetch, accountId));
 }
 
 export function clearLegacyAuth(storage: Pick<Storage, "removeItem"> = localStorage) {

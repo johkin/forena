@@ -19,6 +19,10 @@ const attendanceWrites = new RegExp(`^/api/activities/${uuid}/attendance$`, "i")
 const assistantRead = new RegExp(`^/api/assistant/(?:conversations(?:/${uuid})?|profiles/${uuid}(?:/sections/${uuid})?)$`, "i");
 const assistantWrite = new RegExp(`^/api/assistant/(?:conversations(?:/${uuid}(?:/messages|/resume)?)?|proposals/${uuid}/confirm|profiles/${uuid}(?:/sections/${uuid})?)$`, "i");
 const groupResource = new RegExp(`^/api/teams/${uuid}/telegram/groups(?:/(?:team|leaders))?$`, "i");
+const clubAccountRead = new RegExp(`^/api/teams/${uuid}/account-administration(?:/people/${uuid}/history)?(?:\\?offset=\\d{1,10})?$`, "i");
+const clubAccountWrite = new RegExp(`^/api/teams/${uuid}/account-administration/(?:people/${uuid}/birth-date|proposals/${uuid})$`, "i");
+const accountRead = new RegExp(`^/api/me/account(?:/sessions|/children/${uuid}/(?:history|proposals)(?:\\?offset=\\d{1,10})?|/followers/${uuid}/matches)?$`, "i");
+const accountWrite = new RegExp(`^/api/me/account(?:/children/${uuid}(?:/(?:proposals|follower))?|/child-links(?:/${uuid})?|/followers/${uuid}|/reauthenticate|/sessions(?:/${uuid})?|/password|/email(?:/confirm)?|/passkeys/[A-Za-z0-9_-]{1,1400})?$`, "i");
 const writes = new RegExp(`^/api/invitations/${uuid}/respond$`, "i");
 
 /** Only allowlisted, same-origin API calls receive the HttpOnly session cookie. */
@@ -26,10 +30,10 @@ export function createApiFetch(readAccount: () => Promise<string | null>, unauth
   return async (path, init = {}) => {
     const method = init.method ?? "GET";
     const allowedRead = method === "GET" && (
-      path === "/api/me/roster-invitation" || new RegExp(`^/api/teams/${uuid}/roster/candidates\\?q=[^&#]{1,1920}$`, "i").test(path) || path === "/api/push-subscriptions" || path === "/api/telegram/settings" || /^\/api\/assistant\/memories\?scope=(?:personal|organization|section|team)(?:&(?:organizationId|sectionId|teamId)=[0-9a-f-]{36}){0,3}$/i.test(path) || assistantRead.test(path) || groupResource.test(path) || path === "/api/admin/overview" || attendanceReads.test(path) || adminSlug.test(path) || reads.test(path) || editorReads.test(path) || rosterReads.test(path) || path === "/api/me/managed-teams" ||
+      clubAccountRead.test(path) || accountRead.test(path) || path === "/api/me/roster-invitation" || new RegExp(`^/api/teams/${uuid}/roster/candidates\\?q=[^&#]{1,1920}$`, "i").test(path) || path === "/api/push-subscriptions" || path === "/api/telegram/settings" || /^\/api\/assistant\/memories\?scope=(?:personal|organization|section|team)(?:&(?:organizationId|sectionId|teamId)=[0-9a-f-]{36}){0,3}$/i.test(path) || assistantRead.test(path) || groupResource.test(path) || path === "/api/admin/overview" || attendanceReads.test(path) || adminSlug.test(path) || reads.test(path) || editorReads.test(path) || rosterReads.test(path) || path === "/api/me/managed-teams" ||
       path === "/api/me/overview" || /^\/api\/me\/calendar\?month=\d{4}-(?:0[1-9]|1[0-2])$/.test(path) || /^\/api\/me\/activities(?:\?offset=\d{1,6})?$/.test(path)
     );
-    const allowedWrite = (["POST", "DELETE"].includes(method) && path === "/api/me/roster-invitation") || (method === "POST" && new RegExp(`^/api/teams/${uuid}/roster/members(?:/${uuid}/invitation)?$`, "i").test(path)) || (["POST", "DELETE"].includes(method) && path === "/api/push-subscriptions") || (["PUT", "DELETE"].includes(method) && new RegExp(`^/api/assistant/memories/${uuid}(?:\\?revision=\\d{1,16})?$`, "i").test(path)) || (method === "POST" && path === "/api/telegram/settings") || (["POST", "PUT", "DELETE"].includes(method) && (assistantWrite.test(path) || groupResource.test(path))) || (["POST", "PUT", "DELETE"].includes(method) && adminResource.test(path)) || (method === "PUT" && writes.test(path)) ||
+    const allowedWrite = (method === "PUT" && clubAccountWrite.test(path)) || (["POST", "PUT", "DELETE"].includes(method) && accountWrite.test(path)) || (["POST", "DELETE"].includes(method) && path === "/api/me/roster-invitation") || (method === "POST" && new RegExp(`^/api/teams/${uuid}/roster/members(?:/${uuid}/invitation)?$`, "i").test(path)) || (["POST", "DELETE"].includes(method) && path === "/api/push-subscriptions") || (["PUT", "DELETE"].includes(method) && new RegExp(`^/api/assistant/memories/${uuid}(?:\\?revision=\\d{1,16})?$`, "i").test(path)) || (method === "POST" && path === "/api/telegram/settings") || (["POST", "PUT", "DELETE"].includes(method) && (assistantWrite.test(path) || groupResource.test(path))) || (["POST", "PUT", "DELETE"].includes(method) && adminResource.test(path)) || (method === "PUT" && writes.test(path)) ||
       (method === "POST" && (path === "/api/activities" || path === "/api/activity-series")) ||
       (["PUT", "DELETE"].includes(method) && activityWrites.test(path)) ||
       (method === "PUT" && (attendanceWrites.test(path) || rosterMembers.test(path) || rosterGroup.test(path))) ||
@@ -65,7 +69,7 @@ export function createApiFetch(readAccount: () => Promise<string | null>, unauth
 
 export function safeDestination(value: string | null) {
   if (value === null) return "/";
-  const knownRoute = ["/", "/activities/manage", "/administration", "/system", "/components", "/notifications", "/assistant", "/account", "/account/security"].includes(value);
+  const knownRoute = ["/", "/activities/manage", "/administration", "/system", "/components", "/notifications", "/assistant", "/connect", "/account", "/profile", "/account/security", "/account/email/confirm"].includes(value);
   const workspace = new RegExp(`^/(?:activities|organizations|teams)/${uuid}$`, "i").test(value);
   const teamPage = new RegExp(`^/teams/${uuid}/(?:members|settings|evaluation)$`, "i").test(value);
   const assistantConversation = new RegExp(`^/assistant\\?conversation=${uuid}$`, "i").test(value);

@@ -57,10 +57,17 @@ class AuthenticationConfiguration {
     @Bean fun passwordManager(details: UserDetailsService, passwords: PasswordEncoder): AuthenticationManager =
         ProviderManager(DaoAuthenticationProvider(details).apply { setPasswordEncoder(passwords) })
 
-    @Bean fun authenticationSuccess(accounts: AccountService, json: JsonMapper, csrf: StringCsrfTokenRepository) =
+    @Bean fun authenticationSuccess(accounts: AccountService, json: JsonMapper, csrf: StringCsrfTokenRepository, security: AccountSecurityService) =
         AuthenticationSuccessHandler { request, response, authentication ->
             CsrfAuthenticationStrategy(csrf).onAuthentication(authentication, request, response)
             val user = accounts.requireUser(UUID.fromString(authentication.name))
+            val expected = request.getHeader("X-Forena-Account")
+            if (expected != null && expected != user.subject.toString()) {
+                request.getSession(false)?.invalidate()
+                throw BadCredentialsException("Account changed")
+            }
+            request.getSession(true).setAttribute("forena.device-label", AccountSecurityService.device(request.getHeader("User-Agent")))
+            if (authentication !is OneTimeTokenAuthenticationToken) security.markRecent(user.subject, request)
             response.contentType = "application/json;charset=UTF-8"
             json.writeValue(response.outputStream, BrowserSessionView(BrowserUser(user.subject.toString(), user.email)))
         }

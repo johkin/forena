@@ -33,10 +33,17 @@ class AuthMailService(private val jdbc: JdbcTemplate, private val transaction: T
                 val rows = jdbc.queryForList("select id,recipient,kind,encrypted_link from forena.auth_mail_outbox where delivered_at is null and next_attempt<=now() and expires_at>now() and attempts<5 order by next_attempt for update skip locked limit 1")
                 val row = rows.firstOrNull() ?: return@execute false
                 val id = row["id"].toString()
-                val title = when (row["kind"]) { "verify" -> "Verifiera din e-postadress"; "reset" -> "Återställ ditt lösenord"; "roster" -> "Acceptera din laginbjudan"; else -> "Logga in" }
+                val title = when (row["kind"]) { "verify" -> "Verifiera din e-postadress"; "reset" -> "Återställ ditt lösenord"; "roster" -> "Acceptera din laginbjudan";
+                    "email-change" -> "Verifiera din nya inloggningsadress"; "email-changed" -> "Din inloggningsadress har ändrats";
+                    "follower" -> "Förfrågan om att följa dina matcher";
+                    "account-warning", "account-reminder" -> "Ditt Förena-konto kommer att tas bort"; else -> "Logga in" }
                 val link = settings.decrypt(row["encrypted_link"].toString(), id)
                 val instructions = if (row["kind"] == "roster")
                     "Du har blivit inbjuden till ett lag i Förena. Öppna länken, skapa konto vid behov och verifiera denna e-postadress. Logga sedan in och acceptera inbjudan. Länken gäller i sju dagar. En ny inbjudan ersätter den gamla.\n\n$link\n\nOm du inte känner igen inbjudan kan du ignorera mejlet."
+                else if (row["kind"] == "email-change") "Verifiera din nya inloggningsadress genom länken. Länken gäller i 30 minuter och öppnas i samma webbläsare som begärde bytet. Din gamla adress gäller tills bytet är klart.\n\n$link"
+                else if (row["kind"] == "email-changed") "Din inloggningsadress i Förena har ändrats. Om du inte känner igen ändringen, kontakta din klubbadministration.\n\n$link"
+                else if (row["kind"] == "follower") "En förälder vill följa dina matcher. Granska klubb och lag i Mitt konto och godkänn eller neka inom 30 dagar. Ingen åtkomst ges innan du godkänner.\n\n$link"
+                else if (row["kind"] in setOf("account-warning", "account-reminder")) "Du saknar nu klubbkoppling. Ditt konto tas bort ${link.substringAfter("#deletion=")}. En ny godkänd klubbkoppling före dess stoppar borttagningen. Klubbarnas personposter och historik behålls.\n\n${settings.origin}/account"
                 else "$title genom att öppna länken nedan. Länken gäller i tio minuter och kan användas en gång.\n\n$link\n\nÖppna inloggningslänken i samma webbläsare som begärde den. Om du inte begärde detta kan du ignorera mejlet."
                 val message = EmailMessage(row["recipient"].toString(), "$title i Förena",
                     instructions,

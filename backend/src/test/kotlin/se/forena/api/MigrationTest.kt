@@ -29,7 +29,37 @@ import org.springframework.security.oauth2.server.authorization.settings.TokenSe
 import org.testcontainers.postgresql.PostgreSQLContainer
 
 class MigrationTest {
-    @ParameterizedTest @ValueSource(ints = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27])
+    @Test fun `profile migration activates historical links but preserves unused preregistrations`() {
+        PostgreSQLContainer("postgres:17.6-alpine").withInitScript("init.sql").use { pg ->
+            pg.start()
+            DriverManager.getConnection(pg.jdbcUrl, "forena_api_owner", "local-owner-only").use { connection ->
+                val database = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(JdbcConnection(connection))
+                database.defaultSchemaName = "forena"
+                database.liquibaseSchemaName = "forena"
+                Liquibase("db/changelog.xml", ClassLoaderResourceAccessor(), database).use { migrations ->
+                    migrations.update(28, Contexts(), LabelExpression())
+                    val jdbc = JdbcTemplate(DriverManagerDataSource(pg.jdbcUrl, pg.username, pg.password))
+                    val organization = UUID.randomUUID()
+                    val historical = UUID.randomUUID()
+                    val agedOut = UUID.randomUUID()
+                    val unused = UUID.randomUUID()
+                    listOf(historical, agedOut, unused).forEach { jdbc.update("insert into forena.account(subject) values(?)", it) }
+                    jdbc.update("insert into forena.organization(id,name) values(?,'Legacy club')", organization)
+                    listOf(historical to false, agedOut to true).forEach { (subject, active) ->
+                        val person = UUID.randomUUID()
+                        jdbc.update("insert into forena.person(id,organization_id,display_name,birth_date) values(?,?,'Adult',date '2000-01-01')", person, organization)
+                        jdbc.update("insert into forena.person_access(person_id,organization_id,subject,kind,active) values(?,?,?,'guardian',?)", person, organization, subject, active)
+                    }
+                    migrations.update(Contexts(), LabelExpression())
+                    listOf(historical, agedOut).forEach { subject ->
+                        assertThat(jdbc.queryForObject("select activated_at is not null and disconnected_at is null from forena.account_lifecycle where subject=?", Boolean::class.java, subject)).isTrue()
+                    }
+                    assertThat(jdbc.queryForObject("select activated_at is null from forena.account_lifecycle where subject=?", Boolean::class.java, unused)).isTrue()
+                }
+            }
+        }
+    }
+    @ParameterizedTest @ValueSource(ints = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28])
     fun `empty install or previous baseline upgrade validates and is repeatable without data loss`(baseline: Int) {
         PostgreSQLContainer("postgres:17.6-alpine").withInitScript("init.sql").use { pg ->
             pg.start()
@@ -94,7 +124,7 @@ class MigrationTest {
                     migrations.validate()
                     connection.createStatement().use { statement ->
                         statement.executeQuery("select count(*) from forena.databasechangelog").use {
-                            it.next(); assertThat(it.getInt(1)).isEqualTo(28)
+                            it.next(); assertThat(it.getInt(1)).isEqualTo(29)
                         }
                         statement.executeQuery("select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='forena' and c.relkind='r' and c.relname not like 'databasechangelog%' and (c.relrowsecurity or c.relforcerowsecurity)").use {
                             it.next(); assertThat(it.getInt(1)).isZero()
