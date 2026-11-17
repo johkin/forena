@@ -5639,7 +5639,9 @@ export interface operations {
     };
     history_1: {
         parameters: {
-            query?: never;
+            query?: {
+                offset?: number;
+            };
             header?: never;
             path: {
                 id: string;
@@ -6512,7 +6514,9 @@ export interface operations {
     };
     view_1: {
         parameters: {
-            query?: never;
+            query?: {
+                offset?: number;
+            };
             header?: never;
             path: {
                 team: string;
@@ -6561,7 +6565,9 @@ export interface operations {
     };
     history: {
         parameters: {
-            query?: never;
+            query?: {
+                offset?: number;
+            };
             header?: never;
             path: {
                 team: string;

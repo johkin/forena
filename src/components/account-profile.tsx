@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import type { ParticipationFetch } from "./activity-invitation-response";
 import { ActivityDatePicker } from "./activity-date-picker";
+import { AccountProfileHistory } from "./account-profile-history";
 import { ConfirmSubmit } from "./confirm-submit";
 
 const personSchema = z.object({ id: z.uuid(), organizationId: z.uuid(), organizationName: z.string(), kind: z.enum(["self", "guardian"]), name: z.string(), birthDate: z.string().nullable(), phone: z.string(), contactEmail: z.string(), address: z.string(), revision: z.number(), editable: z.boolean(), linkGroup: z.uuid().nullable() });
@@ -82,19 +83,12 @@ function ChildProfile({ person, people, request, onSaved }: { person: AccountPer
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   const [message, setMessage] = useState<string>();
-  const [history, setHistory] = useState<z.infer<typeof historySchema>>();
+  const [history, setHistory] = useState(false);
   const changed = JSON.stringify(expected) !== JSON.stringify(versions(affected));
-  async function historyLoad() {
-    try {
-      const response = await request(`${base}/children/${person.id}/history`);
-      if (!response.ok) throw new Error();
-      setHistory(historySchema.parse(await response.json()));
-    } catch { setError("Historiken kunde inte hämtas. Din åtkomst kan ha upphört."); }
-  }
   async function act(path: string, method: string, body?: unknown) {
     if (pending) return;
     setPending(true); setError(undefined); setMessage(undefined);
-    try { await accountCommand(request, path, method, body); setMessage("Ändringen har sparats."); setEditing(false); setHistory(undefined); onSaved(); }
+    try { await accountCommand(request, path, method, body); setMessage("Ändringen har sparats."); setEditing(false); setHistory(false); onSaved(); }
     catch (error) { setError(error instanceof Error ? error.message : "Ändringen misslyckades."); }
     finally { setPending(false); }
   }
@@ -110,14 +104,13 @@ function ChildProfile({ person, people, request, onSaved }: { person: AccountPer
         {changed ? <><p>Aktuella uppgifter i berörda föreningar. Ditt utkast är bevarat.</p><ul>{affected.map(current => <li key={current.id}>{current.organizationName}: {current.name}, {current.birthDate}, {current.phone}, {current.contactEmail}, {current.address}</li>)}</ul><button type="button" className="secondary" onClick={() => setExpected(versions(affected))}>Jag har stämt av, använd aktuell version</button></> : null}
         <button className="primary" disabled={pending || changed}>Spara barnets uppgifter</button><button type="button" className="secondary" onClick={() => setEditing(false)}>Avbryt</button>
       </form>}
-      <button className="secondary" disabled={pending} onClick={() => void historyLoad()}>Visa ändringshistorik</button>
-      {history ? history.length ? <ul>{history.map(item => <li key={item.id}>{item.actor} · {dateTime(item.changedAt)}<pre className="account-history">{item.changes}</pre></li>)}</ul> : <p>Inga sparade ändringar.</p> : null}
+      <button className="secondary" disabled={pending} onClick={() => setHistory(true)}>Visa ändringshistorik</button>
+      {history ? <AccountProfileHistory path={`${base}/children/${person.id}/history`} request={request} /> : null}
       <GuardianProposal person={person} request={request} />
     </>}
     {error ? <><p role="alert" className="auth-error">{error}</p><button className="secondary" onClick={onSaved}>Läs in aktuella uppgifter</button></> : null}{message ? <p role="status">{message}</p> : null}
   </article>;
 }
-const historySchema = z.array(z.object({ id: z.uuid(), actor: z.string(), changedAt: z.string(), changes: z.string() }));
 function GuardianProposal({ person, request, correction = false }: { person: AccountPerson; request: ParticipationFetch; correction?: boolean }) {
   const [email, setEmail] = useState("");
   const [operation, setOperation] = useState("add");

@@ -1,13 +1,24 @@
 package se.forena.api.identity.internal
 
 import java.time.Instant
+import java.time.ZoneId
 import java.util.UUID
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Repository
+import org.springframework.http.HttpStatus.TOO_MANY_REQUESTS
+import org.springframework.web.server.ResponseStatusException
 import se.forena.api.identity.*
 
 @Repository
 class AccountProfileRepository(private val jdbc: JdbcClient) {
+    fun timeZone(organization: UUID): ZoneId = ZoneId.of(jdbc.sql("select time_zone from forena.organization where id=:org")
+        .param("org", organization).query(String::class.java).single())
+    fun lockProposal(organization: UUID, proposal: UUID, people: Set<UUID>): UUID {
+        if (people.isEmpty()) throw NoSuchElementException()
+        return jdbc.sql("select person_id from forena.account_guardian_proposal where id=:id and organization_id=:org and person_id in (:people) for update")
+            .param("id", proposal).param("org", organization).param("people", people).query(UUID::class.java)
+            .optional().orElseThrow { NoSuchElementException() }
+    }
     fun clubPeople(organization: UUID, ids: Collection<UUID>): List<ClubAccountPerson> {
         if (ids.isEmpty()) return emptyList()
         return jdbc.sql("select id,display_name as name,birth_date,profile_revision as revision from forena.person where organization_id=:org and id in (:ids) order by display_name,id")
@@ -91,11 +102,11 @@ class AccountProfileRepository(private val jdbc: JdbcClient) {
             .param("id", UUID.randomUUID()).param("person", person.id).param("org", person.organizationId)
             .param("actor", subject).param("changes", changes).update()
     }
-    fun history(person: UUID): List<ProfileHistory> = jdbc.sql("""
+    fun history(person: UUID, offset: Int = 0): List<ProfileHistory> = jdbc.sql("""
         select h.id,coalesce(nullif(a.display_name,''),case when a.enabled then 'Användare' else 'Borttaget konto' end) as actor,h.changed_at,h.changes
         from forena.person_profile_history h join forena.account a on a.subject=h.actor_subject
-        where h.person_id=:person order by h.changed_at desc,h.id
-    """).param("person", person).query(ProfileHistory::class.java).list().map { requireNotNull(it) }
+        where h.person_id=:person order by h.changed_at desc,h.id limit 100 offset :offset
+    """).param("person", person).param("offset", offset).query(ProfileHistory::class.java).list().map { requireNotNull(it) }
 
     fun link(subject: UUID, ids: Set<UUID>) {
         val group = UUID.randomUUID()
@@ -110,6 +121,14 @@ class AccountProfileRepository(private val jdbc: JdbcClient) {
             .param("subject", subject).param("group", group).update()
     }
     fun propose(subject: UUID, person: AccountPerson, command: GuardianProposalCommand): UUID {
+        val existing = jdbc.sql("""select id from forena.account_guardian_proposal where person_id=:person
+            and guardian_email=:email and operation=:operation and state='pending'""")
+            .param("person", person.id).param("email", command.email).param("operation", command.operation)
+            .query(UUID::class.java).optional().orElse(null)
+        if (existing != null) return existing
+        val count = jdbc.sql("select count(*) from forena.account_guardian_proposal where person_id=:person and state='pending'")
+            .param("person", person.id).query(Long::class.java).single()
+        if (count >= 100) throw ResponseStatusException(TOO_MANY_REQUESTS, "Too many pending proposals")
         val id = UUID.randomUUID()
         jdbc.sql("""insert into forena.account_guardian_proposal(id,proposer,person_id,organization_id,guardian_email,operation)
             values(:id,:subject,:person,:org,:email,:operation)""")
@@ -118,11 +137,17 @@ class AccountProfileRepository(private val jdbc: JdbcClient) {
         return id
     }
     fun proposals(person: UUID): List<GuardianProposalView> = proposalsForPeople(listOf(person))
-    fun proposalsForPeople(people: Collection<UUID>): List<GuardianProposalView> {
+    fun proposalForPeople(id: UUID, people: Set<UUID>): GuardianProposalView? {
+        if (people.isEmpty()) return null
+        return jdbc.sql("""select id,person_id,guardian_email as email,operation,state from forena.account_guardian_proposal
+            where id=:id and person_id in (:people)""").param("id", id).param("people", people)
+            .query(GuardianProposalView::class.java).optional().orElse(null)
+    }
+    fun proposalsForPeople(people: Collection<UUID>, offset: Int = 0): List<GuardianProposalView> {
         if (people.isEmpty()) return emptyList()
         return jdbc.sql("""
             select id,person_id,guardian_email as email,operation,state from forena.account_guardian_proposal
-            where person_id in (:people) order by created_at desc
-        """).param("people", people).query(GuardianProposalView::class.java).list().map { requireNotNull(it) }
+            where person_id in (:people) and state='pending' order by created_at desc,id limit 100 offset :offset
+        """).param("people", people).param("offset", offset).query(GuardianProposalView::class.java).list().map { requireNotNull(it) }
     }
 }

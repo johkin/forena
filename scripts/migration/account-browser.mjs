@@ -33,6 +33,14 @@ try {
       await child.getByRole('button', { name: 'Avbryt', exact: true }).click();
       await child.getByRole('button', { name: 'Visa ändringshistorik' }).click();
       await expect(child.getByText('Telefon: 0700000000 → 0701234567')).toBeVisible();
+      await example.getByLabel('Kontoläge').selectOption('history');
+      const historyChild = profile.locator('article').filter({ has: page.getByRole('heading', { name: 'Sam Andersson', exact: true }) }).first();
+      await historyChild.getByRole('button', { name: 'Visa ändringshistorik' }).click();
+      await expect(historyChild.getByText('Ändring 1', { exact: true })).toBeVisible();
+      await historyChild.getByRole('button', { name: 'Äldre ändringar' }).click();
+      await expect(historyChild.getByText('Ändring 101', { exact: true })).toBeVisible();
+      await historyChild.getByRole('button', { name: 'Nyare ändringar' }).click();
+      await expect(historyChild.getByText('Ändring 1', { exact: true })).toBeVisible();
       await example.getByLabel('Kontoläge').selectOption('conflict');
       await profile.getByLabel('Visningsnamn').fill('Utkast att behålla');
       await profile.getByRole('button', { name: 'Spara profil', exact: true }).click();

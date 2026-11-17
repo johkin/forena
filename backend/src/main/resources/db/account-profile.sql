@@ -43,8 +43,17 @@ CREATE TABLE forena.account_lifecycle (
  disconnected_at timestamptz, reminder_sent boolean NOT NULL DEFAULT false,
  deleted_at timestamptz
 );
--- Existing approved relationships are discovered by the service, never inferred from matching personal data.
-INSERT INTO forena.account_lifecycle(subject) SELECT subject FROM forena.account;
+-- Historical approved links activate legacy accounts too. Give disconnected legacy
+-- accounts a full grace period from rollout; the original disconnection may be unknown.
+INSERT INTO forena.account_lifecycle(subject,activated_at)
+SELECT a.subject, CASE WHEN
+ EXISTS(SELECT 1 FROM forena.person_access p WHERE p.subject=a.subject) OR
+ EXISTS(SELECT 1 FROM forena.organization_member m WHERE m.subject=a.subject) OR
+ EXISTS(SELECT 1 FROM forena.section_administrator s WHERE s.subject=a.subject) OR
+ EXISTS(SELECT 1 FROM forena.team_administrator t WHERE t.subject=a.subject) OR
+ EXISTS(SELECT 1 FROM forena.platform_administrator p WHERE p.subject=a.subject)
+ THEN clock_timestamp() END
+FROM forena.account a;
 ALTER TABLE forena.account_lifecycle ADD COLUMN connection_until timestamptz;
 ALTER TABLE forena.spring_session ADD COLUMN device_label text NOT NULL DEFAULT 'Okänd webbläsare/enhet';
 
@@ -55,5 +64,6 @@ UPDATE forena.account a SET display_name=coalesce((
 ),'');
 
 CREATE INDEX account_guardian_proposal_person ON forena.account_guardian_proposal(person_id,created_at DESC);
+CREATE UNIQUE INDEX account_guardian_proposal_pending ON forena.account_guardian_proposal(person_id,guardian_email,operation) WHERE state='pending';
 CREATE INDEX account_follower_person ON forena.account_follower(person_id,organization_id) WHERE state='approved';
 ALTER TABLE forena.account_lifecycle ADD COLUMN checked_at timestamptz NOT NULL DEFAULT '-infinity';

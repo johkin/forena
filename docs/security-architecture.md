@@ -1123,6 +1123,20 @@ Följaråtkomst efter 18 år har en egen tabell och en begränsad matchprojektio
 den är aldrig en `person_access`-fullmakt. Kontaktändringar påverkar inte
 barnets autentisering.
 
+Följarförfrågningar kräver en kvarvarande aktiv vårdnadshavarlänk; en
+åldersgräns och en uttryckligt återkallad relation är olika tillstånd.
+Följarbeslut och klubbens profilkommandon kontrollerar session och aktuellt
+mandat efter sina skrivlås. Klubbrättelser nekar framtida födelsedatum enligt
+klubbens tidszon. En ännu behörig förälder får enligt Mitt konto K-028 ändra
+födelsedatum; ändringen loggas och åldersgränsen räknas om direkt. Efter
+åtkomstförlust krävs klubbens rättelse.
+
+Profil- och förslagskommandon har separata globala, klient- och kontobudgetar.
+Samma väntande vårdnadshavarförslag återanvänds och databasen tillåter högst en
+väntande rad per person, e-postadress och operation. Servicen begränsar antalet
+väntande förslag till 100 per person under personlåset. Historik och klubbens
+väntande förslag hämtas i sidor om högst 100 rader; äldre historik bevaras.
+
 Säkerhetsändringar använder fem minuters lösenords-/passkeyverifiering, aktuell
 session och kontolås. E-postlänkar är HMAC-skyddade, kontobundna,
 sessionsbundna, ersättbara och engångsgiltiga i 30 minuter. Andra sessioner
@@ -1134,3 +1148,8 @@ Automatisk kontorensning behåller klubbarnas personposter och delade historik.
 En tömd/inaktiverad UUID-rad möjliggör historikens referenser utan giltig
 inloggning. Ny registrering får inte dessa rättigheter. Se
 [detaljer, inventerade beroenden och driftvillkor](migration/account-profile.md).
+En utgången frist som upptäcks vid profilläsning rensar kontot även när svaret
+är 401. Migreringen aktiverar livscykeln för äldre konton med historiska
+godkända länkar/roller, inklusive inaktiverade och åldersutgångna länkar.
+Redan frånkopplade äldre konton får en full övergångsfrist från införandet,
+eftersom den ursprungliga frånkopplingstidpunkten kan saknas.

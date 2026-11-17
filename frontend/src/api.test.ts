@@ -270,6 +270,9 @@ it("binds profile, child and account security requests to the current account", 
   const request = createApiFetch(async () => id, vi.fn(), transport);
   for (const [method, resource] of [
     ["GET", "/api/me/account"], ["PUT", "/api/me/account"],
+    ["GET", `/api/me/account/children/${id}/history?offset=100`],
+    ["GET", `/api/teams/${id}/account-administration?offset=100`],
+    ["GET", `/api/teams/${id}/account-administration/people/${id}/history?offset=100`],
     ["PUT", `/api/me/account/children/${id}`], ["GET", `/api/me/account/children/${id}/history`],
     ["POST", "/api/me/account/child-links"], ["DELETE", `/api/me/account/child-links/${id}`],
     ["POST", "/api/me/account/reauthenticate"], ["GET", "/api/me/account/sessions"],

@@ -451,6 +451,34 @@ Slutlig lokal verifiering 2026-11-16:
 - Särskilda regressioner nekar återupplivning efter passerad borttagningsfrist, målsmansroll i assistenten efter 18-årsdagen och säkerhetsskrivning efter sessionsåterkallning under låsväntan.
 - Produktionsväckning, riktiga mejlleveranser, fysiska passkeys och resultatkälla är fortsatt inte driftverifierade.
 
+PR-granskning 2026-11-17: rättningar införda för framtida klubbrättelsedatum,
+uttryckligt återkallade vårdnadshavarlänkar, sessions-/mandatkontroll efter
+låsväntan, bestående kontorensning vid utgången profilläsning och aktivering
+av äldre kontons livscykel. Förslag har begränsning och dubblettskydd;
+historik och väntande klubbförslag är sidindelade. `AuthTest` och
+`MigrationTest` innehåller regressioner; `account-browser.mjs` provar
+historikbläddring. Kommentaren om att förbjuda behöriga föräldrars
+födelsedatumsändringar har inte tillämpats, eftersom K-028 och AK-022
+uttryckligen behåller den rätten fram till åtkomstförlust. Produktbeslutet
+har inte ändrats genom granskningen.
+
+Verifiering efter PR-granskningen 2026-11-17:
+
+- `npm test`: 1 264 godkända. Typkontroll, lint och båda appbyggena godkända.
+- Slutliga `AuthTest`, `ArchitectureTest` och migrationens riktade profilprov:
+  40 godkända, ett villkorligt browserprov överhoppat, inga fel. Provet
+  uppgraderar från API-028 med inaktiv respektive åldersutgången äldre länk
+  och en oanvänd förregistrering.
+- Den bredare körningens `ApiTest`: 152 godkända, fem villkorligt överhoppade.
+  Den breda körningen avbröts för slutlig riktad verifiering och redovisas
+  inte som en godkänd helhet.
+- Regenererat OpenAPI-/TypeScript-kontrakt och efterföljande typkontroll
+  godkända. `account-browser.mjs` provar även äldre/nyare historiksidor i
+  Next och Vite på 390 och 1280 px.
+- Det rättade integrationsprovet för `/account/security`, paketerat JVM-smokeprov
+  och verkligt auth-browserprov med virtuell WebAuthn passerade före
+  granskningsrättningarna.
+
 ## Bekräftade beslut och motiv
 
 - 2026-10-30: Användaren beställde en ny specintervju för Mitt konto.

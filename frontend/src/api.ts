@@ -19,9 +19,9 @@ const attendanceWrites = new RegExp(`^/api/activities/${uuid}/attendance$`, "i")
 const assistantRead = new RegExp(`^/api/assistant/(?:conversations(?:/${uuid})?|profiles/${uuid}(?:/sections/${uuid})?)$`, "i");
 const assistantWrite = new RegExp(`^/api/assistant/(?:conversations(?:/${uuid}(?:/messages|/resume)?)?|proposals/${uuid}/confirm|profiles/${uuid}(?:/sections/${uuid})?)$`, "i");
 const groupResource = new RegExp(`^/api/teams/${uuid}/telegram/groups(?:/(?:team|leaders))?$`, "i");
-const clubAccountRead = new RegExp(`^/api/teams/${uuid}/account-administration(?:/people/${uuid}/history)?$`, "i");
+const clubAccountRead = new RegExp(`^/api/teams/${uuid}/account-administration(?:/people/${uuid}/history)?(?:\\?offset=\\d{1,10})?$`, "i");
 const clubAccountWrite = new RegExp(`^/api/teams/${uuid}/account-administration/(?:people/${uuid}/birth-date|proposals/${uuid})$`, "i");
-const accountRead = new RegExp(`^/api/me/account(?:/sessions|/children/${uuid}/(?:history|proposals)|/followers/${uuid}/matches)?$`, "i");
+const accountRead = new RegExp(`^/api/me/account(?:/sessions|/children/${uuid}/(?:history|proposals)(?:\\?offset=\\d{1,10})?|/followers/${uuid}/matches)?$`, "i");
 const accountWrite = new RegExp(`^/api/me/account(?:/children/${uuid}(?:/(?:proposals|follower))?|/child-links(?:/${uuid})?|/followers/${uuid}|/reauthenticate|/sessions(?:/${uuid})?|/password|/email(?:/confirm)?|/passkeys/[A-Za-z0-9_-]{1,1400})?$`, "i");
 const writes = new RegExp(`^/api/invitations/${uuid}/respond$`, "i");
 

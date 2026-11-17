@@ -15,6 +15,7 @@ class AccountFollowerService(
     private val repository: AccountFollowerRepository, private val profiles: AccountProfileRepository,
     private val clock: DatabaseClockService, private val mail: AuthMailService,
     private val settings: BrowserSessionSettings, private val lifecycle: AccountLifecycleService,
+    private val sessions: SessionService,
 ) {
     fun list(actor: Actor): List<FollowerView> {
         repository.revokeInvalid()
@@ -22,6 +23,7 @@ class AccountFollowerService(
     }
     fun request(actor: Actor, person: UUID) {
         profiles.lock(actor.subject)
+        sessions.requireActive(actor)
         val target = repository.target(actor.subject, person) ?: throw AccessDeniedException("Former guardian required")
         val expires = clock.now().plus(Duration.ofDays(30))
         val created = repository.request(actor.subject, person, target.organizationId, expires)
@@ -30,6 +32,7 @@ class AccountFollowerService(
     fun decide(actor: Actor, id: UUID, state: String) {
         require(state in setOf("approved", "denied", "revoked"))
         profiles.lock(actor.subject)
+        sessions.requireActive(actor)
         val requester = repository.requester(id)
         lifecycle.connectionsChanged(requester)
         if (repository.decision(actor.subject, id, state) != 1) throw AccessDeniedException("Approval not available")

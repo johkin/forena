@@ -5,6 +5,7 @@ import java.time.LocalDate
 import java.util.UUID
 import org.springframework.http.HttpStatus.CONFLICT
 import org.springframework.security.access.AccessDeniedException
+import org.springframework.security.authentication.BadCredentialsException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
@@ -17,15 +18,20 @@ class AccountProfileService(
     private val repository: AccountProfileRepository, private val sessions: SessionService,
     private val accounts: AccountService, private val lifecycle: AccountLifecycleService,
     private val followers: AccountFollowerService,
+    private val clock: DatabaseClockService,
 ) {
-    fun clubView(organization: UUID, people: Collection<UUID>): ClubAccountView =
-        ClubAccountView(repository.clubPeople(organization, people), repository.proposalsForPeople(people))
-    fun clubHistory(organization: UUID, person: UUID): List<ProfileHistory> {
+    fun clubView(organization: UUID, people: Collection<UUID>, offset: Int = 0): ClubAccountView {
+        require(offset >= 0)
+        return ClubAccountView(repository.clubPeople(organization, people), repository.proposalsForPeople(people, offset))
+    }
+    fun clubHistory(organization: UUID, person: UUID, offset: Int = 0): List<ProfileHistory> {
+        require(offset >= 0)
         require(repository.clubPeople(organization, listOf(person)).isNotEmpty())
-        return repository.history(person)
+        return repository.history(person, offset)
     }
     fun correctBirthDate(actor: Actor, organization: UUID, person: UUID, command: BirthDateCorrectionCommand) {
         repository.lockPeople(listOf(person))
+        require(command.birthDate == null || command.birthDate <= clock.now().atZone(repository.timeZone(organization)).toLocalDate())
         val before = repository.clubPeople(organization, listOf(person)).single()
         repository.affectedSubjects(person).forEach { lifecycle.refresh(it) }
         if (repository.correctBirthDate(organization, person, command) != 1) conflict()
@@ -33,7 +39,7 @@ class AccountProfileService(
         repository.affectedSubjects(person).forEach { lifecycle.refresh(it) }
     }
     fun review(actor: Actor, organization: UUID, proposal: UUID, approve: Boolean, people: Set<UUID>) {
-        val current = repository.proposalsForPeople(people).singleOrNull { it.id == proposal }
+        val current = repository.proposalForPeople(proposal, people)
             ?: throw AccessDeniedException("Proposal outside team")
         repository.affectedSubjects(current.personId).forEach { lifecycle.refresh(it) }
         if (approve) repository.proposalSubject(current.email)?.let { lifecycle.refresh(it) }
@@ -41,6 +47,8 @@ class AccountProfileService(
         repository.clubAudit(actor.subject, organization, changed.personId, "Vårdnadshavarförslag ${changed.operation}: ${if (approve) "godkänt" else "avslaget"}")
         repository.affectedSubjects(changed.personId).forEach { lifecycle.refresh(it) }
     }
+    // An expired account is erased by refresh; the ensuing 401 must commit that erasure.
+    @Transactional(noRollbackFor = [BadCredentialsException::class])
     fun view(actor: Actor): AccountProfileView {
         sessions.requireActive(actor)
         val status = lifecycle.refresh(actor.subject)
@@ -99,10 +107,11 @@ class AccountProfileService(
         repository.lock(actor.subject)
         repository.unlink(actor.subject, group)
     }
-    fun history(actor: Actor, person: UUID): List<ProfileHistory> {
+    fun history(actor: Actor, person: UUID, offset: Int = 0): List<ProfileHistory> {
+        require(offset >= 0)
         sessions.requireActive(actor)
         child(repository.people(actor.subject), person)
-        return repository.history(person)
+        return repository.history(person, offset)
     }
     fun proposals(actor: Actor, person: UUID): List<GuardianProposalView> {
         sessions.requireActive(actor)
@@ -118,6 +127,12 @@ class AccountProfileService(
             people.singleOrNull { it.id == person && it.kind == "guardian" } ?: throw AccessDeniedException("No relationship")
         else child(people, person)
         repository.propose(actor.subject, target, command.copy(email = accounts.email(command.email)))
+    }
+    fun lockClubPerson(person: UUID) = repository.lockPeople(listOf(person))
+    fun lockClubProposal(organization: UUID, proposal: UUID, people: Set<UUID>): UUID {
+        val person = repository.lockProposal(organization, proposal, people)
+        repository.lockPeople(listOf(person))
+        return person
     }
     private fun lockedPeople(actor: Actor): List<AccountPerson> {
         repository.lockPeople(repository.people(actor.subject).map { it.id })

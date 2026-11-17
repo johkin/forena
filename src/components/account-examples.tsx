@@ -26,7 +26,12 @@ function AccountExample({ mode }: { mode: string }) {
     }
     if (path.endsWith("/sessions") && !init?.method) return Response.json([{ id: id(40), device: "Safari · iOS (uppskattat)", lastActiveAt: "2026-11-16T12:00:00Z", current: true }, { id: id(41), device: "Okänd webbläsare/enhet", lastActiveAt: "2026-11-15T12:00:00Z", current: false }]);
     if (path.endsWith("/account-administration")) return Response.json({ people: [{ id: id(1), name: "Sam Andersson", birthDate: "2014-05-12", revision: 0 }], proposals: [{ id: id(50), personId: id(1), email: "guardian@example.invalid", operation: "add", state: "pending" }] });
-    if (path.endsWith("/history")) return Response.json([{ id: id(51), actor: "Kim Andersson", changedAt: "2026-11-16T12:00:00Z", changes: "Telefon: 0700000000 → 0701234567" }]);
+    const historyUrl = new URL(path, "https://example.invalid");
+    if (historyUrl.pathname.endsWith("/history")) {
+      const offset = Number(historyUrl.searchParams.get("offset") ?? 0);
+      const length = mode === "history" ? Math.min(100, Math.max(0, 101 - offset)) : 1;
+      return Response.json(Array.from({ length }, (_, index) => ({ id: id(100 + offset + index), actor: "Kim Andersson", changedAt: "2026-11-16T12:00:00Z", changes: mode === "history" ? `Ändring ${offset + index + 1}` : "Telefon: 0700000000 → 0701234567" })));
+    }
     if (path.endsWith("/matches")) return Response.json([]);
     return Response.json({ ok: true });
   }, [mode]);
@@ -34,5 +39,5 @@ function AccountExample({ mode }: { mode: string }) {
 }
 export function AccountExamples() {
   const [mode, setMode] = useState("ready");
-  return <section id="account-example"><h2>Mitt konto</h2><p>Produktionskomponenter med lokala exempel. Inga verkliga konton ändras.</p><label>Kontoläge<select value={mode} onChange={event => setMode(event.target.value)}><option value="ready">Konto med kopplingar</option><option value="empty">Väntar på klubbkoppling</option><option value="deletion">Övergångstid före borttagning</option><option value="loading">Laddning</option><option value="error">Läsfel</option><option value="conflict">Konflikt vid sparande</option></select></label><AccountExample key={mode} mode={mode} /></section>;
+  return <section id="account-example"><h2>Mitt konto</h2><p>Produktionskomponenter med lokala exempel. Inga verkliga konton ändras.</p><label>Kontoläge<select value={mode} onChange={event => setMode(event.target.value)}><option value="ready">Konto med kopplingar</option><option value="history">Sidindelad historik</option><option value="empty">Väntar på klubbkoppling</option><option value="deletion">Övergångstid före borttagning</option><option value="loading">Laddning</option><option value="error">Läsfel</option><option value="conflict">Konflikt vid sparande</option></select></label><AccountExample key={mode} mode={mode} /></section>;
 }

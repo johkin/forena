@@ -11,7 +11,7 @@ import se.forena.api.identity.*
 class AccountFollowerRepository(private val jdbc: JdbcClient) {
     fun target(subject: UUID, person: UUID): FollowerTarget? = jdbc.sql("""
         select p.organization_id,u.email from forena.person p join forena.organization o on o.id=p.organization_id
-        join forena.person_access g on g.person_id=p.id and g.subject=:subject and g.kind='guardian'
+        join forena.person_access g on g.person_id=p.id and g.subject=:subject and g.kind='guardian' and g.active
         left join forena.person_access own on own.person_id=p.id and own.kind='self' and own.active
         left join forena.native_user u on u.subject=own.subject and u.verified
         where p.id=:person and p.birth_date+interval '18 years'<=(clock_timestamp() at time zone o.time_zone)::date

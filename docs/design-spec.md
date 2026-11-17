@@ -887,6 +887,12 @@ ska bevaras, medan utelämnade tidsfält ärver aktivitetstypens förval.
 
 ## Mitt konto
 
+Profilhistorik använder `AccountProfileHistory` för både föräldrar och
+klubbadministratörer. Visa högst 100 ändringar åt gången, med knapparna
+**Äldre ändringar** och **Nyare ändringar**. Klubbens väntande förslag har
+motsvarande sidbläddring. Komponentsidans kontoläge **Sidindelad historik**
+visar produktionskomponenten med flera sidor.
+
 `/account` använder Next-profilens `application-card profile-card`,
 `application-form`, `form-section` och föreningslänkar. Egna namn-/telefonfält
 visar vilka klubbar som uppdateras före sparande. Barn redigeras uttryckligen

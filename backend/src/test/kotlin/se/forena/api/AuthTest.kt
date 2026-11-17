@@ -18,6 +18,8 @@ import java.util.concurrent.TimeUnit.SECONDS
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
@@ -646,7 +648,8 @@ class AuthTest {
         assertThat(at).isEqualTo(requireNotNull(disconnected).toInstant().plus(java.time.Duration.ofDays(30)))
         assertThat(request("/api/me/overview", cookie = fixture.cookie).statusCode()).isEqualTo(403)
         admin.update("update forena.account_lifecycle set disconnected_at=clock_timestamp()-interval '30 days' where subject=?", fixture.subject)
-        lifecycle.connectionsChanged(fixture.subject)
+        // Discover expiry through the HTTP read, before any maintenance sweep.
+        assertThat(accountRequest("/api/me/account", fixture.cookie).statusCode()).isEqualTo(401)
         assertThat(request("/api/auth/session", cookie = fixture.cookie).statusCode()).isEqualTo(401)
         assertThat(admin.queryForObject("select count(*) from forena.native_user where subject=?", Int::class.java, fixture.subject)).isZero()
         fixture.own.forEach { assertThat(admin.queryForObject("select count(*) from forena.person where id=?", Int::class.java, it)).isEqualTo(1) }
@@ -698,6 +701,127 @@ class AuthTest {
         assertThat(accountRequest("/api/teams/${fixture.teams[0]}/account-administration/people/${fixture.children[1]}/history", fixture.cookie).statusCode()).isEqualTo(400)
         assertThat(accountRequest("/api/teams/${fixture.teams[0]}/account-administration/people/$child/birth-date", fixture.cookie, "PUT", mapOf("birthDate" to "2000-01-01", "revision" to 0)).statusCode()).isEqualTo(200)
         assertThat(accountRequest("/api/me/account/children/$child", fixture.cookie, "PUT", childCommand(listOf(child))).statusCode()).isEqualTo(403)
+    }
+
+    @Test fun `club correction rejects future dates without changing age based access`() {
+        val fixture = profileFixture()
+        val child = fixture.children[0]
+        admin.update("insert into forena.organization_member(organization_id,subject,role) values(?,?,'admin')", fixture.organizations[0], fixture.subject)
+        admin.update("update forena.organization set time_zone='Pacific/Honolulu' where id=?", fixture.organizations[0])
+        val tomorrow = java.time.LocalDate.now(java.time.ZoneId.of("Pacific/Honolulu")).plusDays(1)
+        val response = accountRequest("/api/teams/${fixture.teams[0]}/account-administration/people/$child/birth-date", fixture.cookie,
+            "PUT", mapOf("birthDate" to tomorrow.toString(), "revision" to 0))
+        assertThat(response.statusCode()).isEqualTo(400)
+        assertThat(admin.queryForObject("select birth_date::text from forena.person where id=?", String::class.java, child)).isEqualTo("2015-01-01")
+        assertThat(admin.queryForObject("select count(*) from forena.person_profile_history where person_id=?", Int::class.java, child)).isZero()
+    }
+
+    @Test fun `proposal deduplication quotas and paging bound account responses`() {
+        val fixture = profileFixture()
+        val child = fixture.children[0]
+        val proposalPath = "/api/me/account/children/$child/proposals"
+        val body = mapOf("operation" to "add", "email" to "proposed@example.invalid")
+        repeat(2) { assertThat(accountRequest(proposalPath, fixture.cookie, "POST", body).statusCode()).isEqualTo(200) }
+        assertThat(admin.queryForObject("select count(*) from forena.account_guardian_proposal where person_id=?", Int::class.java, child)).isEqualTo(1)
+        admin.update("""insert into forena.person_profile_history(id,person_id,organization_id,actor_subject,changes)
+            select gen_random_uuid(),?,?,?,'Change ' || n from generate_series(1,101) n""", child, fixture.organizations[0], fixture.subject)
+        val historyPath = "/api/me/account/children/$child/history"
+        val first = json.readTree(accountRequest(historyPath, fixture.cookie).body())
+        val second = json.readTree(accountRequest("$historyPath?offset=100", fixture.cookie).body())
+        assertThat(first.size()).isEqualTo(100)
+        assertThat(second.size()).isEqualTo(1)
+        assertThat(first.map { it.path("id").asString() }).doesNotContain(second[0].path("id").asString())
+        assertThat(accountRequest("$historyPath?offset=-1", fixture.cookie).statusCode()).isEqualTo(400)
+        admin.update("""insert into forena.account_guardian_proposal(id,proposer,person_id,organization_id,guardian_email,operation)
+            select gen_random_uuid(),?,?,?,'proposal-' || n || '@example.invalid','add' from generate_series(1,101) n""", fixture.subject, child, fixture.organizations[0])
+        assertThat(accountRequest(proposalPath, fixture.cookie, "POST", body + ("email" to "new@example.invalid")).statusCode()).isEqualTo(429)
+        admin.update("insert into forena.organization_member(organization_id,subject,role) values(?,?,'admin')", fixture.organizations[0], fixture.subject)
+        val clubPath = "/api/teams/${fixture.teams[0]}/account-administration"
+        assertThat(json.readTree(accountRequest(clubPath, fixture.cookie).body()).path("proposals").size()).isEqualTo(100)
+        assertThat(json.readTree(accountRequest("$clubPath?offset=100", fixture.cookie).body()).path("proposals").size()).isEqualTo(2)
+        assertThat(json.readTree(accountRequest("$clubPath/people/$child/history?offset=100", fixture.cookie).body()).size()).isEqualTo(1)
+    }
+
+    @Test fun `profile mutation admission limits repeated proposal writes`() {
+        val fixture = profileFixture()
+        val path = "/api/me/account/children/${fixture.children[0]}/proposals"
+        val responses = (1..15).map {
+            accountRequest(path, fixture.cookie, "POST", mapOf("operation" to "add", "email" to "limited@example.invalid")).statusCode()
+        }
+        assertThat(responses).contains(200, 429)
+        assertThat(admin.queryForObject("select count(*) from forena.account_guardian_proposal where proposer=?", Int::class.java, fixture.subject)).isEqualTo(1)
+    }
+
+    @Test fun `explicitly revoked guardian cannot request follower access or queue mail`() {
+        val fixture = profileFixture()
+        val child = fixture.children[0]
+        admin.update("update forena.person set birth_date=date '2000-01-01' where id=?", child)
+        admin.update("update forena.person_access set active=false where person_id=? and subject=?", child, fixture.subject)
+        assertThat(accountRequest("/api/me/account/children/$child/follower", fixture.cookie, "POST").statusCode()).isEqualTo(403)
+        assertThat(admin.queryForObject("select count(*) from forena.account_follower where subject=?", Int::class.java, fixture.subject)).isZero()
+        assertThat(admin.queryForObject("select count(*) from forena.auth_mail_outbox where kind='follower'", Int::class.java)).isZero()
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["request", "decide"])
+    fun `follower writes recheck session after waiting for the account lock`(operation: String) {
+        val fixture = profileFixture()
+        val child = fixture.children[0]
+        admin.update("update forena.person set birth_date=date '2000-01-01' where id=?", child)
+        val follower = UUID.randomUUID()
+        if (operation == "decide") admin.update("insert into forena.account_follower(id,subject,person_id,organization_id,state,expires_at) values(?,?,?,?,'approved',clock_timestamp()+interval '30 days')", follower, fixture.subject, child, fixture.organizations[0])
+        val sessionId = admin.queryForObject("select session_id from forena.spring_session where principal_name=?", String::class.java, fixture.subject.toString())
+        requireNotNull(admin.dataSource).connection.use { connection ->
+            connection.autoCommit = false
+            connection.prepareStatement("select subject from forena.account where subject=? for update").use {
+                it.setObject(1, fixture.subject); it.executeQuery().close()
+            }
+            val result = CompletableFuture.supplyAsync {
+                if (operation == "request") accountRequest("/api/me/account/children/$child/follower", fixture.cookie, "POST", expected = fixture.subject.toString())
+                else accountRequest("/api/me/account/followers/$follower", fixture.cookie, "PUT", mapOf("state" to "revoked"), fixture.subject.toString())
+            }
+            try {
+                org.awaitility.Awaitility.await().atMost(5, SECONDS).until {
+                    requireNotNull(admin.queryForObject("select count(*) from pg_stat_activity where usename='forena_api_runtime' and wait_event_type='Lock'", Int::class.java)) > 0
+                }
+                admin.update("delete from forena.spring_session where session_id=?", sessionId)
+            } finally { connection.rollback() }
+            assertThat(result.get(10, SECONDS).statusCode()).isEqualTo(401)
+        }
+        assertThat(admin.queryForObject("select count(*) from forena.account_follower where subject=? and state='approved'", Int::class.java, fixture.subject)).isEqualTo(if (operation == "decide") 1 else 0)
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["correct", "review"])
+    fun `club account writes recheck mandate after waiting for their row lock`(operation: String) {
+        val fixture = profileFixture()
+        val child = fixture.children[0]
+        admin.update("insert into forena.organization_member(organization_id,subject,role) values(?,?,'admin')", fixture.organizations[0], fixture.subject)
+        val proposal = UUID.randomUUID()
+        val (_, proposedEmail) = additionalAccount()
+        admin.update("insert into forena.account_guardian_proposal(id,proposer,person_id,organization_id,guardian_email,operation) values(?,?,?,?,?,'add')", proposal, fixture.subject, child, fixture.organizations[0], proposedEmail)
+        requireNotNull(admin.dataSource).connection.use { connection ->
+            connection.autoCommit = false
+            val lock = if (operation == "correct") "select id from forena.person where id=? for update" else "select id from forena.account_guardian_proposal where id=? for update"
+            connection.prepareStatement(lock).use {
+                it.setObject(1, if (operation == "correct") child else proposal); it.executeQuery().close()
+            }
+            val result = CompletableFuture.supplyAsync {
+                if (operation == "correct") accountRequest("/api/teams/${fixture.teams[0]}/account-administration/people/$child/birth-date", fixture.cookie,
+                    "PUT", mapOf("birthDate" to "2014-01-01", "revision" to 0), fixture.subject.toString())
+                else accountRequest("/api/teams/${fixture.teams[0]}/account-administration/proposals/$proposal", fixture.cookie,
+                    "PUT", mapOf("approve" to true), fixture.subject.toString())
+            }
+            try {
+                org.awaitility.Awaitility.await().atMost(5, SECONDS).until {
+                    requireNotNull(admin.queryForObject("select count(*) from pg_stat_activity where usename='forena_api_runtime' and wait_event_type='Lock'", Int::class.java)) > 0
+                }
+                admin.update("update forena.organization_member set active=false where subject=?", fixture.subject)
+            } finally { connection.rollback() }
+            assertThat(result.get(10, SECONDS).statusCode()).isEqualTo(403)
+        }
+        assertThat(admin.queryForObject("select birth_date::text from forena.person where id=?", String::class.java, child)).isEqualTo("2015-01-01")
+        assertThat(admin.queryForObject("select state from forena.account_guardian_proposal where id=?", String::class.java, proposal)).isEqualTo("pending")
     }
 
     @Test fun `email cancellation expiry and occupied addresses cannot change login identity`() {

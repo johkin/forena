@@ -15,14 +15,17 @@ class AccountProfileController(
 ) {
     @GetMapping fun view(authentication: Authentication, request: HttpServletRequest): AccountProfileView = profiles.view(actors.from(authentication, request))
     @PutMapping fun update(authentication: Authentication, request: HttpServletRequest, @RequestBody body: OwnProfileCommand): BrowserAuthAcknowledgement {
+        limiter.admitProfile(limiter.client(request), UUID.fromString(authentication.name))
         profiles.update(actors.from(authentication, request), body); return ok()
     }
     @PutMapping("/children/{id}") fun child(authentication: Authentication, request: HttpServletRequest, @PathVariable id: UUID, @RequestBody body: ChildProfileCommand): BrowserAuthAcknowledgement {
+        limiter.admitProfile(limiter.client(request), UUID.fromString(authentication.name))
         profiles.updateChild(actors.from(authentication, request), id, body); return ok()
     }
-    @GetMapping("/children/{id}/history") fun history(authentication: Authentication, request: HttpServletRequest, @PathVariable id: UUID): List<ProfileHistory> = profiles.history(actors.from(authentication, request), id)
+    @GetMapping("/children/{id}/history") fun history(authentication: Authentication, request: HttpServletRequest, @PathVariable id: UUID, @RequestParam(defaultValue = "0") offset: Int): List<ProfileHistory> = profiles.history(actors.from(authentication, request), id, offset)
     @GetMapping("/children/{id}/proposals") fun proposals(authentication: Authentication, request: HttpServletRequest, @PathVariable id: UUID): List<GuardianProposalView> = profiles.proposals(actors.from(authentication, request), id)
     @PostMapping("/children/{id}/proposals") fun propose(authentication: Authentication, request: HttpServletRequest, @PathVariable id: UUID, @RequestBody body: GuardianProposalCommand): BrowserAuthAcknowledgement {
+        limiter.admitProfile(limiter.client(request), UUID.fromString(authentication.name))
         profiles.propose(actors.from(authentication, request), id, body); return ok()
     }
     @PostMapping("/child-links") fun link(authentication: Authentication, request: HttpServletRequest, @RequestBody body: ChildLinkCommand): BrowserAuthAcknowledgement {
