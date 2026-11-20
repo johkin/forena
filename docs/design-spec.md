@@ -706,10 +706,11 @@ förhandsgranskning och utkastskydd specificeras i
 [Skapa och redigera aktiviteter](specs/hantera-aktiviteter.md). Godkänd spec
 innebär inte att gränssnittet redan har implementerats eller verifierats.
 
-- `ActivityDatePicker`: enbart datum, med veckovy. Använd även för födelsedatum,
-  seriens slutdatum och historikfilter. Direktinmatningen öppnas för tomma värden
-  och bevarar obligatoriska fält och min-/maxgränser. Valfria datum kan tömmas;
-  obligatoriska aktivitets- och uppgiftsdatum behåller sitt val vid tömningsförsök.
+- `IsoDateInput`: textfält för datum i formatet `ÅÅÅÅ-MM-DD`, till exempel
+  födelsedatum och historikfilter. Validerar kalenderdatum och datumgränser.
+- `ActivityDatePicker`: aktivitetsdatum med veckovy och ISO-textfält för
+  direktinmatning, till exempel seriens slutdatum. Ofullständig eller ogiltig
+  text bevarar kalenderns val och blockerar formulärinlämning.
 - `DateTimeRangeFields`: tidpunkt med veckovy och ett tidsreglage, utan flikar;
   intervall med Samma dag/Flerdagars ovanför kalendern och två tidsreglage.
 - `ActivityRangeCalendar`: sammanhängande intervallband mellan två val. Bandet
@@ -720,7 +721,7 @@ innebär inte att gränssnittet redan har implementerats eller verifierats.
 - Ingen synlig datumupprepning under kalendern och inga Start/Slut-etiketter
   på dagarna. Hjälpmedel får datum, ändpunkter och nästa val via tillgänglighetsnamn.
 - Flikarnas hover använder grön bakgrund och vit text tillsammans.
-- `/components#date-time-components` visar alla fyra varianter med appens
+- `/components#date-time-components` visar varianterna med appens
   verkliga komponenter. Delad kalender-/tids-CSS ligger i `date-time.css`;
   färgtokens ligger fortsatt i `globals.css`.
 
@@ -899,7 +900,7 @@ visar produktionskomponenten med flera sidor.
 `/account` använder Next-profilens `application-card profile-card`,
 `application-form`, `form-section` och föreningslänkar. Egna namn-/telefonfält
 visar vilka klubbar som uppdateras före sparande. Barn redigeras uttryckligen
-med den gemensamma datumväljaren. Förlorad åtkomst visar endast relationens
+med det gemensamma ISO-datumfältet för födelsedatum. Förlorad åtkomst visar endast relationens
 namn/klubb och begäran om följaråtkomst eller klubbrättelse.
 
 Sparfel behåller utkastet. Vid versionskonflikt kan aktuella värden läsas in

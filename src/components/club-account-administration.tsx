@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import type { ParticipationFetch } from "./activity-invitation-response";
 import { AccountProfileHistory } from "./account-profile-history";
-import { ActivityDatePicker } from "./activity-date-picker";
+import { IsoDateInput } from "./iso-date-input";
 const schema = z.object({ people: z.array(z.object({ id: z.uuid(), name: z.string(), birthDate: z.string().nullable(), revision: z.number() })), proposals: z.array(z.object({ id: z.uuid(), personId: z.uuid(), email: z.string(), operation: z.string(), state: z.string() })) });
 export function ClubAccountAdministration({ teamId, request }: { teamId: string; request: ParticipationFetch }) {
   const [data, setData] = useState<z.infer<typeof schema>>();
@@ -46,5 +46,10 @@ export function ClubAccountAdministration({ teamId, request }: { teamId: string;
 }
 function BirthDateEditor({ person, pending, onSave, onHistory }: { person: z.infer<typeof schema>["people"][number]; pending: boolean; onSave: (date: string) => void; onHistory: () => void }) {
   const [date, setDate] = useState(person.birthDate ?? "");
-  return <form className="application-form form-section" onSubmit={event => { event.preventDefault(); onSave(date); }}><h3>{person.name}</h3><ActivityDatePicker value={date} onChange={setDate} label="Födelsedatum" /><p>Ändringen loggas och åldersstyrd åtkomst räknas om direkt.</p><button className="primary" disabled={pending}>Spara födelsedatum</button><button type="button" className="secondary" onClick={onHistory}>Visa profilhistorik</button></form>;
+  return <form className="application-form form-section" onSubmit={event => { event.preventDefault(); onSave(date); }}>
+    <h3>{person.name}</h3>
+    <label>Födelsedatum<IsoDateInput value={date} onChange={event => setDate(event.currentTarget.value)} /></label>
+    <p>Ändringen loggas och åldersstyrd åtkomst räknas om direkt.</p>
+    <button className="primary" disabled={pending}>Spara födelsedatum</button><button type="button" className="secondary" onClick={onHistory}>Visa profilhistorik</button>
+  </form>;
 }
