@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { informationItemSchema } from "./activity-follow-up";
+import { IsoDateInput } from "./iso-date-input";
 import type { NavigationLink } from "./navigation-link";
 import type { ParticipationFetch } from "./activity-invitation-response";
 
@@ -231,8 +232,7 @@ export function DisciplineInformationReport({
         </button>
         <label>
           Från och med
-          <input
-            type="date"
+          <IsoDateInput
             required
             value={from}
             onChange={(event) => setFrom(event.target.value)}
@@ -240,8 +240,7 @@ export function DisciplineInformationReport({
         </label>
         <label>
           Före
-          <input
-            type="date"
+          <IsoDateInput
             required
             value={until}
             onChange={(event) => setUntil(event.target.value)}

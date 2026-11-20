@@ -111,7 +111,19 @@ function DutySettings({ schedule, timeZone, propose }: { schedule: DutySchedule;
  const [time, setTime] = useState(new Intl.DateTimeFormat("sv-SE", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(schedule.selfServiceUntil)));
  const [claim, setClaim] = useState(schedule.claimRequiresApproval);
  const [change, setChange] = useState(schedule.changeRequiresApproval);
- return <details className="workflow-disclosure"><summary>Regler för självservice</summary><label className="duty-completed"><input type="checkbox" checked={claim} onChange={e => setClaim(e.target.checked)} />Ledaren godkänner bokningar</label><label className="duty-completed"><input type="checkbox" checked={change} onChange={e => setChange(e.target.checked)} />Ledaren godkänner flytt och byte</label><p>Självservice till datum och klockslag</p><DateTimeRangeFields mode="single" startDate={date} endDate={date} startTime={time} endTime={time} onDatesChange={setDate} onStartTimeChange={setTime} startLabel="Självservice stänger" /><p>Självservice stänger senast när aktiviteten börjar. Begäran om ersättare kräver alltid ledargodkännande.</p><button type="button" className="secondary" onClick={() => propose({ op: "settings", claimRequiresApproval: claim, changeRequiresApproval: change, selfServiceUntil: localActivityTime(date, time, timeZone).toISOString() }, "Spara reglerna för självservice? Reglerna gäller också väntande förslag när de behandlas.")}>Spara regler</button></details>;
+ return <details className="workflow-disclosure"><summary>Regler för självservice</summary>
+   <form onSubmit={event => {
+     event.preventDefault();
+     propose({ op: "settings", claimRequiresApproval: claim, changeRequiresApproval: change, selfServiceUntil: localActivityTime(date, time, timeZone).toISOString() }, "Spara reglerna för självservice? Reglerna gäller också väntande förslag när de behandlas.");
+   }}>
+     <label className="duty-completed"><input type="checkbox" checked={claim} onChange={e => setClaim(e.target.checked)} />Ledaren godkänner bokningar</label>
+     <label className="duty-completed"><input type="checkbox" checked={change} onChange={e => setChange(e.target.checked)} />Ledaren godkänner flytt och byte</label>
+     <p>Självservice till datum och klockslag</p>
+     <DateTimeRangeFields mode="single" startDate={date} endDate={date} startTime={time} endTime={time} onDatesChange={setDate} onStartTimeChange={setTime} startLabel="Självservice stänger" />
+     <p>Självservice stänger senast när aktiviteten börjar. Begäran om ersättare kräver alltid ledargodkännande.</p>
+     <button type="submit" className="secondary">Spara regler</button>
+   </form>
+ </details>;
 }
 function DutyCreator({ activityId, startsAt, endsAt, timeZone, schedule, propose }: { schedule: DutySchedule; activityId: string; startsAt: string; endsAt: string; timeZone: string; propose: (c: DutyCommand, text: string) => void }) {
  const [types, setTypes] = useState<{id:string;name:string}[]>([]);

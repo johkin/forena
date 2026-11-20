@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import type { Json } from "@/lib/supabase/database.types";
 import { startMembershipApplication, resendMembershipVerification } from "@/lib/membership/verification";
 import { createClient } from "@/lib/supabase/server";
+import { isoDateSchema } from "@/lib/iso-date";
 
 function value(formData: FormData, name: string) {
   return String(formData.get(name) ?? "").trim();
@@ -48,6 +49,9 @@ export async function submitMembershipApplication(formData: FormData) {
 
   if (!organizationSlug || !payload.player_first_name || !payload.player_last_name || !payload.player_birth_date || !guardians[0].email) {
     redirect(`/o/${organizationSlug}/join?error=${encodeURIComponent("Fyll i alla obligatoriska uppgifter")}`);
+  }
+  if (!isoDateSchema.safeParse(payload.player_birth_date).success || payload.player_birth_date > new Date().toISOString().slice(0, 10)) {
+    redirect(`/o/${encodeURIComponent(organizationSlug)}/join?error=${encodeURIComponent("Ange ett giltigt födelsedatum i formatet ÅÅÅÅ-MM-DD. Datumet får inte ligga i framtiden.")}`);
   }
 
   const supabase = await createClient();

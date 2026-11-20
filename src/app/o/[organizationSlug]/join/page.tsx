@@ -50,7 +50,7 @@ export default async function JoinPage({ params, searchParams }: Props) {
         <h1>Ansök om medlemskap</h1>
         <p>Välj verksamhet och fyll i spelarens och målsmännens uppgifter.</p>
         {query.error ? <p className="auth-error" role="alert">{query.error}</p> : null}
-        <MembershipApplicationForm organizationSlug={organizationSlug} options={options} selectedSection={query.section} selectedTeam={query.team} />
+        <MembershipApplicationForm organizationSlug={organizationSlug} options={options} selectedSection={query.section} selectedTeam={query.team} today={new Date().toISOString().slice(0, 10)} />
       </section>
     </main>
   </AppShell>);

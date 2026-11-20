@@ -17,7 +17,8 @@ it("renders a timestamp with one date and one time, even if a mode callback is s
 it("preserves form values and date constraints in required date-only fields", () => {
  const html = renderToStaticMarkup(createElement(ActivityDatePicker, {name:"endsOn", value:"2026-10-16", min:"2026-10-15", required:true, onChange:()=>{}}));
  expect(html).toMatch(/name="endsOn"/);
- expect(html).toContain('min="2026-10-15"');
+ expect(html).toContain('type="text"');
+ expect(html).toContain('placeholder="ÅÅÅÅ-MM-DD"');
  expect(html).toContain('required=""');
  expect(html).toMatch(/disabled="" aria-label="måndag 12 oktober 2026"/);
 });

@@ -1,6 +1,7 @@
 "use client";
 import { DateTimeRangeFields } from "./date-time-range-fields";
-import { ActivityDatePicker, shiftCalendarDate } from "./activity-date-picker";
+import { shiftCalendarDate } from "./activity-date-picker";
+import { IsoDateInput } from "./iso-date-input";
 import { DutyPlacesStepper } from "./duty-places-stepper";
 import { useState, type ReactNode } from "react";
 import { dutyDefinitionSchema, type Duty, type DutyCommand, type DutySchedule } from "@/lib/activity-duty-schedule";
@@ -37,13 +38,13 @@ export function DutyEditor({ duty, timeZone, propose, startsAt, endsAt }: { duty
      propose({op:"edit_duty",dutyId:duty.id,revision:duty.revision,definition},`Ändra ${duty.name}: ${kind==="interval"?`${start.replace("T"," ")}–${end.replace("T"," ")}`:kind==="deadline"?`lämnas senast ${due.replace("T"," ")}`:"ingen särskild tid"}, ${places} platser. Instruktioner: ${instructions || "inga"}. Berörda familjer meddelas och väntande ändringsförslag för dessa platser blir inaktuella.`);
    } catch { setError("Kontrollera datum, tider och antal platser."); }
  }
- return <details className="workflow-disclosure"><summary>Redigera enskilt pass</summary>{completed?<p>Uppgiften har genomförande registrerat och behålls som historik.</p>:<>
+ return <details className="workflow-disclosure"><summary>Redigera enskilt pass</summary>{completed?<p>Uppgiften har genomförande registrerat och behålls som historik.</p>:<form onSubmit={event => { event.preventDefault(); review(); }}>
  <div className="participant-selection"><label>Tidstyp<select value={kind} onChange={e=>setKind(e.target.value as Duty["timingKind"])}><option value="interval">Tidsintervall</option><option value="deadline">Leveransdeadline</option><option value="none">Ingen särskild tid</option></select></label><DutyPlacesStepper value={places} onChange={setPlaces}/></div>
  {kind!=="none" ? <DateTimeRangeFields mode={kind==="deadline" ? "single" : dayMode} onModeChange={kind==="interval" ? mode=>{setDayMode(mode);const date=start.slice(0,10);setEnd(`${mode==="single" ? date : end.slice(0,10)===date ? shiftCalendarDate(date,1) : end.slice(0,10)}T${end.slice(11)}`);} : undefined} startDate={(kind==="deadline"?due:start).slice(0,10)} endDate={end.slice(0,10)} startTime={(kind==="deadline"?due:start).slice(11)} endTime={end.slice(11)} onDatesChange={(date,last)=>{if(kind==="deadline")setDue(`${date}T${due.slice(11)}`);else {setStart(`${date}T${start.slice(11)}`);setEnd(`${last}T${end.slice(11)}`);}}} onStartTimeChange={time=>kind==="deadline" ? setDue(`${due.slice(0,10)}T${time}`) : setStart(`${start.slice(0,10)}T${time}`)} onEndTimeChange={kind==="interval" ? time=>setEnd(`${end.slice(0,10)}T${time}`) : undefined} startLabel={kind==="deadline" ? "Lämnas senast" : "Starttid"}/> : null}
  <label>Instruktioner<textarea maxLength={2000} value={instructions} onChange={e=>setInstructions(e.target.value)}/></label>
  <p>Antalet kan minskas genom att ta bort lediga platser. Genomförda uppgifter ändras inte.</p>
- {error&&<p role="alert">{error}</p>}<div className="modal-actions"><button type="button" className="secondary" onClick={review}>Granska ändring</button><button type="button" className="secondary" onClick={()=>propose({op:"cancel_duty",dutyId:duty.id,revision:duty.revision},`Ta bort ${duty.name} ur schemat? Alla ${duty.slots.length} platser tas bort ur bokningen, tilldelningar frigörs och berörda familjer meddelas. Historik sparas.`)}>Ta bort uppgiften</button></div>
- </>}</details>;
+ {error&&<p role="alert">{error}</p>}<div className="modal-actions"><button type="submit" className="secondary">Granska ändring</button><button type="button" className="secondary" onClick={()=>propose({op:"cancel_duty",dutyId:duty.id,revision:duty.revision},`Ta bort ${duty.name} ur schemat? Alla ${duty.slots.length} platser tas bort ur bokningen, tilldelningar frigörs och berörda familjer meddelas. Historik sparas.`)}>Ta bort uppgiften</button></div>
+ </form>}</details>;
 }
 function TypeEditor({ type, propose }: { type: DutySchedule["types"][number]; propose: Propose }) {
  const [name,setName]=useState(type.name);
@@ -67,7 +68,10 @@ export function DutyDistribution({ activityId, schedule, timeZone, propose, chil
  const label = (d: Duty) => `${d.name} · ${formatDutyTiming(d, timeZone)}`;
  return <details className="workflow-disclosure duty-distribution"><summary>Föreslå rättvis fördelning</summary><p>Färre genomförda uppgifter prioriteras. Vid lika antal prioriteras variation från senaste uppgiften, därefter färre av samma typ. Förslaget ger högst en ny uppgift per spelare och behåller befintliga bokningar. Saknad registrering betyder inte säkert att personen aldrig arbetat. Krockar med andra aktiviteter kontrolleras inte ännu.</p>
  {children}
- <div className="date-field"><span>Räkna genomförda uppgifter från</span><ActivityDatePicker label="Räkna genomförda uppgifter från" value={from} onChange={date=>{setFrom(date);setRows([]);setLoaded(false);}}/></div><button type="button" className="secondary" disabled={busy||!from} onClick={()=>void suggest()}>{busy?"Hämtar…":"Ta fram förslag"}</button>
+ <form onSubmit={event => { event.preventDefault(); if (!busy) void suggest(); }}>
+   <label className="date-field">Räkna genomförda uppgifter från<IsoDateInput required value={from} onChange={event => { setFrom(event.currentTarget.value); setRows([]); setLoaded(false); }} /></label>
+   <button type="submit" className="secondary" disabled={busy}>{busy?"Hämtar…":"Ta fram förslag"}</button>
+ </form>
  {error&&<p role="alert">{error}</p>}{loaded&&<p>{rows.length} platser föreslagna. Övriga lediga platser lämnas för manuell tilldelning.</p>}
  {rows.map(row=>{const duty=schedule.duties.find(d=>d.id===row.dutyId)!;const person=candidates.find(p=>p.personId===row.personId);return <div className="duty-row duty-distribution-row" key={row.slotId}><strong>{label(duty)} · plats {duty.slots.findIndex(s=>s.id===row.slotId)+1}</strong><label>Spelare<select value={row.personId} onChange={e=>setRows(old=>old.map(x=>x.slotId===row.slotId?{...x,personId:e.target.value,reason:"Manuellt ändrat av ledaren."}:x))}><option value="">Hoppa över</option>{schedule.people.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><p>{row.reason}</p>{person&&<small>Vald spelare: {person.completed} genomförda, {person.byType[duty.dutyTypeId]??0} av denna typ under perioden.</small>}</div>;})}
  {selected.length>0&&<button type="button" className="primary" onClick={()=>propose({op:"assign_batch",assignments:selected.map(({slotId,personId,revision})=>({slotId,personId,revision}))},`Tilldela ${selected.length} platser enligt tabellen. Berörda familjer meddelas när du bekräftar. Om någon plats har ändrats sparas ingen av tilldelningarna.`)}>Granska tilldelningar</button>}

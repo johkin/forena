@@ -35,7 +35,7 @@ export function DutySeriesForm({ initial, startsAt, endsAt, timeZone, disabled =
      onReview(definition);
    } catch (e) { setError(e instanceof Error && !("issues" in e) ? e.message : "Kontrollera datum, tider, instruktioner och antal platser. Välj högst 48 pass."); }
  }
- return <div className="duty-series-form">
+ return <form className="duty-series-form" onSubmit={event => { event.preventDefault(); if (!disabled) review(); }}>
    <div className="workflow-section-heading"><h4>Tid och bemanning</h4></div>
    <div className="participant-selection"><label>Tid<select value={kind} onChange={e => setKind(e.target.value as typeof kind)}><option value="interval">Bemanningspass</option><option value="deadline">Deadline för leverans</option><option value="none">Ingen särskild tid</option></select></label><DutyPlacesStepper label="Platser per tillfälle" value={places} onChange={setPlaces} disabled={disabled}/></div>
    <p className="duty-timing-help">Bemanningspass använder aktivitetens tider som utgångspunkt och måste rymmas inom aktivitetens start och slut. Alla tider anges i föreningens tidszon.</p>
@@ -44,8 +44,8 @@ export function DutySeriesForm({ initial, startsAt, endsAt, timeZone, disabled =
    <div className="duty-instruction-fields"><h4>Rutiner och instruktioner</h4><label>Gemensamma instruktioner<textarea maxLength={2000} value={instructions} onChange={e => setInstructions(e.target.value)} /></label>
    {kind === "interval" && <><label>Extra instruktion för första passet<textarea maxLength={500} value={opening} onChange={e => setOpening(e.target.value)} /></label><label>Extra instruktion för sista passet<textarea maxLength={500} value={closing} onChange={e => setClosing(e.target.value)} /></label></>}
    </div>
-   {error && <p role="alert">{error}</p>}<button type="button" className="primary" disabled={disabled} onClick={review}>{buttonLabel}</button>
- </div>;
+   {error && <p role="alert">{error}</p>}<button type="submit" className="primary" disabled={disabled}>{buttonLabel}</button>
+ </form>;
 }
 export function DutySeriesEditor({ series, duties, startsAt, endsAt, timeZone, propose }: {
  series: DutySeries; duties: Duty[]; startsAt: string; endsAt: string; timeZone: string; propose: Propose;

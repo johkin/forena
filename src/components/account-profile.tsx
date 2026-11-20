@@ -4,7 +4,7 @@ import type { NavigationLink } from "./navigation-link";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import type { ParticipationFetch } from "./activity-invitation-response";
-import { ActivityDatePicker } from "./activity-date-picker";
+import { IsoDateInput } from "./iso-date-input";
 import { AccountProfileHistory } from "./account-profile-history";
 import { ConfirmSubmit } from "./confirm-submit";
 
@@ -96,7 +96,7 @@ function ChildProfile({ person, people, request, onSaved }: { person: AccountPer
     {!person.editable ? <><p>Din vårdnadshavaråtkomst har upphört. Klubben behöver rätta ett felaktigt födelsedatum. Du kan be den myndiga personen godkänna att du följer matcherna.</p><button type="button" className="secondary" disabled={pending} onClick={() => void act(`/children/${person.id}/follower`, "POST")}>Begär följaråtkomst</button><GuardianProposal person={person} request={request} correction /></> : <>
       {!editing ? <button className="secondary" onClick={() => { setDraft(person); setExpected(versions(affected)); setEditing(true); }}>Redigera barnets uppgifter</button> : <form className="application-form" onSubmit={event => { event.preventDefault(); void act(`/children/${person.id}`, "PUT", { name: draft.name, birthDate: draft.birthDate || null, phone: draft.phone, contactEmail: draft.contactEmail, address: draft.address, people: expected }); }}>
         <label>Namn<input required maxLength={120} value={draft.name} onChange={event => setDraft({ ...draft, name: event.target.value })} /></label>
-        <ActivityDatePicker label="Födelsedatum" value={draft.birthDate ?? ""} onChange={value => setDraft({ ...draft, birthDate: value || null })} />
+        <label>Födelsedatum<IsoDateInput value={draft.birthDate ?? ""} max={new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Stockholm" })} onChange={event => setDraft({ ...draft, birthDate: event.currentTarget.value || null })} /></label>
         <label>Telefonnummer<input type="tel" maxLength={80} value={draft.phone} onChange={event => setDraft({ ...draft, phone: event.target.value })} /></label>
         <label>Kontaktadress (e-post)<input type="email" maxLength={320} value={draft.contactEmail} onChange={event => setDraft({ ...draft, contactEmail: event.target.value })} /></label>
         <label>Adress<textarea maxLength={1000} value={draft.address} onChange={event => setDraft({ ...draft, address: event.target.value })} /></label>

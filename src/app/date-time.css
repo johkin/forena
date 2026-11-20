@@ -17,7 +17,7 @@
 .activity-date-picker button:disabled { cursor:not-allowed; opacity:.4; }
 .activity-date-alternative summary { min-height:44px; display:flex; align-items:center; cursor:pointer; font-size:12px; color:var(--primary); }
 .activity-calendar-selected { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,170px); gap:8px; align-items:center; }
-.activity-date-picker input[type=date] { display:block; min-width:0; width:100%; max-width:100%; min-height:44px; padding:10px; border:1px solid var(--line); border-radius:10px; background:var(--paper); color:var(--ink); font:inherit; appearance:none; }
+.activity-date-picker input[type=text] { display:block; min-width:0; width:100%; max-width:100%; min-height:44px; padding:10px; border:1px solid var(--line); border-radius:10px; background:var(--paper); color:var(--ink); font:inherit; }
 .calendar-range-inputs { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
 .calendar-range-inputs label { display:grid; gap:6px; min-width:0; font-size:13px; }
 .editor-day-tabs { margin-bottom:16px; }

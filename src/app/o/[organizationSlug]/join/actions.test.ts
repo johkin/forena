@@ -29,3 +29,9 @@ it("shows saved-application recovery when delivery fails", async () => {
   start.mockResolvedValue({ application_id: "application-id", email_verified: false, delivery_failed: true });
   await expect(submitMembershipApplication(application())).rejects.toThrow("application=application-id&deliveryFailed=1");
 });
+it.each(["29/02/2016", "2016-2-29", "2015-02-29", "0000-01-01", "9999-12-31"])("rejects invalid birth date %s before saving", async birthDate => {
+  const form = application();
+  form.set("playerBirthDate", birthDate);
+  await expect(submitMembershipApplication(form)).rejects.toThrow("error=Ange%20ett%20giltigt");
+  expect(start).not.toHaveBeenCalled();
+});
