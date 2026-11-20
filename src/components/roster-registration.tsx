@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useRef, useState } from "react";
+import { IsoDateInput } from "./iso-date-input";
 
 export type RosterCandidate = { id: string; name: string; birthDate: string | null };
 export type RosterRegistrationValue = {
@@ -52,9 +53,9 @@ export function RosterRegistration({ today, pending = false, onSearch, onCreate 
           {!selected ? <label className="squad-checkbox"><input type="checkbox" name="duplicatesConfirmed" required={candidates.length > 0} />Jag har kontrollerat möjliga dubbletter och vill skapa en ny person.</label> : null}
           {!candidates.length ? <p className="form-help">Inga personer matchar sökningen.</p> : null}
         </> : <p className="form-help">Sök först för att undvika att registrera samma person flera gånger.</p>}
-        {!selected ? <label>Födelsedatum (valfritt)<input name="birthDate" type="date" max={today} /></label> : null}
+        {!selected ? <label>Födelsedatum (valfritt)<IsoDateInput name="birthDate" max={today} /></label> : null}
         <div className="squad-select-field"><label htmlFor={`${id}-role`}>Roll</label><select id={`${id}-role`} name="role" defaultValue="participant"><option value="participant">Spelare</option><option value="leader">Ledare</option></select></div>
-        <label>Startdatum<input name="startsOn" type="date" required min={today} defaultValue={today} /></label>
+        <label>Startdatum<IsoDateInput name="startsOn" required min={today} defaultValue={today} /></label>
         <label>Egen e-postadress (valfritt)<input name="email" type="email" maxLength={320} autoComplete="email" /></label>
         <p className="form-help">Personen sparas i laget även utan konto. Ange personens egen e-post för att bjuda in till inloggning. Barn utan egen e-post kan finnas utan eget konto. Befintliga konton behåller sin inloggningsadress. En ledarroll ger inga administrativa behörigheter.</p>
         <button type="submit" className="primary" disabled={candidates === undefined || searching}>{pending ? "Sparar…" : "Lägg till medlem"}</button>

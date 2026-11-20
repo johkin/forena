@@ -392,7 +392,10 @@ rader och samla nivåval i en radbrytande navigation. Aktivitetens typval ändra
 bara orörda nya fält. Förhandsgranskningen visar tider i föreningens tidszon.
 Kallelsemottagare och utskicksläge väljs alltid uttryckligen av ledaren.
 
-Alla absoluta datum- och tidsval använder de gemensamma komponenterna nedan. Tidsreglagen bevarar minutprecision; äldre separata femminuterslistor används inte.
+Datumfält använder gemensam textinmatning i ISO-formatet `ÅÅÅÅ-MM-DD`.
+Fälten validerar kalenderdatum och eventuella datumgränser. Aktivitetsplaneringens
+vecko- och månadskalendrar erbjuder samma textfält för direktinmatning.
+Tidsreglagen bevarar minutprecision; äldre separata femminuterslistor används inte.
 
 Relativa tider väljs från listor med svenska texter, exempelvis ”6 dagar innan”.
 Uttryck som `start-6d` är interna värden och visas inte i kontroller eller hjälptexter.
@@ -775,7 +778,7 @@ till aktiveringsknappen och en ny länk utan omladdning. Utgången länk visas o
 
 ## Administration och aktivitetshantering i React/Kotlin
 
-`/administration` använder gemensam AppShell, klubbskapandets tre steg, ClubSlugInput, TimeZoneSelect och SectionTeamAdministration. Övergången till Granska sparar aldrig data; först Skapa klubb skickar kommandot, exakt en gång per bekräftelse. Rolltilldelning och återkallning visar konto och kräver uttrycklig bekräftelse. Lagrollens giltighet använder den gemensamma datumväljaren.
+`/administration` använder gemensam AppShell, klubbskapandets tre steg, ClubSlugInput, TimeZoneSelect och SectionTeamAdministration. Övergången till Granska sparar aldrig data; först Skapa klubb skickar kommandot, exakt en gång per bekräftelse. Rolltilldelning och återkallning visar konto och kräver uttrycklig bekräftelse. Lagrollens giltighet anges i de gemensamma datumfälten.
 
 Lagets sida (`/teams/:id`) visar **Ny aktivitet** vid sidrubriken för användare som finns i serverns lista över hanterbara lag. Aktiviteter visas i de gemensamma aktivitetskorten och kalendern, utan en extra administrationslista. **Redigera** finns i öppnade aktivitetsdetaljer, med kallelseval även vid redigering. Skapandet erbjuder **En aktivitet** och **Aktivitetsserie** med veckodagar, slutdatum och förhandsgranskning. Laget är låst till sidans kontext; ingen lagväljare visas. Den personliga översikten har ingen global ingång för att skapa aktiviteter. Den äldre direktlänken `/activities/manage` finns kvar för kompatibilitet. Aktivitetshanteringen återanvänder ActivityEditorModal med kontobunden transport och uppdaterar listan utan dokumentomladdning. Inställning heter Ställ in och bevarar svar/historik. Dialogen återställer fokus och stöder Escape och avgränsad tangentbordsnavigation. Kallelser till direkt valda personer visas i appen; gränssnittet förklarar att externa meddelanden ännu inte levereras.
 

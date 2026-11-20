@@ -817,8 +817,9 @@ beständiga eventet `activity.invitation_response_changed` i skrivtransaktionen.
 Signalprenumeranten kvitterar och kölägger atomärt; RPC:n är service-only och
 händelsetabellen har RLS utan klientgrants. Se [signalflödet](capability-signals.md).
 
-Alla datum- och tidsval återanvänder `ActivityDatePicker`, `ActivityRangeCalendar`,
-`ActivityTimeStepper` och kompositionen `DateTimeRangeFields`. Kalenderkomponenterna
+Formulärens datumfält använder `IsoDateInput` för validerad ISO-text. Aktivitetsplanering
+återanvänder `ActivityDatePicker`, `ActivityRangeCalendar`, `ActivityTimeStepper`
+och kompositionen `DateTimeRangeFields`. Kalenderkomponenterna
 arbetar med lokala datumsträngar; tidszonskonvertering ligger kvar hos anroparen.
 Tidsreglagen stegar 15 minuter och bevarar exakt minut vid direktinmatning.
 Månadsvyn väljer start och slut i två klick; en ny sekvens återställer intervallet.

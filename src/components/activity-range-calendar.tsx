@@ -1,13 +1,14 @@
 "use client";
 import { useId, useState } from "react";
 import { calendarDateLabel, CalendarWeekdays, shiftCalendarDate } from "./activity-date-picker";
+import { IsoCalendarInput } from "./iso-date-input";
 
 /** Build a Monday-first month grid with empty cells outside the month. */
 export function monthDates(month: string): (string | null)[] {
-  const [year, number] = month.split("-").map(Number);
-  const first = new Date(Date.UTC(year, number - 1, 1, 12));
+  const first = new Date(`${month}-01T12:00:00Z`);
   const offset = (first.getUTCDay() + 6) % 7;
-  const count = new Date(Date.UTC(year, number, 0)).getUTCDate();
+  first.setUTCMonth(first.getUTCMonth() + 1, 0);
+  const count = first.getUTCDate();
   return Array.from({ length: Math.ceil((offset + count) / 7) * 7 }, (_, i) =>
     i < offset || i >= offset + count ? null : `${month}-${String(i - offset + 1).padStart(2, "0")}`);
 }
@@ -29,6 +30,7 @@ export function ActivityRangeCalendar({ start, end, onChange, startName = "start
   const [view, setView] = useState<{ start: string; end: string; month: string }>();
   const [anchor, setAnchor] = useState<string | null>(null);
   const [focusDate, setFocusDate] = useState(start);
+  const [selectionVersion, setSelectionVersion] = useState(0);
   const month = view?.start === start && view.end === end ? view.month : start.slice(0, 7);
   const cells = monthDates(month);
   const waiting = anchor !== null && start === anchor && end === anchor;
@@ -42,6 +44,7 @@ export function ActivityRangeCalendar({ start, end, onChange, startName = "start
   /** Start or complete the current two-click interval. */
   function pick(date: string) {
     const next = selectCalendarRange(waiting ? anchor : null, date);
+    setSelectionVersion(version => version + 1);
     setAnchor(next.anchor);
     setFocusDate(date);
     setView({ start: next.start, end: next.end, month: date.slice(0, 7) });
@@ -58,22 +61,23 @@ export function ActivityRangeCalendar({ start, end, onChange, startName = "start
   }
   return <div className="activity-date-picker activity-range-calendar" role="group" aria-label="Datumintervall">
     <input type="hidden" name={startName} value={start} /><input type="hidden" name={endName} value={end} />
-    <div className="activity-calendar-heading"><strong>{monthLabel}</strong><div><button className="icon-button" type="button" aria-label="Föregående månad" onClick={() => move(-1)}>‹</button><button className="icon-button" type="button" aria-label="Nästa månad" onClick={() => move(1)}>›</button></div></div>
+    <div className="activity-calendar-heading"><strong>{monthLabel}</strong><div><button className="icon-button" type="button" aria-label="Föregående månad" disabled={month === "0001-01"} onClick={() => move(-1)}>‹</button><button className="icon-button" type="button" aria-label="Nästa månad" disabled={month === "9999-12"} onClick={() => move(1)}>›</button></div></div>
     <CalendarWeekdays />
     <div className="activity-month-days">{cells.map((date, i) => date ? <button type="button" key={date} id={`${id}-${date}`} data-endpoint={date === start || date === end} data-in-range={!waiting && start !== end && date >= start && date <= end} data-range-start={date === start} data-range-end={date === end} aria-pressed={date >= start && date <= end} aria-label={`${calendarDateLabel(date)}${date === start ? ", startdag" : ""}${date === end && !waiting ? ", slutdag" : ""}`} tabIndex={date === focusDate || (!cells.includes(focusDate) && date.endsWith("-01")) ? 0 : -1} onClick={() => pick(date)} onKeyDown={event => {
       const days = ({ ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 } as Record<string, number>)[event.key];
       if (days) {
         event.preventDefault();
         const next = shiftCalendarDate(date, days);
+        if (next.length !== 10 || next.startsWith("0000-")) return;
         setFocusDate(next);
         setView({ start, end, month: next.slice(0, 7) });
         requestAnimationFrame(() => document.getElementById(`${id}-${next}`)?.focus());
       }
     }}><strong className="activity-day-number">{Number(date.slice(-2))}</strong></button> : <span key={i} />)}</div>
     <span className="visually-hidden" role="status">{waiting ? "Välj slutdatum" : `Valt intervall: ${calendarDateLabel(start)} till ${calendarDateLabel(end)}`}</span>
-    <details className="activity-date-alternative"><summary>Välj andra datum</summary><div className="calendar-range-inputs">
-      <label>Startdatum<input type="date" value={start} onChange={event => enter(event.target.value, "start")} /></label>
-      <label>Slutdatum<input type="date" min={start} value={end} onChange={event => enter(event.target.value, "end")} /></label>
+    <details className="activity-date-alternative" onInvalid={event => { event.currentTarget.open = true; }}><summary>Välj andra datum</summary><div className="calendar-range-inputs" key={selectionVersion}>
+      <label>Startdatum<IsoCalendarInput required value={start} onDateChange={date => enter(date, "start")} /></label>
+      <label>Slutdatum<IsoCalendarInput required value={end} onDateChange={date => enter(date, "end")} /></label>
     </div></details>
   </div>;
 }

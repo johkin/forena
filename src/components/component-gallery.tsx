@@ -13,7 +13,7 @@ import { ActivityTimingFields } from "./activity-timing-fields";
 import { DisciplineDefaultsFields } from "./discipline-defaults-fields";
 import { resolveDisciplineDefaults } from "@/lib/discipline-defaults";
 import type { ActivityTimingRules } from "@/lib/activity-time-rules";
-import { ActivityDatePicker } from "./activity-date-picker";
+import { IsoDateInput } from "./iso-date-input";
 import { ActivityTimeStepper } from "./activity-time-stepper";
 import { DateTimeRangeFields } from "./date-time-range-fields";
 import { ActivityEditorModal } from "@/components/activity-editor-modal";
@@ -60,7 +60,6 @@ const reminderDraft: ReminderDraft = {
 export function ComponentGallery() {
   const defaults = resolveDisciplineDefaults({activityTypeId:"example",organizationId:"example",sectionId:"example",teamId:"example"}, []);
   const [timing, setTiming] = useState<ActivityTimingRules>(defaults.rules);
-  const [date, setDate] = useState("2026-10-16");
   const [pointDate, setPointDate] = useState("2026-10-16");
   const [pointTime, setPointTime] = useState("09:00");
   const [time, setTime] = useState("17:00");
@@ -92,7 +91,7 @@ export function ComponentGallery() {
     <section id="date-time-components"><h2>Datum och tid</h2><div className="component-date-examples">
       <div><h3>Tidsintervall</h3><DateTimeRangeFields mode={dayMode} onModeChange={mode => { setDayMode(mode); if (mode === "single") setRange(current => ({ ...current, end: current.start })); }} startDate={range.start} endDate={range.end} startTime={range.startTime} endTime={range.endTime} onDatesChange={(start, end) => setRange(current => ({ ...current, start, end }))} onStartTimeChange={startTime => setRange(current => ({ ...current, startTime }))} onEndTimeChange={endTime => setRange(current => ({ ...current, endTime }))} /></div>
       <div><h3>En tidpunkt</h3><DateTimeRangeFields mode="single" startDate={pointDate} endDate={pointDate} startTime={pointTime} endTime={pointTime} onDatesChange={setPointDate} onStartTimeChange={setPointTime} startLabel="Tid" /></div>
-      <div><h3>Enbart datum</h3><ActivityDatePicker name="exampleDate" value={date} onChange={setDate} /></div>
+      <div><h3>Enbart datum</h3><label>Datum<IsoDateInput name="exampleDate" defaultValue="2026-10-16" /></label></div>
       <div><h3>Enbart klockslag</h3><div className="standalone-time-field"><ActivityTimeStepper name="exampleTime" label="Tid" value={time} onChange={setTime} /></div></div>
     </div></section>
     <section><h2>Tider för kallelse</h2><ActivityTimingFields rules={timing} defaults={defaults} touched={new Set()} invitations starts={[activity.startsAt]} timeZone="Europe/Stockholm" onChange={(key, value) => setTiming(current => ({...current, [key]:value}))}/></section>

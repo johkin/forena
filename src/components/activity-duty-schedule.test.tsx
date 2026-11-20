@@ -35,8 +35,8 @@ it.each([
   const timing = tree.find(el => el.type === DateTimeRangeFields)!;
   expect(timing.props.startDate).toBe("2030-10-10");
   expect(timing.props.startTime).toBe(expected);
-  const review = tree.find(el => el.type === "button" && el.props.children === "Granska ändring")!;
-  (review.props.onClick as () => void)();
+  const form = tree.find(el => el.type === "form")!;
+  (form.props.onSubmit as (event: { preventDefault: () => void }) => void)({ preventDefault: vi.fn() });
   expect(propose).toHaveBeenCalledWith(expect.objectContaining({ op: "edit_duty", definition: expect.objectContaining({ timingKind: "deadline", dueAt: `2030-10-10T${String(Number(expected.slice(0,2))-2).padStart(2,"0")}:${expected.slice(3)}:00.000Z` }) }), expect.any(String));
 });
 it("shows duties on matches and training without relabeling them as work", () => {

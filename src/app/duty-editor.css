@@ -34,5 +34,4 @@
 .duty-controls .workflow-disclosure { min-width:0; max-width:100%; }
 .duty-controls .workflow-disclosure > label { margin-top:16px; }
 .duty-controls .workflow-disclosure :is(input:not([type=checkbox]):not([type=radio]),select,textarea) { min-width:0; max-width:100%; width:100%; }
-.duty-controls input[type=date] { appearance:none; display:block; }
 .duty-controls input::-webkit-date-and-time-value { min-width:0; text-align:left; }

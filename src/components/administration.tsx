@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { z } from "zod";
-import { ActivityDatePicker } from "./activity-date-picker";
+import { IsoDateInput } from "./iso-date-input";
 import { AssistantProfileEditor } from "./assistant-profile-editor";
 import { ClubOnboarding } from "./club-onboarding";
 import { ClubSlugInput } from "./club-slug-input";
@@ -149,8 +149,6 @@ function AdministratorForm({ label, path, items, mutate, pending, team = false }
   label: string; path: string; items: z.infer<typeof administratorSchema>[]; mutate: Mutation; pending: boolean; team?: boolean;
 }) {
   const [error, setError] = useState<string>();
-  const [startsOn, setStartsOn] = useState("");
-  const [endsOn, setEndsOn] = useState("");
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -172,7 +170,10 @@ function AdministratorForm({ label, path, items, mutate, pending, team = false }
     <form className="application-form" onSubmit={event => void submit(event)}><fieldset disabled={pending}>
       <label>{label}: e-post<input name="email" type="email" required autoComplete="off" /></label>
       {team ? <><label>Visningsnamn<input name="name" required maxLength={120} /></label><p>En egen personkoppling skapas i klubben om kontot saknar en. Målsmanskopplingar används inte för lagbehörigheter.</p>
-        <details><summary>Giltighet (valfritt)</summary><ActivityDatePicker name="startsOn" label="Gäller från" value={startsOn} onChange={setStartsOn}/><ActivityDatePicker name="endsOn" label="Gäller till" value={endsOn} onChange={setEndsOn}/></details></> : null}
+        <details onInvalid={event => { event.currentTarget.open = true; }}><summary>Giltighet (valfritt)</summary>
+          <label>Gäller från<IsoDateInput name="startsOn" /></label>
+          <label>Gäller till<IsoDateInput name="endsOn" /></label>
+        </details></> : null}
       <button type="submit" className="primary">Tilldela {label.toLowerCase()}</button>
     </fieldset>{error ? <p role="alert">{error}</p> : null}</form>
   </div>;

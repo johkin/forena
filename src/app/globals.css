@@ -908,7 +908,7 @@ a.personal-activity-main:hover strong, a.personal-activity-main:focus-visible st
 .activity-editor-modal input, .activity-editor-modal select { min-height:44px; padding:8px 10px; }
 .activity-editor-modal .editor-date-row { grid-template-columns:minmax(0,11rem) minmax(0,10rem); gap:12px; }
 .activity-editor-modal .editor-time-field { width:min(10rem,100%); }
-.activity-editor-modal input[type="date"], .activity-editor-modal input[type="time"] { display:block; width:100%; min-width:0; max-width:100%; -webkit-appearance:none; appearance:none; }
+.activity-editor-modal input[type="time"] { display:block; width:100%; min-width:0; max-width:100%; -webkit-appearance:none; appearance:none; }
 .activity-editor-modal input::-webkit-date-and-time-value { text-align:left; min-width:0; }
 .activity-editor-modal .editor-fields label, .activity-editor-modal .form-row label { min-width:0; }
 .app-sidebar { padding:16px; }
